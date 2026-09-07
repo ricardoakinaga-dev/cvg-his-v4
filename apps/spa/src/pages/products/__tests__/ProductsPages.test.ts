@@ -77,6 +77,8 @@ describe('Products pages', () => {
     expect(wrapper.text()).toContain('Vacina V10');
     expect(wrapper.text()).toContain('Ativo');
     expect(wrapper.text()).toContain('Inativo');
+    expect(wrapper.findAll('.ds-stat-card__value').map((value) => value.text())).toEqual(['2', '1', '1', '2']);
+    expect(wrapper.get('.products-summary').attributes('open')).toBeUndefined();
     expect(productsService.list).toHaveBeenCalledWith(undefined);
   });
 
@@ -93,6 +95,60 @@ describe('Products pages', () => {
     expect(productsService.list).toHaveBeenLastCalledWith('Vacina');
     expect(wrapper.text()).toContain('Vacina V10');
     expect(wrapper.text()).not.toContain('Ração Renal');
+    expect(wrapper.findAll('.ds-stat-card__value').at(-1)?.text()).toBe('1');
+  });
+
+  it('offers clearing unmatched filters without claiming the catalog is empty', async () => {
+    const wrapper = mount(ProductsListPage);
+    await flushPromises();
+    vi.mocked(productsService.list).mockResolvedValueOnce([]);
+    await wrapper.get('[data-testid="products-name-filter"]').setValue('Não existe');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Nenhum produto corresponde aos filtros');
+    expect(wrapper.text()).not.toContain('Cadastre o primeiro produto');
+    const clear = wrapper.findAll('button').find((button) => button.text() === 'Limpar filtros');
+    expect(clear).toBeDefined();
+    await clear!.trigger('click');
+    await flushPromises();
+
+    expect(productsService.list).toHaveBeenLastCalledWith(undefined);
+    expect((wrapper.get('[data-testid="products-name-filter"]').element as HTMLInputElement).value).toBe('');
+    expect(wrapper.text()).toContain('Ração Renal');
+    expect(wrapper.text()).toContain('Vacina V10');
+  });
+
+  it('offers product creation only after a successful empty unfiltered lookup', async () => {
+    vi.mocked(productsService.list).mockResolvedValueOnce([]);
+    const wrapper = mount(ProductsListPage);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Nenhum produto cadastrado');
+    expect(wrapper.text()).toContain('Cadastre o primeiro produto');
+    expect(wrapper.text()).toContain('Incluir produto');
+    expect(wrapper.text()).not.toContain('Limpar filtros');
+  });
+
+  it('keeps unavailable data distinct from an empty catalog after error dismissal and permits recovery', async () => {
+    vi.mocked(productsService.list).mockRejectedValueOnce(new Error('Falha de conexão'));
+    const wrapper = mount(ProductsListPage, { global: { stubs: { DsAlert: false } } });
+    await flushPromises();
+    expect(wrapper.text()).toContain('Falha de conexão');
+    await wrapper.get('button[aria-label="Fechar alerta"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain('Falha de conexão');
+    expect(wrapper.text()).toContain('Produtos indisponíveis');
+    expect(wrapper.text()).not.toContain('Cadastre o primeiro produto');
+    expect(wrapper.find('.products-summary').exists()).toBe(false);
+    const retry = wrapper.findAll('button').find((button) => button.text() === 'Tentar novamente');
+    await retry!.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain('Produtos indisponíveis');
+    expect(wrapper.text()).toContain('Ração Renal');
+    expect(wrapper.find('.products-summary').exists()).toBe(true);
   });
 
   it('creates a product through the product form', async () => {

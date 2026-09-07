@@ -1,10 +1,17 @@
 <template>
   <div class="dashboard-page">
     <DsCard class="dashboard-hero">
+      <div class="dashboard-hero__meta" aria-label="Status da operação">
+        <span class="dashboard-hero__signal" :class="`dashboard-hero__signal--${operationStatus.tone}`">
+          <span class="dashboard-hero__signal-dot" aria-hidden="true" />
+          {{ operationStatus.label }}
+        </span>
+        <span class="dashboard-hero__date">{{ todayLabel }}</span>
+      </div>
       <AppPageHeader
         title="Início"
         :breadcrumbs="['Início']"
-        :subtitle="`Olá. ${companyName} está ativo para a operação de hoje: agenda, comandas, aniversariantes e pendências do plantão.`"
+        :subtitle="`Olá. Acompanhe a operação de hoje de ${companyName}: agenda, comandas, aniversariantes e pendências do plantão.`"
         :secondary-actions="headerSecondaryActions"
         :primary-action="headerPrimaryAction"
       />
@@ -17,7 +24,7 @@
         :to="tile.to"
         class="home-shortcut"
       >
-        <span class="home-shortcut__icon">{{ tile.icon }}</span>
+        <span class="home-shortcut__icon"><DsIcon :name="tile.icon" size="lg" /></span>
         <span class="home-shortcut__copy">
           <strong>{{ tile.label }}</strong>
           <small>{{ tile.hint }}</small>
@@ -30,7 +37,7 @@
 
     <EmptyState
       v-else
-      icon="📊"
+      icon="chart"
       title="Atalhos indisponíveis"
       description="Os atalhos do Início dependem das permissões da sessão atual."
       size="sm"
@@ -80,7 +87,7 @@
         </div>
         <EmptyState
           v-else-if="enterpriseOverview.error"
-          icon="📡"
+          icon="signal"
           title="Central executiva indisponível"
           :description="enterpriseOverview.error"
           size="sm"
@@ -139,7 +146,7 @@
           </div>
           <EmptyState
             v-if="premiumBusinessOverview.error"
-            icon="📊"
+            icon="chart"
             title="Lentes executivas parciais"
             :description="premiumBusinessOverview.error"
             size="sm"
@@ -204,7 +211,7 @@
 
         <EmptyState
           v-if="openCounterSales.error"
-          icon="🧾"
+          icon="receipt"
           title="Não foi possível carregar comandas"
           :description="openCounterSales.error"
           size="sm"
@@ -214,7 +221,7 @@
         </div>
         <EmptyState
           v-else-if="openCounterSales.items.length === 0"
-          icon="🧾"
+          icon="receipt"
           title="Nenhuma comanda aberta"
           description="Não há comandas abertas no recorte operacional atual."
           size="sm"
@@ -240,7 +247,7 @@
         </div>
         <EmptyState
           v-if="operationalReminders.length === 0"
-          icon="🗓️"
+          icon="calendar"
           title="Nenhuma pendência para hoje"
           description="Agenda, comandas abertas e aniversariantes aparecem aqui quando exigem acompanhamento."
           size="sm"
@@ -268,7 +275,7 @@
         </div>
         <EmptyState
           v-if="birthdays.length === 0"
-          icon="🎂"
+          icon="spark"
           title="Nenhum aniversariante encontrado"
           description="Clientes e animais com data de nascimento de hoje aparecem neste painel."
           size="sm"
@@ -311,7 +318,7 @@
         </div>
         <EmptyState
           v-if="recentRoutes.length === 0"
-          icon="🧭"
+          icon="compass"
           title="Ainda sem histórico recente"
           description="Abra Agenda, Fila, Triagem, Atendimentos ou Prontuário para construir o histórico operacional do plantão."
           size="sm"
@@ -323,7 +330,7 @@
             :to="item.path"
             class="link-list__item"
           >
-            <span class="link-list__icon">{{ item.icon ?? '↗' }}</span>
+            <span class="link-list__icon"><DsIcon :name="item.icon ?? '↗'" size="sm" /></span>
             <span class="link-list__label">{{ item.label }}</span>
             <span class="link-list__path">{{ item.path }}</span>
           </router-link>
@@ -336,7 +343,7 @@
         </div>
         <EmptyState
           v-if="favoriteRoutes.length === 0"
-          icon="★"
+          icon="star"
           title="Nenhum favorito fixado"
           description="Fixe rotas críticas como Agenda, Fila, Triagem e Internação para iniciar a operação com menos cliques."
           size="sm"
@@ -348,7 +355,7 @@
             :to="item.path"
             class="link-list__item"
           >
-            <span class="link-list__icon">{{ item.icon ?? '★' }}</span>
+            <span class="link-list__icon"><DsIcon :name="item.icon ?? '★'" size="sm" /></span>
             <span class="link-list__label">{{ item.label }}</span>
             <span class="link-list__path">{{ item.path }}</span>
           </router-link>
@@ -362,6 +369,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsDomainCard from '@cvg-his-v2/design-system/vue/DsDomainCard.vue';
+import DsIcon from '@cvg-his-v2/design-system/vue/DsIcon.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import { useAppStore } from '@/stores/app';
@@ -497,13 +505,23 @@ const homeSummary = reactive<Record<HomeTileKey, number>>({
   products: 0,
   sales: 0
 });
+const homeSummaryLoaded = reactive<Record<HomeTileKey, boolean>>({
+  'counter-sales': false,
+  owners: false,
+  patients: false,
+  appointments: false,
+  products: false,
+  sales: false
+});
 
 const openCounterSales = reactive<{
   loading: boolean;
+  loaded: boolean;
   error: string;
   items: CounterSaleSummary[];
 }>({
   loading: false,
+  loaded: false,
   error: '',
   items: []
 });
@@ -520,6 +538,25 @@ const enterpriseOverview = reactive<{
   slo: null,
   audit: null,
   reportDeliveryAuditEvents: []
+});
+
+const operationStatus = computed(() => {
+  if (enterpriseOverview.loading) {
+    return { label: 'Verificando operação', tone: 'loading' as const };
+  }
+
+  const status = enterpriseOverview.slo?.report.overallStatus;
+  if (status === 'healthy') {
+    return { label: 'Operação verificada', tone: 'healthy' as const };
+  }
+  if (status === 'degraded') {
+    return { label: 'Operação degradada', tone: 'degraded' as const };
+  }
+  if (status === 'critical') {
+    return { label: 'Operação crítica', tone: 'critical' as const };
+  }
+
+  return { label: 'Status não verificado', tone: 'unknown' as const };
 });
 
 const premiumBusinessOverview = reactive<{
@@ -548,7 +585,7 @@ const favoriteRoutes = computed(() =>
   appStore.favoriteRoutes
     .map((path) => {
       const recent = appStore.recentRoutes.find((route) => route.path === path);
-      return recent ?? { path, label: path, icon: '★' };
+      return recent ?? { path, label: path, icon: 'star' };
     })
     .filter((item) => Boolean(item.path))
 );
@@ -558,7 +595,7 @@ const homeTiles = ref<HomeTile[]>([
     key: 'counter-sales',
     label: 'Comandas',
     hint: 'abertas',
-    icon: '🧾',
+    icon: 'receipt',
     to: '/counter-sales',
     endpoint: '/counter-sales?status=open',
     permissionCode: 'counter_sale.read',
@@ -570,7 +607,7 @@ const homeTiles = ref<HomeTile[]>([
     key: 'owners',
     label: 'Clientes',
     hint: 'cadastrados',
-    icon: '👤',
+    icon: 'user',
     to: '/owners',
     endpoint: '/owners',
     permissionCode: 'owners.read',
@@ -582,7 +619,7 @@ const homeTiles = ref<HomeTile[]>([
     key: 'patients',
     label: 'Animais',
     hint: 'cadastrados',
-    icon: '🐾',
+    icon: 'paw',
     to: '/patients',
     endpoint: '/patients',
     permissionCode: 'patients.read',
@@ -594,7 +631,7 @@ const homeTiles = ref<HomeTile[]>([
     key: 'appointments',
     label: 'Agenda',
     hint: 'registros',
-    icon: '📅',
+    icon: 'calendar',
     to: '/appointments',
     endpoint: '/appointments',
     permissionCode: 'scheduling.read',
@@ -606,7 +643,7 @@ const homeTiles = ref<HomeTile[]>([
     key: 'products',
     label: 'Produtos',
     hint: 'ativos',
-    icon: '🏷️',
+    icon: 'tag',
     to: '/products',
     endpoint: '/products',
     permissionCode: 'product.read',
@@ -618,7 +655,7 @@ const homeTiles = ref<HomeTile[]>([
     key: 'sales',
     label: 'Vendas',
     hint: 'fechadas',
-    icon: '💸',
+    icon: 'money',
     to: '/sales',
     endpoint: '/counter-sales?status=closed',
     permissionCode: 'counter_sale.read',
@@ -641,24 +678,24 @@ const visibleHomeTiles = computed(() => {
 // - "Atendimento" is the primary operational domain (patients, tutors, agenda, fila, triage, etc.)
 const domainShortcuts: DomainShortcut[] = [
   // === Atendimento > Cadastrados ===
-  { label: 'Clientes', to: '/owners', icon: '👤', permissionCode: 'owners.read' },
-  { label: 'Animais', to: '/patients', icon: '🐾', permissionCode: 'patients.read' },
+  { label: 'Clientes', to: '/owners', icon: 'user', permissionCode: 'owners.read' },
+  { label: 'Animais', to: '/patients', icon: 'paw', permissionCode: 'patients.read' },
   // === Atendimento > Atendimentos ===
-  { label: 'Agenda', to: '/appointments', icon: '📅', permissionCode: 'scheduling.read' },
-  { label: 'Comandas', to: '/counter-sales', icon: '🧾', permissionCode: 'counter_sale.read' },
-  { label: 'Fila', to: '/queue', icon: '🏥', permissionCode: 'scheduling.read' },
-  { label: 'Atendimentos', to: '/encounters', icon: '🩺', permissionCode: 'encounters.read' },
-  { label: 'Triagem', to: '/triage', icon: '🧭', permissionCode: 'triage.read' },
+  { label: 'Agenda', to: '/appointments', icon: 'calendar', permissionCode: 'scheduling.read' },
+  { label: 'Comandas', to: '/counter-sales', icon: 'receipt', permissionCode: 'counter_sale.read' },
+  { label: 'Fila', to: '/queue', icon: 'hospital', permissionCode: 'scheduling.read' },
+  { label: 'Atendimentos', to: '/encounters', icon: 'stethoscope', permissionCode: 'encounters.read' },
+  { label: 'Triagem', to: '/triage', icon: 'compass', permissionCode: 'triage.read' },
   // === Atendimento > Prontuário ===
   {
     label: 'Prontuário',
     to: '/medical-records',
-    icon: '📋',
+    icon: 'clipboard',
     permissionCode: 'medical-records.read'
   },
   // === Atendimento > Internação ===
-  { label: 'Internação', to: '/inpatient', icon: '🛏️', permissionCode: 'inpatient.read' },
-  { label: 'Mapa de Leitos', to: '/inpatient/board', icon: '🗺️', permissionCode: 'inpatient.read' }
+  { label: 'Internação', to: '/inpatient', icon: 'bed', permissionCode: 'inpatient.read' },
+  { label: 'Mapa de Leitos', to: '/inpatient/board', icon: 'map', permissionCode: 'inpatient.read' }
 ];
 
 const premiumOperationalGuide: PremiumOperationalGuideStep[] = [
@@ -735,24 +772,32 @@ const homeMetrics = computed<HomeMetric[]>(() =>
     {
       key: 'appointments',
       label: 'Agenda',
-      value: formatNumber(homeSummary.appointments),
-      hint: 'registros para acompanhar',
+      value: homeSummaryLoaded.appointments ? formatNumber(homeSummary.appointments) : '—',
+      hint: homeSummaryLoaded.appointments ? 'registros para acompanhar' : 'Leitura indisponível',
       to: '/appointments',
       permissionCodes: ['scheduling.read']
     },
     {
       key: 'counter-sales',
       label: 'Comandas abertas',
-      value: formatNumber(homeSummary['counter-sales']),
-      hint: 'pendentes de fechamento',
+      value: homeSummaryLoaded['counter-sales']
+        ? formatNumber(homeSummary['counter-sales'])
+        : '—',
+      hint: homeSummaryLoaded['counter-sales'] ? 'pendentes de fechamento' : 'Leitura indisponível',
       to: '/counter-sales',
       permissionCodes: ['counter_sale.read']
     },
     {
       key: 'receivable',
       label: 'A receber',
-      value: formatCurrency(openCounterSalesBalance.value),
-      hint: 'saldo das comandas recentes',
+      value:
+        openCounterSales.loaded && !openCounterSales.error
+          ? formatCurrency(openCounterSalesBalance.value)
+          : '—',
+      hint:
+        openCounterSales.loaded && !openCounterSales.error
+          ? 'saldo das comandas recentes'
+          : 'Leitura indisponível',
       to: '/counter-sales',
       permissionCodes: ['counter_sale.read']
     },
@@ -767,8 +812,8 @@ const homeMetrics = computed<HomeMetric[]>(() =>
     {
       key: 'sales',
       label: 'Vendas fechadas',
-      value: formatNumber(homeSummary.sales),
-      hint: 'base comercial carregada',
+      value: homeSummaryLoaded.sales ? formatNumber(homeSummary.sales) : '—',
+      hint: homeSummaryLoaded.sales ? 'base comercial carregada' : 'Leitura indisponível',
       to: '/sales',
       permissionCodes: ['counter_sale.read']
     }
@@ -915,6 +960,7 @@ const enterpriseFocusItems = computed<EnterpriseFocusItem[]>(() => {
 
 const premiumBusinessLenses = computed<PremiumBusinessLens[]>(() => {
   const commercial = premiumBusinessOverview.commercial;
+  const commercialAvailable = commercial !== null;
   const pendingDailyAmount = premiumBusinessOverview.dailyCharges?.totalPendingAmount ?? 0;
   const pendingLaboratoryOrders = premiumBusinessOverview.laboratoryOrders.filter(
     (order) => order.status === 'requested' || order.status === 'collected'
@@ -953,17 +999,21 @@ const premiumBusinessLenses = computed<PremiumBusinessLens[]>(() => {
     lenses.push({
       key: 'financial',
       label: 'Financeiro hoje',
-      value: formatCurrency(commercial?.netRevenueToday ?? 0),
-      hint: `${formatNumber(commercial?.closedToday ?? 0)} comandas fechadas`,
-      tone: (commercial?.netRevenueToday ?? 0) > 0 ? 'success' : 'info',
+      value: commercialAvailable ? formatCurrency(commercial.netRevenueToday) : '—',
+      hint: commercialAvailable
+        ? `${formatNumber(commercial.closedToday)} comandas fechadas`
+        : 'Leitura comercial indisponível',
+      tone: commercialAvailable && commercial.netRevenueToday > 0 ? 'success' : 'info',
       to: '/dashboards/financial'
     });
     lenses.push({
       key: 'operation',
       label: 'Operação comercial',
-      value: formatNumber(commercial?.openSales ?? homeSummary['counter-sales']),
-      hint: `${formatCurrency(commercial?.avgTicket ?? 0)} ticket médio`,
-      tone: (commercial?.openSales ?? 0) > 0 ? 'warning' : 'success',
+      value: commercialAvailable ? formatNumber(commercial.openSales) : '—',
+      hint: commercialAvailable
+        ? `${formatCurrency(commercial.avgTicket)} ticket médio`
+        : 'Leitura comercial indisponível',
+      tone: commercialAvailable && commercial.openSales > 0 ? 'warning' : 'info',
       to: '/counter-sales'
     });
   }
@@ -1147,12 +1197,14 @@ async function loadHomeTiles(): Promise<Map<string, ListResponse<unknown>>> {
       tile.value = '—';
       tile.error = true;
       homeSummary[tile.key] = 0;
+      homeSummaryLoaded[tile.key] = false;
       return;
     }
 
     const count = countFromListResponse(result.value);
     tile.value = formatNumber(count);
     homeSummary[tile.key] = count;
+    homeSummaryLoaded[tile.key] = true;
     responses.set(tile.endpoint, result.value);
   });
 
@@ -1163,6 +1215,7 @@ async function loadOpenCounterSales() {
   if (!permissionCodes.value?.includes('counter_sale.read')) {
     openCounterSales.items = [];
     openCounterSales.loading = false;
+    openCounterSales.loaded = true;
     openCounterSales.error = '';
     return;
   }
@@ -1178,8 +1231,10 @@ async function loadOpenCounterSales() {
       .slice()
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, 7);
+    openCounterSales.loaded = true;
   } catch {
     openCounterSales.items = [];
+    openCounterSales.loaded = true;
     openCounterSales.error = 'Confira sua permissão de leitura de comandas ou tente novamente.';
   } finally {
     openCounterSales.loading = false;
@@ -1247,6 +1302,7 @@ function countFromListResponse(response: ListResponse<unknown>): number {
 function resetHomeSummary() {
   for (const key of Object.keys(homeSummary) as HomeTileKey[]) {
     homeSummary[key] = 0;
+    homeSummaryLoaded[key] = false;
   }
 }
 
@@ -1435,7 +1491,7 @@ onMounted(() => {
   height: 38px;
   border-radius: 8px;
   background: rgba(22, 163, 74, 0.12);
-  color: #15803d;
+  color: var(--color-success-800, #0d5145);
   font-size: 13px;
   font-weight: 800;
 }
@@ -1913,7 +1969,7 @@ onMounted(() => {
 
 :root[data-theme='dark'] .dashboard-page .premium-operation-step__order {
   background: var(--color-success-100);
-  color: var(--color-success-300);
+  color: var(--pulse-mint, #77dfbb);
 }
 
 :root[data-theme='dark'] .dashboard-page .enterprise-kpi {
@@ -1954,5 +2010,286 @@ onMounted(() => {
 
 :root[data-theme='dark'] .dashboard-page .enterprise-focus-item__tone--danger {
   background: var(--color-danger-400);
+}
+</style>
+
+<style scoped>
+.dashboard-page {
+  gap: clamp(16px, 2vw, 24px);
+  max-width: 1440px;
+}
+
+.dashboard-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: clamp(20px, 3vw, 34px);
+  border: 1px solid var(--color-border, rgba(148, 163, 184, 0.24));
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 88% 14%, rgba(78, 205, 255, 0.18), transparent 28%),
+    radial-gradient(circle at 70% 120%, rgba(115, 239, 193, 0.12), transparent 36%),
+    var(--color-surface, #ffffff);
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.1);
+}
+
+/* The hero owns the single elevated surface; the shared page header keeps its
+   hierarchy and actions without nesting a second card inside it. */
+.dashboard-hero :deep(.app-page-header) {
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.dashboard-hero :deep(.app-page-header::before),
+.dashboard-hero :deep(.app-page-header::after) {
+  display: none;
+}
+
+.dashboard-hero::after {
+  position: absolute;
+  z-index: -1;
+  inset: -36% -8% auto auto;
+  width: 360px;
+  height: 360px;
+  border: 1px solid rgba(78, 205, 255, 0.22);
+  border-radius: 50%;
+  content: '';
+  box-shadow: 0 0 0 28px rgba(78, 205, 255, 0.035), 0 0 0 58px rgba(78, 205, 255, 0.025);
+  pointer-events: none;
+}
+
+.dashboard-hero__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  color: var(--color-text-muted, #64748b);
+  font-family: var(--font-family-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.dashboard-hero__signal,
+.dashboard-hero__date {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dashboard-hero__signal {
+  color: var(--color-accent-700, #0f766e);
+}
+
+.dashboard-hero__signal--degraded {
+  color: var(--color-warning-700, #a96508);
+}
+
+.dashboard-hero__signal--critical {
+  color: var(--color-danger-700, #a83c43);
+}
+
+.dashboard-hero__signal--unknown,
+.dashboard-hero__signal--loading {
+  color: var(--color-text-muted, #64748b);
+}
+
+.dashboard-hero__signal-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-success-500, #10b981);
+  box-shadow: 0 0 0 5px rgba(16, 185, 129, 0.12);
+}
+
+.dashboard-hero__signal--degraded .dashboard-hero__signal-dot {
+  background: var(--color-warning-500, #bc7a12);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-warning-500, #bc7a12) 14%, transparent);
+}
+
+.dashboard-hero__signal--critical .dashboard-hero__signal-dot {
+  background: var(--color-danger-500, #d15b63);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-danger-500, #d15b63) 14%, transparent);
+}
+
+.dashboard-hero__signal--unknown .dashboard-hero__signal-dot,
+.dashboard-hero__signal--loading .dashboard-hero__signal-dot {
+  background: var(--color-text-muted, #64748b);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-text-muted, #64748b) 14%, transparent);
+}
+
+.dashboard-hero__date {
+  color: var(--color-text-muted, #64748b);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.dashboard-hero :deep(.app-page-header__title) {
+  max-width: 18ch;
+  font-family: var(--font-family-sans, 'Manrope', system-ui, sans-serif);
+  font-size: clamp(2rem, 3.5vw, 3.55rem);
+  font-weight: 800;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+}
+
+.dashboard-hero :deep(.app-page-header__subtitle) {
+  max-width: 66ch;
+  font-size: clamp(0.9rem, 1vw, 1rem);
+  line-height: 1.6;
+}
+
+.home-shortcuts {
+  gap: 14px;
+}
+
+.home-shortcut,
+.home-metric,
+.enterprise-kpi,
+.enterprise-focus-item,
+.premium-lens,
+.premium-operation-step,
+.counter-sale-item,
+.birthday-item,
+.reminder-item,
+.link-list__item {
+  border-color: var(--color-border, rgba(148, 163, 184, 0.24));
+  background: var(--color-surface, #ffffff);
+  box-shadow: var(--shadow-xs, 0 1px 2px rgba(15, 23, 42, 0.05));
+  transition:
+    border-color var(--duration-fast, 150ms) var(--ease-default, ease),
+    background-color var(--duration-fast, 150ms) var(--ease-default, ease),
+    box-shadow var(--duration-fast, 150ms) var(--ease-default, ease),
+    transform var(--duration-fast, 150ms) var(--ease-default, ease);
+}
+
+.home-shortcut:hover,
+.home-metric:hover,
+.enterprise-kpi:hover,
+.enterprise-focus-item:hover,
+.premium-lens:hover,
+.premium-operation-step:hover,
+.counter-sale-item:hover,
+.birthday-item:hover,
+.reminder-item:hover,
+.link-list__item:hover {
+  border-color: var(--color-accent-400, #2dd4bf);
+  background: var(--color-surface-hover, #f8fafc);
+  box-shadow: var(--shadow-md, 0 12px 30px rgba(15, 23, 42, 0.08));
+  transform: translateY(-2px);
+  text-decoration: none;
+}
+
+.home-shortcut:focus-visible,
+.home-metric:focus-visible,
+.enterprise-kpi:focus-visible,
+.enterprise-focus-item:focus-visible,
+.premium-lens:focus-visible,
+.premium-operation-step:focus-visible,
+.counter-sale-item:focus-visible,
+.birthday-item:focus-visible,
+.reminder-item:focus-visible,
+.link-list__item:focus-visible {
+  outline: 3px solid var(--color-focus-ring, rgba(78, 205, 255, 0.42));
+  outline-offset: 3px;
+}
+
+.home-shortcut__icon {
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(78, 205, 255, 0.22);
+  border-radius: 13px;
+  background: rgba(78, 205, 255, 0.1);
+  color: var(--color-info-700, #0369a1);
+}
+
+.home-shortcut__icon :deep(.ds-icon) {
+  width: 20px;
+  height: 20px;
+}
+
+.home-shortcut__copy strong,
+.home-metric strong,
+.enterprise-kpi strong,
+.premium-lens strong {
+  letter-spacing: -0.03em;
+}
+
+.home-shortcut__value,
+.home-metric strong,
+.enterprise-kpi strong,
+.premium-lens strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.panel-card {
+  border-radius: 20px;
+}
+
+.panel-card__title {
+  font-family: var(--font-family-sans, 'Manrope', system-ui, sans-serif);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.panel-card__action {
+  min-height: 44px;
+  border-radius: 12px;
+}
+
+.link-list__icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(115, 239, 193, 0.12);
+  color: var(--color-success-700, #047857);
+}
+
+@media (max-width: 720px) {
+  .dashboard-hero {
+    padding: 20px 16px;
+    border-radius: 20px;
+  }
+
+  .dashboard-hero__meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dashboard-hero :deep(.app-page-header__title) {
+    max-width: none;
+    font-size: clamp(2rem, 12vw, 3rem);
+  }
+
+  .home-shortcut {
+    min-height: 124px;
+    padding: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-shortcut,
+  .home-metric,
+  .enterprise-kpi,
+  .enterprise-focus-item,
+  .premium-lens,
+  .premium-operation-step,
+  .counter-sale-item,
+  .birthday-item,
+  .reminder-item,
+  .link-list__item {
+    transition: none;
+  }
 }
 </style>

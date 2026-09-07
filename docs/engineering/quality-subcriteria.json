@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "scope": "Thirty detailed baseline subcriteria retained alongside the current Quality Bar and AAA overlay; this catalog does not certify execution.",
+  "historicalSourceSha256": "2db2e6e1ccccf50ead7d65fa9698afb25519ff131c52c1eae8ad548a25f21970",
+  "criteria": [
+    {
+      "id": "QB-SEC-01",
+      "rejectingBehavior": "Bootstrap ausente, inválido, hardcoded, persistido ou logado falha fechado sem token fabricado; ACL/audit, outage de leitura e revogação cross-instance também devem falhar fechados."
+    },
+    {
+      "id": "QB-SEC-02",
+      "rejectingBehavior": "Actor, ação, recurso ou tenant inválido é rejeitado; sucesso cross-tenant e ACL ausente falham."
+    },
+    {
+      "id": "QB-DATA-01",
+      "rejectingBehavior": "Corrida, failpoint ou retry não deixa duplicata, grafo parcial ou instalação reaberta; divergência falha."
+    },
+    {
+      "id": "QB-AUTH-01",
+      "rejectingBehavior": "Refresh/replay, revogação, expiração ou restart entre duas APIs falha quando o estado autoritativo diverge."
+    },
+    {
+      "id": "QB-CORE-01",
+      "rejectingBehavior": "Failpoint ou replay no clinical-to-cash deixa órfão, saldo incorreto ou efeito sem audit/outbox; o cenário falha."
+    },
+    {
+      "id": "QB-PARITY-01",
+      "rejectingBehavior": "Skip, retry, shortcut de API ou ausência de estado persistido não conta; a área sem cenário falha."
+    },
+    {
+      "id": "QB-UX-01",
+      "rejectingBehavior": "Fluxo sem loading/empty/error/recovery, foco/teclado ou acessibilidade falha no browser real."
+    },
+    {
+      "id": "QB-REL-01",
+      "rejectingBehavior": "Build, typecheck, coverage, critical E2E, skip/retry ou harness inconsistente falha o gate."
+    },
+    {
+      "id": "QB-OPS-01",
+      "rejectingBehavior": "Deploy, rollback, backup, failover, alerta, trace ou SLO sem ambiente autorizado falha/bloqueia a certificação."
+    },
+    {
+      "id": "QB-MKT-01",
+      "rejectingBehavior": "Workflow diferenciado que é apenas menu/place-holder e não demonstra resultado persistido não conta."
+    },
+    {
+      "id": "QB-REC-RACE-01",
+      "rejectingBehavior": "Duas requisições reais não podem produzir dois `201`, `500` ou sucesso duplicado; a segunda deve ser rejeitada."
+    },
+    {
+      "id": "QB-REC-RACE-02",
+      "rejectingBehavior": "Tenant B recebe `404` e a reconciliação rejeita duplicata, linha desbalanceada ou efeito da chave perdedora."
+    },
+    {
+      "id": "QB-REC-RACE-03",
+      "rejectingBehavior": "Fixture sem suffix isolado, entrypoint real, barreira determinística, cleanup ou sem mutação segura falha."
+    },
+    {
+      "id": "QB-REC-REG-01",
+      "rejectingBehavior": "Replay, rollback ou SIGKILL regressivo falha a suíte existente após adicionar concorrência."
+    },
+    {
+      "id": "QB-CI-PROC-01",
+      "rejectingBehavior": "Runner sem cada boundary real nomeado falha o contrato antes de ser gate de release."
+    },
+    {
+      "id": "QB-CI-PROC-02",
+      "rejectingBehavior": "Paralelismo de arquivos, suffix duplicado, timeout aberto ou cleanup ausente falha o runner."
+    },
+    {
+      "id": "QB-CI-PROC-03",
+      "rejectingBehavior": "Filho que falha não propaga nonzero ou continua fases posteriores; o teste de runner falha."
+    },
+    {
+      "id": "QB-CI-REG-01",
+      "rejectingBehavior": "Runner novo vaza credencial, toca produção ou regressa boundary verde; secrets/diff/process checks rejeitam."
+    },
+    {
+      "id": "QB-LAB-BOOT-01",
+      "rejectingBehavior": "Dois PIDs/API contra o mesmo banco não podem gerar `duplicate key`, crash ou timeout; qualquer um falha."
+    },
+    {
+      "id": "QB-LAB-BOOT-02",
+      "rejectingBehavior": "Boot concorrente não pode duplicar equipamentos, tipos, referências ou vazar leitura A/B; a query falha."
+    },
+    {
+      "id": "QB-LAB-BOOT-03",
+      "rejectingBehavior": "Remoção de item canônico deve ser reparada sem duplicar ou sobrescrever customização; qualquer divergência falha."
+    },
+    {
+      "id": "QB-LAB-REG-01",
+      "rejectingBehavior": "Correção do catálogo não pode regressar seis boundaries críticos, concorrência ou SIGKILL; rerun falha."
+    },
+    {
+      "id": "QB-HELM-RENDER-01",
+      "rejectingBehavior": "Helm lint/template sem overlays válidos, com `ReferenceError` ou manifest inválido, falha o gate."
+    },
+    {
+      "id": "QB-HELM-STATIC-01",
+      "rejectingBehavior": "Sem Helm, Secrets, `WORKER_ACCOUNT_IDS` ou datastore fail-closed ausentes fazem o validator falhar."
+    },
+    {
+      "id": "QB-HELM-REG-01",
+      "rejectingBehavior": "Correção que introduz erro de sintaxe, segredo ou typecheck falha antes da entrega."
+    },
+    {
+      "id": "QB-PIX-RLS-01",
+      "rejectingBehavior": "PID de settlement com `BYPASSRLS`, usuário incorreto, tenant fora de escopo ou liquidação duplicada falha."
+    },
+    {
+      "id": "QB-PIX-RLS-02",
+      "rejectingBehavior": "Worker inserindo provider receipt ou API alterando delivery sem capability é rejeitado; grant divergente falha."
+    },
+    {
+      "id": "QB-PIX-RLS-03",
+      "rejectingBehavior": "SIGKILL, takeover, stale owner ou replay produz mais de um efeito; reconciliação falha."
+    },
+    {
+      "id": "QB-PIX-RLS-REG-01",
+      "rejectingBehavior": "Endurecimento de grants regressa o runner processual ou foco ACL; unit/process rerun falha."
+    },
+    {
+      "id": "QB-REL-CRITICAL-HARNESS",
+      "rejectingBehavior": "Full harness divergente, fixture contaminada ou teardown incompleto falha; não se mascara falha de prefixo."
+    }
+  ]
+}

@@ -327,7 +327,7 @@ export class DatabaseCashRepository implements CashRepository {
   async findMovementsByRegister(cashRegisterId: string): Promise<readonly CashMovementRecord[]> {
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query(
-        `SELECT * FROM cash_movements WHERE cash_register_id = $1 ORDER BY created_at ASC`,
+        `SELECT * FROM cash_movements WHERE cash_register_id = $1 ORDER BY created_at ASC, id ASC`,
         [cashRegisterId]
       );
       return result.rows.map((r: Record<string, unknown>) => this.mapMovement(r));
@@ -353,7 +353,7 @@ export class DatabaseCashRepository implements CashRepository {
         params.push(dateTo);
         paramIdx++;
       }
-      sql += ` ORDER BY created_at DESC`;
+      sql += ` ORDER BY created_at DESC, id DESC`;
       const result = await client.query(sql, params);
       return result.rows.map((r: Record<string, unknown>) => this.mapMovement(r));
     });

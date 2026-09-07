@@ -35,6 +35,9 @@ interface StabilizeOptions {
   extraCss?: string;
 }
 
+const THEME_STORAGE_KEY = 'cvg-his-v2:theme';
+const SIDEBAR_STORAGE_KEY = 'cvg-his-v2:spa:sidebar-collapsed';
+
 const DEFAULT_OPTIONS: Required<StabilizeOptions> = {
   disableAnimations: true,
   disableSkeletons: true,
@@ -136,43 +139,37 @@ export async function stabilizeVisual(page: Page, options?: StabilizeOptions): P
   await page.addStyleTag({ content: css });
 
   if (opts.forceLightTheme) {
-    await page.evaluate(() => {
+    await page.evaluate((storageKey) => {
       document.documentElement.setAttribute('data-theme', 'light');
-      try {
-        const stored = window.localStorage.getItem('cvg-his-v2:theme');
-        if (stored) {
-          const theme = JSON.parse(stored);
-          if (theme.current !== 'light') {
-            theme.current = 'light';
-            window.localStorage.setItem('cvg-his-v2:theme', JSON.stringify(theme));
-          }
-        }
-      } catch {
-        window.localStorage.setItem('cvg-his-v2:theme', JSON.stringify({ current: 'light' }));
-      }
-    });
+      document.documentElement.style.colorScheme = 'light';
+      window.localStorage.setItem(storageKey, 'light');
+    }, THEME_STORAGE_KEY);
+  } else {
+    await page.evaluate((storageKey) => {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.documentElement.style.colorScheme = 'dark';
+      window.localStorage.setItem(storageKey, 'dark');
+    }, THEME_STORAGE_KEY);
   }
 
   if (opts.expandSidebar) {
-    await page.evaluate(() => {
-      try {
-        const stored = window.localStorage.getItem('cvg-his-v2:app');
-        if (stored) {
-          const app = JSON.parse(stored);
-          if (app.sidebarCollapsed) {
-            app.sidebarCollapsed = false;
-            window.localStorage.setItem('cvg-his-v2:app', JSON.stringify(app));
-          }
-        }
-      } catch {
-        window.localStorage.setItem('cvg-his-v2:app', JSON.stringify({ sidebarCollapsed: false }));
-      }
-    });
+    await page.evaluate((storageKey) => {
+      window.localStorage.setItem(storageKey, 'false');
+      const toggle = document.querySelector<HTMLButtonElement>('.topbar__collapse-btn');
+      if (toggle?.getAttribute('aria-expanded') === 'false') toggle.click();
+    }, SIDEBAR_STORAGE_KEY);
+  } else {
+    await page.evaluate((storageKey) => {
+      const isCompactViewport = window.matchMedia('(max-width: 860px)').matches;
+      const toggle = document.querySelector<HTMLButtonElement>('.topbar__collapse-btn');
+      if (isCompactViewport && toggle?.getAttribute('aria-expanded') === 'true') toggle.click();
+      window.localStorage.setItem(storageKey, isCompactViewport ? 'true' : 'false');
+    }, SIDEBAR_STORAGE_KEY);
   }
 
   if (opts.hideUserName) {
     await page.addStyleTag({
-      content: `.topbar__user { visibility: hidden !important; }`
+      content: `.topbar__profile strong { visibility: hidden !important; }`
     });
   }
 

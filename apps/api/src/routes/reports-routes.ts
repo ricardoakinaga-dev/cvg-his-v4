@@ -3,7 +3,11 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { BillingService } from '@cvg-his-v2/module-billing';
 import type { CashService } from '@cvg-his-v2/module-cash';
-import type { CommissionsService } from '@cvg-his-v2/module-commissions';
+import type {
+  CommissionCalculationStatus,
+  CommissionCalculationsReportSource,
+  CommissionsService
+} from '@cvg-his-v2/module-commissions';
 import type { CounterSalesService } from '@cvg-his-v2/module-counter-sales';
 import { DatabaseFiscalRepository, FiscalService } from '@cvg-his-v2/module-fiscal';
 import type {
@@ -53,6 +57,7 @@ export interface ReportsRoutesHandlers {
   billing: BillingService;
   cash: CashService;
   commissions: CommissionsService;
+  commissionCalculations?: CommissionCalculationsReportSource;
   encounterFinancial: EncounterFinancialService;
   financialPayables: FinancialPayablesService;
   counterSales: CounterSalesService;
@@ -480,6 +485,29 @@ async function buildReportRows(
       recordedAt: payment.createdAt,
       notes: payment.notes
     }));
+  }
+
+  if (reportId === 'commercial-cancellation-history') {
+    if (
+      handlers.counterSales.persistenceMode !== 'database' ||
+      typeof handlers.counterSales.listCancellationReportRows !== 'function'
+    ) {
+      throw new ValidationError('Report requires a database-backed cancellation history source');
+    }
+    const { dateFrom, dateTo } = parseReportPeriodFilters(filters);
+    const search = parseReportSearch(filters.search);
+    const rows = await handlers.counterSales.listCancellationReportRows(principal.user.accountId, {
+      ...(search ? { search } : {}),
+      ...(dateFrom ? { dateFrom } : {}),
+      ...(dateTo ? { dateTo } : {})
+    });
+    if (rows.some((row) => row.accountId !== principal.user.accountId)) {
+      throw new ValidationError('Cancellation history source returned an invalid account');
+    }
+    return limitReportRows(
+      reportId,
+      rows.map((row) => ({ ...row }))
+    );
   }
 
   if (reportId === 'commercial-deleted-sales') {
@@ -963,29 +991,32 @@ async function buildReportRows(
         search
       }
     );
-    return receivables
-      .filter((receivable) => {
-        const reportDate = receivableReportDate(receivable, status);
-        return (!dateFrom || reportDate >= dateFrom) && (!dateTo || reportDate <= dateTo);
-      })
-      .map((receivable) => ({
-        patientName: receivable.patientName,
-        ownerName: receivable.ownerName,
-        patientSpecies: receivable.patientSpecies,
-        encounterId: receivable.encounterId,
-        installmentNumber: receivable.installmentNumber,
-        installmentLabel: receivable.installmentLabel,
-        issuedAt: receivable.issuedAt,
-        dueAt: receivable.dueAt,
-        settledAt: receivable.settledAt,
-        amountOriginal: receivable.amountOriginal,
-        amountPaid: receivable.amountPaid,
-        amountOutstanding: receivable.amountOutstanding,
-        status: receivable.status,
-        financialStatus: receivable.financialStatus,
-        encounterStatus: receivable.encounterStatus,
-        paymentCount: receivable.payments.length
-      }));
+    return limitReportRows(
+      reportId,
+      receivables
+        .filter((receivable) => {
+          const reportDate = receivableReportDate(receivable, status);
+          return (!dateFrom || reportDate >= dateFrom) && (!dateTo || reportDate <= dateTo);
+        })
+        .map((receivable) => ({
+          patientName: receivable.patientName,
+          ownerName: receivable.ownerName,
+          patientSpecies: receivable.patientSpecies,
+          encounterId: receivable.encounterId,
+          installmentNumber: receivable.installmentNumber,
+          installmentLabel: receivable.installmentLabel,
+          issuedAt: receivable.issuedAt,
+          dueAt: receivable.dueAt,
+          settledAt: receivable.settledAt,
+          amountOriginal: receivable.amountOriginal,
+          amountPaid: receivable.amountPaid,
+          amountOutstanding: receivable.amountOutstanding,
+          status: receivable.status,
+          financialStatus: receivable.financialStatus,
+          encounterStatus: receivable.encounterStatus,
+          paymentCount: receivable.payments.length
+        }))
+    );
   }
 
   if (reportId === 'financial-payables') {
@@ -1005,39 +1036,81 @@ async function buildReportRows(
         search
       }
     );
-    return payables
-      .filter((payable) => {
-        const dueAt = payable.dueAt.slice(0, 10);
-        return (!dateFrom || dueAt >= dateFrom) && (!dateTo || dueAt <= dateTo);
-      })
-      .map((payable) => ({
-        supplierName: payable.supplierName,
-        description: payable.description,
-        category: payable.category,
-        issuedAt: payable.issuedAt,
-        dueAt: payable.dueAt,
-        totalAmount: payable.totalAmount,
-        paidAmount: payable.paidAmount,
-        outstandingAmount: payable.outstandingAmount,
-        status: payable.status,
-        paymentMethod: payable.paymentMethod,
-        reconciliationStatus: payable.reconciliationStatus
-      }));
+    return limitReportRows(
+      reportId,
+      payables
+        .filter((payable) => {
+          const dueAt = payable.dueAt.slice(0, 10);
+          return (!dateFrom || dueAt >= dateFrom) && (!dateTo || dueAt <= dateTo);
+        })
+        .map((payable) => ({
+          supplierName: payable.supplierName,
+          description: payable.description,
+          category: payable.category,
+          issuedAt: payable.issuedAt,
+          dueAt: payable.dueAt,
+          totalAmount: payable.totalAmount,
+          paidAmount: payable.paidAmount,
+          outstandingAmount: payable.outstandingAmount,
+          status: payable.status,
+          paymentMethod: payable.paymentMethod,
+          reconciliationStatus: payable.reconciliationStatus
+        }))
+    );
   }
 
   if (reportId === 'commission-calculations') {
-    const status = typeof filters.status === 'string' ? filters.status : '';
-    return handlers.commissions
-      .listCalculations(principal.user.accountId)
-      .filter((calculation) => !status || calculation.status === status)
-      .map((calculation) => ({
-        number: calculation.number,
-        period: `${calculation.periodStart}..${calculation.periodEnd}`,
-        status: calculation.status,
-        totalBaseAmount: calculation.totalBaseAmount,
-        totalCommissionAmount: calculation.totalCommissionAmount,
-        lineCount: calculation.lines.length
-      }));
+    const status = parseCommissionCalculationStatus(filters.status);
+    const { dateFrom, dateTo } = parseReportPeriodFilters(filters);
+    for (const [field, date] of Object.entries({ dateFrom, dateTo })) {
+      if (date?.startsWith('0000-')) {
+        throw new ValidationError(`${field} must have a year between 1 and 9999`, { field });
+      }
+    }
+    if (handlers.commissionCalculations) {
+      const calculations = await handlers.commissionCalculations.list(principal.user.accountId, {
+        status,
+        dateFrom,
+        dateTo
+      });
+      if (calculations.some((calculation) => calculation.accountId !== principal.user.accountId)) {
+        throw new ValidationError('Commission report source returned a foreign account row');
+      }
+      return limitReportRows(
+        reportId,
+        calculations.map((calculation) => ({
+          number: calculation.number,
+          period: `${calculation.periodStart}..${calculation.periodEnd}`,
+          status: calculation.status,
+          totalBaseAmount: calculation.totalBaseAmount,
+          totalCommissionAmount: calculation.totalCommissionAmount,
+          lineCount: calculation.lineCount
+        }))
+      );
+    }
+    if (handlers.commissions.persistenceMode !== 'in-memory') {
+      throw new ValidationError('Commission report requires a persisted source');
+    }
+    // Compatibility for explicitly in-memory runtimes; persistent bootstrap always installs the source.
+    return limitReportRows(
+      reportId,
+      handlers.commissions
+        .listCalculations(principal.user.accountId)
+        .filter((calculation) => !status || calculation.status === status)
+        .filter(
+          (calculation) =>
+            (!dateFrom || calculation.periodEnd >= dateFrom) &&
+            (!dateTo || calculation.periodStart <= dateTo)
+        )
+        .map((calculation) => ({
+          number: calculation.number,
+          period: `${calculation.periodStart}..${calculation.periodEnd}`,
+          status: calculation.status,
+          totalBaseAmount: calculation.totalBaseAmount,
+          totalCommissionAmount: calculation.totalCommissionAmount,
+          lineCount: calculation.lines.length
+        }))
+    );
   }
 
   if (reportId !== 'administrative-executive') {
@@ -1090,6 +1163,12 @@ async function buildReportRows(
 const financialPayableStatuses: readonly FinancialPayableStatus[] = [
   'open',
   'partial',
+  'paid',
+  'cancelled'
+];
+const commissionCalculationStatuses: readonly CommissionCalculationStatus[] = [
+  'draft',
+  'reviewed',
   'paid',
   'cancelled'
 ];
@@ -1386,6 +1465,17 @@ function parseFinancialPayableStatus(value: unknown): FinancialPayableStatus | u
   throw new ValidationError('status must be open, partial, paid or cancelled', { value });
 }
 
+function parseCommissionCalculationStatus(value: unknown): CommissionCalculationStatus | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (
+    typeof value === 'string' &&
+    commissionCalculationStatuses.includes(value as CommissionCalculationStatus)
+  ) {
+    return value as CommissionCalculationStatus;
+  }
+  throw new ValidationError('status must be draft, reviewed, paid or cancelled', { value });
+}
+
 function parseReportSearch(value: unknown): string | undefined {
   if (value === undefined || value === null || value === '') return undefined;
   if (typeof value !== 'string' || value.trim().length > 200) {
@@ -1642,6 +1732,12 @@ async function listAllFinancialPayables(
       pageSize
     });
     rows.push(...result.data);
+    if (rows.length > MAX_REGISTRY_REPORT_ROWS) {
+      throw new ValidationError('Report contains too many rows', {
+        reportId: 'financial-payables',
+        maxRows: MAX_REGISTRY_REPORT_ROWS
+      });
+    }
     if (result.data.length === 0 || rows.length >= result.total) break;
     page += 1;
   }
@@ -1707,6 +1803,12 @@ async function listAllFinancialReceivables(
       pageSize
     });
     rows.push(...result.data);
+    if (rows.length > MAX_REGISTRY_REPORT_ROWS) {
+      throw new ValidationError('Report contains too many rows', {
+        reportId: 'financial-receivables',
+        maxRows: MAX_REGISTRY_REPORT_ROWS
+      });
+    }
     if (result.data.length === 0 || rows.length >= result.total) break;
     page += 1;
   }

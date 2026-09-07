@@ -12,12 +12,12 @@
     </div>
 
     <div v-else-if="error" class="ds-stat-card__error">
-      <div class="ds-stat-card__error-icon">⚠️</div>
+        <div class="ds-stat-card__error-icon" aria-hidden="true"><DsIcon name="alert" size="lg" /></div>
       <div class="ds-stat-card__error-text">{{ error }}</div>
     </div>
 
     <template v-else>
-      <div class="ds-stat-card__icon" aria-hidden="true">{{ icon }}</div>
+      <div class="ds-stat-card__icon" aria-hidden="true"><DsIcon :name="icon" size="xl" /></div>
       <div class="ds-stat-card__body">
         <div class="ds-stat-card__value">{{ value }}</div>
         <div class="ds-stat-card__label">{{ label }}</div>
@@ -37,6 +37,8 @@
 </template>
 
 <script setup lang="ts">
+import DsIcon from './DsIcon.vue';
+
 export interface DsStatCardProps {
   label?: string;
   value?: string;
@@ -85,7 +87,7 @@ withDefaults(defineProps<DsStatCardProps>(), {
   display: grid;
   place-items: center;
   border-radius: 14px;
-  background: rgba(37, 99, 235, 0.08);
+  background: var(--color-primary-subtle, rgba(37, 99, 235, 0.08));
   font-size: 24px;
   flex-shrink: 0;
 }

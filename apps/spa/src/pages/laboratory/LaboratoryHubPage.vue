@@ -3,7 +3,7 @@
     <AppPageHeader
       title="Laboratório"
       :breadcrumbs="['Laboratório', 'Visão geral']"
-      subtitle="Operação de exames, laudos, equipamentos e parâmetros laboratoriais"
+      subtitle="Da coleta à liberação dos resultados."
     >
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
@@ -14,14 +14,20 @@
       {{ error }}
     </DsAlert>
 
-    <section class="hub-kpis">
-      <DsStatCard :label="`${summary.totalOrders} pedido(s)`" value="" icon="🧪" />
-      <DsStatCard :label="`${summary.pendingOrders} aguardando coleta`" value="" icon="📋" />
-      <DsStatCard :label="`${summary.pendingResults} aguardando laudo`" value="" icon="📊" />
-      <DsStatCard :label="`${summary.equipmentActive} equipamento(s) ativos`" value="" icon="🔬" />
+    <nav class="quick-actions" aria-label="Rotina laboratorial">
+      <DsButton variant="primary" tag="a" to="/laboratory/orders" icon="🧪">Pedidos de exame</DsButton>
+      <DsButton variant="secondary" tag="a" to="/laboratory/results" icon="📋">Resultados</DsButton>
+      <DsButton variant="secondary" tag="a" to="/diagnostics" icon="🔬">Central diagnóstica</DsButton>
+    </nav>
+
+    <section class="hub-kpis" aria-label="Resumo laboratorial" :aria-busy="loading">
+      <DsStatCard label="Pedidos de exame" :value="!summaryAvailable ? '—' : String(summary.totalOrders)" :loading="loading" icon="🧪" />
+      <DsStatCard label="Aguardando coleta" :value="!summaryAvailable ? '—' : String(summary.pendingOrders)" :loading="loading" icon="📋" />
+      <DsStatCard label="Aguardando laudo" :value="!summaryAvailable ? '—' : String(summary.pendingResults)" :loading="loading" icon="📊" />
+      <DsStatCard label="Equipamentos ativos" :value="!summaryAvailable ? '—' : String(summary.equipmentActive)" :loading="loading" icon="🔬" />
     </section>
 
-    <section class="hub-alerts" v-if="summary.pendingResults > 0 || summary.pendingOrders > 0">
+    <section class="hub-alerts" v-if="!loading && summaryAvailable && (summary.pendingResults > 0 || summary.pendingOrders > 0)">
       <DsAlert :variant="summary.pendingResults > 0 ? 'warning' : 'info'" dismissible>
         <strong>Fila laboratorial</strong>
         {{ summary.pendingResults > 0
@@ -30,70 +36,9 @@
       </DsAlert>
     </section>
 
-    <section class="hub-actions">
-      <DsCard title="Ações rápidas" variant="compact">
-        <div class="quick-actions">
-          <DsButton variant="secondary" tag="a" to="/laboratory/orders" icon="🧪">
-            Pedidos de Exame
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/laboratory/results" icon="📋">
-            Resultados
-          </DsButton>
-          <DsButton variant="primary" tag="a" to="/diagnostics" icon="🔬">
-            Central Diagnóstica
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/laboratory/equipment" icon="🔧">
-            Equipamentos
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/laboratory/report-types" icon="📄">
-            Tipos de Laudo
-          </DsButton>
-        </div>
-      </DsCard>
-    </section>
-
     <section class="hub-section">
-      <h2 class="section-title">Arquitetura operacional do Laboratório</h2>
-      <div class="lab-flow-grid" aria-label="Fluxo diagnóstico laboratorial">
-        <article v-for="step in operationalFlow" :key="step.title" class="lab-flow-card">
-          <span>{{ step.eyebrow }}</span>
-          <strong>{{ step.title }}</strong>
-          <p>{{ step.description }}</p>
-        </article>
-      </div>
-    </section>
-
-    <section class="hub-section">
-      <h2 class="section-title">Camadas do domínio</h2>
+      <h2 class="section-title">Consultar por exame</h2>
       <div class="section-grid">
-        <DsCard v-for="layer in domainLayers" :key="layer.title" :title="layer.title" :icon="layer.icon">
-          <p class="card-description">{{ layer.description }}</p>
-          <DsButton v-if="layer.to" variant="secondary" tag="a" :to="layer.to" size="sm">
-            {{ layer.action }}
-          </DsButton>
-        </DsCard>
-      </div>
-    </section>
-
-    <section class="hub-section">
-      <h2 class="section-title">Exames e Laudos</h2>
-      <div class="section-grid">
-        <DsCard title="Pedidos de Exame" icon="🧪">
-          <p class="card-description">
-            Lista operacional consolidada dos pedidos com coleta, status e atalho para a trilha diagnóstica.
-          </p>
-          <DsButton variant="secondary" tag="a" to="/laboratory/orders" size="sm">
-            Gerenciar pedidos
-          </DsButton>
-        </DsCard>
-        <DsCard title="Resultados" icon="📋">
-          <p class="card-description">
-            Laudos liberados e pendências por tipo de exame, com filtro direto para hemograma, bioquímico e urina.
-          </p>
-          <DsButton variant="secondary" tag="a" to="/laboratory/results" size="sm">
-            Ver resultados
-          </DsButton>
-        </DsCard>
         <DsCard title="Hemogramas" icon="🩸">
           <p class="card-description">Resultados de hemograma completo.</p>
           <DsButton variant="secondary" tag="a" to="/laboratory/results?type=HEM" size="sm">
@@ -116,7 +61,7 @@
     </section>
 
     <section class="hub-section">
-      <h2 class="section-title">Cadastros Laboratoriais</h2>
+      <h2 class="section-title">Equipamentos e referências</h2>
       <div class="section-grid">
         <DsCard title="Equipamentos" icon="🔧">
           <p class="card-description">Equipamentos e máquinas do laboratório.</p>
@@ -136,6 +81,18 @@
             Gerenciar valores
           </DsButton>
         </DsCard>
+        <DsCard title="Referências de hemograma">
+          <p class="card-description">Faixas hematológicas por espécie e parâmetro.</p>
+          <DsButton variant="secondary" tag="a" to="/laboratory/hemogram-reference-values" size="sm">
+            Referências de hemograma
+          </DsButton>
+        </DsCard>
+        <DsCard title="Referências de bioquímico">
+          <p class="card-description">Faixas bioquímicas por espécie e parâmetro.</p>
+          <DsButton variant="secondary" tag="a" to="/laboratory/biochemistry-reference-values" size="sm">
+            Referências de bioquímico
+          </DsButton>
+        </DsCard>
       </div>
     </section>
   </div>
@@ -152,6 +109,7 @@ import { laboratoryService, type LaboratoryDashboardSummary } from '@/services/l
 
 const loading = ref(false);
 const error = ref('');
+const summaryAvailable = ref(false);
 const summary = ref<LaboratoryDashboardSummary>({
   totalOrders: 0,
   pendingOrders: 0,
@@ -159,89 +117,14 @@ const summary = ref<LaboratoryDashboardSummary>({
   releasedResults: 0,
   equipmentActive: 0
 });
-const operationalFlow = [
-  {
-    eyebrow: 'Entrada',
-    title: 'Requisição de exame',
-    description: 'A ordem nasce vinculada ao cliente, animal, data e necessidade assistencial.'
-  },
-  {
-    eyebrow: 'Fluxo',
-    title: 'Esteira de Exames',
-    description: 'Orquestra estados como Solicitado, Coletado, Em Análise, Laudado e Entregue.'
-  },
-  {
-    eyebrow: 'Operação',
-    title: 'Coleta',
-    description: 'Transforma a solicitação em amostra rastreável para execução técnica.'
-  },
-  {
-    eyebrow: 'Análise',
-    title: 'Resultado especializado',
-    description: 'Hemogramas, Urina e Bioquímico seguem modelos analíticos próprios.'
-  },
-  {
-    eyebrow: 'Documento',
-    title: 'Laudo',
-    description: 'Formaliza conclusão clínica com corpo, anexos, datas e valor.'
-  },
-  {
-    eyebrow: 'Saída',
-    title: 'Entrega',
-    description: 'Fecha o ciclo diagnóstico e devolve evidência ao atendimento.'
-  }
-];
-const domainLayers = [
-  {
-    icon: '🧪',
-    title: 'Exames',
-    description: 'Camada de ordem/fila operacional por cliente, animal e data.',
-    action: 'Abrir exames',
-    to: '/laboratory/orders'
-  },
-  {
-    icon: '📋',
-    title: 'Laudos',
-    description: 'Documento clínico final com data de entrada, finalização, valor e documentação fotográfica.',
-    action: 'Abrir laudos',
-    to: '/laboratory/results'
-  },
-  {
-    icon: '📄',
-    title: 'Tipos de Laudo',
-    description: 'Template com título e corpo para padronizar emissão diagnóstica.',
-    action: 'Abrir templates',
-    to: '/laboratory/report-types'
-  },
-  {
-    icon: '🩸',
-    title: 'Vlr. Ref. Hemograma',
-    description: 'Norma hematológica por espécie, parâmetro, unidade e faixa esperada.',
-    action: 'Abrir referências',
-    to: '/laboratory/hemogram-reference-values'
-  },
-  {
-    icon: '⚗️',
-    title: 'Vlr. Ref. Bioquímico',
-    description: 'Norma bioquímica que transforma resultado numérico em interpretação clínica.',
-    action: 'Abrir referências',
-    to: '/laboratory/biochemistry-reference-values'
-  },
-  {
-    icon: '🔧',
-    title: 'Equipamentos',
-    description: 'Infraestrutura técnica, manutenção e calibração que sustentam confiabilidade da medição.',
-    action: 'Abrir equipamentos',
-    to: '/laboratory/equipment'
-  }
-];
-
 async function load() {
   loading.value = true;
   error.value = '';
   try {
     summary.value = await laboratoryService.getDashboardSummary();
+    summaryAvailable.value = true;
   } catch (err: unknown) {
+    summaryAvailable.value = false;
     error.value = err instanceof Error ? err.message : 'Erro ao carregar resumo laboratorial';
   } finally {
     loading.value = false;
@@ -260,7 +143,7 @@ onMounted(load);
 
 .hub-kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -268,10 +151,6 @@ onMounted(load);
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.hub-actions {
-  margin-bottom: 0;
 }
 
 .quick-actions {
@@ -295,42 +174,90 @@ onMounted(load);
 
 .section-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 12px;
-}
-
-.lab-flow-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.lab-flow-card {
-  display: grid;
-  gap: 8px;
-  padding: 14px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 16px;
-  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
-}
-
-.lab-flow-card span {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted, #64748b);
-}
-
-.lab-flow-card p {
-  margin: 0;
-  color: var(--color-text-secondary, #475569);
-  font-size: 13px;
 }
 
 .card-description {
   font-size: 13px;
   color: var(--color-text-muted, #64748b);
   margin: 0 0 12px 0;
+}
+
+.hub-kpis :deep(.ds-stat-card) {
+  min-width: 0;
+  gap: 12px;
+  padding: 16px;
+}
+
+.section-grid :deep(.ds-card) {
+  display: flex;
+  flex-direction: column;
+}
+
+.section-grid :deep(.ds-card__body) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.section-grid :deep(.ds-btn) {
+  margin-top: auto;
+  white-space: normal;
+  min-height: 44px;
+}
+
+@media (max-width: 1180px) {
+  .hub-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 540px) {
+  .quick-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .quick-actions :deep(.ds-btn) {
+    width: 100%;
+    min-height: 44px;
+    white-space: normal;
+  }
+
+  .quick-actions :deep(.ds-btn:first-child) {
+    grid-column: 1 / -1;
+  }
+
+  .hub-kpis {
+    gap: 8px;
+  }
+
+  .hub-kpis :deep(.ds-stat-card) {
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .hub-kpis :deep(.ds-stat-card__icon) {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+  }
+
+  .hub-kpis :deep(.ds-stat-card__icon svg) {
+    width: 20px;
+    height: 20px;
+  }
+
+  .hub-kpis :deep(.ds-stat-card__value) {
+    font-size: 24px;
+  }
+
+  .hub-kpis :deep(.ds-stat-card__label) {
+    font-size: 12px;
+    line-height: 1.4;
+  }
 }
 </style>

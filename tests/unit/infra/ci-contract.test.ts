@@ -11,8 +11,16 @@ const usabilityCertificationWorkflow = readFileSync(
 );
 const playwrightApiConfig = readFileSync(resolve(root, 'playwright.config.ts'), 'utf8');
 const playwrightConfig = readFileSync(resolve(root, 'playwright-spa.config.ts'), 'utf8');
+const packageManifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')) as {
+  readonly scripts?: Readonly<Record<string, string>>;
+};
 
 describe('CI repository guardrails', () => {
+  it('requires durable persistence for direct database and critical API E2E commands', () => {
+    expect(packageManifest.scripts?.['test:db']).toContain('REQUIRE_TEST_DB=1');
+    expect(packageManifest.scripts?.['test:e2e']).toContain('REQUIRE_TEST_DB=1');
+  });
+
   it('blocks build on lint and exercises the process runner on Windows', () => {
     expect(workflow).toContain('  lint:');
     expect(workflow).toContain('run: pnpm lint');
@@ -34,6 +42,7 @@ describe('CI repository guardrails', () => {
     );
     expect(job).toContain('name: Visual Regression');
     expect(job).toContain('Run visual regression tests');
+    expect(job).toContain('node scripts/assert-clean-checkout.mjs');
     expect(job).not.toContain('continue-on-error: true');
   });
 
@@ -60,6 +69,7 @@ describe('CI repository guardrails', () => {
     );
 
     expect(job).toContain("E2E_DATABASE_MODE: '1'");
+    expect(job).toContain('node scripts/assert-clean-checkout.mjs');
     expect(job).toContain('npx playwright test --config playwright-spa.config.ts --list');
     expect(job).toContain('npx playwright test --config playwright-spa.config.ts');
     expect(job).toContain('node scripts/validate-usability-playwright-evidence.mjs');
@@ -91,13 +101,26 @@ describe('CI repository guardrails', () => {
     expect(usabilityCertificationWorkflow).toContain(
       'matrix:\n        browser: [chromium, firefox, webkit]'
     );
-    expect(usabilityCertificationWorkflow).toContain('uat_evidence_reference:');
-    expect(usabilityCertificationWorkflow).toContain('uat_approvers:');
-    expect(usabilityCertificationWorkflow).toContain('residual_risks:');
+    expect(usabilityCertificationWorkflow).toMatch(
+      /manual_evidence_json:\n\s+description: [^\n]+\n\s+required: true\n\s+type: string/
+    );
+    expect(usabilityCertificationWorkflow).toContain(
+      'MANUAL_EVIDENCE_JSON: ${{ inputs.manual_evidence_json }}'
+    );
+    expect(usabilityCertificationWorkflow).toContain(
+      'node scripts/validate-usability-manual-evidence.mjs certification/manual-evidence.json "$CANDIDATE_SHA" "$GO_NO_GO"'
+    );
+    expect(usabilityCertificationWorkflow).toContain(
+      'MANUAL_EVIDENCE_PATH: certification/manual-evidence.json'
+    );
+    expect(usabilityCertificationWorkflow).toContain(
+      'run: node --test scripts/usability-certification.test.mjs'
+    );
     expect(usabilityCertificationWorkflow).toContain('options: [go, no-go]');
     expect(usabilityCertificationWorkflow).toContain(
       'node scripts/validate-usability-playwright-evidence.mjs'
     );
+    expect(usabilityCertificationWorkflow).toContain('run: node scripts/assert-clean-checkout.mjs');
     expect(usabilityCertificationWorkflow).toContain(
       'node scripts/generate-usability-certification-index.mjs'
     );
@@ -133,6 +156,7 @@ describe('CI repository guardrails', () => {
     );
 
     expect(job).toContain('needs: [typecheck]');
+    expect(job).toContain('node scripts/assert-clean-checkout.mjs');
     expect(job).toContain('run: pnpm test:db:start');
     expect(job).toContain('pnpm validate:openapi');
     expect(job).toContain('pnpm validate:namespaces');

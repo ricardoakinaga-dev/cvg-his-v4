@@ -60,8 +60,6 @@ export default defineConfig({
         'apps/api/src/metrics.ts',
         'apps/api/src/observability.ts',
         'apps/api/src/tracing.ts',
-        'apps/api/src/tenant-db.ts',
-        'apps/api/src/chaos-integration.ts',
         'apps/api/src/bootstrap.ts',
         'apps/api/src/payment-gateway.ts',
         'apps/api/src/runtime-repositories.ts',
@@ -72,7 +70,6 @@ export default defineConfig({
         'apps/api/src/helpers/common.ts',
         'apps/api/src/routes/**',
         'apps/api/src/repositories/**',
-        'apps/api/src/http/cors.ts',
         'apps/api/src/http/security-headers.ts',
         // Database schema/migration artifacts are validated by integration flows, not this unit coverage gate.
         'packages/db/src/connection.ts',

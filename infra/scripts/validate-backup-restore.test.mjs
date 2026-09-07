@@ -7,13 +7,15 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const roadmapPath = 'docs/2026-09-02-roadmap-melhorias-cvg-his-v4.md';
-const backlogPath = 'docs/2026-09-02-backlog-priorizado-cvg-his-v4.md';
+const governance = JSON.parse(readFileSync(join(repositoryRoot, 'docs/document-governance.json'), 'utf8'));
+const roadmapPath = governance.current_documents.roadmap.path;
+const backlogPath = governance.current_documents.backlog.path;
 const requiredFiles = [
   'infra/scripts/backup-v2.sh',
   'infra/scripts/restore-drill-v2.sh',
   'infra/scripts/validate-backup-restore.mjs',
   'package.json',
+  'docs/document-governance.json',
   'docs/131-checklist-cutover-servidor.md',
   'docs/132-superficie-canonica-deploy-e-migracao.md',
   roadmapPath,
@@ -57,7 +59,7 @@ test('backup/restore gate fails when the current roadmap loses a required exit c
   try {
     const fixtureRoadmap = join(fixtureRoot, roadmapPath);
     const withoutRestoreProof = readFileSync(fixtureRoadmap, 'utf8').replace(
-      'restore atende aos objetivos aprovados',
+      'restore/RTO-RPO',
       'restore ainda não comprovado'
     );
     writeFileSync(fixtureRoadmap, withoutRestoreProof);
@@ -70,3 +72,21 @@ test('backup/restore gate fails when the current roadmap loses a required exit c
     rmSync(fixtureRoot, { recursive: true, force: true });
   }
 });
+
+for (const [name, path, transform] of [
+  ['backlog restore integrity requirement', backlogPath, (text) => text.replace('verificar hashes/contagens/RLS e medir tempos reais.', 'aguardar verificação.')],
+  ['documentation manifest', 'docs/document-governance.json', () => '{}']
+]) {
+  test(`backup/restore gate rejects missing ${name}`, () => {
+    const fixtureRoot = createFixture();
+    try {
+      const target = join(fixtureRoot, path);
+      writeFileSync(target, transform(readFileSync(target, 'utf8')));
+      const result = runChecker(fixtureRoot);
+      assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
+      assert.match(result.stderr, /FAIL roadmap e backlog vigentes mantem backup\/restore/);
+    } finally {
+      rmSync(fixtureRoot, { recursive: true, force: true });
+    }
+  });
+}

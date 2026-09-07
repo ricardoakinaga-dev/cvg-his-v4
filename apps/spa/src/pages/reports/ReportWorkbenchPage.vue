@@ -3,14 +3,15 @@
     <AppPageHeader
       :title="spec.title"
       :breadcrumbs="['Relatórios', spec.group, spec.title]"
-      :subtitle="spec.subtitle"
+      :subtitle="reportSubtitle"
     >
-      <template #actions>
+      <template v-if="reportKey !== 'dre'" #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadReport">Atualizar</DsButton>
         <DsButton
           v-if="spec.exportable"
           variant="primary"
           :loading="exporting"
+          :disabled="loading || loadFailed || !reportReady"
           @click="exportCurrentReport"
         >
           {{ spec.primaryAction }}
@@ -24,17 +25,32 @@
       </template>
     </AppPageHeader>
 
+    <section v-if="reportKey === 'dre'" class="report-unavailable" aria-labelledby="dre-unavailable-title">
+      <span class="report-unavailable__mark" aria-hidden="true">—</span>
+      <h2 id="dre-unavailable-title">DRE indisponível</h2>
+      <p>{{ spec.emptyDescription }}</p>
+      <DsButton tag="a" to="/reports/accounts" variant="secondary">Relatórios financeiros</DsButton>
+    </section>
+    <template v-else>
+    <details class="report-filter-disclosure">
+      <summary>Filtros da consulta</summary>
     <section class="report-filters">
       <DsInput
-        v-model="filters.dateFrom"
-        type="date"
-        :label="isAuditAppointments ? 'Data início' : 'De'"
-      />
-      <DsInput
-        v-model="filters.dateTo"
-        type="date"
-        :label="isAuditAppointments ? 'Data fim' : 'Até'"
-      />
+        v-if="isDeletedSalesCounterSalesReport"
+        id="cancellation-report-view"
+        class="report-filter-mode"
+        :model-value="cancellationReportView"
+        type="select"
+        label="Consultar"
+        :disabled="loading || exporting"
+        @update:model-value="changeCancellationReportView"
+      >
+        <option value="history">Histórico por data de cancelamento</option>
+        <option value="opening-date">Canceladas por data de abertura</option>
+      </DsInput>
+      <DsInput v-model="filters.dateFrom" type="date" :label="dateFromLabel" />
+      <DsInput v-model="filters.dateTo" type="date" :label="dateToLabel" />
+      <p v-if="inventoryPeriodHint" class="report-period-hint">{{ inventoryPeriodHint }}</p>
       <template v-if="isServiceInvoicesReport">
         <DsInput
           v-model="filters.search"
@@ -87,8 +103,14 @@
       <template v-if="isDeletedSalesCounterSalesReport">
         <DsInput
           v-model="filters.search"
-          label="Número ou observação"
-          placeholder="Número da comanda ou texto da observação"
+          :label="
+            isCancellationHistoryReport ? 'Número, motivo ou responsável' : 'Número ou observação'
+          "
+          :placeholder="
+            isCancellationHistoryReport
+              ? 'Número da comanda, motivo ou ID do responsável'
+              : 'Número da comanda ou texto da observação'
+          "
           :maxlength="200"
         />
       </template>
@@ -152,6 +174,7 @@
         <DsButton variant="ghost" @click="resetFilters">Limpar</DsButton>
       </div>
     </section>
+    </details>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
@@ -161,36 +184,47 @@
       {{ success }}
     </DsAlert>
 
-    <DsAlert v-if="spec.note" variant="info">
-      {{ spec.note }}
-    </DsAlert>
-
-    <section class="report-kpis">
-      <DsStatCard
-        v-for="card in cards"
-        :key="card.label"
-        :label="card.label"
-        :value="card.value"
-        :icon="card.icon"
-      />
-    </section>
-
-    <DsCard :title="spec.tableTitle">
+    <p v-if="serverFiltersChanged" class="report-query-note" role="status">Filtros alterados. {{ isFinancialPayablesReport || isFinancialReceivablesReport ? 'A tabela filtra os registros carregados;' : 'A tabela mostra a última consulta;' }} o CSV será gerado com os filtros atuais.</p>
+    <section class="report-results" :aria-label="spec.tableTitle">
+      <h2>{{ spec.tableTitle }}</h2>
       <DataTable
         :columns="spec.columns"
         :rows="rows"
         :loading="loading"
         :empty-icon="spec.icon"
-        :empty-title="spec.emptyTitle"
-        :empty-description="spec.emptyDescription"
-        :caption="isChequesReport ? 'Cheques' : undefined"
+        :empty-title="
+          loadFailed
+            ? 'Não foi possível carregar o relatório'
+            : spec.emptyTitle
+        "
+        :empty-description="
+          loadFailed
+            ? 'Tente novamente para consultar os registros.'
+            : (isFinancialPayablesReport ? 'Os títulos aparecem aqui quando correspondem ao período consultado.' : spec.emptyDescription)
+        "
+        :caption="
+          isChequesReport
+            ? 'Cheques'
+            : isDeletedSalesCounterSalesReport
+              ? spec.tableTitle
+              : undefined
+        "
         variant="hoverable"
       >
-        <template #cell-amount="{ row }">
-          {{ formatCurrency(numberValue(row, 'amount')) }}
+        <template v-if="loadFailed" #emptyAction>
+          <DsButton variant="secondary" :loading="loading" @click="loadReport">
+            Tentar novamente
+          </DsButton>
         </template>
+        <template #cell-amount="{ row }">
+          <span class="report-money">{{ formatNullableCurrency(row, 'amount') }}</span>
+        </template>
+        <template #cell-amountPaid="{ row }"><span class="report-money">{{ formatNullableCurrency(row, 'amountPaid') }}</span></template>
+        <template #cell-amountOutstanding="{ row }"><span class="report-money">{{ formatNullableCurrency(row, 'amountOutstanding') }}</span></template>
+        <template v-if="isFinancialPayablesReport || isFinancialReceivablesReport" #cell-status="{ row }">{{ financialStatusLabel(stringValue(row, 'status')) }}</template>
+        <template #cell-reconciliationStatus="{ row }">{{ reconciliationLabel(stringValue(row, 'reconciliationStatus')) }}</template>
         <template #cell-total="{ row }">
-          {{ formatCurrency(numberValue(row, 'total')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'total')) }}</span>
         </template>
         <template #cell-numero="{ row }">
           {{ numberValue(row, 'numero') }}
@@ -199,37 +233,37 @@
           {{ formatDate(stringValue(row, 'competencia')) }}
         </template>
         <template #cell-serviceSubtotal="{ row }">
-          {{ formatCurrency(numberValue(row, 'serviceSubtotal')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'serviceSubtotal')) }}</span>
         </template>
         <template #cell-totalIss="{ row }">
-          {{ formatCurrency(numberValue(row, 'totalIss')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'totalIss')) }}</span>
         </template>
         <template #cell-totalPis="{ row }">
-          {{ formatCurrency(numberValue(row, 'totalPis')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'totalPis')) }}</span>
         </template>
         <template #cell-totalCofins="{ row }">
-          {{ formatCurrency(numberValue(row, 'totalCofins')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'totalCofins')) }}</span>
         </template>
         <template #cell-totalCsll="{ row }">
-          {{ formatCurrency(numberValue(row, 'totalCsll')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'totalCsll')) }}</span>
         </template>
         <template #cell-totalIrrf="{ row }">
-          {{ formatCurrency(numberValue(row, 'totalIrrf')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'totalIrrf')) }}</span>
         </template>
         <template #cell-totalInss="{ row }">
-          {{ formatCurrency(numberValue(row, 'totalInss')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'totalInss')) }}</span>
         </template>
         <template #cell-totalDocument="{ row }">
-          {{ formatCurrency(numberValue(row, 'totalDocument')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'totalDocument')) }}</span>
         </template>
         <template #cell-revenue="{ row }">
-          {{ formatCurrency(numberValue(row, 'revenue')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'revenue')) }}</span>
         </template>
         <template #cell-basePrice="{ row }">
-          {{ formatCurrency(numberValue(row, 'basePrice')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'basePrice')) }}</span>
         </template>
         <template #cell-unitCostAmount="{ row }">
-          {{ formatCurrency(numberValue(row, 'unitCostAmount')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'unitCostAmount')) }}</span>
         </template>
         <template #cell-quantityDelta="{ row }">
           {{ numberValue(row, 'quantityDelta') }}
@@ -241,37 +275,37 @@
           {{ numberValue(row, 'balanceAfter') }}
         </template>
         <template #cell-stockValue="{ row }">
-          {{ formatCurrency(numberValue(row, 'stockValue')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'stockValue')) }}</span>
         </template>
         <template #cell-costAmount="{ row }">
-          {{ formatCurrency(numberValue(row, 'costAmount')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'costAmount')) }}</span>
         </template>
         <template #cell-receivedAmount="{ row }">
-          {{ formatCurrency(numberValue(row, 'receivedAmount')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'receivedAmount')) }}</span>
         </template>
         <template #cell-payableAmount="{ row }">
-          {{ formatCurrency(numberValue(row, 'payableAmount')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'payableAmount')) }}</span>
         </template>
         <template #cell-paidAmount="{ row }">
-          {{ formatCurrency(numberValue(row, 'paidAmount')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'paidAmount')) }}</span>
         </template>
         <template #cell-totalAmount="{ row }">
-          {{ formatCurrency(numberValue(row, 'totalAmount')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'totalAmount')) }}</span>
         </template>
         <template #cell-amountOriginal="{ row }">
-          {{ formatCurrency(numberValue(row, 'amountOriginal')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'amountOriginal')) }}</span>
         </template>
         <template #cell-originalAmount="{ row }">
-          {{ formatCurrency(numberValue(row, 'originalAmount')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'originalAmount')) }}</span>
         </template>
         <template #cell-compensatedAmount="{ row }">
-          {{ formatCurrency(numberValue(row, 'compensatedAmount')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'compensatedAmount')) }}</span>
         </template>
         <template #cell-balance="{ row }">
-          {{ formatCurrency(numberValue(row, 'balance')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'balance')) }}</span>
         </template>
         <template #cell-outstandingAmount="{ row }">
-          {{ formatCurrency(numberValue(row, 'outstandingAmount')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'outstandingAmount')) }}</span>
         </template>
         <template #cell-issuedAt="{ row }">
           {{ formatDate(stringValue(row, 'issuedAt')) }}
@@ -284,6 +318,9 @@
         </template>
         <template #cell-createdAt="{ row }">
           {{ formatDate(stringValue(row, 'createdAt')) }}
+        </template>
+        <template #cell-receivedAt="{ row }">
+          {{ formatDate(stringValue(row, 'receivedAt')) }}
         </template>
         <template #cell-updatedAt="{ row }">
           {{ formatDate(stringValue(row, 'updatedAt')) }}
@@ -307,24 +344,33 @@
           {{ formatDateTime(stringValue(row, 'scheduledAt')) }}
         </template>
         <template #cell-openingAmount="{ row }">
-          {{ formatCurrency(numberValue(row, 'openingAmount')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'openingAmount')) }}</span>
         </template>
         <template #cell-closingAmount="{ row }">
-          {{ formatNullableCurrency(row, 'closingAmount') }}
+          <span class="report-money">{{ formatNullableCurrency(row, 'closingAmount') }}</span>
         </template>
         <template #cell-runningBalance="{ row }">
-          {{ formatCurrency(numberValue(row, 'runningBalance')) }}
+          <span class="report-money">{{ formatCurrency(numberValue(row, 'runningBalance')) }}</span>
         </template>
         <template #cell-difference="{ row }">
-          {{ formatNullableCurrency(row, 'difference') }}
+          <span class="report-money">{{ formatNullableCurrency(row, 'difference') }}</span>
         </template>
       </DataTable>
-    </DsCard>
+    </section>
+    <details v-if="reportReady && cards.length" class="report-summary">
+      <summary>Resumo da consulta</summary>
+      <dl><div v-for="card in cards" :key="card.label"><dt>{{ card.label }}</dt><dd>{{ card.value }}</dd></div></dl>
+    </details>
+    <details v-if="reportNote" class="report-assumptions">
+      <summary>Sobre este relatório</summary><p>{{ reportNote }}</p>
+    </details>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { packagesService, type CustomerPackageDetail } from '@/services/packages';
 
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
@@ -346,10 +392,10 @@ import { patientStatusLabel, sexLabel, speciesLabel } from '@/utils/labels';
 import { buildReportCsv } from '@/utils/report-export';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
-import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
-import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import type { AuditEventSummary } from '@cvg-his-v2/shared-types';
+import type { ReportCard, ReportSpec } from './reportWorkbenchTypes';
+import { useCancellationReports } from './useCancellationReports';
 
 type ReportKey =
   | 'audit-appointments'
@@ -378,31 +424,6 @@ type ReportKey =
   | 'inventory-movements'
   | 'inventory-invoices'
   | 'inventory-products';
-
-interface ReportSpec {
-  title: string;
-  group: string;
-  subtitle: string;
-  icon: string;
-  primaryPath: string;
-  primaryAction: string;
-  primaryDisabled?: boolean;
-  exportable?: boolean;
-  serverReportId?: string;
-  tableTitle: string;
-  emptyTitle: string;
-  emptyDescription: string;
-  note?: string;
-  columns: DataTableColumn[];
-  cards: (report: AdministrativeReportsResponse | null) => ReportCard[];
-  rows: (report: AdministrativeReportsResponse | null) => DataTableRow[];
-}
-
-interface ReportCard {
-  label: string;
-  value: string;
-  icon: string;
-}
 
 interface ChequeReportRow extends Record<string, unknown> {
   readonly paymentId: string;
@@ -439,20 +460,6 @@ interface SupplierReportRow extends Record<string, unknown> {
   readonly description: string;
   readonly createdAt: string;
   readonly updatedAt: string;
-}
-
-interface DeletedSalesReportRow extends Record<string, unknown> {
-  readonly number: string;
-  readonly status: 'cancelled';
-  readonly ownerId: string | null;
-  readonly openedByUserId: string;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-  readonly total: number;
-  readonly discountAmount: number;
-  readonly paidAmount: number;
-  readonly balanceDue: number;
-  readonly notes: string | null;
 }
 
 interface InventoryProductReportRow extends Record<string, unknown> {
@@ -594,7 +601,12 @@ const props = defineProps<{
   reportKey: ReportKey;
 }>();
 
-const loading = ref(false);
+const loading = ref(true);
+const loadFailed = ref(false);
+const reportReady = ref(false);
+const appliedServerFilters = ref('');
+let reportRequestId = 0;
+const customerPackages = ref<CustomerPackageDetail[]>([]);
 const exporting = ref(false);
 const error = ref('');
 const success = ref('');
@@ -610,7 +622,9 @@ const appointmentReportExecution = ref<ReportExecutionDetail | null>(null);
 const professionalCareReportExecution = ref<ReportExecutionDetail | null>(null);
 const chequeReportExecution = ref<ReportExecutionDetail | null>(null);
 const advancePaymentReportExecution = ref<ReportExecutionDetail | null>(null);
-const deletedSalesReportExecution = ref<ReportExecutionDetail | null>(null);
+const cancellationReports = useCancellationReports({ formatCurrency, formatDateTime });
+const { view: cancellationReportView } = cancellationReports;
+let cancellationReportRequestId = 0;
 const serviceInvoiceReportExecution = ref<ReportExecutionDetail | null>(null);
 const inventoryProductReportExecution = ref<ReportExecutionDetail | null>(null);
 const inventoryStockReportExecution = ref<ReportExecutionDetail | null>(null);
@@ -633,7 +647,7 @@ const APPOINTMENT_AUDIT_ENTITY_TYPES = [
   'appointment-sync'
 ];
 
-const money = (value: number | undefined | null) => formatCurrency(value ?? 0);
+const money = (value: number | undefined | null) => value == null || !Number.isFinite(value) ? '—' : formatCurrency(value);
 const count = (value: number | undefined | null) => String(value ?? 0);
 
 const financialPayableColumns: DataTableColumn[] = [
@@ -764,17 +778,16 @@ const specs: Record<ReportKey, ReportSpec> = {
     title: 'Fluxo de Caixa',
     group: 'Relatórios Financeiros',
     subtitle:
-      'Relatório financeiro legacy de comportamento temporal de entradas, recebíveis e caixa',
+      'Indicadores de entradas, recebíveis e caixa no período consultado.',
     icon: '📈',
     primaryPath: '/finance/cash-flow',
     primaryAction: 'Exportar CSV',
     exportable: true,
-    tableTitle: 'Indicadores do fluxo',
+    tableTitle: 'Indicadores financeiros',
     emptyTitle: 'Sem fluxo consolidado',
     emptyDescription: 'Entradas, recebíveis e caixa aparecem aqui conforme o período selecionado.',
     note: 'A rota Vetus legacy observada e Sistema/Relatorio/FluxoDeCaixaRelatorio.htm. Exporta CSV dos indicadores carregados; esta visão é somente leitura e não baixa nem concilia fluxo.',
     columns: [
-      { key: 'nature', label: 'Natureza' },
       { key: 'label', label: 'Indicador' },
       { key: 'amount', label: 'Valor' },
       { key: 'scope', label: 'Origem' }
@@ -819,141 +832,29 @@ const specs: Record<ReportKey, ReportSpec> = {
           id: 'open-cash',
           nature: 'Saldo',
           label: 'Saldo da gaveta aberta',
-          amount: current?.executive.openCashBalance ?? 0,
+          amount: current?.executive.openCashBalance ?? null,
           scope: 'Gaveta'
         }
       ] as DataTableRow[]
   },
   dre: {
-    title: 'DRE - Demonstrativo de Resultados',
-    group: 'Relatórios Financeiros',
-    subtitle: 'Relatório financeiro legacy de resultado econômico consolidado',
-    icon: '💰',
-    primaryPath: '/dashboards/financial',
-    primaryAction: 'Exportar CSV',
-    exportable: true,
-    tableTitle: 'Resultado consolidado',
-    emptyTitle: 'Sem resultado consolidado',
-    emptyDescription: 'Receitas, recebíveis e caixa aparecem aqui conforme o período selecionado.',
-    note: 'A rota Vetus legacy observada e Sistema/Relatorio/DRE.htm. Exporta CSV do recorte consolidado carregado, sem simular uma DRE contábil completa. Despesas e resultado contábil completo dependem de fonte específica ainda não exposta pelo hub atual.',
-    columns: [
-      { key: 'group', label: 'Grupo' },
-      { key: 'label', label: 'Indicador' },
-      { key: 'amount', label: 'Valor' },
-      { key: 'scope', label: 'Origem' }
-    ],
-    cards: (current) => [
-      {
-        label: 'Receita comercial',
-        value: money(current?.executive.commercialRevenue),
-        icon: '📈'
-      },
-      {
-        label: 'Faturamento bruto',
-        value: money(current?.domains.financial.billing.grossAmount),
-        icon: '🧾'
-      },
-      {
-        label: 'Pipeline comercial',
-        value: money(current?.executive.quotePipelineAmount),
-        icon: '📋'
-      }
-    ],
-    rows: (current) =>
-      [
-        {
-          id: 'commercial-revenue',
-          group: 'Receita',
-          label: 'Receita comercial consolidada',
-          amount: current?.executive.commercialRevenue ?? 0,
-          scope: 'Comercial'
-        },
-        {
-          id: 'billing-gross',
-          group: 'Receita',
-          label: 'Faturamento bruto registrado',
-          amount: current?.domains.financial.billing.grossAmount ?? 0,
-          scope: 'Faturamento'
-        },
-        {
-          id: 'open-receivables',
-          group: 'Ativo/Previsto',
-          label: 'Recebíveis em aberto',
-          amount: current?.executive.outstandingReceivables ?? 0,
-          scope: 'Contas a Receber'
-        },
-        {
-          id: 'quote-pipeline',
-          group: 'Previsto',
-          label: 'Pipeline comercial',
-          amount: current?.executive.quotePipelineAmount ?? 0,
-          scope: 'Orçamentos'
-        },
-        {
-          id: 'open-cash',
-          group: 'Caixa',
-          label: 'Saldo da gaveta aberta',
-          amount: current?.executive.openCashBalance ?? 0,
-          scope: 'Gaveta'
-        }
-      ] as DataTableRow[]
+    title: 'DRE - Demonstrativo de Resultados', group: 'Relatórios Financeiros',
+    subtitle: 'Resultado contábil por período.', icon: '💰',
+    primaryPath: '/reports/accounts', primaryAction: 'Relatórios financeiros',
+    tableTitle: 'DRE indisponível', emptyTitle: 'DRE indisponível',
+    emptyDescription: 'Ainda não há uma fonte contábil consolidada de receitas, despesas e resultado para este relatório.',
+    columns: [], cards: () => [], rows: () => []
   },
   packages: {
-    title: 'Pacotes',
-    group: 'Relatórios Financeiros',
-    subtitle:
-      'Relatório financeiro legacy de pacotes, receita relacionada e uso comercial disponível',
-    icon: '📦',
-    primaryPath: '/packages',
-    primaryAction: 'Exportar CSV',
-    exportable: true,
-    tableTitle: 'Indicadores de pacotes',
-    emptyTitle: 'Sem pacote consolidado',
-    emptyDescription:
-      'Indicadores relacionados a pacotes aparecem aqui conforme o período selecionado.',
-    note: 'A rota Vetus legacy observada e Sistema/Relatorio/PacoteRelatorio.htm. Exporta CSV dos indicadores comerciais carregados; não cria pacotes nem baixa títulos. O hub financeiro ainda não expõe fonte exclusiva de pacotes, então a tela não simula registros.',
-    columns: [
-      { key: 'label', label: 'Indicador' },
-      { key: 'value', label: 'Valor' },
-      { key: 'scope', label: 'Origem' }
-    ],
-    cards: (current) => [
-      {
-        label: 'Receita comercial',
-        value: money(current?.executive.commercialRevenue),
-        icon: '📈'
-      },
-      {
-        label: 'Pipeline comercial',
-        value: money(current?.executive.quotePipelineAmount),
-        icon: '🧾'
-      },
-      {
-        label: 'Vendas fechadas',
-        value: count(current?.domains.commercial.counterSales.closedCount),
-        icon: '✅'
-      }
-    ],
-    rows: (current) => [
-      {
-        id: 'revenue',
-        label: 'Receita comercial relacionada',
-        value: money(current?.executive.commercialRevenue),
-        scope: 'Comercial'
-      },
-      {
-        id: 'pipeline',
-        label: 'Pipeline comercial relacionado',
-        value: money(current?.executive.quotePipelineAmount),
-        scope: 'Orçamentos'
-      },
-      {
-        id: 'sales',
-        label: 'Vendas fechadas relacionadas',
-        value: count(current?.domains.commercial.counterSales.closedCount),
-        scope: 'Comandas/Vendas'
-      }
-    ]
+    title: 'Pacotes', group: 'Relatórios Financeiros',
+    subtitle: 'Pacotes cadastrados e saldo dos itens contratados.', icon: '📦',
+    primaryPath: '/packages', primaryAction: 'Exportar CSV', exportable: true,
+    tableTitle: 'Pacotes cadastrados', emptyTitle: 'Nenhum pacote encontrado',
+    emptyDescription: 'Os pacotes cadastrados aparecem nesta consulta.',
+    note: 'Saldo operacional dos itens. Esta consulta não representa receita recebida. O período considera a data de início do pacote.',
+    columns: [{key:'number',label:'Pacote'}, {key:'packageStatus',label:'Situação'},
+      {key:'startsAt',label:'Início'}, {key:'itemCount',label:'Itens'}, {key:'remainingQuantity',label:'Saldo de unidades'}],
+    cards: () => [], rows: () => []
   },
   'accounts-receivable': receivableSpec(
     'Contas a Receber',
@@ -979,14 +880,52 @@ const specs: Record<ReportKey, ReportSpec> = {
   'register-owners': registerOwnersReportSpec(),
   'register-patients': registerPatientsReportSpec(),
   'register-suppliers': registerSuppliersReportSpec(),
-  'deleted-sales-counter-sales': deletedSalesCounterSalesReportSpec(),
+  'deleted-sales-counter-sales': cancellationReports.snapshotSpec,
   'inventory-stock': inventoryStockReportSpec(),
   'inventory-movements': inventoryMovementsReportSpec(),
   'inventory-invoices': inventoryInvoicesReportSpec(),
   'inventory-products': inventoryProductsReportSpec()
 };
 
-const spec = computed(() => specs[props.reportKey]);
+const spec = computed(() =>
+  props.reportKey === 'deleted-sales-counter-sales'
+    ? cancellationReports.spec.value
+    : specs[props.reportKey]
+);
+const serverFiltersChanged = computed(() => Boolean(spec.value.serverReportId && reportReady.value && appliedServerFilters.value !== JSON.stringify(buildServerReportFilters())));
+const reportSubtitle = computed(() => (props.reportKey === 'accounts-payable' ? 'Títulos registrados, em todas as situações.' : spec.value.subtitle)
+  .replace(/Relatório (financeiro )?legacy (de |do |da )?/gi, '')
+  .replace(/Relatório Vetus-like de /g, '').replace(/Relatório server-backed do catálogo persistido de /g, 'Catálogo de ')
+  .replace(/Ledger server-backed de /g, 'Registro de '));
+const reportNote = computed(() => {
+  const notes: Partial<Record<ReportKey, string>> = {
+    'audit-appointments': 'A consulta inclui até 200 eventos de agenda retornados. Os totais e o CSV se referem a esse conjunto, filtrado nesta tela.',
+    'cash-drawer': 'Gavetas retornadas na consulta. Um saldo não informado aparece como —.',
+    'cash-flow': 'Indicadores consolidados do período consultado. Esta visão não apresenta uma série cronológica de entradas e saídas. Saldo não informado aparece como —.',
+    'accounts-payable': 'Títulos de todas as situações. O período filtra a data de vencimento.',
+    'paid-accounts': 'Títulos pagos. O período filtra a data de vencimento, não a data de pagamento.',
+    'accounts-receivable': 'Recebíveis abertos. O período considera o vencimento; quando ausente, a data de emissão.',
+    'received-accounts': 'Recebíveis liquidados. O período considera a liquidação; quando ausente, a data de emissão.',
+    'cheques': 'Pagamentos registrados como cheque e suas comandas. O período considera a data de registro. Dados de vencimento, banco e devolução não são inferidos.',
+    'advance-payments': 'Adiantamentos e alocações registrados. O saldo representa o valor ainda disponível para compensação.',
+    'sales-counter-sales': 'Indicadores comerciais consolidados da consulta.',
+    'produced-items': 'Lista limitada a até 5 produtos e 5 serviços em destaque. As quantidades e receitas pertencem aos itens listados; os indicadores comerciais abrangem as vendas fechadas.',
+    'production': 'Valores e contagens de vendas fechadas. As linhas de produtos e serviços somam somente os destaques retornados, até 5 de cada tipo.',
+    'appointments': 'Agendamentos por período, texto e situação. A consulta e a exportação ficam registradas.',
+    'professional-care': 'Atendimentos agrupados por profissional. Estes indicadores não calculam comissão.',
+    'service-invoices': 'Documentos NFS-e registrados, consultados por competência.',
+    'register-services': 'Serviços e preços registrados no catálogo.',
+    'register-owners': 'Clientes e contatos cadastrados.',
+    'register-patients': 'Animais e informações cadastrais.',
+    'register-suppliers': 'Fornecedores e despesas do catálogo operacional. Informações fiscais ou contatos ausentes não são inferidos.',
+    'inventory-stock': 'Posição atual do estoque e sinal de reposição. O valor operacional não representa uma avaliação histórica.',
+    'inventory-movements': 'Movimentações de estoque registradas, com produto, unidade e referências operacionais.',
+    'inventory-invoices': 'Compras e recebimentos registrados. A referência informada na compra não é documento fiscal.',
+    'deleted-sales-counter-sales': isCancellationHistoryReport.value ? spec.value.note! : 'Comandas atualmente canceladas. O período considera a data de abertura (UTC), não a data de cancelamento. Responsável, motivo e instante do cancelamento não estão disponíveis nesta visão.',
+    'inventory-products': 'Produtos cadastrados e seus saldos atuais. Não representa uma avaliação histórica do estoque.'
+  };
+  return notes[props.reportKey] ?? spec.value.note ?? '';
+});
 const isAuditAppointments = computed(() => props.reportKey === 'audit-appointments');
 const isAppointmentsReport = computed(() => props.reportKey === 'appointments');
 const isProfessionalCareReport = computed(() => props.reportKey === 'professional-care');
@@ -1003,6 +942,40 @@ const isRegisterPatientsReport = computed(() => props.reportKey === 'register-pa
 const isRegisterSuppliersReport = computed(() => props.reportKey === 'register-suppliers');
 const isDeletedSalesCounterSalesReport = computed(
   () => props.reportKey === 'deleted-sales-counter-sales'
+);
+const isCancellationHistoryReport = computed(
+  () => isDeletedSalesCounterSalesReport.value && cancellationReportView.value === 'history'
+);
+const inventoryPeriodSubject = computed(() =>
+  ['inventory-stock', 'inventory-products'].includes(props.reportKey) ? 'Cadastros'
+    : props.reportKey === 'inventory-invoices' ? 'Compras'
+      : props.reportKey === 'inventory-movements' ? 'Movimentações' : null
+);
+const inventoryPeriodHint = computed(() =>
+  ['inventory-stock', 'inventory-products'].includes(props.reportKey)
+    ? 'Data de cadastro dos produtos. Os saldos mostrados são atuais.'
+    : props.reportKey === 'inventory-invoices' ? 'Data de criação da compra, independentemente do recebimento.'
+      : props.reportKey === 'inventory-movements' ? 'Data de registro da movimentação.' : null
+);
+const dateFromLabel = computed(() =>
+  inventoryPeriodSubject.value ? `${inventoryPeriodSubject.value} de` :
+  isFinancialPayablesReport.value ? 'Vencimentos de' : props.reportKey === 'packages' ? 'Inícios de' : isDeletedSalesCounterSalesReport.value
+    ? isCancellationHistoryReport.value
+      ? 'Cancelamentos de (UTC)'
+      : 'Aberturas de (UTC)'
+    : isAuditAppointments.value
+      ? 'Data início'
+      : 'De'
+);
+const dateToLabel = computed(() =>
+  inventoryPeriodSubject.value ? `${inventoryPeriodSubject.value} até` :
+  isFinancialPayablesReport.value ? 'Vencimentos até' : props.reportKey === 'packages' ? 'Inícios até' : isDeletedSalesCounterSalesReport.value
+    ? isCancellationHistoryReport.value
+      ? 'Cancelamentos até (UTC)'
+      : 'Aberturas até (UTC)'
+    : isAuditAppointments.value
+      ? 'Data fim'
+      : 'Até'
 );
 const isInventoryStockReport = computed(() => props.reportKey === 'inventory-stock');
 const isInventoryMovementsReport = computed(() => props.reportKey === 'inventory-movements');
@@ -1193,6 +1166,8 @@ const chequeReportTableRows = computed<DataTableRow[]>(() =>
   }))
 );
 const cards = computed(() => {
+  if (!reportReady.value) return [];
+  if (props.reportKey === 'packages') return [{label:'Pacotes na consulta',value:count(packageRows.value.length),icon:'📦'}];
   if (isAuditAppointments.value) return auditAppointmentCards.value;
   if (isAppointmentsReport.value) return appointmentReportCards.value;
   if (isProfessionalCareReport.value) return professionalCareReportCards.value;
@@ -1205,14 +1180,24 @@ const cards = computed(() => {
   if (isRegisterOwnersReport.value) return registerOwnersReportCards.value;
   if (isRegisterPatientsReport.value) return registerPatientsReportCards.value;
   if (isRegisterSuppliersReport.value) return registerSuppliersReportCards.value;
-  if (isDeletedSalesCounterSalesReport.value) return deletedSalesCounterSalesReportCards.value;
+  if (isDeletedSalesCounterSalesReport.value) return cancellationReports.cards.value;
   if (isInventoryStockReport.value) return inventoryStockReportCards.value;
   if (isInventoryMovementsReport.value) return inventoryMovementsReportCards.value;
   if (isInventoryInvoicesReport.value) return inventoryInvoicesReportCards.value;
   if (isInventoryProductsReport.value) return inventoryProductsReportCards.value;
   return spec.value.cards(report.value);
 });
+const packageRows = computed<DataTableRow[]>(() => customerPackages.value.filter(p => {
+  const day = p.startsAt.slice(0, 10);
+  return (!filters.value.dateFrom || day >= filters.value.dateFrom) && (!filters.value.dateTo || day <= filters.value.dateTo);
+}).map(p => ({id:p.id, number:p.number,
+  packageStatus: ({draft:'Rascunho',active:'Ativo',expired:'Expirado',cancelled:'Cancelado',completed:'Concluído'} as Record<string,string>)[p.status] ?? p.status,
+  startsAt: formatDateTime(p.startsAt), itemCount:p.items.length,
+  remainingQuantity:p.balance.reduce((sum,item)=>sum+item.quantityAvailable,0)
+})));
 const rows = computed(() => {
+  if (!reportReady.value) return [];
+  if (props.reportKey === 'packages') return packageRows.value;
   if (isAuditAppointments.value) return auditAppointmentRows.value;
   if (isAppointmentsReport.value) return appointmentReportRows.value;
   if (isProfessionalCareReport.value) return professionalCareReportRows.value;
@@ -1225,7 +1210,7 @@ const rows = computed(() => {
   if (isRegisterOwnersReport.value) return registerOwnersReportRows.value;
   if (isRegisterPatientsReport.value) return registerPatientsReportRows.value;
   if (isRegisterSuppliersReport.value) return registerSuppliersReportRows.value;
-  if (isDeletedSalesCounterSalesReport.value) return deletedSalesCounterSalesReportRows.value;
+  if (isDeletedSalesCounterSalesReport.value) return cancellationReports.rows.value;
   if (isInventoryStockReport.value) return inventoryStockReportRows.value;
   if (isInventoryMovementsReport.value) return inventoryMovementsReportRows.value;
   if (isInventoryInvoicesReport.value) return inventoryInvoicesReportRows.value;
@@ -1421,28 +1406,6 @@ const registerSuppliersReportCards = computed<ReportCard[]>(() => {
     { label: 'Com descrição', value: count(withDescriptionCount), icon: '📝' }
   ];
 });
-const deletedSalesReportRows = computed<DeletedSalesReportRow[]>(() =>
-  (deletedSalesReportExecution.value?.rows ?? []).filter(isDeletedSalesReportRow)
-);
-const deletedSalesCounterSalesReportRows = computed<DataTableRow[]>(() =>
-  deletedSalesReportRows.value.map((row) => ({
-    ...row,
-    id: row.number,
-    status: row.status === 'cancelled' ? 'Cancelado' : row.status
-  }))
-);
-const deletedSalesCounterSalesReportCards = computed<ReportCard[]>(() => {
-  const cancelledSales = deletedSalesReportRows.value;
-  const cancelledAmount = cancelledSales.reduce((total, sale) => total + sale.total, 0);
-  const discountAmount = cancelledSales.reduce((total, sale) => total + sale.discountAmount, 0);
-  const withBalanceCount = cancelledSales.filter((sale) => sale.balanceDue > 0).length;
-  return [
-    { label: 'Exclusões registradas', value: count(cancelledSales.length), icon: '🧾' },
-    { label: 'Valor cancelado', value: money(cancelledAmount), icon: '💸' },
-    { label: 'Descontos cancelados', value: money(discountAmount), icon: '🏷️' },
-    { label: 'Com saldo aberto', value: count(withBalanceCount), icon: '⚠️' }
-  ];
-});
 const inventoryStockReportRows = computed<DataTableRow[]>(() =>
   (inventoryStockReportExecution.value?.rows ?? [])
     .filter(isInventoryStockReportRow)
@@ -1543,6 +1506,19 @@ const inventoryProductsReportCards = computed<ReportCard[]>(() => {
 });
 
 async function loadReport() {
+  const requestId = ++reportRequestId;
+  const requestedFilters = JSON.stringify(buildServerReportFilters());
+  reportReady.value = false;
+  loadFailed.value = false;
+  if (props.reportKey === 'dre') { loading.value = false; error.value = ''; return; }
+  async function current<T>(pending: Promise<T>): Promise<T> {
+    const result = await pending;
+    if (requestId !== reportRequestId) throw new Error('Superseded report query');
+    return result;
+  }
+  const cancellationRequestId = isDeletedSalesCounterSalesReport.value
+    ? ++cancellationReportRequestId
+    : null;
   loading.value = true;
   error.value = '';
   success.value = '';
@@ -1551,7 +1527,7 @@ async function loadReport() {
   if (isChequesReport.value) chequeReportExecution.value = null;
   if (isAdvancePaymentsReport.value) advancePaymentReportExecution.value = null;
   if (isServiceInvoicesReport.value) serviceInvoiceReportExecution.value = null;
-  if (isDeletedSalesCounterSalesReport.value) deletedSalesReportExecution.value = null;
+  if (isDeletedSalesCounterSalesReport.value) cancellationReports.reset();
   if (isInventoryProductsReport.value) inventoryProductReportExecution.value = null;
   if (isInventoryStockReport.value) inventoryStockReportExecution.value = null;
   if (isInventoryMovementsReport.value) inventoryMovementReportExecution.value = null;
@@ -1561,27 +1537,29 @@ async function loadReport() {
   if (isRegisterPatientsReport.value) patients.value = [];
   if (isRegisterSuppliersReport.value) suppliers.value = [];
   try {
-    if (isAuditAppointments.value) {
-      auditEvents.value = await auditService.listEvents({
+    if (props.reportKey === 'packages') {
+      customerPackages.value = await current(packagesService.list());
+    } else if (isAuditAppointments.value) {
+      auditEvents.value = await current(auditService.listEvents({
         entityTypes: APPOINTMENT_AUDIT_ENTITY_TYPES,
         limit: 200
-      });
+      }));
       report.value = null;
     } else if (isAppointmentsReport.value) {
-      const execution = await reportsService.execute({
+      const execution = await current(reportsService.execute({
         reportId: 'scheduling-appointments',
         filters: buildServerReportFilters()
-      });
+      }));
       if (execution.rows.some((row) => !isAppointmentReportRow(row))) {
         throw new Error('Resposta inválida do relatório de agendamentos');
       }
       appointmentReportExecution.value = execution;
       report.value = null;
     } else if (isProfessionalCareReport.value) {
-      const execution = await reportsService.execute({
+      const execution = await current(reportsService.execute({
         reportId: 'scheduling-professional-care',
         filters: buildServerReportFilters()
-      });
+      }));
       if (execution.rows.some((row) => !isProfessionalCareReportRow(row))) {
         throw new Error('Resposta inválida do relatório por profissional');
       }
@@ -1589,147 +1567,160 @@ async function loadReport() {
       report.value = null;
     } else if (isFinancialReceivablesReport.value) {
       financialReceivables.value = [];
-      financialReceivables.value = await listAllFinancialReceivables(
+      financialReceivables.value = await current(listAllFinancialReceivables(
         isReceivedAccountsReport.value ? 'settled' : 'open'
-      );
+      ));
       report.value = null;
     } else if (isFinancialPayablesReport.value) {
       financialPayables.value = [];
-      financialPayables.value = await listAllFinancialPayables(
+      financialPayables.value = await current(listAllFinancialPayables(
         isPaidAccountsReport.value ? 'paid' : ''
-      );
+      ));
       report.value = null;
     } else if (isChequesReport.value) {
-      const execution = await reportsService.execute({
+      const execution = await current(reportsService.execute({
         reportId: 'financial-cheques',
         filters: buildServerReportFilters()
-      });
+      }));
       if (execution.rows.some((row) => !isChequeReportRow(row))) {
         throw new Error('Resposta inválida do relatório de cheques');
       }
       chequeReportExecution.value = execution;
       report.value = null;
     } else if (isAdvancePaymentsReport.value) {
-      const execution = await reportsService.execute({
+      const execution = await current(reportsService.execute({
         reportId: 'financial-advance-payments',
         filters: buildServerReportFilters()
-      });
+      }));
       if (execution.rows.some((row) => !isAdvancePaymentReportRow(row))) {
         throw new Error('Resposta inválida do relatório de pagamentos antecipados');
       }
       advancePaymentReportExecution.value = execution;
       report.value = null;
     } else if (isServiceInvoicesReport.value) {
-      const execution = await reportsService.execute({
+      const execution = await current(reportsService.execute({
         reportId: 'fiscal-service-invoices',
         filters: buildServerReportFilters()
-      });
+      }));
       if (execution.rows.some((row) => !isServiceInvoiceReportRow(row))) {
         throw new Error('Resposta inválida do relatório de NF de serviços prestados');
       }
       serviceInvoiceReportExecution.value = execution;
       report.value = null;
     } else if (isRegisterServicesReport.value) {
-      const execution = await reportsService.execute({
+      const execution = await current(reportsService.execute({
         reportId: 'registration-services',
         filters: buildServerReportFilters()
-      });
+      }));
       if (execution.rows.some((row) => !isRegisterServicesReportRow(row))) {
         throw new Error('Resposta inválida do relatório de serviços');
       }
       services.value = execution.rows.filter(isRegisterServicesReportRow);
       report.value = null;
     } else if (isRegisterOwnersReport.value) {
-      const execution = await reportsService.execute({
+      const execution = await current(reportsService.execute({
         reportId: 'registration-owners',
         filters: buildServerReportFilters()
-      });
+      }));
       if (execution.rows.some((row) => !isRegisterOwnersReportRow(row))) {
         throw new Error('Resposta inválida do relatório de clientes');
       }
       owners.value = execution.rows.filter(isRegisterOwnersReportRow);
       report.value = null;
     } else if (isRegisterPatientsReport.value) {
-      const execution = await reportsService.execute({
+      const execution = await current(reportsService.execute({
         reportId: 'registration-patients',
         filters: buildServerReportFilters()
-      });
+      }));
       if (execution.rows.some((row) => !isRegisterPatientsReportRow(row))) {
         throw new Error('Resposta inválida do relatório de animais');
       }
       patients.value = execution.rows.filter(isRegisterPatientsReportRow);
       report.value = null;
     } else if (isRegisterSuppliersReport.value) {
-      const execution = await reportsService.execute({
+      const execution = await current(reportsService.execute({
         reportId: 'registration-suppliers',
         filters: buildServerReportFilters()
-      });
+      }));
       if (execution.rows.some((row) => !isSupplierReportRow(row))) {
         throw new Error('Resposta inválida do relatório de fornecedores e despesas');
       }
       suppliers.value = execution.rows.filter(isSupplierReportRow);
       report.value = null;
     } else if (isDeletedSalesCounterSalesReport.value) {
-      const execution = await reportsService.execute({
-        reportId: 'commercial-deleted-sales',
+      const isHistory = isCancellationHistoryReport.value;
+      const execution = await current(reportsService.execute({
+        reportId: isHistory ? 'commercial-cancellation-history' : 'commercial-deleted-sales',
         filters: buildServerReportFilters()
-      });
-      if (execution.rows.some((row) => !isDeletedSalesReportRow(row))) {
-        throw new Error('Resposta inválida do relatório de vendas canceladas');
-      }
-      deletedSalesReportExecution.value = execution;
+      }));
+      if (cancellationRequestId !== cancellationReportRequestId) return;
+      cancellationReports.acceptExecution(execution, isHistory ? 'history' : 'opening-date');
       report.value = null;
     } else if (isInventoryProductsReport.value) {
-      const execution = await reportsService.execute({
+      const execution = await current(reportsService.execute({
         reportId: 'inventory-products',
         filters: buildServerReportFilters()
-      });
+      }));
       if (execution.rows.some((row) => !isInventoryProductReportRow(row))) {
         throw new Error('Resposta inválida do relatório de produtos de estoque');
       }
       inventoryProductReportExecution.value = execution;
       report.value = null;
     } else if (isInventoryStockReport.value) {
-      const execution = await reportsService.execute({
+      const execution = await current(reportsService.execute({
         reportId: 'inventory-stock',
         filters: buildServerReportFilters()
-      });
+      }));
       if (execution.rows.some((row) => !isInventoryStockReportRow(row))) {
         throw new Error('Resposta inválida do relatório de estoque');
       }
       inventoryStockReportExecution.value = execution;
       report.value = null;
     } else if (isInventoryMovementsReport.value) {
-      const execution = await reportsService.execute({
+      const execution = await current(reportsService.execute({
         reportId: 'inventory-movements',
         filters: buildServerReportFilters()
-      });
+      }));
       if (execution.rows.some((row) => !isInventoryMovementReportRow(row))) {
         throw new Error('Resposta inválida do relatório de movimentações de estoque');
       }
       inventoryMovementReportExecution.value = execution;
       report.value = null;
     } else if (isInventoryInvoicesReport.value) {
-      const execution = await reportsService.execute({
+      const execution = await current(reportsService.execute({
         reportId: 'inventory-invoices',
         filters: buildServerReportFilters()
-      });
+      }));
       if (execution.rows.some((row) => !isInventoryPurchaseReportRow(row))) {
         throw new Error('Resposta inválida do relatório de entradas de compras');
       }
       inventoryInvoiceReportExecution.value = execution;
       report.value = null;
     } else {
-      report.value = await administrativeReportsService.getHubs({
+      report.value = await current(administrativeReportsService.getHubs({
         dateFrom: filters.value.dateFrom || undefined,
         dateTo: filters.value.dateTo || undefined
-      });
+      }));
     }
+    appliedServerFilters.value = requestedFilters;
+    reportReady.value = true;
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar relatório';
+    if (requestId === reportRequestId && (cancellationRequestId === null || cancellationRequestId === cancellationReportRequestId)) {
+      loadFailed.value = true;
+      error.value = err instanceof Error && /^(Resposta inválida|Falha ao executar|Não foi possível consultar)/.test(err.message)
+        ? err.message : 'Não foi possível carregar o relatório. Tente novamente.';
+    }
   } finally {
-    loading.value = false;
+    if (requestId === reportRequestId && (cancellationRequestId === null || cancellationRequestId === cancellationReportRequestId)) {
+      loading.value = false;
+    }
   }
+}
+
+function changeCancellationReportView(value: string | number): void {
+  if (value !== 'history' && value !== 'opening-date') return;
+  cancellationReportView.value = value;
+  void loadReport();
 }
 
 async function listAllFinancialPayables(status: '' | 'paid'): Promise<FinancialPayableRecord[]> {
@@ -1761,7 +1752,7 @@ async function listAllFinancialReceivables(
 }
 
 async function exportCurrentReport(): Promise<void> {
-  if (!spec.value.exportable || exporting.value) return;
+  if (!spec.value.exportable || exporting.value || loading.value || loadFailed.value || !reportReady.value) return;
 
   exporting.value = true;
   error.value = '';
@@ -1778,7 +1769,9 @@ async function exportCurrentReport(): Promise<void> {
         return { execution, exported };
       });
       saveBrowserDownload(exported);
-      success.value = `Exportação server-side auditada gerada com ${execution.rowCount} linha(s).`;
+      success.value = isCancellationHistoryReport.value
+        ? `CSV gerado com ${execution.rowCount} cancelamento(s).`
+        : `Exportação server-side auditada gerada com ${execution.rowCount} linha(s).`;
       return;
     }
 
@@ -1892,6 +1885,14 @@ function uniqueSorted(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
+function financialStatusLabel(value: string | null): string {
+  if (value === null) return '—';
+  return ({open:'Em aberto', partial:'Parcial', paid:'Pago', cancelled:'Cancelado', settled:'Liquidado'} as Record<string,string>)[value] ?? value;
+}
+function reconciliationLabel(value: string | null): string {
+  if (value === null) return '—';
+  return ({not_required:'Dispensada', pending:'Pendente', reconciled:'Conciliada'} as Record<string,string>)[value] ?? value;
+}
 function appointmentStatusLabel(status: AppointmentReportRow['status']): string {
   const labels: Record<AppointmentReportRow['status'], string> = {
     scheduled: 'Agendado',
@@ -2171,14 +2172,14 @@ function salesCounterSalesReportSpec(): ReportSpec {
         {
           id: 'open-sales',
           label: 'Comandas em aberto',
-          amount: 0,
+          amount: null,
           records: count(current?.domains.commercial.counterSales.openCount),
           scope: 'Operação de atendimento'
         },
         {
           id: 'cancelled-sales',
           label: 'Vendas canceladas',
-          amount: 0,
+          amount: null,
           records: count(current?.domains.commercial.counterSales.cancelledCount),
           scope: 'Controle interno'
         },
@@ -2198,12 +2199,12 @@ function producedItemsReportSpec(): ReportSpec {
     title: 'Produtos/Serviços Produzidos',
     group: 'Relatórios de Atendimentos',
     subtitle:
-      'Relatório legacy de mix operacional produzido por produtos, serviços, quantidade e receita',
+      'Até 5 produtos e 5 serviços em destaque, com suas quantidades e receitas.',
     icon: '🛠️',
     primaryPath: '/sales',
     primaryAction: 'Exportar CSV',
     exportable: true,
-    tableTitle: 'Produtos e serviços produzidos',
+    tableTitle: 'Produtos e serviços em destaque',
     emptyTitle: 'Sem produto ou serviço produzido no período',
     emptyDescription:
       'Produtos e serviços produzidos aparecem aqui quando houver venda fechada no período.',
@@ -2225,7 +2226,7 @@ function producedItemsReportSpec(): ReportSpec {
         value: money(current?.executive.commercialRevenue),
         icon: '📈'
       },
-      { label: 'Itens produzidos', value: count(producedItemRows(current).length), icon: '🛠️' }
+      { label: 'Tipos de itens listados', value: count(producedItemRows(current).length), icon: '🛠️' }
     ],
     rows: (current) => producedItemRows(current)
   };
@@ -2245,7 +2246,7 @@ function productionReportSpec(): ReportSpec {
     title: 'Produção',
     group: 'Relatórios de Atendimentos',
     subtitle:
-      'Relatório legacy sintético de produtividade operacional, volume realizado e receita produzida',
+      'Vendas fechadas e somas dos destaques, limitados a 5 produtos e 5 serviços.',
     icon: '🏭',
     primaryPath: '/sales',
     primaryAction: 'Exportar CSV',
@@ -2263,12 +2264,12 @@ function productionReportSpec(): ReportSpec {
     ],
     cards: (current) => [
       {
-        label: 'Produção fechada',
+        label: 'Vendas fechadas',
         value: count(current?.domains.commercial.counterSales.closedCount),
         icon: '✅'
       },
       {
-        label: 'Receita produzida',
+        label: 'Recebido em vendas fechadas',
         value: money(current?.domains.commercial.counterSales.netRevenue),
         icon: '📈'
       },
@@ -2288,31 +2289,31 @@ function productionReportSpec(): ReportSpec {
       return [
         {
           id: 'closed-output',
-          label: 'Output operacional concluído',
+          label: 'Recebido em vendas fechadas',
           amount: dashboard.netRevenue,
           records: count(dashboard.closedCount),
           scope: 'Comandas/Vendas fechadas'
         },
         {
           id: 'gross-output',
-          label: 'Volume bruto de produção comercial',
+          label: 'Valor das vendas fechadas',
           amount: dashboard.grossRevenue,
-          records: count(dashboard.totalSales),
-          scope: 'Produção comercial'
+          records: count(dashboard.closedCount),
+          scope: 'Vendas fechadas'
         },
         {
           id: 'services-output',
-          label: 'Serviços produzidos',
+          label: 'Serviços em destaque',
           amount: serviceRevenue,
           records: count(serviceQuantity),
-          scope: 'Serviços'
+          scope: `Serviços listados: ${dashboard.topServices.length}`
         },
         {
           id: 'products-output',
-          label: 'Produtos produzidos',
+          label: 'Produtos em destaque',
           amount: productRevenue,
           records: count(productQuantity),
-          scope: 'Produtos'
+          scope: `Produtos listados: ${dashboard.topProducts.length}`
         },
         {
           id: 'avg-ticket-output',
@@ -2618,26 +2619,6 @@ function isSupplierReportRow(row: Record<string, unknown>): row is SupplierRepor
   );
 }
 
-function isDeletedSalesReportRow(row: Record<string, unknown>): row is DeletedSalesReportRow {
-  return (
-    typeof row.number === 'string' &&
-    row.status === 'cancelled' &&
-    (typeof row.ownerId === 'string' || row.ownerId === null) &&
-    typeof row.openedByUserId === 'string' &&
-    typeof row.createdAt === 'string' &&
-    typeof row.updatedAt === 'string' &&
-    typeof row.total === 'number' &&
-    Number.isFinite(row.total) &&
-    typeof row.discountAmount === 'number' &&
-    Number.isFinite(row.discountAmount) &&
-    typeof row.paidAmount === 'number' &&
-    Number.isFinite(row.paidAmount) &&
-    typeof row.balanceDue === 'number' &&
-    Number.isFinite(row.balanceDue) &&
-    (typeof row.notes === 'string' || row.notes === null)
-  );
-}
-
 function isInventoryProductReportRow(
   row: Record<string, unknown>
 ): row is InventoryProductReportRow {
@@ -2874,39 +2855,6 @@ function registerSuppliersReportSpec(): ReportSpec {
   };
 }
 
-function deletedSalesCounterSalesReportSpec(): ReportSpec {
-  return {
-    title: 'Exclusão de Vendas e Comandas',
-    group: 'Relatórios de Cadastros',
-    subtitle: 'Snapshot auditado de comandas atualmente canceladas; período pela data de abertura',
-    icon: '🧾',
-    primaryPath: '/counter-sales',
-    primaryAction: 'Exportar CSV',
-    exportable: true,
-    serverReportId: 'commercial-deleted-sales',
-    tableTitle: 'Vendas e comandas excluídas',
-    emptyTitle: 'Sem venda ou comanda excluída',
-    emptyDescription:
-      'Exclusões aparecem aqui quando houver comandas ou vendas canceladas no período.',
-    note: 'A rota Vetus observada é Sistema/Relatorio/ExclusaoVendaComandaRelatorio.htm. Esta visão usa apenas fatos persistidos de comandas atualmente canceladas; o filtro de período usa a data de abertura (createdAt), não um período de cancelamento. Não atribui usuário, motivo ou instante exato do cancelamento, não cancela venda, não reabre comanda, não altera pagamento e exporta um artefato server-side auditado.',
-    columns: [
-      { key: 'number', label: 'Número' },
-      { key: 'status', label: 'Status' },
-      { key: 'ownerId', label: 'Tutor (ID)' },
-      { key: 'openedByUserId', label: 'Usuário de abertura (ID)' },
-      { key: 'createdAt', label: 'Abertura' },
-      { key: 'updatedAt', label: 'Última atualização' },
-      { key: 'total', label: 'Total' },
-      { key: 'discountAmount', label: 'Desconto' },
-      { key: 'paidAmount', label: 'Pago' },
-      { key: 'balanceDue', label: 'Saldo' },
-      { key: 'notes', label: 'Observação' }
-    ],
-    cards: () => [],
-    rows: () => []
-  };
-}
-
 function inventoryStockReportSpec(): ReportSpec {
   return {
     title: 'Estoque',
@@ -3127,6 +3075,8 @@ function formatDateTime(value: string | null): string {
 }
 
 onMounted(loadReport);
+watch(() => props.reportKey, resetFilters);
+onBeforeUnmount(() => { reportRequestId += 1; });
 </script>
 
 <style scoped>
@@ -3182,5 +3132,32 @@ onMounted(loadReport);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
+}
+
+.report-query-note { margin: 0; padding: 12px 16px; border-left: 3px solid var(--color-primary); color: var(--color-text-secondary); font-size: 14px; line-height: 1.5; }
+.report-period-hint { grid-column: 1 / -1; margin: 0; color: var(--color-text-secondary); font-size: 13px; line-height: 1.5; }
+.report-results h2 { margin: 0 0 12px; font-size: 18px; font-weight: 600; }
+.report-money { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.report-page :deep(.data-table) { min-width: 0; }
+.report-page :deep(.data-table th) { white-space: normal; }
+.report-filter-disclosure, .report-summary, .report-assumptions { border: 1px solid var(--color-border); border-radius: 12px; padding: 0 16px 12px; }
+.report-page summary { display: flex; align-items: center; min-height: 44px; font-weight: 600; cursor: pointer; }
+.report-page summary::before { content: '▸'; margin-right: 8px; }
+.report-page details[open] > summary::before { content: '▾'; }
+.report-summary dl { display: flex; flex-wrap: wrap; gap: 20px; margin: 10px 0; }
+.report-summary dl > div { flex: 1 1 180px; }
+.report-summary dt, .report-assumptions p { color: var(--color-text-secondary); font-size: 13px; line-height: 1.6; }
+.report-summary dd { margin: 5px 0 0; font-size: 20px; font-variant-numeric: tabular-nums; }
+.report-unavailable { padding: clamp(20px,4vw,40px); border: 1px solid var(--color-border); border-radius: 20px; background: var(--color-surface); }
+.report-unavailable__mark { display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; color: var(--color-primary); background: var(--color-bg-subtle); font-size: 28px; }
+.report-unavailable h2 { margin: 20px 0 10px; font-size: 24px; }
+.report-unavailable p { max-width: 60ch; color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 24px; }
+.report-page :deep(input), .report-page :deep(select), .report-page :deep(button) { min-height: 44px; }
+@media (max-width: 640px) {
+  .report-filter-mode { grid-column: 1 / -1; }
+  .report-filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .report-filters__actions { grid-column: 1 / -1; }
+  .report-page :deep(.app-page-header__actions) { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+  .report-page :deep(.app-page-header__actions > .ds-btn) { flex: 1 1 120px; width: auto; }
 }
 </style>

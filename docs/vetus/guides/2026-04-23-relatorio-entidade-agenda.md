@@ -11,13 +11,13 @@ Escopo:
 
 Evidências principais:
 
-- [agenda-geral.png](../inspection/2026-04-23T23-03-08-343Z-agenda/screenshots/agenda-geral.png)
-- [agenda-filtros.png](../inspection/2026-04-23T23-03-08-343Z-agenda/screenshots/agenda-filtros.png)
-- [agenda-mês.png](../inspection/2026-04-23T23-03-08-343Z-agenda/screenshots/agenda-mês.png)
-- [agenda-semana.png](../inspection/2026-04-23T23-03-08-343Z-agenda/screenshots/agenda-semana.png)
-- [agenda-dia.png](../inspection/2026-04-23T23-03-08-343Z-agenda/screenshots/agenda-dia.png)
-- [agenda-geral.json](../inspection/2026-04-23T23-03-08-343Z-agenda/agenda-geral.json)
-- [network.json](../inspection/2026-04-23T23-03-08-343Z-agenda/network.json)
+- agenda-geral.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-03-08-343Z-agenda/screenshots/agenda-geral.png`)
+- agenda-filtros.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-03-08-343Z-agenda/screenshots/agenda-filtros.png`)
+- agenda-mês.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-03-08-343Z-agenda/screenshots/agenda-mês.png`)
+- agenda-semana.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-03-08-343Z-agenda/screenshots/agenda-semana.png`)
+- agenda-dia.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-03-08-343Z-agenda/screenshots/agenda-dia.png`)
+- agenda-geral.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-03-08-343Z-agenda/agenda-geral.json`)
+- network.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-03-08-343Z-agenda/network.json`)
 - [2026-04-23-relatorio-completo-cadastros-clientes-animais.md](../guides/2026-04-23-relatorio-completo-cadastros-clientes-animais.md)
 - [2026-04-23-relatorio-fluxos-detalhe-comanda-agenda-financeiro.md](../guides/2026-04-23-relatorio-fluxos-detalhe-comanda-agenda-financeiro.md)
 
@@ -88,7 +88,7 @@ Chamadas auxiliares do shell também apareceram:
 - `GET /menu`
 - `GET /notificacoes/contagens/47`
 
-No recorte salvo em [network.json](../inspection/2026-04-23T23-03-08-343Z-agenda/network.json), as respostas observadas para as chamadas da agenda ficaram em `200`, e o login inicial ficou em `201`.
+No recorte salvo em network.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-03-08-343Z-agenda/network.json`), as respostas observadas para as chamadas da agenda ficaram em `200`, e o login inicial ficou em `201`.
 
 Leitura dessas chamadas:
 
@@ -104,7 +104,7 @@ Isso confirma que a agenda é montada por composição de múltiplos domínios, 
 
 Evidência principal:
 
-- [agenda-geral.png](../inspection/2026-04-23T23-03-08-343Z-agenda/screenshots/agenda-geral.png)
+- agenda-geral.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-03-08-343Z-agenda/screenshots/agenda-geral.png`)
 
 Elementos principais confirmados:
 
@@ -127,7 +127,7 @@ Leitura:
 
 Evidência principal:
 
-- [agenda-filtros.png](../inspection/2026-04-23T23-03-08-343Z-agenda/screenshots/agenda-filtros.png)
+- agenda-filtros.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-03-08-343Z-agenda/screenshots/agenda-filtros.png`)
 
 Filtros confirmados:
 

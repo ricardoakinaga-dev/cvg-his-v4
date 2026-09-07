@@ -1,0 +1,2934 @@
+{
+  "observed_at": "2026-09-07T02:41:14.637841+00:00",
+  "build_dir": "/tmp/cvg-frontend-production-20260907",
+  "build": "Vite production default configuration incl PWA; exit 0",
+  "initial_html_assets": [
+    {
+      "path": "assets/vue-vendor-BvyKcelm.js",
+      "bytes": 108223,
+      "gzip_bytes": 42088,
+      "sha256": "42722635d4cdb662e73b4b017911a34535f37c4ee0fc4f9f54b55c7c11bcc33e"
+    },
+    {
+      "path": "assets/index-icnhK_HG.js",
+      "bytes": 172911,
+      "gzip_bytes": 41772,
+      "sha256": "201473f97a0482f91ccb92fe25eff9f27817b2a0209c6fae9eb627ef9a679813"
+    },
+    {
+      "path": "assets/index-D8TuQv6f.css",
+      "bytes": 45685,
+      "gzip_bytes": 8546,
+      "sha256": "aadc142418f8608f849e061536c5f553146e2d39f4969ec7860f620486fa1851"
+    }
+  ],
+  "initial_html_assets_gzip_bytes": 92406,
+  "largest_js": [
+    {
+      "path": "assets/vue-vendor-BvyKcelm.js",
+      "bytes": 108223,
+      "gzip_bytes": 42088,
+      "sha256": "42722635d4cdb662e73b4b017911a34535f37c4ee0fc4f9f54b55c7c11bcc33e"
+    },
+    {
+      "path": "assets/index-icnhK_HG.js",
+      "bytes": 172911,
+      "gzip_bytes": 41772,
+      "sha256": "201473f97a0482f91ccb92fe25eff9f27817b2a0209c6fae9eb627ef9a679813"
+    },
+    {
+      "path": "assets/ReportWorkbenchPage-BchgLzzK.js",
+      "bytes": 82557,
+      "gzip_bytes": 19664,
+      "sha256": "141fcff2c77f9c09430ba9064b31ffd1ac1e3ca9ee4fb9963992ba77de948211"
+    },
+    {
+      "path": "assets/PatientDetailPage-BO1IQiWk.js",
+      "bytes": 67966,
+      "gzip_bytes": 17735,
+      "sha256": "594d171d376cd6154485bf51e14f25ce54a4c281740453c96baeb56a1b33ff14"
+    },
+    {
+      "path": "assets/AppLayout-DHweIGCJ.js",
+      "bytes": 55135,
+      "gzip_bytes": 16586,
+      "sha256": "9dedd22a4fa1b033370b7dd3a8db841114a245f1694579e651dd501a9bbd272d"
+    },
+    {
+      "path": "assets/CounterSalesPage-DZQMkmL_.js",
+      "bytes": 63845,
+      "gzip_bytes": 16496,
+      "sha256": "97f84162fda5ab2a9d5afbd15c0eac1a73cc0c187338f73a3b0a70e621cc8848"
+    },
+    {
+      "path": "assets/AppointmentsListPage-D3sRPGF1.js",
+      "bytes": 48167,
+      "gzip_bytes": 13265,
+      "sha256": "c51564bd55271a30395599b61f400b999d850e9083566443db1df6eead93372c"
+    },
+    {
+      "path": "assets/MedicalRecordsDetailPage-CUmsjYmv.js",
+      "bytes": 42667,
+      "gzip_bytes": 11444,
+      "sha256": "d96b21d21cfaf6bd62e71b17419c3be22851167c4dde705c41721d12c831fe80"
+    },
+    {
+      "path": "assets/OwnerDetailPage-B7LXrw5D.js",
+      "bytes": 40646,
+      "gzip_bytes": 10742,
+      "sha256": "0dbf6b4197a7d3b12330a2f220ebccf073c0deed677a66a7af0cdcbc8092b5bc"
+    },
+    {
+      "path": "assets/DashboardPage-BW_H92rd.js",
+      "bytes": 27299,
+      "gzip_bytes": 8617,
+      "sha256": "edaf341805d57f12690397dd3e669299dae9be58fde80e64e3432cce6aa6dea0"
+    },
+    {
+      "path": "assets/EncounterDetailPage-TzYco2Fg.js",
+      "bytes": 29795,
+      "gzip_bytes": 8347,
+      "sha256": "fc165de40c86cbd8274751f7d919c87588c803e70657c518c134cc3c4d262b7b"
+    },
+    {
+      "path": "assets/AccessControlPage-Cx1VyxTy.js",
+      "bytes": 28959,
+      "gzip_bytes": 7988,
+      "sha256": "9f6bf9e1d04220f7a8bc87e87145afd42362c1b74722bedf682066e16d63ebc9"
+    }
+  ],
+  "all_files": [
+    {
+      "path": "sw.js",
+      "bytes": 29778,
+      "gzip_bytes": 6920,
+      "sha256": "4a57365909b3ac4b316fb6d8b2421c6de67c085c2cceb2bdf888fd5596862303"
+    },
+    {
+      "path": "index.html",
+      "bytes": 2117,
+      "gzip_bytes": 923,
+      "sha256": "d9d5e2f2f78ebcc51c43e6c579ed8d78277c26e0ad3d2baf0b00fed221dc310f"
+    },
+    {
+      "path": "offline.html",
+      "bytes": 4777,
+      "gzip_bytes": 1517,
+      "sha256": "11ae837cef32ef0dd9bde80778ad187eb6fd150ca23e7eec35eb91b600d540bb"
+    },
+    {
+      "path": "workbox-835c8c05.js",
+      "bytes": 21863,
+      "gzip_bytes": 7424,
+      "sha256": "09fac2e643b2b4eb60ec4b0a4281c196c5942051e2229aec09fb99df59424315"
+    },
+    {
+      "path": "assets/InpatientDetailPage-CTQjcski.css",
+      "bytes": 4516,
+      "gzip_bytes": 1093,
+      "sha256": "82cdf33da00fcf5d3c5c6fe9d383e43025adf8b4f5c1d09c25e3c77662244695"
+    },
+    {
+      "path": "assets/PaymentEnablementPage-06KOto4m.css",
+      "bytes": 978,
+      "gzip_bytes": 439,
+      "sha256": "c3c35a57a0e9acc81b0979b9b980d9730ef5f2e51bb435ef2e3602453aa15c75"
+    },
+    {
+      "path": "assets/laboratory-B1nXW__H.js",
+      "bytes": 5187,
+      "gzip_bytes": 1048,
+      "sha256": "9ddefb4103977716d542f43e1bc87c7cf0ea87aae1a970c8940a5a16a85b9aa3"
+    },
+    {
+      "path": "assets/BedBoardPage-DuJLe-k2.css",
+      "bytes": 3320,
+      "gzip_bytes": 899,
+      "sha256": "13f8f7d2fbaedab673d7a367d6bdea146af009c6b496083f9db12c5ce0b746b6"
+    },
+    {
+      "path": "assets/ReportsDomainHubPage-D5F9yUd3.css",
+      "bytes": 338,
+      "gzip_bytes": 213,
+      "sha256": "171b007b370aaf62d922a052455eb4e0dc6e558c7561a61c236aa1b62bb043fe"
+    },
+    {
+      "path": "assets/BedFormPage-Cr39UQP4.css",
+      "bytes": 2877,
+      "gzip_bytes": 878,
+      "sha256": "042d1a78ec58711ae5e39f3c4341e464ed80499d66d48accee2dd27cab0b02f8"
+    },
+    {
+      "path": "assets/ReceptionGatewayPage-DyKiIt__.js",
+      "bytes": 24810,
+      "gzip_bytes": 6969,
+      "sha256": "845cfd59764e91d12ea3e586aadc508c22a5b3ba5b5468b0a8b530037698e0a8"
+    },
+    {
+      "path": "assets/AppLayout-DHweIGCJ.js",
+      "bytes": 55135,
+      "gzip_bytes": 16586,
+      "sha256": "9dedd22a4fa1b033370b7dd3a8db841114a245f1694579e651dd501a9bbd272d"
+    },
+    {
+      "path": "assets/ExpensesPage-CcgSuJR8.js",
+      "bytes": 7282,
+      "gzip_bytes": 2889,
+      "sha256": "4a01159ee854017e5609db9f4bd664fc295fd1e6dde840e1a1ccf18a95ad1ef2"
+    },
+    {
+      "path": "assets/StaffFormPage-C3Sfkp5C.js",
+      "bytes": 5838,
+      "gzip_bytes": 2340,
+      "sha256": "9b7ab29f6c54b5ce715bab72f83a10e3fda7821bc661e692968871ac6030399d"
+    },
+    {
+      "path": "assets/SectorsPage-HVg2UL_Q.js",
+      "bytes": 6496,
+      "gzip_bytes": 2712,
+      "sha256": "0f554e6a97cc2d2201166893d7476084c9537e69b42d2c4af3e9d5e5dffb4875"
+    },
+    {
+      "path": "assets/CompanySectorsPage-DSoXC8Ur.js",
+      "bytes": 9517,
+      "gzip_bytes": 3347,
+      "sha256": "f7ff4d1051ba95fdbf57eca72c2e47866db1c0b1e6603f5378fd3d2a0095c4da"
+    },
+    {
+      "path": "assets/DsInput-DSrTKQqL.js",
+      "bytes": 3592,
+      "gzip_bytes": 1268,
+      "sha256": "c395643d4ce5211e12d666fdd2d068289bd1cb1fa1cec47e72785b416fed890b"
+    },
+    {
+      "path": "assets/SplitSimulatorPage-DusAmhCs.js",
+      "bytes": 7088,
+      "gzip_bytes": 2931,
+      "sha256": "33b7f6ce4abefcc1c07b901901ec3a3166dc6ce2a41bda181d734ba11ca501e5"
+    },
+    {
+      "path": "assets/financeCards-DNTqGr3P.js",
+      "bytes": 473,
+      "gzip_bytes": 299,
+      "sha256": "4153d0159b7f299382d99ef25c22392c08b39bc1e783bfda2103cf16bc944645"
+    },
+    {
+      "path": "assets/WebhooksListPage-BC01uld6.js",
+      "bytes": 4865,
+      "gzip_bytes": 2016,
+      "sha256": "0cd6a08b6aea276482c7997d2b151d6a59fca501583daa22aff4aa680863dda0"
+    },
+    {
+      "path": "assets/CardsPage-D36mYgfY.css",
+      "bytes": 766,
+      "gzip_bytes": 312,
+      "sha256": "cc6b3276cb353a7aff70409de8a2df05a4efe07dc126e8490083f69dd3ab3e75"
+    },
+    {
+      "path": "assets/FiscalICMSMatrixPage-C-66gfOb.js",
+      "bytes": 5180,
+      "gzip_bytes": 2060,
+      "sha256": "69fe77ef1e785e8e03c4725cc5b280a3d7344b0afd256cc4ad7f655c3b5b6b2f"
+    },
+    {
+      "path": "assets/AppointmentQuickCreateForm-5ousehwJ.js",
+      "bytes": 20578,
+      "gzip_bytes": 6063,
+      "sha256": "3f83971236cf58e9ddec6499ba2584732a2b9f18aec00401d492c466c5e71584"
+    },
+    {
+      "path": "assets/hospital-guarapiranga-logo-D8wB4tTv.js",
+      "bytes": 63,
+      "gzip_bytes": 83,
+      "sha256": "81abc48bf41f008cabc617c7a181995f4ac479de5235138328b4fc1fb233fa5e"
+    },
+    {
+      "path": "assets/CounterSalesPage-i7sqfAp7.css",
+      "bytes": 17086,
+      "gzip_bytes": 2766,
+      "sha256": "e6017b2fe63ab7ba8297c3d8fa71bee57dc96dd05ec5fac71a5efa43b19defc2"
+    },
+    {
+      "path": "assets/LaboratoryAnalyticalWorkbench-CqqaMTk3.css",
+      "bytes": 4213,
+      "gzip_bytes": 1145,
+      "sha256": "bfa691f88968e91404a535828a5f4a9bf8a7441f2a0bfd9900b47dc4b9ca0fac"
+    },
+    {
+      "path": "assets/MedicalRecordsListPage-CP1yv-Tt.js",
+      "bytes": 5326,
+      "gzip_bytes": 2169,
+      "sha256": "8c02a3f243a15fd3e39bdf4c5930990f067e79ea3c3592e95acc19f92be501f9"
+    },
+    {
+      "path": "assets/ProductsImportPage-Bwye6kRI.css",
+      "bytes": 2585,
+      "gzip_bytes": 830,
+      "sha256": "9ac2d814c956edaa581ca4de346957e2cef8c5d78b530c718d0c1d74946f0276"
+    },
+    {
+      "path": "assets/FiscalIPIPage-BRACB2yw.css",
+      "bytes": 479,
+      "gzip_bytes": 234,
+      "sha256": "f51b2e0e4146e63d5d50e36be3d9d0884d669de14c8d8c963fe3243a270d54e9"
+    },
+    {
+      "path": "assets/AuditPage-Choz4VjU.css",
+      "bytes": 3559,
+      "gzip_bytes": 866,
+      "sha256": "0626eda913d55e6fcc3de307fcde19456cf0e688a07dc0927a93c2ff26f89bd9"
+    },
+    {
+      "path": "assets/SuppliersPage-BxNPToti.js",
+      "bytes": 11757,
+      "gzip_bytes": 3954,
+      "sha256": "2591908f43d57fc5975e1a3a88dfe48765f71f13c7377438f8bad00431aa459b"
+    },
+    {
+      "path": "assets/coatColors-7l_FA63l.js",
+      "bytes": 658,
+      "gzip_bytes": 373,
+      "sha256": "e41cf1f7659889ae91283b6b14d170f814ad613d28e5fa902807633e67f3b988"
+    },
+    {
+      "path": "assets/CardAccountsPage-CqkmTzko.js",
+      "bytes": 9088,
+      "gzip_bytes": 3302,
+      "sha256": "c9b661eb6662e3b33e4ed309fbea5f0db2830d176d9bcfefbe9e7aec27ad15a3"
+    },
+    {
+      "path": "assets/MedicalRecordsDetailPage-CUmsjYmv.js",
+      "bytes": 42667,
+      "gzip_bytes": 11444,
+      "sha256": "d96b21d21cfaf6bd62e71b17419c3be22851167c4dde705c41721d12c831fe80"
+    },
+    {
+      "path": "assets/InpatientDailyChargesPage-S3V5utXc.js",
+      "bytes": 8862,
+      "gzip_bytes": 3593,
+      "sha256": "db4f955b4abb6b9ba3ea46a1af1d1e60965cd425058dff55b86546b5e4c293bb"
+    },
+    {
+      "path": "assets/LoginPage-ZvWgatIN.js",
+      "bytes": 6733,
+      "gzip_bytes": 2990,
+      "sha256": "b985c4c50ced037e634396a67439a237e2c174b4a1f56505b4515d0854655ef9"
+    },
+    {
+      "path": "assets/MarketingCampaignsPage-DQsTMwKx.css",
+      "bytes": 745,
+      "gzip_bytes": 242,
+      "sha256": "1e0c61e798fd1c1db863222620526487d7a385278e201c71c7600d082255ec18"
+    },
+    {
+      "path": "assets/LaboratoryHemogramReferenceValueFormPage-BpGzMJVR.css",
+      "bytes": 1705,
+      "gzip_bytes": 568,
+      "sha256": "90e634b6aa5cac5dca4f723c506d2c872682a6be5376741628cb988592b9e382"
+    },
+    {
+      "path": "assets/LaboratoryBiochemistryReferenceValueDetailPage-DAwsXf7Y.js",
+      "bytes": 3221,
+      "gzip_bytes": 1417,
+      "sha256": "7bfc5ebe73ea83814207b7bfe92883acf44632bca680effa41e4724422262af6"
+    },
+    {
+      "path": "assets/VetusAssistedImportPage-CGlxe9SG.js",
+      "bytes": 13472,
+      "gzip_bytes": 4815,
+      "sha256": "4a80ab4c17f9633e4b106e5020ebc77912991eddefcc25032fdaeef18de8b95e"
+    },
+    {
+      "path": "assets/TimeOffPage-DN1agaP-.js",
+      "bytes": 6202,
+      "gzip_bytes": 2600,
+      "sha256": "2962f5c82e944700e7f11655e8b93c2e1def454a6896342cf82a6f22e65096e4"
+    },
+    {
+      "path": "assets/AppDetailSection-KXZzsPvH.js",
+      "bytes": 580,
+      "gzip_bytes": 374,
+      "sha256": "bece9c3f8b2d9a6cc38ad4f7d96e6ef50f285173142dc01f70541c4c679f4a92"
+    },
+    {
+      "path": "assets/AuditPage-BfJhlm9r.js",
+      "bytes": 10971,
+      "gzip_bytes": 3816,
+      "sha256": "3382e19b1618b2fbef143509e87037a605b3f0efb1491abb3c3ef31c3c0e5b59"
+    },
+    {
+      "path": "assets/StaffListPage-WYGHxbPB.js",
+      "bytes": 7081,
+      "gzip_bytes": 2721,
+      "sha256": "2c4cb734fadc3734a3339ae41ebe3a1c912c08e12f4fce1dd79468f3175b2eeb"
+    },
+    {
+      "path": "assets/DsModal-DcUvFlKp.js",
+      "bytes": 3329,
+      "gzip_bytes": 1402,
+      "sha256": "cd3239b924235aeed288eaf4de52c33fc6be15751eababcc24401f56f5203621"
+    },
+    {
+      "path": "assets/DsCard-BYDUOKOI.js",
+      "bytes": 1636,
+      "gzip_bytes": 787,
+      "sha256": "dc028945878395198729ec67532f92e1fc8dbe3d7ce37a24420db3ddfb47595d"
+    },
+    {
+      "path": "assets/FiscalTaxOperationPage-tdBxFKX9.js",
+      "bytes": 5214,
+      "gzip_bytes": 2318,
+      "sha256": "0deb3d36efd66c9733d62776831b15c49eb504d160fd0ecb70001a43da679086"
+    },
+    {
+      "path": "assets/InventoryPriceAuditPage-06odw532.css",
+      "bytes": 2052,
+      "gzip_bytes": 694,
+      "sha256": "61ea16d8248af9c169926011627a1c9a52bb259ddc6c5295ba76de71e722769b"
+    },
+    {
+      "path": "assets/MarketingCampaignsPage-C_LbWGE-.js",
+      "bytes": 9971,
+      "gzip_bytes": 3287,
+      "sha256": "433151f925d29ef0bd78d148469e1e0d3809f9bc42fbf57dc383ef0e29ff7acc"
+    },
+    {
+      "path": "assets/services-DdVsE_F2.js",
+      "bytes": 560,
+      "gzip_bytes": 354,
+      "sha256": "06b4547decbd0ce0b65a7d7565787811b1c21b673971890a677c83fbb85ba47e"
+    },
+    {
+      "path": "assets/DiagnosticsPage-BmU-6oe2.js",
+      "bytes": 17228,
+      "gzip_bytes": 5495,
+      "sha256": "d40fac3ead56076a9794e6b01c354f2fc5cdc5d16d343a502f504cafcc61c3fd"
+    },
+    {
+      "path": "assets/FiscalNcmPage-CWKEOs3G.css",
+      "bytes": 302,
+      "gzip_bytes": 189,
+      "sha256": "24e0536091da094ba64a434f93939d8463f2c8aabd2ba9a57f345f7b8647a94b"
+    },
+    {
+      "path": "assets/ServicesListPage-BROWGAWH.css",
+      "bytes": 619,
+      "gzip_bytes": 321,
+      "sha256": "b5188fdca74c00eed623d6d025e704ec0f68c854ce004fe9f21b595a38e68be5"
+    },
+    {
+      "path": "assets/DsAlert-D1CdAUSR.css",
+      "bytes": 3029,
+      "gzip_bytes": 772,
+      "sha256": "40553e099c22858fa73f672558343e71a3b95ed29b9a2db3fab3339a2d4ba6c6"
+    },
+    {
+      "path": "assets/ProductFormPage-CGyhonwg.css",
+      "bytes": 1809,
+      "gzip_bytes": 641,
+      "sha256": "ee84db2d86ad31743951fd9649bfa047d1709aa17363b3f5a51c1fe67b7a7e11"
+    },
+    {
+      "path": "assets/InventoryDetailPage-BZZbLZjK.js",
+      "bytes": 5055,
+      "gzip_bytes": 1867,
+      "sha256": "e0977404f24e0174ed95c58ab83241125c867b6189764b21c602e533c836d882"
+    },
+    {
+      "path": "assets/CustomerGroupDetailPage-B2dK3bZg.css",
+      "bytes": 1081,
+      "gzip_bytes": 420,
+      "sha256": "30beb6dcb216e8f8bb99ed07c81873899bd5b20e8c91257acd1497aca79ee975"
+    },
+    {
+      "path": "assets/reports-CYYpOoHc.js",
+      "bytes": 2061,
+      "gzip_bytes": 846,
+      "sha256": "389515bdb6f247685f13c9131886a96dff56aa162bc9ad295c9ad3c4f5281e5a"
+    },
+    {
+      "path": "assets/EncountersListPage-BfBC-twq.css",
+      "bytes": 840,
+      "gzip_bytes": 425,
+      "sha256": "b7b9e5ac7ca617fa5d7f537ac3acde1ab868dc613a79a498eeda79c3f4c6f057"
+    },
+    {
+      "path": "assets/commercial-BrVX65IV.js",
+      "bytes": 1368,
+      "gzip_bytes": 481,
+      "sha256": "533f8bb1133a14707463d1803144be5ba5d628123def8989362bf51a102403ec"
+    },
+    {
+      "path": "assets/LaboratoryReferenceValuesPage-BFj8biDj.js",
+      "bytes": 2773,
+      "gzip_bytes": 1391,
+      "sha256": "3e71e712ad660d8f854922402db25793abad101b460fb68db4096da6ded13352"
+    },
+    {
+      "path": "assets/BreedFormPage-DwTgO9Q8.js",
+      "bytes": 5550,
+      "gzip_bytes": 2368,
+      "sha256": "e125c10ca6da69b95fbfe0938e72ab4712020ce75b1ddb15bc16168d782f56d5"
+    },
+    {
+      "path": "assets/StaffListPage-BaGyZWkv.css",
+      "bytes": 2714,
+      "gzip_bytes": 821,
+      "sha256": "e5a2d9cdccd4eeb7bae342703ff478d750ff7202ba98774fa8834e502f627567"
+    },
+    {
+      "path": "assets/PointOfSaleSyncPage-EygyWuyf.css",
+      "bytes": 1190,
+      "gzip_bytes": 487,
+      "sha256": "1a4af09dc4924b26a8b099938a8e92aae7f3f0984dfa9daab51bc01332c2ca71"
+    },
+    {
+      "path": "assets/AppointmentsListPage-D3sRPGF1.js",
+      "bytes": 48167,
+      "gzip_bytes": 13265,
+      "sha256": "c51564bd55271a30395599b61f400b999d850e9083566443db1df6eead93372c"
+    },
+    {
+      "path": "assets/vue-vendor-BvyKcelm.js",
+      "bytes": 108223,
+      "gzip_bytes": 42088,
+      "sha256": "42722635d4cdb662e73b4b017911a34535f37c4ee0fc4f9f54b55c7c11bcc33e"
+    },
+    {
+      "path": "assets/LoginPage-cJmJl-g_.css",
+      "bytes": 7087,
+      "gzip_bytes": 2063,
+      "sha256": "2e1f92531d1e502093daa538077937ef827f7d3f451cd06bba99ec482fd6f92b"
+    },
+    {
+      "path": "assets/LaboratoryHubPage-Dzh9Bm4b.css",
+      "bytes": 1922,
+      "gzip_bytes": 595,
+      "sha256": "8ded762d934a697014be71b23f8170d64fa93657f6c1836038886a20796156fe"
+    },
+    {
+      "path": "assets/FiscalPisCofinsPage-npUBS7Yc.css",
+      "bytes": 389,
+      "gzip_bytes": 199,
+      "sha256": "aa4d76af62b2b64d391049f546129f519bd8ee58deb6ba3c6c9f453f80dfd79a"
+    },
+    {
+      "path": "assets/LaboratoryOrdersPage-DH-4b0aa.js",
+      "bytes": 13134,
+      "gzip_bytes": 4505,
+      "sha256": "34d667e09ac9025107f7367172be5af481d6dc8168f4e7f4eaa650ff103b79de"
+    },
+    {
+      "path": "assets/species-6pKq0ihs.js",
+      "bytes": 1106,
+      "gzip_bytes": 573,
+      "sha256": "0a269b5ed8090958636a0d72eec037aa7bfdeb423a4088b00b260ee2798a5e85"
+    },
+    {
+      "path": "assets/OwnerDetailPage-BLjluYbl.css",
+      "bytes": 7044,
+      "gzip_bytes": 1292,
+      "sha256": "1ef355995c8bcac6d9d5bf34ba813b8c9fd07f3bb38b3cbd5e781137fe27ec05"
+    },
+    {
+      "path": "assets/FiscalNFSELayoutPage-CtRw4tLU.css",
+      "bytes": 581,
+      "gzip_bytes": 262,
+      "sha256": "085ab86f7a6017876eabce2c9f8767d9f02c5076444d2c2fe0fd080e0b8e535b"
+    },
+    {
+      "path": "assets/BillingDetailPage-DScCJhVK.css",
+      "bytes": 1343,
+      "gzip_bytes": 500,
+      "sha256": "fb3a4f3e47075dcc582851432b7a6e2b8678e1640dedefb53659a4b80db8e0b2"
+    },
+    {
+      "path": "assets/ChequesPage-DBgM6_uY.js",
+      "bytes": 7838,
+      "gzip_bytes": 3160,
+      "sha256": "8e03489692025cffbfde109892478ce2c6736b6d893f596c802bb4b798581693"
+    },
+    {
+      "path": "assets/audit-Cw8XZ3Z_.js",
+      "bytes": 567,
+      "gzip_bytes": 343,
+      "sha256": "4a68cb7e66e7b77d7c98871e4047f2b14b28b67c3cfb13e2c37e37fdb9510d37"
+    },
+    {
+      "path": "assets/CoatColorFormPage-Bd3iWty_.js",
+      "bytes": 6009,
+      "gzip_bytes": 2453,
+      "sha256": "881e02eb2a9ab79f80b81cc8f0c434093f1e9a4438a185045cf3425fc768bdd9"
+    },
+    {
+      "path": "assets/InventoryDetailPage-CC1yaV6O.css",
+      "bytes": 1051,
+      "gzip_bytes": 441,
+      "sha256": "e795c5705469b7f2b25b3055bb43eac61be309ae41e18e25a87a77294f4a068b"
+    },
+    {
+      "path": "assets/LaboratoryHemogramReferenceValueFormPage-DkLwkhqz.js",
+      "bytes": 4992,
+      "gzip_bytes": 2061,
+      "sha256": "1f57ca6e307ad3ee9517a4f703cb16902f1f71e2a67c206ded56e2a2e86be479"
+    },
+    {
+      "path": "assets/SplitRulesCatalogPage-BS4BeRuU.js",
+      "bytes": 622,
+      "gzip_bytes": 397,
+      "sha256": "fdcee8f130c8ab84a7d126f91028755801fe90262915a0a16dcc734ba044d330"
+    },
+    {
+      "path": "assets/EncounterFormPage-CRKqm7EI.css",
+      "bytes": 3657,
+      "gzip_bytes": 913,
+      "sha256": "05c2cdb8b22e95c69829c96296a19171e5274abf7cddc6c146a0ef63e9cf0caf"
+    },
+    {
+      "path": "assets/CostCentersPage-CaijEFSt.css",
+      "bytes": 775,
+      "gzip_bytes": 299,
+      "sha256": "55875d2b446770a2a716ab865771b525aa2759985aea0182a208f6b00b9440e9"
+    },
+    {
+      "path": "assets/ProductFormPage-BIqzjVyu.js",
+      "bytes": 5400,
+      "gzip_bytes": 2201,
+      "sha256": "ff6869eabaa506d6c4775ccc62498d5b555c262991c43d10b978879ae1601151"
+    },
+    {
+      "path": "assets/ServicesImportPage-BKnJno7p.css",
+      "bytes": 2386,
+      "gzip_bytes": 744,
+      "sha256": "b784db457c2ab17209f4eea0d3945da440876467c8c8265ab52374194dafb758"
+    },
+    {
+      "path": "assets/FiscalCOFINSPage-DEOpsTmd.js",
+      "bytes": 4337,
+      "gzip_bytes": 1844,
+      "sha256": "d7c729c1b911d3f842d67741e430616a957d63b2738a6d7efdc638f5ac6f6633"
+    },
+    {
+      "path": "assets/CurveAbcProductsPage-FV0jDKXc.js",
+      "bytes": 7404,
+      "gzip_bytes": 2968,
+      "sha256": "28b5e048a34e0576439dcbbe0c27ebf4f70f172a0c507211cd69107098be345c"
+    },
+    {
+      "path": "assets/FiscalCfopPage-CJBB1jMV.css",
+      "bytes": 483,
+      "gzip_bytes": 236,
+      "sha256": "b4da944e31e33cd58aa96ac34e45a80fe031ccf69bef695400af9157a79e082a"
+    },
+    {
+      "path": "assets/BreedDetailPage-CBZkP9gj.js",
+      "bytes": 4817,
+      "gzip_bytes": 1899,
+      "sha256": "b0f64b78380a5e11dde6543de7c3c216183804edf48a3e0cf92abffa78aa40c4"
+    },
+    {
+      "path": "assets/index-icnhK_HG.js",
+      "bytes": 172911,
+      "gzip_bytes": 41772,
+      "sha256": "201473f97a0482f91ccb92fe25eff9f27817b2a0209c6fae9eb627ef9a679813"
+    },
+    {
+      "path": "assets/customerGroups-B2srOhfo.js",
+      "bytes": 669,
+      "gzip_bytes": 376,
+      "sha256": "9aec2f56edc146fce9384dfc758960404ed8d28e4572030fd0416ec610e808fe"
+    },
+    {
+      "path": "assets/InventoryValidityPage-B2rnGdjd.css",
+      "bytes": 2182,
+      "gzip_bytes": 715,
+      "sha256": "78a00e78f7ff4eaa89142bb813255b7a02690a2f95712efc593b7f10e525850c"
+    },
+    {
+      "path": "assets/CoatColorDetailPage-Buwv4D7M.css",
+      "bytes": 1299,
+      "gzip_bytes": 487,
+      "sha256": "38b0a57214735f035ceb2e0374b65cf026015cb2d8f2039a0132ed54ae9a8204"
+    },
+    {
+      "path": "assets/OperationalFinanceCatalog-D5JmDDk8.js",
+      "bytes": 16305,
+      "gzip_bytes": 5457,
+      "sha256": "29969f54e903fc16fbc1df71e79e52419f22ed022d8e2eb03ed4d3b3664b04eb"
+    },
+    {
+      "path": "assets/VaccinesDewormersPage-DEIFpHh7.js",
+      "bytes": 14863,
+      "gzip_bytes": 4577,
+      "sha256": "60eb6ca05fe7b524e7fe5c64da7315197a619ca51d96e9d9cd3ffd98ce65b70e"
+    },
+    {
+      "path": "assets/InventoryInvoicesPage-Dbh-DeGk.js",
+      "bytes": 13184,
+      "gzip_bytes": 4535,
+      "sha256": "a4c1d96de6f3b6ad1d611f49d34d19df73db72b112dd097b36ec477d214fe08e"
+    },
+    {
+      "path": "assets/ResponsibilityTermDetailPage-uBs6rRRk.js",
+      "bytes": 5211,
+      "gzip_bytes": 2042,
+      "sha256": "568c668276cb3b88bdeecda9fdd38efe70daf1d87166316a9ef9374e5f529793"
+    },
+    {
+      "path": "assets/EncounterDetailPage-DKoqRhzM.css",
+      "bytes": 8879,
+      "gzip_bytes": 1822,
+      "sha256": "6bd4f0014d889e007197a608319501603217ebb956445abafec64bcbf6508c81"
+    },
+    {
+      "path": "assets/DsCheckbox-QIVpjP7O.js",
+      "bytes": 2006,
+      "gzip_bytes": 1011,
+      "sha256": "002a81c03bd7ca3042f7079e7dd48a5c9bd95d2432d02913e5d1b22405f2076e"
+    },
+    {
+      "path": "assets/AppLayout-B3zZjNHY.css",
+      "bytes": 26403,
+      "gzip_bytes": 4677,
+      "sha256": "ff0e0224e84ae8542d0f388ad47be95f5f0abb1ff1a8bc685a49b5abe4881b4e"
+    },
+    {
+      "path": "assets/ReportsEnginePage-KqLiZWdy.js",
+      "bytes": 21798,
+      "gzip_bytes": 6549,
+      "sha256": "4c7b64f7dddf4cedeed243eed3c6859845789031aa263516f7d4aa1593be273d"
+    },
+    {
+      "path": "assets/index-D8TuQv6f.css",
+      "bytes": 45685,
+      "gzip_bytes": 8546,
+      "sha256": "aadc142418f8608f849e061536c5f553146e2d39f4969ec7860f620486fa1851"
+    },
+    {
+      "path": "assets/AppointmentDetailPage-CJ_LN0bf.css",
+      "bytes": 1915,
+      "gzip_bytes": 542,
+      "sha256": "e42ff1c73a480a6ac5c0b171b0b39deb938f3ac7297dda943b8b3f9fc9b207b6"
+    },
+    {
+      "path": "assets/InventoryDataCollectorsPage-zEUCNbkZ.css",
+      "bytes": 3239,
+      "gzip_bytes": 909,
+      "sha256": "cd7f385b5a79451f27381d74e5bb2fd23c7377919a723f79ce8626f5925c5381"
+    },
+    {
+      "path": "assets/DiagnosticsPage-VDxtn_8I.css",
+      "bytes": 1476,
+      "gzip_bytes": 539,
+      "sha256": "349eacd84a5dc556123c536893e2664149ff4ed0aec392848d4f987ee1a197e2"
+    },
+    {
+      "path": "assets/LaboratoryAnalyticalWorkbench-wMLtRZ6R.js",
+      "bytes": 12959,
+      "gzip_bytes": 4843,
+      "sha256": "1fb9745f2e778188a579f079ac4eb0da87e095327bceac0689cb8ec28011e95b"
+    },
+    {
+      "path": "assets/BreedFormPage-Dz6AiAGx.css",
+      "bytes": 1545,
+      "gzip_bytes": 544,
+      "sha256": "08d0c5ab10b5ca6fd1f10284c7a28e228bc8dfa3b12e4ef1b9f183be0899d90b"
+    },
+    {
+      "path": "assets/AdvancePaymentsPage-XFSanN3e.js",
+      "bytes": 12782,
+      "gzip_bytes": 4294,
+      "sha256": "118449a706c67e335dc306eb6e7b05f12ab376b9bc657a5055319f5de5e9601b"
+    },
+    {
+      "path": "assets/CurveAbcClientsPage-rLqvQSz5.js",
+      "bytes": 7302,
+      "gzip_bytes": 2960,
+      "sha256": "1afeedabe973d3f453d095dcd7cad534032844e0ef3a7c53df6f0eeb4f92b321"
+    },
+    {
+      "path": "assets/EmptyState-BnUctsmb.js",
+      "bytes": 727,
+      "gzip_bytes": 456,
+      "sha256": "012bd35172d6f7ddb7e06a3a87cccbb0813e0801541351db92f75f2899a46571"
+    },
+    {
+      "path": "assets/FinancialDashboardPage-BNjMbbBI.js",
+      "bytes": 11295,
+      "gzip_bytes": 3962,
+      "sha256": "fc7d95b1814825ef7151e56df2504db7fd1a79bd0e7afbc373d9fc6d63ce9660"
+    },
+    {
+      "path": "assets/CommissionRulesPage-DCqoQ4ps.css",
+      "bytes": 650,
+      "gzip_bytes": 275,
+      "sha256": "9915d11dd203c6d8bca726731173df8e6bc6004a53396e17b15ea29f5ccf7948"
+    },
+    {
+      "path": "assets/WebhookDetailPage-CRzYLD-R.js",
+      "bytes": 7444,
+      "gzip_bytes": 2953,
+      "sha256": "7004619c880df6d5611d6265b1007be32219bf8e74294c2a9e15a3fbe9c20337"
+    },
+    {
+      "path": "assets/DataTable-CrR186Jm.js",
+      "bytes": 4565,
+      "gzip_bytes": 2063,
+      "sha256": "ba887ad617033e1244cc13795453e3d07afc46849b015a1ded6d110a07c6a41a"
+    },
+    {
+      "path": "assets/FinancialReconciliationPage-By4jE39W.js",
+      "bytes": 8250,
+      "gzip_bytes": 2944,
+      "sha256": "178fd409c64f28de1e6d36db5c4743d185104867e16c5ea244f47c80337759b0"
+    },
+    {
+      "path": "assets/MasterSearchPage-C12Pk65q.js",
+      "bytes": 17209,
+      "gzip_bytes": 5305,
+      "sha256": "af6c3b1de29297559bc224fbb1702dcd7c4becd744a8c8fd34fe86ac8ab6c7f6"
+    },
+    {
+      "path": "assets/CommercialReportsPage-DrsIuWu8.js",
+      "bytes": 10953,
+      "gzip_bytes": 3632,
+      "sha256": "798f9299ee59ee925297e6f74a75b6aa1c3dc2cf05d6ce2ef5fe952105b05c40"
+    },
+    {
+      "path": "assets/StatusBadge-Dmyz8Inb.css",
+      "bytes": 54,
+      "gzip_bytes": 74,
+      "sha256": "9f729305ec964e74eff3c4aecf8d8db284f062a9ee213a38260deaf6a9f2504a"
+    },
+    {
+      "path": "assets/DsSpinner-K2FKrG6D.js",
+      "bytes": 903,
+      "gzip_bytes": 529,
+      "sha256": "66b655e73cda837d4537f746697b356ac234c9a25bc8cfea5d55bc372c7514fe"
+    },
+    {
+      "path": "assets/FinanceTimelinePage-BnFkoLwG.css",
+      "bytes": 970,
+      "gzip_bytes": 333,
+      "sha256": "47d6ee332875c519f72f187d69dbb33b1385775aba454c7a933f71227f62f61f"
+    },
+    {
+      "path": "assets/useListData-DGtvYKsc.js",
+      "bytes": 574,
+      "gzip_bytes": 389,
+      "sha256": "9b1b1ab178d34013ab0612f11f32a166faff849c2c52f320ed99731769cf929e"
+    },
+    {
+      "path": "assets/TriageListPage-CCewNei7.js",
+      "bytes": 5849,
+      "gzip_bytes": 2247,
+      "sha256": "87009b2fea5bec45ca876f1a37da91c97db2db0deb944dca9b4d99041cf30d90"
+    },
+    {
+      "path": "assets/CustomerGroupFormPage-CeTJnIrm.css",
+      "bytes": 1556,
+      "gzip_bytes": 546,
+      "sha256": "cc87818d6782a013da04461a0f5e85e3a43151d065c8995fbad8ef29f57352de"
+    },
+    {
+      "path": "assets/InpatientAdmissionPage-DQqKuCMX.css",
+      "bytes": 6492,
+      "gzip_bytes": 1489,
+      "sha256": "4cdd79f0e7aa809aa4b8b49f29aa4d389349b3c796f9e6034ba58693183d2348"
+    },
+    {
+      "path": "assets/LaboratoryReportTypeFormPage-DKYWRuMZ.css",
+      "bytes": 1816,
+      "gzip_bytes": 590,
+      "sha256": "aebc39e2261cb31e443482d1051185249bdc485ccc988a4b5eed61c34755a851"
+    },
+    {
+      "path": "assets/SpeciesListPage-DgBepxq0.css",
+      "bytes": 643,
+      "gzip_bytes": 331,
+      "sha256": "7d3f9c2a675834e04e1de788685a3348a09d84d9ccddcf6f180ddae1d2ffa0ad"
+    },
+    {
+      "path": "assets/ReportWorkbenchPage-BchgLzzK.js",
+      "bytes": 82557,
+      "gzip_bytes": 19664,
+      "sha256": "141fcff2c77f9c09430ba9064b31ffd1ac1e3ca9ee4fb9963992ba77de948211"
+    },
+    {
+      "path": "assets/MarketingSmsSettingsPage-C269NbAB.js",
+      "bytes": 4507,
+      "gzip_bytes": 1842,
+      "sha256": "23cf1623d910092103dc40d74f06e07101a774e4df1eac03b02de3ba61d6944e"
+    },
+    {
+      "path": "assets/LoyaltyPage-uotNIWGp.css",
+      "bytes": 4328,
+      "gzip_bytes": 1083,
+      "sha256": "3269fd16ad75f8940758be087d7b64c6b1c9f9c2dcb2924ef2da17609ae7fcf0"
+    },
+    {
+      "path": "assets/AppointmentFormPage-BWTh-k1m.js",
+      "bytes": 3565,
+      "gzip_bytes": 1571,
+      "sha256": "d30110fe7417c65c273e4fdc5001c667c69404d3da74a6bcf8bd31cea7c77464"
+    },
+    {
+      "path": "assets/InventoryAuditPage-Cuqc60wJ.js",
+      "bytes": 13257,
+      "gzip_bytes": 4650,
+      "sha256": "f2bb19a4e64038b46b589b33c0bc726e3ca15ffd1bb151925044bc09a6afa466"
+    },
+    {
+      "path": "assets/MedicalRecordsDetailPage-MvjWKEzy.css",
+      "bytes": 12553,
+      "gzip_bytes": 2165,
+      "sha256": "f5cd75c26895c4048c262bb46c0ab14ed225cb1ed5987e7163cabc7cf5408b16"
+    },
+    {
+      "path": "assets/ServicesListPage-BA67aU0G.js",
+      "bytes": 3461,
+      "gzip_bytes": 1703,
+      "sha256": "8aa7dc4d65c7d6ebf7868290b3ea82be699487a163efffae9bf7c6c84f895b5a"
+    },
+    {
+      "path": "assets/ReportWorkbenchPage-C2rqPmeQ.css",
+      "bytes": 3403,
+      "gzip_bytes": 972,
+      "sha256": "db00fb6a6f1d8a4487cece9089a769129302959792cd9a2330f625ad9105aeed"
+    },
+    {
+      "path": "assets/ReportsEnginePage-Cptlomuu.css",
+      "bytes": 2553,
+      "gzip_bytes": 680,
+      "sha256": "dd93c76a75dac16ce0d5e845b98f8b5921809c0b43501f1107c5e27fb0e72ce4"
+    },
+    {
+      "path": "assets/UserDetailPage-CfXX8xVW.js",
+      "bytes": 8314,
+      "gzip_bytes": 2939,
+      "sha256": "52ef1567177ce5bc47415aaf09d3caaebbf4f4418bca241c1ffa8200c131a62c"
+    },
+    {
+      "path": "assets/BillingDetailPage-O-t4IpBS.js",
+      "bytes": 13793,
+      "gzip_bytes": 4412,
+      "sha256": "d4ad6fbb9a95c8328c2fd1a56f6c3719787464331215fd3a2432c58bc0407bae"
+    },
+    {
+      "path": "assets/VaccinesDewormersPage-DYyLm_Op.css",
+      "bytes": 1792,
+      "gzip_bytes": 604,
+      "sha256": "be886e3834a7d152f2850e5c1d2e8415af638db0767cc3e124307cea34f5df86"
+    },
+    {
+      "path": "assets/vaccinesDewormers-CCD_frPH.js",
+      "bytes": 1395,
+      "gzip_bytes": 602,
+      "sha256": "90033303aaa589f7f18e73d89f09d9be0de5ca9231b37e4a399334846fcebf4b"
+    },
+    {
+      "path": "assets/UserFormPage-BAcwtrv3.js",
+      "bytes": 7674,
+      "gzip_bytes": 2820,
+      "sha256": "f7d68c95c4db22913254f40ef111e50ac680446e073c3f4df213228e3d87c1da"
+    },
+    {
+      "path": "assets/LaboratoryBiochemistryPage-te1yf5wA.js",
+      "bytes": 733,
+      "gzip_bytes": 446,
+      "sha256": "8cc2fc2b8ededecd667a92c7c2f8f6c2e21681713d7a077c9904d2d1deace164"
+    },
+    {
+      "path": "assets/BreedDetailPage-Cd2kVMFc.css",
+      "bytes": 1072,
+      "gzip_bytes": 415,
+      "sha256": "8923636351b30efbcfc8bc7519a8c11348844af8c97d31123eec4e679f40456e"
+    },
+    {
+      "path": "assets/scheduling-nLLqIplb.js",
+      "bytes": 1136,
+      "gzip_bytes": 501,
+      "sha256": "08df61f8dda7a7fe2c245e57edac7dbc8d5b373218bcac732d4c71fbec003dc3"
+    },
+    {
+      "path": "assets/MultibranchDashboardPage-ycy06HYR.js",
+      "bytes": 6719,
+      "gzip_bytes": 2688,
+      "sha256": "5cb8108700be0d217311de615a660a7929f64eaca2b72b47429a64e9832eea21"
+    },
+    {
+      "path": "assets/InventoryPriceAdjustmentsPage-CXOREU0v.css",
+      "bytes": 1837,
+      "gzip_bytes": 650,
+      "sha256": "724d2b2e9ef547b65fc033940658c205a282a9daf9778d275366302f23a7494a"
+    },
+    {
+      "path": "assets/SkeletonLoader.vue_vue_type_script_setup_true_lang-DSrYY0Ml.js",
+      "bytes": 1224,
+      "gzip_bytes": 600,
+      "sha256": "36136531134712cf98b4c1075b1d0988729f123278b20431b2fcbd6116805b73"
+    },
+    {
+      "path": "assets/DsModal-CsgngRts.css",
+      "bytes": 2355,
+      "gzip_bytes": 853,
+      "sha256": "50ff0132f634fd4c79b4d71e239c34c6909d6eedc94f02cd34d4e4be67337a5e"
+    },
+    {
+      "path": "assets/PaymentsDashboardPage-CPgIg7oL.css",
+      "bytes": 2801,
+      "gzip_bytes": 728,
+      "sha256": "f2f02fbe4a7aeaba507c4f52fa3e1241f7dd75e180ae1f113eab78446cc4a78b"
+    },
+    {
+      "path": "assets/InventoryValidityPage-b27tVxGR.js",
+      "bytes": 12041,
+      "gzip_bytes": 4336,
+      "sha256": "b2e0bab88acfb46a298061f0ec6b6ad58d4953754d1b57d0868083e67c4e24da"
+    },
+    {
+      "path": "assets/ManufacturersPage-BkkRmKDM.js",
+      "bytes": 8174,
+      "gzip_bytes": 3039,
+      "sha256": "c2d0266a69e1ef7574ad05e6a02a5ebd27bf9545a1ecc63eb2ac85fe34b2f4be"
+    },
+    {
+      "path": "assets/InventoryPriceAuditPage-DdeVz94m.js",
+      "bytes": 12051,
+      "gzip_bytes": 4342,
+      "sha256": "0dfca5073b3075f8efc5619934ecfc9f2d1ace36ec3e6304805c6c1b83e4d234"
+    },
+    {
+      "path": "assets/BanksCatalogPage-DRnYX7DB.js",
+      "bytes": 616,
+      "gzip_bytes": 393,
+      "sha256": "255c68a1a3015d4fede7493066a4867823ab3bdb1f64d83ad5a2be4c6b7b72f3"
+    },
+    {
+      "path": "assets/FinancialReconciliationPage-oxAUV20C.css",
+      "bytes": 904,
+      "gzip_bytes": 333,
+      "sha256": "6bd08723a91e140f71e08138238d87d6822122fc2884b0bdd760846efa8ec90e"
+    },
+    {
+      "path": "assets/DsAlert-CVjB61D_.js",
+      "bytes": 1190,
+      "gzip_bytes": 648,
+      "sha256": "971def112ad924ddb5a5e5025ae19dee90b116f339bb315867caacbaa943a6b4"
+    },
+    {
+      "path": "assets/TriageFormPage-D3C-0Ot3.js",
+      "bytes": 5430,
+      "gzip_bytes": 2193,
+      "sha256": "3dd77a2e345a806b9ad0bac45447bb807d7436ac227bdf579bed788b141b3bfa"
+    },
+    {
+      "path": "assets/SetupPage-DADEZ_DR.css",
+      "bytes": 3891,
+      "gzip_bytes": 1219,
+      "sha256": "54a05564a51933855d11458906c4a42acd00748f9d7df5926fbb1e3fc158daf9"
+    },
+    {
+      "path": "assets/CustomerGroupFormPage-DGFRt1yx.js",
+      "bytes": 5951,
+      "gzip_bytes": 2277,
+      "sha256": "cf44aadeea363fa6a6ec4038e0d411d87216634aa149d4bda7e15ecb709ad291"
+    },
+    {
+      "path": "assets/ProductsImportPage-BAB6bmV9.js",
+      "bytes": 9456,
+      "gzip_bytes": 3814,
+      "sha256": "22e71245a287274f1a27d137b0d51e85b288bbb7f8dee13003a6846bf1fdce95"
+    },
+    {
+      "path": "assets/StatusBadge-BLeWqBxm.js",
+      "bytes": 707,
+      "gzip_bytes": 441,
+      "sha256": "3a3067fe0273dc9de5d5f0fab84fb5febd2e7a54bae6bc67ca835d5f0a8ee204"
+    },
+    {
+      "path": "assets/RegisterReportsPage-sYgkxJs9.css",
+      "bytes": 54,
+      "gzip_bytes": 74,
+      "sha256": "9ad6b2eceb6f15c85b4e9dbc6745a273dddaf3e383e5ae89666a56b618457831"
+    },
+    {
+      "path": "assets/diagnostics-D3zkBw69.js",
+      "bytes": 566,
+      "gzip_bytes": 313,
+      "sha256": "7894c0509df53c4576f4e157eeeef06857323bec891131c24bae4b553df41ff9"
+    },
+    {
+      "path": "assets/SplitExporterPage-DOJLOl9w.css",
+      "bytes": 2129,
+      "gzip_bytes": 627,
+      "sha256": "4b4a5ab4db2fcee5f4a504c1cdd0807a380dc901d740bd507e77b03f048339d1"
+    },
+    {
+      "path": "assets/owner-6p93yhU4.js",
+      "bytes": 891,
+      "gzip_bytes": 459,
+      "sha256": "ba0a2fc393b1079e83737b53f8f26ee125829aa484decc2bcaa89370ea3c50d4"
+    },
+    {
+      "path": "assets/ApiKeysPage-tGQNEVbK.css",
+      "bytes": 3850,
+      "gzip_bytes": 984,
+      "sha256": "aaa88c7918bca767c6638420e51deef5f7e811af1cc9dff68f064d8fe901af83"
+    },
+    {
+      "path": "assets/SpeciesFormPage-CNST0nFE.css",
+      "bytes": 1551,
+      "gzip_bytes": 546,
+      "sha256": "fd47b65d0d8005c88a055cdc0e5dfed4fe407f642823663f17b2ae1f7f3d200f"
+    },
+    {
+      "path": "assets/PatientDetailPage-BYVn1JWE.css",
+      "bytes": 22518,
+      "gzip_bytes": 3859,
+      "sha256": "ac3fac5acdaac4d60ece87306744febf609020c6365bc688742835e31241eab4"
+    },
+    {
+      "path": "assets/ResponsibilityTermsListPage-D9nncUra.js",
+      "bytes": 4138,
+      "gzip_bytes": 1844,
+      "sha256": "dbd0417cada461afae3b5a0bc2ce8fc511b0fa68f5b72518643fdbdff6d1d28b"
+    },
+    {
+      "path": "assets/inpatient-Bel27Bjo.js",
+      "bytes": 2606,
+      "gzip_bytes": 788,
+      "sha256": "c751dc255a4001e4538ca5810941dd8b9464e8d4303d3dff76aaa524cd0c56a2"
+    },
+    {
+      "path": "assets/LaboratoryEquipmentPage-D8kXJDXs.js",
+      "bytes": 5405,
+      "gzip_bytes": 2245,
+      "sha256": "c7edba0ae606666937a612f8c7e3721828652c0cb016257e3f8ea0ab1eccdc50"
+    },
+    {
+      "path": "assets/ExamResultsApiPage-x76MMEGc.js",
+      "bytes": 4123,
+      "gzip_bytes": 1812,
+      "sha256": "8f53f0ec70aebe5fa9322e1c455f6d7c22afe6845125d1153c831a940f2ca6d5"
+    },
+    {
+      "path": "assets/EmptyState-C1bNeyWc.css",
+      "bytes": 567,
+      "gzip_bytes": 287,
+      "sha256": "fe794a10da84648a2a987e9efcb0e077ed7a07445e74fb970c13d1a8284e43f4"
+    },
+    {
+      "path": "assets/MfaPage-ByXo27pJ.js",
+      "bytes": 4839,
+      "gzip_bytes": 2089,
+      "sha256": "71aaf2bf04fb8e3b913bcdcf66c9bd0c12c0e500f56965318e5ed1a28b8d3d53"
+    },
+    {
+      "path": "assets/NotFoundPage-B0MSHv6p.js",
+      "bytes": 629,
+      "gzip_bytes": 453,
+      "sha256": "fb288a1f5b9a788ed24374543217d6bb862c18f9cd8014a5ebe5e87876b01f10"
+    },
+    {
+      "path": "assets/BedBoardPage-B74GcvvN.js",
+      "bytes": 4843,
+      "gzip_bytes": 2099,
+      "sha256": "f73407e7e625f99755d0abd0825331e903e8f8e95c4bfb783bd0184e3b5e0321"
+    },
+    {
+      "path": "assets/InventoryDataCollectorsPage-CaEH5slr.js",
+      "bytes": 15697,
+      "gzip_bytes": 5331,
+      "sha256": "b75228758b970774e9cd66345229fb6467cb39e06f4e392b7febdafc00b6ddfd"
+    },
+    {
+      "path": "assets/TimeOffPage-yCOv2pyU.css",
+      "bytes": 836,
+      "gzip_bytes": 337,
+      "sha256": "19b83b368534efca545bced28d0e37b3afa405da9be9ada81de47b05327d1ba0"
+    },
+    {
+      "path": "assets/CardTransactionsPage-CUdD7EJr.css",
+      "bytes": 2703,
+      "gzip_bytes": 785,
+      "sha256": "513e8302f910c986de4e2faa428644f35a7bdbd62519ab4f17f2849fc83526b3"
+    },
+    {
+      "path": "assets/InventoryTransfersPage-dcgusIH6.js",
+      "bytes": 17263,
+      "gzip_bytes": 5788,
+      "sha256": "3076575037d27eeaf229e780cc063f4a7034924858c1b9421ddbfd98098c17e2"
+    },
+    {
+      "path": "assets/PrescriptionExecutionsPage-C79CMS6K.css",
+      "bytes": 1906,
+      "gzip_bytes": 608,
+      "sha256": "f0fc6ad4d9b6feb3b9105a5ffb67d6b328e5f480ec33339a72ed8f9ae384cd65"
+    },
+    {
+      "path": "assets/BreedsListPage-B0UREtnS.css",
+      "bytes": 642,
+      "gzip_bytes": 331,
+      "sha256": "e15601952294323c8f45f3657d9cb73ea4f65e4d105fb5949537ee88ec8f5cd4"
+    },
+    {
+      "path": "assets/MarketingSmsPage-BMMAE_Kj.css",
+      "bytes": 1699,
+      "gzip_bytes": 466,
+      "sha256": "05b7d2d0cec4e02c5be959cadf2c0c4e9912028f5dcc93a0342a7ac151d38450"
+    },
+    {
+      "path": "assets/DsInput-CJttbCBM.css",
+      "bytes": 3344,
+      "gzip_bytes": 1106,
+      "sha256": "9c64f91c67816dde6f03abc50e7ef0a83cca9d67bf2b005d8f7cecc9695d2e2b"
+    },
+    {
+      "path": "assets/VaccineEmailLayoutPage-DM8ME9sB.css",
+      "bytes": 1145,
+      "gzip_bytes": 411,
+      "sha256": "5e40d147bf50785fd4b38f7cb53d1a36b10a1033056e63d968ee18f32c2fd87d"
+    },
+    {
+      "path": "assets/InventoryListPage-DLZB_ejv.css",
+      "bytes": 1786,
+      "gzip_bytes": 641,
+      "sha256": "1c03d04f079c80a87c5c2d5a3effbf2e3efb4bc1f5ea498dbdb97f23e17621c9"
+    },
+    {
+      "path": "assets/FinancialDashboardPage-C-Fap7xL.css",
+      "bytes": 2446,
+      "gzip_bytes": 635,
+      "sha256": "c84e33fb6adb7cac4178e107ed881acdad63c49b790589a6ddad9e85e5310356"
+    },
+    {
+      "path": "assets/SalesPage-BY3My96S.css",
+      "bytes": 5111,
+      "gzip_bytes": 1227,
+      "sha256": "6c11f1acb9adbad5527f5209b690cf0816324dac2731fdb9adb09ebce530de36"
+    },
+    {
+      "path": "assets/MasterSearchPage-dLzoyyFk.css",
+      "bytes": 3470,
+      "gzip_bytes": 977,
+      "sha256": "6b9baf3a43daa10711e24900c77963af51a05a015e17cb8d1a790142e790235f"
+    },
+    {
+      "path": "assets/LaboratoryHubPage-Ca_6t15d.js",
+      "bytes": 5732,
+      "gzip_bytes": 1884,
+      "sha256": "7dd525f80c1aca3f7195209c93156fb4a8dbdfe19b17716eaf5b418d8c9f66a2"
+    },
+    {
+      "path": "assets/WarehousesPage-BtUES_LZ.js",
+      "bytes": 8508,
+      "gzip_bytes": 3133,
+      "sha256": "71d03c90c03802bec041adbb3a2c2ddbb7c646e27b8319977330c2600b425ab6"
+    },
+    {
+      "path": "assets/MultibranchDashboardPage-DqGVI8M0.css",
+      "bytes": 880,
+      "gzip_bytes": 382,
+      "sha256": "fc2f787008d1c7807e85c0c302be93437919820cac11db5ba60d07bdfb078f38"
+    },
+    {
+      "path": "assets/MedicalRecordsListPage-HOagMhCR.css",
+      "bytes": 1591,
+      "gzip_bytes": 505,
+      "sha256": "d7180ce05e29107a34503a8c7f570c33488307a464b4ce35ca9420787ee4e8ac"
+    },
+    {
+      "path": "assets/StaffDetailPage-Cs2RhNVi.css",
+      "bytes": 1532,
+      "gzip_bytes": 548,
+      "sha256": "11fdcdee974ae1ca4d3bd4fb804dea46bfb5dc3d9cac47d6f3b50c2370500791"
+    },
+    {
+      "path": "assets/webhook-BRgJcdBB.js",
+      "bytes": 777,
+      "gzip_bytes": 398,
+      "sha256": "80724aaaa2cdda13761877209a71ac49bfebb0aaabcbf50cc3b092684f070aef"
+    },
+    {
+      "path": "assets/PatientsListPage-DLmRQ0Xt.css",
+      "bytes": 6783,
+      "gzip_bytes": 1429,
+      "sha256": "1213daf7c19c297b853dbdcacef9b04d8ff86324bd1256eb34377bdb020427f3"
+    },
+    {
+      "path": "assets/BedDetailPage-BCC-VjZ8.js",
+      "bytes": 7620,
+      "gzip_bytes": 2869,
+      "sha256": "f6da571cb54ce20909f46abc66090d97fed9a0b1711912254a8626921aa84a71"
+    },
+    {
+      "path": "assets/SpeciesDetailPage-BcfvNPcI.js",
+      "bytes": 4902,
+      "gzip_bytes": 1915,
+      "sha256": "bdaa916e2f869630cab82063c17795c42112b246d3cb88abac1778d33eaf7840"
+    },
+    {
+      "path": "assets/ExamOrdersApiPage-DdBJ8pQQ.js",
+      "bytes": 10363,
+      "gzip_bytes": 3534,
+      "sha256": "34ec32fba10a3384ed5606583e117733fa6dedf0b3146cbb0449648d94f7a68b"
+    },
+    {
+      "path": "assets/SchedulingFormPage-DTUnrngJ.css",
+      "bytes": 605,
+      "gzip_bytes": 273,
+      "sha256": "dbbbb31b38ab55c11eb694fd1b8098ae695e9c6a9ef27ec19f2c96cb26247fab"
+    },
+    {
+      "path": "assets/accessControl-DRRwierH.js",
+      "bytes": 1364,
+      "gzip_bytes": 404,
+      "sha256": "0ddeb0da1ec2288e88efc1826374bf5b647c8fabedd268116e2f7bea0b7bac30"
+    },
+    {
+      "path": "assets/breeds-Bbc940td.js",
+      "bytes": 1082,
+      "gzip_bytes": 563,
+      "sha256": "20788c502195a642665aaff0a522a26b8292fbe4c50877201aa61a14beb097be"
+    },
+    {
+      "path": "assets/AppointmentsListPage-Bfgx-ZUJ.css",
+      "bytes": 32408,
+      "gzip_bytes": 5202,
+      "sha256": "dbc177372aa1f71c7820f186041e517e82ba44e6e4861f05fc6d6e79776a0697"
+    },
+    {
+      "path": "assets/InventoryFormPage-BYt7wdzn.js",
+      "bytes": 5798,
+      "gzip_bytes": 2206,
+      "sha256": "84eebe6d6c3fd92971d284b063a4f16620ec7b58879b7e976329ed9eb3c4561d"
+    },
+    {
+      "path": "assets/CardsPage-DqAZ_BA-.js",
+      "bytes": 7531,
+      "gzip_bytes": 2912,
+      "sha256": "05a8727ba32e5c76843a4e5e751ba10100abd6c11997195d15db40a38fc68aed"
+    },
+    {
+      "path": "assets/staff-BAXTs3U6.js",
+      "bytes": 1013,
+      "gzip_bytes": 407,
+      "sha256": "d094fde90cbab3ac2c6c7a92eef7b83801572d0073a067b5fb56a30acb32373d"
+    },
+    {
+      "path": "assets/TriageDetailPage-DDrGPdj3.css",
+      "bytes": 1220,
+      "gzip_bytes": 530,
+      "sha256": "73e465e7ff77320eccfae30b6d3c49cf46bab90795abec3cec90ba93a133c2ea"
+    },
+    {
+      "path": "assets/packages-z7vcdYDJ.js",
+      "bytes": 786,
+      "gzip_bytes": 290,
+      "sha256": "d8db9c0d6883969bbca5a1a2a7a424b2d1f7214a20d735ad5b491b589bc20167"
+    },
+    {
+      "path": "assets/financeCardMoney-B2XFuxG5.js",
+      "bytes": 521,
+      "gzip_bytes": 332,
+      "sha256": "d79bf9c6ec183f0754bfdf221ec5f25433ccabacdcf5ac192539fe088b5294b4"
+    },
+    {
+      "path": "assets/AccountsPayablePage-BW7WoFfd.js",
+      "bytes": 11706,
+      "gzip_bytes": 3864,
+      "sha256": "b5ce272f90b2a1127045c210729040cf7724d9be0271ffc7497b16de27046496"
+    },
+    {
+      "path": "assets/CardMachinesCatalogPage-DfR1TDJq.js",
+      "bytes": 631,
+      "gzip_bytes": 401,
+      "sha256": "d2f92532b9d6c6a15c70188a9e2918a34e8fb42669ce8b55255314e7c97b79c4"
+    },
+    {
+      "path": "assets/SetupPage-C6RHpZMh.js",
+      "bytes": 9065,
+      "gzip_bytes": 3239,
+      "sha256": "0c256e5b230d75ef839b0da1cf7d5abf8477cc0f505486fa32d4a41fb2822c6e"
+    },
+    {
+      "path": "assets/counterSales-CZ5akm7-.js",
+      "bytes": 1948,
+      "gzip_bytes": 709,
+      "sha256": "10bb619cedaa0c7c099e73178364ab72291c6b3e62b65381fc0e3240316466f3"
+    },
+    {
+      "path": "assets/EncounterReportsPage-BBw23-rH.css",
+      "bytes": 54,
+      "gzip_bytes": 74,
+      "sha256": "22393498885368d1a4a4a60b2123979ec660d487fe1faae1b563b5e4e60635fc"
+    },
+    {
+      "path": "assets/ResponsibilityTermFormPage-6xRKYBWM.css",
+      "bytes": 1941,
+      "gzip_bytes": 637,
+      "sha256": "30b869c2df99a4dae00928389ea8ffaee0842991aed0f8a56b1847b67e64c963"
+    },
+    {
+      "path": "assets/SuppliersPage-CZiLSdem.css",
+      "bytes": 3409,
+      "gzip_bytes": 868,
+      "sha256": "013122a2fff45095fa990d1e6c3bd0c6e72b9df0687a3a3a2decaa011d88ec8c"
+    },
+    {
+      "path": "assets/OwnersListPage-Dsb_7Oxi.css",
+      "bytes": 5236,
+      "gzip_bytes": 1222,
+      "sha256": "ca3b4aa73007ffb14108252f1ddf4a2a7c5217a3c363f5911ca2ab2c728035c3"
+    },
+    {
+      "path": "assets/ReportCategoryNavigation-D8gPW-JM.js",
+      "bytes": 1074,
+      "gzip_bytes": 604,
+      "sha256": "156b1999956f669ae30f1437bbc926b7d4b35b7c05f8c862bb0f6defc2150521"
+    },
+    {
+      "path": "assets/ResponsibilityTermFormPage-BjeYUZ-r.js",
+      "bytes": 6074,
+      "gzip_bytes": 2226,
+      "sha256": "5e955445e4f82667fd3c84c62813ec5c83d1b6b8d3607d37bc5d9b9ed677d857"
+    },
+    {
+      "path": "assets/ReportCategoryNavigation-BiqnaQrN.css",
+      "bytes": 1632,
+      "gzip_bytes": 619,
+      "sha256": "c1daca9dfe4ae2aaf7a5a312406818a16a1b580d38f101f43b34b5c9545a0e99"
+    },
+    {
+      "path": "assets/MarketingSmsSettingsPage-C0cmo2hv.css",
+      "bytes": 1687,
+      "gzip_bytes": 513,
+      "sha256": "f456a194cdd918b74e87c16b0a949d7124fcf34257b652484e33cf6f86c673d3"
+    },
+    {
+      "path": "assets/SkeletonLoader-Bj34QRhv.css",
+      "bytes": 704,
+      "gzip_bytes": 325,
+      "sha256": "849792c17e0f02c22a4833dba4388a720d458cce34b850aeeca3a146f663992a"
+    },
+    {
+      "path": "assets/LaboratoryHemogramReferenceValuesPage-IPoFrFqq.js",
+      "bytes": 4745,
+      "gzip_bytes": 2095,
+      "sha256": "5edc592190a5af78eb5f65a39810719b65fb48a0f9d96d666c59cb3e2d9650f2"
+    },
+    {
+      "path": "assets/LgpdHubPage-CFIiEhuz.js",
+      "bytes": 13361,
+      "gzip_bytes": 4644,
+      "sha256": "3c9497ea5aac6008b3477650b49819fbecbb6496a799c1265408136e7443add1"
+    },
+    {
+      "path": "assets/LaboratoryHemogramReferenceValuesPage-BdSkuG3v.css",
+      "bytes": 1178,
+      "gzip_bytes": 511,
+      "sha256": "b960022d5777d822efdeb7b422b6e97ffa5fa6981a8907fe1e1a4e31a613f007"
+    },
+    {
+      "path": "assets/clinicalHandoff-HWVQIvM4.js",
+      "bytes": 1153,
+      "gzip_bytes": 441,
+      "sha256": "bf520629ec8332d21211f32d786f036dfde0acf3752b33e1703e81056daa0d77"
+    },
+    {
+      "path": "assets/QueuePage-DRtxfrkr.css",
+      "bytes": 5382,
+      "gzip_bytes": 1442,
+      "sha256": "1d8effa7f3b5117f71191d9fdc75dfef2a6d89700c24c3e864f143c21c4a87fe"
+    },
+    {
+      "path": "assets/AppointmentQuickCreateForm-Sq4jlT6t.css",
+      "bytes": 1962,
+      "gzip_bytes": 627,
+      "sha256": "2c89835ba8b83d1baeaa967527042de3070f17f1a4f4ef9845737ec1ecde6617"
+    },
+    {
+      "path": "assets/InpatientAdmissionPage-Di_0k16m.js",
+      "bytes": 13368,
+      "gzip_bytes": 4465,
+      "sha256": "263c39e3ca79619c65fe219e4800d2b1ee0cb9613cc6309a0c48e2e8690bea6b"
+    },
+    {
+      "path": "assets/QuotesPage-Bkom3UVL.js",
+      "bytes": 18554,
+      "gzip_bytes": 5897,
+      "sha256": "61b0aa51b3403ea278eaf6f48e9418540c322eea177ce6b0afcb13e228c6abb4"
+    },
+    {
+      "path": "assets/agendaConfig-Bv-4o2iQ.js",
+      "bytes": 375,
+      "gzip_bytes": 200,
+      "sha256": "2f4938212787fcbd74ceb1ab0644256ce51dd3511b883b134d61888802f2d004"
+    },
+    {
+      "path": "assets/financialPayables-z6pmq1NX.js",
+      "bytes": 1146,
+      "gzip_bytes": 380,
+      "sha256": "3f545981a48590e5131b7c6f296c31b05d86226967f55c8b2e2d81a5a69406ab"
+    },
+    {
+      "path": "assets/SpeciesListPage-CyZRIehZ.js",
+      "bytes": 3965,
+      "gzip_bytes": 1858,
+      "sha256": "d7fb5115149da739274bafa30e3b63c51f2554b2ea3312da866b066ac78226e3"
+    },
+    {
+      "path": "assets/InventoryStockTransactionPage-CTgQ686d.js",
+      "bytes": 11257,
+      "gzip_bytes": 4179,
+      "sha256": "7e49cffa424b97bea5284ae67379e48a2f6a12c187429bd4447ae392dec3e101"
+    },
+    {
+      "path": "assets/ResponsibilityTermDetailPage-CKQ-htgC.css",
+      "bytes": 1322,
+      "gzip_bytes": 468,
+      "sha256": "a7a7671b1df12590d5be46b8911d7df2aaa6c5fb0fa3a537514157b5a835871d"
+    },
+    {
+      "path": "assets/WebhookFormPage-D-l-ZW4M.js",
+      "bytes": 4977,
+      "gzip_bytes": 2258,
+      "sha256": "ddaeb4138504fc787c8e97b5347d4211e775d8ab3d158540ff07a4363e21b48d"
+    },
+    {
+      "path": "assets/ManufacturersPage-D2JJZNBy.css",
+      "bytes": 2571,
+      "gzip_bytes": 756,
+      "sha256": "ee7d592fe3ad2714c3dddc31563691affbdc6eddb892279636385f77619226fa"
+    },
+    {
+      "path": "assets/InventoryInvoicesPage-VzWEZg7v.css",
+      "bytes": 2013,
+      "gzip_bytes": 653,
+      "sha256": "d8810a2bdad0f8a0867fc63f127338ab3d7ba34428e9aa7d05dfa5268f9af9fd"
+    },
+    {
+      "path": "assets/commissions-BZlu3SmN.js",
+      "bytes": 780,
+      "gzip_bytes": 326,
+      "sha256": "5e0c1c014d6fc7badd9cd145197ec7f53b8e11d575dc60ed67cfd1a2a0e8ab97"
+    },
+    {
+      "path": "assets/SchedulingFormPage-CBjSuCYD.js",
+      "bytes": 5213,
+      "gzip_bytes": 2255,
+      "sha256": "bf62466c9885daa091c1443ce6857ab0022b38dadeee5ec4a019ceb3c5bc9c6c"
+    },
+    {
+      "path": "assets/financialReceivables-CeJ1F_NU.js",
+      "bytes": 356,
+      "gzip_bytes": 230,
+      "sha256": "1ad9da8afacd787ac12309ae65c2ba7a0eb475171a96cea4b5d6a06e52c36a05"
+    },
+    {
+      "path": "assets/AppointmentTypesPage-B5bTdNtc.css",
+      "bytes": 735,
+      "gzip_bytes": 333,
+      "sha256": "db899aa0bc5902e7ddd6358ccf0cada4629b23a971f132028cbdf3d4d0c7b4b2"
+    },
+    {
+      "path": "assets/FiscalIBSCBSPage-ASDTMCAb.css",
+      "bytes": 495,
+      "gzip_bytes": 239,
+      "sha256": "4b1beeecb68796cb7cb905d7a8c3ad5a68bbf40f5cc524ed57c94c4a83574c20"
+    },
+    {
+      "path": "assets/FiscalPisCofinsPage-48o3R9FP.js",
+      "bytes": 3845,
+      "gzip_bytes": 1778,
+      "sha256": "6b68b758f9793db85c489c33f73099bb1a38065b387d435bcf6f8ba48a046e4c"
+    },
+    {
+      "path": "assets/LaboratoryReportTypesPage-BMfr-8D3.css",
+      "bytes": 1373,
+      "gzip_bytes": 585,
+      "sha256": "d1d89d329fdec0bd0024e434e5a6a45a2f78f3d323943275d6d167b61b7bb3bb"
+    },
+    {
+      "path": "assets/PaymentsDashboardPage-BAWiZfBO.js",
+      "bytes": 9509,
+      "gzip_bytes": 3366,
+      "sha256": "44daccac718b72c35a4af9eac864f28e1594409951d7a51ad18a93a461c5a31b"
+    },
+    {
+      "path": "assets/PaymentEnablementPage-DXXlollD.js",
+      "bytes": 1462,
+      "gzip_bytes": 763,
+      "sha256": "1faecea387880d5d8fd7b6476774ee1f56fc4814ced92a8ae62d547d51e835ab"
+    },
+    {
+      "path": "assets/workbox-window.prod.es5-BBnX5xw4.js",
+      "bytes": 5748,
+      "gzip_bytes": 2359,
+      "sha256": "cadd21be4a88598a4dec91a26a025df0a5790ff6baec54a884e401c3f5c95557"
+    },
+    {
+      "path": "assets/CashFlowPage-B0sOxk1G.css",
+      "bytes": 934,
+      "gzip_bytes": 389,
+      "sha256": "a1c04a6af66cd44250c4d13688f4513775aa44255790bf18217266f90a13ea63"
+    },
+    {
+      "path": "assets/OwnerFormPage-CKv_d51H.css",
+      "bytes": 2937,
+      "gzip_bytes": 934,
+      "sha256": "2c8fcad64fa9e8b08f4875c14b49fc894a40d998a5750298cbececa8a18f7884"
+    },
+    {
+      "path": "assets/ReportsDomainHubPage-CQo3-CtO.js",
+      "bytes": 2387,
+      "gzip_bytes": 1117,
+      "sha256": "37e496baf76b4e1a2a924353c89e861650f3e16e6fd0b6ba09462ac8f6a2d2af"
+    },
+    {
+      "path": "assets/UsersListPage-Bm7MBrrS.js",
+      "bytes": 6881,
+      "gzip_bytes": 2582,
+      "sha256": "1bf9984eaa3ac5169fcc004c6cef71bd6aa180ae396cec28f6635e8f46fb7dd8"
+    },
+    {
+      "path": "assets/medicalRecords-CxFfWSyd.js",
+      "bytes": 851,
+      "gzip_bytes": 337,
+      "sha256": "066a44499b4840f31716615c4a1a63fa58ede9fb544ab4c19ca285de9673dad4"
+    },
+    {
+      "path": "assets/FinancialReportsPage-B1vAjHuC.css",
+      "bytes": 54,
+      "gzip_bytes": 74,
+      "sha256": "bd41e4bc098a214c97c160f60b5b03f1e8ef753407497fe8016a0191dc806a1f"
+    },
+    {
+      "path": "assets/FiscalIPIPage-D799O3T9.js",
+      "bytes": 4240,
+      "gzip_bytes": 1812,
+      "sha256": "f2bb4791d5f3faa6dc8b6c79b4f03be6eaf17a60f94943b45af75247e17f6994"
+    },
+    {
+      "path": "assets/InpatientListPage-UP3lkSvM.css",
+      "bytes": 676,
+      "gzip_bytes": 348,
+      "sha256": "f5f01625b1b4efa0686f88b74f25d1c2cb8023492ce884a1b587c0db34dfb728"
+    },
+    {
+      "path": "assets/FiscalPISPage-DlS-7-gw.css",
+      "bytes": 479,
+      "gzip_bytes": 234,
+      "sha256": "e1df6f3826200ec33bd5c24e626904b9f241e506be8b7d82e29af74b685e1939"
+    },
+    {
+      "path": "assets/CommissionCalculationsPage-BQiQGDma.css",
+      "bytes": 773,
+      "gzip_bytes": 320,
+      "sha256": "b4f35aa8c08178af541f64a9d62f8895852f63abe8086ebd73b415ba08316404"
+    },
+    {
+      "path": "assets/BedsPage-BR5wXATy.js",
+      "bytes": 7379,
+      "gzip_bytes": 3010,
+      "sha256": "7bae5d76fc9d2b1db60ed784d9b68880b440652bb5e64d3d560b8a056203fbed"
+    },
+    {
+      "path": "assets/LaboratoryBiochemistryReferenceValueDetailPage-CF1UY0RR.css",
+      "bytes": 939,
+      "gzip_bytes": 422,
+      "sha256": "51e1d6f2962d9ac4c37cfd4ab5b83ca4a4800720cd9d510d3f35cfdd44094018"
+    },
+    {
+      "path": "assets/DsBadge-CgFfqkpQ.css",
+      "bytes": 1595,
+      "gzip_bytes": 596,
+      "sha256": "012347dec0a4b70b2bb20dea0af0458846930152acbfc1717f28e66db11c08da"
+    },
+    {
+      "path": "assets/AppDetailSection-DSSb2LNV.css",
+      "bytes": 139,
+      "gzip_bytes": 120,
+      "sha256": "b6281d58088578f7d5c7088662cfc84abdc33680dab204f656bfa7071476073c"
+    },
+    {
+      "path": "assets/LaboratoryHemogramReferenceValueDetailPage-BClKM272.css",
+      "bytes": 935,
+      "gzip_bytes": 418,
+      "sha256": "b9859637f108c33b5260e9d187e46acece58a2202cbf9f85f0896f8d20a37240"
+    },
+    {
+      "path": "assets/OwnerDetailPage-B7LXrw5D.js",
+      "bytes": 40646,
+      "gzip_bytes": 10742,
+      "sha256": "0dbf6b4197a7d3b12330a2f220ebccf073c0deed677a66a7af0cdcbc8092b5bc"
+    },
+    {
+      "path": "assets/InventoryPriceAdjustmentsPage-CFhGx4nF.js",
+      "bytes": 12905,
+      "gzip_bytes": 4518,
+      "sha256": "93e66b83d6553d81d3ea54b5f4cd2e6405735d5dec98b6260d3869da477eb268"
+    },
+    {
+      "path": "assets/LoyaltyPage-CppAI8u4.js",
+      "bytes": 11110,
+      "gzip_bytes": 3778,
+      "sha256": "0ff69ca9f2c501393659b9dd74d2b112939e5eee20f32b1b5e4097a2d5aec0cc"
+    },
+    {
+      "path": "assets/NotificationsPage-BzmzeEZU.css",
+      "bytes": 2501,
+      "gzip_bytes": 643,
+      "sha256": "c97fdafa3fea80f710c453609a155612bf2874139655eec32fde7f177d426814"
+    },
+    {
+      "path": "assets/LaboratoryOrdersPage-BkeUnlav.css",
+      "bytes": 3704,
+      "gzip_bytes": 1081,
+      "sha256": "493f42fc0ff0960d242348bbd69ae6df8bb1dae31cdeefdbd59c1666f52ae3c6"
+    },
+    {
+      "path": "assets/InventoryPharmacyRequestPage-CtADRw0z.js",
+      "bytes": 12647,
+      "gzip_bytes": 4408,
+      "sha256": "da6e676f40f5d1b48eb9158c2b1b15f27a5cd1d8fe2c8a11d4a8f31f0233ea48"
+    },
+    {
+      "path": "assets/PrescriptionsPage-Bet6vMgA.css",
+      "bytes": 1409,
+      "gzip_bytes": 536,
+      "sha256": "6e83db11f02766484f8f052161863cc3436a8c249c01b2d1671268921fd1f03d"
+    },
+    {
+      "path": "assets/CostCentersPage-CMsWV7_O.js",
+      "bytes": 6975,
+      "gzip_bytes": 2784,
+      "sha256": "c6d22db87726b8579711d719619dbf8f037ec1040b3056019f40e03b524ceb7a"
+    },
+    {
+      "path": "assets/AppointmentDetailPage-CO8C0j8K.js",
+      "bytes": 12329,
+      "gzip_bytes": 4208,
+      "sha256": "79e41fe4d27fd9b473272c611374335eeb930a1babee8f4ff115f1b063c9e6b7"
+    },
+    {
+      "path": "assets/LaboratoryResultsPage-DUOxL5xO.css",
+      "bytes": 2999,
+      "gzip_bytes": 863,
+      "sha256": "fe0c966a77724e9daa4b6b6103519fdadabf4dac509d236a9009f161e17e3840"
+    },
+    {
+      "path": "assets/VetusAssistedImportPage-D-7J8XNz.css",
+      "bytes": 2608,
+      "gzip_bytes": 782,
+      "sha256": "ecb5f343f76fce9ccc87509887475c44fcfa8ec46fab055f5248ab4e7c575973"
+    },
+    {
+      "path": "assets/ApiClientPage-BKwxZIbK.css",
+      "bytes": 3328,
+      "gzip_bytes": 780,
+      "sha256": "dcfc77e8eecd9d52eb282d4b261f16af06f880051c672e5487c19a8cdd7010b0"
+    },
+    {
+      "path": "assets/WhatsAppPage-Bh3Seej8.css",
+      "bytes": 2179,
+      "gzip_bytes": 554,
+      "sha256": "7a3020604884b166d358ff79a9b8424b55680ffae273ed8097913180f5751bc4"
+    },
+    {
+      "path": "assets/WebhooksListPage-D3rPHNxU.css",
+      "bytes": 1350,
+      "gzip_bytes": 568,
+      "sha256": "b300ce5e704d2676d3d0c3a677ca5b0df8a13c2faa43f10b7fa86ac711f3bdac"
+    },
+    {
+      "path": "assets/ChequesPage-B0HW07NS.css",
+      "bytes": 1204,
+      "gzip_bytes": 470,
+      "sha256": "56f9fce37f0e900d0ed5f93dd48b0109b6219f971a676e918a38642c43bd5bf5"
+    },
+    {
+      "path": "assets/TriageDetailPage-xemzpaEk.js",
+      "bytes": 9892,
+      "gzip_bytes": 3358,
+      "sha256": "10f1665b7b13f2e1c26911455e93a0ff53a9ec9cf9ab389a70e3ed94fbc9bdab"
+    },
+    {
+      "path": "assets/prescription-executions-B6v2xYI8.js",
+      "bytes": 875,
+      "gzip_bytes": 358,
+      "sha256": "826d0a3857597e81e2b742febe4bf633e217915135d60e9d0e8c0756c5bde177"
+    },
+    {
+      "path": "assets/LaboratoryEquipmentFormPage-CZZiQAqE.css",
+      "bytes": 1664,
+      "gzip_bytes": 562,
+      "sha256": "94361855ff55c402b9bd88b9eae93f8ab2bc14881d7100c1aef47da9dbed6178"
+    },
+    {
+      "path": "assets/CoatColorFormPage-BfptiNzn.css",
+      "bytes": 2072,
+      "gzip_bytes": 632,
+      "sha256": "b712a8c4dfcb4bcd142c0762e14519e4cdce27a924884a46a4668f4d04de4e0c"
+    },
+    {
+      "path": "assets/administrativeReports-Dz6umKbR.js",
+      "bytes": 268,
+      "gzip_bytes": 214,
+      "sha256": "3ae350423ccacb50add2402e4552aaf5d4deba187184466673770e5fa637a765"
+    },
+    {
+      "path": "assets/ResponsibilityTermsListPage-CA1kP4V4.css",
+      "bytes": 641,
+      "gzip_bytes": 328,
+      "sha256": "559b377841e38373229554456c908097a0a6a3299dad9f9169af623d929440c9"
+    },
+    {
+      "path": "assets/AccessControlPage-CHuvu1Xe.css",
+      "bytes": 6087,
+      "gzip_bytes": 1397,
+      "sha256": "e4c014a687778af1093c1530b9c822686bb032fad2bdd509fb39fa8d8f132bfd"
+    },
+    {
+      "path": "assets/CashPage-DL5ZVMfD.css",
+      "bytes": 660,
+      "gzip_bytes": 277,
+      "sha256": "c6a7c5ed2c3cf3fb15c1feec6da02ebba0b772a3910a54df11b50936ab65b3a6"
+    },
+    {
+      "path": "assets/TriageFormPage-DuXAsiZw.css",
+      "bytes": 1573,
+      "gzip_bytes": 568,
+      "sha256": "36bf78d63229fb70893c66599164eb1a74853dd8efe146d6ab6510a3750ad7f4"
+    },
+    {
+      "path": "assets/FiscalICMSPage-Csi-rUZS.css",
+      "bytes": 483,
+      "gzip_bytes": 236,
+      "sha256": "14ae03b4ff6499a3653ccfac2deac88eb130262f95124a4b41f1d89f097480fd"
+    },
+    {
+      "path": "assets/DsBadge-Cp-ZeTTt.js",
+      "bytes": 560,
+      "gzip_bytes": 375,
+      "sha256": "30e2c96f950b9b6c6bbfbce9ce7bdcc538812ff735ed7b2781bc01b46c8a1804"
+    },
+    {
+      "path": "assets/LgpdHubPage-BedkOLbF.css",
+      "bytes": 2375,
+      "gzip_bytes": 678,
+      "sha256": "80e9a0334e814805ba0f677de0aeb5884a3166c05839e48e534194096e842880"
+    },
+    {
+      "path": "assets/encounter-peUABKEj.js",
+      "bytes": 989,
+      "gzip_bytes": 354,
+      "sha256": "0a3019f14519f7de552ac292abcdc97efca4c8ead19d9c728c231c5cef574630"
+    },
+    {
+      "path": "assets/VaccineEmailLayoutPage-D7ULIKeQ.js",
+      "bytes": 5552,
+      "gzip_bytes": 2391,
+      "sha256": "4f727be0a1022ff0caa282f72b7c012a0564e65b06ab1cee5f852e314804878f"
+    },
+    {
+      "path": "assets/FiscalNcmPage-DQFiUJYN.js",
+      "bytes": 2866,
+      "gzip_bytes": 1530,
+      "sha256": "0dbef388d9e33b3727d3fefb4d46c56f858506f9f8620b9c057bcacff827c42b"
+    },
+    {
+      "path": "assets/BedDetailPage-gI-IcMYv.css",
+      "bytes": 2674,
+      "gzip_bytes": 751,
+      "sha256": "330711a3decd389e4467b5936b143424403757ae8ba16d032cf7eb2e4ae0a748"
+    },
+    {
+      "path": "assets/SearchSelect-CW_TLR9k.css",
+      "bytes": 2231,
+      "gzip_bytes": 676,
+      "sha256": "8b759c74ed19ba273c790edfecc5b8657273ccbb17689b514190676f3f88f83a"
+    },
+    {
+      "path": "assets/ServiceFormPage-CLv7t8UE.js",
+      "bytes": 5849,
+      "gzip_bytes": 2317,
+      "sha256": "f4fbc937b398f70f3ef2d794c988fd1fce4663e11c7203b1ec2428f7ac10644b"
+    },
+    {
+      "path": "assets/LaboratoryResultsPage-CmSmQxYj.js",
+      "bytes": 9655,
+      "gzip_bytes": 3793,
+      "sha256": "17220d57030909181c2f37ad585deaffacb93f283978e96c2a083f8ba06761e1"
+    },
+    {
+      "path": "assets/InventoryPriceConsultationPage-DIn8AWhG.css",
+      "bytes": 2459,
+      "gzip_bytes": 791,
+      "sha256": "4af4831e827edfe494f3b2e4c25abde7ea5abfcff8d14ca28194d8fc334eda8a"
+    },
+    {
+      "path": "assets/PixPage-VJHWZHc-.js",
+      "bytes": 5242,
+      "gzip_bytes": 1967,
+      "sha256": "9b794e7f8d6067225e2d30953f024e15f6bb0819a47689d1ef883de79f34c25a"
+    },
+    {
+      "path": "assets/PatientDetailPage-BO1IQiWk.js",
+      "bytes": 67966,
+      "gzip_bytes": 17735,
+      "sha256": "594d171d376cd6154485bf51e14f25ce54a4c281740453c96baeb56a1b33ff14"
+    },
+    {
+      "path": "assets/LaboratoryBiochemistryReferenceValuesPage-BjeuM2df.css",
+      "bytes": 1182,
+      "gzip_bytes": 512,
+      "sha256": "32c513bc3ebe1364099b6c419fb00461262fba790a74128c182ed453afe58691"
+    },
+    {
+      "path": "assets/CounterSalesPage-DZQMkmL_.js",
+      "bytes": 63845,
+      "gzip_bytes": 16496,
+      "sha256": "97f84162fda5ab2a9d5afbd15c0eac1a73cc0c187338f73a3b0a70e621cc8848"
+    },
+    {
+      "path": "assets/SchedulingListPage-DCuKrlzj.css",
+      "bytes": 1302,
+      "gzip_bytes": 559,
+      "sha256": "f113864d10da47538cf9ab3ff9ead787a7575662627e4fc039f218ecb572eac5"
+    },
+    {
+      "path": "assets/DashboardPage-BW_H92rd.js",
+      "bytes": 27299,
+      "gzip_bytes": 8617,
+      "sha256": "edaf341805d57f12690397dd3e669299dae9be58fde80e64e3432cce6aa6dea0"
+    },
+    {
+      "path": "assets/ServicesImportPage-C3beQcP_.js",
+      "bytes": 7104,
+      "gzip_bytes": 3118,
+      "sha256": "8c04460158ee6517dcc831a0f387e38ec7a33ac142585532e5b3a5859fd1c720"
+    },
+    {
+      "path": "assets/WarehousesPage-CDLt010c.css",
+      "bytes": 2565,
+      "gzip_bytes": 754,
+      "sha256": "6f7739d0afe7b4d277d3785210b92acd258e25ea6f3647a0ea14e4603c72b965"
+    },
+    {
+      "path": "assets/EncounterDetailPage-TzYco2Fg.js",
+      "bytes": 29795,
+      "gzip_bytes": 8347,
+      "sha256": "fc165de40c86cbd8274751f7d919c87588c803e70657c518c134cc3c4d262b7b"
+    },
+    {
+      "path": "assets/MeasurementUnitsPage-CIhvANW4.css",
+      "bytes": 2689,
+      "gzip_bytes": 769,
+      "sha256": "6be20f0645c1d121a4962aa796f430acc4cd2219e4b56ee751e022b6f4d3b89b"
+    },
+    {
+      "path": "assets/AdministrationSettingsPage-Dwr_wytf.css",
+      "bytes": 10064,
+      "gzip_bytes": 2238,
+      "sha256": "0206643091834ae5d15b4c452ed6189521c314ac9c45d12c534a117c86a6d55f"
+    },
+    {
+      "path": "assets/ExamOrdersApiPage-B1SUATjc.css",
+      "bytes": 1258,
+      "gzip_bytes": 486,
+      "sha256": "b6095e9f0bc960f77e7ef7512d37407b64c8dcbbfb3eb43b6759c47df2694a3d"
+    },
+    {
+      "path": "assets/DashboardPage-CTpYGft2.css",
+      "bytes": 21307,
+      "gzip_bytes": 3741,
+      "sha256": "7aff27158e87f6def4ee7eeb07cd4556dbd9d8acdf3d20906e7b3d4b9e03dcb9"
+    },
+    {
+      "path": "assets/BillingListPage-8otJbaoK.css",
+      "bytes": 1249,
+      "gzip_bytes": 482,
+      "sha256": "82812d4bf37de028930e1b894607197d9890c7e583210d62fc063d255d480dfc"
+    },
+    {
+      "path": "assets/SchedulingListPage-DO2H9lmt.js",
+      "bytes": 8249,
+      "gzip_bytes": 3015,
+      "sha256": "15fa9972ae75cefffe73fb48fe89c20a65c6e11037394ca02e7ebd5be0e4d549"
+    },
+    {
+      "path": "assets/MfaPage-luyP-lwM.css",
+      "bytes": 2497,
+      "gzip_bytes": 889,
+      "sha256": "36c8764dcac960230a689962e84878a09b6a5597c4afb96b6b368cf16c6b5212"
+    },
+    {
+      "path": "assets/FiscalNFSELayoutPage-B32vly4V.js",
+      "bytes": 6947,
+      "gzip_bytes": 2595,
+      "sha256": "044452dbfc476c59a52e1f23c2fa76ddfa32c8187cc689b886fc663f25cb488d"
+    },
+    {
+      "path": "assets/ServiceDetailPage-WYsuvzM4.js",
+      "bytes": 4432,
+      "gzip_bytes": 1833,
+      "sha256": "346aef9b3d0b9f4220eb6f82d4d65e2da90d2a08efab5b26299e377763f9dcf8"
+    },
+    {
+      "path": "assets/SpeciesFormPage-cAC3q612.js",
+      "bytes": 5614,
+      "gzip_bytes": 2367,
+      "sha256": "e5e98eb030c5bcaf6ee193290735f5fe19baddd616e6d9a6564f744d3115bcaf"
+    },
+    {
+      "path": "assets/ProductDetailPage-DnOSC2bl.js",
+      "bytes": 3681,
+      "gzip_bytes": 1611,
+      "sha256": "6ef8d929975769a33129e10ed81e6896381834261045600e5f236fc8e4295829"
+    },
+    {
+      "path": "assets/AppointmentFormPage-BiTanSDV.css",
+      "bytes": 58,
+      "gzip_bytes": 78,
+      "sha256": "4aa0764f9b82b024acae0e3b637ecf9638ca09db850bcb7e700c27d8d35d91ce"
+    },
+    {
+      "path": "assets/SurgeryPage-D68k1tzG.css",
+      "bytes": 1375,
+      "gzip_bytes": 522,
+      "sha256": "59953172c499bba09c92dab08504dc23c8dc326fa69d1339ac5da3c0b0db274c"
+    },
+    {
+      "path": "assets/SurgeryPage-XzM-L1B8.js",
+      "bytes": 10770,
+      "gzip_bytes": 3852,
+      "sha256": "c658ad61184de09d9cfc9d92ad4c70174472842fb147996bb2a185e56f8b0ed7"
+    },
+    {
+      "path": "assets/QueuePage-BjAYcJIX.js",
+      "bytes": 23060,
+      "gzip_bytes": 7627,
+      "sha256": "f1284afa28ac73c8d6125caa67ac37f04c43339d0fe49389ae34f8bfb9b7825f"
+    },
+    {
+      "path": "assets/LaboratoryUrinalysisPage-7i_oWGuN.js",
+      "bytes": 730,
+      "gzip_bytes": 446,
+      "sha256": "a413fe6d326d1c131a902ada2e9503319dfea653726a3163f3d7e3a838f97c77"
+    },
+    {
+      "path": "assets/StaffDetailPage-C9rmP_Rk.js",
+      "bytes": 3748,
+      "gzip_bytes": 1564,
+      "sha256": "4a7d3e7414f1efd29c85b6a1fa12e1acac855fe0172fb30c531c3905da08c307"
+    },
+    {
+      "path": "assets/WebhookFormPage-CFVLrL4r.css",
+      "bytes": 1195,
+      "gzip_bytes": 482,
+      "sha256": "fc5f4ee6c06971778874d695e099711caed440f02933c5c8182b075e0466960b"
+    },
+    {
+      "path": "assets/EncounterFormPage-BaW81LYj.js",
+      "bytes": 13627,
+      "gzip_bytes": 4674,
+      "sha256": "e5b2297e1bea59eeef41d0b840022322f9014c436ffdc163d581cd11a40c63b3"
+    },
+    {
+      "path": "assets/ExamResultsApiPage-Bl7QCNvg.css",
+      "bytes": 1111,
+      "gzip_bytes": 449,
+      "sha256": "4e63683bddf09e00ab91dac68713f0f9f79e71ebd61d8bdacd5f04d7c3392d77"
+    },
+    {
+      "path": "assets/AvailabilityPage-CJytqOUg.css",
+      "bytes": 880,
+      "gzip_bytes": 389,
+      "sha256": "cce49ebf5718372939a7064739a0397817941e9fd2fe6dfd216a37c3dd345897"
+    },
+    {
+      "path": "assets/ApiKeysPage-DrouPdqL.js",
+      "bytes": 12211,
+      "gzip_bytes": 4537,
+      "sha256": "f5c4c7776e0589353b2081e5a94bacb0799231551a06c0ade4263573c59741e0"
+    },
+    {
+      "path": "assets/triage-ByHDxRsX.js",
+      "bytes": 502,
+      "gzip_bytes": 288,
+      "sha256": "f5ce76aa5e71bf812ac55055863bdf5cc21d96f27dd8dc9ed3561c797b7cefed"
+    },
+    {
+      "path": "assets/ProductsListPage-CNRNny1L.js",
+      "bytes": 6496,
+      "gzip_bytes": 2629,
+      "sha256": "1143d3d4b264b43c6d4ae5b1eede822a4f3e1c396efdb83d7881afaa894c122d"
+    },
+    {
+      "path": "assets/PriceTablesPage-CGlTcY6m.js",
+      "bytes": 11771,
+      "gzip_bytes": 3871,
+      "sha256": "0687bb7f74eb677740c890d93b2b16e82b40c8d5d3cddaf2bfbf0101b0f051ff"
+    },
+    {
+      "path": "assets/UserDetailPage-uuCxLLyc.css",
+      "bytes": 2557,
+      "gzip_bytes": 725,
+      "sha256": "672e87c0b02f4a042db4444cb95794935e1839544d5a3eb5b5267b7f5f92149c"
+    },
+    {
+      "path": "assets/DataTable-1acesAWH.css",
+      "bytes": 7216,
+      "gzip_bytes": 1690,
+      "sha256": "c2c1d551c46e3a3f12e865d2a6a60f4d63fc0a949ff8c0b87f6257a4c1842882"
+    },
+    {
+      "path": "assets/inventory-DwSZ1MtE.js",
+      "bytes": 1261,
+      "gzip_bytes": 408,
+      "sha256": "0447624f92179a0c930752ec58d5d98184ded22c49a517d43f1b0cdc87a8997e"
+    },
+    {
+      "path": "assets/ApiClientPage-XR_rvX7A.js",
+      "bytes": 9956,
+      "gzip_bytes": 3645,
+      "sha256": "9029e0da8ff383944ac1100a39e32495953fc7da95b031e6d62317a6ed026612"
+    },
+    {
+      "path": "assets/FiscalCfopPage-B2ZD7z2O.js",
+      "bytes": 5053,
+      "gzip_bytes": 1972,
+      "sha256": "572f8341cdf54844ffbfec753db955a44864ad96e71d4b2e3f9c7b6fe3aa3c13"
+    },
+    {
+      "path": "assets/InventoryTransfersPage-D-IJcnCc.css",
+      "bytes": 3406,
+      "gzip_bytes": 979,
+      "sha256": "cf3939f07aaca045706c84328e9fd9db541041fa6677f949aefd260f39d03ad1"
+    },
+    {
+      "path": "assets/LaboratoryEquipmentDetailPage-HC1f1rXr.js",
+      "bytes": 3479,
+      "gzip_bytes": 1503,
+      "sha256": "a835d4048ab8ca9a49320a29850eb6a2d67341f64546ccec2698d2b327f61a72"
+    },
+    {
+      "path": "assets/DsSpinner-D9wFYuwT.css",
+      "bytes": 852,
+      "gzip_bytes": 385,
+      "sha256": "e4a4714184e15d1ca66d7fa4a17619b6860126f92c628122339225656baae92e"
+    },
+    {
+      "path": "assets/PatientsListPage-DU9siCAC.js",
+      "bytes": 13377,
+      "gzip_bytes": 4540,
+      "sha256": "e896617a62503b32c314cc9086b696d0286e72df4391b4d1d559d857b99cc8c6"
+    },
+    {
+      "path": "assets/LaboratoryEquipmentFormPage-DDSwag4K.js",
+      "bytes": 5222,
+      "gzip_bytes": 2084,
+      "sha256": "ffde3dbd865b32339609deae74f6c230e1d69000738938a3edfdc35f200f4843"
+    },
+    {
+      "path": "assets/LaboratoryReferenceValuesPage-BJDk1N-4.css",
+      "bytes": 247,
+      "gzip_bytes": 183,
+      "sha256": "a6a5477f9e1554b4ec8e74eba642a5c055f77ad5713e479c515a889320928fd5"
+    },
+    {
+      "path": "assets/EncounterReportsPage-oPWRx1sm.js",
+      "bytes": 1135,
+      "gzip_bytes": 601,
+      "sha256": "1bebb2d5afa4fa321278ff6fa5c1947353df773d9b4461c3921b6b5343cf7a6a"
+    },
+    {
+      "path": "assets/prescriptions-BseFjJ1Y.js",
+      "bytes": 1442,
+      "gzip_bytes": 596,
+      "sha256": "ff1b3fd8fdd1097f7222ca8162b6b750ae00299cd62720954a1fbcccc30a2f6b"
+    },
+    {
+      "path": "assets/MarketingSmsPage-CsBmJa6R.js",
+      "bytes": 7328,
+      "gzip_bytes": 2880,
+      "sha256": "e77a7fb10518b4d8434b4f1a69e9008f10b21ee3acff4154ea7d0f6ac97e7033"
+    },
+    {
+      "path": "assets/CoatColorsListPage-Cl0iZoCI.css",
+      "bytes": 837,
+      "gzip_bytes": 389,
+      "sha256": "a7b15eb2f25fc8e8eba94ad1a93c12b2b5992798c489b9d888f25be458b07432"
+    },
+    {
+      "path": "assets/CommissionRulesPage-yuQ02lxN.js",
+      "bytes": 7935,
+      "gzip_bytes": 3019,
+      "sha256": "48157d8f9c9af8b0ed399baf7b85ccb8286dc81db59c3ca5d0d9a24a79951256"
+    },
+    {
+      "path": "assets/AccountsPayablePage-Bg0Lq9AD.css",
+      "bytes": 1590,
+      "gzip_bytes": 527,
+      "sha256": "ecd66cb2a504864232ccb6efdad4e6897a3b2e93f932c84a1d6069d6c4abc6f6"
+    },
+    {
+      "path": "assets/patient-nrtZ_iAl.js",
+      "bytes": 871,
+      "gzip_bytes": 433,
+      "sha256": "a145c0ed9ebaa2b7673dc667567a57796f5d96436226a55fea6370505291f0e0"
+    },
+    {
+      "path": "assets/PaymentMethodsCatalogPage-HiKstFsZ.js",
+      "bytes": 630,
+      "gzip_bytes": 399,
+      "sha256": "7e6996545665bc89b847d541ba15f00ff35416989208e59120ed380ae6ff8988"
+    },
+    {
+      "path": "assets/ProductsListPage-CW8yTQns.css",
+      "bytes": 1804,
+      "gzip_bytes": 676,
+      "sha256": "71cfc5386532fe30a44e3017d32e17a5b3e78eb5eb99a933c2a6dadc166e34be"
+    },
+    {
+      "path": "assets/SalesPage-dv_y4Zm6.js",
+      "bytes": 17239,
+      "gzip_bytes": 5805,
+      "sha256": "2251a98a36ef40d43111152ec7fc7c7d4eaad29c2cf68525dd3e8329c952cffe"
+    },
+    {
+      "path": "assets/FiscalIBSCBSPage-CX6olxOQ.js",
+      "bytes": 4742,
+      "gzip_bytes": 1899,
+      "sha256": "c94a7766c3ae829c12cb48159cac16adf4eae19e4ce44041e2d1825ef1cc3b4b"
+    },
+    {
+      "path": "assets/examApi-BmrvPej_.js",
+      "bytes": 487,
+      "gzip_bytes": 282,
+      "sha256": "9ff11d11b628fc3076ea87635faf25ab90770150a4e321c2c8ce73d2e62e8e4e"
+    },
+    {
+      "path": "assets/InventoryListPage-BFdTLv23.js",
+      "bytes": 6139,
+      "gzip_bytes": 2594,
+      "sha256": "27119e83fa745c96a267b182ca70ce90816f050332dbd8376e8f3b565fb314e9"
+    },
+    {
+      "path": "assets/SectorsPage-BvyY5_h_.css",
+      "bytes": 2418,
+      "gzip_bytes": 722,
+      "sha256": "c69bcf9d9bbd4a74ca12bc7786a28ba8ed66020b5082b2e63621078223d5d7e2"
+    },
+    {
+      "path": "assets/CardAccountsPage-B0ZMfZ5r.css",
+      "bytes": 1268,
+      "gzip_bytes": 478,
+      "sha256": "6f2c39047c576c75bc1f2e82e66042180e2c9d01c56b63d32cec55cb3993891b"
+    },
+    {
+      "path": "assets/AvailabilityPage-uou-e9nr.js",
+      "bytes": 5070,
+      "gzip_bytes": 2021,
+      "sha256": "5035ef1204f19713fea1c9fb24186c13474928f8e6af7827758255152f895596"
+    },
+    {
+      "path": "assets/useEntityCache-D6NGfJ3y.js",
+      "bytes": 3396,
+      "gzip_bytes": 1073,
+      "sha256": "69e6794b8e2fd86285b395e9b613d2757c25fd22e0eb898d6c89c1d9936a595c"
+    },
+    {
+      "path": "assets/CoatColorDetailPage-ax0S6vrR.js",
+      "bytes": 5188,
+      "gzip_bytes": 2010,
+      "sha256": "9fb996685d31649342edfbd323a05cda2f2dd3a204564fe9921ffbe9ac3924ce"
+    },
+    {
+      "path": "assets/ProductDetailPage-DXUD-Y36.css",
+      "bytes": 1532,
+      "gzip_bytes": 547,
+      "sha256": "0918335e0c1dfe35e5b9fd8075dde435bc656a31158512cd4ea1187a9929af9d"
+    },
+    {
+      "path": "assets/FinancialReportsPage-DRxlfsCW.js",
+      "bytes": 1680,
+      "gzip_bytes": 760,
+      "sha256": "466464a3e16485e2944b36743722ff99dc6b1f699195096d617b5698c2a13a66"
+    },
+    {
+      "path": "assets/FiscalConfigPage-68CpuZw0.js",
+      "bytes": 6096,
+      "gzip_bytes": 2214,
+      "sha256": "86d6f23085ec8603cec8b31a21e498e7dc4b260a527fce9d9f60ef2f621ff475"
+    },
+    {
+      "path": "assets/user-BHtc_saR.js",
+      "bytes": 359,
+      "gzip_bytes": 245,
+      "sha256": "dc5285b0ca238a780d0c4d8725a62798a2b46005e57989ec34d4d457d4f8044d"
+    },
+    {
+      "path": "assets/PatientFormPage-ChsscuEE.css",
+      "bytes": 5478,
+      "gzip_bytes": 1296,
+      "sha256": "319dd6d5380e3d4d778eda2ff3bd072bd0f96c02dca141aa9e5cd1abcc34a84a"
+    },
+    {
+      "path": "assets/expensesCatalog-B493w0Wm.js",
+      "bytes": 828,
+      "gzip_bytes": 393,
+      "sha256": "7bd5e182145c9c6af7744c65b9f4b4151a836873a5952f6da3986ab017cc14e1"
+    },
+    {
+      "path": "assets/CashPage-D-ZueAmD.js",
+      "bytes": 9308,
+      "gzip_bytes": 2845,
+      "sha256": "10f6c00fca30db8c370e278ce4cb99b44d4e30e13eacb53771085b7ad89dd35a"
+    },
+    {
+      "path": "assets/ProductGroupsPage-IFM0Y52f.js",
+      "bytes": 8372,
+      "gzip_bytes": 3061,
+      "sha256": "1df1274e0ecf718aa6e8bd339633f73c29b21b15df574e2b2a28b05abe5515ae"
+    },
+    {
+      "path": "assets/TriageListPage-CjqvRd3I.css",
+      "bytes": 1014,
+      "gzip_bytes": 453,
+      "sha256": "fd089113f9533d2f7acc951aaaab7c03639226126e29d0afd737557881b5a624"
+    },
+    {
+      "path": "assets/OwnerFormPage-T4kJK2zJ.js",
+      "bytes": 18302,
+      "gzip_bytes": 5785,
+      "sha256": "a5ad4ba045813a92efeafd592180fcf6f939c3b8d4f4aae54bdbd5157511e1fd"
+    },
+    {
+      "path": "assets/NotFoundPage-Bw9GUMbT.css",
+      "bytes": 105,
+      "gzip_bytes": 113,
+      "sha256": "bc41c47065b47976496d6db1c05d45874a976c3507faf6762c4536d89efc6802"
+    },
+    {
+      "path": "assets/AppPageHeader-DBryrz_N.js",
+      "bytes": 9279,
+      "gzip_bytes": 2870,
+      "sha256": "fd74f0777d68e25910a0d7990ec6ece445190d064e4fe497d05fd53a28896cff"
+    },
+    {
+      "path": "assets/CurveAbcClientsPage-Bj393Ikt.css",
+      "bytes": 853,
+      "gzip_bytes": 385,
+      "sha256": "fc23a7e23fca662e9600b1b7f0ff39bd2bec4edd794df12ea25b988d146f623d"
+    },
+    {
+      "path": "assets/InpatientDetailPage-6-jo4LSZ.js",
+      "bytes": 23057,
+      "gzip_bytes": 6279,
+      "sha256": "6b58dd53886cb90ce00e7fbfeb0d3faf312a1e3afa2b0a0ae4448673075d18e5"
+    },
+    {
+      "path": "assets/CardTransactionsPage-C7LfubJb.js",
+      "bytes": 9615,
+      "gzip_bytes": 3526,
+      "sha256": "2c75426b73430ae0029881df4f7daa999581bf0ab1e19e1e77cc23e5a21b4c5e"
+    },
+    {
+      "path": "assets/InventoryPharmacyRequestPage-k4zazAnu.css",
+      "bytes": 1809,
+      "gzip_bytes": 651,
+      "sha256": "62b97a3177e046fc6945e11ff2b201331abc88795e212fdfd88d4b6048d1da41"
+    },
+    {
+      "path": "assets/InventoryPurchaseDetailPage-CP2Rzpki.css",
+      "bytes": 1107,
+      "gzip_bytes": 441,
+      "sha256": "3f22ab645e1418f25a313ef2ed4a3326cb37ac6b919973a6f9cecbdbbd9f5781"
+    },
+    {
+      "path": "assets/InventoryPurchasesPage-BES8xtpX.css",
+      "bytes": 2793,
+      "gzip_bytes": 884,
+      "sha256": "1f9686eb2fa822b23dce8081336baca1ad8d8312a8f9dc7ec8fa77d9851f8c97"
+    },
+    {
+      "path": "assets/attachments-BACu9YZS.js",
+      "bytes": 308,
+      "gzip_bytes": 243,
+      "sha256": "a48c2940b15190b7d1d2089b48efd4f5088626e1ded180d68fa8de2da5844fc6"
+    },
+    {
+      "path": "assets/LaboratoryReportTypesPage-i3Z4drWJ.js",
+      "bytes": 4918,
+      "gzip_bytes": 2108,
+      "sha256": "65094a376772c32b0a035158ee34bfb37448e591ab83a96930d89effdfff920c"
+    },
+    {
+      "path": "assets/useFormValidation-DoGYL-NB.js",
+      "bytes": 803,
+      "gzip_bytes": 431,
+      "sha256": "315797e81ac296402096cef5d9f83863792014dcbd21ae7555d589dd349982a6"
+    },
+    {
+      "path": "assets/FiscalTaxOperationPage-D2ta7aPX.css",
+      "bytes": 878,
+      "gzip_bytes": 361,
+      "sha256": "9d44355c8b4c525aac5c3267e73790c3f3ecde380a7ad043008418112f91c581"
+    },
+    {
+      "path": "assets/ServiceFormPage-CgUCkNn9.css",
+      "bytes": 2224,
+      "gzip_bytes": 714,
+      "sha256": "3eba444bc4abe982b34b557551aa7f1693de9c14666134960978bf8b82fbd25b"
+    },
+    {
+      "path": "assets/DsStatCard-6_EobUbP.css",
+      "bytes": 2990,
+      "gzip_bytes": 866,
+      "sha256": "0d4f01142437b8323fb602f6dffc15e2e074e9892a41b8ce49a0e670c6f5324a"
+    },
+    {
+      "path": "assets/PackagesPage-DcojOG9z.css",
+      "bytes": 3588,
+      "gzip_bytes": 945,
+      "sha256": "70f0a30eca776b3cac40324499c757260e1ae7eb9fab674e09577986daad8d38"
+    },
+    {
+      "path": "assets/QuotesPage-B32V6obj.css",
+      "bytes": 2573,
+      "gzip_bytes": 734,
+      "sha256": "af1482b568454ed63a3e239b63641981eabc083658ba73b6eaf9ea3fc2784055"
+    },
+    {
+      "path": "assets/BreedsListPage-D4CxQrFe.js",
+      "bytes": 3882,
+      "gzip_bytes": 1841,
+      "sha256": "36d3f628f57ce420064d2da6880b507085651e23e63dea1d117a447f2c4a568b"
+    },
+    {
+      "path": "assets/FinanceTimelinePage-BqoAs6RG.js",
+      "bytes": 8125,
+      "gzip_bytes": 3174,
+      "sha256": "bdcc85b0f85ee78e7d865560a7e513858c7e66dd50f34ad7022676bf09c0b0c9"
+    },
+    {
+      "path": "assets/MeasurementUnitsPage-Ce1z2JYX.js",
+      "bytes": 9414,
+      "gzip_bytes": 3227,
+      "sha256": "fb00694e0e0481d60b3694d8015d07df1d78aeece291b65cbfddfdc15bce80fd"
+    },
+    {
+      "path": "assets/quotes-xuhmDBl_.js",
+      "bytes": 788,
+      "gzip_bytes": 361,
+      "sha256": "751f20c095e127e1a510752b58ce06f04aa4161ba87eaa802278b28a783d2e4b"
+    },
+    {
+      "path": "assets/AdministrationSettingsPage-DyQ0CHNT.js",
+      "bytes": 9272,
+      "gzip_bytes": 3463,
+      "sha256": "57382c11da10e6d9655c25f16e4906af20a00088ec1114abbd10463651b83019"
+    },
+    {
+      "path": "assets/OperationalFinanceCatalog-CTKwo0Ep.css",
+      "bytes": 3606,
+      "gzip_bytes": 864,
+      "sha256": "bffe76d306190defebbca43e82b7a43dd678cf61f62acf1b8987566e1f3e83cc"
+    },
+    {
+      "path": "assets/PixPage-BId4Fk8U.css",
+      "bytes": 995,
+      "gzip_bytes": 415,
+      "sha256": "ee7cdff03bb2c1a505006f7c756608db147f544fc411305dacea305bd025dda2"
+    },
+    {
+      "path": "assets/PrescriptionsPage-D8F3kvya.js",
+      "bytes": 10735,
+      "gzip_bytes": 3811,
+      "sha256": "047bc6b7f8ac6b79c91dc1a6591987667817d866aa0ebe681546ff1a023da2f6"
+    },
+    {
+      "path": "assets/BillingListPage-CXKRDfiP.js",
+      "bytes": 6260,
+      "gzip_bytes": 2557,
+      "sha256": "4645a5e1d374995fc31f730d12b1f0134d6177bd4ee8dc75b039167de79af8b3"
+    },
+    {
+      "path": "assets/cash-BE-KZvB6.js",
+      "bytes": 512,
+      "gzip_bytes": 265,
+      "sha256": "eb2d388f2d9a9d23ff2a9078df280e253245019380d5bd140e4f1abd69ac702f"
+    },
+    {
+      "path": "assets/products-D5-dDwL6.js",
+      "bytes": 386,
+      "gzip_bytes": 259,
+      "sha256": "7b2791adc1aff51701e6db475312cf8348bf9ad74e44f1b2f4f9c19bace4a20d"
+    },
+    {
+      "path": "assets/CashFlowPage-BCUI10yO.js",
+      "bytes": 7927,
+      "gzip_bytes": 3158,
+      "sha256": "b778dcb1b0013cc84e9e8a757ac77706e9301a5104f6568bd414d9c2b7ee8a7a"
+    },
+    {
+      "path": "assets/ServiceDetailPage-C3wW0YyS.css",
+      "bytes": 1532,
+      "gzip_bytes": 547,
+      "sha256": "4f3a426bd347d7e29f690e4afc397f6eaff1cd7d734ec7ceb16c3aa848fe6328"
+    },
+    {
+      "path": "assets/FiscalConfigPage-BvIZssd8.css",
+      "bytes": 707,
+      "gzip_bytes": 320,
+      "sha256": "a16e729d21082dfdc34c16769b87a2ae0da54b0aab39340a3b2d9156bc6d817b"
+    },
+    {
+      "path": "assets/FiscalICMSMatrixPage-BEj1Wtzc.css",
+      "bytes": 414,
+      "gzip_bytes": 197,
+      "sha256": "378437052b2069d3eebbb2f959868eff27c1ad7f248310447496038f49f09fef"
+    },
+    {
+      "path": "assets/CurveAbcProductsPage-2bWfTZN7.css",
+      "bytes": 855,
+      "gzip_bytes": 385,
+      "sha256": "e15922ac548dfa16152cee65e3e0a3ff2b6cfab51e3d132068943a84e4853479"
+    },
+    {
+      "path": "assets/LaboratoryEquipmentDetailPage-DKDagxEh.css",
+      "bytes": 920,
+      "gzip_bytes": 410,
+      "sha256": "b381d8aa47434fb5f714e148d93175ac84524f884625ec0a5bc4a00fe976c8e4"
+    },
+    {
+      "path": "assets/UsersListPage-0PEJzUDM.css",
+      "bytes": 1744,
+      "gzip_bytes": 626,
+      "sha256": "062c2b446855c42a55f3026b4a20fb571d2f427c2afb8c3c86c72aee01a50dbe"
+    },
+    {
+      "path": "assets/InpatientDailyChargesPage-V-iXX5In.css",
+      "bytes": 3957,
+      "gzip_bytes": 1038,
+      "sha256": "8f3a3ae7cbd3c69ce80a97b9d76d64a3cecdc361433a35aa5aa43f5fa3bf5abb"
+    },
+    {
+      "path": "assets/labels-8iwsU3Xv.js",
+      "bytes": 1925,
+      "gzip_bytes": 839,
+      "sha256": "ff96a8c267d35a702ff1cb938af3e52bea3e715a8d0e18fa69452d4e3ceb23fa"
+    },
+    {
+      "path": "assets/DsCard-2dIGTtAC.css",
+      "bytes": 2334,
+      "gzip_bytes": 797,
+      "sha256": "27da62867b68adb58d18ce04e4607862fdb3562fa8ce88fec1c1f22dd734f7c3"
+    },
+    {
+      "path": "assets/InventoryStockTransactionPage-CqrtIv26.css",
+      "bytes": 1846,
+      "gzip_bytes": 650,
+      "sha256": "e25720b305fd5cf37a91d6fa62c424bf62d9bc820c6a894bc28e1cdda075f16d"
+    },
+    {
+      "path": "assets/LaboratoryReportTypeDetailPage-BP48ruz4.js",
+      "bytes": 3246,
+      "gzip_bytes": 1436,
+      "sha256": "8c576a1b620b4747e47e6000ec3bb3fa750358ffc0de96c704e480ae280cb655"
+    },
+    {
+      "path": "assets/WhatsAppPage-19boMT0c.js",
+      "bytes": 6977,
+      "gzip_bytes": 2711,
+      "sha256": "d481f0f0da901bf15db9361d38dfdc1bac6362993b8151021377fa225f7e816c"
+    },
+    {
+      "path": "assets/InventoryPriceConsultationPage-zTmahHlD.js",
+      "bytes": 7934,
+      "gzip_bytes": 3236,
+      "sha256": "d98668e7d0b8d7d6b482febcde151fd10555d992c686b68f5ef5d2d254ec27ee"
+    },
+    {
+      "path": "assets/billing-CjMsz35W.js",
+      "bytes": 1341,
+      "gzip_bytes": 614,
+      "sha256": "db4b3bbfcb4eda8b4335e752130160c653267338b9b1f5392bdd410a6ec3822e"
+    },
+    {
+      "path": "assets/LaboratoryEquipmentPage-BAlrpYqH.css",
+      "bytes": 1219,
+      "gzip_bytes": 513,
+      "sha256": "559119c0e2a78576b183780bd1213b79f2a9c9d4a5eacb1913e9c832ac358202"
+    },
+    {
+      "path": "assets/LaboratoryHemogramsPage-BNjUlvZA.js",
+      "bytes": 727,
+      "gzip_bytes": 439,
+      "sha256": "9062857050b84f1606b1625c73bfb1c791d72d97afc5a1aa7f19fe37032f2bec"
+    },
+    {
+      "path": "assets/UserFormPage-CcvcFd0u.css",
+      "bytes": 430,
+      "gzip_bytes": 239,
+      "sha256": "fc788af54e23545ca3eaa001df10208db3ddb811bd036ca83f306bd610a432ff"
+    },
+    {
+      "path": "assets/PatientFormPage-Dou67jPN.js",
+      "bytes": 19257,
+      "gzip_bytes": 6244,
+      "sha256": "17d57e3df2a1363ba811f8054204b8965a5c375cb975d8148b1ab2367ce44045"
+    },
+    {
+      "path": "assets/RegisterReportsPage-BOIh_t_X.js",
+      "bytes": 1228,
+      "gzip_bytes": 613,
+      "sha256": "55f33363bd6b6fe2840812b840a01f71a9caa652eaf71ef2ba1246292ebe6eb7"
+    },
+    {
+      "path": "assets/InventoryAuditPage-ChEVzOPr.css",
+      "bytes": 1953,
+      "gzip_bytes": 666,
+      "sha256": "d4638f6495ede73a9c9fe4e85c66726aff469f33f0c7f2de2302878442a57769"
+    },
+    {
+      "path": "assets/BedsPage-COTszkw8.css",
+      "bytes": 3875,
+      "gzip_bytes": 1008,
+      "sha256": "71128c1d930db8cf9fcde950db6e43d35772e99ceb70b20568c02291cb88264e"
+    },
+    {
+      "path": "assets/PriceTablesPage-D7FmJhB1.css",
+      "bytes": 2843,
+      "gzip_bytes": 805,
+      "sha256": "b805b7ba73420a79324080e6eba2ace3916cf8c7c4af1c59baca982d0b34944f"
+    },
+    {
+      "path": "assets/InpatientListPage-hju3XpyW.js",
+      "bytes": 5646,
+      "gzip_bytes": 2341,
+      "sha256": "bfbc983152319d7add44751d7109ea89631a83573ce869610da1c2628f2d84b6"
+    },
+    {
+      "path": "assets/AccessControlPage-Cx1VyxTy.js",
+      "bytes": 28959,
+      "gzip_bytes": 7988,
+      "sha256": "9f6bf9e1d04220f7a8bc87e87145afd42362c1b74722bedf682066e16d63ebc9"
+    },
+    {
+      "path": "assets/NotificationsPage-BDxUs7rU.js",
+      "bytes": 10468,
+      "gzip_bytes": 3813,
+      "sha256": "498769bc49a76079042c714c12011fe93d1c97b3cf6185854587a035b9ca2677"
+    },
+    {
+      "path": "assets/DsButton-CGSuLekj.js",
+      "bytes": 9868,
+      "gzip_bytes": 4424,
+      "sha256": "a60867c15284ae3fbd2ed7a9738f4ee3af9edb00eaed70e0f9648395dc8773db"
+    },
+    {
+      "path": "assets/ProductGroupsPage-BkCg335P.css",
+      "bytes": 2573,
+      "gzip_bytes": 755,
+      "sha256": "607f856fa584ceb95f6327c203c5f4f85e26920ad051e580d969e2675c2973d2"
+    },
+    {
+      "path": "assets/DsButton-DCAMQoEd.css",
+      "bytes": 4490,
+      "gzip_bytes": 1248,
+      "sha256": "fe545fc8d546fd88fafd8ea653c9febdb3e425666e27fa1560b369646ab66862"
+    },
+    {
+      "path": "assets/AppPageHeader-Cg3Maoci.css",
+      "bytes": 14340,
+      "gzip_bytes": 2780,
+      "sha256": "5f16d706d9e7af6bea581ef52edf72173d23da79b6313f70f467359232d59294"
+    },
+    {
+      "path": "assets/InventoryPurchasesPage-i6GCulW2.js",
+      "bytes": 16973,
+      "gzip_bytes": 5642,
+      "sha256": "d260dc07fb7c61c2ac27a0ab56dd3cc1fab149c34a942f87b75275afd749a333"
+    },
+    {
+      "path": "assets/ReceptionGatewayPage-S9Wi_Gnk.css",
+      "bytes": 11167,
+      "gzip_bytes": 1707,
+      "sha256": "3dfb654e1f1847c928ff79a314165726d9836528ab800c50d9d6aecd650c7253"
+    },
+    {
+      "path": "assets/CommercialReportsPage-BjSY8SbS.css",
+      "bytes": 1450,
+      "gzip_bytes": 511,
+      "sha256": "3f92cf05b4862400fea680e4edb2a3bdedec6d1e4c6b449c9c5f58c21bdcf3fb"
+    },
+    {
+      "path": "assets/DsStatCard-1CnNSgFs.js",
+      "bytes": 1694,
+      "gzip_bytes": 727,
+      "sha256": "bcb077b490cf5f6fd04c5622eb77db32b150b8589bd5b6f6e4582453fad438f7"
+    },
+    {
+      "path": "assets/AdvancePaymentsPage-DPyqiZFj.css",
+      "bytes": 1507,
+      "gzip_bytes": 560,
+      "sha256": "51b3f92bde1fe1d3d67eaede712084284f278d89fa2a7aacc195d5cd5d68630d"
+    },
+    {
+      "path": "assets/WebhookDetailPage-Djvt9_1N.css",
+      "bytes": 2182,
+      "gzip_bytes": 706,
+      "sha256": "c066fbdd905805c94670a51602f3eb2c937513bf7407206ce2a7488e4d6af7bb"
+    },
+    {
+      "path": "assets/RhProfessionsPage-sKDQMwzu.css",
+      "bytes": 696,
+      "gzip_bytes": 308,
+      "sha256": "4605d3fe1b74c0498a8fc2cbac36089879cc31d2371377b484111cacf467c53d"
+    },
+    {
+      "path": "assets/CustomerGroupsListPage-DYZklFUh.js",
+      "bytes": 4178,
+      "gzip_bytes": 1879,
+      "sha256": "0869c14c00390cf10960de193d41bc0776a3342eca95c27ac2576b0bbec2d85a"
+    },
+    {
+      "path": "assets/DischargesPage-BhG3hDun.js",
+      "bytes": 9570,
+      "gzip_bytes": 3247,
+      "sha256": "9cd5ba537d2152565339240ded3bc42e9edad0c50c34d59eaad476e190dbab78"
+    },
+    {
+      "path": "assets/CustomerGroupDetailPage-CWIeyfX5.js",
+      "bytes": 5629,
+      "gzip_bytes": 2096,
+      "sha256": "8b1c7a670e553051b77ecc8aa7be26b5e05fa0acf22c5b590f0a3a58cec503f9"
+    },
+    {
+      "path": "assets/appointment-Cg4PTorI.js",
+      "bytes": 1327,
+      "gzip_bytes": 525,
+      "sha256": "ccc752a55ed534593dcc7da6c6a32a822f5236c4f6aeb6ac9981179a016bc066"
+    },
+    {
+      "path": "assets/ExpensesPage-BAQKpzCk.css",
+      "bytes": 743,
+      "gzip_bytes": 296,
+      "sha256": "10bce35e1c0ef72456380b67e10dec52fd7b72899f156bd0a0e159859303bb12"
+    },
+    {
+      "path": "assets/DischargesPage-DeJw2BOH.css",
+      "bytes": 1435,
+      "gzip_bytes": 558,
+      "sha256": "01784e3d8a9b27586042b45b246c041710f65c6fe46f7ea37fe0023b24724b25"
+    },
+    {
+      "path": "assets/SplitSimulatorPage-DJ6XkWP4.css",
+      "bytes": 2774,
+      "gzip_bytes": 789,
+      "sha256": "69c524c9d698a522dee3b86039aef8d1767f9d63b0d7ff1cbba5e538b117b9ac"
+    },
+    {
+      "path": "assets/FiscalCOFINSPage-CjyRtvTn.css",
+      "bytes": 491,
+      "gzip_bytes": 238,
+      "sha256": "775249fb7785bbd62eb94449d68bd1fe076f7fb373adde43b3e950bb6debea3f"
+    },
+    {
+      "path": "assets/StaffFormPage-DdR-0NoM.css",
+      "bytes": 1805,
+      "gzip_bytes": 639,
+      "sha256": "424c62ef695a47eff7025020b058969c422fc9b1367d77b7d78287b6aba1dfa6"
+    },
+    {
+      "path": "assets/InventoryPurchaseDetailPage-CmsrDaA8.js",
+      "bytes": 5305,
+      "gzip_bytes": 2185,
+      "sha256": "a39ec3c2a8557f908448dd89f3d1c1abf1d6b82309c078f7a738e75686ec045c"
+    },
+    {
+      "path": "assets/LaboratoryBiochemistryReferenceValuesPage-D7MEyXnO.js",
+      "bytes": 4776,
+      "gzip_bytes": 2101,
+      "sha256": "4df60e10f950953495a6179a889dbd87882053ad3805c90bc2628b3492e128dd"
+    },
+    {
+      "path": "assets/RhProfessionsPage-NvxYtLdq.js",
+      "bytes": 7732,
+      "gzip_bytes": 2924,
+      "sha256": "517bb705680d0e80b1e49b1e0c57f65de83d64cc1021d57f491c39a882b7fb2a"
+    },
+    {
+      "path": "assets/DsCheckbox-BzfU-ywF.css",
+      "bytes": 1666,
+      "gzip_bytes": 610,
+      "sha256": "f6d515379e191f2add35de38856d73f4117ce39571900d2010a879099a846cf6"
+    },
+    {
+      "path": "assets/LaboratoryBiochemistryReferenceValueFormPage-CijtWJ-i.css",
+      "bytes": 1709,
+      "gzip_bytes": 569,
+      "sha256": "59d0aa89822639f1515816690f82b450966c712155e6e7060dfc7cee6fb96620"
+    },
+    {
+      "path": "assets/EncountersListPage-BjxU79Kt.js",
+      "bytes": 4722,
+      "gzip_bytes": 1954,
+      "sha256": "a073ef5ded052c46cd61e88579cca6c194e6bc35a51e5f932854fdc3218901bd"
+    },
+    {
+      "path": "assets/PointOfSaleSyncPage-C4AGn87a.js",
+      "bytes": 5217,
+      "gzip_bytes": 2297,
+      "sha256": "3a958e55ec3cd6d0cf731913cbaad8f908f93eb3460a6542b07dd146e754dad0"
+    },
+    {
+      "path": "assets/LaboratoryReportTypeDetailPage-DPCs83WR.css",
+      "bytes": 1040,
+      "gzip_bytes": 446,
+      "sha256": "6ab65201e4461e8ae4762903725d97b6b5ccc84741583cf65a0b250bcc9139e1"
+    },
+    {
+      "path": "assets/responsibilityTerms-C-Nm9hNA.js",
+      "bytes": 863,
+      "gzip_bytes": 467,
+      "sha256": "97a3c74df1f047224cd519ea50f8327434d5f9bfdd965b5e49e7d67e250c90c6"
+    },
+    {
+      "path": "assets/fiscal-Nsoc3MRO.js",
+      "bytes": 2757,
+      "gzip_bytes": 622,
+      "sha256": "042c9453228e37e5a83d3419cd990dedd92c7c1a6a609e35828f4d3ca2e90020"
+    },
+    {
+      "path": "assets/PackagesPage-DRh04MYM.js",
+      "bytes": 13932,
+      "gzip_bytes": 4799,
+      "sha256": "d86dd7f24b6a21ca230ad75e81db52447b6d2c609ed8de67e8e2f270ab627460"
+    },
+    {
+      "path": "assets/health-BG-G2LaL.js",
+      "bytes": 167,
+      "gzip_bytes": 146,
+      "sha256": "d8d92fab5a1d0e5eae0652a67324ce42f105e3771ae382958fb0edfbae2efeb7"
+    },
+    {
+      "path": "assets/LaboratoryBiochemistryReferenceValueFormPage-DdgN2QPD.js",
+      "bytes": 5012,
+      "gzip_bytes": 2063,
+      "sha256": "d8855740381cab6c8b5121bf0afcf064c38164307f700b209368432cca0cf1e4"
+    },
+    {
+      "path": "assets/InventoryFormPage-Dbe2h9kZ.css",
+      "bytes": 1524,
+      "gzip_bytes": 568,
+      "sha256": "29c6f5324b007febd2262186a0daf314d48b66db4d539c65a1c7788947c138ec"
+    },
+    {
+      "path": "assets/SpeciesDetailPage-Bu9vWDIr.css",
+      "bytes": 1074,
+      "gzip_bytes": 416,
+      "sha256": "b62178d05be390980252e770a1184377b3cfc3d3d7f973382e6892c2a2e80092"
+    },
+    {
+      "path": "assets/LaboratoryReportTypeFormPage-DYoufQ0b.js",
+      "bytes": 4987,
+      "gzip_bytes": 2054,
+      "sha256": "1b84a35a35ec7efcfc96677af4879292c46977c1388c36b820098455559cc4f8"
+    },
+    {
+      "path": "assets/AppointmentTypesPage-DxZFSLN6.js",
+      "bytes": 3923,
+      "gzip_bytes": 1620,
+      "sha256": "8fd755e77f0b5c14d414b95603db7bbc4bd0b5e8cb48c92357cdd9eeb5d44fd5"
+    },
+    {
+      "path": "assets/OwnersListPage-DSPS5mXX.js",
+      "bytes": 10175,
+      "gzip_bytes": 3545,
+      "sha256": "5638ced3db7d147c124105c4aba640ef1306a1607528adc07c250db40d990da7"
+    },
+    {
+      "path": "assets/CustomerGroupsListPage-Dzqmo6CZ.css",
+      "bytes": 650,
+      "gzip_bytes": 334,
+      "sha256": "2a88473529368339bb8ab55883219c9a567c827e68275f15ee49643d3b95d1fa"
+    },
+    {
+      "path": "assets/SplitExporterPage-BGSMmows.js",
+      "bytes": 7205,
+      "gzip_bytes": 2794,
+      "sha256": "afa404f5781ee73cb877b22394ec54c3df9a7fb7dad05b4177943d23634403db"
+    },
+    {
+      "path": "assets/LaboratoryHemogramReferenceValueDetailPage-SUOpAIQZ.js",
+      "bytes": 3207,
+      "gzip_bytes": 1416,
+      "sha256": "1f337fa9e33f15a63833e4a3bef1d2bc3a62e63db43001b4a5309532b1cca3cf"
+    },
+    {
+      "path": "assets/FiscalICMSPage-Dm5h_SU5.js",
+      "bytes": 4312,
+      "gzip_bytes": 1845,
+      "sha256": "f8765b5cb96d6ab764f197c957b9e7eb98c21efb17823d2ba091b84092aebed3"
+    },
+    {
+      "path": "assets/PrescriptionExecutionsPage-BLm3IV6k.js",
+      "bytes": 16146,
+      "gzip_bytes": 5281,
+      "sha256": "3ca25c00c60f38414f0ceaeee930eefc77e1a333abd5b8ab196f597beb349e5c"
+    },
+    {
+      "path": "assets/BedFormPage-BUGZxoNo.js",
+      "bytes": 9398,
+      "gzip_bytes": 3521,
+      "sha256": "34a4a92e4679625f5c4316f296d563380a4c5a53766018b972079e5a0811b371"
+    },
+    {
+      "path": "assets/CoatColorsListPage-CDIA5k18.js",
+      "bytes": 3936,
+      "gzip_bytes": 1853,
+      "sha256": "8b7801329733d53145b40c56cca13b799d82d271adce0293e73d0be7660d7bb6"
+    },
+    {
+      "path": "assets/CommissionCalculationsPage-C4WujSdR.js",
+      "bytes": 9974,
+      "gzip_bytes": 3741,
+      "sha256": "894d86427694262365df41727064459fd0d5eb7bf566938543d0bfbc1c082530"
+    },
+    {
+      "path": "assets/CompanySectorsPage-ErqpYJAv.css",
+      "bytes": 2685,
+      "gzip_bytes": 769,
+      "sha256": "ad1f63a3553cb292a424e4bc75bc97ab2d0d86081071f229ae668f8a602b9d2d"
+    },
+    {
+      "path": "assets/marketing-CDd3Z_rZ.js",
+      "bytes": 1707,
+      "gzip_bytes": 515,
+      "sha256": "5fa29f4d43bceea6b18bef29c8316c03c9c44bcb38ad6edf3b038864f2b2665b"
+    },
+    {
+      "path": "assets/SearchSelect-qaRzItcw.js",
+      "bytes": 2814,
+      "gzip_bytes": 1274,
+      "sha256": "253e1cea3f84e3bfc920be632bb5c59e7ccedd83ce01b544aeab8704433edba2"
+    },
+    {
+      "path": "assets/FiscalPISPage-2nCPQ_0N.js",
+      "bytes": 4292,
+      "gzip_bytes": 1841,
+      "sha256": "4c7a39bc9fad7f1dcf3ee400adbc95d30db8025405e4b52fe54d8e068071d3a7"
+    }
+  ],
+  "limits": [
+    "Static gzip estimate, not actual HTTP transfer negotiation",
+    "No LCP INP CLS runtime or field measurement",
+    "Service worker precaches 476 entries /3082.51KiB per build log; audit first-install network cost separately",
+    "Build after continuity fixes, before requested visual redesign; not untouched historical baseline"
+  ]
+}

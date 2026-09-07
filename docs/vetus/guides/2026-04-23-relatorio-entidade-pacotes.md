@@ -10,11 +10,11 @@ Escopo:
 
 Evidências principais:
 
-- [pacotes-lista.png](../inspection/2026-04-23T23-46-55-036Z-pacotes/screenshots/pacotes-lista.png)
-- [pacotes-lista.json](../inspection/2026-04-23T23-46-55-036Z-pacotes/pacotes-lista.json)
-- [pacotes-detalhe.png](../inspection/2026-04-23T23-46-55-036Z-pacotes/screenshots/pacotes-detalhe.png)
-- [pacotes-detalhe.json](../inspection/2026-04-23T23-46-55-036Z-pacotes/pacotes-detalhe.json)
-- [network.json](../inspection/2026-04-23T23-46-55-036Z-pacotes/network.json)
+- pacotes-lista.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-46-55-036Z-pacotes/screenshots/pacotes-lista.png`)
+- pacotes-lista.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-46-55-036Z-pacotes/pacotes-lista.json`)
+- pacotes-detalhe.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-46-55-036Z-pacotes/screenshots/pacotes-detalhe.png`)
+- pacotes-detalhe.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-46-55-036Z-pacotes/pacotes-detalhe.json`)
+- network.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-46-55-036Z-pacotes/network.json`)
 - [2026-04-23-relatorio-entidade-agenda.md](../guides/2026-04-23-relatorio-entidade-agenda.md)
 - [2026-04-23-relatorio-entidade-comanda.md](../guides/2026-04-23-relatorio-entidade-comanda.md)
 - [2026-04-23-relatorio-entidade-vendas.md](../guides/2026-04-23-relatorio-entidade-vendas.md)

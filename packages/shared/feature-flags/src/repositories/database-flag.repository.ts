@@ -1,4 +1,4 @@
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, exists, type SQL } from 'drizzle-orm';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
 import { featureFlags, featureFlagOverrides } from '@cvg-his-v2/shared-database/schemas';
 import type { AccountId } from '@cvg-his-v2/shared-types';
@@ -34,7 +34,9 @@ export interface FeatureFlagRepository {
   deleteFlag(id: string): Promise<void>;
 
   /**
-   * Find an override by flag ID + environment + optional account.
+   * Administrative lookup: optional account and nonempty environment filter.
+   * User overrides are included; newest updatedAt then ID breaks ties.
+   * Use listOverrides to inspect all matching scopes.
    */
   findOverride(
     flagId: string,
@@ -147,12 +149,67 @@ export interface FeatureFlagOverrideUpdate {
 
 export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
   readonly #db: DatabaseClient;
+  readonly #accountId?: AccountId;
 
-  public constructor(db: DatabaseClient) {
+  /** ID-only operations require a tenant-scoped DB/RLS when accountId is omitted. */
+  public constructor(db: DatabaseClient, accountId?: AccountId) {
     this.#db = db;
+    this.#accountId = accountId;
+  }
+
+  #requireAccount(accountId: AccountId): void {
+    if (this.#accountId !== undefined && accountId !== this.#accountId)
+      throw new Error('Feature flag account mismatch');
+  }
+
+  #flagWhere(condition: SQL): SQL | undefined {
+    return and(
+      condition,
+      this.#accountId === undefined ? undefined : eq(featureFlags.accountId, this.#accountId)
+    );
+  }
+
+  #overrideWhere(condition: SQL): SQL | undefined {
+    return and(
+      condition,
+      this.#accountId === undefined
+        ? undefined
+        : and(
+            eq(featureFlagOverrides.accountId, this.#accountId),
+            exists(
+              this.#db
+                .select({ id: featureFlags.id })
+                .from(featureFlags)
+                .where(
+                  and(
+                    eq(featureFlags.id, featureFlagOverrides.flagId),
+                    eq(featureFlags.accountId, this.#accountId)
+                  )
+                )
+            )
+          )
+    );
+  }
+
+  public async findFlagById(id: string, accountId?: AccountId): Promise<FeatureFlagRow | null> {
+    if (accountId !== undefined) this.#requireAccount(accountId);
+    const rows = await this.#db
+      .select()
+      .from(featureFlags)
+      .where(
+        this.#flagWhere(
+          and(
+            eq(featureFlags.id, id),
+            accountId === undefined ? undefined : eq(featureFlags.accountId, accountId)
+          )!
+        )
+      )
+      .limit(1);
+    return rows[0] ? mapFlagRow(rows[0]) : null;
   }
 
   public async findFlagByKey(key: string, accountId: AccountId): Promise<FeatureFlagRow | null> {
+    this.#requireAccount(accountId);
     const rows = await this.#db
       .select()
       .from(featureFlags)
@@ -163,6 +220,7 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
   }
 
   public async listFlags(accountId: AccountId): Promise<readonly FeatureFlagRow[]> {
+    this.#requireAccount(accountId);
     const rows = await this.#db
       .select()
       .from(featureFlags)
@@ -172,6 +230,7 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
   }
 
   public async createFlag(input: FeatureFlagInput): Promise<FeatureFlagRow> {
+    this.#requireAccount(input.accountId);
     const now = new Date();
     const [row] = await this.#db
       .insert(featureFlags)
@@ -182,10 +241,10 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
         description: input.description,
         defaultValue: input.defaultValue ?? false,
         enabled: true,
-        scopes: input.scopes ?? ['environment'],
+        scopes: [...(input.scopes ?? ['environment'])],
         expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
         auditRequired: input.auditRequired ?? false,
-        tags: input.tags ?? [],
+        tags: [...(input.tags ?? [])],
         createdAt: now,
         updatedAt: now
       })
@@ -201,22 +260,24 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
         description: input.description,
         defaultValue: input.defaultValue,
         enabled: input.enabled,
-        scopes: input.scopes,
+        scopes: input.scopes ? [...input.scopes] : undefined,
         expiresAt: input.expiresAt ? new Date(input.expiresAt) : undefined,
         auditRequired: input.auditRequired,
-        tags: input.tags,
+        tags: input.tags ? [...input.tags] : undefined,
         updatedAt: new Date()
       })
-      .where(eq(featureFlags.id, id))
+      .where(this.#flagWhere(eq(featureFlags.id, id)))
       .returning();
     return mapFlagRow(row);
   }
 
   public async deleteFlag(id: string): Promise<void> {
-    await this.#db
+    const [row] = await this.#db
       .update(featureFlags)
       .set({ enabled: false, updatedAt: new Date() })
-      .where(eq(featureFlags.id, id));
+      .where(this.#flagWhere(eq(featureFlags.id, id)))
+      .returning({ id: featureFlags.id });
+    if (!row) throw new Error('Feature flag not found');
   }
 
   public async findOverride(
@@ -231,7 +292,8 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
     const rows = await this.#db
       .select()
       .from(featureFlagOverrides)
-      .where(and(...conditions))
+      .where(this.#overrideWhere(and(...conditions)!))
+      .orderBy(desc(featureFlagOverrides.updatedAt), featureFlagOverrides.id)
       .limit(1);
 
     return rows[0] ? mapOverrideRow(rows[0]) : null;
@@ -241,12 +303,15 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
     const rows = await this.#db
       .select()
       .from(featureFlagOverrides)
-      .where(eq(featureFlagOverrides.flagId, flagId))
+      .where(this.#overrideWhere(eq(featureFlagOverrides.flagId, flagId)))
       .orderBy(desc(featureFlagOverrides.createdAt));
     return rows.map(mapOverrideRow);
   }
 
   public async createOverride(input: FeatureFlagOverrideInput): Promise<FeatureFlagOverrideRow> {
+    this.#requireAccount(input.accountId);
+    if (!(await this.findFlagById(input.flagId, input.accountId)))
+      throw new Error('Feature flag not found in override account');
     const now = new Date();
     const [row] = await this.#db
       .insert(featureFlagOverrides)
@@ -257,7 +322,7 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
         accountIdOverride: input.accountIdOverride ?? null,
         userId: input.userId ?? null,
         percentage: input.percentage ?? null,
-        allowedUsers: input.allowedUsers ?? [],
+        allowedUsers: [...(input.allowedUsers ?? [])],
         enabled: input.enabled ?? true,
         createdAt: now,
         updatedAt: now
@@ -266,7 +331,10 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
     return mapOverrideRow(row);
   }
 
-  public async updateOverride(id: string, input: FeatureFlagOverrideUpdate): Promise<FeatureFlagOverrideRow> {
+  public async updateOverride(
+    id: string,
+    input: FeatureFlagOverrideUpdate
+  ): Promise<FeatureFlagOverrideRow> {
     const [row] = await this.#db
       .update(featureFlagOverrides)
       .set({
@@ -274,24 +342,27 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
         accountIdOverride: input.accountIdOverride,
         userId: input.userId,
         percentage: input.percentage,
-        allowedUsers: input.allowedUsers,
+        allowedUsers: input.allowedUsers ? [...input.allowedUsers] : undefined,
         enabled: input.enabled,
         updatedAt: new Date()
       })
-      .where(eq(featureFlagOverrides.id, id))
+      .where(this.#overrideWhere(eq(featureFlagOverrides.id, id)))
       .returning();
     return mapOverrideRow(row);
   }
 
   public async deleteOverride(id: string): Promise<void> {
-    await this.#db
+    const [row] = await this.#db
       .update(featureFlagOverrides)
       .set({ enabled: false, updatedAt: new Date() })
-      .where(eq(featureFlagOverrides.id, id));
+      .where(this.#overrideWhere(eq(featureFlagOverrides.id, id)))
+      .returning({ id: featureFlagOverrides.id });
+    if (!row) throw new Error('Feature flag override not found');
   }
 }
 
-function mapFlagRow(row: Record<string, unknown>): FeatureFlagRow {
+function mapFlagRow(row: Record<string, unknown> | undefined): FeatureFlagRow {
+  if (!row) throw new Error('Feature flag not found');
   return {
     id: row.id as string,
     accountId: row.accountId as string,
@@ -301,7 +372,12 @@ function mapFlagRow(row: Record<string, unknown>): FeatureFlagRow {
     defaultValue: Boolean(row.defaultValue),
     enabled: Boolean(row.enabled),
     scopes: (row.scopes as string[]) ?? [],
-    expiresAt: row.expiresAt instanceof Date ? row.expiresAt : (row.expiresAt ? new Date(row.expiresAt as string) : null),
+    expiresAt:
+      row.expiresAt instanceof Date
+        ? row.expiresAt
+        : row.expiresAt
+          ? new Date(row.expiresAt as string)
+          : null,
     auditRequired: Boolean(row.auditRequired),
     tags: (row.tags as string[]) ?? [],
     metadata: (row.metadata as Record<string, string | number | boolean>) ?? null,
@@ -310,7 +386,8 @@ function mapFlagRow(row: Record<string, unknown>): FeatureFlagRow {
   };
 }
 
-function mapOverrideRow(row: Record<string, unknown>): FeatureFlagOverrideRow {
+function mapOverrideRow(row: Record<string, unknown> | undefined): FeatureFlagOverrideRow {
+  if (!row) throw new Error('Feature flag override not found');
   return {
     id: row.id as string,
     accountId: row.accountId as string,

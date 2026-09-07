@@ -3,12 +3,11 @@
     <AppPageHeader
       :breadcrumbs="['Estoque', 'Controles', 'Coletores de Dados']"
       title="Coletores de Dados"
-      subtitle="Conferência por coletor, código de barras, lote, saldo e divergência operacional"
+      subtitle="Confira saldos e prepare rascunhos de coleta."
     >
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
-        <DsButton variant="secondary" tag="a" to="/inventory/movements" icon="📥">Transação</DsButton>
-        <DsButton variant="primary" tag="a" to="/inventory/audit" icon="🧾">Auditoria</DsButton>
+        <DsButton variant="primary" @click="openPreparation">Novo rascunho</DsButton>
       </template>
     </AppPageHeader>
 
@@ -20,20 +19,130 @@
       {{ successMessage }}
     </DsAlert>
 
-    <section class="hub-kpis" aria-label="Resumo dos coletores de dados">
-      <DsStatCard :label="`${items.length} item(ns)`" value="" icon="📦" />
-      <DsStatCard :label="`${lotCount} lote(s)`" value="" icon="🏷️" />
-      <DsStatCard :label="`${divergenceCount} divergência(s)`" value="" icon="⚠️" />
-      <DsStatCard :label="`${collectedRows.length} coleta(s)`" value="" icon="📟" />
-    </section>
+    <details class="filter-panel">
+      <summary>Filtrar por código, produto, coletor, operação ou situação</summary>
+      <form class="filters" @submit.prevent="applyFilters">
+        <label class="field">
+          <span>Código</span>
+          <input v-model="draftFilters.code" type="search" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Produto</span>
+          <input v-model="draftFilters.product" type="search" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Coletor</span>
+          <input v-model="draftFilters.collector" type="search" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Operação</span>
+          <select v-model="draftFilters.operation">
+            <option value="">Todas</option>
+            <option value="inventory">Inventário</option>
+            <option value="entry">Entrada</option>
+            <option value="exit">Saída</option>
+            <option value="transfer">Transferência</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Situação</span>
+          <select v-model="draftFilters.status">
+            <option value="">Todas</option>
+            <option value="pending">Pendente</option>
+            <option value="attention">Atenção</option>
+            <option value="collected">Sem divergência</option>
+            <option value="divergence">Divergência</option>
+          </select>
+        </label>
+        <DsButton type="submit" variant="primary">Pesquisar</DsButton>
+      </form>
+    </details>
 
-    <section class="collector-layout">
-      <form class="collector-panel" aria-label="Registrar coleta de dados" @submit.prevent="submitCollection">
+    <div v-if="failed" class="load-state" role="status">
+      <p>Dados de estoque indisponíveis. Os rascunhos locais continuam preservados.</p>
+      <DsButton variant="secondary" @click="load">Tentar novamente</DsButton>
+    </div>
+    <p v-if="loading" role="status">Carregando produtos e lotes…</p>
+    <p v-if="(loading || failed) && collectedRows.length" class="draft-notice">Exibindo apenas rascunhos temporários; saldos remotos indisponíveis.</p>
+    <DataTable
+      v-if="!failed || collectedRows.length"
+      :columns="columns"
+      :rows="remoteUnavailable ? collectedRows : filteredRows"
+      :loading="loading && !collectedRows.length"
+      empty-icon="📟"
+      empty-title="Nenhuma coleta encontrada"
+      empty-description="Produtos, lotes e rascunhos temporários de coleta aparecerão aqui."
+      variant="hoverable"
+    >
+      <template #cell-code="{ row }">
+        <span class="record-id">{{ (row as DataCollectorRow).code }}</span>
+      </template>
+      <template #cell-product="{ row }">
+        <strong>{{ (row as DataCollectorRow).product }}</strong>
+        <details v-if="(row as DataCollectorRow).temporary" class="draft-detail" data-testid="temporary-draft-detail">
+          <summary>Rascunho temporário · Revisar</summary>
+          <p>Será perdido ao sair ou recarregar. Estoque não alterado.</p>
+          <p>Observação: {{ (row as DataCollectorRow).notes || 'Sem observação' }}</p>
+        </details>
+      </template>
+      <template #cell-operation="{ row }">
+        {{ (row as DataCollectorRow).operationLabel }}
+      </template>
+      <template #cell-lot="{ row }">
+        {{ (row as DataCollectorRow).lotLabel }}
+      </template>
+      <template #cell-quantity="{ row }">
+        {{ formatQuantity((row as DataCollectorRow).quantity, (row as DataCollectorRow).unit) }}
+      </template>
+      <template #cell-balance="{ row }">
+        {{ remoteUnavailable ? '—' : (row as DataCollectorRow).balanceLabel }}
+        <span v-if="(row as DataCollectorRow).temporary && !remoteUnavailable" class="draft-notice"><br />Na preparação</span>
+      </template>
+      <template #cell-divergence="{ row }">
+        {{ remoteUnavailable ? '—' : (row as DataCollectorRow).divergenceLabel }}
+        <span v-if="(row as DataCollectorRow).temporary && !remoteUnavailable" class="draft-notice"><br />Na preparação</span>
+      </template>
+      <template #cell-status="{ row }">
+        <StatusBadge
+          :label="(row as DataCollectorRow).statusLabel"
+          :variant="(row as DataCollectorRow).statusVariant"
+          size="sm"
+        />
+      </template>
+      <template #cell-date="{ row }">
+        {{ formatDate((row as DataCollectorRow).date) }}
+      </template>
+      <template #cell-actions="{ row }">
+        <DsButton
+          tag="a"
+          :to="(row as DataCollectorRow).detailPath"
+          size="sm"
+          variant="secondary"
+        >
+          Abrir
+        </DsButton>
+      </template>
+    </DataTable>
+
+    <details class="summary-panel">
+      <summary>Resumo de estoque e rascunhos</summary>
+    <dl class="collector-summary" aria-label="Resumo dos coletores de dados">
+      <div><dt>Itens</dt><dd>{{ remoteUnavailable ? '—' : items.length }}</dd></div>
+      <div><dt>Lotes</dt><dd>{{ remoteUnavailable ? '—' : lotCount }}</dd></div>
+      <div><dt>Divergências nos rascunhos</dt><dd>{{ divergenceCount }}</dd></div>
+      <div><dt>Rascunhos temporários</dt><dd>{{ collectedRows.length }}</dd></div>
+    </dl>
+    </details>
+    <details ref="preparationPanel" class="preparation-panel">
+      <summary>Preparar coleta</summary>
+      <form class="collector-panel" aria-label="Preparar rascunho de coleta" @submit.prevent="submitCollection">
         <h2>Coleta</h2>
+        <p class="draft-notice">Rascunho temporário: fica apenas nesta página e será perdido ao sair ou recarregar. O estoque não é alterado.</p>
+        <p class="draft-notice">A operação identifica o contexto da observação. Preparar a coleta não executa entradas, saídas, transferências ou ajustes.</p>
         <div class="collector-grid">
           <label class="field">
             <span>Coletor</span>
-            <select v-model="collection.collector" data-testid="collector-device">
+            <select ref="firstPreparationField" v-model="collection.collector" data-testid="collector-device">
               <option value="Coletor 01">Coletor 01</option>
               <option value="Coletor 02">Coletor 02</option>
               <option value="Mobile">Mobile</option>
@@ -98,113 +207,26 @@
         </div>
 
         <div class="collector-actions">
-          <DsButton type="submit" variant="primary" :loading="saving">Registrar Coleta</DsButton>
+          <DsButton type="submit" variant="primary" :loading="saving" :disabled="loading || failed">Preparar rascunho</DsButton>
           <DsButton type="button" variant="secondary" @click="resetCollection">Limpar</DsButton>
         </div>
       </form>
-
-      <section class="filter-panel" aria-label="Filtros de coletores de dados">
-        <form class="filters" @submit.prevent="applyFilters">
-          <label class="field">
-            <span>Código</span>
-            <input v-model="draftFilters.code" type="search" autocomplete="off" />
-          </label>
-          <label class="field">
-            <span>Produto</span>
-            <input v-model="draftFilters.product" type="search" autocomplete="off" />
-          </label>
-          <label class="field">
-            <span>Coletor</span>
-            <input v-model="draftFilters.collector" type="search" autocomplete="off" />
-          </label>
-          <label class="field">
-            <span>Operação</span>
-            <select v-model="draftFilters.operation">
-              <option value="">Todas</option>
-              <option value="inventory">Inventário</option>
-              <option value="entry">Entrada</option>
-              <option value="exit">Saída</option>
-              <option value="transfer">Transferência</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Situação</span>
-            <select v-model="draftFilters.status">
-              <option value="">Todas</option>
-              <option value="pending">Pendente</option>
-              <option value="attention">Atenção</option>
-              <option value="collected">Coletado</option>
-              <option value="divergence">Divergência</option>
-            </select>
-          </label>
-          <DsButton type="submit" variant="primary">Pesquisar</DsButton>
-        </form>
-      </section>
-    </section>
-
-    <DataTable
-      :columns="columns"
-      :rows="filteredRows"
-      :loading="loading"
-      empty-icon="📟"
-      empty-title="Nenhuma coleta encontrada"
-      empty-description="Produtos, lotes e coletas registradas aparecerão aqui."
-      variant="hoverable"
-    >
-      <template #cell-code="{ row }">
-        <span class="record-id">{{ (row as DataCollectorRow).code }}</span>
-      </template>
-      <template #cell-product="{ row }">
-        <strong>{{ (row as DataCollectorRow).product }}</strong>
-      </template>
-      <template #cell-operation="{ row }">
-        {{ (row as DataCollectorRow).operationLabel }}
-      </template>
-      <template #cell-lot="{ row }">
-        {{ (row as DataCollectorRow).lotLabel }}
-      </template>
-      <template #cell-quantity="{ row }">
-        {{ formatQuantity((row as DataCollectorRow).quantity, (row as DataCollectorRow).unit) }}
-      </template>
-      <template #cell-balance="{ row }">
-        {{ (row as DataCollectorRow).balanceLabel }}
-      </template>
-      <template #cell-divergence="{ row }">
-        {{ (row as DataCollectorRow).divergenceLabel }}
-      </template>
-      <template #cell-status="{ row }">
-        <StatusBadge
-          :label="(row as DataCollectorRow).statusLabel"
-          :variant="(row as DataCollectorRow).statusVariant"
-          size="sm"
-        />
-      </template>
-      <template #cell-date="{ row }">
-        {{ formatDate((row as DataCollectorRow).date) }}
-      </template>
-      <template #cell-actions="{ row }">
-        <DsButton
-          tag="a"
-          :to="(row as DataCollectorRow).detailPath"
-          size="sm"
-          variant="secondary"
-        >
-          Abrir
-        </DsButton>
-      </template>
-    </DataTable>
+    </details>
+    <nav class="related-navigation" aria-label="Outras consultas de estoque">
+      <DsButton variant="secondary" tag="a" to="/inventory/movements">Transação</DsButton>
+      <DsButton variant="secondary" tag="a" to="/inventory/audit">Auditoria</DsButton>
+    </nav>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
-import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import { inventoryService } from '@/services/inventory';
 import type { InventoryItemSummary, InventoryLotSummary } from '@/types/inventory';
 
@@ -231,12 +253,25 @@ interface DataCollectorRow {
   responsible: string;
   date: string;
   detailPath: string;
+  notes?: string;
+  temporary?: boolean;
 }
 
 const items = ref<InventoryItemSummary[]>([]);
 const lots = ref<InventoryLotSummary[]>([]);
 const collectedRows = ref<DataCollectorRow[]>([]);
-const loading = ref(false);
+const loading = ref(true);
+const failed = ref(false);
+const remoteUnavailable = computed(() => loading.value || failed.value);
+const preparationPanel = ref<HTMLDetailsElement | null>(null);
+const firstPreparationField = ref<HTMLSelectElement | null>(null);
+let loadVersion = 0;
+
+async function openPreparation() {
+  if (preparationPanel.value) preparationPanel.value.open = true;
+  await nextTick();
+  firstPreparationField.value?.focus();
+}
 const saving = ref(false);
 const error = ref('');
 const successMessage = ref('');
@@ -263,7 +298,7 @@ const appliedFilters = reactive({ ...draftFilters });
 
 const columns: DataTableColumn[] = [
   { key: 'code', label: 'Código', width: '130px' },
-  { key: 'product', label: 'Produto' },
+  { key: 'product', label: 'Produto', class: 'draft-product-column' },
   { key: 'collector', label: 'Coletor', width: '130px' },
   { key: 'operation', label: 'Operação', width: '130px' },
   { key: 'lot', label: 'Lote', width: '160px' },
@@ -297,7 +332,7 @@ const selectedLot = computed(() =>
 const lotCount = computed(() => lots.value.length);
 const balanceQuantity = computed(() => selectedLot.value?.quantity ?? selectedItem.value?.onHandQuantity ?? null);
 const balanceLabel = computed(() =>
-  selectedItem.value && balanceQuantity.value !== null
+  remoteUnavailable.value ? 'Dados indisponíveis' : selectedItem.value && balanceQuantity.value !== null
     ? formatQuantity(balanceQuantity.value, selectedItem.value.unit)
     : 'Selecione um produto'
 );
@@ -306,12 +341,12 @@ const divergencePreview = computed(() => {
   return collection.quantity - balanceQuantity.value;
 });
 const divergencePreviewLabel = computed(() =>
-  divergencePreview.value === null || !selectedItem.value
+  remoteUnavailable.value ? 'Dados indisponíveis' : divergencePreview.value === null || !selectedItem.value
     ? 'Selecione produto e quantidade'
     : formatSignedQuantity(divergencePreview.value, selectedItem.value.unit)
 );
 const rows = computed<DataCollectorRow[]>(() => {
-  const pendingRows = items.value.map(itemToPendingRow);
+  const pendingRows = remoteUnavailable.value ? [] : items.value.map(itemToPendingRow);
   return [...collectedRows.value, ...pendingRows].sort((left, right) =>
     statusRank(left.status) - statusRank(right.status) || right.date.localeCompare(left.date)
   );
@@ -333,7 +368,7 @@ const filteredRows = computed(() => {
   });
 });
 const divergenceCount = computed(() =>
-  rows.value.filter((row) => row.status === 'divergence').length
+  collectedRows.value.filter((row) => row.status === 'divergence').length
 );
 
 watch(
@@ -392,8 +427,10 @@ function collectionToRow(item: InventoryItemSummary): DataCollectorRow {
     divergence,
     divergenceLabel: formatSignedQuantity(divergence, item.unit),
     status: hasDivergence ? 'divergence' : 'collected',
-    statusLabel: hasDivergence ? 'Divergência' : 'Coletado',
+    statusLabel: hasDivergence ? 'Divergência' : 'Sem divergência',
     statusVariant: hasDivergence ? 'danger' : 'success',
+    temporary: true,
+    notes: collection.notes,
     responsible: collection.responsible || 'Nao informado',
     date: new Date().toISOString(),
     detailPath: `/inventory/${item.id}`
@@ -456,11 +493,12 @@ function resetCollection() {
 }
 
 async function submitCollection() {
+  if (remoteUnavailable.value || saving.value) return;
   error.value = '';
   successMessage.value = '';
   const item = selectedItem.value;
   if (!item) {
-    error.value = 'Selecione um produto para registrar a coleta';
+    error.value = 'Selecione um produto para preparar o rascunho de coleta';
     return;
   }
   if (!Number.isFinite(collection.quantity) || collection.quantity < 0) {
@@ -471,7 +509,7 @@ async function submitCollection() {
   saving.value = true;
   try {
     collectedRows.value = [collectionToRow(item), ...collectedRows.value];
-    successMessage.value = `${item.name} registrado pelo ${collection.collector}`;
+    successMessage.value = `Rascunho temporário de coleta: ${item.name} pelo ${collection.collector}. Será perdido ao sair ou recarregar. Estoque não alterado.`;
     resetCollection();
   } finally {
     saving.value = false;
@@ -479,22 +517,25 @@ async function submitCollection() {
 }
 
 async function load() {
+  const version = ++loadVersion;
+  const query = appliedFilters.product || appliedFilters.code || undefined;
   loading.value = true;
+  failed.value = false;
   error.value = '';
   try {
-    const query = draftFilters.product || draftFilters.code || undefined;
     const [loadedItems, loadedLots] = await Promise.all([
       inventoryService.list(query),
       inventoryService.listLots()
     ]);
+    if (version !== loadVersion) return;
     items.value = loadedItems;
     lots.value = loadedLots;
   } catch (err: unknown) {
+    if (version !== loadVersion) return;
+    failed.value = true;
     error.value = err instanceof Error ? err.message : 'Erro ao carregar coletores de dados';
-    items.value = [];
-    lots.value = [];
   } finally {
-    loading.value = false;
+    if (version === loadVersion) loading.value = false;
   }
 }
 
@@ -502,31 +543,42 @@ onMounted(load);
 </script>
 
 <style scoped>
+.summary-panel { padding: 0 16px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); }
+.summary-panel > summary { min-height: 44px; padding: 12px 0; box-sizing: border-box; cursor: pointer; font-weight: 600; }
+.summary-panel > summary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+:deep(.draft-product-column) { min-width: 260px; }
 .inventory-data-collectors-page {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.hub-kpis {
+.collector-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
 }
 
-.collector-layout {
-  display: grid;
-  grid-template-columns: minmax(340px, 1.25fr) minmax(280px, 0.75fr);
-  gap: 16px;
-  align-items: start;
-}
-
-.collector-panel,
-.filter-panel {
-  padding: 16px;
+.related-navigation { display: flex; flex-wrap: wrap; gap: 8px; }
+.collector-summary { margin: 0; padding: 12px 16px; border-top: 1px solid var(--color-border, #e2e8f0); }
+.collector-summary dt { font-size: 12px; color: var(--color-text-secondary, #475569); }
+.collector-summary dd { margin: 4px 0 0; font-size: 20px; font-weight: 600; }
+.preparation-panel, .filter-panel, .load-state {
   border: 1px solid var(--color-border, #e2e8f0);
   border-radius: 8px;
   background: var(--color-surface, #ffffff);
+}
+.preparation-panel > summary, .filter-panel > summary {
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.collector-panel, .filters, .load-state { padding: 16px; }
+.preparation-panel > summary:focus-visible, .filter-panel > summary:focus-visible {
+  outline: 2px solid var(--color-primary, #2563eb);
+  outline-offset: 2px;
 }
 
 .collector-panel h2 {
@@ -545,7 +597,8 @@ onMounted(load);
 }
 
 .filters {
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  align-items: end;
 }
 
 .field {
@@ -564,7 +617,7 @@ onMounted(load);
 .field input,
 .field select {
   width: 100%;
-  min-height: 38px;
+  min-height: 44px;
   padding: 8px 10px;
   border: 1px solid var(--color-border, #d7dde8);
   border-radius: 6px;
@@ -590,15 +643,28 @@ onMounted(load);
   margin-top: 14px;
 }
 
+.draft-notice,
+.draft-detail {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-secondary, #475569);
+}
+
+.draft-detail summary {
+  min-height: 44px;
+  padding: 12px 0;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.draft-detail p {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .record-id {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   font-size: 12px;
-}
-
-@media (max-width: 980px) {
-  .collector-layout {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 620px) {

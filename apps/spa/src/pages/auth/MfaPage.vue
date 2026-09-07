@@ -74,7 +74,7 @@
         <DsButton type="submit" variant="primary" size="lg" full-width :loading="loading">
           {{ loading ? 'Validando...' : 'Confirmar MFA' }}
         </DsButton>
-        <DsButton tag="a" href="/login" variant="secondary" size="lg" full-width>
+        <DsButton tag="a" to="/login" variant="secondary" size="lg" full-width>
           Voltar ao login
         </DsButton>
       </form>

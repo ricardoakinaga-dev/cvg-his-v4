@@ -1,5 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount, flushPromises } from '@vue/test-utils';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { mount, flushPromises, enableAutoUnmount } from '@vue/test-utils';
+
+import { reactive } from 'vue';
+
+enableAutoUnmount(afterEach);
+const mockRoute = reactive({ query: { patientId: 'pat-1' } });
 
 const mockStays = [
   {
@@ -30,10 +35,10 @@ const mockStays = [
 
 const mockListFn = vi.fn().mockResolvedValue(mockStays);
 const mockListBedsFn = vi.fn().mockResolvedValue([
-  { id: 'bed-1', active: true },
-  { id: 'bed-2', active: true },
-  { id: 'bed-3', active: true },
-  { id: 'bed-4', active: true }
+  { id: 'bed-1', active: true, status: 'occupied' },
+  { id: 'bed-2', active: true, status: 'occupied' },
+  { id: 'bed-3', active: true, status: 'available' },
+  { id: 'bed-4', active: true, status: 'available' }
 ]);
 const mockGetPatientName = vi
   .fn()
@@ -51,7 +56,7 @@ vi.mock('@/services/inpatient', () => ({
 }));
 
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ query: { patientId: 'pat-1' } })
+  useRoute: () => mockRoute
 }));
 
 vi.mock('@/composables/useEntityCache', () => ({
@@ -66,12 +71,13 @@ vi.mock('@/composables/useEntityCache', () => ({
 describe('InpatientListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRoute.query.patientId = 'pat-1';
     mockListFn.mockResolvedValue(mockStays);
     mockListBedsFn.mockResolvedValue([
-      { id: 'bed-1', active: true },
-      { id: 'bed-2', active: true },
-      { id: 'bed-3', active: true },
-      { id: 'bed-4', active: true }
+      { id: 'bed-1', active: true, status: 'occupied' },
+      { id: 'bed-2', active: true, status: 'occupied' },
+      { id: 'bed-3', active: true, status: 'available' },
+      { id: 'bed-4', active: true, status: 'available' }
     ]);
     mockGetPatientName.mockImplementation((id: string) =>
       Promise.resolve(id === 'pat-1' ? 'Rex' : 'Mimi')
@@ -215,4 +221,123 @@ describe('InpatientListPage', () => {
     expect(admitLink).toBeTruthy();
     expect(admitLink!.attributes('href')).toBe('/inpatient/admit');
   });
+  it('does not present zero occupancy while the backend is pending', async () => {
+    mockListFn.mockReturnValue(new Promise(() => {}));
+    const Page = (await import('../InpatientListPage.vue')).default;
+    const wrapper = mount(Page);
+    await flushPromises();
+    expect(wrapper.find('.inpatient-list-page__overview').text()).not.toContain('0%');
+    expect(wrapper.find('.inpatient-list-page__overview').text()).toContain('Carregando');
+    wrapper.unmount();
+  });
+
+  it('renders stays while patient names are pending', async () => {
+    mockGetPatientName.mockReturnValue(new Promise(() => {}));
+    const Page = (await import('../InpatientListPage.vue')).default;
+    const wrapper = mount(Page);
+    await flushPromises();
+    expect(wrapper.find('.data-table-loading').exists()).toBe(false);
+    expect(wrapper.text()).toContain('Paciente pat-1');
+    expect(wrapper.text()).toContain('50%');
+    wrapper.unmount();
+  });
+
+  it('keeps stays visible when optional patient enrichment rejects', async () => {
+    mockGetPatientName.mockRejectedValue(new Error('Name lookup unavailable'));
+    const Page = (await import('../InpatientListPage.vue')).default;
+    const wrapper = mount(Page);
+    await flushPromises();
+    expect(wrapper.text()).toContain('Paciente pat-1');
+    expect(wrapper.text()).not.toContain('Name lookup unavailable');
+    expect(wrapper.text()).toContain('50%');
+    wrapper.unmount();
+  });
+
+  it('does not show stale occupancy or an empty-success message after refresh fails', async () => {
+    const Page = (await import('../InpatientListPage.vue')).default;
+    const wrapper = mount(Page);
+    await flushPromises();
+    expect(wrapper.text()).toContain('50%');
+    mockListFn.mockRejectedValue(new Error('Stays unavailable'));
+    await wrapper.findAll('button').find(button => button.text().includes('Atualizar'))!.trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Stays unavailable');
+    expect(wrapper.find('.inpatient-list-page__overview').text()).not.toContain('50%');
+    expect(wrapper.text()).not.toContain('Nenhuma internação ativa');
+    expect(wrapper.text()).not.toContain('Rex');
+    wrapper.unmount();
+  });
+
+  it('ignores older patient names after a refresh', async () => {
+    let resolveOldName!: (name: string) => void;
+    mockGetPatientName.mockImplementation(() => new Promise<string>(resolve => {
+      resolveOldName = resolve;
+    }));
+    mockListFn.mockResolvedValue([mockStays[0]]);
+    const Page = (await import('../InpatientListPage.vue')).default;
+    const wrapper = mount(Page);
+    await flushPromises();
+    mockGetPatientName.mockResolvedValue('Nome atual');
+    await wrapper.findAll('button').find(button => button.text().includes('Atualizar'))!.trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Nome atual');
+    resolveOldName('Nome antigo');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Nome atual');
+    expect(wrapper.text()).not.toContain('Nome antigo');
+  });
+
+  it('ignores an older failed request after the patient filter changes', async () => {
+    let rejectOldRequest!: (error: Error) => void;
+    mockListFn.mockReturnValueOnce(new Promise((_, reject) => {
+      rejectOldRequest = reject;
+    }));
+    const Page = (await import('../InpatientListPage.vue')).default;
+    const wrapper = mount(Page);
+    await flushPromises();
+    mockListFn.mockResolvedValue([mockStays[1]]);
+    mockRoute.query.patientId = 'pat-2';
+    await flushPromises();
+    expect(mockListFn).toHaveBeenLastCalledWith({ patientId: 'pat-2' });
+    expect(wrapper.text()).toContain('Mimi');
+    rejectOldRequest(new Error('Old request failed'));
+    await flushPromises();
+    expect(wrapper.text()).toContain('Mimi');
+    expect(wrapper.text()).not.toContain('Old request failed');
+    expect(wrapper.find('.data-table-loading').exists()).toBe(false);
+  });
+
+  it('recovers from an API error using refresh', async () => {
+    mockListFn.mockRejectedValueOnce(new Error('Temporarily unavailable'));
+    const Page = (await import('../InpatientListPage.vue')).default;
+    const wrapper = mount(Page);
+    await flushPromises();
+    expect(wrapper.text()).toContain('Temporarily unavailable');
+    await wrapper.findAll('button').find(button => button.text().includes('Atualizar'))!.trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('Temporarily unavailable');
+    expect(wrapper.text()).toContain('Rex');
+    expect(wrapper.text()).toContain('50%');
+  });
+
+  it('keeps global bed occupancy independent of the patient filter', async () => {
+    mockListFn.mockResolvedValue([mockStays[0]]);
+    const Page = (await import('../InpatientListPage.vue')).default;
+    const wrapper = mount(Page);
+    await flushPromises();
+    expect(wrapper.text()).toContain('2 de 4 leitos em uso');
+    expect(wrapper.text()).toContain('50%');
+    expect(wrapper.text()).toContain('Rex');
+    expect(wrapper.text()).not.toContain('Mimi');
+  });
+
+  it('does not report a percentage when there are no active beds', async () => {
+    mockListBedsFn.mockResolvedValue([{ id: 'inactive', active: false, status: 'occupied' }]);
+    const Page = (await import('../InpatientListPage.vue')).default;
+    const wrapper = mount(Page);
+    await flushPromises();
+    expect(wrapper.find('.inpatient-list-page__overview').text()).not.toContain('%');
+    expect(wrapper.text()).toContain('Nenhum leito ativo');
+  });
+
 });

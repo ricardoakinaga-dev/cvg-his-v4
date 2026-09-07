@@ -10,10 +10,10 @@ Escopo:
 
 Evidências principais:
 
-- [internacao-lista.png](../inspection/2026-04-24T00-21-08-764Z-internacao/screenshots/internacao-lista.png)
-- [internacao-lista.json](../inspection/2026-04-24T00-21-08-764Z-internacao/internacao-lista.json)
-- [internacao-lista.html](../inspection/2026-04-24T00-21-08-764Z-internacao/internacao-lista.html)
-- [network.json](../inspection/2026-04-24T00-21-08-764Z-internacao/network.json)
+- internacao-lista.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-21-08-764Z-internacao/screenshots/internacao-lista.png`)
+- internacao-lista.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-21-08-764Z-internacao/internacao-lista.json`)
+- internacao-lista.html (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-21-08-764Z-internacao/internacao-lista.html`)
+- network.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-21-08-764Z-internacao/network.json`)
 - [01-PLANEJAMENTO-ERP-ENTERPRISE.md](../guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md)
 - [03-MODELO-DADOS.md](../guides/03-MODELO-DADOS.md)
 - [04-ESPECIFICACAO-APIS.md](../guides/04-ESPECIFICACAO-APIS.md)

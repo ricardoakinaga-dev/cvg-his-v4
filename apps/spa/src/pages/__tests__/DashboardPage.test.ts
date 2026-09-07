@@ -378,6 +378,7 @@ describe('DashboardPage', () => {
     expect(wrapper.text()).toContain('Atendimento e financeiro');
     expect(wrapper.text()).toContain('Central executiva Premium');
     expect(wrapper.text()).toContain('SLO, auditoria operacional e próximos focos');
+    expect(wrapper.text()).toContain('Operação degradada');
     expect(wrapper.text()).toContain('Degradado');
     expect(wrapper.text()).toContain('83,3%');
     expect(wrapper.text()).toContain('42');
@@ -464,5 +465,35 @@ describe('DashboardPage', () => {
     expect(mockListInventory).not.toHaveBeenCalled();
     expect(mockListLaboratoryOrders).not.toHaveBeenCalled();
     expect(wrapper.find('[aria-label="Central executiva Premium"]').exists()).toBe(false);
+  });
+
+  it('keeps unavailable commercial reads distinct from a real zero value', async () => {
+    mockApiRequest.mockImplementation((path: string) => {
+      if (path === '/auth/session') {
+        return Promise.resolve({
+          access: { permissionCodes: ['counter_sale.read', 'audit.read'] }
+        });
+      }
+      if (path === '/counter-sales?status=open' || path === '/counter-sales?status=closed') {
+        return Promise.resolve({ items: [] });
+      }
+      if (typeof path === 'string' && path.startsWith('/counter-sales?status=open&dateFrom=')) {
+        return Promise.resolve({ items: [] });
+      }
+      return Promise.reject(new Error(`Unexpected path: ${path}`));
+    });
+    mockGetCommercialDashboard.mockRejectedValue(new Error('commercial source unavailable'));
+
+    const DashboardPage = (await import('../DashboardPage.vue')).default;
+    const wrapper = mount(DashboardPage, {
+      global: {
+        stubs: { RouterLink: { props: ['to'], template: '<a><slot /></a>' } }
+      }
+    });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Financeiro hoje');
+    expect(wrapper.text()).toContain('Leitura comercial indisponível');
+    expect(wrapper.text()).not.toContain('R$ 0,00 ticket médio');
   });
 });

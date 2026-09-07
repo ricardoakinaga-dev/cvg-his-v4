@@ -110,12 +110,38 @@ export class ApiCall {
     this.token = token;
   }
 
+  private async request(path: string, init: RequestInit): Promise<Response> {
+    let response = await fetch(`${API_URL}${path}`, {
+      ...init,
+      headers: {
+        ...(init.headers ?? {}),
+        Authorization: `Bearer ${this.token}`
+      }
+    });
+
+    // Long-running browser suites outlive the short access-token TTL used in
+    // production. Refresh once on expiry so Node-side fixture calls continue
+    // to exercise the same authenticated session without weakening the API.
+    if (response.status === 401) {
+      const session = await requestFreshAuthSession();
+      this.token = session.accessToken;
+      response = await fetch(`${API_URL}${path}`, {
+        ...init,
+        headers: {
+          ...(init.headers ?? {}),
+          Authorization: `Bearer ${this.token}`
+        }
+      });
+    }
+
+    return response;
+  }
+
   async post(path: string, data: unknown) {
-    const res = await fetch(`${API_URL}${path}`, {
+    const res = await this.request(path, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.token}`
       },
       body: JSON.stringify(data)
     });
@@ -124,11 +150,10 @@ export class ApiCall {
   }
 
   async patch(path: string, data: unknown) {
-    const res = await fetch(`${API_URL}${path}`, {
+    const res = await this.request(path, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.token}`
       },
       body: JSON.stringify(data)
     });
@@ -137,18 +162,13 @@ export class ApiCall {
   }
 
   async get(path: string) {
-    const res = await fetch(`${API_URL}${path}`, {
-      headers: { Authorization: `Bearer ${this.token}` }
-    });
+    const res = await this.request(path, { headers: {} });
     if (!res.ok) throw new Error(`API GET ${path} failed: ${res.status}`);
     return res.json();
   }
 
   async delete(path: string) {
-    const res = await fetch(`${API_URL}${path}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${this.token}` }
-    });
+    const res = await this.request(path, { method: 'DELETE', headers: {} });
     if (!res.ok && res.status !== 404) {
       throw new Error(`API DELETE ${path} failed: ${res.status}`);
     }
@@ -328,7 +348,7 @@ async function createOwnerViaUI(page: Page, data: OwnerFormData): Promise<string
   await page.waitForLoadState('networkidle');
 
   await expect(page.getByRole('main').locator('.app-page-header__title')).toHaveText(
-    'Cadastrar Novo Cliente',
+    'Cadastrar Novo Tutor',
     { timeout: 10000 }
   );
 
@@ -356,7 +376,7 @@ async function createPatientViaUI(page: Page, data: PatientFormData): Promise<st
   await page.waitForLoadState('networkidle');
 
   await expect(page.getByRole('main').locator('.app-page-header__title')).toHaveText(
-    'Cadastrar Novo Animal',
+    'Cadastrar Novo Paciente',
     { timeout: 10000 }
   );
 
@@ -406,14 +426,13 @@ async function createPatientViaUI(page: Page, data: PatientFormData): Promise<st
 // ── Extended test ──────────────────────────────────────────────────────
 
 export const test = base.extend<{
-  authSession: AuthSessionResponse;
   spaPage: SpaPage;
   apiCall: ApiCall;
   cleanup: CleanupTracker;
   loginViaUI: () => Promise<void>;
   createOwnerViaUI: (data: OwnerFormData) => Promise<string>;
   createPatientViaUI: (data: PatientFormData) => Promise<string>;
-}>({
+}, { authSession: AuthSessionResponse }>({
   authSession: [async ({}, use) => {
     await use(await requestFreshAuthSession());
   }, { scope: 'worker' }],

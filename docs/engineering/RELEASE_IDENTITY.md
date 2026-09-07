@@ -29,7 +29,7 @@ CANONICAL_HEALTH_PATHS=/health,/ready,/live,/health/ready,/health/live
 - The current package namespace `@cvg-his-v2/*`, Docker names and Helm chart
   name are compatibility identifiers. A global rename is not authorized by
   this document.
-- `charts/helm` is retained as a legacy artifact for migration history only.
+- The former `charts/helm` track is archived at `legado/charts/helm` for migration history only.
   It is not a deploy surface, is not referenced by CI or active scripts, and
   must not be installed or used for release decisions.
 - Any future removal or alignment of legacy files requires a consumer scan,

@@ -11,11 +11,6 @@
       </template>
     </AppPageHeader>
 
-    <DsAlert variant="info">
-      Esta landing page inaugura a decomposição de <strong>Relatórios</strong> por macrodomínio. O hub executivo
-      continua disponível, mas agora existe uma navegação explícita por área operacional.
-    </DsAlert>
-
     <section class="reports-grid">
       <DsCard v-for="domain in domains" :key="domain.title" :title="domain.title" variant="elevated">
         <p class="reports-grid__description">{{ domain.description }}</p>
@@ -29,14 +24,13 @@
 
 <script setup lang="ts">
 import AppPageHeader from '@/components/AppPageHeader.vue';
-import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 
 const domains = [
   {
     title: 'Motor Enterprise de Relatórios',
-    description: 'Catálogo real, execução sob demanda, exportação e recorrência auditável para entregas premium.',
+    description: 'Escolha um relatório, aplique filtros e exporte os resultados. Programe as consultas recorrentes.',
     to: '/reports/engine'
   },
   {
@@ -86,7 +80,7 @@ const domains = [
 
 .reports-grid__description {
   margin: 0 0 14px;
-  color: #64748b;
+  color: var(--color-text-muted, #55717a);
   font-size: 14px;
 }
 

@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { requestProcessCoverageCheckpoint } from '../../helpers/process-coverage-control.mjs';
 import { createServer, type AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
 
@@ -154,6 +155,7 @@ function startApi(port: number): ApiProcess {
       ...process.env,
       NODE_ENV: 'test',
       INPATIENT_CLINICAL_FINANCIAL_PROCESS_FIXTURE: '1',
+      CVG_PROCESS_COVERAGE_CONTROL: process.env.CVG_CRITICAL_PROCESS_COVERAGE === '1' ? '1' : '0',
       APP_NAME: 'inpatient-clinical-financial-child-process',
       HOST: '127.0.0.1',
       PORT: String(port),
@@ -168,7 +170,7 @@ function startApi(port: number): ApiProcess {
       SMS_MOCK_MODE: 'true',
       GOOGLE_CALENDAR_MOCK_MODE: 'true'
     },
-    stdio: ['ignore', 'pipe', 'pipe']
+    stdio: process.env.CVG_CRITICAL_PROCESS_COVERAGE === '1' ? ['ignore', 'pipe', 'pipe', 'ipc'] : ['ignore', 'pipe', 'pipe']
   });
   if (child.pid === undefined) throw new Error('clinical-financial API child did not expose a PID');
 
@@ -1862,6 +1864,7 @@ describe('inpatient clinical-financial real child-process SIGKILL boundary', () 
       (error: unknown) => ({ completed: false, error })
     );
     await waitForBillingPause();
+    await requestProcessCoverageCheckpoint(primary.child);
     expect(await stopApi(primary, 'SIGKILL')).toEqual({ code: null, signal: 'SIGKILL' });
     primary = undefined;
     const interrupted = await pendingConsumption;
@@ -1965,5 +1968,6 @@ describe('inpatient clinical-financial real child-process SIGKILL boundary', () 
       journey.receiptId,
       journey.receiptKey
     );
+    await requestProcessCoverageCheckpoint(primary.child);
   }, 120_000);
 });

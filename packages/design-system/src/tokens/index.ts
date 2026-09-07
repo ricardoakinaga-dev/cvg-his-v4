@@ -173,3 +173,85 @@ export const layout = {
   sidebarCollapsedWidth: '72px',
   topbarHeight: '56px'
 } as const;
+
+/**
+ * Theme-aware CSS references for new UI consumers. Import variables.css first.
+ * Legacy literal exports above retain their compatibility values; they are not
+ * a snapshot of the current CSS theme. Motion references honor reduced motion
+ * in CSS and must not be parsed as JavaScript timer durations.
+ */
+export const semanticTokens = {
+  material: {
+    canvas: 'var(--material-canvas)',
+    panel: 'var(--material-panel)',
+    inset: 'var(--material-inset)',
+    raised: 'var(--material-raised)',
+    hover: 'var(--material-hover)',
+    scrim: 'var(--material-scrim)',
+    border: 'var(--material-border)',
+    borderStrong: 'var(--material-border-strong)',
+    radiusControl: 'var(--material-radius-control)',
+    radiusPanel: 'var(--material-radius-panel)',
+    radiusEditorial: 'var(--material-radius-editorial)',
+    elevationPanel: 'var(--material-elevation-panel)',
+    elevationFloating: 'var(--material-elevation-floating)',
+    elevationDrawer: 'var(--material-elevation-drawer)'
+  },
+  spacing: {
+    controlGap: 'var(--space-control-gap)',
+    panelPadding: 'var(--space-panel-padding)',
+    sectionGap: 'var(--space-section-gap)'
+  },
+  content: {
+    primary: 'var(--content-primary)',
+    secondary: 'var(--content-secondary)',
+    muted: 'var(--content-muted)',
+    link: 'var(--content-link)'
+  },
+  action: {
+    primary: 'var(--action-primary-bg)',
+    hover: 'var(--action-primary-hover)',
+    pressed: 'var(--action-primary-pressed)',
+    content: 'var(--action-primary-content)'
+  },
+  typography: {
+    familyInterface: 'var(--type-family-interface)',
+    familyEditorial: 'var(--type-family-editorial)',
+    familyCode: 'var(--type-family-code)',
+    sizeBody: 'var(--type-size-body)',
+    sizeLabel: 'var(--type-size-label)',
+    sizeMetadata: 'var(--type-size-metadata)',
+    sizePageTitle: 'var(--type-size-page-title)',
+    sizeEditorial: 'var(--type-size-editorial)',
+    weightBody: 'var(--type-weight-body)',
+    weightLabel: 'var(--type-weight-label)',
+    weightTitle: 'var(--type-weight-title)',
+    leadingBody: 'var(--type-leading-body)',
+    leadingTitle: 'var(--type-leading-title)',
+    trackingBody: 'var(--type-tracking-body)',
+    trackingTitle: 'var(--type-tracking-title)',
+    numericVariant: 'var(--type-numeric-variant)',
+    measureProse: 'var(--type-measure-prose)'
+  },
+  motion: {
+    duration: {
+      hover: 'var(--motion-duration-hover)',
+      press: 'var(--motion-duration-press)',
+      detail: 'var(--motion-duration-detail)',
+      drawer: 'var(--motion-duration-drawer)',
+      route: 'var(--motion-duration-route)',
+      exit: 'var(--motion-duration-exit)'
+    },
+    ease: {
+      enter: 'var(--motion-ease-enter)',
+      state: 'var(--motion-ease-state)',
+      exit: 'var(--motion-ease-exit)'
+    },
+    distance: {
+      press: 'var(--motion-distance-press)',
+      detail: 'var(--motion-distance-detail)',
+      drawer: 'var(--motion-distance-drawer)',
+      route: 'var(--motion-distance-route)'
+    }
+  }
+} as const;

@@ -49,6 +49,7 @@ export interface DsModalProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   closable?: boolean;
   teleport?: boolean;
+  initialFocus?: string;
 }
 
 const props = withDefaults(defineProps<DsModalProps>(), {
@@ -109,7 +110,9 @@ function onModalMounted(el: Element | ComponentPublicInstance | null) {
     const focusable = modalRef.value?.querySelector<HTMLElement>(
       'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
     );
-    (focusable || modalRef.value)?.focus();
+    const initial = props.initialFocus
+      ? modalRef.value.querySelector<HTMLElement>(props.initialFocus) : null;
+    (initial || focusable || modalRef.value)?.focus();
   }
 }
 
@@ -152,7 +155,9 @@ watch(
       const focusable = modalRef.value?.querySelector<HTMLElement>(
         'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
       );
-      (focusable || modalRef.value)?.focus();
+      const initial = props.initialFocus
+        ? modalRef.value?.querySelector<HTMLElement>(props.initialFocus) : null;
+      (initial || focusable || modalRef.value)?.focus();
       updateBodyScrollLock(true);
       return;
     }

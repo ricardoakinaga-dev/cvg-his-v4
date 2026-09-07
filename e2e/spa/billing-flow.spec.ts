@@ -33,8 +33,8 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
   }) => {
     const mainContent = page.getByRole('main');
     const pageHeaderTitle = mainContent.locator('.app-page-header__title');
-  let cashRegisterId: string | undefined;
-  let ownsCashRegister = false;
+    let cashRegisterId: string | undefined;
+    let ownsCashRegister = false;
     // ── Step 0: Prepare test data ──
     console.log('   📦 Creating test data...');
     const ownerName = `Tutor Billing E2E ${Date.now()}`;
@@ -93,7 +93,9 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
       .locator('.billing-empty-state__actions')
       .getByRole('button', { name: /Gerar estimativa/i })
       .click();
-    await expect(page.getByText('Estimado', { exact: true }).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Estimado', { exact: true }).first()).toBeVisible({
+      timeout: 15000
+    });
     console.log('   ✅ Estimate explicitly created');
 
     // Validate patient and owner info
@@ -184,8 +186,16 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
       await page.getByRole('button', { name: 'Fechar Atendimento' }).click();
       const closeDialog = page.getByRole('dialog', { name: 'Fechar Atendimento' });
       await closeDialog.locator('#closeReason').fill('Atendimento concluído para recebimento E2E');
-      await closeDialog.locator('button').filter({ hasText: /^Fechar$/ }).click();
-      await expect(page.getByText('✅ Finalizado', { exact: true }).first()).toBeVisible({
+      await closeDialog
+        .locator('button')
+        .filter({ hasText: /^Fechar$/ })
+        .click();
+      await expect(
+        page
+          .getByRole('region', { name: 'Cockpit do atendimento', exact: true })
+          .locator('.patient-rail__facts')
+          .getByText('Finalizado', { exact: true })
+      ).toBeVisible({
         timeout: 15000
       });
 
@@ -307,7 +317,9 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     await expect(page.getByText('Cobrança ainda não persistida')).toBeVisible({ timeout: 10000 });
 
     await expect(
-      page.locator('.billing-empty-state__actions').getByRole('button', { name: /Gerar estimativa/i })
+      page
+        .locator('.billing-empty-state__actions')
+        .getByRole('button', { name: /Gerar estimativa/i })
     ).toBeVisible({
       timeout: 10000
     });

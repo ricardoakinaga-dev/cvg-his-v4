@@ -1,0 +1,39 @@
+{
+  "observed_at": "2026-09-07T02:38:02.818735+00:00",
+  "status": "PARTIAL",
+  "claims": [
+    {
+      "criterion": "FEA-006",
+      "implementation_review": "I1 code approved; browser later executed by builder, not independent full-ticket approval",
+      "unit_tests": 19
+    },
+    {
+      "criterion": "FEA-004",
+      "tests": 68,
+      "review": "R0 rejected native disabled destinations and missing consumers; R1 implemented; new independent review pending"
+    },
+    {
+      "criterion": "FEA-005",
+      "tests": 17,
+      "review": "R0 rejected load/save hazards; corrected and tested; new independent review pending"
+    }
+  ],
+  "browser_report": "evidence/continuity-ekJtIl/report.json",
+  "browser_report_sha256": "4ac2f5f5110ca8adc5e226a7f0117e0dc90d99f0659d1a332d429e9e9ab19cef",
+  "source_hashes": {
+    "apps/spa/src/composables/useListData.ts": "3f9015f3aeb49b76c93accf201425026475cb66f6c70e0ab296e693644115099",
+    "apps/spa/src/composables/useUnsavedChanges.ts": "16a1c104bd934e643a259fc4e3f116758d783c74e0f7e087e1ef3501e3c59e7e",
+    "apps/spa/src/pages/owners/OwnerFormPage.vue": "55d1551f801096e8ec6a8660056260e74f150db67f01e1d57acdbecb756ab47e",
+    "packages/design-system/src/vue/DsButton.vue": "e43ad77d7c0a75aef77d895259b5916cef04b388b9391ef3a3687f55c6fa8923",
+    "apps/spa/vite.config.ts": "356b90aae48a42d487205954f0aff34baf25482b3a6cc90036c5cd17602663b7",
+    "apps/spa/vitest.config.ts": "0df7748fddbea80ab9e4cc5b45be5c355715c5ffeaf737a8b71cc9be61786467"
+  },
+  "not_proven": [
+    "complete 34-ticket scope",
+    "human UAT",
+    "production performance or field metrics",
+    "real backend persistence",
+    "full keyboard and device matrix",
+    "final independent acceptance"
+  ]
+}

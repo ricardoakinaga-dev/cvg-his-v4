@@ -3,21 +3,55 @@
     <AppPageHeader
       title="Relatórios de Cadastros"
       :breadcrumbs="['Relatórios', 'Cadastros', 'Relatórios de Cadastros']"
-      subtitle="Entrada para relatórios de serviços, clientes, animais, fornecedores e exclusões comerciais"
+      subtitle="Escolha a base que deseja consultar."
     />
-
-    <DsAlert variant="info">
-      As rotas de cadastros do menu Vetus estão disponíveis com navegação operacional e sem dados simulados.
-      Métricas específicas entram quando os endpoints analíticos de cada cadastro forem expostos.
-    </DsAlert>
+    <ReportCategoryNavigation label="Relatórios de Cadastros" :groups="groups" />
   </div>
 </template>
 
 <script setup lang="ts">
 import AppPageHeader from '@/components/AppPageHeader.vue';
-import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
+import ReportCategoryNavigation from '@/components/reports/ReportCategoryNavigation.vue';
+
+const groups = [
+  {
+    "title": "Cadastros",
+    "items": [
+      {
+        "title": "Tutores",
+        "description": "Consulta da base de tutores.",
+        "to": "/reports/registers/owners"
+      },
+      {
+        "title": "Pacientes",
+        "description": "Consulta da base de pacientes.",
+        "to": "/reports/registers/patients"
+      },
+      {
+        "title": "Serviços",
+        "description": "Consulta do catálogo de serviços.",
+        "to": "/reports/registers/services"
+      },
+      {
+        "title": "Fornecedores",
+        "description": "Consulta da base de fornecedores.",
+        "to": "/reports/registers/suppliers"
+      }
+    ]
+  },
+  {
+    "title": "Histórico comercial",
+    "items": [
+      {
+        "title": "Exclusão de Vendas e Comandas",
+        "description": "Consulta de exclusões registradas.",
+        "to": "/reports/deleted-sales-counter-sales"
+      }
+    ]
+  }
+];
 </script>
 
 <style scoped>
-.reports-page { display: grid; gap: 16px; }
+.reports-page { display: grid; gap: 24px; }
 </style>

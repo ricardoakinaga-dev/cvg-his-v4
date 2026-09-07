@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { validateDocumentation } from './validate-documentation.mjs';
+import { inspectEnterpriseCi } from './lib/enterprise-ci-evidence.mjs';
 
 const root = process.cwd();
 
@@ -86,24 +88,24 @@ addCheck({
 const ciPath = '.github/workflows/ci.yml';
 if (exists(ciPath)) {
   const ci = readText(ciPath);
-  const e2eBlock = ci.match(/- name: Run SPA E2E tests[\s\S]*?(?=\n      - name:|\n  [a-zA-Z_-]+:|\n$)/)?.[0] ?? '';
-  for (const spec of requiredSpecs) {
+  const ciEvidence = inspectEnterpriseCi(ci, exists('playwright-spa.config.ts') ? readText('playwright-spa.config.ts') : '', requiredSpecs);
+  for (const [index, spec] of requiredSpecs.entries()) {
     addCheck({
       area: 'CI',
       item: `CI executa ${spec}`,
-      status: e2eBlock.includes(spec) ? 'PASS' : 'FAIL',
-      evidence: e2eBlock.includes(spec) ? 'Bloco Run SPA E2E tests contem o spec' : 'Spec ausente no bloco Run SPA E2E tests',
-      action: e2eBlock.includes(spec) ? '' : 'Adicionar spec ao job de E2E SPA.',
+      status: ciEvidence.specs[index] ? 'PASS' : 'FAIL',
+      evidence: ciEvidence.specs[index] ? 'Invocacao completa da suite SPA e config incluem o spec (evidencia estatica)' : 'Inclusao do spec nao comprovada pelo comando/config de CI',
+      action: ciEvidence.specs[index] ? '' : 'Verificar comando e filtros da configuracao E2E SPA.',
     });
   }
   addCheck({
     area: 'CI',
     item: 'E2E SPA sem continue-on-error',
-    status: e2eBlock.includes('continue-on-error') ? 'FAIL' : 'PASS',
-    evidence: e2eBlock.includes('continue-on-error')
-      ? 'Bloco Run SPA E2E tests contem continue-on-error'
+    status: ciEvidence.blocking ? 'PASS' : 'FAIL',
+    evidence: !ciEvidence.blocking
+      ? 'Step/job E2E SPA ausente, ambiguo ou permite continue-on-error'
       : 'Bloco Run SPA E2E tests falha o pipeline quando E2E falha',
-    action: e2eBlock.includes('continue-on-error') ? 'Remover continue-on-error do bloco E2E SPA.' : '',
+    action: ciEvidence.blocking ? '' : 'Exigir step/job E2E SPA unico e bloqueante.',
   });
 } else {
   addCheck({
@@ -115,39 +117,16 @@ if (exists(ciPath)) {
   });
 }
 
-const requiredDocs = [
-  ['docs/construcoes-futuras/2026-05-28-plano-executivo-backlog-roadmap-premium-enterprise.md', 'docs/2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md'],
-  ['docs/construcoes-futuras/2026-05-28-guia-operacional-premium-enterprise.md', 'docs/2026-08-07-diario-execucao-resolucao-auditoria-cvg-his-v4.md'],
-  ['docs/construcoes-futuras/2026-05-28-progresso-fase-4-gate-ci-jornada-360.md', 'docs/2026-08-07-diario-execucao-resolucao-auditoria-cvg-his-v4.md'],
-  ['docs/construcoes-futuras/2026-05-28-progresso-fase-4-gate-enterprise-dashboard-relatorios.md', 'docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md'],
-  ['docs/construcoes-futuras/2026-05-28-progresso-fase-4-e2e-360-postgresql-real.md', 'docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md'],
-  ['docs/construcoes-futuras/2026-05-28-progresso-fase-4-e2e-360-mobile-visual.md', 'docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md'],
-  ['docs/construcoes-futuras/2026-05-28-relatorio-matriz-vetus-final-premium-enterprise.md', 'docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md'],
-  ['docs/construcoes-futuras/2026-05-28-pacote-evidencias-rc-premium-enterprise.md', 'docs/2026-08-07-diario-execucao-resolucao-auditoria-cvg-his-v4.md'],
-  ['docs/construcoes-futuras/2026-05-28-progresso-rc-restore-drill-real-local.md', 'docs/2026-08-07-diario-execucao-resolucao-auditoria-cvg-his-v4.md'],
-  ['docs/construcoes-futuras/2026-05-28-progresso-rc-cutover-rehearsal-local.md', 'docs/2026-08-07-diario-execucao-resolucao-auditoria-cvg-his-v4.md'],
-  ['docs/construcoes-futuras/2026-05-28-progresso-rc-seguranca-sbom-sast-evidencias.md', 'docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md'],
-  ['docs/construcoes-futuras/2026-05-28-progresso-rc-governanca-acesso-rbac-abac.md', 'docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md'],
-  ['docs/construcoes-futuras/2026-05-28-progresso-rc-auditoria-operacional-evidencias.md', 'docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md'],
-  ['docs/construcoes-futuras/2026-05-28-progresso-rc-lgpd-dsr-retencao-evidencias.md', 'docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md'],
-  ['docs/construcoes-futuras/2026-05-28-progresso-rc-observabilidade-slo-evidencias.md', 'docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md'],
-];
-
-for (const [legacyDoc, canonicalDoc] of requiredDocs) {
-  const legacyExists = exists(legacyDoc);
-  const canonicalExists = exists(canonicalDoc);
-  addCheck({
-    area: 'Documentacao',
-    item: legacyDoc,
-    status: legacyExists || canonicalExists ? 'PASS' : 'FAIL',
-    evidence: legacyExists
-      ? 'Evidencia registrada no arquivo historico'
-      : canonicalExists
-        ? `Migrado para ${canonicalDoc}`
-        : 'Documento historico e equivalente canonico ausentes',
-    action: legacyExists || canonicalExists ? '' : `Registrar evidencia em ${canonicalDoc}.`,
-  });
-}
+const documentationErrors = validateDocumentation({ rootDir: root });
+addCheck({
+  area: 'Documentacao',
+  item: 'Governanca da documentacao vigente',
+  status: documentationErrors.length === 0 ? 'PASS' : 'FAIL',
+  evidence: documentationErrors.length === 0
+    ? 'Manifesto vigente, metadados e links validados; nao comprova execucao operacional'
+    : documentationErrors.join('; '),
+  action: documentationErrors.length === 0 ? '' : 'Corrigir os documentos vigentes e executar pnpm docs:validate.',
+});
 
 const lockPath = 'pnpm-lock.yaml';
 if (exists(lockPath)) {

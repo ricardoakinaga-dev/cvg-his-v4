@@ -5,7 +5,7 @@
       subtitle="Atendimento > Atendimentos > Agenda. Coluna temporal por data, profissional e status."
       :breadcrumb-items="headerBreadcrumbItems"
       :context-items="headerContextItems"
-      :next-steps="headerNextSteps"
+      :next-steps="headerNextSteps.filter((step) => step.key !== 'schedule')"
       :primary-action="headerPrimaryAction"
       :secondary-actions="headerSecondaryActions"
     />
@@ -23,7 +23,14 @@
 
     <template v-else>
       <div class="appointments-cockpit__layout">
-        <aside class="appointments-cockpit__sidebar">
+        <aside class="appointments-cockpit__sidebar" :class="{ 'appointments-cockpit__sidebar--expanded': showFilters }">
+          <DsButton
+            class="agenda-filter-toggle"
+            variant="secondary"
+            :aria-expanded="showFilters"
+            aria-controls="agenda-filters"
+            @click="showFilters = !showFilters"
+          >{{ showFilters ? 'Ocultar filtros' : 'Filtrar agenda' }}</DsButton>
           <DsButton
             v-if="canManageScheduling"
             variant="primary"
@@ -33,13 +40,13 @@
             Criar agendamento
           </DsButton>
 
-          <DsCard title="Filtrar por..." class="sidebar-card">
+          <DsCard id="agenda-filters" title="Filtrar por..." class="sidebar-card">
             <div class="sidebar-stack">
               <section class="mini-calendar">
                 <div class="mini-calendar__header">
-                  <DsButton variant="ghost" size="sm" @click="shiftMiniCalendar(-1)">◀</DsButton>
+                  <DsButton variant="ghost" size="sm" aria-label="Mês anterior" @click="shiftMiniCalendar(-1)">◀</DsButton>
                   <strong>{{ miniCalendarLabel }}</strong>
-                  <DsButton variant="ghost" size="sm" @click="shiftMiniCalendar(1)">▶</DsButton>
+                  <DsButton variant="ghost" size="sm" aria-label="Próximo mês" @click="shiftMiniCalendar(1)">▶</DsButton>
                 </div>
 
                 <div class="mini-calendar__weekdays">
@@ -225,9 +232,9 @@
         <section class="appointments-cockpit__main">
           <DsCard class="board-toolbar">
             <div class="board-toolbar__group">
-              <DsButton variant="secondary" @click="shiftReferenceDate(-1)">◀</DsButton>
+              <DsButton variant="secondary" aria-label="Período anterior" @click="shiftReferenceDate(-1)">◀</DsButton>
               <strong>{{ periodLabel }}</strong>
-              <DsButton variant="secondary" @click="shiftReferenceDate(1)">▶</DsButton>
+              <DsButton variant="secondary" aria-label="Próximo período" @click="shiftReferenceDate(1)">▶</DsButton>
             </div>
             <div class="board-toolbar__group board-toolbar__group--right">
               <DsButton variant="secondary" @click="jumpToToday">Hoje</DsButton>
@@ -244,7 +251,7 @@
                   {{ mode.label }}
                 </button>
               </div>
-              <DsButton variant="ghost" tag="a" href="/appointments/new">
+              <DsButton variant="ghost" tag="a" to="/appointments/new">
                 Abrir formulário completo
               </DsButton>
             </div>
@@ -411,10 +418,9 @@
                         v-if="appointmentsByWeekSlot(day.date, hour).length"
                         class="timeline-items"
                       >
-                        <button
+                        <div
                           v-for="item in visibleAppointmentsByWeekSlot(day.date, hour)"
                           :key="item.id"
-                          type="button"
                           class="timeline-item"
                           :class="{
                             [`timeline-item--${item.operational.stage}`]: true,
@@ -434,7 +440,11 @@
                               {{ operationalLabel(item) }}
                             </span>
                           </div>
-                          <strong>{{ patientName(item.patientId) }}</strong>
+                          <button
+                            type="button"
+                            class="timeline-item__open"
+                            @click.stop="openAppointmentDetails(item)"
+                          >{{ patientName(item.patientId) }}</button>
                           <span v-if="!isDenseWeekSlot(day.date, hour)">{{
                             ownerName(item.ownerId)
                           }}</span>
@@ -446,7 +456,7 @@
                             <span>{{ queueBridgeLabel(item) }}</span>
                             <strong>{{ nextStepForAppointment(item) }}</strong>
                           </div>
-                        </button>
+                        </div>
                         <span
                           v-if="hiddenWeekSlotCount(day.date, hour) > 0"
                           class="timeline-slot-summary"
@@ -575,10 +585,9 @@
                         v-if="appointmentsBySlot(day.date, column.id, hour).length"
                         class="timeline-items"
                       >
-                        <button
+                        <div
                           v-for="item in visibleAppointmentsBySlot(day.date, column.id, hour)"
                           :key="item.id"
-                          type="button"
                           class="timeline-item"
                           :class="{
                             [`timeline-item--${item.operational.stage}`]: true,
@@ -587,7 +596,7 @@
                           @click="openAppointmentDetails(item)"
                         >
                           <div class="timeline-item__head">
-                            <span
+                          <span
                               >{{ timeLabel(item.scheduledAt) }} ·
                               {{ item.durationMinutes || 30 }} min</span
                             >
@@ -598,7 +607,11 @@
                               {{ operationalLabel(item) }}
                             </span>
                           </div>
-                          <strong>{{ patientName(item.patientId) }}</strong>
+                          <button
+                            type="button"
+                            class="timeline-item__open"
+                            @click.stop="openAppointmentDetails(item)"
+                          >{{ patientName(item.patientId) }}</button>
                           <span v-if="!isDenseSlot(day.date, column.id, hour)">{{
                             ownerName(item.ownerId)
                           }}</span>
@@ -666,7 +679,7 @@
                               variant="secondary"
                               size="sm"
                               tag="a"
-                              href="/queue"
+                              to="/queue"
                             >
                               Ver fila
                             </DsButton>
@@ -679,7 +692,7 @@
                               {{ encounterActionLabel(item) }}
                             </DsButton>
                           </div>
-                        </button>
+                        </div>
                         <span
                           v-if="hiddenSlotCount(day.date, column.id, hour) > 0"
                           class="timeline-slot-summary"
@@ -772,6 +785,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { startOfMonth, buildVisibleDays, buildMonthCalendar } from './appointmentCalendar';
+import {
+  timeLabel,
+  formatHour,
+  buildSlotScheduledAt,
+  slotAriaLabel
+} from './appointmentCalendar';
 import { useRouter } from 'vue-router';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
@@ -807,13 +827,6 @@ interface SessionAccessResponse {
   access?: {
     permissionCodes?: string[];
   };
-}
-
-interface CalendarDayCell {
-  date: string;
-  dayNumber: number;
-  inCurrentMonth: boolean;
-  isToday: boolean;
 }
 
 interface AppointmentSlotPreset {
@@ -997,12 +1010,9 @@ const headerBreadcrumbItems = computed<PageBreadcrumb[]>(() => [
   { key: 'appointments', label: 'Agenda', current: true }
 ]);
 
+const showFilters = ref(false);
+
 const headerContextItems = computed<PageContextItem[]>(() => [
-  {
-    key: 'period',
-    label: 'Período',
-    value: periodLabel.value
-  },
   {
     key: 'scheduled',
     label: 'Agendados',
@@ -1087,52 +1097,6 @@ const headerSecondaryActions = computed<PageAction[]>(() => [
   }
 ]);
 
-function startOfMonth(dateString: string) {
-  const date = new Date(`${dateString}T00:00:00`);
-  date.setDate(1);
-  return date.toISOString().slice(0, 10);
-}
-
-function buildVisibleDays(mode: 'day' | 'week' | 'month', baseDate: string) {
-  const normalizedBase = mode === 'month' ? startOfMonth(baseDate) : baseDate;
-  const start = new Date(`${normalizedBase}T00:00:00`);
-  const count = mode === 'day' ? 1 : mode === 'week' ? 7 : 31;
-
-  return Array.from({ length: count }).map((_, index) => {
-    const current = new Date(start);
-    current.setDate(start.getDate() + index);
-    const date = current.toISOString().slice(0, 10);
-    return {
-      date,
-      label: current.toLocaleDateString('pt-BR', {
-        weekday: mode === 'month' ? undefined : 'long',
-        day: '2-digit',
-        month: '2-digit'
-      })
-    };
-  });
-}
-
-function buildMonthCalendar(baseDate: string): CalendarDayCell[] {
-  const monthStart = new Date(`${startOfMonth(baseDate)}T00:00:00`);
-  const firstVisible = new Date(monthStart);
-  firstVisible.setDate(monthStart.getDate() - monthStart.getDay());
-
-  return Array.from({ length: 42 }).map((_, index) => {
-    const current = new Date(firstVisible);
-    current.setDate(firstVisible.getDate() + index);
-    const currentDate = current.toISOString().slice(0, 10);
-    const now = new Date().toISOString().slice(0, 10);
-
-    return {
-      date: currentDate,
-      dayNumber: current.getDate(),
-      inCurrentMonth: current.getMonth() === monthStart.getMonth(),
-      isToday: currentDate === now
-    };
-  });
-}
-
 function ownerName(ownerId: string) {
   return ownerCache.value[ownerId] || `Tutor ${ownerId.slice(0, 6)}`;
 }
@@ -1147,25 +1111,6 @@ function normalizeText(value: string) {
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase()
     .trim();
-}
-
-function timeLabel(iso: string) {
-  return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatHour(hour: number) {
-  return `${String(hour).padStart(2, '0')}:00`;
-}
-
-function buildSlotScheduledAt(date: string, hour?: number) {
-  if (typeof hour !== 'number') {
-    return `${date}T09:00`;
-  }
-  return `${date}T${String(hour).padStart(2, '0')}:00`;
-}
-
-function slotAriaLabel(dayLabel: string, columnLabel: string, hour: number) {
-  return `Criar agendamento em ${dayLabel}, ${columnLabel}, às ${formatHour(hour)}`;
 }
 
 function statusLabel(status: AppointmentStatus) {
@@ -1724,7 +1669,7 @@ onMounted(async () => {
 
 .appointments-cockpit__layout {
   display: grid;
-  grid-template-columns: 286px minmax(0, 1fr);
+  grid-template-columns: 352px minmax(0, 1fr);
   gap: 12px;
   align-items: start;
   min-width: 0;
@@ -1739,6 +1684,10 @@ onMounted(async () => {
   top: 24px;
   display: grid;
   gap: 12px;
+}
+
+.agenda-filter-toggle {
+  display: none;
 }
 
 .agenda-create-button {
@@ -1763,7 +1712,7 @@ onMounted(async () => {
 
 .sidebar-card :deep(.ds-card__body) {
   background: transparent;
-  padding: 16px;
+  padding: 8px;
 }
 
 .sidebar-stack {
@@ -1779,7 +1728,7 @@ onMounted(async () => {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 12px;
+  padding: 6px;
   border-radius: 8px;
   border: 1px solid rgba(226, 232, 240, 0.92);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
@@ -1822,8 +1771,12 @@ onMounted(async () => {
   gap: 8px;
 }
 
+.mini-calendar__grid {
+  gap: 2px;
+}
+
 .mini-calendar__day {
-  aspect-ratio: 1;
+  min-height: var(--touch-min, 44px);
   border: 1px solid transparent;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.76);
@@ -1844,7 +1797,8 @@ onMounted(async () => {
 }
 
 .mini-calendar__day--muted {
-  opacity: 0.35;
+  color: var(--color-text-muted, #55717a);
+  font-weight: 400;
 }
 
 .mini-calendar__day--today {
@@ -1869,6 +1823,7 @@ onMounted(async () => {
 }
 
 .view-toggle__button {
+  min-height: var(--touch-min, 44px);
   border: 1px solid transparent;
   background: transparent;
   border-radius: 6px;
@@ -1917,7 +1872,7 @@ onMounted(async () => {
 }
 
 .agenda-filter-block__clear {
-  min-height: 32px;
+  min-height: var(--touch-min, 44px);
   border: 0;
   border-top: 1px solid rgba(226, 232, 240, 0.9);
   background: transparent;
@@ -1936,6 +1891,9 @@ onMounted(async () => {
 }
 
 .agenda-filter-block--advanced summary {
+  display: flex;
+  min-height: var(--touch-min, 44px);
+  align-items: center;
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
@@ -1947,6 +1905,7 @@ onMounted(async () => {
 }
 
 .status-chip {
+  min-height: var(--touch-min, 44px);
   border: 1px solid rgba(203, 213, 225, 0.82);
   background: rgba(255, 255, 255, 0.88);
   padding: 8px 12px;
@@ -2092,6 +2051,7 @@ onMounted(async () => {
   justify-content: space-between;
   gap: 8px;
   min-width: 0;
+  min-height: var(--touch-min, 44px);
   background: none;
   border: none;
   padding: 0;
@@ -2201,6 +2161,26 @@ onMounted(async () => {
 }
 
 .month-item:hover,
+.timeline-item__open {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.timeline-item__open:focus-visible {
+  outline: 2px solid var(--pulse-cyan-strong);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .timeline-item:hover {
   transform: translateY(-1px);
   box-shadow: 0 14px 26px rgba(15, 23, 42, 0.08);
@@ -2236,7 +2216,7 @@ onMounted(async () => {
   box-sizing: border-box;
   max-width: 100%;
   min-width: 0;
-  min-height: 42px;
+  min-height: var(--touch-min, 44px);
   padding: 9px 10px;
   text-align: left;
   line-height: 1.25;
@@ -2351,7 +2331,7 @@ onMounted(async () => {
 }
 
 .time-matrix__empty-button {
-  min-height: 100%;
+  min-height: var(--touch-min, 44px);
   padding: 12px 10px;
   font-size: 12px;
   text-align: left;
@@ -2363,7 +2343,7 @@ onMounted(async () => {
 }
 
 .time-matrix__empty-button--compact {
-  min-height: 34px;
+  min-height: var(--touch-min, 44px);
   padding: 8px 10px;
 }
 
@@ -2653,6 +2633,12 @@ onMounted(async () => {
     position: static;
   }
 
+  .agenda-filter-toggle { display: inline-flex; }
+  .agenda-create-button { display: none; }
+  .appointments-cockpit__sidebar:not(.appointments-cockpit__sidebar--expanded) .sidebar-card {
+    display: none;
+  }
+
   .board-toolbar {
     flex-direction: column;
     align-items: stretch;
@@ -2663,13 +2649,27 @@ onMounted(async () => {
   }
 
   .agenda-grid-summary {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .agenda-grid-summary > div:first-child {
+    grid-column: 1 / -1;
   }
 }
 
 @media (max-width: 720px) {
   .appointments-cockpit__layout {
     gap: 10px;
+  }
+
+  :deep(.app-page-header__context-item) {
+    padding: 8px;
+    gap: 5px;
+  }
+
+  :deep(.app-page-header__context-item dt) {
+    font-size: 10px;
+    letter-spacing: 0.02em;
   }
 
   .agenda-create-button {
@@ -2695,7 +2695,7 @@ onMounted(async () => {
   }
 
   .mini-calendar__grid {
-    gap: 6px;
+    gap: 2px;
   }
 
   .sidebar-actions {
@@ -2763,13 +2763,13 @@ onMounted(async () => {
 :global(:root[data-theme='dark']) .appointments-cockpit .view-toggle__button--active {
   border-color: var(--color-warning-400);
   background: var(--color-warning-50);
-  color: var(--color-warning-300);
+  color: var(--pulse-sand);
 }
 
 :global(:root[data-theme='dark']) .appointments-cockpit .status-chip--active {
   border-color: var(--color-info-400);
   background: var(--color-info-50);
-  color: var(--color-info-300);
+  color: var(--pulse-cyan-strong);
 }
 
 :global(:root[data-theme='dark']) .appointments-cockpit .agenda-filter-block__clear {
@@ -2782,7 +2782,7 @@ onMounted(async () => {
 :global(:root[data-theme='dark']) .appointments-cockpit .month-create-slot:focus-visible,
 :global(:root[data-theme='dark']) .appointments-cockpit .time-matrix__empty-button:hover,
 :global(:root[data-theme='dark']) .appointments-cockpit .time-matrix__empty-button:focus-visible {
-  color: var(--color-warning-300);
+  color: var(--pulse-sand);
 }
 
 :global(:root[data-theme='dark']) .appointments-cockpit .agenda-grid-summary > div,
@@ -2796,7 +2796,7 @@ onMounted(async () => {
 :global(:root[data-theme='dark']) .appointments-cockpit .month-cell__availability {
   border-color: var(--color-success-400);
   background: var(--color-success-50);
-  color: var(--color-success-300);
+  color: var(--pulse-mint);
 }
 
 :global(:root[data-theme='dark']) .appointments-cockpit .timeline-slot-summary,
@@ -2812,7 +2812,7 @@ onMounted(async () => {
 :global(:root[data-theme='dark']) .appointments-cockpit .month-cell__empty-surface:focus-visible {
   border-color: var(--color-primary-400);
   background: var(--color-primary-subtle);
-  color: var(--color-primary-300);
+  color: var(--pulse-cyan-strong);
 }
 
 :global(:root[data-theme='dark']) .appointments-cockpit .month-item,
@@ -2860,12 +2860,12 @@ onMounted(async () => {
 :global(:root[data-theme='dark']) .appointments-cockpit .time-matrix__hour--all-day,
 :global(:root[data-theme='dark']) .appointments-cockpit .time-matrix__slot--all-day {
   background: var(--color-success-50);
-  color: var(--color-success-300);
+  color: var(--pulse-mint);
 }
 
 :global(:root[data-theme='dark']) .appointments-cockpit .timeline-block {
   background: var(--color-warning-50);
-  color: var(--color-warning-300);
+  color: var(--pulse-sand);
 }
 
 :global(:root[data-theme='dark']) .appointments-cockpit .timeline-item__ops {
@@ -2878,51 +2878,51 @@ onMounted(async () => {
 }
 
 :global(:root[data-theme='dark']) .appointments-cockpit .timeline-item__conflicts {
-  color: var(--color-danger-300);
+  color: var(--pulse-coral);
 }
 
 :global(:root[data-theme='dark']) .appointments-cockpit .status-pill--scheduled,
 :global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--scheduled {
   background: var(--color-primary-50);
-  color: var(--color-primary-300);
+  color: var(--pulse-cyan-strong);
 }
 
 :global(:root[data-theme='dark']) .appointments-cockpit .status-pill--checked_in,
 :global(:root[data-theme='dark']) .appointments-cockpit .status-pill--called,
 :global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--checked_in {
   background: var(--color-warning-50);
-  color: var(--color-warning-300);
+  color: var(--pulse-sand);
 }
 
 :global(:root[data-theme='dark']) .appointments-cockpit .status-pill--in_triage {
   background: var(--color-info-50);
-  color: var(--color-info-300);
+  color: var(--pulse-cyan-strong);
 }
 
 :global(:root[data-theme='dark']) .appointments-cockpit .status-pill--in_care,
 :global(:root[data-theme='dark']) .appointments-cockpit .status-pill--observation,
 :global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--completed {
   background: var(--color-success-50);
-  color: var(--color-success-300);
+  color: var(--pulse-mint);
 }
 
 :global(:root[data-theme='dark']) .appointments-cockpit .status-pill--cancelled,
 :global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--time_off {
   background: var(--color-neutral-100);
-  color: var(--color-neutral-300);
+  color: var(--pulse-muted-strong);
 }
 
 :global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--cancelled {
   background: var(--color-danger-50);
   border-color: var(--color-danger-400);
-  color: var(--color-danger-300);
+  color: var(--pulse-coral);
 }
 
 :global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--no_show,
 :global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--marker {
   background: var(--color-warning-50);
   border-color: var(--color-warning-400);
-  color: var(--color-warning-300);
+  color: var(--pulse-sand);
 }
 
 :global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--vaccine,
@@ -2930,7 +2930,7 @@ onMounted(async () => {
 :global(:root[data-theme='dark']) .appointments-cockpit .appointments-legend__pill--return {
   background: var(--color-primary-50);
   border-color: var(--color-primary-400);
-  color: var(--color-primary-300);
+  color: var(--pulse-cyan-strong);
 }
 
 :global(:root[data-theme='dark']) {
@@ -2989,13 +2989,13 @@ onMounted(async () => {
 :root[data-theme='dark'] .appointments-cockpit .time-matrix__empty-button:hover {
   border-color: var(--color-warning-400);
   background: var(--color-warning-50);
-  color: var(--color-warning-300);
+  color: var(--pulse-sand);
 }
 
 :root[data-theme='dark'] .appointments-cockpit .status-chip--active {
   border-color: var(--color-info-400);
   background: var(--color-info-50);
-  color: var(--color-info-300);
+  color: var(--pulse-cyan-strong);
 }
 
 :root[data-theme='dark'] .appointments-cockpit .month-cell__availability,
@@ -3003,7 +3003,7 @@ onMounted(async () => {
 :root[data-theme='dark'] .appointments-cockpit .time-matrix__slot--all-day {
   border-color: var(--color-success-400);
   background: var(--color-success-50);
-  color: var(--color-success-300);
+  color: var(--pulse-mint);
 }
 
 :root[data-theme='dark'] .appointments-cockpit .timeline-slot-summary,
@@ -3019,7 +3019,7 @@ onMounted(async () => {
 :root[data-theme='dark'] .appointments-cockpit .month-cell__empty-surface:focus-visible {
   border-color: var(--color-primary-400);
   background: var(--color-primary-subtle);
-  color: var(--color-primary-300);
+  color: var(--pulse-cyan-strong);
 }
 
 :root[data-theme='dark'] .appointments-cockpit .month-item,
@@ -3039,7 +3039,7 @@ onMounted(async () => {
 
 :root[data-theme='dark'] .appointments-cockpit .timeline-block {
   background: var(--color-warning-50);
-  color: var(--color-warning-300);
+  color: var(--pulse-sand);
 }
 
 :root[data-theme='dark'] .appointments-cockpit .timeline-item__ops span,
@@ -3053,51 +3053,51 @@ onMounted(async () => {
 }
 
 :root[data-theme='dark'] .appointments-cockpit .timeline-item__conflicts {
-  color: var(--color-danger-300);
+  color: var(--pulse-coral);
 }
 
 :root[data-theme='dark'] .appointments-cockpit .status-pill--scheduled,
 :root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--scheduled {
   background: var(--color-primary-50);
-  color: var(--color-primary-300);
+  color: var(--pulse-cyan-strong);
 }
 
 :root[data-theme='dark'] .appointments-cockpit .status-pill--checked_in,
 :root[data-theme='dark'] .appointments-cockpit .status-pill--called,
 :root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--checked_in {
   background: var(--color-warning-50);
-  color: var(--color-warning-300);
+  color: var(--pulse-sand);
 }
 
 :root[data-theme='dark'] .appointments-cockpit .status-pill--in_triage {
   background: var(--color-info-50);
-  color: var(--color-info-300);
+  color: var(--pulse-cyan-strong);
 }
 
 :root[data-theme='dark'] .appointments-cockpit .status-pill--in_care,
 :root[data-theme='dark'] .appointments-cockpit .status-pill--observation,
 :root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--completed {
   background: var(--color-success-50);
-  color: var(--color-success-300);
+  color: var(--pulse-mint);
 }
 
 :root[data-theme='dark'] .appointments-cockpit .status-pill--cancelled,
 :root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--time_off {
   background: var(--color-neutral-100);
-  color: var(--color-neutral-300);
+  color: var(--pulse-muted-strong);
 }
 
 :root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--cancelled {
   background: var(--color-danger-50);
   border-color: var(--color-danger-400);
-  color: var(--color-danger-300);
+  color: var(--pulse-coral);
 }
 
 :root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--no_show,
 :root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--marker {
   background: var(--color-warning-50);
   border-color: var(--color-warning-400);
-  color: var(--color-warning-300);
+  color: var(--pulse-sand);
 }
 
 :root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--vaccine,
@@ -3105,6 +3105,6 @@ onMounted(async () => {
 :root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--return {
   background: var(--color-primary-50);
   border-color: var(--color-primary-400);
-  color: var(--color-primary-300);
+  color: var(--pulse-cyan-strong);
 }
 </style>

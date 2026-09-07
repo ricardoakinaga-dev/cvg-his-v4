@@ -123,7 +123,7 @@ describe('PatientsListPage', () => {
     const wrapper = mount(PatientsListPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Animais');
+    expect(wrapper.text()).toContain('Pacientes');
   });
 
   it('loads patients on mount', async () => {

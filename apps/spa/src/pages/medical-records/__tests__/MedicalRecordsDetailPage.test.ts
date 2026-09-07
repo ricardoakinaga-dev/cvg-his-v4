@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
+import { reactive } from 'vue';
 
 const mockRecord = {
   id: 'mr-1',
@@ -55,6 +56,16 @@ const mockTimeline = [
 
 let mockRouteId = 'enc-1';
 let mockRouteQuery: Record<string, unknown> = {};
+const mockRoute = reactive({ params: { id: 'enc-1' }, path: '/medical-records/enc-1', query: {} as Record<string, unknown> });
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
 const mockGetByEncounterFn = vi
   .fn()
   .mockResolvedValue({ record: mockRecord, entries: mockEntries });
@@ -207,11 +218,7 @@ vi.mock('@/services/prescriptions', () => ({
 }));
 
 vi.mock('vue-router', () => ({
-  useRoute: () => ({
-    params: { id: mockRouteId },
-    path: `/medical-records/${mockRouteId}`,
-    query: mockRouteQuery
-  }),
+  useRoute: () => mockRoute,
   useRouter: () => ({
     push: vi.fn()
   })
@@ -222,6 +229,9 @@ describe('MedicalRecordsDetailPage', () => {
     vi.clearAllMocks();
     mockRouteId = 'enc-1';
     mockRouteQuery = {};
+    mockRoute.params.id = 'enc-1';
+    mockRoute.path = '/medical-records/enc-1';
+    mockRoute.query = {};
     mockGetByEncounterFn.mockResolvedValue({ record: mockRecord, entries: mockEntries });
     mockListAllFn.mockResolvedValue([{ record: mockRecord, entryCount: mockEntries.length }]);
     mockListEntriesFn.mockResolvedValue(mockEntries);
@@ -319,6 +329,8 @@ describe('MedicalRecordsDetailPage', () => {
 
   it('loads the record when the route id is a medical record id instead of an encounter id', async () => {
     mockRouteId = 'mr-1';
+    mockRoute.params.id = 'mr-1';
+    mockRoute.path = '/medical-records/mr-1';
     mockGetByEncounterFn.mockRejectedValue(new Error('Unexpected error'));
 
     const MedicalRecordsDetailPage = (await import('../MedicalRecordsDetailPage.vue')).default;
@@ -555,6 +567,7 @@ describe('MedicalRecordsDetailPage', () => {
 
   it('opens the anamnesis modal when requested by quick access query', async () => {
     mockRouteQuery = { entry: 'anamnesis' };
+    mockRoute.query = { entry: 'anamnesis' };
 
     const MedicalRecordsDetailPage = (await import('../MedicalRecordsDetailPage.vue')).default;
     const wrapper = mount(MedicalRecordsDetailPage);
@@ -788,5 +801,56 @@ describe('MedicalRecordsDetailPage', () => {
     expect(wrapper.find('[data-clinical-panel="assessment"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="clinical-anamnesis"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="clinical-assessment"]').exists()).toBe(true);
+  });
+
+  it('ignores a late previous medical-record response after the route changes', async () => {
+    const first = deferred<{ record: typeof mockRecord; entries: typeof mockEntries }>();
+    const secondRecord = { ...mockRecord, id: 'mr-2', encounterId: 'enc-2', patientId: 'pat-2' };
+    const secondEntries = [{ ...mockEntries[0], id: 'entry-2', encounterId: 'enc-2', patientId: 'pat-2', title: 'Evolucao Luna' }];
+    const second = deferred<{ record: typeof secondRecord; entries: typeof secondEntries }>();
+    mockGetByEncounterFn.mockImplementation((id: string) => (id === 'enc-1' ? first.promise : second.promise));
+    mockEncounterGetById.mockImplementation((id: string) =>
+      Promise.resolve({
+        id,
+        accountId: 'acc-1',
+        patientId: id === 'enc-2' ? 'pat-2' : 'pat-1',
+        ownerId: id === 'enc-2' ? 'owner-2' : 'owner-1',
+        visitType: 'walk_in',
+        status: 'in_care',
+        origin: 'reception',
+        reason: id === 'enc-2' ? 'Consulta Luna' : 'Consulta Rex',
+        openedAt: '2024-01-15T10:00:00Z',
+        createdByUserId: 'user-1',
+        updatedAt: '2024-01-15T10:00:00Z'
+      })
+    );
+
+    const MedicalRecordsDetailPage = (await import('../MedicalRecordsDetailPage.vue')).default;
+    const wrapper = mount(MedicalRecordsDetailPage);
+    mockRoute.params.id = 'enc-2';
+    mockRoute.path = '/medical-records/enc-2';
+    await flushPromises();
+    second.resolve({ record: secondRecord, entries: secondEntries });
+    await flushPromises();
+    first.resolve({ record: mockRecord, entries: mockEntries });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Consulta Luna');
+    expect(wrapper.text()).not.toContain('Consulta Rex');
+    expect(wrapper.text()).not.toContain('enc-1');
+  });
+
+  it('rejects a record response whose identity differs from the requested route', async () => {
+    mockGetByEncounterFn.mockResolvedValue({
+      record: { ...mockRecord, id: 'unexpected-record', encounterId: 'unexpected-encounter' },
+      entries: []
+    });
+
+    const MedicalRecordsDetailPage = (await import('../MedicalRecordsDetailPage.vue')).default;
+    const wrapper = mount(MedicalRecordsDetailPage);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('não corresponde ao endereço solicitado');
+    expect(wrapper.text()).not.toContain('Consulta dermatológica');
   });
 });

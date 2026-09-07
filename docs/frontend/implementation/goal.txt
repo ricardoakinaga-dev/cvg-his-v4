@@ -1,0 +1,1 @@
+Implementar integralmente as 34 entregas frontend e critérios dos quatro documentos de 06/09/2026, com direção Precisão sensível e verificação independente, sem autoatribuir AAA.

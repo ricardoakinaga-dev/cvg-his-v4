@@ -1,0 +1,29 @@
+
+ RUN  v4.1.2 /home/ricardo/cvg-his-v4/apps/spa
+
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > renders the new customer title 787ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > renders the new grouped form fields 99ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > shows validation error when name is empty 92ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > shows validation error when no contact is provided 84ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > submits the new customer payload successfully 149ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > hydrates the expanded fields in edit mode 178ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > reloads the current owner and ignores a late previous response after a route switch 219ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > rejects a successful owner response whose identity differs from the edit route 73ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > does not report update success when the returned owner belongs to another route 90ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > does not duplicate a pending save or navigate away from edits made during it 149ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > preserves entered values after a failed save 66ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > blocks mutation after failed hydration and allows a successful retry 188ms
+ ✓ src/composables/__tests__/useUnsavedChanges.test.ts > unsaved changes through router navigation > keeps edits when leaving is declined, then permits explicit discard 68ms
+ ✓ src/composables/__tests__/useUnsavedChanges.test.ts > unsaved changes through router navigation > protects changing the record in the same component 10ms
+ ✓ src/composables/__tests__/useUnsavedChanges.test.ts > unsaved changes through router navigation > marks only the submitted snapshot clean, retaining subsequent edits 31ms
+ ✓ src/composables/__tests__/useUnsavedChanges.test.ts > unsaved changes through router navigation > allows clean navigation and warns on browser unload only while dirty 11ms
+ ✓ src/composables/__tests__/useUnsavedChanges.test.ts > concurrent navigation and teardown > settles pending departure when the component is disposed 7ms
+ ✓ src/composables/__tests__/useUnsavedChanges.test.ts > concurrent navigation and teardown > shares a confirmation for rapid competing destinations without discarding on cancel 6ms
+ ✓ src/composables/__tests__/useUnsavedChanges.test.ts > workspace logout consent > keeps session and draft on decline; discard permits logout navigation without a second prompt 17ms
+ ✓ src/composables/__tests__/useUnsavedChanges.test.ts > workspace logout consent > does not discard a different record or changed values while awaiting consent 1ms
+
+ Test Files  2 passed (2)
+      Tests  20 passed (20)
+   Start at  23:45:38
+   Duration  5.09s (transform 651ms, setup 177ms, import 112ms, tests 2.33s, environment 1.93s)
+

@@ -85,9 +85,9 @@ Ele entrega hoje:
 
 ## Estado do legado
 
-- `apps/web` foi congelado como frontend legado
+- `apps/web` não existe no worktree verificado em 05/09/2026; seu congelamento pertence ao histórico da migração
 - o deploy, o proxy e a trilha documental oficial apontam para `apps/spa`
-- o legado nao recebe novas features e ficou fora do fluxo canonico
+- o histórico do legado permanece como referência documental; não há frontend legado ativo a manter nesse diretório
 
 ## Lacunas ainda abertas
 
@@ -100,4 +100,4 @@ Ele entrega hoje:
 - expandir cobertura E2E dos fluxos enterprise
 - documentar UX e contratos de cada modulo novo apenas quando eles estiverem operacionais de ponta a ponta
 - evitar criar trilhas paralelas de frontend
-- manter `apps/web` apenas como referencia historica enquanto a trilha de desligamento residual permanecer arquivada
+- preservar a documentação histórica de desligamento de `apps/web`, sem descrevê-lo como diretório ou aplicação ainda presente

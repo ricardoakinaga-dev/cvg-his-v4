@@ -37,4 +37,4 @@ Migrations novas devem ser aditivas e reversíveis por procedimento operacional 
 
 ## Evidência
 
-O checklist de cutover é [`131-checklist-cutover-servidor.md`](131-checklist-cutover-servidor.md), a superfície canônica é [`132-superficie-canonica-deploy-e-migracao.md`](132-superficie-canonica-deploy-e-migracao.md) e o acompanhamento desta rodada está no [diário de execução](2026-08-07-diario-execucao-resolucao-auditoria-cvg-his-v4.md).
+O checklist de cutover é [`131-checklist-cutover-servidor.md`](131-checklist-cutover-servidor.md), a superfície canônica é [`132-superficie-canonica-deploy-e-migracao.md`](132-superficie-canonica-deploy-e-migracao.md) e o acompanhamento desta rodada está no diário de execução (histórico arquivado: `legado/docs/2026-08-07-diario-execucao-resolucao-auditoria-cvg-his-v4.md`).

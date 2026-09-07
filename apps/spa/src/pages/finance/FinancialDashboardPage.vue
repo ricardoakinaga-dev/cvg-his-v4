@@ -7,7 +7,16 @@
       :secondary-actions="headerSecondaryActions"
     />
 
-    <form class="financial-dashboard-filters" aria-label="Filtros do dashboard financeiro" @submit.prevent="loadDashboard">
+    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
+      {{ error }}
+    </DsAlert>
+
+    <div class="financial-dashboard-period">
+      <span>{{ appliedPeriod.from.split('-').reverse().join('/') || 'Sem início' }} — {{ appliedPeriod.to.split('-').reverse().join('/') || 'Sem fim' }}</span>
+      <DsButton variant="secondary" :aria-expanded="filtersOpen" aria-controls="financial-period-filters"
+        @click="filtersOpen = !filtersOpen">{{ filtersOpen ? 'Ocultar filtros' : 'Filtrar período' }}</DsButton>
+    </div>
+    <form id="financial-period-filters" class="financial-dashboard-filters" :class="{ 'is-open': filtersOpen }" aria-label="Filtros do dashboard financeiro" @submit.prevent="loadDashboard">
       <DsInput id="financial-dashboard-from" v-model="filters.dateFrom" label="De" type="date" />
       <DsInput id="financial-dashboard-to" v-model="filters.dateTo" label="Até" type="date" />
       <DsInput id="financial-dashboard-view" v-model="filters.view" label="Visão" type="select">
@@ -23,29 +32,24 @@
     </form>
 
     <section class="financial-dashboard-summary-grid" aria-label="Resumo do dashboard financeiro">
-      <DsStatCard :label="formatCurrency(commercialRevenue)" value="Receita Comercial" />
-      <DsStatCard :label="formatCurrency(outstandingReceivables)" value="Recebíveis" />
-      <DsStatCard :label="cashBalanceLabel" value="Caixa Aberto" />
-      <DsStatCard :label="formatCurrency(realizedNetResult)" value="Resultado Realizado" />
+      <DsStatCard :loading="loading" label="Receita Comercial" :value="!report ? '—' : formatCurrency(commercialRevenue)" />
+      <DsStatCard :loading="loading" label="Recebíveis" :value="!report ? '—' : formatCurrency(outstandingReceivables)" />
+      <DsStatCard :loading="loading" label="Caixa Aberto" :value="!report ? '—' : cashBalanceLabel" />
+      <DsStatCard :loading="loading" label="Resultado Realizado" :value="!report ? '—' : formatCurrency(realizedNetResult)" />
       <DsStatCard
-        :label="`${pixAttentionCount} pendência(s)`"
-        value="PIX em Atenção"
-        :error="pixAttentionCount > 0 ? 'Conciliação pendente' : undefined"
+        :loading="loading"
+        :label="pixAttentionCount > 0 ? 'PIX · conciliação pendente' : 'PIX em Atenção'"
+        :value="!report ? '—' : `${pixAttentionCount} pendência(s)`"
       />
-      <DsStatCard :label="formatCurrency(quotePipelineAmount)" value="Pipeline" />
+      <DsStatCard :loading="loading" label="Pipeline" :value="!report ? '—' : formatCurrency(quotePipelineAmount)" />
     </section>
 
     <section class="financial-dashboard-actions" aria-label="Ações do dashboard financeiro">
-      <DsButton variant="primary" disabled>Exportar Dashboard</DsButton>
       <DsButton variant="secondary" tag="a" to="/billing">Contas a Receber</DsButton>
       <DsButton variant="secondary" tag="a" to="/finance/accounts-payable">Contas a Pagar</DsButton>
       <DsButton variant="secondary" tag="a" to="/finance/cash-flow">Fluxo de Caixa</DsButton>
       <DsButton variant="ghost" :loading="loading" @click="loadDashboard">Atualizar</DsButton>
     </section>
-
-    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
-      {{ error }}
-    </DsAlert>
 
     <section v-if="visibleHighlights.length" class="financial-dashboard-highlights" aria-label="Alertas financeiros">
       <DsAlert
@@ -135,6 +139,7 @@ const columns: DataTableColumn[] = [
 ];
 
 const initialPeriod = currentMonthPeriod();
+const appliedPeriod = ref({ ...initialPeriod });
 const filters = reactive({
   dateFrom: initialPeriod.from,
   dateTo: initialPeriod.to,
@@ -143,6 +148,7 @@ const filters = reactive({
 const report = ref<AdministrativeReportsResponse | null>(null);
 const incomeStatement = ref<FinancialIncomeStatement | null>(null);
 const loading = ref(false);
+const filtersOpen = ref(false);
 const error = ref('');
 
 const commercialRevenue = computed(() => report.value?.executive.commercialRevenue ?? 0);
@@ -191,6 +197,7 @@ async function loadDashboard() {
       administrativeReportsService.getHubs(period),
       financialStatementsService.getIncomeStatement(period)
     ]);
+    appliedPeriod.value = { from: period.dateFrom ?? '', to: period.dateTo ?? '' };
     report.value = hubReport;
     incomeStatement.value = statement;
   } catch (err) {
@@ -369,7 +376,7 @@ function formatPercent(value: number | null): string {
 .financial-dashboard-summary-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .financial-dashboard-highlights {
@@ -400,11 +407,23 @@ small {
   }
 }
 
+.financial-dashboard-period { display: none; }
+.financial-dashboard-summary-grid :deep(.ds-stat-card) { padding: 16px; gap: 12px; }
+.financial-dashboard-summary-grid :deep(.ds-stat-card__value) { font-size: clamp(20px, 2vw, 27px); font-variant-numeric: tabular-nums; }
+.financial-dashboard-filters > * { min-width: 0; }
 @media (max-width: 720px) {
-  .financial-dashboard-summary-grid,
-  .financial-dashboard-filters,
-  .financial-dashboard-actions {
-    grid-template-columns: 1fr;
-  }
+  .financial-dashboard-period { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--color-text-muted); font-size: 12px; }
+  .financial-dashboard-period > span { min-width: 0; }
+  .financial-dashboard-filters { display: none; }
+  .financial-dashboard-filters.is-open { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .financial-dashboard-summary-grid, .financial-dashboard-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .financial-dashboard-summary-grid :deep(.ds-stat-card) { padding: 14px 12px; min-height: 92px; }
+  .financial-dashboard-summary-grid :deep(.ds-stat-card__icon) { display: none; }
+  .financial-dashboard-summary-grid :deep(.ds-stat-card__value) { font-size: 21px; }
+  .financial-dashboard-actions :deep(.ds-btn) { white-space: normal; height: auto; min-height: 44px; }
+  .financial-dashboard-filters__actions { grid-column: 1 / -1; }
+  .financial-dashboard-page :deep(.app-page-header) { padding: 18px; }
+  .financial-dashboard-page :deep(.app-page-header__breadcrumbs) { display: none; }
+
 }
 </style>

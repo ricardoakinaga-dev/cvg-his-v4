@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
+import { reactive } from 'vue';
 
 const mockOwner = {
   id: 'owner-1',
@@ -39,6 +40,13 @@ const mockOwner = {
   status: 'active' as const,
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-02T00:00:00Z'
+};
+
+const mockOwnerLuna = {
+  ...mockOwner,
+  id: 'owner-2',
+  fullName: 'Marina Costa',
+  legacyVetusId: '4848'
 };
 
 const mockPatients = [
@@ -183,6 +191,17 @@ const mockQuoteCreate = vi.fn().mockResolvedValue({
   id: 'quote-2',
   number: 'Q-002'
 });
+const mockRoute = reactive({ params: { id: 'owner-1' } });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: Error) => void;
+  const promise = new Promise<T>((yes, no) => {
+    resolve = yes;
+    reject = no;
+  });
+  return { promise, resolve, reject };
+}
 
 vi.mock('@/services/owner', () => ({
   ownerService: {
@@ -240,14 +259,13 @@ vi.mock('vue-router', () => ({
     template: '<a :href="to"><slot /></a>',
     props: ['to']
   },
-  useRoute: () => ({
-    params: { id: 'owner-1' }
-  })
+  useRoute: () => mockRoute
 }));
 
 describe('OwnerDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRoute.params.id = 'owner-1';
     mockGetOwnerById.mockResolvedValue(mockOwner);
     mockPatientList.mockResolvedValue(mockPatients);
     mockAppointmentList.mockResolvedValue(mockAppointments);
@@ -350,5 +368,49 @@ describe('OwnerDetailPage', () => {
 
     await flushPromises();
     expect(wrapper.text()).toContain('Falha ao carregar tutor');
+  });
+
+  it('ignores a late previous-owner response after the route changes', async () => {
+    const OwnerDetailPage = (await import('../OwnerDetailPage.vue')).default;
+    const wrapper = mount(OwnerDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a :href="to"><slot /></a>',
+            props: ['to']
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+    const pending = deferred<typeof mockOwner>();
+    mockGetOwnerById.mockImplementationOnce(() => pending.promise);
+    mockGetOwnerById.mockResolvedValue(mockOwnerLuna);
+    void (wrapper.vm as unknown as { loadPage: () => Promise<void> }).loadPage();
+    mockRoute.params.id = 'owner-2';
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Marina Costa');
+    pending.resolve(mockOwner);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Marina Costa');
+    expect(wrapper.text()).not.toContain('Tutor Rex');
+    expect(wrapper.text()).not.toContain('3835');
+    wrapper.unmount();
+  });
+
+  it('rejects a successful owner read with a different identity', async () => {
+    mockGetOwnerById.mockResolvedValueOnce({ ...mockOwner, id: 'owner-other' });
+
+    const OwnerDetailPage = (await import('../OwnerDetailPage.vue')).default;
+    const wrapper = mount(OwnerDetailPage);
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('O tutor retornado não corresponde ao cadastro solicitado');
+    expect(wrapper.text()).not.toContain('João Silva');
+    wrapper.unmount();
   });
 });

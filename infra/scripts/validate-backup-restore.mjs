@@ -14,14 +14,25 @@ function read(relativePath) {
   return readFileSync(fullPath, 'utf8');
 }
 
+let documentGovernance;
+try {
+  documentGovernance = JSON.parse(read('docs/document-governance.json') ?? '{}');
+} catch {
+  documentGovernance = {};
+}
+const currentDocument = (kind) => {
+  const path = documentGovernance.current_documents?.[kind]?.path;
+  return typeof path === 'string' ? read(path) : undefined;
+};
+
 const files = {
   backup: read('infra/scripts/backup-v2.sh'),
   restoreDrill: read('infra/scripts/restore-drill-v2.sh'),
   packageJson: read('package.json'),
   cutoverChecklist: read('docs/131-checklist-cutover-servidor.md'),
   deploySurface: read('docs/132-superficie-canonica-deploy-e-migracao.md'),
-  roadmap: read('docs/2026-09-02-roadmap-melhorias-cvg-his-v4.md'),
-  backlog: read('docs/2026-09-02-backlog-priorizado-cvg-his-v4.md')
+  roadmap: currentDocument('roadmap'),
+  backlog: currentDocument('backlog')
 };
 
 const checks = [
@@ -103,9 +114,8 @@ const checks = [
   {
     label: 'roadmap e backlog vigentes mantem backup/restore como criterio de saida',
     ok:
-      files.roadmap?.includes('ensaiar criação vazia, upgrade, backup, restore, deploy e rollback') &&
-      files.roadmap?.includes('restore atende aos objetivos aprovados') &&
-      /\|\s*OPS-003\s*\|\s*Executar backup e restore no ambiente-alvo\s*\|/.test(
+      /\| M4 — Operação no target[^\n]*restore\/RTO-RPO/.test(files.roadmap ?? '') &&
+      /\| AAA-037 \|[^\n]*Aprovar RPO\/RTO antes do drill; restaurar globals, banco, storage e configuração representativos, verificar hashes\/contagens\/RLS e medir tempos reais\./.test(
         files.backlog ?? ''
       )
   }

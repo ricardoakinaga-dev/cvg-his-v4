@@ -12,6 +12,7 @@ const E2E_DATABASE_MODE = process.env.E2E_DATABASE_MODE === '1';
 const E2E_BROWSER = process.env.E2E_BROWSER || 'chromium';
 const E2E_DISABLE_INCOMPATIBLE_DB_REPOS =
   process.env.API_DISABLE_INCOMPATIBLE_DB_REPOS ?? (E2E_DATABASE_MODE ? '0' : '1');
+const E2E_TEST_DB_ENV = E2E_DATABASE_MODE ? 'REQUIRE_TEST_DB="1" ' : '';
 
 process.env.API_URL = process.env.API_URL || E2E_API_URL;
 process.env.SPA_URL = process.env.SPA_URL || E2E_SPA_URL;
@@ -61,6 +62,7 @@ if (!(E2E_BROWSER in browserProjects) && E2E_BROWSER !== 'all') {
  *   npx playwright test --config playwright-spa.config.ts -g "Visual" --update-snapshots
  */
 export default defineConfig({
+  metadata: { usabilityInventoryDigest: process.env.E2E_INVENTORY_DIGEST || '' },
   testDir: './e2e/spa',
   testIgnore: E2E_DATABASE_MODE
     ? []
@@ -98,7 +100,7 @@ export default defineConfig({
   globalSetup: './e2e/fixtures/spa-global-setup.ts',
   webServer: [
     {
-      command: `env -u DATABASE_URL -u DATABASE_URL_TEST API_DISABLE_INCOMPATIBLE_DB_REPOS="${E2E_DISABLE_INCOMPATIBLE_DB_REPOS}" NODE_ENV=test AUTH_SECRET="e2e-test-secret-key-do-not-use-in-production-12345678" AUTH_RATE_LIMIT_MAX_REQUESTS="${process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || '200'}" CORS_ALLOWED_ORIGINS="http://127.0.0.1:3112,http://localhost:3112" DATABASE_URL="${E2E_DATABASE_URL}" DATABASE_URL_TEST="${E2E_DATABASE_URL}" REDIS_URL="${E2E_REDIS_URL}" PORT=3111 HOST=127.0.0.1 node apps/api/dist/index.js`,
+      command: `env -u DATABASE_URL -u DATABASE_URL_TEST ${E2E_TEST_DB_ENV}API_DISABLE_INCOMPATIBLE_DB_REPOS="${E2E_DISABLE_INCOMPATIBLE_DB_REPOS}" NODE_ENV=test AUTH_SECRET="e2e-test-secret-key-do-not-use-in-production-12345678" AUTH_RATE_LIMIT_MAX_REQUESTS="${process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || '200'}" CORS_ALLOWED_ORIGINS="http://127.0.0.1:3112,http://localhost:3112" DATABASE_URL="${E2E_DATABASE_URL}" DATABASE_URL_TEST="${E2E_DATABASE_URL}" REDIS_URL="${E2E_REDIS_URL}" PORT=3111 HOST=127.0.0.1 node apps/api/dist/index.js`,
       url: `${process.env.API_URL || E2E_API_URL}/health`,
       reuseExistingServer: true,
       timeout: 90_000,

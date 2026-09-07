@@ -1,117 +1,98 @@
 #!/usr/bin/env node
 /**
- * test:critical bootstrap script
- *
- * Provisions the test database and runs the critical test suite.
- * Usage:
- *   node infra/scripts/test-critical-bootstrap.mjs
- *   DATABASE_URL_TEST=postgres://user:pass@host:5433/cvg_his_v2_test node infra/scripts/test-critical-bootstrap.mjs
- *
- * Requirements:
- *   - Docker + docker compose available to start the isolated test PostgreSQL service
- *   - PostgreSQL accessible at DATABASE_URL_TEST (default: localhost:5433)
- *   - pnpm installed
- *
- * What this script does:
- *   1. Starts the isolated PostgreSQL test service
- *   2. Validates PostgreSQL connectivity
- *   3. Runs pnpm test:critical with REQUIRE_TEST_DB=1
- *
- * The Vitest global setup owns database reset, canonical migration application,
- * and seed provisioning.
+ * Provision the default isolated Docker service, or reuse DATABASE_URL_TEST.
+ * The canonical critical harness creates ephemeral databases, migrates and seeds
+ * them. An explicitly configured database never triggers Docker or a fallback.
+ * --check-only verifies connectivity without executing the critical suite.
  */
+import { execFileSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
+import pg from 'pg';
 
-import { execSync } from 'node:child_process';
-import { env } from 'node:process';
-
-function resolveDefaultTestDbUrl() {
-  if (env.DATABASE_URL_TEST ?? env.DATABASE_URL) {
-    return env.DATABASE_URL_TEST ?? env.DATABASE_URL;
-  }
-
-  const url = new URL('postgres://postgres:postgres@localhost:5433/cvg_his_v2_test');
-  url.pathname = `${url.pathname}_${process.pid}`;
-  return url.toString();
-}
-
-const TEST_DB_URL = resolveDefaultTestDbUrl();
-const TEST_DB_NAME = new URL(TEST_DB_URL).pathname.replace(/^\//, '');
-const ADMIN_DB_URL = (() => {
-  const u = new URL(TEST_DB_URL);
-  u.pathname = '/postgres';
-  return u.toString();
-})();
-const COMPOSE_FILE = 'docker-compose.test.yml';
-
-function log(msg) {
-  console.log(`[test-critical-bootstrap] ${msg}`);
-}
-
-function run(cmd, opts = {}) {
+export function resolveBootstrapDatabase(environment = process.env) {
+  const explicit = Boolean(environment.DATABASE_URL_TEST?.trim());
+  const connectionString = explicit
+    ? environment.DATABASE_URL_TEST.trim()
+    : 'postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_test';
+  let url;
   try {
-    execSync(cmd, { stdio: 'inherit', env: { ...env, ...opts.env }, cwd: process.cwd() });
-  } catch (err) {
-    log(`Command failed: ${cmd}`);
-    process.exit(1);
+    url = new URL(connectionString);
+  } catch {
+    throw new Error('DATABASE_URL_TEST must be a valid PostgreSQL URL');
   }
+  const name = decodeURIComponent(url.pathname.slice(1));
+  if (!['postgres:', 'postgresql:'].includes(url.protocol) ||
+      !/^[a-zA-Z0-9_]+$/.test(name) || !/(?:^|_)(?:test|e2e)(?:_|$)/i.test(name)) {
+    throw new Error('Refusing a database without an explicit test/e2e name');
+  }
+  url.pathname = '/postgres';
+  return { explicit, connectionString, adminUrl: url.toString(), name };
 }
 
-function tryRun(cmd, opts = {}) {
+async function probeDatabase(connectionString) {
+  const client = new pg.Client({ connectionString, connectionTimeoutMillis: 5000 });
   try {
-    execSync(cmd, { stdio: 'ignore', env: { ...env, ...opts.env }, cwd: process.cwd() });
+    await client.connect();
+    await client.query('SELECT 1');
     return true;
   } catch {
     return false;
+  } finally {
+    await client.end().catch(() => {});
   }
 }
 
-function cleanupRunner() {
-  run('node infra/scripts/cleanup-test-runner.mjs --kill-orphans --drop-stale-dbs');
+function run(command, args, environment) {
+  execFileSync(command, args, { stdio: 'inherit', env: environment });
 }
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function main() {
-  log(`Using test database: ${TEST_DB_NAME}`);
-  log(`Database URL: ${TEST_DB_URL.replace(/\/\/.*:.*@/, '//***:***@')}`);
-
-  log('Cleaning orphan test processes and stale ephemeral databases...');
-  cleanupRunner();
-
-  // Step 1: Start isolated test PostgreSQL and validate connectivity
-  log('Starting isolated PostgreSQL test service...');
-  run(`docker compose -f ${COMPOSE_FILE} up -d postgres-test`);
-
-  log('Checking PostgreSQL connectivity...');
-  let connected = false;
-  for (let attempt = 1; attempt <= 30; attempt += 1) {
-    connected = tryRun(`psql "${ADMIN_DB_URL}" -c "SELECT 1"`, { env: { PGCONNECT_TIMEOUT: '5' } });
-    if (connected) {
-      break;
-    }
-    await sleep(1000);
+export async function bootstrapCritical({
+  environment = process.env,
+  checkOnly = false,
+  probe = probeDatabase,
+  execute = run,
+  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  log = (message) => console.log(`[test-critical-bootstrap] ${message}`)
+} = {}) {
+  const database = resolveBootstrapDatabase(environment);
+  log(`Checking isolated test database: ${database.name}`);
+  // An explicit target is a contract, not merely an address for a cluster.
+  // Connecting to /postgres would hide a typo or missing configured database.
+  const probeUrl = database.explicit ? database.connectionString : database.adminUrl;
+  let connected = await probe(probeUrl);
+  if (!connected && database.explicit) {
+    throw new Error('Explicit test PostgreSQL is unreachable; refusing Docker or in-memory fallback');
   }
-
   if (!connected) {
-    log('ERROR: Cannot connect to isolated PostgreSQL test service.');
-    log(`Expected connection string: ${TEST_DB_URL.replace(/\/\/.*:.*@/, '//***:***@')}`);
-    log('For local validation: pnpm test:db:start');
-    process.exit(1);
+    execute('docker', ['compose', '-f', 'docker-compose.test.yml', 'up', '-d', 'postgres-test'], environment);
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      connected = await probe(database.adminUrl);
+      if (connected) break;
+      if (attempt < 29) await sleep(1000);
+    }
   }
+  if (!connected) throw new Error('Isolated test PostgreSQL is unreachable');
   log('PostgreSQL is reachable.');
-
-  // Step 2: Run critical tests. The Vitest global setup owns reset + migrate + seed.
-  log('Running critical tests with canonical DB setup...');
-  run(
-    `REQUIRE_TEST_DB=1 DATABASE_URL_TEST="${TEST_DB_URL}" DATABASE_URL="${TEST_DB_URL}" pnpm test:critical`
-  );
-
+  if (checkOnly) return;
+  execute(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['test:critical'], {
+    ...environment,
+    REQUIRE_TEST_DB: '1',
+    DATABASE_URL_TEST: database.connectionString,
+    DATABASE_URL: database.connectionString
+  });
   log('All critical tests passed.');
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const args = process.argv.slice(2);
+  if (args.some((arg) => arg !== '--check-only')) {
+    console.error('Usage: test-critical-bootstrap.mjs [--check-only]');
+    process.exitCode = 1;
+  } else {
+    bootstrapCritical({ checkOnly: args.includes('--check-only') }).catch((error) => {
+      // Connection strings and provider errors can contain credentials.
+      console.error(`[test-critical-bootstrap] ${error instanceof Error && !('status' in error) ? error.message : 'Critical command failed; inspect its output'}`);
+      process.exitCode = 1;
+    });
+  }
+}

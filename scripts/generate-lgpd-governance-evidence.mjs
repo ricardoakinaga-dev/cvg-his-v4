@@ -89,7 +89,9 @@ addCheck(
 addCheck(
   'API',
   'rotas LGPD protegidas e auditadas',
-  /requirePrincipal\(request, 'lgpd\.requests\.manage'\)/.test(sources.routes) &&
+  (/(?:const|let)\s+LGPD_MANAGE_PERMISSION\s*=\s*['"]lgpd\.requests\.manage['"]/.test(sources.routes) ||
+    /requirePrincipal\(request,\s*['"]lgpd\.requests\.manage['"]\)/.test(sources.routes)) &&
+    /requirePrincipal\(request,\s*(?:LGPD_MANAGE_PERMISSION|['"]lgpd\.requests\.manage['"])/.test(sources.routes) &&
     /personal_data_exported/.test(sources.routes) &&
     /dsr_completed/.test(sources.routes),
   'apps/api/src/routes/lgpd-routes.ts',

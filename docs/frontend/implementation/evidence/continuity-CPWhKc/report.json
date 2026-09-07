@@ -1,0 +1,537 @@
+{
+  "scope": "Read-only current frontend visual audit, synthetic responses and no backend claim",
+  "generatedAt": "2026-09-07T02:56:12.480Z",
+  "before": {
+    "apps/spa/src/pages/owners/OwnerFormPage.vue": "fac28a21aedc3f9cb636360d09af5b3caf2fdfef1c37df3d4655712baa40773d",
+    "apps/spa/src/pages/reception/ReceptionGatewayPage.vue": "b6d084156f7a7acb50fb8e5f8c0197cc153e629a29e6d0d3b675e1e9cc7c3d14",
+    "apps/spa/src/pages/sales/QuotesPage.vue": "a5d6996e85fa6d1bdac72c984c7fb19a8f0386cf58a14ecc2243becf8b658c60",
+    "apps/spa/src/composables/useListData.ts": "3f9015f3aeb49b76c93accf201425026475cb66f6c70e0ab296e693644115099",
+    "apps/spa/src/composables/useUnsavedChanges.ts": "e65863c00abeee9dc2f4c05b37436ef3854960b192b59587fda4f6f9eb7a2b6e",
+    "apps/spa/src/composables/unsavedChangesCoordinator.ts": "a059f75a19e93b0b1bddabe6f242b015313c140a90800ef3ab6bb85eaad1aa76",
+    "packages/design-system/src/vue/DsButton.vue": "40fef973e7179be75a4b1051247194164357a0e292fb571ad8b17d95ee295df5",
+    "apps/spa/src/pages/appointments/AppointmentsListPage.vue": "1e6cb191b9f735be5ebc349a7ba7e6ede6f433837be4fa5bbc284d455485de2b",
+    "apps/spa/src/components/AppPageHeader.vue": "56d7f857a470dc002ad255e9af6e7abf3f17b0cae897eed0b145fec5734316cb",
+    "apps/spa/src/components/EmptyState.vue": "f8518ebed14c204e5986531dc91c6f4b844f5bb0ae3c39ecc501eeb8f5c27dc5",
+    "apps/spa/src/services/scheduling.ts": "a46d749d3bd3d8ccbfe9bc1959f4b5ed13483ea1ca5b566bd588ac9b5660bc61",
+    "apps/spa/src/services/services.ts": "b6fc1a82612226547671ef41dd978e0179fb74c9ff0c98acbab84d676b5aa5f2",
+    "apps/spa/src/services/owner.ts": "41ab4d2492d20c7ceb750c5eb8e04985562ba8475017cad92b5e3654de1f9867",
+    "apps/spa/src/services/patient.ts": "7f274ab7a482d66ae702a73336a55cb1c09d902cc70b98ef1688e905224f9e1d",
+    "apps/spa/src/router/routes.ts": "faa36849632ee3b756c049dbedc549dd79c000132e4786a9984f0c541b2f8b3b",
+    "apps/spa/src/router/index.ts": "32fd7fb5ee615c8c081e6d9f950f816ca95fb5068ebfc500b0a8c47527c95b7f",
+    "apps/spa/src/layouts/AppLayout.vue": "f22292303ac3277a00897e304b8fac6618630a1a3a3113c7acb9a950f101416a",
+    "apps/spa/src/stores/theme.ts": "970adb23d87e086993ad7d16b166a3056b2c3919e31c6a1d0546d8450ae16fd0",
+    "apps/spa/src/styles/main.css": "320ccdacc94a18a4eccf1d13394270ab537fcac8999f78dce4691e1b8fe96eb2",
+    "packages/design-system/src/tokens/variables.css": "744f3a8b5a9ddc3fc1687274d32c7315658187741803a4e3051bed3e0528400f"
+  },
+  "after": {
+    "apps/spa/src/pages/owners/OwnerFormPage.vue": "fac28a21aedc3f9cb636360d09af5b3caf2fdfef1c37df3d4655712baa40773d",
+    "apps/spa/src/pages/reception/ReceptionGatewayPage.vue": "b6d084156f7a7acb50fb8e5f8c0197cc153e629a29e6d0d3b675e1e9cc7c3d14",
+    "apps/spa/src/pages/sales/QuotesPage.vue": "a5d6996e85fa6d1bdac72c984c7fb19a8f0386cf58a14ecc2243becf8b658c60",
+    "apps/spa/src/composables/useListData.ts": "3f9015f3aeb49b76c93accf201425026475cb66f6c70e0ab296e693644115099",
+    "apps/spa/src/composables/useUnsavedChanges.ts": "e65863c00abeee9dc2f4c05b37436ef3854960b192b59587fda4f6f9eb7a2b6e",
+    "apps/spa/src/composables/unsavedChangesCoordinator.ts": "a059f75a19e93b0b1bddabe6f242b015313c140a90800ef3ab6bb85eaad1aa76",
+    "packages/design-system/src/vue/DsButton.vue": "40fef973e7179be75a4b1051247194164357a0e292fb571ad8b17d95ee295df5",
+    "apps/spa/src/pages/appointments/AppointmentsListPage.vue": "1e6cb191b9f735be5ebc349a7ba7e6ede6f433837be4fa5bbc284d455485de2b",
+    "apps/spa/src/components/AppPageHeader.vue": "56d7f857a470dc002ad255e9af6e7abf3f17b0cae897eed0b145fec5734316cb",
+    "apps/spa/src/components/EmptyState.vue": "f8518ebed14c204e5986531dc91c6f4b844f5bb0ae3c39ecc501eeb8f5c27dc5",
+    "apps/spa/src/services/scheduling.ts": "a46d749d3bd3d8ccbfe9bc1959f4b5ed13483ea1ca5b566bd588ac9b5660bc61",
+    "apps/spa/src/services/services.ts": "b6fc1a82612226547671ef41dd978e0179fb74c9ff0c98acbab84d676b5aa5f2",
+    "apps/spa/src/services/owner.ts": "41ab4d2492d20c7ceb750c5eb8e04985562ba8475017cad92b5e3654de1f9867",
+    "apps/spa/src/services/patient.ts": "7f274ab7a482d66ae702a73336a55cb1c09d902cc70b98ef1688e905224f9e1d",
+    "apps/spa/src/router/routes.ts": "faa36849632ee3b756c049dbedc549dd79c000132e4786a9984f0c541b2f8b3b",
+    "apps/spa/src/router/index.ts": "32fd7fb5ee615c8c081e6d9f950f816ca95fb5068ebfc500b0a8c47527c95b7f",
+    "apps/spa/src/layouts/AppLayout.vue": "f22292303ac3277a00897e304b8fac6618630a1a3a3113c7acb9a950f101416a",
+    "apps/spa/src/stores/theme.ts": "970adb23d87e086993ad7d16b166a3056b2c3919e31c6a1d0546d8450ae16fd0",
+    "apps/spa/src/styles/main.css": "320ccdacc94a18a4eccf1d13394270ab537fcac8999f78dce4691e1b8fe96eb2",
+    "packages/design-system/src/tokens/variables.css": "744f3a8b5a9ddc3fc1687274d32c7315658187741803a4e3051bed3e0528400f"
+  },
+  "inputsStable": true,
+  "rows": [
+    {
+      "target": "/reception",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/reception",
+      "title": "Recepção · CVG HIS SPA",
+      "documentWidth": 1440,
+      "documentHeight": 1227,
+      "headings": [
+        {
+          "text": "Recepção",
+          "x": 329,
+          "y": 190,
+          "width": 444.4375,
+          "height": 29.96875,
+          "right": 773.4375,
+          "bottom": 219.96875
+        },
+        {
+          "text": "Funil operacional",
+          "x": 321,
+          "y": 466.765625,
+          "width": 155.125,
+          "height": 27,
+          "right": 476.125,
+          "bottom": 493.765625
+        },
+        {
+          "text": "Handoffs da recepção",
+          "x": 321,
+          "y": 753.640625,
+          "width": 552.96875,
+          "height": 27,
+          "right": 873.96875,
+          "bottom": 780.640625
+        },
+        {
+          "text": "Nenhum handoff aguardando recepcao",
+          "x": 338,
+          "y": 951.828125,
+          "width": 1036,
+          "height": 27,
+          "right": 1374,
+          "bottom": 978.828125
+        },
+        {
+          "text": "Atalhos secundarios",
+          "x": 321,
+          "y": 1457.265625,
+          "width": 181.703125,
+          "height": 27,
+          "right": 502.703125,
+          "bottom": 1484.265625
+        }
+      ],
+      "mainCount": 1,
+      "firstData": [],
+      "fonts": {
+        "body": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        "heading": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "scrollContainers": [],
+      "stem": "_reception-1440-light",
+      "errors": [],
+      "requests": [
+        {
+          "path": "/api/auth/refresh",
+          "query": "",
+          "method": "POST"
+        },
+        {
+          "path": "/api/queue",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/clinical-handoffs",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/owners",
+          "query": "?q=Maria",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients",
+          "query": "?q=Maria",
+          "method": "GET"
+        },
+        {
+          "path": "/api/laboratory/orders",
+          "query": "?patientId=synthetic-patient-1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/vaccines-dewormers",
+          "query": "?patientId=synthetic-patient-1&ownerId=synthetic-owner-1&includeExecuted=true",
+          "method": "GET"
+        },
+        {
+          "path": "/api/billing",
+          "query": "?ownerId=synthetic-owner-1",
+          "method": "GET"
+        }
+      ],
+      "interactions": [
+        {
+          "test": "reception-populated-search-and-queue",
+          "passed": true,
+          "firstQueueY": 527.953125,
+          "resultY": 527.953125,
+          "schedulingHref": "/appointments/new?ownerId=synthetic-owner-1"
+        }
+      ]
+    },
+    {
+      "target": "/reception",
+      "theme": "light",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "route": "/reception",
+      "title": "Recepção · CVG HIS SPA",
+      "documentWidth": 390,
+      "documentHeight": 1404,
+      "headings": [
+        {
+          "text": "Recepção",
+          "x": 29,
+          "y": 208,
+          "width": 334,
+          "height": 25.265625,
+          "right": 363,
+          "bottom": 233.265625
+        },
+        {
+          "text": "Funil operacional",
+          "x": 23,
+          "y": 531.75,
+          "width": 155.125,
+          "height": 27,
+          "right": 178.125,
+          "bottom": 558.75
+        },
+        {
+          "text": "Handoffs da recepção",
+          "x": 23,
+          "y": 884.8125,
+          "width": 259.390625,
+          "height": 27,
+          "right": 282.390625,
+          "bottom": 911.8125
+        },
+        {
+          "text": "Nenhum handoff aguardando recepcao",
+          "x": 40,
+          "y": 1119.375,
+          "width": 310,
+          "height": 27,
+          "right": 350,
+          "bottom": 1146.375
+        },
+        {
+          "text": "Atalhos secundarios",
+          "x": 27,
+          "y": 2111,
+          "width": 108.8125,
+          "height": 54,
+          "right": 135.8125,
+          "bottom": 2165
+        }
+      ],
+      "mainCount": 1,
+      "firstData": [],
+      "fonts": {
+        "body": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        "heading": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "scrollContainers": [],
+      "stem": "_reception-390-light",
+      "errors": [],
+      "requests": [
+        {
+          "path": "/api/auth/refresh",
+          "query": "",
+          "method": "POST"
+        },
+        {
+          "path": "/api/queue",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/clinical-handoffs",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/owners",
+          "query": "?q=Maria",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients",
+          "query": "?q=Maria",
+          "method": "GET"
+        },
+        {
+          "path": "/api/laboratory/orders",
+          "query": "?patientId=synthetic-patient-1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/vaccines-dewormers",
+          "query": "?patientId=synthetic-patient-1&ownerId=synthetic-owner-1&includeExecuted=true",
+          "method": "GET"
+        },
+        {
+          "path": "/api/billing",
+          "query": "?ownerId=synthetic-owner-1",
+          "method": "GET"
+        }
+      ],
+      "interactions": [
+        {
+          "test": "reception-populated-search-and-queue",
+          "passed": true,
+          "firstQueueY": 592.9375,
+          "resultY": 623.9375,
+          "schedulingHref": "/appointments/new?ownerId=synthetic-owner-1"
+        }
+      ]
+    },
+    {
+      "target": "/reception",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/reception",
+      "title": "Recepção · CVG HIS SPA",
+      "documentWidth": 1440,
+      "documentHeight": 1227,
+      "headings": [
+        {
+          "text": "Recepção",
+          "x": 329,
+          "y": 190,
+          "width": 444.4375,
+          "height": 29.96875,
+          "right": 773.4375,
+          "bottom": 219.96875
+        },
+        {
+          "text": "Funil operacional",
+          "x": 321,
+          "y": 466.765625,
+          "width": 155.125,
+          "height": 27,
+          "right": 476.125,
+          "bottom": 493.765625
+        },
+        {
+          "text": "Handoffs da recepção",
+          "x": 321,
+          "y": 753.640625,
+          "width": 552.96875,
+          "height": 27,
+          "right": 873.96875,
+          "bottom": 780.640625
+        },
+        {
+          "text": "Nenhum handoff aguardando recepcao",
+          "x": 338,
+          "y": 951.828125,
+          "width": 1036,
+          "height": 27,
+          "right": 1374,
+          "bottom": 978.828125
+        },
+        {
+          "text": "Atalhos secundarios",
+          "x": 321,
+          "y": 1457.265625,
+          "width": 181.703125,
+          "height": 27,
+          "right": 502.703125,
+          "bottom": 1484.265625
+        }
+      ],
+      "mainCount": 1,
+      "firstData": [],
+      "fonts": {
+        "body": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        "heading": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "scrollContainers": [],
+      "stem": "_reception-1440-dark",
+      "errors": [],
+      "requests": [
+        {
+          "path": "/api/auth/refresh",
+          "query": "",
+          "method": "POST"
+        },
+        {
+          "path": "/api/queue",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/clinical-handoffs",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/owners",
+          "query": "?q=Maria",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients",
+          "query": "?q=Maria",
+          "method": "GET"
+        },
+        {
+          "path": "/api/laboratory/orders",
+          "query": "?patientId=synthetic-patient-1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/vaccines-dewormers",
+          "query": "?patientId=synthetic-patient-1&ownerId=synthetic-owner-1&includeExecuted=true",
+          "method": "GET"
+        },
+        {
+          "path": "/api/billing",
+          "query": "?ownerId=synthetic-owner-1",
+          "method": "GET"
+        }
+      ],
+      "interactions": [
+        {
+          "test": "reception-populated-search-and-queue",
+          "passed": true,
+          "firstQueueY": 527.953125,
+          "resultY": 527.953125,
+          "schedulingHref": "/appointments/new?ownerId=synthetic-owner-1"
+        }
+      ]
+    },
+    {
+      "target": "/reception",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "route": "/reception",
+      "title": "Recepção · CVG HIS SPA",
+      "documentWidth": 390,
+      "documentHeight": 1404,
+      "headings": [
+        {
+          "text": "Recepção",
+          "x": 29,
+          "y": 208,
+          "width": 334,
+          "height": 25.265625,
+          "right": 363,
+          "bottom": 233.265625
+        },
+        {
+          "text": "Funil operacional",
+          "x": 23,
+          "y": 531.75,
+          "width": 155.125,
+          "height": 27,
+          "right": 178.125,
+          "bottom": 558.75
+        },
+        {
+          "text": "Handoffs da recepção",
+          "x": 23,
+          "y": 884.8125,
+          "width": 259.390625,
+          "height": 27,
+          "right": 282.390625,
+          "bottom": 911.8125
+        },
+        {
+          "text": "Nenhum handoff aguardando recepcao",
+          "x": 40,
+          "y": 1119.375,
+          "width": 310,
+          "height": 27,
+          "right": 350,
+          "bottom": 1146.375
+        },
+        {
+          "text": "Atalhos secundarios",
+          "x": 27,
+          "y": 2111,
+          "width": 108.8125,
+          "height": 54,
+          "right": 135.8125,
+          "bottom": 2165
+        }
+      ],
+      "mainCount": 1,
+      "firstData": [],
+      "fonts": {
+        "body": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        "heading": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "scrollContainers": [],
+      "stem": "_reception-390-dark",
+      "errors": [],
+      "requests": [
+        {
+          "path": "/api/auth/refresh",
+          "query": "",
+          "method": "POST"
+        },
+        {
+          "path": "/api/queue",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/clinical-handoffs",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/owners",
+          "query": "?q=Maria",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients",
+          "query": "?q=Maria",
+          "method": "GET"
+        },
+        {
+          "path": "/api/laboratory/orders",
+          "query": "?patientId=synthetic-patient-1",
+          "method": "GET"
+        },
+        {
+          "path": "/api/vaccines-dewormers",
+          "query": "?patientId=synthetic-patient-1&ownerId=synthetic-owner-1&includeExecuted=true",
+          "method": "GET"
+        },
+        {
+          "path": "/api/billing",
+          "query": "?ownerId=synthetic-owner-1",
+          "method": "GET"
+        }
+      ],
+      "interactions": [
+        {
+          "test": "reception-populated-search-and-queue",
+          "passed": true,
+          "firstQueueY": 592.9375,
+          "resultY": 623.9375,
+          "schedulingHref": "/appointments/new?ownerId=synthetic-owner-1"
+        }
+      ]
+    }
+  ],
+  "failures": [],
+  "harnessPath": "docs/frontend/implementation/browser-continuity.mjs",
+  "harnessSha256": "d84d5e3a5d66e639200f6dbf605bd80f0c3dde49d4c18f7694a9c89d78398b58",
+  "limitations": [
+    "Real SPA routes with synthetic auth, scheduling, quotes, owner, patient and service responses; no backend, RLS, persistence or UAT claim.",
+    "Read-only source inspection; no CSS injection, code mutation, baseline update or snapshot promotion; collection responses are synthetic empty data except agenda and the controlled quotes race.",
+    "DPR1 at 1440x900 and 390x844, light/dark, motion enabled. Sidebar/cancel/filter interactions on desktop/light; logout on all four viewport/theme combinations; not full route coverage.",
+    "Vite development server, synthetic data, Chromium, desktop host and current date; not a production performance baseline or field INP evidence.",
+    "No participant study: five priority-task completion rates, elapsed times, errors and shift-work observations remain unmeasured."
+  ]
+}

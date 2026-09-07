@@ -132,6 +132,28 @@ test('CashService recordPaymentMovement adds to balance', async () => {
   assert.equal(mov.runningBalance, 175);
 });
 
+test('CashService rejects movements from an account that does not own the register', async () => {
+  const service = createService();
+  const reg = await service.openRegister(ACCOUNT_ID, USER_ID, { openingAmount: 100 });
+  const foreignAccount = 'acc_other_001' as AccountId;
+
+  await assert.rejects(
+    () =>
+      service.recordMovement(
+        reg.id,
+        foreignAccount,
+        { movementType: 'supply', amount: 10 },
+        USER_ID
+      ),
+    NotFoundError
+  );
+  await assert.rejects(
+    () => service.recordPaymentMovement(reg.id, foreignAccount, 10, 'sale-foreign', null, USER_ID),
+    NotFoundError
+  );
+  assert.equal(await service.getCurrentBalance(reg.id), 100);
+});
+
 test('CashService findOpenRegister returns open register', async () => {
   const service = createService();
   await service.openRegister(ACCOUNT_ID, USER_ID, { openingAmount: 100 });

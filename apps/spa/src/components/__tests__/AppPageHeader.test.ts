@@ -1,6 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { h, type Slots } from 'vue';
 import AppPageHeader from '../AppPageHeader.vue';
+
+const RouterLinkStub = {
+  props: ['to'],
+  setup(props: { to?: string }, { slots }: { slots: Slots }) {
+    const href = String(props.to ?? '');
+    return () => h('a', { href }, slots.default?.({ href, navigate: () => undefined }));
+  }
+};
+
+const routerLinkGlobal = { stubs: { RouterLink: RouterLinkStub } };
 
 describe('AppPageHeader', () => {
   it('renders title prop', () => {
@@ -37,7 +48,8 @@ describe('AppPageHeader', () => {
           { key: 'queue', label: 'Esteira', to: '/queue' },
           { key: 'case', label: 'Atendimento', current: true }
         ]
-      }
+      },
+      global: routerLinkGlobal
     });
 
     const links = wrapper.findAll('.app-page-header__breadcrumb-link');
@@ -94,7 +106,8 @@ describe('AppPageHeader', () => {
             variant: 'secondary'
           }
         ]
-      }
+      },
+      global: routerLinkGlobal
     });
 
     expect(wrapper.find('.app-page-header__actions').exists()).toBe(true);
@@ -119,7 +132,8 @@ describe('AppPageHeader', () => {
             to: '/queue'
           }
         ]
-      }
+      },
+      global: routerLinkGlobal
     });
 
     expect(wrapper.find('.app-page-header__context').text()).toContain('Luna');
@@ -141,7 +155,8 @@ describe('AppPageHeader', () => {
             variant: 'primary'
           }
         ]
-      }
+      },
+      global: routerLinkGlobal
     });
 
     const buttons = wrapper.findAll('.ds-btn');
@@ -155,5 +170,20 @@ describe('AppPageHeader', () => {
       props: { title: 'Title' }
     });
     expect(wrapper.find('.app-page-header').exists()).toBe(true);
+    expect(wrapper.find('.app-page-header').element.tagName).toBe('HEADER');
+  });
+
+  it('labels the page action group for keyboard and assistive technology users', () => {
+    const wrapper = mount(AppPageHeader, {
+      props: {
+        title: 'Title',
+        primaryAction: { label: 'Continuar' }
+      }
+    });
+
+    expect(wrapper.find('.app-page-header__actions').attributes()).toMatchObject({
+      role: 'group',
+      'aria-label': 'Ações da página'
+    });
   });
 });

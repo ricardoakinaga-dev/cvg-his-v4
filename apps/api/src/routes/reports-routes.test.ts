@@ -1605,11 +1605,30 @@ test('handleReportsRoutes executes commission calculation report', async () => {
       }
     ]
   });
+  await commissions.calculate('acc-reports-1' as never, 'user-reports-1' as never, {
+    periodStart: '2026-07-01',
+    periodEnd: '2026-07-31',
+    lines: [
+      {
+        staffId: 'staff-1',
+        staffName: 'Dra. Ana',
+        itemKind: 'service',
+        sourceType: 'manual',
+        sourceId: 'line-2',
+        sourceDescription: 'Retorno',
+        baseAmount: 100,
+        occurredAt: '2026-07-10'
+      }
+    ]
+  });
 
   const response = new MockResponse();
   await handleReportsRoutes(
     '/reports/executions',
-    request('POST', { reportId: 'commission-calculations' }),
+    request('POST', {
+      reportId: 'commission-calculations',
+      filters: { status: 'draft', dateFrom: '2026-05-01', dateTo: '2026-05-31' }
+    }),
     response as never,
     'corr-6',
     handlers(reports, commissions)
@@ -1621,6 +1640,305 @@ test('handleReportsRoutes executes commission calculation report', async () => {
   }>();
   assert.equal(execution.rowCount, 1);
   assert.equal(execution.rows[0]?.totalCommissionAmount, 20);
+});
+
+test('commission report executes and exports the configured projection instead of replica memory', async () => {
+  const permissions: string[] = [];
+  const auditEvents: Array<{ action: string }> = [];
+  const filters = { status: 'paid' as const, dateFrom: '2026-05-10', dateTo: '2026-05-20' };
+  const row = {
+    accountId: principal().user.accountId,
+    id: 'persisted-calculation',
+    number: 'COM-PERSISTED',
+    periodStart: '2026-05-01',
+    periodEnd: '2026-05-31',
+    status: 'paid' as const,
+    totalBaseAmount: 250.25,
+    totalCommissionAmount: 25.03,
+    lineCount: 2
+  };
+  let reads = 0;
+  const routeHandlers = {
+    ...handlers(undefined, undefined, {
+      write(event) {
+        auditEvents.push(event as { action: string });
+      }
+    }),
+    commissionCalculations: {
+      async list(accountId: unknown, actualFilters: unknown) {
+        reads++;
+        assert.equal(accountId, principal().user.accountId);
+        assert.deepEqual(actualFilters, filters);
+        return [row];
+      }
+    },
+    requirePrincipal(_request: unknown, permission: string) {
+      permissions.push(permission);
+      return principal();
+    }
+  };
+  routeHandlers.commissions.listCalculations = () => {
+    throw new Error('Replica memory must not be read');
+  };
+  const response = new MockResponse();
+  await handleReportsRoutes(
+    '/reports/executions',
+    request('POST', {
+      reportId: 'commission-calculations',
+      filters
+    }),
+    response as never,
+    'commission-projection',
+    routeHandlers as never
+  );
+  const execution = response.bodyJson<{ id: string; rows: unknown[]; rowCount: number }>();
+  assert.equal(response.statusCode, 201);
+  assert.equal(execution.rowCount, 1);
+  assert.deepEqual(execution.rows, [
+    {
+      number: row.number,
+      period: '2026-05-01..2026-05-31',
+      status: 'paid',
+      totalBaseAmount: 250.25,
+      totalCommissionAmount: 25.03,
+      lineCount: 2
+    }
+  ]);
+  const exported = new MockResponse();
+  await handleReportsRoutes(
+    `/reports/executions/${execution.id}/export`,
+    request('POST', { format: 'csv' }),
+    exported as never,
+    'commission-export',
+    routeHandlers as never
+  );
+  assert.match(JSON.stringify(exported.bodyJson()), /COM-PERSISTED/);
+  assert.equal(reads, 1);
+  assert.deepEqual(permissions, ['billing.read', 'staff.read', 'billing.read', 'staff.read']);
+  assert.deepEqual(
+    auditEvents.map((event) => event.action),
+    ['execute_report', 'export_report']
+  );
+});
+
+test('commission report fails closed when the configured projection fails', async () => {
+  const failure = new Error('Configured database unavailable');
+  const routeHandlers = {
+    ...handlers(),
+    commissionCalculations: {
+      async list() {
+        throw failure;
+      }
+    }
+  };
+  routeHandlers.commissions.listCalculations = () => {
+    throw new Error('Unexpected memory fallback');
+  };
+  await assert.rejects(
+    () =>
+      handleReportsRoutes(
+        '/reports/executions',
+        request('POST', {
+          reportId: 'commission-calculations'
+        }),
+        new MockResponse() as never,
+        'commission-failure',
+        routeHandlers as never
+      ),
+    (error) => error === failure
+  );
+  assert.equal(routeHandlers.reports.listExecutions(principal().user.accountId).length, 0);
+});
+
+test('commission report rejects a database service without its persisted projection', async () => {
+  const commissions = new CommissionsService({
+    repository: {} as never,
+    sourceAuthority: {} as never
+  });
+  assert.equal(commissions.persistenceMode, 'database');
+  let memoryReads = 0;
+  commissions.listCalculations = () => {
+    memoryReads++;
+    return [];
+  };
+  const routeHandlers = handlers(undefined, commissions);
+  await assert.rejects(
+    () =>
+      handleReportsRoutes(
+        '/reports/executions',
+        request('POST', {
+          reportId: 'commission-calculations'
+        }),
+        new MockResponse() as never,
+        'commission-missing-source',
+        routeHandlers as never
+      ),
+    /Commission report requires a persisted source/
+  );
+  assert.equal(memoryReads, 0);
+  assert.equal(routeHandlers.reports.listExecutions(principal().user.accountId).length, 0);
+});
+
+test('commission report rejects injected projection rows without the authenticated account discriminator', async () => {
+  for (const accountId of ['acc-foreign', undefined]) {
+    const routeHandlers = {
+      ...handlers(),
+      commissionCalculations: {
+        async list() {
+          return [
+            {
+              accountId,
+              id: 'foreign-calculation',
+              number: 'COM-FOREIGN',
+              periodStart: '2026-05-01',
+              periodEnd: '2026-05-31',
+              status: 'draft',
+              totalBaseAmount: 250,
+              totalCommissionAmount: 25,
+              lineCount: 1
+            }
+          ];
+        }
+      }
+    };
+    await assert.rejects(
+      () =>
+        handleReportsRoutes(
+          '/reports/executions',
+          request('POST', {
+            reportId: 'commission-calculations'
+          }),
+          new MockResponse() as never,
+          'commission-foreign-source',
+          routeHandlers as never
+        ),
+      /Commission report source returned a foreign account row/
+    );
+    assert.equal(routeHandlers.reports.listExecutions(principal().user.accountId).length, 0);
+  }
+});
+
+test('commission report rejects year-zero dates before reading memory or the configured source', async () => {
+  for (const useProjection of [false, true]) {
+    for (const field of ['dateFrom', 'dateTo']) {
+      let reads = 0;
+      const routeHandlers = {
+        ...handlers(),
+        ...(useProjection
+          ? {
+              commissionCalculations: {
+                async list() {
+                  reads++;
+                  return [];
+                }
+              }
+            }
+          : {})
+      };
+      routeHandlers.commissions.listCalculations = () => {
+        reads++;
+        return [];
+      };
+      await assert.rejects(
+        () =>
+          handleReportsRoutes(
+            '/reports/executions',
+            request('POST', {
+              reportId: 'commission-calculations',
+              filters: { [field]: '0000-01-01' }
+            }),
+            new MockResponse() as never,
+            'commission-year-zero',
+            routeHandlers as never
+          ),
+        /year between 1 and 9999/
+      );
+      assert.equal(reads, 0);
+      assert.equal(routeHandlers.reports.listExecutions(principal().user.accountId).length, 0);
+    }
+  }
+});
+
+test('commission projection preserves permission, filter validation and export row limits', async () => {
+  let reads = 0;
+  const routeHandlers = {
+    ...handlers(),
+    commissionCalculations: {
+      async list() {
+        reads++;
+        return [];
+      }
+    }
+  };
+  for (const filters of [
+    { status: 'unknown' },
+    { dateFrom: '2026-02-30' },
+    { dateFrom: '2026-06-01', dateTo: '2026-05-01' }
+  ]) {
+    await assert.rejects(() =>
+      handleReportsRoutes(
+        '/reports/executions',
+        request('POST', {
+          reportId: 'commission-calculations',
+          filters
+        }),
+        new MockResponse() as never,
+        'commission-invalid',
+        routeHandlers as never
+      )
+    );
+  }
+  await assert.rejects(
+    () =>
+      handleReportsRoutes(
+        '/reports/executions',
+        request('POST', {
+          reportId: 'commission-calculations'
+        }),
+        new MockResponse() as never,
+        'commission-forbidden',
+        {
+          ...routeHandlers,
+          requirePrincipal(_request: unknown, permission: string) {
+            if (permission === 'staff.read') throw new ForbiddenError('Denied');
+            return principal();
+          }
+        } as never
+      ),
+    ForbiddenError
+  );
+  assert.equal(reads, 0);
+  const row = {
+    accountId: principal().user.accountId,
+    number: 'COM-LIMIT',
+    periodStart: '2026-05-01',
+    periodEnd: '2026-05-31',
+    status: 'draft',
+    totalBaseAmount: 0,
+    totalCommissionAmount: 0,
+    lineCount: 0
+  };
+  await assert.rejects(
+    () =>
+      handleReportsRoutes(
+        '/reports/executions',
+        request('POST', {
+          reportId: 'commission-calculations'
+        }),
+        new MockResponse() as never,
+        'commission-limit',
+        {
+          ...routeHandlers,
+          commissionCalculations: {
+            async list() {
+              return Array.from({ length: 10_001 }, () => row);
+            }
+          }
+        } as never
+      ),
+    /Report contains too many rows/
+  );
+  assert.equal(routeHandlers.reports.listExecutions(principal().user.accountId).length, 0);
 });
 
 test('handleReportsRoutes keeps registry report sources account scoped', async () => {
@@ -2679,6 +2997,157 @@ test('handleReportsRoutes fails closed and validates professional care source ro
       ),
     /source returned an invalid professional care row/
   );
+});
+
+test('handleReportsRoutes executes and exports cancellation events with the same persisted facts', async () => {
+  const reports = new ReportsService();
+  const event = {
+    eventId: 'cancel-event-1',
+    accountId: 'acc-reports-1',
+    counterSaleId: 'sale-history-1',
+    number: 'CS-OLD-001',
+    ownerId: null,
+    cancelledAt: '2026-09-04T23:59:59.999Z',
+    cancelledByUserId: 'user-reports-1',
+    reason: '=Cancelled in error',
+    correlationId: 'corr-history',
+    total: 225,
+    discountAmount: 25,
+    paidAmount: 0,
+    balanceDue: 225
+  };
+  const calls: unknown[] = [];
+  const routeHandlers = {
+    ...handlers(reports),
+    counterSales: {
+      persistenceMode: 'database',
+      async listCancellationReportRows(accountId: string, filters: unknown) {
+        calls.push({ accountId, filters });
+        return [event];
+      }
+    }
+  };
+  const response = new MockResponse();
+  await handleReportsRoutes(
+    '/reports/executions',
+    request('POST', {
+      reportId: 'commercial-cancellation-history',
+      filters: { search: ' CS-OLD-001 ', dateFrom: '2026-09-04', dateTo: '2026-09-04' }
+    }),
+    response as never,
+    'corr-history-execute',
+    routeHandlers as never
+  );
+  assert.equal(response.statusCode, 201);
+  const execution = response.bodyJson<{ id: string; rows: unknown[]; rowCount: number }>();
+  const { accountId: _accountId, ...exportedEvent } = event;
+  assert.deepEqual(execution.rows, [exportedEvent]);
+  assert.deepEqual(calls, [
+    {
+      accountId: 'acc-reports-1',
+      filters: {
+        search: 'CS-OLD-001',
+        dateFrom: '2026-09-04',
+        dateTo: '2026-09-04'
+      }
+    }
+  ]);
+  const exported = new MockResponse();
+  await handleReportsRoutes(
+    `/reports/executions/${execution.id}/export`,
+    request('POST', { format: 'csv' }),
+    exported as never,
+    'corr-history-export',
+    routeHandlers as never
+  );
+  const csv = exported.bodyJson<{ content: string; filename: string }>();
+  assert.match(csv.filename, /^commercial-cancellation-history-/);
+  assert.match(csv.content, /Cancelado em/);
+  assert.match(csv.content, /CS-OLD-001/);
+  assert.match(csv.content, /user-reports-1/);
+  assert.match(csv.content, /2026-09-04T23:59:59.999Z/);
+  assert.match(csv.content, /'=Cancelled in error/);
+});
+
+test('handleReportsRoutes rejects invalid cancellation periods and unavailable persisted sources before reading', async () => {
+  let reads = 0;
+  const databaseSource = {
+    persistenceMode: 'database',
+    async listCancellationReportRows() {
+      reads++;
+      return [];
+    }
+  };
+  for (const filters of [
+    { dateFrom: '2026-02-30' },
+    { dateFrom: '2026-09-05', dateTo: '2026-09-04' }
+  ]) {
+    await assert.rejects(
+      () =>
+        handleReportsRoutes(
+          '/reports/executions',
+          request('POST', {
+            reportId: 'commercial-cancellation-history',
+            filters
+          }),
+          new MockResponse() as never,
+          'corr-history-invalid',
+          { ...handlers(), counterSales: databaseSource } as never
+        ),
+      /dateFrom/
+    );
+  }
+  for (const source of [
+    { ...databaseSource, persistenceMode: 'in-memory' },
+    { persistenceMode: 'database' }
+  ]) {
+    await assert.rejects(
+      () =>
+        handleReportsRoutes(
+          '/reports/executions',
+          request('POST', {
+            reportId: 'commercial-cancellation-history'
+          }),
+          new MockResponse() as never,
+          'corr-history-unavailable',
+          { ...handlers(), counterSales: source } as never
+        ),
+      /database-backed cancellation history source/
+    );
+  }
+  assert.equal(reads, 0);
+});
+
+test('handleReportsRoutes authorizes cancellation history before reading its source', async () => {
+  let reads = 0;
+  await assert.rejects(
+    () =>
+      handleReportsRoutes(
+        '/reports/executions',
+        request('POST', {
+          reportId: 'commercial-cancellation-history'
+        }),
+        new MockResponse() as never,
+        'corr-history-denied',
+        {
+          ...handlers(),
+          requirePrincipal(_request: unknown, permission: string) {
+            if (permission === 'counter_sale.read')
+              throw new ForbiddenError('Cancellation history denied');
+            return principal();
+          },
+          counterSales: {
+            persistenceMode: 'database',
+            async listCancellationReportRows() {
+              reads++;
+              return [];
+            }
+          }
+        } as never
+      ),
+    /Cancellation history denied/
+  );
+  assert.equal(reads, 0);
 });
 
 test('handleReportsRoutes rechecks report permission for execution and export access', async () => {

@@ -11,6 +11,7 @@ import {
   type PixProviderSettlementCheckpoint
 } from '../src/jobs/pix-provider-settlement-consumer.js';
 import { getWorkerMetricsText } from '../src/worker-metrics.js';
+import { flushProcessCoverageCheckpoint } from '../../../tests/helpers/process-coverage-checkpoint.mjs';
 
 const accountId = process.env.PIX_SETTLEMENT_ACCOUNT_ID?.trim();
 const databaseUrl = process.env.DATABASE_URL?.trim();
@@ -86,6 +87,7 @@ function writeLine(event: string, payload: Record<string, unknown> = {}): void {
   // The fixture may call process.exit immediately after PIX_RESULT. A sync
   // write keeps the fd-3 protocol lossless even when several observation
   // events preceded the terminal result.
+  flushProcessCoverageCheckpoint();
   writeSync(3, `${event} ${JSON.stringify(payload)}\n`);
 }
 

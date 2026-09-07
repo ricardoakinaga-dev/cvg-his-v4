@@ -1,0 +1,27 @@
+{
+  "timestamp": "2026-09-07T02:50:30.595155+00:00",
+  "scope": "FEA-005 logout slice",
+  "status": "PARTIAL",
+  "review": {
+    "critic": "critic_logout",
+    "independence": "I1, fresh context, read only",
+    "verdict": "APPROVE code/unit scope",
+    "limits": "No full FEA-005 acceptance; wider forms, update-in-flight and browser back/refresh still pending"
+  },
+  "tests": {
+    "command": "pnpm --filter @cvg-his-v2/spa exec vitest run src/composables/__tests__/useUnsavedChanges.test.ts src/pages/owners/__tests__/OwnerFormPage.test.ts --maxWorkers=1 --reporter=verbose",
+    "passed": 20,
+    "log": "logout-regression.log"
+  },
+  "browser": {
+    "report": "evidence/continuity-rZRiT6/report.json",
+    "exit": 0,
+    "findings": "All four viewport/theme logout scenarios passed; same-workspace provider kept auth until consent",
+    "caveat": "clean-cancel stored mutable documentRequests array; assertions passed but later goto appended to recorded array. Harness corrected to copy array; rerun pending. Source captures supporting if edited afterwards."
+  },
+  "hashes": {
+    "apps/spa/src/layouts/AppLayout.vue": "f22292303ac3277a00897e304b8fac6618630a1a3a3113c7acb9a950f101416a",
+    "apps/spa/src/composables/useUnsavedChanges.ts": "e65863c00abeee9dc2f4c05b37436ef3854960b192b59587fda4f6f9eb7a2b6e",
+    "apps/spa/src/composables/unsavedChangesCoordinator.ts": "a059f75a19e93b0b1bddabe6f242b015313c140a90800ef3ab6bb85eaad1aa76"
+  }
+}

@@ -64,7 +64,7 @@
       <option v-if="placeholder" value="" disabled>{{ placeholder }}</option>
       <slot />
     </select>
-    <p v-if="error" :id="inputId + '-error'" class="ds-input__error" role="alert">
+    <p v-if="error" :id="errorId" class="ds-input__error" role="alert">
       {{ error }}
     </p>
     <p v-if="hint && !error" :id="hintId" class="ds-input__hint">
@@ -160,84 +160,122 @@ const describedById = computed(() =>
 .ds-input-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  gap: var(--space-2, 0.5rem);
 }
 
 .ds-input__label {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text, #0f172a);
-  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
+  color: var(--color-text-secondary, #475b6d);
+  font-family: var(--font-family-sans, system-ui, sans-serif);
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: var(--font-weight-semibold, 600);
+  line-height: var(--line-height-tight, 1.25);
+  letter-spacing: 0.01em;
 }
 
 .ds-input__required {
-  color: var(--color-danger-500, #ef4444);
+  color: var(--color-danger-600, #bd4645);
   margin-left: 2px;
 }
 
 .ds-input {
-  padding: 8px 12px;
-  font-size: 14px;
-  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
-  color: var(--color-text, #0f172a);
-  background: var(--color-surface, #ffffff);
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--touch-min, 44px);
+  padding: 0.625rem 0.75rem;
+  font-family: var(--font-family-sans, system-ui, sans-serif);
+  font-size: var(--font-size-base, 0.9375rem);
+  line-height: var(--line-height-normal, 1.5);
+  color: var(--color-text, #142238);
+  background: var(--color-surface, #fffdf8);
   border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md, 0.5rem);
+  box-shadow: var(--shadow-inner, inset 0 1px 2px rgba(20, 34, 56, 0.04));
+  caret-color: var(--color-primary-600, #087c8c);
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-  min-height: 40px;
+    border-color var(--duration-fast, 150ms) var(--ease-default, ease),
+    box-shadow var(--duration-fast, 150ms) var(--ease-default, ease),
+    background-color var(--duration-fast, 150ms) var(--ease-default, ease);
 }
 
 .ds-input::placeholder {
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--color-text-muted, #607484);
+  opacity: 1;
+}
+
+.ds-input:hover:not(:disabled):not(:focus) {
+  border-color: var(--color-border-strong, #b8cac7);
 }
 
 .ds-input:focus {
   outline: none;
-  border-color: var(--color-primary-500, #3b82f6);
-  box-shadow: var(--shadow-focus, 0 0 0 3px rgba(37, 99, 235, 0.4));
+  border-color: var(--color-primary-600, #087c8c);
+}
+
+.ds-input:focus-visible {
+  outline: 3px solid var(--color-focus-ring, #075f70);
+  outline-offset: 1px;
+  box-shadow: var(--shadow-focus, 0 0 0 3px #075f70);
 }
 
 .ds-input:disabled {
   background: var(--color-bg-subtle, #f8fafc);
   cursor: not-allowed;
-  opacity: 0.7;
+  color: var(--color-text-muted, #607484);
+  box-shadow: none;
+  opacity: 1;
 }
 
 .ds-input--textarea {
-  min-height: 80px;
+  min-height: 7rem;
   resize: vertical;
 }
 
 .ds-input--select {
   appearance: none;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-  background-position: right 8px center;
+  background-position: right 0.75rem center;
   background-repeat: no-repeat;
   background-size: 20px;
-  padding-right: 36px;
+  padding-right: 2.75rem;
 }
 
 .ds-input-wrapper--error .ds-input {
-  border-color: var(--color-danger-500, #ef4444);
+  border-color: var(--color-danger-600, #bd4645);
 }
 
 .ds-input-wrapper--error .ds-input:focus {
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.4);
+  border-color: var(--color-danger-600, #bd4645);
+}
+
+.ds-input-wrapper--error .ds-input:focus-visible {
+  outline-color: var(--color-danger-600, #bd4645);
+  box-shadow: 0 0 0 3px var(--color-danger-600, #bd4645);
 }
 
 .ds-input__error {
   margin: 0;
-  font-size: 12px;
-  color: var(--color-danger-600, #dc2626);
-  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
+  color: var(--color-danger-700, #9f373b);
+  font-family: var(--font-family-sans, system-ui, sans-serif);
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-medium, 500);
+  line-height: var(--line-height-normal, 1.5);
 }
 
 .ds-input__hint {
   margin: 0;
-  font-size: 12px;
-  color: var(--color-text-muted, #94a3b8);
-  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
+  color: var(--color-text-secondary, #475b6d);
+  font-family: var(--font-family-sans, system-ui, sans-serif);
+  font-size: var(--font-size-xs, 0.75rem);
+  line-height: var(--line-height-normal, 1.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-input {
+    transition: none;
+  }
 }
 </style>

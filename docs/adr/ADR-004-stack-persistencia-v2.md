@@ -1,5 +1,12 @@
 # ADR-004 Stack de Persistencia do V2
 
+> Nota de atualização — 2026-09-06: a decisão de stack permanece como referência,
+> mas a localização de schemas/migrations abaixo é histórica. A fonte canônica
+> atual é `packages/db/src/schema`, com migrations em `packages/db/migrations` e
+> execução por `packages/db/src/migrate.ts`/`seed.ts`. O pacote
+> `packages/shared/database` mantém o cliente compartilhado. Veja a decisão
+> DB-001/DB-002 no plano de consolidação (histórico arquivado: `legado/docs/engineering/CVG_HIS_V4_CONSOLIDATION_IMPLEMENTATION_PLAN.md`).
+
 **Data**: 2026-03-25
 **Status**: Aprovado
 **Contexto**: Definir stack canonico de persistencia para o nucleo funcional do V2

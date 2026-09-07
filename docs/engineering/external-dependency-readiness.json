@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "effective_date": "2026-09-05",
+  "dependencies": [
+    {"id":"payments","ticket":"R05-022/R05-023/R05-024","owner":"PROD/FIN","evidenceEnv":"CVG_EVIDENCE_PAYMENTS","nextAction":"Definir provedor, sandbox, tenant e janela de homologação."},
+    {"id":"fiscal","ticket":"R05-030","owner":"PROD/FIS","evidenceEnv":"CVG_EVIDENCE_FISCAL","nextAction":"Definir município, certificado e sandbox municipal."},
+    {"id":"laboratory","ticket":"R05-029","owner":"PROD/LAB","evidenceEnv":"CVG_EVIDENCE_LABORATORY","nextAction":"Definir Live Lab, credencial de sandbox e revisor clínico."},
+    {"id":"communication","ticket":"R05-031","owner":"PROD/MKT","evidenceEnv":"CVG_EVIDENCE_COMMUNICATION","nextAction":"Definir canais, conta autorizada, destinatários e consentimento."},
+    {"id":"live-pet","ticket":"R05-032","owner":"PROD","evidenceEnv":"CVG_EVIDENCE_LIVE_PET","nextAction":"Definir contrato, tenant e sandbox Live Pet."},
+    {"id":"vetus-target","ticket":"R05-033","owner":"PROD/DB","evidenceEnv":"CVG_EVIDENCE_VETUS_TARGET","nextAction":"Autorizar destino e dataset sanitizado para importação."},
+    {"id":"storage-scanner","ticket":"R05-034","owner":"OPS/SEC","evidenceEnv":"CVG_EVIDENCE_STORAGE_SCANNER","nextAction":"Definir storage e scanner no ambiente-alvo."},
+    {"id":"target-environment","ticket":"R05-035..R05-046","owner":"OPS/DB/SEC","evidenceEnv":"CVG_EVIDENCE_TARGET_ENVIRONMENT","nextAction":"Disponibilizar ambiente-alvo, capacidade, RPO/RTO e plantão."},
+    {"id":"github","ticket":"R05-015/R05-041","owner":"LT/OPS","evidenceEnv":"CVG_EVIDENCE_GITHUB","nextAction":"Fornecer run/ruleset ou acesso administrativo somente leitura."},
+    {"id":"uat-dpo","ticket":"R05-042/R05-044","owner":"PROD/QA/DPO","evidenceEnv":"CVG_EVIDENCE_UAT_DPO","nextAction":"Nomear revisores e registrar aceite no SHA candidato."}
+  ]
+}

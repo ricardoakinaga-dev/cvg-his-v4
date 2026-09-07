@@ -1,3 +1,11 @@
+---
+document_status: supporting
+document_kind: risk-register
+effective_date: 2026-08-25
+owner: Engenharia e Produto
+review_cycle: weekly
+---
+
 # CVG-HIS V4 — Registro de Riscos
 
 **Data:** 2026-08-25  

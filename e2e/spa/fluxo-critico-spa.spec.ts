@@ -124,7 +124,9 @@ test.describe('Fluxo Crítico SPA — Ponta a Ponta', () => {
       .locator('.billing-empty-state__actions')
       .getByRole('button', { name: /Gerar estimativa/i })
       .click();
-    await expect(page.getByText('Estimado', { exact: true }).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Estimado', { exact: true }).first()).toBeVisible({
+      timeout: 15000
+    });
 
     await page.getByRole('button', { name: /Adicionar Item/ }).click();
     await page.selectOption('#itemType', 'service');
@@ -147,16 +149,29 @@ test.describe('Fluxo Crítico SPA — Ponta a Ponta', () => {
     await page.getByRole('button', { name: 'Fechar Atendimento' }).click();
     const closeDialog = page.getByRole('dialog', { name: 'Fechar Atendimento' });
     await closeDialog.locator('#closeReason').fill('Atendimento concluído - E2E test');
-    await closeDialog.locator('button').filter({ hasText: /^Fechar$/ }).click();
+    await closeDialog
+      .locator('button')
+      .filter({ hasText: /^Fechar$/ })
+      .click();
 
-    await expect(page.getByText('✅ Finalizado', { exact: true }).first()).toBeVisible({
+    await expect(
+      page
+        .getByRole('region', { name: 'Cockpit do atendimento', exact: true })
+        .locator('.patient-rail__facts')
+        .getByText('Finalizado', { exact: true })
+    ).toBeVisible({
       timeout: 15000
     });
     console.log('   ✅ Encounter closed');
 
     // ── Step 8: Validate final state ──
     console.log('   ✅ Validating final state...');
-    await expect(page.getByText('✅ Finalizado', { exact: true }).first()).toBeVisible();
+    await expect(
+      page
+        .getByRole('region', { name: 'Cockpit do atendimento', exact: true })
+        .locator('.patient-rail__facts')
+        .getByText('Finalizado', { exact: true })
+    ).toBeVisible();
 
     await page.goto(`${SPA_URL}/encounters`);
     await page.waitForLoadState('networkidle');

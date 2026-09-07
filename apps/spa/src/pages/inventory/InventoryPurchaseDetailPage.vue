@@ -12,7 +12,7 @@
         <DsButton type="button" variant="primary" :loading="loading" @click="load">
           Tentar novamente
         </DsButton>
-        <DsButton variant="secondary" tag="a" href="/inventory/purchases">
+        <DsButton variant="secondary" tag="a" to="/inventory/purchases">
           Voltar às Compras
         </DsButton>
       </div>
@@ -25,7 +25,7 @@
         :subtitle="purchase.invoiceNumber ? `NF ${purchase.invoiceNumber}` : 'NF pendente'"
       >
         <template #actions>
-          <DsButton variant="secondary" tag="a" href="/inventory/purchases">
+          <DsButton variant="secondary" tag="a" to="/inventory/purchases">
             Voltar às Compras
           </DsButton>
         </template>

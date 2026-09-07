@@ -1,5 +1,10 @@
 # ADR-007 Frontend Canonico do V2 - Consolidação da Decisão
 
+> Atualização de estado — 2026-09-06: `apps/spa` continua canônico. `apps/web`
+> não existe no worktree atual; as orientações de congelamento e manutenção
+> desse diretório abaixo pertencem à transição histórica, não são tarefas
+> atuais. Veja o [estado da arquitetura frontend](../114-frontend-architecture.md).
+
 **Data**: 2026-03-26
 **Status**: Aprovado; supersede a decisao de frontend do ADR-003
 **Relacionado**: ADR-003, ENT-005, AUD-009-01

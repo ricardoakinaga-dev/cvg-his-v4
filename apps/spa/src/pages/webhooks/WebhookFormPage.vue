@@ -1,6 +1,6 @@
 <template>
   <div class="webhook-form-page">
-    <AppPageHeader :breadcrumbs="['Atendimento', 'Cadastros', 'Webhooks', isEdit ? 'Editar' : 'Incluir']">
+    <AppPageHeader :breadcrumbs="['Console Enterprise', 'Integrações', 'Webhooks', isEdit ? 'Editar' : 'Incluir']">
       <template #title>
         {{ isEdit ? 'Editar Webhook' : 'Incluir Webhook' }}
       </template>

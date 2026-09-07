@@ -55,20 +55,25 @@ describe('StaffListPage', () => {
     vi.mocked(staffService.list).mockResolvedValue(staff);
   });
 
-  it('renders the Vetus professionals surface and RH integrations', async () => {
+  it('renders professionals and explains where to manage system access', async () => {
     const wrapper = mountPage();
     await flushPromises();
 
     expect(wrapper.text()).toContain('RH');
     expect(wrapper.text()).toContain('Cadastros');
     expect(wrapper.text()).toContain('Profissionais');
-    expect(wrapper.text()).toContain('cadastro/profissionais');
-    expect(wrapper.text()).toContain('rh-profissionais-01.png');
+    expect(wrapper.text()).toContain('Profissionais, funções, disponibilidade e produção operacional');
+    expect(wrapper.text()).toContain('Para configurar acesso ao sistema, use RH / Usuários.');
+    expect(wrapper.text()).not.toContain('rh-profissionais-01.png');
     expect(wrapper.text()).toContain('+ Incluir Novo Profissional');
     expect(wrapper.text()).toContain('Busca por ID ou nome');
     expect(wrapper.text()).toContain('ID staff-1');
     expect(wrapper.text()).toContain('Ativo');
-    expect(wrapper.text()).toContain('Informações de Contato');
+    expect(wrapper.text()).not.toContain('Contrato atual');
+    expect(wrapper.findAll('tbody tr')).toHaveLength(2);
+    expect(wrapper.findAll('tbody tr').filter((row) => row.text().includes('Ana Paula'))).toHaveLength(1);
+    expect(wrapper.findAll('details').every((details) => !details.attributes('open'))).toBe(true);
+    expect(wrapper.text()).toContain('Editar');
     expect(wrapper.text()).toContain('Ver Detalhes');
     expect(wrapper.text()).toContain('Agenda');
     expect(wrapper.text()).toContain('Folgas');

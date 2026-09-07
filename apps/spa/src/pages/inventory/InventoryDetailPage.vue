@@ -8,7 +8,7 @@
       <DsAlert variant="danger" dismissible @dismiss="error = ''">
         {{ error }}
       </DsAlert>
-      <DsButton variant="secondary" tag="a" href="/inventory">Voltar ao Estoque</DsButton>
+      <DsButton variant="secondary" tag="a" to="/inventory">Voltar ao Estoque</DsButton>
     </template>
 
     <template v-else-if="item">
@@ -18,10 +18,10 @@
           <span class="inventory-sku">SKU: {{ item.sku }}</span>
         </template>
         <template #actions>
-          <DsButton variant="secondary" size="sm" tag="a" :href="`/inventory/${item.id}/edit`">
+          <DsButton variant="secondary" size="sm" tag="a" :to="`/inventory/${item.id}/edit`">
             Editar
           </DsButton>
-          <DsButton variant="secondary" tag="a" href="/inventory">Voltar ao Estoque</DsButton>
+          <DsButton variant="secondary" tag="a" to="/inventory">Voltar ao Estoque</DsButton>
         </template>
       </AppPageHeader>
 

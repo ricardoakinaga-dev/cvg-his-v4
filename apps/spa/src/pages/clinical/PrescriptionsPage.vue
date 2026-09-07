@@ -17,100 +17,81 @@
       {{ successMessage }}
     </DsAlert>
 
-    <section v-if="hasWorkflowContext" class="clinical-context-strip" aria-label="Contexto do atendimento clínico">
-      <div>
-        <span>Contexto do atendimento clínico</span>
-        <strong>{{ selectedEncounterContextLabel }}</strong>
-        <small>Paciente {{ shortId(selectedEncounter?.patientId || workflowContext.patientId) }} · Tutor {{ shortId(selectedEncounter?.ownerId || workflowContext.ownerId) }}</small>
+    <DsCard title="Atendimento selecionado">
+      <DsInput
+        v-model="selectedEncounterId"
+        type="select"
+        label="Atendimento"
+        :disabled="loading || loadFailed || submitting"
+      >
+        <option value="">{{ loading ? 'Carregando atendimentos…' : encounters.length ? 'Selecione um atendimento' : 'Nenhum atendimento disponível' }}</option>
+        <option v-for="enc in encounters" :key="enc.id" :value="enc.id">
+          {{ enc.id.slice(0, 8) }} • {{ enc.reason || 'Sem descrição' }}
+        </option>
+      </DsInput>
+      <div v-if="selectedEncounter && !loading && !loadFailed" class="summary-list">
+        <strong v-if="hasWorkflowContext">Contexto do atendimento clínico</strong>
+        <div><strong>Paciente:</strong> {{ selectedEncounter.patientId }}</div>
+        <div><strong>Status:</strong> {{ encounterStatusLabel(selectedEncounter.status) }}</div>
+        <div><strong>Motivo:</strong> {{ selectedEncounter.reason }}</div>
       </div>
-      <div class="clinical-context-strip__actions">
-        <DsButton v-if="selectedEncounterContextId" size="sm" variant="secondary" tag="a" :to="`/encounters/${selectedEncounterContextId}`">
-          Voltar ao atendimento
-        </DsButton>
-        <DsButton v-if="selectedEncounterContextId" size="sm" variant="secondary" tag="a" :to="`/medical-records/${selectedEncounterContextId}`">
-          Abrir prontuário
-        </DsButton>
+      <div v-if="loadFailed" class="context-state" role="status">
+        <p>Não foi possível carregar os atendimentos.</p>
+        <DsButton variant="secondary" @click="loadData">Tentar novamente</DsButton>
       </div>
-    </section>
+      <div v-else-if="!loading && !selectedEncounter" class="context-state" role="status">
+        <p>{{ encounters.length ? 'Selecione um atendimento para consultar e registrar prescrições.' : 'Nenhum atendimento disponível para prescrição.' }}</p>
+        <DsButton variant="secondary" tag="a" to="/encounters">Ver atendimentos</DsButton>
+      </div>
+      <p v-else-if="loading || contextState === 'loading'" class="muted" role="status">Carregando contexto clínico…</p>
+      <div v-else-if="contextState === 'failed'" class="context-state" role="status">
+        <p>Não foi possível carregar as prescrições e execuções deste atendimento.</p>
+        <DsButton variant="secondary" @click="refreshEncounterData">Tentar novamente</DsButton>
+      </div>
+    </DsCard>
 
-    <section class="clinical-overview">
-      <DsCard title="Resumo da prescrição">
-        <div class="overview-grid">
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ encounters.length }}</span>
-            <span class="overview-metric__label">Atendimentos carregados</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ prescriptions.length }}</span>
-            <span class="overview-metric__label">Prescrições do atendimento</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ executions.length }}</span>
-            <span class="overview-metric__label">Execuções vinculadas</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ selectedEncounter ? '1' : '0' }}</span>
-            <span class="overview-metric__label">Atendimento ativo</span>
-          </div>
-        </div>
-      </DsCard>
-    </section>
-
-    <div class="clinical-grid clinical-grid--two">
-      <DsCard title="Atendimento selecionado">
-        <DsInput v-model="selectedEncounterId" type="select" label="Atendimento" @change="syncForm">
-          <option v-for="enc in encounters" :key="enc.id" :value="enc.id">
-            {{ enc.id.slice(0, 8) }} • {{ enc.reason || 'Sem descrição' }}
-          </option>
-        </DsInput>
-        <div v-if="selectedEncounter" class="summary-list">
-          <div><strong>Paciente:</strong> {{ selectedEncounter.patientId }}</div>
-          <div><strong>Status:</strong> {{ selectedEncounter.status }}</div>
-          <div><strong>Motivo:</strong> {{ selectedEncounter.reason }}</div>
-        </div>
-      </DsCard>
-
+    <template v-if="contextReady">
       <DsCard title="Nova prescrição">
-        <form class="form-grid" @submit.prevent="submitPrescription">
-          <DsInput v-model="form.medicationName" label="Medicamento" required />
-          <DsInput v-model="form.dosage" label="Posologia" required />
-          <DsInput v-model="form.route" label="Via" placeholder="Oral, IV, IM..." />
-          <DsInput v-model="form.frequency" label="Frequência" placeholder="Ex: 12/12h" />
-          <DsInput v-model="form.notes" type="textarea" label="Observações" :rows="3" />
-          <div class="form-actions">
-            <DsButton type="submit" variant="primary" :loading="submitting">Salvar prescrição</DsButton>
-            <DsButton variant="secondary" type="button" @click="resetForm">Limpar</DsButton>
-          </div>
+        <form @submit.prevent="submitPrescription">
+          <fieldset class="form-grid" :disabled="submitting">
+            <DsInput v-model="form.medicationName" label="Medicamento" required />
+            <DsInput v-model="form.dosage" label="Posologia" required />
+            <DsInput v-model="form.route" label="Via" placeholder="Oral, IV, IM..." />
+            <DsInput v-model="form.frequency" label="Frequência" placeholder="Ex: 12/12h" />
+            <DsInput v-model="form.notes" type="textarea" label="Observações" :rows="3" />
+            <div class="form-actions">
+              <DsButton type="submit" variant="primary" :loading="submitting">Salvar prescrição</DsButton>
+              <DsButton variant="secondary" type="button" @click="resetForm">Limpar</DsButton>
+            </div>
+          </fieldset>
         </form>
       </DsCard>
-    </div>
 
-    <div class="clinical-grid clinical-grid--two">
-      <DsCard title="Prescrições do atendimento">
-        <DataTable
-          :columns="prescriptionColumns"
-          :rows="prescriptions"
-          :loading="loading"
-          empty-icon="💊"
-          empty-title="Nenhuma prescrição encontrada"
-          empty-description="Registre a primeira prescrição para este atendimento."
-          variant="hoverable"
-        >
-          <template #cell-createdAt="{ row }">
-            {{ formatDateTime((row as ClinicalEntrySummary).createdAt) }}
-          </template>
+      <div class="clinical-grid clinical-grid--two">
+        <DsCard title="Prescrições do atendimento">
+          <DataTable
+            :columns="prescriptionColumns"
+            :rows="prescriptions"
+            :loading="false"
+            empty-icon="💊"
+            empty-title="Nenhuma prescrição encontrada"
+            empty-description="Registre a primeira prescrição para este atendimento."
+            variant="hoverable"
+          >
+            <template #cell-createdAt="{ row }">
+              {{ formatDateTime((row as ClinicalEntrySummary).createdAt) }}
+
+    </template>
           <template #cell-actions="{ row }">
-            <DsButton size="sm" variant="secondary" @click="useForExecution(row as ClinicalEntrySummary)">
-              Usar na execução
+            <DsButton size="sm" variant="secondary" :disabled="submitting" @click="copyToDraft(row as ClinicalEntrySummary)">
+              Copiar para rascunho
             </DsButton>
           </template>
         </DataTable>
       </DsCard>
 
       <DsCard title="Execuções vinculadas">
-        <div v-if="executionsLoading" class="muted">Carregando execuções...</div>
         <DataTable
-          v-else
           :columns="executionColumns"
           :rows="executions"
           :loading="false"
@@ -128,11 +109,21 @@
         </DataTable>
       </DsCard>
     </div>
+    </template>
+
+    <details class="clinical-overview">
+      <summary>Resumo da prescrição</summary>
+      <dl class="overview-grid">
+        <div class="overview-metric"><dt>Atendimentos carregados</dt><dd>{{ loading || loadFailed ? '—' : encounters.length }}</dd></div>
+        <div class="overview-metric"><dt>Prescrições do atendimento</dt><dd>{{ contextReady ? prescriptions.length : '—' }}</dd></div>
+        <div class="overview-metric"><dt>Execuções vinculadas</dt><dd>{{ contextReady ? executions.length : '—' }}</dd></div>
+      </dl>
+    </details>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import AppPageHeader, {
   type PageAction,
   type PageBreadcrumb,
@@ -151,14 +142,17 @@ import type { EncounterSummary } from '@/types/encounter';
 import type { ClinicalEntrySummary } from '@/types/medicalRecords';
 import type { PrescriptionExecutionSummary } from '@cvg-his-v2/shared-types';
 import type { DataTableColumn } from '@/components/DataTable.vue';
-import { formatDateTime } from '@/utils/labels';
+import { encounterStatusLabel, formatDateTime } from '@/utils/labels';
 
 const encounters = ref<EncounterSummary[]>([]);
 const prescriptions = ref<ClinicalEntrySummary[]>([]);
 const executions = ref<PrescriptionExecutionSummary[]>([]);
 const selectedEncounterId = ref('');
 const loading = ref(false);
-const executionsLoading = ref(false);
+const loadFailed = ref(false);
+const contextState = ref<'idle' | 'loading' | 'ready' | 'failed'>('idle');
+let listRequestVersion = 0;
+let contextRequestVersion = 0;
 const submitting = ref(false);
 const error = ref('');
 const successMessage = ref('');
@@ -194,13 +188,11 @@ const hasWorkflowContext = computed(() =>
   Boolean(workflowContext.encounterId || workflowContext.patientId || workflowContext.ownerId)
 );
 
-const selectedEncounterContextId = computed(() => selectedEncounter.value?.id || workflowContext.encounterId);
+const selectedEncounterContextId = computed(() => !loading.value && !loadFailed.value ? selectedEncounter.value?.id : undefined);
 
-const selectedEncounterContextLabel = computed(() => {
-  const id = selectedEncounterContextId.value;
-  const reason = selectedEncounter.value?.reason;
-  return `${shortId(id)}${reason ? ` · ${reason}` : ''}`;
-});
+const contextReady = computed(() =>
+  !loading.value && !loadFailed.value && Boolean(selectedEncounter.value) && contextState.value === 'ready'
+);
 
 const headerBreadcrumbItems = computed<PageBreadcrumb[]>(() => [
   { key: 'home', label: 'Início', to: '/' },
@@ -219,14 +211,14 @@ const headerContextItems = computed<PageContextItem[]>(() => {
     {
       key: 'patient',
       label: 'Paciente',
-      value: shortId(selectedEncounter.value?.patientId || workflowContext.patientId)
+      value: shortId(selectedEncounter.value?.patientId)
     }
   ];
-  if (selectedEncounter.value?.ownerId || workflowContext.ownerId) {
+  if (selectedEncounter.value?.ownerId) {
     items.push({
       key: 'owner',
       label: 'Tutor',
-      value: shortId(selectedEncounter.value?.ownerId || workflowContext.ownerId)
+      value: shortId(selectedEncounter.value?.ownerId)
     });
   }
   return items;
@@ -275,71 +267,101 @@ function resetForm() {
   };
 }
 
-function syncForm() {
-  const first = prescriptions.value[0];
-  if (first) {
-    form.value.medicationName = first.title;
-    form.value.notes = first.content;
-  }
-}
-
-function useForExecution(entry: ClinicalEntrySummary) {
+function copyToDraft(entry: ClinicalEntrySummary) {
+  if (!contextReady.value || submitting.value || entry.encounterId !== selectedEncounterId.value || !prescriptions.value.includes(entry)) return;
+  resetForm();
   form.value.medicationName = entry.title;
   form.value.notes = entry.content;
 }
 
-async function loadData() {
-  loading.value = true;
+function clearContext() {
+  contextRequestVersion += 1;
+  contextState.value = 'idle';
+  prescriptions.value = [];
+  executions.value = [];
+  resetForm();
+}
+
+watch(selectedEncounterId, () => {
+  clearContext();
   error.value = '';
+  successMessage.value = '';
+  if (!loading.value && !loadFailed.value) void refreshEncounterData();
+}, { flush: 'sync' });
+
+async function loadData() {
+  const requestVersion = ++listRequestVersion;
+  loading.value = true;
+  loadFailed.value = false;
+  error.value = '';
+  successMessage.value = '';
+  clearContext();
   try {
     const loadedEncounters = await encounterService.list();
+    if (requestVersion !== listRequestVersion) return;
     encounters.value = loadedEncounters;
-    if (!selectedEncounterId.value && encounters.value.length > 0) {
+    if (!selectedEncounter.value) {
       selectedEncounterId.value =
         encounters.value.find((encounter) => encounter.id === workflowContext.encounterId)?.id ??
         encounters.value.find((encounter) => encounter.patientId === workflowContext.patientId)?.id ??
-        encounters.value[0].id;
+        encounters.value[0]?.id ?? '';
     }
     await refreshEncounterData();
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar prescrições';
+    if (requestVersion !== listRequestVersion) return;
+    loadFailed.value = true;
+    encounters.value = [];
+    selectedEncounterId.value = '';
+    clearContext();
+    error.value = err instanceof Error ? err.message : 'Erro ao carregar atendimentos';
   } finally {
-    loading.value = false;
+    if (requestVersion === listRequestVersion) loading.value = false;
   }
 }
 
 async function refreshEncounterData() {
-  if (!selectedEncounter.value) {
-    prescriptions.value = [];
-    executions.value = [];
+  const encounterId = selectedEncounter.value?.id;
+  const requestVersion = ++contextRequestVersion;
+  prescriptions.value = [];
+  executions.value = [];
+  error.value = '';
+  if (!encounterId || loadFailed.value) {
+    contextState.value = 'idle';
     return;
   }
-
-  prescriptions.value = await prescriptionsService.listByEncounter(selectedEncounter.value.id);
-  executionsLoading.value = true;
+  contextState.value = 'loading';
   try {
-    executions.value = await prescriptionExecutionsService.list({
-      encounterId: selectedEncounter.value.id
-    });
-  } finally {
-    executionsLoading.value = false;
+    const [loadedPrescriptions, loadedExecutions] = await Promise.all([
+      prescriptionsService.listByEncounter(encounterId),
+      prescriptionExecutionsService.list({ encounterId })
+    ]);
+    if (requestVersion !== contextRequestVersion || selectedEncounterId.value !== encounterId) return;
+    prescriptions.value = loadedPrescriptions;
+    executions.value = loadedExecutions;
+    contextState.value = 'ready';
+  } catch (err: unknown) {
+    if (requestVersion !== contextRequestVersion || selectedEncounterId.value !== encounterId) return;
+    contextState.value = 'failed';
+    error.value = err instanceof Error ? err.message : 'Erro ao carregar prescrições e execuções';
   }
-  syncForm();
 }
 
 async function submitPrescription() {
-  if (!selectedEncounter.value) {
-    error.value = 'Selecione um atendimento';
+  if (!contextReady.value || !selectedEncounter.value || submitting.value) {
+    error.value = 'Selecione um atendimento com o contexto carregado';
     return;
   }
 
+  const encounterId = selectedEncounter.value.id;
+  const patientId = selectedEncounter.value.patientId;
+  const requestVersion = contextRequestVersion;
   submitting.value = true;
   error.value = '';
   successMessage.value = '';
   try {
     await prescriptionsService.create({
-      encounterId: selectedEncounter.value.id,
-      patientId: selectedEncounter.value.patientId,
+      encounterId,
+      patientId,
       title: form.value.medicationName.trim(),
       content: [
         `Posologia: ${form.value.dosage.trim()}`,
@@ -350,17 +372,21 @@ async function submitPrescription() {
         .filter(Boolean)
         .join('\n')
     });
+    if (requestVersion !== contextRequestVersion || selectedEncounterId.value !== encounterId) return;
     successMessage.value = 'Prescrição registrada com sucesso.';
     resetForm();
     await refreshEncounterData();
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao registrar prescrição';
+    if (requestVersion === contextRequestVersion && selectedEncounterId.value === encounterId) {
+      error.value = err instanceof Error ? err.message : 'Erro ao registrar prescrição';
+    }
   } finally {
     submitting.value = false;
   }
 }
 
 onMounted(loadData);
+onBeforeUnmount(() => { listRequestVersion += 1; contextRequestVersion += 1; });
 
 function readWorkflowContext() {
   if (typeof window === 'undefined') {
@@ -381,47 +407,24 @@ function shortId(value?: string): string {
 </script>
 
 <style scoped>
+.clinical-page { display: grid; gap: 16px; min-width: 0; }
+.clinical-overview summary { min-height: 44px; padding-block: 12px; box-sizing: border-box; cursor: pointer; font-weight: 700; color: var(--color-text-secondary); }
+.overview-metric dt { color: var(--color-text-secondary); font-size: 13px; }
+.overview-metric dd { margin: 8px 0 0; font-size: 24px; font-weight: 700; color: var(--color-text); }
+.context-state p { color: var(--color-text-secondary); }
+.form-grid { border: 0; padding: 0; margin: 0; min-width: 0; }
+
 .clinical-grid {
   display: grid;
   gap: 16px;
 }
 
 .clinical-grid--two {
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
 }
 
 .clinical-overview {
   margin-bottom: 16px;
-}
-
-.clinical-context-strip {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 12px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 8px;
-  background: var(--color-bg-subtle, #f8fafc);
-}
-
-.clinical-context-strip span,
-.clinical-context-strip small {
-  display: block;
-  color: var(--color-text-muted, #64748b);
-}
-
-.clinical-context-strip strong {
-  display: block;
-  color: var(--color-text, #0f172a);
-}
-
-.clinical-context-strip__actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 .overview-grid {
@@ -437,19 +440,6 @@ function shortId(value?: string): string {
   background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
 }
 
-.overview-metric__value {
-  display: block;
-  font-size: 24px;
-  font-weight: 800;
-}
-
-.overview-metric__label {
-  display: block;
-  margin-top: 4px;
-  font-size: 13px;
-  color: var(--color-text-muted, #64748b);
-}
-
 .form-grid {
   display: grid;
   gap: 12px;
@@ -462,6 +452,7 @@ function shortId(value?: string): string {
 }
 
 .summary-list {
+  overflow-wrap: anywhere;
   display: grid;
   gap: 6px;
   margin-top: 12px;
@@ -472,14 +463,4 @@ function shortId(value?: string): string {
   color: var(--color-text-muted, #64748b);
 }
 
-@media (max-width: 720px) {
-  .clinical-context-strip {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .clinical-context-strip__actions {
-    justify-content: flex-start;
-  }
-}
 </style>

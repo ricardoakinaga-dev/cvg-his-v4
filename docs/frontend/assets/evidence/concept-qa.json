@@ -1,0 +1,36 @@
+{
+  "records": [
+    {
+      "width": 390,
+      "theme": "light",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "theme": "light",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false
+    }
+  ],
+  "opened": true,
+  "focusReturn": true,
+  "feedback": "✓ Demonstração concluída. Nenhum registro foi salvo.",
+  "tab": "true",
+  "motion": "0s",
+  "video": {
+    "width": 768,
+    "height": 432,
+    "paused": false,
+    "duration": 3
+  },
+  "errors": []
+}

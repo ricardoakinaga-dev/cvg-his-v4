@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { EventHandler, OutboxEvent } from '@cvg-his-v2/module-event-bus';
+import type { EventHandler } from '@cvg-his-v2/module-event-bus';
 import { ConsumerRegistry, type DomainConsumer } from './index.js';
 import { PaymentsEventHandlers } from './payments.consumer.js';
 import { BillingEventHandlers } from './billing.consumer.js';
@@ -14,11 +14,16 @@ function makeConsumer(name: string, handler: EventHandler = async () => {}): Dom
   return { name, handlers: handler };
 }
 
+type Subscription = {
+  name: string;
+  handler: EventHandler;
+};
+
 function makeMockEventBus() {
-  const subscriptions: EventHandler[] = [];
+  const subscriptions: Subscription[] = [];
   return {
-    subscribe(handler: EventHandler) {
-      subscriptions.push(handler);
+    subscribe(name: string, handler: EventHandler) {
+      subscriptions.push({ name, handler });
     },
     get subscriptions() {
       return subscriptions;
@@ -83,7 +88,7 @@ test('ConsumerRegistry.add() throws on duplicate name', () => {
 });
 
 test('ConsumerRegistry.registerAll() calls subscribe once per consumer', () => {
-  const mockEventBus = makeMockEventBus() as any;
+  const mockEventBus = makeMockEventBus();
   const registry = new ConsumerRegistry();
 
   const h1 = async () => {};
@@ -92,42 +97,53 @@ test('ConsumerRegistry.registerAll() calls subscribe once per consumer', () => {
   registry.add('c1', makeConsumer('c1', h1));
   registry.add('c2', makeConsumer('c2', h2));
 
-  registry.registerAll(mockEventBus);
+  registry.registerAll(mockEventBus as any);
 
   assert.equal(mockEventBus.subscriptions.length, 2);
-  assert.strictEqual(mockEventBus.subscriptions[0], h1);
-  assert.strictEqual(mockEventBus.subscriptions[1], h2);
+  assert.deepEqual(
+    mockEventBus.subscriptions.map(({ name }) => name),
+    ['c1', 'c2']
+  );
+  assert.strictEqual(mockEventBus.subscriptions[0].handler, h1);
+  assert.strictEqual(mockEventBus.subscriptions[1].handler, h2);
 });
 
-test('ConsumerRegistry.registerAll() respects add() call order', () => {
-  const mockEventBus = makeMockEventBus() as any;
+test('ConsumerRegistry.registerAll() respects add() call order', async () => {
+  const mockEventBus = makeMockEventBus();
   const registry = new ConsumerRegistry();
   const order: string[] = [];
 
+  const firstHandler = async () => {
+    order.push('first');
+  };
+  const secondHandler = async () => {
+    order.push('second');
+  };
+  const thirdHandler = async () => {
+    order.push('third');
+  };
+
   registry.add(
     'first',
-    makeConsumer('first', async () => {
-      order.push('first');
-    })
+    makeConsumer('first', firstHandler)
   );
-  registry.add(
-    'second',
-    makeConsumer('second', async () => {
-      order.push('second');
-    })
-  );
-  registry.add(
-    'third',
-    makeConsumer('third', async () => {
-      order.push('third');
-    })
-  );
+  registry.add('second', makeConsumer('second', secondHandler));
+  registry.add('third', makeConsumer('third', thirdHandler));
 
-  registry.registerAll(mockEventBus);
+  registry.registerAll(mockEventBus as any);
 
-  assert.equal(registry.names[0], 'first');
-  assert.equal(registry.names[1], 'second');
-  assert.equal(registry.names[2], 'third');
+  assert.deepEqual(
+    mockEventBus.subscriptions.map(({ name }) => name),
+    ['first', 'second', 'third']
+  );
+  assert.strictEqual(mockEventBus.subscriptions[0].handler, firstHandler);
+  assert.strictEqual(mockEventBus.subscriptions[1].handler, secondHandler);
+  assert.strictEqual(mockEventBus.subscriptions[2].handler, thirdHandler);
+
+  await mockEventBus.subscriptions[0].handler();
+  await mockEventBus.subscriptions[1].handler();
+  await mockEventBus.subscriptions[2].handler();
+  assert.deepEqual(order, ['first', 'second', 'third']);
 });
 
 test('ConsumerRegistry.size returns correct count', () => {
@@ -153,19 +169,21 @@ test('ConsumerRegistry.names returns all registered names', () => {
 });
 
 test('ConsumerRegistry can add and immediately register a consumer with the correct name', () => {
-  const mockEventBus = makeMockEventBus() as any;
+  const mockEventBus = makeMockEventBus();
   const registry = new ConsumerRegistry();
 
   const consumer = makeConsumer('named-consumer');
   registry.add('named-consumer', consumer);
-  registry.registerAll(mockEventBus);
+  registry.registerAll(mockEventBus as any);
 
   assert.equal(registry.size, 1);
   assert.equal(registry.names[0], 'named-consumer');
+  assert.equal(mockEventBus.subscriptions[0].name, 'named-consumer');
+  assert.strictEqual(mockEventBus.subscriptions[0].handler, consumer.handlers);
 });
 
 test('ConsumerRegistry.registerAll() with all three production consumers — correct order', () => {
-  const mockEventBus = makeMockEventBus() as any;
+  const mockEventBus = makeMockEventBus();
   const registry = new ConsumerRegistry();
 
   const payments = new PaymentsEventHandlers({
@@ -182,10 +200,13 @@ test('ConsumerRegistry.registerAll() with all three production consumers — cor
   registry.add('billing', billing);
   registry.add('webhooks', webhooks);
 
-  registry.registerAll(mockEventBus);
+  registry.registerAll(mockEventBus as any);
 
   // Verify all three are registered in correct order
   assert.equal(registry.size, 3);
   assert.deepEqual(registry.names, ['payments', 'billing', 'webhooks']);
-  assert.equal(mockEventBus.subscriptions.length, 3);
+  assert.deepEqual(
+    mockEventBus.subscriptions.map(({ name }) => name),
+    ['payments', 'billing', 'webhooks']
+  );
 });

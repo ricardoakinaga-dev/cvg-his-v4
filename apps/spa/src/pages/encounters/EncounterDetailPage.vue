@@ -22,6 +22,11 @@
         :secondary-actions="headerSecondaryActions"
       />
 
+      <DsAlert v-if="contextWarnings.length" variant="info" dismissible>
+        Algumas informações complementares não carregaram:
+        {{ contextWarnings.join(', ') }}. O atendimento principal continua disponível.
+      </DsAlert>
+
       <section class="encounter-cockpit" aria-label="Cockpit do atendimento">
         <aside class="patient-rail">
           <div class="patient-rail__identity">
@@ -561,7 +566,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { encounterService } from '@/services/encounter';
 import { cashService } from '@/services/cash';
@@ -599,12 +604,14 @@ import AppPageHeader, {
 } from '@/components/AppPageHeader.vue';
 
 const route = useRoute();
+const routeEncounterId = computed(() => String(route.params.id ?? ''));
 const encounter = ref<EncounterSummary | null>(null);
 const timeline = ref<EncounterTimelineEventSummary[]>([]);
 const loading = ref(true);
 const timelineLoading = ref(false);
 const financialLoading = ref(false);
 const error = ref('');
+const contextWarnings = ref<string[]>([]);
 const clinicalHandoffError = ref('');
 const showTransitionModal = ref(false);
 const showFinancialCloseModal = ref(false);
@@ -660,6 +667,56 @@ const clinicalHandoffForm = ref<{
   receptionInstructions: '',
   priority: 'medium'
 });
+let active = true;
+let pageGeneration = 0;
+
+function isCurrentLoad(generation: number, id: string) {
+  return active && generation === pageGeneration && routeEncounterId.value === id;
+}
+
+function resetPageState() {
+  encounter.value = null;
+  timeline.value = [];
+  patientName.value = '';
+  ownerName.value = '';
+  financialSummary.value = null;
+  encounterSummary.value = null;
+  billingStatus.value = null;
+  attachments.value = [];
+  clinicalHandoff.value = null;
+  clinicalHandoffError.value = '';
+  contextWarnings.value = [];
+  error.value = '';
+  closeReason.value = '';
+  clinicalHandoffForm.value = {
+    clinicalSummary: '',
+    receptionInstructions: '',
+    priority: 'medium'
+  };
+  showTransitionModal.value = false;
+  showFinancialCloseModal.value = false;
+  showCashReceiptModal.value = false;
+  showCloseModal.value = false;
+  cashReceiptAttempt.value = null;
+  financialLoading.value = false;
+  timelineLoading.value = false;
+  attachmentsLoading.value = false;
+  clinicalHandoffLoading.value = false;
+  closing.value = false;
+  closingFinancial.value = false;
+  preparingCashReceipt.value = false;
+  receivingCash.value = false;
+  sendingClinicalHandoff.value = false;
+  uploadingAttachment.value = false;
+  financialNotes.value = '';
+  cashReceiptRegisterId.value = '';
+  cashReceiptNotes.value = '';
+  newAttachment.value = { fileName: '', mimeType: 'application/pdf', checksum: '' };
+}
+
+function pushContextWarning(label: string) {
+  if (!contextWarnings.value.includes(label)) contextWarnings.value.push(label);
+}
 
 const summaryCards = computed(() => [
   { icon: '🐾', label: 'Paciente', value: patientName.value || 'Carregando...' },
@@ -831,9 +888,14 @@ function formatMoney(value: number) {
   }).format(value);
 }
 
-async function loadEntityNames(enc: EncounterSummary) {
-  patientName.value = await entityCache.getPatientName(enc.patientId);
-  ownerName.value = await entityCache.getOwnerName(enc.ownerId);
+async function loadEntityNames(enc: EncounterSummary, generation: number, routeId: string) {
+  const [nextPatientName, nextOwnerName] = await Promise.all([
+    entityCache.getPatientName(enc.patientId),
+    entityCache.getOwnerName(enc.ownerId)
+  ]);
+  if (!isCurrentLoad(generation, routeId)) return;
+  patientName.value = nextPatientName;
+  ownerName.value = nextOwnerName;
 }
 
 function hydrateClinicalHandoffForm(enc: EncounterSummary) {
@@ -847,25 +909,36 @@ function hydrateClinicalHandoffForm(enc: EncounterSummary) {
   }
 }
 
-async function loadClinicalHandoff() {
-  if (!encounter.value) return;
+async function loadClinicalHandoff(
+  generation = pageGeneration,
+  routeId = routeEncounterId.value,
+  currentEncounter = encounter.value
+) {
+  if (!currentEncounter) return;
   clinicalHandoffLoading.value = true;
   clinicalHandoffError.value = '';
 
   try {
-    const items = await clinicalHandoffService.list({ encounterId: encounter.value.id });
+    const items = await clinicalHandoffService.list({ encounterId: currentEncounter.id });
+    if (!isCurrentLoad(generation, routeId)) return;
     clinicalHandoff.value = items[0] ?? null;
   } catch (err: unknown) {
-    clinicalHandoff.value = null;
-    clinicalHandoffError.value =
-      err instanceof Error ? err.message : 'Erro ao carregar handoff clinico';
+    if (isCurrentLoad(generation, routeId)) {
+      clinicalHandoff.value = null;
+      clinicalHandoffError.value =
+        err instanceof Error ? err.message : 'Erro ao carregar handoff clinico';
+      pushContextWarning('handoff clínico');
+    }
   } finally {
-    clinicalHandoffLoading.value = false;
+    if (isCurrentLoad(generation, routeId)) clinicalHandoffLoading.value = false;
   }
 }
 
 async function sendClinicalHandoff() {
   if (!encounter.value) return;
+  const routeId = routeEncounterId.value;
+  const generation = pageGeneration;
+  const currentEncounter = encounter.value;
 
   const clinicalSummary = clinicalHandoffForm.value.clinicalSummary.trim();
   const receptionInstructions = clinicalHandoffForm.value.receptionInstructions.trim();
@@ -878,20 +951,24 @@ async function sendClinicalHandoff() {
   clinicalHandoffError.value = '';
 
   try {
-    clinicalHandoff.value = await clinicalHandoffService.sendToReception({
-      encounterId: encounter.value.id,
+    const nextHandoff = await clinicalHandoffService.sendToReception({
+      encounterId: currentEncounter.id,
       clinicalSummary,
       receptionInstructions,
       priority: clinicalHandoffForm.value.priority,
       toResponsibleType: 'sector',
       toResponsibleId: 'reception'
     });
-    await loadTimeline();
+    if (!isCurrentLoad(generation, routeId)) return;
+    clinicalHandoff.value = nextHandoff;
+    await loadTimeline(generation, routeId, currentEncounter.id);
   } catch (err: unknown) {
-    clinicalHandoffError.value =
-      err instanceof Error ? err.message : 'Erro ao enviar handoff para recepcao';
+    if (isCurrentLoad(generation, routeId)) {
+      clinicalHandoffError.value =
+        err instanceof Error ? err.message : 'Erro ao enviar handoff para recepcao';
+    }
   } finally {
-    sendingClinicalHandoff.value = false;
+    if (isCurrentLoad(generation, routeId)) sendingClinicalHandoff.value = false;
   }
 }
 
@@ -930,89 +1007,143 @@ const availableTransitions = computed(() => {
 
 async function handleTransition(nextStatus: string) {
   if (!encounter.value) return;
+  const routeId = routeEncounterId.value;
+  const generation = pageGeneration;
+  const currentEncounter = encounter.value;
   try {
-    await encounterService.transition(encounter.value.id, { nextStatus: nextStatus as any });
+    const updated = await encounterService.transition(currentEncounter.id, { nextStatus: nextStatus as any });
+    if (!isCurrentLoad(generation, routeId)) return;
+    if (updated.id !== currentEncounter.id) {
+      alert('O atendimento retornado não corresponde à rota atual.');
+      return;
+    }
+    encounter.value = { ...currentEncounter, ...updated };
     encounter.value.status = nextStatus as any;
     showTransitionModal.value = false;
-    await loadTimeline();
+    await loadTimeline(generation, routeId, currentEncounter.id);
   } catch (err: unknown) {
-    alert(err instanceof Error ? err.message : 'Erro ao transicionar');
+    if (isCurrentLoad(generation, routeId)) {
+      alert(err instanceof Error ? err.message : 'Erro ao transicionar');
+    }
   }
 }
 
 async function handleClose() {
   if (!encounter.value || !closeReason.value.trim()) return;
+  const routeId = routeEncounterId.value;
+  const generation = pageGeneration;
+  const currentEncounter = encounter.value;
+  const reason = closeReason.value.trim();
   closing.value = true;
   try {
-    await encounterService.close(encounter.value.id, { closeReason: closeReason.value.trim() });
-    encounter.value.status = 'closed';
-    encounter.value.closeReason = closeReason.value.trim();
+    const updated = await encounterService.close(currentEncounter.id, { closeReason: reason });
+    if (!isCurrentLoad(generation, routeId)) return;
+    if (updated.id !== currentEncounter.id) {
+      alert('O atendimento retornado não corresponde à rota atual.');
+      return;
+    }
+    encounter.value = { ...currentEncounter, ...updated, status: 'closed', closeReason: reason };
     showCloseModal.value = false;
     closeReason.value = '';
-    await loadTimeline();
+    await loadTimeline(generation, routeId, currentEncounter.id);
   } catch (err: unknown) {
-    alert(err instanceof Error ? err.message : 'Erro ao fechar');
+    if (isCurrentLoad(generation, routeId)) {
+      alert(err instanceof Error ? err.message : 'Erro ao fechar');
+    }
   } finally {
-    closing.value = false;
+    if (isCurrentLoad(generation, routeId)) closing.value = false;
   }
 }
 
-async function loadTimeline() {
-  if (!encounter.value) return;
+async function loadTimeline(
+  generation = pageGeneration,
+  routeId = routeEncounterId.value,
+  encounterId = encounter.value?.id
+) {
+  if (!encounterId || !isCurrentLoad(generation, routeId)) return;
   timelineLoading.value = true;
   try {
-    timeline.value = await encounterService.getTimeline(encounter.value.id);
+    const nextTimeline = await encounterService.getTimeline(encounterId);
+    if (isCurrentLoad(generation, routeId)) timeline.value = nextTimeline;
   } catch {
-    // Timeline load failure is non-critical
+    if (isCurrentLoad(generation, routeId)) pushContextWarning('timeline');
   } finally {
-    timelineLoading.value = false;
+    if (isCurrentLoad(generation, routeId)) timelineLoading.value = false;
   }
 }
 
-async function refreshEnterpriseSummary() {
-  if (!encounter.value) return;
+async function refreshEnterpriseSummary(
+  generation = pageGeneration,
+  routeId = routeEncounterId.value,
+  encounterId = encounter.value?.id
+) {
+  if (!encounterId || !isCurrentLoad(generation, routeId)) return;
   financialLoading.value = true;
   try {
-    const summary = await encounterService.getSummary(encounter.value.id);
+    const summary = await encounterService.getSummary(encounterId);
+    if (!isCurrentLoad(generation, routeId)) return;
     encounterSummary.value = summary;
     financialSummary.value = summary.financial;
   } catch {
     try {
-      financialSummary.value = await encounterService.getFinancialSummary(encounter.value.id);
+      const fallback = await encounterService.getFinancialSummary(encounterId);
+      if (!isCurrentLoad(generation, routeId)) return;
+      financialSummary.value = fallback;
     } catch {
-      financialSummary.value = null;
+      if (isCurrentLoad(generation, routeId)) {
+        financialSummary.value = null;
+        pushContextWarning('resumo financeiro');
+      }
     }
   } finally {
+    if (!isCurrentLoad(generation, routeId)) return;
     try {
-      billingStatus.value = (await billingService.getByEncounter(encounter.value.id)).status;
+      billingStatus.value = (await billingService.getByEncounter(encounterId)).status;
     } catch {
-      billingStatus.value = null;
+      if (isCurrentLoad(generation, routeId)) {
+        billingStatus.value = null;
+        pushContextWarning('status de cobrança');
+      }
     }
-    financialLoading.value = false;
+    if (isCurrentLoad(generation, routeId)) financialLoading.value = false;
   }
 }
 
 async function handleFinancialClose() {
   if (!encounter.value) return;
+  const routeId = routeEncounterId.value;
+  const generation = pageGeneration;
+  const currentEncounter = encounter.value;
   closingFinancial.value = true;
   try {
-    financialSummary.value = await encounterService.closeFinancial(encounter.value.id, {
+    const updated = await encounterService.closeFinancial(currentEncounter.id, {
       notes: financialNotes.value.trim() || null
     });
+    if (!isCurrentLoad(generation, routeId)) return;
+    if (updated.encounterId && updated.encounterId !== currentEncounter.id) {
+      alert('O resumo financeiro retornado não corresponde à rota atual.');
+      return;
+    }
+    financialSummary.value = updated;
     showFinancialCloseModal.value = false;
     financialNotes.value = '';
-    await refreshEnterpriseSummary();
+    await refreshEnterpriseSummary(generation, routeId, currentEncounter.id);
   } catch (err: unknown) {
-    alert(err instanceof Error ? err.message : 'Erro ao fechar financeiro');
+    if (isCurrentLoad(generation, routeId)) {
+      alert(err instanceof Error ? err.message : 'Erro ao fechar financeiro');
+    }
   } finally {
-    closingFinancial.value = false;
+    if (isCurrentLoad(generation, routeId)) closingFinancial.value = false;
   }
 }
 
 async function prepareCashReceipt() {
+  const routeId = routeEncounterId.value;
+  const generation = pageGeneration;
   preparingCashReceipt.value = true;
   try {
     const dashboard = await cashService.getDashboard();
+    if (!isCurrentLoad(generation, routeId)) return;
     if (!dashboard.openRegister) {
       alert('Abra um caixa antes de registrar o recebimento em dinheiro');
       return;
@@ -1020,9 +1151,11 @@ async function prepareCashReceipt() {
     cashReceiptRegisterId.value = dashboard.openRegister.id;
     showCashReceiptModal.value = true;
   } catch (err: unknown) {
-    alert(err instanceof Error ? err.message : 'Erro ao consultar o caixa aberto');
+    if (isCurrentLoad(generation, routeId)) {
+      alert(err instanceof Error ? err.message : 'Erro ao consultar o caixa aberto');
+    }
   } finally {
-    preparingCashReceipt.value = false;
+    if (isCurrentLoad(generation, routeId)) preparingCashReceipt.value = false;
   }
 }
 
@@ -1034,12 +1167,15 @@ function createCashReceiptIdempotencyKey(): string {
 async function handleCashReceipt() {
   const summary = financialSummary.value;
   if (!encounter.value || !summary || !cashReceiptRegisterId.value) return;
+  const routeId = routeEncounterId.value;
+  const generation = pageGeneration;
+  const currentEncounter = encounter.value;
   const payload = {
     cashRegisterId: cashReceiptRegisterId.value,
     expectedAmount: summary.total,
     notes: cashReceiptNotes.value.trim() || undefined
   };
-  const fingerprint = JSON.stringify({ encounterId: encounter.value.id, ...payload });
+  const fingerprint = JSON.stringify({ encounterId: currentEncounter.id, ...payload });
   const attempt = cashReceiptAttempt.value?.fingerprint === fingerprint
     ? cashReceiptAttempt.value
     : { fingerprint, key: createCashReceiptIdempotencyKey() };
@@ -1047,30 +1183,38 @@ async function handleCashReceipt() {
   receivingCash.value = true;
   try {
     await encounterService.createCashReceipt(
-      encounter.value.id,
+      currentEncounter.id,
       payload,
       attempt.key
     );
+    if (!isCurrentLoad(generation, routeId)) return;
     cashReceiptAttempt.value = null;
     showCashReceiptModal.value = false;
     cashReceiptNotes.value = '';
-    await refreshEnterpriseSummary();
+    await refreshEnterpriseSummary(generation, routeId, currentEncounter.id);
   } catch (err: unknown) {
-    alert(err instanceof Error ? err.message : 'Erro ao registrar recebimento em dinheiro');
+    if (isCurrentLoad(generation, routeId)) {
+      alert(err instanceof Error ? err.message : 'Erro ao registrar recebimento em dinheiro');
+    }
   } finally {
-    receivingCash.value = false;
+    if (isCurrentLoad(generation, routeId)) receivingCash.value = false;
   }
 }
 
-async function loadAttachments() {
-  if (!encounter.value) return;
+async function loadAttachments(
+  generation = pageGeneration,
+  routeId = routeEncounterId.value,
+  encounterId = encounter.value?.id
+) {
+  if (!encounterId || !isCurrentLoad(generation, routeId)) return;
   attachmentsLoading.value = true;
   try {
-    attachments.value = await attachmentService.list('encounter', encounter.value.id);
+    const nextAttachments = await attachmentService.list('encounter', encounterId);
+    if (isCurrentLoad(generation, routeId)) attachments.value = nextAttachments;
   } catch {
-    // Attachment load failure is non-critical
+    if (isCurrentLoad(generation, routeId)) pushContextWarning('anexos');
   } finally {
-    attachmentsLoading.value = false;
+    if (isCurrentLoad(generation, routeId)) attachmentsLoading.value = false;
   }
 }
 
@@ -1081,43 +1225,75 @@ async function uploadAttachment() {
     !newAttachment.value.checksum.trim()
   )
     return;
+  const routeId = routeEncounterId.value;
+  const generation = pageGeneration;
+  const currentEncounter = encounter.value;
+  if (!currentEncounter) return;
   uploadingAttachment.value = true;
   try {
     await attachmentService.upload({
       linkedEntityType: 'encounter',
-      linkedEntityId: encounter.value.id,
+      linkedEntityId: currentEncounter.id,
       category: 'document',
       fileName: newAttachment.value.fileName.trim(),
       mimeType: newAttachment.value.mimeType.trim() || 'application/pdf',
       checksum: newAttachment.value.checksum.trim()
     });
+    if (!isCurrentLoad(generation, routeId)) return;
     newAttachment.value = { fileName: '', mimeType: 'application/pdf', checksum: '' };
-    await loadAttachments();
+    await loadAttachments(generation, routeId, currentEncounter.id);
   } catch {
     // Upload failure is non-critical
   } finally {
-    uploadingAttachment.value = false;
+    if (isCurrentLoad(generation, routeId)) uploadingAttachment.value = false;
   }
 }
 
-onMounted(async () => {
-  const id = route.params.id as string;
+async function loadPage(id: string) {
+  const generation = ++pageGeneration;
+  resetPageState();
+  loading.value = true;
+  if (!id) {
+    loading.value = false;
+    return;
+  }
+
   try {
     const enc = await encounterService.getById(id);
+    if (!isCurrentLoad(generation, id)) return;
+    if (enc.id !== id) {
+      throw new Error('O atendimento retornado não corresponde ao endereço solicitado.');
+    }
     encounter.value = enc;
     hydrateClinicalHandoffForm(enc);
-    await loadEntityNames(enc);
+    await loadEntityNames(enc, generation, id);
+    if (!isCurrentLoad(generation, id)) return;
     await Promise.all([
-      loadTimeline(),
-      loadAttachments(),
-      refreshEnterpriseSummary(),
-      loadClinicalHandoff()
+      loadTimeline(generation, id, enc.id),
+      loadAttachments(generation, id, enc.id),
+      refreshEnterpriseSummary(generation, id, enc.id),
+      loadClinicalHandoff(generation, id, enc)
     ]);
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar atendimento';
+    if (isCurrentLoad(generation, id)) {
+      error.value = err instanceof Error ? err.message : 'Erro ao carregar atendimento';
+    }
   } finally {
-    loading.value = false;
+    if (isCurrentLoad(generation, id)) loading.value = false;
   }
+}
+
+watch(
+  () => routeEncounterId.value,
+  (id) => {
+    void loadPage(id);
+  },
+  { immediate: true, flush: 'sync' }
+);
+
+onBeforeUnmount(() => {
+  active = false;
+  pageGeneration += 1;
 });
 </script>
 

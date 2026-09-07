@@ -748,6 +748,81 @@ test('resolveScheduledReportRows uses persisted cheque payments for scheduled re
   ]);
 });
 
+test('resolveScheduledReportRows fails closed for foreign or oversized cheque sources', async () => {
+  const schedule = {
+    id: 'schedule-cheques-source-boundary',
+    accountId: 'acc-worker-reports' as never,
+    reportId: 'financial-cheques' as const,
+    name: 'Cheques com limite de fonte',
+    frequency: 'daily' as const,
+    format: 'csv' as const,
+    filters: {},
+    recipients: [],
+    isActive: true,
+    nextRunAt: '2026-05-29T10:00:00.000Z',
+    lastRunAt: null,
+    lastExecutionId: null,
+    lastError: null,
+    createdByUserId: 'user-worker-reports' as never,
+    createdAt: '2026-05-28T10:00:00.000Z',
+    updatedAt: '2026-05-28T10:00:00.000Z'
+  } as const;
+
+  await assert.rejects(
+    resolveScheduledReportRows(schedule, {
+      cheques: {
+        listChequePayments: async () => [
+          {
+            id: 'payment-cheque-foreign',
+            counterSaleId: 'sale-foreign',
+            accountId: 'acc-foreign' as never,
+            method: 'check',
+            amount: 10,
+            installments: 1,
+            reference: 'CHK-FOREIGN',
+            notes: null,
+            createdAt: '2026-05-12T14:30:00.000Z',
+            saleNumber: 'COM-FOREIGN',
+            saleStatus: 'closed'
+          }
+        ]
+      }
+    }),
+    /Cheque report source returned a foreign account row/
+  );
+
+  await assert.rejects(
+    resolveScheduledReportRows(schedule, {
+      cheques: {
+        listChequePayments: async () => [null] as never
+      }
+    }),
+    /Cheque report source returned malformed rows/
+  );
+
+  await assert.rejects(
+    resolveScheduledReportRows(schedule, {
+      cheques: {
+        listChequePayments: async () =>
+          Array.from({ length: 10_001 }, (_, index) => ({
+            id: `payment-cheque-${index}`,
+            counterSaleId: `sale-${index}`,
+            accountId: schedule.accountId,
+            method: 'check' as const,
+            amount: 10,
+            installments: 1,
+            reference: `CHK-${index}`,
+            notes: null,
+            createdAt: '2026-05-12T14:30:00.000Z',
+            saleNumber: `COM-${index}`,
+            saleStatus: 'closed' as const
+          }))
+      }
+    }),
+    /Cheque report source exceeds the maximum exportable page of 10000 rows/
+  );
+});
+
 test('resolveScheduledReportRows uses persisted financial payables with canonical filters and columns', async () => {
   let receivedAccountId: string | undefined;
   let receivedFilters: { readonly status?: string } | undefined;
@@ -1450,6 +1525,111 @@ test('WorkerTickContext supports in-memory persistence mode', () => {
 
   assert.equal(ctx.persistenceMode, 'in-memory');
   assert.equal(ctx.databaseHealthy, false);
+});
+
+test('resolveScheduledReportRows uses persisted cancellation events for history schedules', async () => {
+  const event = {
+    eventId: 'history-event',
+    accountId: 'acc-worker-reports' as never,
+    counterSaleId: 'history-sale',
+    number: 'CS-OLD-001',
+    ownerId: null,
+    cancelledAt: '2026-09-04T23:59:59.999Z',
+    cancelledByUserId: 'actor-1' as never,
+    reason: 'Pedido duplicado',
+    correlationId: 'corr-history',
+    total: 125,
+    discountAmount: 0,
+    paidAmount: 0,
+    balanceDue: 125
+  };
+  const calls: unknown[] = [];
+  const schedule = {
+    accountId: event.accountId,
+    reportId: 'commercial-cancellation-history',
+    filters: { search: ' CS-OLD-001 ', dateFrom: '2026-09-04', dateTo: '2026-09-04' }
+  } as never;
+  const rows = await resolveScheduledReportRows(schedule, {
+    commercialCancellationHistory: {
+      persistenceMode: 'database',
+      async listCancellationReportRows(accountId, filters) {
+        calls.push({ accountId, filters });
+        return [event];
+      }
+    }
+  });
+  assert.deepEqual(rows, [event]);
+  assert.deepEqual(calls, [
+    {
+      accountId: event.accountId,
+      filters: {
+        search: 'cs-old-001',
+        dateFrom: '2026-09-04',
+        dateTo: '2026-09-04'
+      }
+    }
+  ]);
+});
+
+test('resolveScheduledReportRows fails closed for history source, tenant, dates and cap', async () => {
+  const schedule = {
+    accountId: 'acc-worker-reports',
+    reportId: 'commercial-cancellation-history',
+    filters: {}
+  } as never;
+  await assert.rejects(
+    () => resolveScheduledReportRows(schedule, {}),
+    /database-backed cancellation history source/
+  );
+  await assert.rejects(
+    () =>
+      resolveScheduledReportRows(schedule, {
+        commercialCancellationHistory: {
+          persistenceMode: 'in-memory',
+          async listCancellationReportRows() {
+            throw new Error('must not read');
+          }
+        }
+      }),
+    /database-backed cancellation history source/
+  );
+  const invalidRange = {
+    accountId: 'acc-worker-reports',
+    reportId: 'commercial-cancellation-history',
+    filters: { dateFrom: '2026-09-05', dateTo: '2026-09-04' }
+  } as never;
+  await assert.rejects(
+    () =>
+      resolveScheduledReportRows(invalidRange, {
+        commercialCancellationHistory: {
+          persistenceMode: 'database',
+          async listCancellationReportRows() {
+            throw new Error('must not read');
+          }
+        }
+      }),
+    /dateFrom must be before/
+  );
+  for (const [rows, expected] of [
+    [[{ accountId: 'other-account' }], /invalid account/],
+    [
+      Array.from({ length: 10001 }, () => ({ accountId: 'acc-worker-reports' })),
+      /maximum exportable page/
+    ]
+  ] as const) {
+    await assert.rejects(
+      () =>
+        resolveScheduledReportRows(schedule, {
+          commercialCancellationHistory: {
+            persistenceMode: 'database',
+            async listCancellationReportRows() {
+              return rows as never;
+            }
+          }
+        }),
+      expected
+    );
+  }
 });
 
 test('resolveScheduledReportRows reads the bounded persisted cancelled-sales report', async () => {

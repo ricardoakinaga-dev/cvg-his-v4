@@ -38,10 +38,10 @@ beforeAll(async () => {
 
   await pool.query(
     `
-      INSERT INTO users (id, account_id, email, password_hash, full_name)
+      INSERT INTO users (id, account_id, email, password_hash, full_name, username)
       VALUES
-        ($1, $3, 'rls-commercial-a@example.com', 'hash', 'Commercial User A'),
-        ($2, $4, 'rls-commercial-b@example.com', 'hash', 'Commercial User B')
+        ($1, $3, 'rls-commercial-a@example.com', 'hash', 'Commercial User A', 'fixture_' || $1::uuid::text),
+        ($2, $4, 'rls-commercial-b@example.com', 'hash', 'Commercial User B', 'fixture_' || $2::uuid::text)
       ON CONFLICT (id) DO NOTHING
     `,
     [USER_A, USER_B, ACCOUNT_A, ACCOUNT_B]

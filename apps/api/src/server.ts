@@ -12,6 +12,7 @@ import {
 } from '@cvg-his-v2/shared-database';
 import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
 import type { ApiKeysService } from '@cvg-his-v2/module-api-keys';
+import { isSecureRequest } from './http/security-headers.js';
 import { createAuthRateLimiter } from './http/auth-rate-limiter.js';
 import {
   assertPixProviderWebhookReadiness,
@@ -545,16 +546,6 @@ export function assertProductionProviderReadiness(
       `Production-like API cannot start with mock or missing providers: ${missingProviders.join(', ')}`
     );
   }
-}
-
-function isSecureRequest(request: IncomingMessage): boolean {
-  if ((request.socket as { encrypted?: boolean }).encrypted) {
-    return true;
-  }
-
-  const forwardedProto = request.headers['x-forwarded-proto'];
-  const headerValue = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
-  return headerValue?.split(',')[0].trim().toLowerCase() === 'https';
 }
 
 function decodeAttachmentContent(contentBase64: unknown): Buffer | undefined {
@@ -6134,6 +6125,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 billing,
                 cash,
                 commissions,
+                commissionCalculations: options.repositories?.commissionCalculations,
                 encounterFinancial,
                 financialPayables,
                 counterSales,

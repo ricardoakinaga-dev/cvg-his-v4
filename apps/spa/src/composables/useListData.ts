@@ -1,4 +1,4 @@
-import { ref, onMounted, getCurrentInstance, type Ref } from 'vue';
+import { ref, onMounted, onBeforeUnmount, getCurrentInstance, type Ref } from 'vue';
 
 export interface UseListDataOptions<T> {
   fetchFn: (search?: string) => Promise<T[]>;
@@ -12,25 +12,41 @@ export function useListData<T>(options: UseListDataOptions<T>) {
   const loading = ref(false);
   const error = ref('');
   const search = ref('');
+  let latestRequest = 0;
+  let disposed = false;
 
   async function load() {
+    if (disposed) return;
+    const request = ++latestRequest;
+    const isCurrent = () => !disposed && request === latestRequest;
+    const searchValue = options.withSearch ? search.value || undefined : undefined;
     loading.value = true;
+    if (!isCurrent()) return;
     error.value = '';
+    if (!isCurrent()) return;
     try {
-      const searchValue = options.withSearch ? search.value || undefined : undefined;
-      items.value = await options.fetchFn(searchValue);
-      if (options.onLoaded) {
+      const result = await options.fetchFn(searchValue);
+      if (!isCurrent()) return;
+      items.value = result;
+      // Publishing items can synchronously trigger a watcher that starts a new load.
+      if (isCurrent() && options.onLoaded) {
         await options.onLoaded(items.value);
       }
     } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : `Erro ao carregar ${options.entityLabel}`;
+      if (isCurrent()) {
+        error.value = err instanceof Error ? err.message : `Erro ao carregar ${options.entityLabel}`;
+      }
     } finally {
-      loading.value = false;
+      if (isCurrent()) loading.value = false;
     }
   }
 
   if (getCurrentInstance()) {
     onMounted(load);
+    onBeforeUnmount(() => {
+      disposed = true;
+      latestRequest++;
+    });
   }
 
   return {

@@ -88,13 +88,15 @@ describe('bootstrap', () => {
     }
   );
 
-  it.each(['DATABASE_REQUIRE_RLS_ROLE', 'DATABASE_REQUIRE_SCHEMA'] as const)(
+  it.each(['DATABASE_REQUIRE_RLS_ROLE', 'DATABASE_REQUIRE_SCHEMA', 'REQUIRE_TEST_DB'] as const)(
     'fails closed when %s is enabled without a database',
     async (flag) => {
       const previousRlsRole = process.env.DATABASE_REQUIRE_RLS_ROLE;
       const previousSchema = process.env.DATABASE_REQUIRE_SCHEMA;
+      const previousRequireTestDb = process.env.REQUIRE_TEST_DB;
       delete process.env.DATABASE_REQUIRE_RLS_ROLE;
       delete process.env.DATABASE_REQUIRE_SCHEMA;
+      delete process.env.REQUIRE_TEST_DB;
       process.env[flag] = '1';
       try {
         const { bootstrapServices } = await import('../../../apps/api/src/bootstrap.ts');
@@ -107,9 +109,46 @@ describe('bootstrap', () => {
         else process.env.DATABASE_REQUIRE_RLS_ROLE = previousRlsRole;
         if (previousSchema === undefined) delete process.env.DATABASE_REQUIRE_SCHEMA;
         else process.env.DATABASE_REQUIRE_SCHEMA = previousSchema;
+        if (previousRequireTestDb === undefined) delete process.env.REQUIRE_TEST_DB;
+        else process.env.REQUIRE_TEST_DB = previousRequireTestDb;
       }
     }
   );
+
+  it('fails closed instead of using in-memory repositories when REQUIRE_TEST_DB rejects the database', async () => {
+    const previousRequireTestDb = process.env.REQUIRE_TEST_DB;
+    process.env.REQUIRE_TEST_DB = '1';
+
+    const { bootstrapServices, shutdownServices } =
+      await import('../../../apps/api/src/bootstrap.ts');
+
+    try {
+      await expect(
+        bootstrapServices({
+          environment: 'development',
+          databaseUrl: 'postgresql://invalid:invalid@127.0.0.1:1/require_test_db_unavailable',
+          maxRetries: 1,
+          retryDelayMs: 0
+        })
+      ).rejects.toThrow(/database|connection|refusing in-memory/i);
+    } finally {
+      await shutdownServices();
+      if (previousRequireTestDb === undefined) delete process.env.REQUIRE_TEST_DB;
+      else process.env.REQUIRE_TEST_DB = previousRequireTestDb;
+    }
+  });
+
+  it('keeps production readiness tied to the persisted commission report schema', async () => {
+    const { findMissingProductionRepositories, productionDatabaseRepositoryKeys } =
+      await import('../../../apps/api/src/bootstrap.ts');
+
+    expect(productionDatabaseRepositoryKeys).toContain('commissionCalculations');
+    expect(
+      findMissingProductionRepositories({
+        commissionCalculations: undefined
+      })
+    ).toContain('commissionCalculations');
+  });
 
   it('reports dependency health when the database check succeeds', async () => {
     vi.doMock('@cvg-his-v2/shared-database', async () => {

@@ -1,14 +1,14 @@
 <template>
   <div class="owner-form-page">
-    <AppPageHeader :breadcrumbs="['Atendimento', 'Cadastros', 'Clientes', isEdit ? 'Editar Cliente' : 'Novo Cliente']">
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Cadastros', 'Tutores', isEdit ? 'Editar Tutor' : 'Novo Tutor']">
       <template #title>
-        {{ isEdit ? 'Editar Cliente' : 'Cadastrar Novo Cliente' }}
+        {{ isEdit ? 'Editar Tutor' : 'Cadastrar Novo Tutor' }}
       </template>
       <template #subtitle>
         Cadastro de cliente com identificação, informações de contato, documentação, endereço e observações.
       </template>
       <template #actions>
-        <DsButton variant="secondary" tag="a" href="/owners">Cancelar</DsButton>
+        <DsButton variant="secondary" tag="a" to="/owners">Cancelar</DsButton>
       </template>
     </AppPageHeader>
 
@@ -18,9 +18,18 @@
     <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
       {{ successMessage }}
     </DsAlert>
+    <DsAlert v-if="loading" variant="info">
+      Carregando dados do tutor para edição…
+    </DsAlert>
+
+    <DsAlert v-if="isEdit && !loading && !hydrated" variant="warning">
+      A edição está protegida até que os dados do tutor sejam carregados.
+      <DsButton variant="secondary" @click="loadOwner(ownerId, pageGeneration)">Tentar carregar novamente</DsButton>
+    </DsAlert>
 
     <div class="owner-form-page__layout">
       <form class="owner-form" @submit.prevent="onSubmit">
+        <fieldset class="owner-form-fields" :disabled="loading || !hydrated">
         <details open class="owner-section">
           <summary class="owner-section__summary">Identificação do Cliente</summary>
           <div class="owner-section__body">
@@ -233,11 +242,12 @@
         </details>
 
         <div class="form-actions">
-          <DsButton type="submit" variant="primary" :loading="submitting">
-            {{ submitting ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Cadastrar Cliente' }}
+        <DsButton type="submit" variant="primary" :loading="submitting" :disabled="loading || !hydrated">
+            {{ submitting ? 'Salvando...' : isEdit || createdOwnerId ? 'Salvar Alterações' : 'Cadastrar Cliente' }}
           </DsButton>
-          <DsButton variant="secondary" tag="a" href="/owners">Cancelar</DsButton>
+          <DsButton variant="secondary" tag="a" to="/owners">Cancelar</DsButton>
         </div>
+        </fieldset>
       </form>
 
       <aside class="owner-form-page__aside">
@@ -262,13 +272,22 @@
       </aside>
     </div>
   </div>
+  <DsModal :open="leaveRequested" title="Alterações não salvas" size="sm" initial-focus="#owner-continue-editing" @close="resolveLeave(false)">
+    <p>Você alterou os dados deste tutor. Continue editando para salvar ou descarte as alterações para sair.</p>
+    <template #footer>
+      <DsButton variant="secondary" @click="resolveLeave(true)">Descartar e sair</DsButton>
+      <DsButton id="owner-continue-editing" variant="primary" @click="resolveLeave(false)">Continuar editando</DsButton>
+    </template>
+  </DsModal>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive } from 'vue';
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ownerService } from '@/services/owner';
 import type { CreateOwnerRequest, OwnerSummary, UpdateOwnerRequest } from '@/types/owner';
+import { useUnsavedChanges } from '@/composables/useUnsavedChanges';
+import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import { useFormValidation } from '@/composables/useFormValidation';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
@@ -281,7 +300,13 @@ const route = useRoute();
 const router = useRouter();
 
 const isEdit = computed(() => !!route.params.id && route.path.includes('/edit'));
-const ownerId = computed(() => route.params.id as string);
+const ownerId = computed(() => String(route.params.id ?? ''));
+const routeOwnerId = computed(() => ownerId.value);
+const loading = ref(false);
+const createdOwnerId = ref('');
+const hydrated = ref(false);
+let active = true;
+let pageGeneration = 0;
 
 const form = reactive({
   fullName: '',
@@ -316,6 +341,8 @@ const form = reactive({
   originalCreatedAt: ''
 });
 
+const { dirty, leaveRequested, resolveLeave, markClean } = useUnsavedChanges(() => JSON.stringify(form));
+
 const validation = useFormValidation({
   rules: {
     fullName: [(v: unknown) => (!(v as string)?.trim() ? 'Nome é obrigatório' : null)],
@@ -329,6 +356,22 @@ const validation = useFormValidation({
 });
 
 const { errors, formError, successMessage, submitting, validate } = validation;
+
+function isCurrentLoad(generation: number, id: string) {
+  return active && generation === pageGeneration && routeOwnerId.value === id;
+}
+
+function resetForm() {
+  Object.assign(form, {
+    fullName: '', birthDate: '', sex: 'unknown', group: '', receiveSms: false,
+    phone1: '', phone2: '', mobile: '', email: '', personType: 'individual', documentId: '', rg: '',
+    zipCode: '', street: '', number: '', complement: '', state: '', city: '', district: '', reference: '', cityCode: '',
+    administrativeNotes: '', financialResponsible: false, status: 'active', allowedDebtLimit: '', creditBalance: '', availablePoints: '', blockedPoints: '', legacyVetusId: '', originalCreatedAt: ''
+  });
+  validation.clearErrors();
+  formError.value = '';
+  successMessage.value = '';
+}
 
 const notesLength = computed(() => form.administrativeNotes.length);
 const primaryContactLabel = computed(() => form.mobile || form.phone1 || form.email || '—');
@@ -437,8 +480,14 @@ function getValues(): Record<string, unknown> {
 }
 
 async function onSubmit() {
+  if (submitting.value || loading.value || !hydrated.value) return;
   if (!validate(getValues())) return;
 
+  const submittedSnapshot = JSON.stringify(form);
+  const targetId = ownerId.value;
+  const generation = pageGeneration;
+  const editing = isEdit.value || Boolean(createdOwnerId.value);
+  const mutationId = createdOwnerId.value || targetId;
   submitting.value = true;
   formError.value = '';
   successMessage.value = '';
@@ -479,32 +528,52 @@ async function onSubmit() {
       originalCreatedAt: normalizeString(form.originalCreatedAt)
     };
 
-    if (isEdit.value) {
+    if (editing) {
       const payload: UpdateOwnerRequest = {
         ...payloadBase,
         status: form.status
       };
-      await ownerService.update(ownerId.value, payload);
+      const updated = await ownerService.update(mutationId, payload);
+      if (!isCurrentLoad(generation, targetId)) return;
+      if (updated.id !== mutationId) {
+        throw new Error('O tutor retornado não corresponde ao endereço solicitado.');
+      }
+      markClean(submittedSnapshot);
       successMessage.value = 'Cliente atualizado com sucesso!';
-      setTimeout(() => router.push(`/owners/${ownerId.value}`), 1000);
+      if (!dirty.value) void router.push(`/owners/${mutationId}`);
     } else {
       const payload: CreateOwnerRequest = payloadBase;
       const created = await ownerService.create(payload);
+      if (!isCurrentLoad(generation, targetId)) return;
+      createdOwnerId.value = created.id;
+      markClean(submittedSnapshot);
       successMessage.value = 'Cliente cadastrado com sucesso!';
-      setTimeout(() => router.push(`/owners/${created.id}`), 1000);
+      if (!dirty.value) void router.push(`/owners/${created.id}`);
     }
   } catch (err: unknown) {
-    formError.value = err instanceof Error ? err.message : 'Erro ao salvar cliente';
+    if (isCurrentLoad(generation, targetId)) {
+      formError.value = err instanceof Error ? err.message : 'Erro ao salvar cliente';
+    }
   } finally {
-    submitting.value = false;
+    if (isCurrentLoad(generation, targetId)) submitting.value = false;
   }
 }
 
-onMounted(async () => {
-  if (!isEdit.value) return;
+async function loadOwner(id: string, generation: number) {
+  if (!isEdit.value || !id) {
+    loading.value = false;
+    hydrated.value = true;
+    return;
+  }
 
+  loading.value = true;
+  formError.value = '';
   try {
-    const owner = await ownerService.getById(ownerId.value);
+    const owner = await ownerService.getById(id);
+    if (!isCurrentLoad(generation, id)) return;
+    if (owner.id !== id) {
+      throw new Error('O tutor retornado não corresponde ao endereço solicitado.');
+    }
     form.fullName = owner.fullName;
     form.birthDate = owner.profile?.birthDate ?? '';
     form.sex = owner.profile?.sex ?? 'unknown';
@@ -532,13 +601,40 @@ onMounted(async () => {
     form.legacyVetusId = owner.legacyVetusId ?? '';
     form.originalCreatedAt = owner.originalCreatedAt ?? '';
     assignContacts(owner);
+    markClean();
+    hydrated.value = true;
   } catch (err: unknown) {
-    formError.value = err instanceof Error ? err.message : 'Erro ao carregar cliente';
+    if (isCurrentLoad(generation, id)) {
+      formError.value = err instanceof Error ? err.message : 'Erro ao carregar cliente';
+    }
+  } finally {
+    if (isCurrentLoad(generation, id)) loading.value = false;
   }
+}
+
+watch(
+  () => `${route.path}:${routeOwnerId.value}`,
+  () => {
+    const generation = ++pageGeneration;
+    resetForm();
+    createdOwnerId.value = '';
+    hydrated.value = !isEdit.value;
+    markClean();
+    submitting.value = false;
+    loading.value = false;
+    void loadOwner(routeOwnerId.value, generation);
+  },
+  { immediate: true, flush: 'sync' }
+);
+
+onBeforeUnmount(() => {
+  active = false;
+  pageGeneration += 1;
 });
 </script>
 
 <style scoped>
+.owner-form-fields { display: contents; border: 0; padding: 0; margin: 0; min-width: 0; }
 .owner-form-page {
   display: flex;
   flex-direction: column;

@@ -4,7 +4,7 @@ import {
   ApiCall,
   CleanupTracker,
   getE2EAccessToken,
-  loginViaToken,
+  loginViaToken
 } from './fixtures/spa-fixture';
 
 /**
@@ -95,7 +95,7 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
       await page.waitForLoadState('networkidle');
 
       // Validate page title using heading role
-      await expect(pageHeaderTitle).toHaveText('🛏️ Internação', {
+      await expect(pageHeaderTitle).toHaveText('Internação', {
         timeout: 15000
       });
       console.log('   ✅ Inpatient list page loaded');
@@ -163,7 +163,7 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
       console.log('   🔙 Verifying navigation back to list...');
       await page.goto(`${SPA_URL}/inpatient`);
       await page.waitForLoadState('networkidle');
-      await expect(pageHeaderTitle).toHaveText('🛏️ Internação', {
+      await expect(pageHeaderTitle).toHaveText('Internação', {
         timeout: 10000
       });
       console.log('   ✅ Navigation back to list works');
@@ -187,7 +187,7 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
     await page.waitForLoadState('networkidle');
 
     // Validate page title
-    await expect(pageHeaderTitle).toHaveText('🛏️ Internação', {
+    await expect(pageHeaderTitle).toHaveText('Internação', {
       timeout: 15000
     });
 

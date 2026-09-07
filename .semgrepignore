@@ -1,0 +1,9 @@
+# Archived material is outside the executable product.
+legado/
+node_modules/
+.git/
+dist/
+coverage/
+artifacts/
+test-results/
+playwright-report/

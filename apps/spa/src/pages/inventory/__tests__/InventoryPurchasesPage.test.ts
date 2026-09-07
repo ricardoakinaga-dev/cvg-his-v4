@@ -2,10 +2,16 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import InventoryPurchasesPage from '../InventoryPurchasesPage.vue';
+import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import { inventoryService } from '@/services/inventory';
 
 vi.mock('@/services/inventory', () => ({
   inventoryService: {
+    createPurchase: vi.fn(),
+    approvePurchase: vi.fn(),
+    receivePurchase: vi.fn(),
+    createStockAdjustment: vi.fn(),
+    update: vi.fn(),
     list: vi.fn(),
     listLots: vi.fn(),
     listPurchases: vi.fn()
@@ -165,7 +171,7 @@ describe('InventoryPurchasesPage', () => {
     expect(wrapper.text()).toContain('Custo Unit.');
     expect(wrapper.text()).toContain('Previsão');
     expect(wrapper.text()).toContain('Observação');
-    expect(wrapper.text()).toContain('Preparar Pedido');
+    expect(wrapper.text()).toContain('Preparar rascunho');
     expect(wrapper.text()).toContain('Pesquisar');
     expect(wrapper.text()).toContain('Dipirona Injetavel');
     expect(wrapper.text()).toContain('Gaze Esteril');
@@ -215,26 +221,48 @@ describe('InventoryPurchasesPage', () => {
 
     expect(wrapper.text()).toContain('Distribuidora Parcial');
     expect(wrapper.text()).toContain('Recebimento parcial');
-    expect(wrapper.text().replace(/\u00a0/g, ' ')).toContain('R$ 6,00 em aberto');
+    expect(wrapper.text().replace(/\u00a0/g, ' ')).toContain('R$ 6,00');
   });
 
-  it('prepares a purchase order locally without mutating inventory APIs', async () => {
+  it('prepares a temporary purchase draft retaining notes without inventory mutations', async () => {
     const wrapper = mount(InventoryPurchasesPage);
     await flushPromises();
 
+    const stockBefore = JSON.stringify(lowStockItem);
+    const lotsBefore = JSON.stringify(activeLot);
     await wrapper.get('[data-testid="purchase-product"]').setValue('item-low');
     await wrapper.get('[data-testid="purchase-supplier"]').setValue('Fornecedor CVG');
     await wrapper.get('[data-testid="purchase-quantity"]').setValue(6);
     await wrapper.get('[data-testid="purchase-cost"]').setValue(11.5);
+    await wrapper.get('[data-testid="purchase-notes"]').setValue('Conferir com responsável antes de continuar');
     await wrapper.find('form[aria-label="Preparar compra de estoque"]').trigger('submit');
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Dipirona Injetavel preparado para compra com Fornecedor CVG');
-    expect(wrapper.text()).toContain('Pedido');
+    const detail = wrapper.get('[data-testid="temporary-draft-detail"]');
+    expect(detail.text()).toContain('Rascunho temporário');
+    expect(detail.text()).toContain('Conferir com responsável antes de continuar');
+    expect(detail.text()).toContain('Será perdido ao sair ou recarregar. Estoque não alterado.');
+    expect((wrapper.get('[data-testid="purchase-notes"]').element as HTMLInputElement).value).toBe('');
+    expect(JSON.stringify(lowStockItem)).toBe(stockBefore);
+    expect(JSON.stringify(activeLot)).toBe(lotsBefore);
+    expect(inventoryService.createPurchase).not.toHaveBeenCalled();
+    expect(inventoryService.approvePurchase).not.toHaveBeenCalled();
+    expect(inventoryService.receivePurchase).not.toHaveBeenCalled();
+    expect(inventoryService.createStockAdjustment).not.toHaveBeenCalled();
+    expect(inventoryService.update).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain('Rascunho temporário de compra: Dipirona Injetavel com Fornecedor CVG');
+    expect(wrapper.text()).toContain('Rascunho temporário');
     expect(wrapper.text()).toContain('Fornecedor CVG');
+    expect(wrapper.find('.purchase-summary').text().replace(/\u00a0/g, ' ')).toContain('R$ 0,00');
     expect(inventoryService.list).toHaveBeenCalledTimes(1);
     expect(inventoryService.listLots).toHaveBeenCalledTimes(1);
     expect(inventoryService.listPurchases).toHaveBeenCalledTimes(1);
+    wrapper.unmount();
+    const remounted = mount(InventoryPurchasesPage);
+    await flushPromises();
+    expect(remounted.find('[data-testid="temporary-draft-detail"]').exists()).toBe(false);
+    expect(remounted.text()).not.toContain('Conferir com responsável antes de continuar');
+    remounted.unmount();
   });
 
   it('blocks purchase preparation without a selected product', async () => {
@@ -259,5 +287,103 @@ describe('InventoryPurchasesPage', () => {
     expect(inventoryService.list).toHaveBeenLastCalledWith('Gaze');
     expect(inventoryService.listLots).toHaveBeenCalledTimes(2);
     expect(inventoryService.listPurchases).toHaveBeenCalledTimes(2);
+  });
+});
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: Error) => void;
+  const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
+
+describe('purchase loading and recovery', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(inventoryService.list).mockResolvedValue([lowStockItem]);
+    vi.mocked(inventoryService.listLots).mockResolvedValue([activeLot]);
+    vi.mocked(inventoryService.listPurchases).mockResolvedValue([]);
+  });
+
+  it('opens preparation from the contextual action, focuses supplier and retains inputs on close', async () => {
+    const wrapper = mount(InventoryPurchasesPage, { attachTo: document.body });
+    await flushPromises();
+    const panel = wrapper.get('.preparation-panel').element as HTMLDetailsElement;
+    expect(panel.open).toBe(false);
+    expect((wrapper.get('.filter-panel').element as HTMLDetailsElement).open).toBe(false);
+    await wrapper.findAll('button').find(button => button.text() === 'Novo rascunho')!.trigger('click');
+    expect(panel.open).toBe(true);
+    expect(document.activeElement).toBe(wrapper.get('[data-testid="purchase-supplier"]').element);
+    await wrapper.get('[data-testid="purchase-notes"]').setValue('Manter esta observação');
+    panel.open = false;
+    await wrapper.findAll('button').find(button => button.text() === 'Novo rascunho')!.trigger('click');
+    expect((wrapper.get('[data-testid="purchase-notes"]').element as HTMLInputElement).value).toBe('Manter esta observação');
+    wrapper.unmount();
+  });
+
+  it('starts with unknown remote totals and commits the complete snapshot atomically', async () => {
+    const pending = deferred<typeof persistedPurchase[]>();
+    vi.mocked(inventoryService.listPurchases).mockReturnValueOnce(pending.promise);
+    const wrapper = mount(InventoryPurchasesPage);
+    expect(wrapper.text()).toContain('Carregando compras');
+    expect(wrapper.text()).not.toContain('Nenhuma compra encontrada');
+    await flushPromises();
+    expect(wrapper.get('.purchase-summary').findAll('dd').map(cell => cell.text())).toEqual(['—', '—', '—', '—', '0']);
+    expect(wrapper.find('[data-testid="purchase-product"]').text()).not.toContain('Dipirona');
+    pending.resolve([persistedPurchase]);
+    await flushPromises();
+    expect(wrapper.text()).toContain('Distribuidora Persistida');
+    expect(wrapper.get('.purchase-summary').findAll('dd')[0].text()).toBe('1');
+  });
+
+  it('preserves notes and local drafts after failed refresh and retries after alert dismissal', async () => {
+    const wrapper = mount(InventoryPurchasesPage);
+    await flushPromises();
+    await wrapper.get('[data-testid="purchase-product"]').setValue('item-low');
+    await wrapper.get('[data-testid="purchase-notes"]').setValue('Nota do rascunho');
+    await wrapper.get('.purchase-panel').trigger('submit');
+    await wrapper.get('[data-testid="purchase-product"]').setValue('item-low');
+    await wrapper.get('[data-testid="purchase-notes"]').setValue('Próxima preparação');
+    const pending = deferred<typeof lowStockItem[]>();
+    vi.mocked(inventoryService.list).mockReturnValueOnce(pending.promise);
+    await wrapper.findAll('button').find(button => button.text() === 'Atualizar')!.trigger('click');
+    await wrapper.get('.purchase-panel').trigger('submit');
+    expect(wrapper.findAll('[data-testid="temporary-draft-detail"]')).toHaveLength(1);
+    pending.reject(new Error('Falha remota'));
+    await flushPromises();
+    expect(wrapper.text()).toContain('Dados de compras indisponíveis');
+    expect(wrapper.text()).toContain('Nota do rascunho');
+    expect(wrapper.text()).not.toContain('Nenhuma compra encontrada');
+    expect(wrapper.get('.purchase-summary').findAll('dd').map(cell => cell.text())).toEqual(['—', '—', '—', '—', '1']);
+    wrapper.findComponent(DsAlert).vm.$emit('dismiss');
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('Falha remota');
+    await wrapper.get('.purchase-panel').trigger('submit');
+    expect(wrapper.findAll('[data-testid="temporary-draft-detail"]')).toHaveLength(1);
+    await wrapper.findAll('button').find(button => button.text() === 'Tentar novamente')!.trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('Dados de compras indisponíveis');
+    expect(wrapper.text()).toContain('Nota do rascunho');
+    expect((wrapper.get('[data-testid="purchase-notes"]').element as HTMLInputElement).value).toBe('Próxima preparação');
+  });
+
+  it.each(['resolve', 'reject'] as const)('ignores a stale request that later %ss and refreshes the applied query', async (outcome) => {
+    const old = deferred<typeof lowStockItem[]>();
+    vi.mocked(inventoryService.list).mockReturnValueOnce(old.promise);
+    const wrapper = mount(InventoryPurchasesPage);
+    const product = wrapper.findAll('.filter-panel input')[1];
+    await product.setValue('Dipirona');
+    await wrapper.get('.filter-panel form').trigger('submit');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Dipirona Injetavel');
+    if (outcome === 'resolve') old.resolve([normalItem]);
+    else old.reject(new Error('Erro antigo'));
+    await flushPromises();
+    expect(wrapper.text()).toContain('Dipirona Injetavel');
+    expect(wrapper.text()).not.toContain('Erro antigo');
+    await product.setValue('Gaze');
+    await wrapper.findAll('button').find(button => button.text() === 'Atualizar')!.trigger('click');
+    await flushPromises();
+    expect(inventoryService.list).toHaveBeenLastCalledWith('Dipirona');
   });
 });

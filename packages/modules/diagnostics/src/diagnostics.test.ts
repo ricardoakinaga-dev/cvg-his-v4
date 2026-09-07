@@ -533,6 +533,23 @@ test('LaboratoryService runs the canonical workflow through delivery with signed
   assert.equal(reported.signedByUserId, 'rt-1');
   assert.ok(reported.signatureHash);
 
+  for (const invalid of [
+    { deliveryChannel: 'x'.repeat(81) },
+    { deliveryChannel: 'portal', deliveredAt: 'not-a-date' }
+  ]) {
+    await assert.rejects(
+      laboratory.transitionOrderAndPersistForAccount('acc_test' as never, order.id, {
+        status: 'delivered',
+        deliveredByUserId: 'user-1',
+        ...invalid
+      }),
+      { code: 'VALIDATION_ERROR', statusCode: 400 }
+    );
+    const unchanged = laboratory.getWorkflowOrder('acc_test' as never, order.id);
+    assert.equal(unchanged.status, 'reported');
+    assert.equal(unchanged.history.length, reported.history.length);
+  }
+
   const delivered = await laboratory.transitionOrderAndPersistForAccount(
     'acc_test' as never,
     order.id,

@@ -99,7 +99,7 @@ export async function handleSoc2Routes(
         'evidence_collected',
         'audit',
         principal.session.sessionId,
-        `SOC2 evidence package collected for period ${periodStart} to ${periodEnd}`,
+        `SOC2 local inventory collected (not verified; no operational approval), requested period ${periodStart} to ${periodEnd}`,
         'medium',
         correlationId
       );
@@ -138,7 +138,7 @@ export async function handleSoc2Routes(
         'security_score_calculated',
         'audit',
         principal.session.sessionId,
-        `Security score calculated: ${score.overall}/100`,
+        `SOC2 score status: ${score.status}; operational approval: ${score.operationalApproval}; verified credit: ${score.overall}/100`,
         'medium',
         correlationId
       );

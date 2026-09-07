@@ -1,12 +1,12 @@
 <template>
   <div class="scheduling-form-page">
     <AppPageHeader>
-      <template #title>📅 Novo Agendamento</template>
+      <template #title>Novo Agendamento</template>
       <template #subtitle>
         <span class="muted">Atendimento &gt; Agenda. Registre o compromisso e prepare a recepção para seguir para fila, triagem e atendimento.</span>
       </template>
       <template #actions>
-        <DsButton variant="secondary" tag="a" href="/scheduling">Cancelar</DsButton>
+        <DsButton variant="secondary" tag="a" to="/scheduling">Cancelar</DsButton>
       </template>
     </AppPageHeader>
 
@@ -74,7 +74,7 @@
             <DsButton type="submit" variant="primary" :loading="submitting">
               {{ submitting ? 'Salvando...' : 'Salvar Agendamento' }}
             </DsButton>
-            <DsButton variant="secondary" tag="a" href="/scheduling">Cancelar</DsButton>
+            <DsButton variant="secondary" tag="a" to="/scheduling">Cancelar</DsButton>
           </div>
         </form>
       </DsCard>

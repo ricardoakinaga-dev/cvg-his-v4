@@ -104,10 +104,10 @@
           </div>
 
           <div class="appointment-details-card__actions">
-            <DsButton variant="secondary" tag="a" :href="`/appointments/${appointment.id}`">
+            <DsButton variant="secondary" tag="a" :to="`/appointments/${appointment.id}`">
               Ver detalhe completo
             </DsButton>
-            <DsButton variant="secondary" tag="a" :href="editHref">
+            <DsButton variant="secondary" tag="a" :to="editHref">
               Editar
             </DsButton>
             <DsButton
@@ -145,7 +145,7 @@
               v-if="showQueueAction"
               variant="secondary"
               tag="a"
-              href="/queue"
+              to="/queue"
             >
               Ver fila
             </DsButton>

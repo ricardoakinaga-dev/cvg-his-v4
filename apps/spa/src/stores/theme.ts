@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia';
 
 export const THEME_STORAGE_KEY = 'cvg-his-v2:theme';
-const LIGHT_THEME_COLOR = '#2563eb';
-const DARK_THEME_COLOR = '#0b1220';
+const LIGHT_THEME_COLOR = '#0fa8b8';
+const DARK_THEME_COLOR = '#071722';
 
 export type ThemeMode = 'light' | 'dark';
 

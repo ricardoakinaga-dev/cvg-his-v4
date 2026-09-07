@@ -283,6 +283,35 @@ describe('ReceptionGatewayPage', () => {
     expect(wrapper.text()).toContain('Abrir Esteira');
   });
 
+  it('puts search results before operational summaries while retaining secondary controls in disclosures', async () => {
+    const ReceptionGatewayPage = (await import('../ReceptionGatewayPage.vue')).default;
+    const wrapper = mount(ReceptionGatewayPage, {
+      global: { stubs: { RouterLink: { template: '<a :href="to"><slot /></a>', props: ['to'] } } }
+    });
+    await flushPromises();
+
+    const search = wrapper.get('form[role="search"]');
+    const queue = wrapper.get('.reception-funnel');
+    expect(search.element.compareDocumentPosition(queue.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(queue.get('details').attributes('open')).toBeUndefined();
+    expect(queue.get('details').text()).toContain('Finalizados');
+    expect(queue.get('.queue-preview').element.closest('details')).toBeNull();
+    const shortcuts = wrapper.get('.reception-shortcuts');
+    expect(shortcuts.attributes('open')).toBeUndefined();
+    expect(shortcuts.get('a[href="/appointments"]').text()).toBe('Abrir Agenda');
+    expect(shortcuts.find('a[href="/owners/new"]').exists()).toBe(true);
+
+    await search.get('input').setValue('Rex');
+    await search.trigger('submit');
+    await flushPromises();
+    const results = wrapper.get('.reception-results');
+    expect(search.element.nextElementSibling).toBe(results.element);
+    expect(results.text()).toContain('Rex');
+    expect(results.text()).toContain('Joao Silva');
+    expect(results.element.closest('details')).toBeNull();
+    wrapper.unmount();
+  });
+
   it('searches owners and patients from the same field', async () => {
     const ReceptionGatewayPage = (await import('../ReceptionGatewayPage.vue')).default;
     const wrapper = mount(ReceptionGatewayPage);

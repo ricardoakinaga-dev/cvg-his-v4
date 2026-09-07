@@ -56,8 +56,12 @@ test.describe('Busca Mestre 360 -> cockpit -> recepcao', () => {
     await patientRow.getByRole('link', { name: 'Abrir cockpit' }).click();
     await expect(page).toHaveURL(new RegExp(`/patients/${patient.id}$`), { timeout: 15000 });
     await expect(page.getByLabel('Cockpit 360 do paciente')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText('Cardiopatia controlada')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText('Dipirona')).toBeVisible();
+    await expect(
+      page.getByTestId('patient-risk-strip').getByText('Cardiopatia controlada', { exact: true })
+    ).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.getByTestId('patient-risk-strip').getByText('Dipirona', { exact: true })
+    ).toBeVisible();
 
     await page.goto(`${SPA_URL}/reception`);
     await page.waitForLoadState('networkidle');
@@ -73,7 +77,9 @@ test.describe('Busca Mestre 360 -> cockpit -> recepcao', () => {
     await expect(quickActions).toBeVisible({ timeout: 15000 });
     await expect(quickActions).toContainText('Prioridade 360');
     await expect(quickActions).toContainText('Atenção clínica');
-    await expect(quickActions).toContainText('Abrir cockpit 360 antes de seguir com agenda, esteira ou comanda.');
+    await expect(quickActions).toContainText(
+      'Abrir cockpit 360 antes de seguir com agenda, esteira ou comanda.'
+    );
 
     await quickActions.getByRole('link', { name: /Atenção clínica/ }).click();
     await expect(page).toHaveURL(new RegExp(`/patients/${patient.id}$`), { timeout: 15000 });
@@ -238,7 +244,9 @@ test.describe('Busca Mestre 360 -> cockpit -> recepcao', () => {
     await expect(page).toHaveURL(new RegExp(`/patients/${patient.id}$`), { timeout: 15000 });
     const cockpit360 = page.getByLabel('Cockpit 360 do paciente');
     await expect(cockpit360).toBeVisible({ timeout: 15000 });
-    await expect(cockpit360.getByText('Vacina V10 vencida E2E 360')).toBeVisible({ timeout: 15000 });
+    await expect(cockpit360.getByText('Vacina V10 vencida E2E 360')).toBeVisible({
+      timeout: 15000
+    });
 
     await page.goto(`${SPA_URL}/reception`);
     await page.waitForLoadState('networkidle');

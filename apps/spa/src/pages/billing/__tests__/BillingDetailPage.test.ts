@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
+import { reactive } from 'vue';
 
 const mockRecord = {
   id: 'bill-1',
@@ -14,6 +15,16 @@ const mockRecord = {
   administrativeNotes: '',
   createdAt: '2024-01-15T10:00:00Z',
   updatedAt: '2024-01-15T10:00:00Z'
+};
+const mockRecordSecond = {
+  ...mockRecord,
+  id: 'bill-2',
+  encounterId: 'enc-2',
+  patientId: 'pat-2',
+  ownerId: 'owner-2',
+  status: 'open' as const,
+  subtotalAmount: 420,
+  totalAmount: 420
 };
 
 const mockItems = [
@@ -48,6 +59,16 @@ const mockAddItemFn = vi.fn().mockResolvedValue({});
 const mockUpdateStatusFn = vi.fn().mockResolvedValue({ ...mockRecord, status: 'open' as const });
 const mockGetPatientName = vi.fn().mockResolvedValue('Rex');
 const mockGetOwnerName = vi.fn().mockResolvedValue('Joao Silva');
+const mockRoute = reactive({ params: { id: 'enc-1' }, path: '/billing/enc-1' });
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
 
 vi.mock('@/services/billing', () => ({
   isBillingRecordNotFoundError: (error: unknown) => {
@@ -92,10 +113,7 @@ vi.mock('@/composables/useEntityCache', () => ({
 }));
 
 vi.mock('vue-router', () => ({
-  useRoute: () => ({
-    params: { id: 'enc-1' },
-    path: '/billing/enc-1'
-  }),
+  useRoute: () => mockRoute,
   useRouter: () => ({
     push: vi.fn()
   })
@@ -137,6 +155,8 @@ describe('BillingDetailPage', () => {
     mockUpdateStatusFn.mockResolvedValue({ ...mockRecord, status: 'open' as const });
     mockGetPatientName.mockResolvedValue('Rex');
     mockGetOwnerName.mockResolvedValue('Joao Silva');
+    mockRoute.params.id = 'enc-1';
+    mockRoute.path = '/billing/enc-1';
   });
 
   it('shows loading state initially', async () => {
@@ -595,5 +615,37 @@ describe('BillingDetailPage', () => {
     expect(options[0].text()).toContain('Servi');
     expect(options[1].text()).toBe('Material');
     expect(options[2].text()).toBe('Procedimento');
+  });
+
+  it('ignores a late previous billing response after the route changes', async () => {
+    const first = deferred<typeof mockRecord>();
+    const second = deferred<typeof mockRecordSecond>();
+    mockGetByEncounterFn.mockImplementation((id: string) => (id === 'enc-1' ? first.promise : second.promise));
+    mockListItemsFn.mockResolvedValue([]);
+
+    const wrapper = await mountBillingDetailPage();
+    mockRoute.params.id = 'enc-2';
+    mockRoute.path = '/billing/enc-2';
+    await flushPromises();
+    second.resolve(mockRecordSecond);
+    await flushPromises();
+    first.resolve(mockRecord);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Aberto');
+    expect(wrapper.text()).toContain('420');
+    expect(wrapper.text()).not.toContain('Consulta veterinaria');
+    expect(wrapper.text()).not.toContain('enc-1');
+  });
+
+  it('rejects a successful billing response with a different encounter identity', async () => {
+    mockGetByEncounterFn.mockResolvedValue({ ...mockRecord, encounterId: 'unexpected-encounter' });
+
+    const BillingDetailPage = (await import('../BillingDetailPage.vue')).default;
+    const wrapper = mount(BillingDetailPage);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('não corresponde ao atendimento solicitado');
+    expect(wrapper.text()).not.toContain('Consulta veterinaria');
   });
 });

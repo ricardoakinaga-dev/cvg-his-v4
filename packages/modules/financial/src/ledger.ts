@@ -180,6 +180,9 @@ export class InMemoryFinancialLedgerRepository implements FinancialLedgerReposit
       .filter((entry) => entry.accountId === accountId)
       .filter((entry) => !dateFrom || entry.occurredAt >= dateFrom)
       .filter((entry) => !dateTo || entry.occurredAt <= dateTo)
-      .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
+      .sort(
+        (left, right) =>
+          right.occurredAt.localeCompare(left.occurredAt) || right.id.localeCompare(left.id)
+      );
   }
 }

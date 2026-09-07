@@ -62,7 +62,7 @@ const mockDailyCharges = [
 
 const mockBilledDailyCharge = {
   ...mockDailyCharges[0],
-  id: 'charge-billed',
+  id: 'charge-new',
   status: 'billed' as const,
   billingRecordId: 'bill-1'
 };
@@ -95,6 +95,7 @@ const mockCreateDailyChargeFn = vi.fn().mockResolvedValue({
 });
 const mockMarkDailyChargeBilledFn = vi.fn().mockResolvedValue({
   ...mockDailyCharges[0],
+  id: 'charge-new',
   status: 'billed',
   billingRecordId: 'bill-1'
 });
@@ -719,7 +720,8 @@ describe('InpatientDetailPage', () => {
     });
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Nenhuma evolução registrada.');
+    expect(wrapper.text()).toContain('Progress notes unavailable');
+    expect(wrapper.text()).toContain('Recarregar evoluções');
     expect(wrapper.text()).not.toContain('Internação não encontrada');
   });
 

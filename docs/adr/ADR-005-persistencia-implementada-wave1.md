@@ -1,5 +1,11 @@
 # ADR-005 - Persistencia Implementada (Wave 1)
 
+> Registro histórico de março de 2026. Os caminhos de schema, estados de health,
+> configuração opcional e próximos passos abaixo descrevem aquela onda; não
+> comprovam o runtime atual nem autorizam fallback em ambientes persistentes.
+> A fonte canônica de schema/migrations é hoje `packages/db`; estado, evidências
+> e pendências atuais estão no plano de consolidação (histórico arquivado: `legado/docs/engineering/CVG_HIS_V4_CONSOLIDATION_IMPLEMENTATION_PLAN.md`).
+
 **Data**: 2026-03-25
 **Status**: Implementado
 **Contexto**: Implementacao da fundacao de persistencia para nucleo funcional do V2

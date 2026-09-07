@@ -6,7 +6,7 @@
       subtitle="Atendimento > Triagem. Registre prioridade, destino e alertas para orientar o próximo passo do caso."
     >
       <template #actions>
-        <DsButton variant="secondary" tag="a" href="/queue">🏥 Ver Fila</DsButton>
+        <DsButton variant="secondary" tag="a" to="/queue">🏥 Ver Fila</DsButton>
       </template>
     </AppPageHeader>
 
@@ -92,7 +92,7 @@
             <DsButton type="submit" variant="primary" :loading="saving">
               {{ saving ? 'Salvando...' : 'Registrar Triagem' }}
             </DsButton>
-            <DsButton variant="secondary" tag="a" href="/triage">Cancelar</DsButton>
+            <DsButton variant="secondary" tag="a" to="/triage">Cancelar</DsButton>
           </div>
         </form>
       </DsCard>

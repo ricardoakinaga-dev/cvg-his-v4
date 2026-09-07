@@ -52,5 +52,6 @@ export {
   acquireTenantAuthorizationLock,
   getDatabaseTransactionScope,
   runWithoutDatabaseTransactionScope,
+  runWithDatabaseTransactionScope,
   type DatabaseTransactionScope
 } from './transaction-scope.js';

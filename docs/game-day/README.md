@@ -477,4 +477,4 @@ done
 - [Database Failure Runbook](../../packages/chaos/src/runbooks/database-failure-runbook.md)
 - [Redis Failure Runbook](../../packages/chaos/src/runbooks/redis-failure-runbook.md)
 - [API Failure Runbook](../../packages/chaos/src/runbooks/api-failure-runbook.md)
-- [Roadmap vigente do produto](../2026-07-11-relatorio-auditoria-produto-ux-paridade-vetus.md)
+- Roadmap vigente do produto (histórico arquivado: `legado/docs/2026-07-11-relatorio-auditoria-produto-ux-paridade-vetus.md`)

@@ -9,13 +9,48 @@
       </div>
     </div>
 
-    <DsAlert v-else-if="error" variant="danger" dismissible @dismiss="error = ''">
-      {{ error }}
-    </DsAlert>
+    <section v-else-if="error" class="patient-error-state" aria-labelledby="patient-error-title">
+      <h2 id="patient-error-title" class="sr-only">Paciente indisponível</h2>
+      <DsAlert variant="danger" title="Paciente indisponível">
+        {{ error }}
+      </DsAlert>
+      <p class="patient-error-state__context">
+        Paciente solicitado: <code>{{ patientId }}</code>
+      </p>
+      <div class="patient-error-state__actions">
+        <DsButton type="button" variant="primary" @click="loadPage">Tentar novamente</DsButton>
+        <DsButton tag="a" to="/patients" variant="secondary">Voltar aos pacientes</DsButton>
+      </div>
+    </section>
 
     <template v-else-if="patient">
-      <AppPageHeader :breadcrumbs="['Animais', 'Detalhes do Animal']">
-        <template #title>Detalhes do Animal</template>
+      <AppPageHeader :breadcrumbs="['Pacientes', 'Detalhes do Paciente']">
+        <template #title>Detalhes do Paciente</template>
+        <template #context>
+          <div class="patient-header-context" data-testid="patient-header-context">
+            <div class="patient-header-context__item patient-header-context__item--identity">
+              <span class="patient-header-context__label">Paciente</span>
+              <strong class="patient-header-context__value">{{ patient.name }}</strong>
+              <small>{{ speciesLabel(patient.species) }} · {{ sexLabel(patient.sex) }} · {{ ageLabel }}</small>
+            </div>
+            <div class="patient-header-context__item">
+              <span class="patient-header-context__label">Tutor principal</span>
+              <strong class="patient-header-context__value">{{ ownerSnapshot?.fullName || ownerName }}</strong>
+              <small>{{ patientStatusLabel(patient.status) }} · {{ currentWeightLabel }}</small>
+            </div>
+            <div
+              class="patient-header-context__item patient-header-context__item--risk"
+              :class="{
+                'patient-header-context__item--risk-active':
+                  chronicDiseaseLabel !== 'Não informado' || allergyLabel !== 'Não informado'
+              }"
+            >
+              <span class="patient-header-context__label">Contexto de risco</span>
+              <strong class="patient-header-context__value">{{ allergyLabel }}</strong>
+              <small>{{ chronicDiseaseLabel }}</small>
+            </div>
+          </div>
+        </template>
         <template #actions>
           <DsButton type="button" variant="secondary" @click="printPatientRecord">
             Imprimir prontuário
@@ -32,6 +67,19 @@
         </DsAlert>
         <DsAlert v-if="actionMessage" variant="success" dismissible @dismiss="actionMessage = ''">
           {{ actionMessage }}
+        </DsAlert>
+      </section>
+
+      <section
+        v-if="relatedWarnings.length"
+        class="patient-data-warning"
+        data-testid="patient-data-warning"
+        aria-live="polite"
+      >
+        <DsAlert variant="warning" title="Contexto parcial do paciente">
+          Alguns módulos não puderam ser consultados:
+          <strong>{{ relatedWarnings.join(', ') }}</strong>.
+          Os dados exibidos podem estar incompletos; tente novamente para atualizar o prontuário.
         </DsAlert>
       </section>
 
@@ -69,6 +117,65 @@
               >
                 Abrir ação
               </DsButton>
+            </div>
+          </div>
+        </DsCard>
+      </section>
+
+      <section
+        v-if="suggestedPackage"
+        class="patient-package-offer"
+        data-testid="patient-package-offer"
+        :data-patient-id="patient.id"
+        :data-package-id="suggestedPackage.id"
+        aria-labelledby="patient-package-offer-title"
+      >
+        <DsCard variant="outlined">
+          <div class="patient-package-offer__content">
+            <div class="patient-package-offer__copy">
+              <div class="patient-package-offer__eyebrow">
+                <span class="patient-package-offer__icon" aria-hidden="true">
+                  <DsIcon name="target" size="sm" />
+                </span>
+                Oportunidade de continuidade
+              </div>
+              <div class="patient-package-offer__title-row">
+                <h2 id="patient-package-offer-title">Oferta de pacote</h2>
+                <StatusBadge :label="suggestedPackage.category" variant="info" />
+              </div>
+              <p class="patient-package-offer__title">{{ suggestedPackage.title }}</p>
+              <p class="patient-package-offer__description">{{ suggestedPackage.description }}</p>
+              <p class="patient-package-offer__reason">
+                <strong>Por que agora</strong>
+                {{ suggestedPackage.reason }}
+              </p>
+            </div>
+            <div class="patient-package-offer__action">
+              <div class="patient-package-offer__value">
+                <span>Valor de referência</span>
+                <strong>{{ formatCurrency(suggestedPackage.referenceValue, 'BRL') }}</strong>
+              </div>
+              <DsButton
+                type="button"
+                variant="primary"
+                data-testid="patient-package-quote-cta"
+                :loading="creatingPackageQuote"
+                :disabled="!ownerSnapshot"
+                @click="createSuggestedPackageQuote"
+              >
+                {{ creatingPackageQuote ? 'Criando orçamento…' : 'Criar orçamento' }}
+              </DsButton>
+              <DsButton
+                v-if="ownerWhatsAppLink"
+                tag="a"
+                :href="ownerWhatsAppLink"
+                variant="secondary"
+              >
+                Conversar com tutor
+              </DsButton>
+              <small v-else class="patient-package-offer__hint">
+                Cadastre um WhatsApp para habilitar a conversa contextual.
+              </small>
             </div>
           </div>
         </DsCard>
@@ -165,7 +272,12 @@
             @click="togglePatientCard('animal-more')"
             @keydown="handlePatientCardTriggerKeydown($event, 'animal-more')"
           >
-            <span>{{ isPatientCardExpanded('animal-more') ? '⌃' : '⌄' }}</span>
+            <span class="vetus-disclosure__icon" aria-hidden="true">
+              <DsIcon
+                :name="isPatientCardExpanded('animal-more') ? 'chevron-up' : 'chevron-down'"
+                size="sm"
+              />
+            </span>
             Ver mais Informações do Animal
           </button>
 
@@ -236,7 +348,12 @@
             @click="togglePatientCard('owner-contact')"
             @keydown="handlePatientCardTriggerKeydown($event, 'owner-contact')"
           >
-            <span>{{ isPatientCardExpanded('owner-contact') ? '⌃' : '⌄' }}</span>
+            <span class="vetus-disclosure__icon" aria-hidden="true">
+              <DsIcon
+                :name="isPatientCardExpanded('owner-contact') ? 'chevron-up' : 'chevron-down'"
+                size="sm"
+              />
+            </span>
             Ver Informações de Contato
           </button>
 
@@ -277,8 +394,8 @@
               @click="togglePatientCard('encounters')"
               @keydown="handlePatientCardTriggerKeydown($event, 'encounters')"
             >
-              <span><span class="vetus-module-icon">↺</span>Últimos Atendimentos</span>
-              <span>{{ isPatientCardExpanded('encounters') ? '−' : '+' }}</span>
+              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="stethoscope" size="sm" /></span>Últimos Atendimentos</span>
+              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('encounters') ? 'minus' : 'plus'" size="sm" /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{ sortedEncounters.length }} atendimento(s)</strong>
@@ -325,8 +442,8 @@
               @click="togglePatientCard('anamnesis')"
               @keydown="handlePatientCardTriggerKeydown($event, 'anamnesis')"
             >
-              <span><span class="vetus-module-icon">≡</span>Anamneses</span>
-              <span>{{ isPatientCardExpanded('anamnesis') ? '−' : '+' }}</span>
+              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="clipboard" size="sm" /></span>Anamneses</span>
+              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('anamnesis') ? 'minus' : 'plus'" size="sm" /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{ anamnesisEntries.length }} registro(s)</strong>
@@ -389,8 +506,8 @@
               @click="togglePatientCard('preventive')"
               @keydown="handlePatientCardTriggerKeydown($event, 'preventive')"
             >
-              <span><span class="vetus-module-icon">⚕</span>Vacinas e Vermífugos</span>
-              <span>{{ isPatientCardExpanded('preventive') ? '−' : '+' }}</span>
+              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="shield" size="sm" /></span>Vacinas e Vermífugos</span>
+              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('preventive') ? 'minus' : 'plus'" size="sm" /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{ preventiveSummaryLabel }}</strong>
@@ -480,8 +597,8 @@
               @click="togglePatientCard('agenda')"
               @keydown="handlePatientCardTriggerKeydown($event, 'agenda')"
             >
-              <span><span class="vetus-module-icon">□</span>Agenda</span>
-              <span>{{ isPatientCardExpanded('agenda') ? '−' : '+' }}</span>
+              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="calendar" size="sm" /></span>Agenda</span>
+              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('agenda') ? 'minus' : 'plus'" size="sm" /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{ agendaSummaryLabel }}</strong>
@@ -593,8 +710,8 @@
               @click="togglePatientCard('billing')"
               @keydown="handlePatientCardTriggerKeydown($event, 'billing')"
             >
-              <span><span class="vetus-module-icon">▤</span>Comanda</span>
-              <span>{{ isPatientCardExpanded('billing') ? '−' : '+' }}</span>
+              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="receipt" size="sm" /></span>Comanda</span>
+              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('billing') ? 'minus' : 'plus'" size="sm" /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{ patientBillingRecords.length }} comanda(s)</strong>
@@ -688,8 +805,8 @@
               @click="togglePatientCard('exams')"
               @keydown="handlePatientCardTriggerKeydown($event, 'exams')"
             >
-              <span><span class="vetus-module-icon">✚</span>Exames</span>
-              <span>{{ isPatientCardExpanded('exams') ? '−' : '+' }}</span>
+              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="flask" size="sm" /></span>Exames</span>
+              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('exams') ? 'minus' : 'plus'" size="sm" /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{ examItems.length }} item(ns)</strong>
@@ -757,8 +874,8 @@
               @click="togglePatientCard('inpatient')"
               @keydown="handlePatientCardTriggerKeydown($event, 'inpatient')"
             >
-              <span><span class="vetus-module-icon">▣</span>Internação</span>
-              <span>{{ isPatientCardExpanded('inpatient') ? '−' : '+' }}</span>
+              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="bed" size="sm" /></span>Internação</span>
+              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('inpatient') ? 'minus' : 'plus'" size="sm" /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{ inpatientSummaryLabel }}</strong>
@@ -859,8 +976,8 @@
               @click="togglePatientCard('prescriptions')"
               @keydown="handlePatientCardTriggerKeydown($event, 'prescriptions')"
             >
-              <span><span class="vetus-module-icon">▤</span>Receituário</span>
-              <span>{{ isPatientCardExpanded('prescriptions') ? '−' : '+' }}</span>
+              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="file" size="sm" /></span>Receituário</span>
+              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('prescriptions') ? 'minus' : 'plus'" size="sm" /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{ patientPrescriptions.length }} receita(s)</strong>
@@ -964,8 +1081,8 @@
               @click="togglePatientCard('weight')"
               @keydown="handlePatientCardTriggerKeydown($event, 'weight')"
             >
-              <span><span class="vetus-module-icon">▥</span>Gráfico de peso</span>
-              <span>{{ isPatientCardExpanded('weight') ? '−' : '+' }}</span>
+              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="chart" size="sm" /></span>Gráfico de peso</span>
+              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('weight') ? 'minus' : 'plus'" size="sm" /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>Peso atual: {{ currentWeightLabel }}</strong>
@@ -1046,8 +1163,8 @@
               @click="togglePatientCard('images')"
               @keydown="handlePatientCardTriggerKeydown($event, 'images')"
             >
-              <span><span class="vetus-module-icon">▧</span>Imagens</span>
-              <span>{{ isPatientCardExpanded('images') ? '−' : '+' }}</span>
+              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="file" size="sm" /></span>Imagens</span>
+              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('images') ? 'minus' : 'plus'" size="sm" /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{ imageAttachments.length }} imagem(ns)</strong>
@@ -1102,8 +1219,8 @@
               @click="togglePatientCard('clinical-history')"
               @keydown="handlePatientCardTriggerKeydown($event, 'clinical-history')"
             >
-              <span><span class="vetus-module-icon">▦</span>Histórico Clinico</span>
-              <span>{{ isPatientCardExpanded('clinical-history') ? '−' : '+' }}</span>
+              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="clipboard" size="sm" /></span>Histórico Clinico</span>
+              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('clinical-history') ? 'minus' : 'plus'" size="sm" /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{
@@ -1160,7 +1277,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { usePatientCards } from './usePatientCards';
+import { usePatientWeightHistory } from './usePatientWeightHistory';
+import { usePatientRelationship } from './usePatientRelationship';
 import { RouterLink, useRoute } from 'vue-router';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import SkeletonLoader from '@/components/SkeletonLoader.vue';
@@ -1168,6 +1288,7 @@ import StatusBadge from '@/components/StatusBadge.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
+import DsIcon from '@cvg-his-v2/design-system/vue/DsIcon.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import { appointmentService } from '@/services/appointment';
 import { attachmentService } from '@/services/attachments';
@@ -1237,22 +1358,6 @@ interface TimelineFeedItem {
   href?: string;
 }
 
-interface SuggestedPackage {
-  id: string;
-  title: string;
-  category: string;
-  description: string;
-  reason: string;
-  referenceValue: number;
-}
-
-interface ContextualMessage {
-  id: string;
-  title: string;
-  preview: string;
-  href: string | null;
-}
-
 interface ExamFeedItem {
   id: string;
   title: string;
@@ -1304,31 +1409,25 @@ const selectedPrescriptionDocumentText = ref('');
 const creatingPackageQuote = ref(false);
 const savingClinicalHistory = ref(false);
 const clinicalHistoryDraft = ref('');
-const weightWindowMonths = ref(12);
-
-const weightWindowOptions = [
-  { label: '3 meses', months: 3 },
-  { label: '6 meses', months: 6 },
-  { label: '1 ano', months: 12 }
-];
-
 const patientId = computed(() => String(route.params.id ?? ''));
-const expandedPatientCards = ref<Set<string>>(new Set());
-const patientCardNavigationOrder = [
-  'animal-more',
-  'owner-contact',
-  'encounters',
-  'anamnesis',
-  'preventive',
-  'agenda',
-  'billing',
-  'exams',
-  'inpatient',
-  'prescriptions',
-  'weight',
-  'images',
-  'clinical-history'
-] as const;
+let active = true;
+let pageGeneration = 0;
+
+function isCurrentLoad(requestPatientId: string, requestGeneration: number): boolean {
+  return (
+    active &&
+    pageGeneration === requestGeneration &&
+    patientId.value === requestPatientId
+  );
+}
+const {
+  expandedPatientCards,
+  isPatientCardExpanded,
+  togglePatientCard,
+  patientCardTriggerId,
+  patientCardPanelId,
+  handlePatientCardTriggerKeydown,
+} = usePatientCards();
 
 const animalAvatarInitial = computed(
   () => patient.value?.name.trim().charAt(0).toUpperCase() || '?'
@@ -1376,62 +1475,6 @@ function printPatientRecord() {
   if (typeof window !== 'undefined') {
     window.print();
   }
-}
-
-function isPatientCardExpanded(cardId: string) {
-  return expandedPatientCards.value.has(cardId);
-}
-
-function togglePatientCard(cardId: string) {
-  const next = new Set(expandedPatientCards.value);
-  if (next.has(cardId)) {
-    next.delete(cardId);
-  } else {
-    next.add(cardId);
-  }
-  expandedPatientCards.value = next;
-}
-
-function patientCardTriggerId(cardId: string) {
-  return `patient-card-${cardId}-trigger`;
-}
-
-function patientCardPanelId(cardId: string) {
-  return `patient-card-${cardId}-panel`;
-}
-
-function focusPatientCardTrigger(cardId: string) {
-  if (typeof document === 'undefined') {
-    return;
-  }
-
-  document.getElementById(patientCardTriggerId(cardId))?.focus();
-}
-
-function handlePatientCardTriggerKeydown(event: KeyboardEvent, cardId: string) {
-  const currentIndex = patientCardNavigationOrder.indexOf(
-    cardId as (typeof patientCardNavigationOrder)[number]
-  );
-  if (currentIndex === -1) {
-    return;
-  }
-
-  let nextIndex = currentIndex;
-  if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
-    nextIndex = (currentIndex + 1) % patientCardNavigationOrder.length;
-  } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
-    nextIndex =
-      (currentIndex - 1 + patientCardNavigationOrder.length) % patientCardNavigationOrder.length;
-  } else if (event.key === 'Home') {
-    nextIndex = 0;
-  } else if (event.key === 'End') {
-    nextIndex = patientCardNavigationOrder.length - 1;
-  } else {
-    return;
-  }
-
-  event.preventDefault();
-  focusPatientCardTrigger(patientCardNavigationOrder[nextIndex]);
 }
 
 const sortedEncounters = computed(() =>
@@ -1689,89 +1732,14 @@ const clinicalHistoryEntry = computed(() =>
   )
 );
 
-const formattedWeight = computed(() => {
-  if (!patient.value?.baseWeightKg) {
-    return 'Não informado';
-  }
-
-  return `${patient.value.baseWeightKg} kg`;
-});
-
-const currentWeightLabel = computed(() => {
-  if (!patient.value?.baseWeightKg) {
-    return '0 Kg';
-  }
-
-  return `${patient.value.baseWeightKg} kg`;
-});
-
-const weightMeasurements = computed(() => {
-  const items: Array<{ date: string; weightKg: number }> = [];
-
-  for (const entry of sortedPatientClinicalEntries.value) {
-    const match = `${entry.title} ${entry.content}`.match(
-      /peso(?:\s+atual)?[:\s]+(\d+(?:[,.]\d+)?)\s*kg/i
-    );
-    if (!match) {
-      continue;
-    }
-
-    items.push({
-      date: entry.updatedAt,
-      weightKg: Number(match[1].replace(',', '.'))
-    });
-  }
-
-  if (patient.value?.baseWeightKg) {
-    items.push({
-      date: patient.value.updatedAt,
-      weightKg: patient.value.baseWeightKg
-    });
-  }
-
-  return items
-    .filter((item) => Number.isFinite(item.weightKg))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-});
-
-const filteredWeightMeasurements = computed(() => {
-  if (weightMeasurements.value.length <= 1) {
-    return weightMeasurements.value;
-  }
-
-  const cutoff = new Date();
-  cutoff.setMonth(cutoff.getMonth() - weightWindowMonths.value);
-  const filtered = weightMeasurements.value.filter((item) => new Date(item.date) >= cutoff);
-  return filtered.length > 0 ? filtered : weightMeasurements.value.slice(-1);
-});
-
-const weightChartPointList = computed(() => {
-  const points = filteredWeightMeasurements.value;
-  if (points.length === 0) {
-    return [{ x: 20, y: 95 }];
-  }
-
-  if (points.length === 1) {
-    return [
-      { x: 20, y: 70 },
-      { x: 300, y: 70 }
-    ];
-  }
-
-  const weights = points.map((point) => point.weightKg);
-  const min = Math.min(...weights);
-  const max = Math.max(...weights);
-  const range = Math.max(max - min, 1);
-
-  return points.map((point, index) => ({
-    x: 20 + (280 * index) / Math.max(points.length - 1, 1),
-    y: 100 - ((point.weightKg - min) / range) * 70
-  }));
-});
-
-const weightChartPoints = computed(() =>
-  weightChartPointList.value.map((point) => `${point.x},${point.y}`).join(' ')
-);
+const {
+  weightWindowMonths,
+  weightWindowOptions,
+  currentWeightLabel,
+  weightMeasurements,
+  weightChartPointList,
+  weightChartPoints,
+} = usePatientWeightHistory(patient, sortedPatientClinicalEntries);
 
 const ageLabel = computed(() => {
   if (!patient.value?.birthDateApproximate) {
@@ -1971,11 +1939,6 @@ const financialSummary = computed(() => {
   return `${billing} · ${inpatient}`;
 });
 
-const relationshipSummary = computed(
-  () =>
-    `${ownerTier.value.label} · ${ownerPoints.value} ponto(s) · ${ownerActiveQuotes.value.length} orçamento(s) ativo(s)`
-);
-
 const triageActionLink = computed(() => {
   if (focalTriage.value) {
     return `/triage/${focalTriage.value.id}`;
@@ -1988,55 +1951,27 @@ const triageActionLink = computed(() => {
   return '/triage';
 });
 
-const ownerPrimaryContact = computed(() => {
-  if (!ownerSnapshot.value) {
-    return 'Não informado';
-  }
-
-  return (
-    ownerSnapshot.value.contacts.find((contact) => contact.primary)?.value ||
-    ownerSnapshot.value.contacts[0]?.value ||
-    'Não informado'
-  );
-});
-
-const ownerPhoneLabel = computed(() => {
-  if (!ownerSnapshot.value) {
-    return 'Não informado';
-  }
-
-  return (
-    ownerSnapshot.value.contacts.find(
-      (contact) => contact.type === 'whatsapp' || contact.type === 'phone'
-    )?.value || 'Não informado'
-  );
-});
-
-const ownerEmailLabel = computed(() => {
-  if (!ownerSnapshot.value) {
-    return 'Não informado';
-  }
-
-  return (
-    ownerSnapshot.value.contacts.find((contact) => contact.type === 'email')?.value ||
-    'Não informado'
-  );
-});
-
-const ownerWhatsAppLink = computed(() => {
-  if (!ownerSnapshot.value) {
-    return null;
-  }
-
-  const whatsappContact = ownerSnapshot.value.contacts.find(
-    (contact) => contact.type === 'whatsapp'
-  );
-  if (!whatsappContact) {
-    return null;
-  }
-
-  const normalized = whatsappContact.value.replace(/\D/g, '');
-  return `https://wa.me/${normalized}`;
+const {
+  patientBillingRecords,
+  patientOpenBillingAmount,
+  ownerPhoneLabel,
+  ownerEmailLabel,
+  ownerWhatsAppLink,
+  ownerOpenBillingAmount,
+  ownerActiveQuotes,
+  suggestedPackage,
+  contextualMessages,
+} = usePatientRelationship({
+  patient,
+  ownerSnapshot,
+  ownerName,
+  ownerBillingRecords,
+  ownerQuotes,
+  patientRecords,
+  sortedEncounters,
+  upcomingAppointments,
+  focalInpatientStay,
+  formatCurrency,
 });
 
 const clinicalSearchText = computed(() =>
@@ -2092,24 +2027,6 @@ const animalNotesLabel = computed(
   () => patient.value?.generalNotes || focalTriage.value?.initialNotes || 'Não informado'
 );
 
-const ownerOpenBillingAmount = computed(() =>
-  ownerBillingRecords.value
-    .filter((record) => record.status !== 'settled')
-    .reduce((sum, record) => sum + record.subtotalAmount, 0)
-);
-
-const patientBillingRecords = computed(() =>
-  ownerBillingRecords.value
-    .filter((record) => record.patientId === patient.value?.id)
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-);
-
-const patientOpenBillingAmount = computed(() =>
-  patientBillingRecords.value
-    .filter((record) => record.status !== 'settled')
-    .reduce((sum, record) => sum + record.subtotalAmount, 0)
-);
-
 const patient360Summary = computed(() => {
   const nextAction = resolvePatient360NextAction();
 
@@ -2139,181 +2056,6 @@ const focalBillingSummary = computed(() => {
   }
 
   return `${billingStatusLabel(focalBilling.value.status)} · ${formatCurrency(focalBilling.value.subtotalAmount, focalBilling.value.currency)} · ${focalBillingItems.value.length} item(ns)`;
-});
-
-const ownerSettledBillingAmount = computed(() =>
-  ownerBillingRecords.value
-    .filter((record) => record.status === 'settled')
-    .reduce((sum, record) => sum + record.subtotalAmount, 0)
-);
-
-const ownerActiveQuotes = computed(() =>
-  ownerQuotes.value.filter((quote) => quote.status === 'draft' || quote.status === 'approved')
-);
-
-const ownerConvertedQuotes = computed(
-  () => ownerQuotes.value.filter((quote) => Boolean(quote.convertedToSaleId)).length
-);
-
-const ownerPoints = computed(() =>
-  Math.round(
-    ownerSettledBillingAmount.value / 20 +
-      ownerConvertedQuotes.value * 30 +
-      patientRecords.value.length * 10 +
-      sortedEncounters.value.length * 8
-  )
-);
-
-const ownerRedeemableValue = computed(() => Math.floor(ownerPoints.value / 100) * 25);
-
-const ownerTier = computed(() => {
-  if (ownerPoints.value >= 300) return { label: 'Platinum' };
-  if (ownerPoints.value >= 180) return { label: 'Gold' };
-  if (ownerPoints.value >= 90) return { label: 'Silver' };
-  return { label: 'Start' };
-});
-
-const ownerCrmStage = computed(() => {
-  if (ownerOpenBillingAmount.value > 0) {
-    return {
-      label: 'Cobrança ativa',
-      description: 'Tutor com pendências abertas. Priorize negociação e comunicação contextual.'
-    };
-  }
-
-  if (ownerActiveQuotes.value.length > 0) {
-    return {
-      label: 'Negociação em curso',
-      description: 'Há orçamento ativo para o tutor. Bom momento para conversão comercial.'
-    };
-  }
-
-  if (upcomingAppointments.value.length > 0) {
-    return {
-      label: 'Assistência programada',
-      description: 'Tutor com jornada futura ativa. Ideal para lembrete e pacote preventivo.'
-    };
-  }
-
-  return {
-    label: 'Relacionamento estável',
-    description: 'Sem pendências críticas. Use a janela para fidelização e recompra.'
-  };
-});
-
-const suggestedPackage = computed<SuggestedPackage | null>(() => {
-  if (!patient.value) {
-    return null;
-  }
-
-  if (focalInpatientStay.value) {
-    return {
-      id: 'recovery-care',
-      title: 'Pacote Recuperação Assistida',
-      category: 'Pós-internação',
-      description: 'Revisões, retornos curtos e monitoramento de evolução após estabilização.',
-      reason: 'Paciente com internação recente ou ativa.',
-      referenceValue: 680
-    };
-  }
-
-  if (sortedEncounters.value.length >= 3) {
-    return {
-      id: 'continuity-clinic',
-      title: 'Pacote Continuidade Clínica',
-      category: 'Acompanhamento',
-      description: 'Monitoramento recorrente para pacientes com histórico assistencial frequente.',
-      reason: 'Paciente com recorrência de atendimentos.',
-      referenceValue: 720
-    };
-  }
-
-  if (patient.value.species === 'canine') {
-    return {
-      id: 'preventive-canine',
-      title: 'Pacote Preventivo Canino',
-      category: 'Preventivo',
-      description: 'Consultas de rotina, janela vacinal e acompanhamento de peso.',
-      reason: 'Perfil preventivo canino aderente ao cadastro atual.',
-      referenceValue: 360
-    };
-  }
-
-  if (patient.value.species === 'feline') {
-    return {
-      id: 'preventive-feline',
-      title: 'Pacote Cuidado Felino',
-      category: 'Preventivo',
-      description: 'Retornos estruturados, revisão clínica e lembretes de prevenção.',
-      reason: 'Paciente felino com oportunidade de rotina assistida.',
-      referenceValue: 340
-    };
-  }
-
-  return {
-    id: 'baseline-care',
-    title: 'Pacote Base de Acompanhamento',
-    category: 'Relacionamento',
-    description: 'Estrutura mínima de retornos e comunicação clínica para fidelização.',
-    reason: 'Paciente ativo com oportunidade de relacionamento contínuo.',
-    referenceValue: 290
-  };
-});
-
-const contextualMessages = computed<ContextualMessage[]>(() => {
-  if (!patient.value) {
-    return [];
-  }
-
-  const ownerLabel = ownerSnapshot.value?.fullName || ownerName.value;
-  const nextAppointment = upcomingAppointments.value[0];
-  const messages: ContextualMessage[] = [];
-
-  if (nextAppointment) {
-    messages.push({
-      id: 'appointment-reminder',
-      title: 'Lembrete de retorno',
-      preview: `Olá, ${ownerLabel}. Confirmando o próximo atendimento de ${patient.value.name} em ${formatDateTime(nextAppointment.scheduledAt)}.`,
-      href: buildWhatsAppLink(
-        `Olá, ${ownerLabel}. Confirmando o próximo atendimento de ${patient.value.name} em ${formatDateTime(nextAppointment.scheduledAt)}.`
-      )
-    });
-  }
-
-  if (suggestedPackage.value) {
-    messages.push({
-      id: 'package-offer',
-      title: 'Oferta de pacote',
-      preview: `${patient.value.name} está elegível ao ${suggestedPackage.value.title}. Posso te explicar como funciona?`,
-      href: buildWhatsAppLink(
-        `Olá, ${ownerLabel}. ${patient.value.name} está elegível ao ${suggestedPackage.value.title}. Posso te explicar como funciona?`
-      )
-    });
-  }
-
-  if (ownerOpenBillingAmount.value > 0) {
-    messages.push({
-      id: 'billing-followup',
-      title: 'Follow-up financeiro',
-      preview: `Temos pendências de ${formatCurrency(ownerOpenBillingAmount.value, 'BRL')} relacionadas ao acompanhamento de ${patient.value.name}.`,
-      href: buildWhatsAppLink(
-        `Olá, ${ownerLabel}. Temos pendências de ${formatCurrency(ownerOpenBillingAmount.value, 'BRL')} relacionadas ao acompanhamento de ${patient.value.name}.`
-      )
-    });
-  }
-
-  if (messages.length === 0) {
-    messages.push({
-      id: 'relationship',
-      title: 'Mensagem de acompanhamento',
-      preview: `Olá, ${ownerLabel}. Passando para acompanhar como ${patient.value.name} está evoluindo e se podemos apoiar em algo mais.`,
-      href: buildWhatsAppLink(
-        `Olá, ${ownerLabel}. Passando para acompanhar como ${patient.value.name} está evoluindo e se podemos apoiar em algo mais.`
-      )
-    });
-  }
-
-  return messages;
 });
 
 const patientAlerts = computed<PatientAlert[]>(() => {
@@ -2673,14 +2415,6 @@ function truncateText(value: string, maxLength: number): string {
   return `${normalized.slice(0, maxLength - 3)}...`;
 }
 
-function buildWhatsAppLink(message: string): string | null {
-  if (!ownerWhatsAppLink.value) {
-    return null;
-  }
-
-  return `${ownerWhatsAppLink.value}?text=${encodeURIComponent(message)}`;
-}
-
 function uniqueById<T extends { id: string }>(items: readonly T[]): T[] {
   return [...new Map(items.map((item) => [item.id, item])).values()];
 }
@@ -2812,7 +2546,14 @@ async function createSuggestedPackageQuote() {
   try {
     const createdQuote = await quoteService.create({
       ownerId: ownerSnapshot.value.id,
-      notes: `Pacote sugerido para ${patient.value.name}: ${suggestedPackage.value.title}. Motivo: ${suggestedPackage.value.reason}. Valor referência: ${formatCurrency(suggestedPackage.value.referenceValue, 'BRL')}.`
+      notes: [
+        `Origem: oferta de pacote no prontuário do paciente ${patient.value.name}.`,
+        `patientId=${patient.value.id};`,
+        `packageId=${suggestedPackage.value.id};`,
+        `pacote=${suggestedPackage.value.title};`,
+        `motivo=${suggestedPackage.value.reason};`,
+        `valorReferencia=${formatCurrency(suggestedPackage.value.referenceValue, 'BRL')}.`
+      ].join(' ')
     });
     ownerQuotes.value = [createdQuote, ...ownerQuotes.value];
     actionMessage.value = `Orçamento ${createdQuote.number} criado para ${patient.value.name}.`;
@@ -2825,10 +2566,9 @@ async function createSuggestedPackageQuote() {
 }
 
 async function loadPage() {
-  if (!patientId.value) {
-    error.value = 'Paciente inválido';
-    return;
-  }
+  const requestPatientId = patientId.value;
+  const requestGeneration = ++pageGeneration;
+  const isCurrent = () => isCurrentLoad(requestPatientId, requestGeneration);
 
   loading.value = true;
   error.value = '';
@@ -2836,8 +2576,20 @@ async function loadPage() {
   patient.value = null;
   resetRelatedState();
 
+  if (!requestPatientId) {
+    if (isCurrent()) {
+      error.value = 'Paciente inválido';
+      loading.value = false;
+    }
+    return;
+  }
+
   try {
-    const loadedPatient = await patientService.getById(patientId.value);
+    const loadedPatient = await patientService.getById(requestPatientId);
+    if (!isCurrent()) return;
+    if (loadedPatient.id !== requestPatientId) {
+      throw new Error('O paciente retornado não corresponde ao cadastro solicitado');
+    }
     patient.value = loadedPatient;
 
     const [
@@ -2874,6 +2626,7 @@ async function loadPage() {
         includeDischarged: true
       })
     ]);
+    if (!isCurrent()) return;
 
     if (encountersResult.status === 'fulfilled') {
       patientEncounters.value = encountersResult.value.filter(
@@ -2985,6 +2738,7 @@ async function loadPage() {
             )
           )
         ]);
+      if (!isCurrent()) return;
 
       patientClinicalEntries.value = uniqueById(
         entriesResults.flatMap((result) => {
@@ -3013,7 +2767,6 @@ async function loadPage() {
       });
 
       patientAttachments.value = uniqueById([...recordAttachments, ...diagnosticAttachments]);
-
       clinicalHistoryDraft.value = clinicalHistoryEntry.value?.content ?? '';
     }
 
@@ -3023,7 +2776,7 @@ async function loadPage() {
       null;
 
     const selectedEncounter = activeEncounters.value[0] ?? sortedEncounters.value[0] ?? null;
-    if (!selectedEncounter) {
+    if (!selectedEncounter || !isCurrent()) {
       return;
     }
 
@@ -3036,6 +2789,7 @@ async function loadPage() {
       listTriageRecords(selectedEncounter.id),
       billingService.list({ encounterId: selectedEncounter.id, patientId: loadedPatient.id })
     ]);
+    if (!isCurrent()) return;
 
     let entriesResult: PromiseSettledResult<ClinicalEntrySummary[]> | undefined;
     let clinicalTimelineResult: PromiseSettledResult<ClinicalTimelineEventSummary[]> | undefined;
@@ -3045,6 +2799,7 @@ async function loadPage() {
         medicalRecordsService.listEntries(selectedEncounter.id),
         medicalRecordsService.getTimeline(selectedEncounter.id)
       ] as const);
+      if (!isCurrent()) return;
     }
 
     if (encounterTimelineResult?.status === 'fulfilled') {
@@ -3063,8 +2818,11 @@ async function loadPage() {
       focalBilling.value = billingResult.value[0] ?? null;
       if (focalBilling.value) {
         try {
-          focalBillingItems.value = await billingService.listItems(selectedEncounter.id);
+          const billingItems = await billingService.listItems(selectedEncounter.id);
+          if (!isCurrent()) return;
+          focalBillingItems.value = billingItems;
         } catch {
+          if (!isCurrent()) return;
           focalBillingItems.value = [];
           registerWarning('itens da comanda');
         }
@@ -3085,9 +2843,13 @@ async function loadPage() {
       registerWarning('timeline do prontuário');
     }
   } catch (caughtError) {
-    error.value = caughtError instanceof Error ? caughtError.message : 'Falha ao carregar paciente';
+    if (isCurrent()) {
+      error.value = caughtError instanceof Error ? caughtError.message : 'Falha ao carregar paciente';
+    }
   } finally {
-    loading.value = false;
+    if (isCurrent()) {
+      loading.value = false;
+    }
   }
 }
 
@@ -3096,8 +2858,13 @@ watch(
   () => {
     void loadPage();
   },
-  { immediate: true }
+  { immediate: true, flush: 'sync' }
 );
+
+onBeforeUnmount(() => {
+  active = false;
+  pageGeneration += 1;
+});
 </script>
 
 <style scoped>
@@ -3106,22 +2873,55 @@ watch(
   flex-direction: column;
   gap: 16px;
 }
-
 .page-loading {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
-
 .page-loading__content {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-
 .hub-alerts {
   display: flex;
   flex-direction: column;
+  gap: 8px;
+}
+.patient-data-warning {
+  max-width: 980px;
+}
+.patient-data-warning strong {
+  font-weight: 700;
+}
+
+.patient-error-state {
+  display: grid;
+  gap: 14px;
+  max-width: 720px;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid var(--color-danger-200, #fbb7ae);
+  border-radius: var(--pulse-radius-lg, 16px);
+  background: var(--color-danger-50, #fff0ed);
+}
+
+.patient-error-state__context {
+  margin: 0;
+  color: var(--color-text-secondary, #3e5c67);
+  font-size: 0.875rem;
+}
+.patient-error-state__context code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--color-danger-100, #ffe0de);
+  color: var(--color-danger-800, #823037);
+  font-family: var(--font-family-mono, ui-monospace, monospace);
+  font-size: 0.8em;
+}
+
+.patient-error-state__actions {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -3134,7 +2934,6 @@ watch(
 .patient-360-cockpit {
   display: grid;
 }
-
 .patient-360-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -3161,7 +2960,6 @@ watch(
 .patient-360-grid p {
   overflow-wrap: anywhere;
 }
-
 .patient-360-grid p {
   margin: 0;
   color: var(--color-text-secondary, #475569);
@@ -3182,7 +2980,6 @@ watch(
 .vetus-empty-state strong {
   color: var(--color-text, #0f172a);
 }
-
 .vetus-empty-state p {
   margin: 0;
   color: var(--color-text-secondary, #475569);
@@ -3210,7 +3007,6 @@ watch(
   gap: 10px;
   padding: 12px;
 }
-
 .vetus-profile-card__identity {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
@@ -3237,7 +3033,6 @@ watch(
   flex-direction: column;
   gap: 5px;
 }
-
 .animal-kicker {
   color: #64748b;
   font-size: 0.78rem;
@@ -3268,7 +3063,6 @@ watch(
   font-weight: 700;
   overflow-wrap: anywhere;
 }
-
 .animal-headline p,
 .vetus-profile-section p {
   margin: 0;
@@ -3296,13 +3090,12 @@ watch(
   font: inherit;
   font-weight: 800;
 }
-
 .vetus-danger-action:disabled {
   opacity: 0.75;
 }
 
 .vetus-disabled-action {
-  min-height: 32px;
+  min-height: var(--touch-min, 44px);
   border: 1px solid #d8e2ef;
   border-radius: 4px;
   background: #f8fafc;
@@ -3320,7 +3113,6 @@ watch(
   border-radius: 4px;
   background: #fff7f7;
 }
-
 .vetus-critical-list div,
 .vetus-profile-section {
   display: grid;
@@ -3329,13 +3121,13 @@ watch(
 
 .vetus-critical-list span,
 .vetus-info-grid span {
-  color: #7b8493;
+  color: #536273;
   font-size: 0.78rem;
   font-weight: 700;
 }
 
 .vetus-critical-list strong {
-  color: #c92626;
+  color: #941f2a;
   font-size: 0.88rem;
   line-height: 1.25;
 }
@@ -3350,7 +3142,6 @@ watch(
   border-radius: 4px;
   background: #f8fafc;
 }
-
 .vetus-owner-strip div {
   display: grid;
   min-width: 0;
@@ -3372,7 +3163,7 @@ watch(
 .vetus-disclosure {
   display: flex;
   width: 100%;
-  min-height: 34px;
+  min-height: var(--touch-min, 44px);
   align-items: center;
   gap: 12px;
   border: 0;
@@ -3384,7 +3175,6 @@ watch(
   text-align: left;
   cursor: pointer;
 }
-
 .vetus-disclosure--soft {
   padding-inline: 10px;
   background: #eef5ff;
@@ -3399,7 +3189,6 @@ watch(
   display: grid;
   gap: 10px;
 }
-
 .vetus-info-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3424,7 +3213,6 @@ watch(
   background: #e9ecf4;
   font-weight: 800;
 }
-
 .vetus-module-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
@@ -3446,7 +3234,6 @@ watch(
   border-color: #cbd5e1;
   box-shadow: 0 8px 18px rgba(30, 41, 59, 0.08);
 }
-
 .vetus-accordion-card__header {
   display: flex;
   width: 100%;
@@ -3474,11 +3261,11 @@ watch(
 .vetus-module-icon {
   display: inline-grid;
   width: 24px;
+  height: 24px;
   place-items: center;
   color: #a2a8b3;
   font-weight: 800;
 }
-
 .vetus-accordion-card__header span:last-child {
   display: inline-grid;
   flex-shrink: 0;
@@ -3510,7 +3297,6 @@ watch(
   min-width: 0;
   overflow-wrap: anywhere;
 }
-
 .vetus-accordion-card__summary p {
   margin: 0;
   color: var(--color-text-secondary, #475569);
@@ -3531,7 +3317,6 @@ watch(
   gap: 8px;
   padding: 0 14px 14px;
 }
-
 .vetus-module-summary {
   display: grid;
   gap: 4px;
@@ -3555,7 +3340,6 @@ watch(
   flex-direction: column;
   gap: 4px;
 }
-
 .detail-item__label {
   color: #6b7280;
   font-size: 0.875rem;
@@ -3582,7 +3366,6 @@ watch(
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 10px;
 }
-
 .entry-metric {
   display: flex;
   flex-direction: column;
@@ -3603,7 +3386,6 @@ watch(
   font-size: 0.8125rem;
   color: #6b7280;
 }
-
 .info-strip {
   display: flex;
   flex-wrap: wrap;
@@ -3636,7 +3418,6 @@ watch(
   background: #e5e7eb;
   color: #374151;
 }
-
 .timeline-list,
 .record-list {
   display: flex;
@@ -3662,7 +3443,6 @@ watch(
   font-size: 0.88rem;
   font-weight: 700;
 }
-
 .timeline-list__item,
 .record-list__item {
   display: flex;
@@ -3684,7 +3464,6 @@ watch(
   margin: 4px 0 0;
   color: #6b7280;
 }
-
 .timeline-list__item--stacked {
   align-items: flex-start;
 }
@@ -3706,7 +3485,6 @@ watch(
   flex-direction: column;
   gap: 12px;
 }
-
 .weight-card__header {
   display: flex;
   align-items: center;
@@ -3732,7 +3510,6 @@ watch(
   font-size: 0.8125rem;
   cursor: pointer;
 }
-
 .segmented-control button:last-child {
   border-right: 0;
 }
@@ -3762,7 +3539,6 @@ watch(
   font: inherit;
   line-height: 1.5;
 }
-
 .clinical-history-preview {
   margin: 0 0 10px;
   color: #374151;
@@ -3786,7 +3562,6 @@ watch(
   margin: 0;
   color: #6b7280;
 }
-
 @media (max-width: 720px) {
   .vetus-animal-layout,
   .vetus-accordion-grid,
@@ -3803,7 +3578,6 @@ watch(
     align-items: flex-start;
     flex-direction: column;
   }
-
   .workspace-highlight,
   .weight-card__header,
   .timeline-list__item,
@@ -3828,7 +3602,6 @@ watch(
 :global(:root[data-theme='dark']) .patient-detail-page {
   color: var(--color-text);
 }
-
 :global(:root[data-theme='dark']) .patient-detail-page .patient-360-grid > div,
 :global(:root[data-theme='dark']) .patient-detail-page .vetus-empty-state,
 :global(:root[data-theme='dark']) .patient-detail-page .vetus-profile-card,
@@ -3868,7 +3641,6 @@ watch(
 :global(:root[data-theme='dark']) .patient-detail-page .clinical-history-preview {
   color: var(--color-text-secondary);
 }
-
 :global(:root[data-theme='dark']) .patient-detail-page .animal-title,
 :global(:root[data-theme='dark']) .patient-detail-page .vetus-empty-state strong,
 :global(:root[data-theme='dark']) .patient-detail-page .vetus-owner-strip strong,
@@ -3891,7 +3663,6 @@ watch(
 :global(:root[data-theme='dark']) .patient-detail-page .record-list__item {
   border-color: var(--color-border);
 }
-
 :global(:root[data-theme='dark']) .patient-detail-page .vetus-critical-list {
   border-color: var(--color-danger-400);
   background: var(--color-danger-50);
@@ -3910,7 +3681,6 @@ watch(
   background: var(--color-primary-subtle);
   color: var(--color-primary-300);
 }
-
 :global(:root[data-theme='dark']) .patient-detail-page .vetus-accordion-card--open {
   border-color: var(--color-primary-400);
   box-shadow: var(--shadow-md);
@@ -3928,7 +3698,6 @@ watch(
 :global(:root[data-theme='dark']) .patient-detail-page .workspace-highlight {
   background: linear-gradient(135deg, var(--color-surface-subtle), var(--color-primary-subtle));
 }
-
 :global(:root[data-theme='dark']) .patient-detail-page .entry-metric__value {
   color: var(--color-text);
 }
@@ -3942,7 +3711,6 @@ watch(
   background: var(--color-neutral-100);
   color: var(--color-neutral-300);
 }
-
 :global(:root[data-theme='dark']) .patient-detail-page .agenda-group h4 {
   color: var(--color-text-secondary);
 }
@@ -3961,7 +3729,6 @@ watch(
   background: var(--color-primary-600);
   color: var(--color-text-inverse);
 }
-
 :global(:root[data-theme='dark']) .patient-detail-page .clinical-history-field {
   border-color: var(--color-border);
   background: var(--color-surface-elevated);
@@ -3993,7 +3760,6 @@ watch(
   color: var(--color-text);
   box-shadow: var(--shadow-sm);
 }
-
 :root[data-theme='dark'] .patient-detail-page .patient-360-grid > div,
 :root[data-theme='dark'] .patient-detail-page .vetus-empty-state,
 :root[data-theme='dark'] .patient-detail-page .entry-metric,
@@ -4028,7 +3794,6 @@ watch(
 :root[data-theme='dark'] .patient-detail-page .entry-metric__value {
   color: var(--color-text);
 }
-
 :root[data-theme='dark'] .patient-detail-page .animal-summary-chips span,
 :root[data-theme='dark'] .patient-detail-page .vetus-owner-strip,
 :root[data-theme='dark'] .patient-detail-page .vetus-disabled-action,
@@ -4046,29 +3811,31 @@ watch(
 }
 
 :root[data-theme='dark'] .patient-detail-page .vetus-critical-list {
-  border-color: var(--color-danger-400);
-  background: var(--color-danger-50);
+  border-color: #f08f8a;
+  background: #3c2027;
+}
+
+:root[data-theme='dark'] .patient-detail-page .vetus-critical-list span {
+  color: #f3c2c5;
 }
 
 :root[data-theme='dark'] .patient-detail-page .vetus-critical-list strong {
-  color: var(--color-danger-300);
+  color: #ffd0cc;
 }
-
 :root[data-theme='dark'] .patient-detail-page .vetus-disclosure {
-  color: var(--color-primary-300);
+  color: #9fe8f2;
 }
 
 :root[data-theme='dark'] .patient-detail-page .vetus-disclosure--soft,
 :root[data-theme='dark'] .patient-detail-page .info-strip {
-  background: var(--color-primary-subtle);
-  color: var(--color-primary-300);
+  background: #17364a;
+  color: #b8f0f6;
 }
 
 :root[data-theme='dark'] .patient-detail-page .vetus-accordion-card--open {
   border-color: var(--color-primary-400);
   box-shadow: var(--shadow-md);
 }
-
 :root[data-theme='dark'] .patient-detail-page .vetus-accordion-card__header {
   background: var(--color-surface);
   color: var(--color-text);
@@ -4086,7 +3853,6 @@ watch(
   background: var(--color-warning-50);
   color: var(--color-warning-300);
 }
-
 :root[data-theme='dark'] .patient-detail-page .tag--neutral {
   background: var(--color-neutral-100);
   color: var(--color-neutral-300);
@@ -4105,7 +3871,6 @@ watch(
   background: var(--color-surface-elevated);
   color: var(--color-text-secondary);
 }
-
 :root[data-theme='dark'] .patient-detail-page .segmented-control button.active {
   background: var(--color-primary-600);
   color: var(--color-text-inverse);
@@ -4120,5 +3885,240 @@ watch(
 :root[data-theme='dark'] .patient-detail-page .clinical-history-field:disabled {
   background: var(--color-surface-subtle);
   color: var(--color-text-muted);
+}
+</style>
+
+<style scoped>
+.patient-header-context {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) repeat(2, minmax(170px, 0.9fr));
+  gap: 8px;
+  width: 100%;
+  margin-top: 16px;
+}
+.patient-header-context__item {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 68px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border, #d7e2df);
+  border-inline-start: 3px solid var(--color-primary-500, #0e9eae);
+  border-radius: 12px;
+  background: var(--color-bg-subtle, #eef4f1);
+}
+
+.patient-header-context__item--identity {
+  border-inline-start-color: var(--color-primary-600, #087c8c);
+  background: var(--color-primary-subtle, #e0f7f7);
+}
+
+.patient-header-context__item--risk {
+  border-inline-start-color: var(--color-success-600, #17775a);
+}
+
+.patient-header-context__item--risk-active {
+  border-color: var(--color-danger-300, #f58f87);
+  border-inline-start-color: var(--color-danger-600, #bd4645);
+  background: var(--color-danger-50, #fff0ed);
+}
+.patient-header-context__label {
+  color: var(--color-text-muted, #607484);
+  font-family: var(--font-family-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.patient-header-context__value {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text, #142238);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+}
+
+.patient-header-context__item small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-secondary, #475b6d);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+}
+
+.patient-package-offer :deep(.ds-card) {
+  border-color: color-mix(in srgb, var(--color-primary-400, #27bdc8) 42%, var(--color-border, #d7e2df));
+  background:
+    radial-gradient(circle at 96% 0%, color-mix(in srgb, var(--color-primary-100, #c9f1f1) 70%, transparent), transparent 38%),
+    var(--color-surface, #ffffff);
+}
+.patient-package-offer :deep(.ds-card__body) {
+  padding: clamp(16px, 2.4vw, 24px);
+}
+
+.patient-package-offer__content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 250px);
+  gap: 24px;
+  align-items: center;
+}
+
+.patient-package-offer__copy {
+  min-width: 0;
+}
+.patient-package-offer__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-primary-700, #075f70);
+  font-family: var(--font-family-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.patient-package-offer__icon {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--color-primary-subtle, #e0f7f7);
+  color: var(--color-primary-700, #075f70);
+}
+
+.patient-package-offer__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.patient-package-offer__title-row h2 {
+  margin: 0;
+  color: var(--color-text, #142238);
+  font-family: var(--font-family-display, ui-serif, Georgia, serif);
+  font-size: clamp(1.15rem, 2vw, 1.45rem);
+  letter-spacing: -0.035em;
+}
+.patient-package-offer__title {
+  margin: 4px 0 0;
+  color: var(--color-text, #142238);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.patient-package-offer__description,
+.patient-package-offer__reason {
+  max-width: 720px;
+  margin: 7px 0 0;
+  color: var(--color-text-secondary, #475b6d);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.patient-package-offer__reason {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 12px;
+  color: var(--color-text-muted, #607484);
+  font-size: 12px;
+}
+.patient-package-offer__reason strong {
+  color: var(--color-text-secondary, #475b6d);
+}
+
+.patient-package-offer__action {
+  display: grid;
+  gap: 9px;
+  justify-items: stretch;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--color-border, #d7e2df);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-bg-subtle, #eef4f1) 82%, transparent);
+}
+
+.patient-package-offer__value {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.patient-package-offer__value span {
+  color: var(--color-text-muted, #607484);
+  font-size: 11px;
+}
+.patient-package-offer__value strong {
+  color: var(--color-text, #142238);
+  font-size: 18px;
+  letter-spacing: -0.03em;
+}
+
+.patient-package-offer__hint {
+  color: var(--color-text-muted, #607484);
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .patient-package-offer__content {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .patient-package-offer__action {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: center;
+  }
+  .patient-package-offer__value {
+    grid-column: 1 / -1;
+  }
+
+  .patient-package-offer__hint {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 420px) {
+  .patient-package-offer__action {
+    grid-template-columns: 1fr;
+  }
+  .patient-package-offer__value,
+  .patient-package-offer__hint {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .patient-header-context {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .patient-header-context__item--identity {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 520px) {
+  .patient-header-context {
+    grid-template-columns: 1fr;
+  }
+  .patient-header-context__item--identity {
+    grid-column: auto;
+  }
 }
 </style>

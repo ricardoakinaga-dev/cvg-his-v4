@@ -1,3 +1,4 @@
+import type { AccountId } from '@cvg-his-v2/shared-types';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import {
@@ -18,29 +19,24 @@ import {
  * audit event via AuditService with risk level 'high' (flags control runtime behavior).
  */
 export class AuditableFeatureFlagRepository implements FeatureFlagRepository {
-  readonly #inner: FeatureFlagRepository;
+  readonly #inner: DatabaseFeatureFlagRepository;
   readonly #audit: AuditService;
   readonly #actorId: string;
-  readonly #accountId: string;
+  readonly #accountId: AccountId;
 
-  public constructor(
-    db: DatabaseClient,
-    audit: AuditService,
-    actorId: string,
-    accountId: string
-  ) {
-    this.#inner = new DatabaseFeatureFlagRepository(db);
+  public constructor(db: DatabaseClient, audit: AuditService, actorId: string, accountId: string) {
+    this.#accountId = accountIdentifier(accountId);
+    this.#inner = new DatabaseFeatureFlagRepository(db, this.#accountId);
     this.#audit = audit;
     this.#actorId = actorId;
-    this.#accountId = accountId;
   }
 
   public async findFlagByKey(key: string, accountId: string): Promise<FeatureFlagRow | null> {
-    return this.#inner.findFlagByKey(key, accountId);
+    return this.#inner.findFlagByKey(key, accountIdentifier(accountId));
   }
 
   public async listFlags(accountId: string): Promise<readonly FeatureFlagRow[]> {
-    return this.#inner.listFlags(accountId);
+    return this.#inner.listFlags(accountIdentifier(accountId));
   }
 
   public async createFlag(input: FeatureFlagInput): Promise<FeatureFlagRow> {
@@ -60,7 +56,7 @@ export class AuditableFeatureFlagRepository implements FeatureFlagRepository {
   }
 
   public async updateFlag(id: string, input: FeatureFlagUpdate): Promise<FeatureFlagRow> {
-    const before = await this.#inner.findFlagByKey(id, this.#accountId).catch(() => null);
+    const before = await this.#inner.findFlagById(id, this.#accountId);
     const flag = await this.#inner.updateFlag(id, input);
     this.#audit.write({
       actorId: this.#actorId,
@@ -77,7 +73,7 @@ export class AuditableFeatureFlagRepository implements FeatureFlagRepository {
   }
 
   public async deleteFlag(id: string): Promise<void> {
-    const before = await this.#inner.findFlagByKey(id, this.#accountId).catch(() => null);
+    const before = await this.#inner.findFlagById(id, this.#accountId);
     await this.#inner.deleteFlag(id);
     this.#audit.write({
       actorId: this.#actorId,
@@ -97,7 +93,11 @@ export class AuditableFeatureFlagRepository implements FeatureFlagRepository {
     environment: string,
     accountId?: string
   ): Promise<FeatureFlagOverrideRow | null> {
-    return this.#inner.findOverride(flagId, environment, accountId);
+    return this.#inner.findOverride(
+      flagId,
+      environment,
+      accountId === undefined ? undefined : accountIdentifier(accountId)
+    );
   }
 
   public async listOverrides(flagId: string): Promise<readonly FeatureFlagOverrideRow[]> {
@@ -120,7 +120,10 @@ export class AuditableFeatureFlagRepository implements FeatureFlagRepository {
     return override;
   }
 
-  public async updateOverride(id: string, input: FeatureFlagOverrideUpdate): Promise<FeatureFlagOverrideRow> {
+  public async updateOverride(
+    id: string,
+    input: FeatureFlagOverrideUpdate
+  ): Promise<FeatureFlagOverrideRow> {
     const override = await this.#inner.updateOverride(id, input);
     this.#audit.write({
       actorId: this.#actorId,
@@ -154,9 +157,32 @@ export class AuditableFeatureFlagRepository implements FeatureFlagRepository {
 function diffFlags(before: FeatureFlagRow | null, after: FeatureFlagRow): string {
   if (!before) return 'entire record';
   const changes: string[] = [];
-  if (before.enabled !== after.enabled) changes.push(`enabled: ${before.enabled}→${after.enabled}`);
-  if (before.defaultValue !== after.defaultValue) changes.push(`defaultValue: ${before.defaultValue}→${after.defaultValue}`);
-  if (before.owner !== after.owner) changes.push(`owner: ${before.owner}→${after.owner}`);
-  if (before.enabled === false) changes.push('kill_switch_applied');
+  const fields = [
+    'enabled',
+    'defaultValue',
+    'owner',
+    'description',
+    'scopes',
+    'expiresAt',
+    'auditRequired',
+    'tags'
+  ] as const;
+  for (const field of fields) {
+    const oldValue = before[field],
+      newValue = after[field];
+    if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+      const display = (value: unknown) =>
+        typeof value === 'string' ? value : JSON.stringify(value);
+      changes.push(`${field}: ${display(oldValue)}→${display(newValue)}`);
+    }
+  }
+  if (before.enabled && !after.enabled) changes.push('kill_switch_applied');
   return changes.join(', ') || 'no field changes';
+}
+
+/** Brand only nonempty legacy identifiers; PostgreSQL retains UUID validation. */
+function accountIdentifier(value: string): AccountId {
+  if (typeof value !== 'string' || value.trim() !== value || value.length === 0)
+    throw new Error('Feature flag account is required');
+  return value as AccountId;
 }

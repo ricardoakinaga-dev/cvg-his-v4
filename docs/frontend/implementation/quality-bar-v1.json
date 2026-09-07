@@ -1,0 +1,685 @@
+{
+  "schema_version": 1,
+  "version": "v1",
+  "frozen_at": "2026-09-07T02:26:50.996726+00:00",
+  "goal": "Implementar integralmente as 34 entregas frontend e critérios dos quatro documentos de 06/09/2026, com direção Precisão sensível e verificação independente, sem autoatribuir AAA.",
+  "sources": [
+    {
+      "type": "USER",
+      "location": "docs/2026-09-06-backlog-frontend-premium.md",
+      "version": "2026-09-06",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Workspace autorizado."
+    },
+    {
+      "type": "USER",
+      "location": "docs/2026-09-06-plano-executivo-frontend-premium.md",
+      "version": "2026-09-06",
+      "snapshot_sha256": "b1b880e77d902594ef6837c3300f85bb0115a2713b6ae5d359b62facc4b4da65",
+      "license_notes": "Workspace autorizado."
+    },
+    {
+      "type": "USER",
+      "location": "docs/2026-09-06-roadmap-frontend-premium.md",
+      "version": "2026-09-06",
+      "snapshot_sha256": "579c837e949ab4ad062d37453a92867a1cfb9ab54ef28b1b6f09def862c473ca",
+      "license_notes": "Workspace autorizado."
+    },
+    {
+      "type": "USER",
+      "location": "docs/2026-09-06-auditoria-frontend-usabilidade-estetica.md",
+      "version": "2026-09-06",
+      "snapshot_sha256": "22b0e7760de11d76101d6028150b50f35d210bfa87dcab8a8c3db05f21dacac1",
+      "license_notes": "Workspace autorizado."
+    }
+  ],
+  "criteria": [
+    {
+      "id": "FEA-001",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Congelar baseline e reconciliar a auditoria",
+      "target": "**Origem:** todos os achados; integração `AAA-001`. Inventariar rotas, funções, contratos, dispositivos, estados e assets do candidato. Registrar HEAD + diff/hashes, pois worktree sujo não é identificado apenas pelo SHA. Reproduzir FE-01/02/03; classificar divergências atuais e preservar evidência histórica.\n\n**Aceite:** inventário com cobertura e lacunas; cada achado confirmado, não reproduzido ou resolvido por evidência identificada. Nenhuma conclusão histórica atribuída automaticamente ao código novo. **Prova:** manifesto e passos reproduzíveis.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-002",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Baseline de tarefa e informação",
+      "target": "**Origem:** FE-04/05/07/08/09/13/14/17. Mapear as cinco tarefas prioritárias, perfis e conteúdos obrigatórios com OP. Registrar cliques, tempo, rolagem, erros e taxa de conclusão em cenários equivalentes. Incluir pouca familiaridade digital e uso em plantão.\n\n**Aceite:** roteiro, dados, participantes previstos, sucesso/erro definidos e baseline medida com limitações de amostra. **Prova:** planilha sanitizada e vídeos de sessão consentidos quando aplicável; sem dados clínicos reais nos artefatos.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-003",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Medir performance antes de decorar",
+      "target": "**Origem:** FE-18. Levantar transferência comprimida, rotas pesadas, tarefas longas e métricas em build de produção. Projetar telemetria sem conteúdo pessoal e distinguir laboratório de campo.\n\n**Aceite:** baseline repetível com aparelho/rede/build registrados; orçamento por rota e desenho de coleta aprovado tecnicamente. Não declarar INP de campo usando apenas teste local. **Prova:** traces e relatório de medição.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-004",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Corrigir links internos do design system",
+      "target": "**Origem:** FE-01. Ajustar o contrato de `DsButton` e consumidores entre rota, URL externa e comando.\n\n**Aceite:** navegação interna sem GET de documento; voltar/avançar, modificadores e abrir nova aba preservados quando cabíveis; botão de formulário não submete acidentalmente. **Prova:** teste de navegação real, sem apenas verificar tag renderizada.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-005",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Proteger formulários e definir rascunhos",
+      "target": "**Origem:** FE-02/09. Definir dirty state, salvar, descartar, permanecer, expiração e escopo por usuário. Resolver primeiro saída entre módulos e retorno. Autosave durável depende de contrato e política de dados definidos com BE.\n\n**Aceite:** trocar rota, voltar, fechar e falhar no save têm resultado explícito; salvar limpa dirty apenas após sucesso; erro conserva entrada; nenhum rascunho vaza entre usuários. Documentar limites de refresh/crash quando a solução for só em memória. **Prova:** cenários de recuperação e falha, incluindo logout.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-006",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Impedir respostas antigas em listas",
+      "target": "**Origem:** FE-03. Controlar identidade/cancelamento de requisição em `useListData` e usos afetados.\n\n**Aceite:** A lenta/B rápida e rejeições fora de ordem não sobrescrevem dados/erro/loading de B; desmontagem não altera tela; retry preserva contexto. **Prova:** testes de concorrência com promises controladas e uma jornada de filtro real.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-007",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Contrato de foco, histórico e retorno",
+      "target": "**Origem:** FE-06/14/17. Definir destino do foco por navegação, fechar drawer/dialog, voltar a lista, recuperar filtros/scroll e título de documento.\n\n**Aceite:** foco nunca fica em conteúdo removido; voltar restaura posição relevante; navegação nova tem início previsível; deep link recarrega estado suportado; permissão alterada não restaura acesso. **Prova:** teclado + browser history + URL compartilhável.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-008",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Extrair responsabilidades das páginas críticas",
+      "target": "**Origem:** FE-15; contribuição a `AAA-007`. Extrair controle de dados e composição de Agenda/PatientDetail em fatias, com fronteiras de estado explícitas.\n\n**Aceite:** contratos e comportamento anterior preservados; complexidade reduzida sem relaxar regra para passar; nenhuma refatoração massiva misturada a mudança de domínio. **Prova:** diff revisável, testes de fluxo e comparação visual antes/depois.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-009",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Tokens, tipografia e materiais",
+      "target": "**Origem:** FE-10/11/15. Consolidar paleta semântica, escala, espaçamento, raios, elevação e família tipográfica. Verificar licença da fonte escolhida e aplicar fallback consistente.\n\n**Aceite:** inventário mapeia tokens antigos/novos; ambos os temas e números tabulares renderizados; nomes longos e acentos legíveis; contraste medido por par. **Prova:** prancha renderizada e primeira página preenchida, com decisão de UX.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-010",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Família de botões lapidados",
+      "target": "**Origem:** FE-01/11/12/16. Implementar as variantes e oito estados definidos no plano, dentro do design system existente.\n\n**Aceite:** sem salto de largura, duplo comando ou foco invisível; nome acessível; áreas de toque validadas; loading e sucesso refletem operação real; hover não é único indicador. **Prova:** matriz interativa, teclado, rede lenta e ambos os temas.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-011",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Formulários progressivos e claros",
+      "target": "**Origem:** FE-02/09/16/17. Padrões de campo, ajuda, erro inline, resumo de erros, seções e barra de ações compatível com teclado virtual.\n\n**Aceite:** rótulo obrigatório único; erro associado e focalizável; conteúdo digitado preservado; 200% zoom e celular sem ação coberta; validação não depende só de cor. **Prova:** cadastro preenchido, inválido, envio em curso e falha.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-012",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Estados de dados e feedback",
+      "target": "**Origem:** FE-03/07/08/16. Unificar skeleton, vazio, sem resultados, erro, indisponibilidade, permissão e confirmação.\n\n**Aceite:** cada estado explica causa conhecida e próxima ação; nenhuma mensagem de sucesso simulada; `aria-live` sem anúncios repetitivos; skeleton não causa salto relevante. **Prova:** matriz de estados com interações de retry e lentidão.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-013",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Transições customizadas com continuidade",
+      "target": "**Origem:** FE-06/12/16. Implementar tokens de movimento e aplicar em rota, drawer, detalhe, seleção e botões.\n\n**Aceite:** duração dentro do orçamento; ação seguinte interrompe transição; foco preservado; movimento reduzido remove deslocamento e autoplay; nenhuma espera artificial. **Prova:** gravação, timeline de performance e preferência reduzida.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-014",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Cabeçalho compacto e composição operacional",
+      "target": "**Origem:** FE-04/05/07/08/11/17. Definir três padrões: lista, detalhe e workspace. Reduzir blocos duplicados; manter contexto obrigatório e uma ação dominante.\n\n**Aceite:** primeiro item/busca relevante visível nas jornadas escolhidas; títulos longos e alertas não colidem; densidade confortável/compacta mantém legibilidade. **Prova:** mesma massa em 390/768/1440 e nos dois temas.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-015",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Linguagem do hospital",
+      "target": "**Origem:** FE-13/14. Glossário único, nomes por tarefa, verbos específicos, mensagens úteis; remover jargão sem valor operacional.\n\n**Aceite:** navegação, busca e tela usam o mesmo termo; erro explica recuperação; status não promete resultado incerto. **Prova:** inventário de strings e validação com OP, incluindo “tutor”, “paciente” e “atendimento”.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-016",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Assets próprios e integração visual responsável",
+      "target": "**Origem:** FE-11/12/18 e pedido explícito do usuário. Usar os estudos ComfyUI/Blender em `frontend/assets` para decidir materialidade; selecionar imagem/poster/loop e recortes. Manter marca original separada.\n\n**Aceite:** fonte, workflow, seed, modelo, dimensões e hashes registrados; imagem sem artefatos; loop sem salto perceptível; orçamento do plano; poster e pausa; redução de movimento e rede limitada; nenhum vídeo na tabela clínica. Revisão humana independente no contexto da interface. **Prova:** assets finais, página real, rede e aprovação. Os estudos entregues com este backlog são conceituais e não encerram este ticket.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-017",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Recepção orientada ao próximo atendimento",
+      "target": "**Origem:** FE-04/07/08. Busca no início, fila legível, ação relevante e resumo do turno compacto.\n\n**Aceite:** buscar e selecionar tutor sem rolar em 390×844 com massa pactuada; fila preenchida e vazia coerentes; iniciar atendimento conserva contexto. **Prova:** jornada completa e comparação com baseline FE-04.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-018",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Cadastro de tutor/paciente essencial primeiro",
+      "target": "**Origem:** FE-02/09. Identificação e contato prioritários; informações financeiras/legadas em seções progressivas, respeitando obrigatoriedade real.\n\n**Aceite:** telefone e dados mínimos prontamente alcançáveis; regra obrigatória preservada; duplicidade tratada; abrir seção não apaga entrada; erros e retorno funcionam. **Prova:** cadastro válido, inválido, duplicado e interrompido.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-019",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Agenda que abre no momento relevante",
+      "target": "**Origem:** FE-05/06/17. Visualização de dia/semana apropriada, hora relevante, filtros compactos e lista mobile; remarcação por comando além de arrastar.\n\n**Aceite:** primeiro compromisso relevante no viewport inicial da massa auditada; fora de expediente explicável; fuso, virada de dia, conflito e cancelamento coerentes; rolagem horizontal apenas no componente quando necessária e claramente indicada. **Prova:** desktop/mobile preenchidos, teclado e conflito real em homologação.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-020",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Busca global e contextual coerentes",
+      "target": "**Origem:** FE-14/06. Definir diferença entre filtro da lista e pesquisa global, evitando destinos redundantes. Conservar escopo visível.\n\n**Aceite:** teclado, nomes semelhantes, ausência de resultado e permissão; selecionar resultado e voltar conserva origem; cancelar pesquisa não altera registro. **Prova:** tarefas de busca entre módulos e testes de autorização da resposta.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-021",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Início útil por função",
+      "target": "**Origem:** FE-07/08/13. Mostrar prioridades e próximos trabalhos; indicadores detalhados sob demanda, condicionados à permissão.\n\n**Aceite:** cinco perfis pactuados encontram primeira tarefa sem atravessar pilhas de cartões; sem exposição de módulo/dado não autorizado. **Prova:** capturas por função e teste com contas distintas.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-022",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Página de paciente com contexto persistente",
+      "target": "**Origem:** FE-06/15/17; `AAA-007`. Identidade, espécie e contexto relevante permanecem legíveis; abas e retorno previsíveis.\n\n**Aceite:** trocar paciente atualiza conteúdo e identificação juntos; nomes extensos e dados ausentes não quebram cabeçalho; retornar à lista recupera contexto. **Prova:** dois pacientes distintos, lentidão e navegação rápida.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-023",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Prontuário legível e seguro para trabalhar",
+      "target": "**Origem:** expansão clínica; FE-02/07/15. Organizar leitura cronológica e ações de registro, com distinção entre rascunho, salvo e falha.\n\n**Aceite:** nenhuma confirmação antes da persistência; texto longo, anexos e histórico navegáveis; interrupção conserva conteúdo conforme contrato; revisão do responsável clínico. **Prova:** sessão real de homologação e cenários negativos. Não alterar regras clínicas neste ticket.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-024",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Internação e leitos com leitura de plantão",
+      "target": "**Origem:** expansão clínica; FE-07/11/17. Hierarquia entre paciente, leito, estado e ação; detalhe contextual sem ruído repetitivo.\n\n**Aceite:** atualizações não movem inesperadamente o alvo; status por texto e cor; todos os estados previstos; leitura mobile e transição de contexto revisadas por OP. **Prova:** lotação, vazio, atualização e falta de permissão.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-025",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Caixa e financeiro com confirmação inequívoca",
+      "target": "**Origem:** inventário novo, FE-08/15 como padrões transversais. Primeiro capturar estados atuais; aplicar hierarquia de totais, valores tabulares e ações explícitas.\n\n**Aceite:** pending, failed, timeout, confirmado e estornado visualmente distintos conforme API; nenhuma animação simula recebimento; duplo clique não duplica comando; filtros/retorno preservados. **Prova:** contratos negativos e homologação integrada; depende dos tickets financeiros globais pertinentes, sem substituí-los.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-026",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Estoque e compras com densidade controlada",
+      "target": "**Origem:** inventário novo; FE-07/17 transversais. Tabelas com unidade, quantidade, lote e ações claras; alternativa para tela estreita.\n\n**Aceite:** seleção em lote explícita por página/total; alterações de filtro não causam ação em registros invisíveis sem aviso; sem truncamento de unidade crítica. **Prova:** massa extensa, teclado e estados de seleção.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-027",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Laboratório e resultados",
+      "target": "**Origem:** inventário novo. Tornar pedido, coleta, processamento e resultado comparáveis sem inventar estados não suportados.\n\n**Aceite:** paciente, data, unidade e referência legíveis; pendência diferente de ausência de resultado; anexos acessíveis; status coerente com API. **Prova:** contratos e revisão de fluxo pelo responsável do domínio.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-028",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Relatórios e exportação com contexto",
+      "target": "**Origem:** FE-15 e inventário novo. Simplificar filtros, composição e preview; preservar filtros e indicar processamento.\n\n**Aceite:** voltar restaura contexto; exportação informa falha/conclusão real; formato e fuso coerentes; tabela larga possui navegação acessível. **Prova:** relatório preenchido e vazio, falha e reconciliação com arquivo exportado.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-029",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Configurações e permissões compreensíveis",
+      "target": "**Origem:** FE-13/16 transversais e inventário novo. Agrupar por tarefa; explicitar alcance de alteração e acesso negado.\n\n**Aceite:** editar, cancelar e salvar inequívocos; não há controle que prometa permissão inexistente; teclado e rótulos completos. **Prova:** papéis distintos e erro de autorização real.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-030",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Matriz de acessibilidade e dispositivos",
+      "target": "**Origem:** FE-16/17. Consolidar rotas alteradas, temas, estados, 320/375/390/768/1024/1280/1440 e tela ampla; teclado virtual e zoom. Selecionar browsers e aparelhos reais segundo público.\n\n**Aceite:** WCAG 2.2 AA avaliada no escopo declarado; zero bloqueador; axe complementado por teclado, foco, leitor de tela, contraste, reflow e movimento reduzido. Registrar critérios não aplicáveis com justificativa. **Prova:** matriz com ambiente, resultado e evidência por caso, sem chamar ausência de overflow de aprovação de usabilidade.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-031",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Performance e custo de mídia",
+      "target": "**Origem:** FE-18. Comparar build final à baseline; otimizar rotas e assets, sem carregar cenas 3D no runtime só porque existem arquivos Blender.\n\n**Aceite:** metas e orçamentos do plano demonstrados em laboratório; dados de campo rotulados por janela/amostra; nenhum conteúdo pessoal coletado; rede lenta preserva primeira tarefa. **Prova:** traces, relatórios e tamanho dos artefatos, com lacunas de campo explícitas.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-032",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Regressão funcional e visual do candidato",
+      "target": "**Origem:** todos os achados; contribuição `AAA-045`. Executar jornadas críticas, estados, temas e browsers sobre build identificado.\n\n**Aceite:** zero regressão bloqueadora, comparação visual revisada; nenhum baseline aprovado automaticamente; falhas/flake não escondidos por retry ou skip. **Prova:** logs, traces e diff no mesmo candidato; cumprir também o gate global de repetição aplicável.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-033",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "UAT e revisão visual independente",
+      "target": "**Origem:** FE-16/17 e ambição premium; contribuição `AAA-044`. Repetir tarefas de FEA-002 com cenários comparáveis e responsáveis das funções atendidas.\n\n**Aceite:** metas de conclusão, erro e tempo avaliadas; amostra e incerteza relatadas; zero erro crítico; revisor que não construiu inspeciona hierarquia, tipografia, estados, materialidade e movimento. **Prova:** ata de aceite ou reprovação fundamentada; plano de correção. Nota autoatribuída não substitui revisão.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    },
+    {
+      "id": "FEA-034",
+      "source_type": "USER",
+      "source": "docs/2026-09-06-backlog-frontend-premium.md",
+      "dimension": "Dossiê frontend e recomendação de promoção",
+      "target": "**Origem:** consolidação. Vincular requisitos, tickets, candidato, revisão e limites; propor implantação incremental e reversão.\n\n**Aceite:** todos os tickets no escopo encerrados com prova ou explicitamente removidos por decisão de escopo; nenhuma exceção crítica escondida; dependências globais consultadas; recomendação frontend não é GO do ERP. **Prova:** dossiê e parecer dos responsáveis, integrado a `AAA-044/045/047`.",
+      "evidence_method": "Executar os aceites e provas específicos do ticket; revisão independente e integração conforme Definition of Done comum.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "Revalidar no worktree atual; auditoria anterior é supporting."
+      },
+      "conditions": "SPA real, temas claro/escuro, dados controlados, massa/browsers definidos no plano.",
+      "version": "v1",
+      "snapshot_sha256": "9daba7a2cdd9011978df26e1d86a323e9ee51e4d391bdfa8be806ed79a74550e",
+      "license_notes": "Documentos fornecidos no workspace pelo usuário.",
+      "validity_notes": "UAT humano e campo não substituídos por mocks ou autoavaliação."
+    }
+  ],
+  "revision_log": []
+}

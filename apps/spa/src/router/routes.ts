@@ -1,33 +1,17 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-function placeholderRoute(
-  path: string,
-  name: string,
-  title: string,
-  breadcrumbParent: string,
-  icon = '🧩'
-): RouteRecordRaw {
-  return {
-    path,
-    name,
-    component: () => import('@/pages/PlaceholderPage.vue'),
+const platformRoutes: RouteRecordRaw[] = [
+  {
+    path: 'administration/settings',
+    name: 'AdministrationSettings',
+    component: () => import('@/pages/administration/AdministrationSettingsPage.vue'),
     meta: {
-      title,
-      breadcrumb: title,
-      breadcrumbParent,
-      icon
+      title: 'Configurações',
+      breadcrumb: 'Configurações',
+      breadcrumbParent: 'Plataforma',
+      icon: 'settings'
     }
-  };
-}
-
-const placeholderRoutes: RouteRecordRaw[] = [
-  placeholderRoute(
-    'administration/settings',
-    'AdministrationSettings',
-    'Configurações',
-    'Administração',
-    '⚙️'
-  )
+  }
 ];
 
 function reportWorkbenchRoute(
@@ -36,7 +20,7 @@ function reportWorkbenchRoute(
   title: string,
   breadcrumbParent: string,
   reportKey: string,
-  icon = '📈',
+  icon = 'chart',
   alias: string[] = []
 ): RouteRecordRaw {
   return {
@@ -61,7 +45,7 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
     'Auditoria de Agendamentos',
     'Relatórios',
     'audit-appointments',
-    '🧾',
+    'receipt',
     ['/relatorios/auditoria/agendamentos']
   ),
   reportWorkbenchRoute(
@@ -70,7 +54,7 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
     'Gaveta',
     'Relatórios Financeiros',
     'cash-drawer',
-    '🧾',
+    'receipt',
     ['/relatorios/financeiros/gaveta']
   ),
   reportWorkbenchRoute(
@@ -79,7 +63,7 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
     'Pacotes',
     'Relatórios Financeiros',
     'packages',
-    '📦',
+    'package',
     ['/relatorios/financeiros/pacotes']
   ),
   reportWorkbenchRoute(
@@ -88,7 +72,7 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
     'Contas a Receber',
     'Relatórios Financeiros',
     'accounts-receivable',
-    '💵',
+    'money',
     ['/relatorios/financeiros/contas-a-receber']
   ),
   reportWorkbenchRoute(
@@ -97,7 +81,7 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
     'Contas Recebidas',
     'Relatórios Financeiros',
     'received-accounts',
-    '✅',
+    'check-circle',
     ['/relatorios/financeiros/contas-recebidas']
   ),
   reportWorkbenchRoute(
@@ -106,7 +90,7 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
     'Contas a Pagar',
     'Relatórios Financeiros',
     'accounts-payable',
-    '💸',
+    'money',
     ['/relatorios/financeiros/contas-a-pagar']
   ),
   reportWorkbenchRoute(
@@ -115,7 +99,7 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
     'Contas Pagas',
     'Relatórios Financeiros',
     'paid-accounts',
-    '✅',
+    'check-circle',
     ['/relatorios/financeiros/contas-pagas']
   ),
   reportWorkbenchRoute(
@@ -124,7 +108,7 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
     'Cheques',
     'Relatórios Financeiros',
     'cheques',
-    '📄',
+    'file',
     ['/relatorios/financeiros/cheques']
   ),
   reportWorkbenchRoute(
@@ -133,7 +117,7 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
     'Pagamento Antecipado',
     'Relatórios Financeiros',
     'advance-payments',
-    '⏩',
+    'arrow-right',
     ['/relatorios/financeiros/pagamento-antecipado']
   ),
   reportWorkbenchRoute(
@@ -142,7 +126,7 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
     'Produtos/Serviços Produzidos',
     'Relatórios de Atendimentos',
     'produced-items',
-    '🛠️',
+    'tools',
     ['/relatorios/atendimentos/produtos-servicos-produzidos']
   ),
   reportWorkbenchRoute(
@@ -151,7 +135,7 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
     'Atendimento por Profissional',
     'Relatórios de Atendimentos',
     'professional-care',
-    '🩺',
+    'stethoscope',
     ['/relatorios/atendimentos/atendimento-por-profissional']
   ),
   reportWorkbenchRoute(
@@ -160,7 +144,7 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
     'Relatório de NF de Serviços Prestados',
     'Relatórios Personalizados',
     'service-invoices',
-    '🧾',
+    'receipt',
     ['/relatorios/personalizados/relatorio-de-nf-de-servicos-prestados']
   ),
   reportWorkbenchRoute(
@@ -169,25 +153,25 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
     'Serviços',
     'Relatórios de Cadastros',
     'register-services',
-    '🛠️',
+    'tools',
     ['/relatorios/cadastros/servicos']
   ),
   reportWorkbenchRoute(
     'reports/registers/owners',
     'ReportsRegisterOwners',
-    'Clientes',
+    'Tutores',
     'Relatórios de Cadastros',
     'register-owners',
-    '👤',
+    'user',
     ['/relatorios/cadastros/clientes']
   ),
   reportWorkbenchRoute(
     'reports/registers/patients',
     'ReportsRegisterPatients',
-    'Animais',
+    'Pacientes',
     'Relatórios de Cadastros',
     'register-patients',
-    '🐾',
+    'paw',
     ['/relatorios/cadastros/animais']
   ),
   reportWorkbenchRoute(
@@ -196,7 +180,7 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
     'Fornecedores',
     'Relatórios de Cadastros',
     'register-suppliers',
-    '🚚',
+    'truck',
     ['/relatorios/cadastros/fornecedores']
   ),
   reportWorkbenchRoute(
@@ -205,7 +189,7 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
     'Exclusão de Vendas e Comandas',
     'Relatórios de Cadastros',
     'deleted-sales-counter-sales',
-    '🧾',
+    'receipt',
     ['/relatorios/cadastros/exclusao-de-vendas-e-comandas']
   ),
   reportWorkbenchRoute(
@@ -214,7 +198,7 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
     'Movimentações no Estoque',
     'Relatórios de Estoque',
     'inventory-movements',
-    '📥',
+    'inbox',
     ['/relatorios/estoque/movimentacoes-no-estoque']
   ),
   reportWorkbenchRoute(
@@ -223,7 +207,7 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
     'Entrada de NF',
     'Relatórios de Estoque',
     'inventory-invoices',
-    '🧾',
+    'receipt',
     ['/relatorios/estoque/entrada-de-nf']
   ),
   reportWorkbenchRoute(
@@ -232,7 +216,7 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
     'Relatório de Produtos',
     'Relatórios de Estoque',
     'inventory-products',
-    '🏷️',
+    'tag',
     ['/relatorios/estoque/relatorio-de-produtos']
   )
 ];
@@ -265,7 +249,7 @@ export const routes: RouteRecordRaw[] = [
         path: '',
         name: 'Dashboard',
         component: () => import('@/pages/DashboardPage.vue'),
-        meta: { title: 'Início', breadcrumb: 'Início', icon: '🏠' }
+        meta: { title: 'Início', breadcrumb: 'Início', icon: 'home' }
       },
       {
         path: 'dashboards/financial',
@@ -276,7 +260,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Dashboard Financeiro',
           breadcrumb: 'Dashboard Financeiro',
           breadcrumbParent: 'Financeiro',
-          icon: '💰'
+          icon: 'money'
         }
       },
       {
@@ -288,7 +272,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Curva ABC Produtos',
           breadcrumb: 'Curva ABC Produtos',
           breadcrumbParent: 'Financeiro',
-          icon: '📈'
+          icon: 'chart'
         }
       },
       {
@@ -300,7 +284,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Curva ABC Clientes',
           breadcrumb: 'Curva ABC Clientes',
           breadcrumbParent: 'Financeiro',
-          icon: '📊'
+          icon: 'chart'
         }
       },
       {
@@ -316,7 +300,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'DashBoard do Multifilial',
           breadcrumb: 'DashBoard do Multifilial',
           breadcrumbParent: 'Financeiro',
-          icon: '🏢'
+          icon: 'building'
         }
       },
       {
@@ -328,7 +312,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Linha do Tempo',
           breadcrumb: 'Linha do Tempo',
           breadcrumbParent: 'Financeiro',
-          icon: '🕒'
+          icon: 'clock'
         }
       },
       {
@@ -344,7 +328,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Configuração do Split',
           breadcrumb: 'Configuração do Split',
           breadcrumbParent: 'Financeiro',
-          icon: '🧩'
+          icon: 'settings'
         }
       },
       {
@@ -360,7 +344,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Maquininhas',
           breadcrumb: 'Maquininhas',
           breadcrumbParent: 'Financeiro',
-          icon: '💳'
+          icon: 'credit-card'
         }
       },
       {
@@ -376,7 +360,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Simulador de Split',
           breadcrumb: 'Simulador de Split',
           breadcrumbParent: 'Financeiro',
-          icon: '🧮'
+          icon: 'chart'
         }
       },
       {
@@ -392,7 +376,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Transações de Cartão',
           breadcrumb: 'Transações de Cartão',
           breadcrumbParent: 'Financeiro',
-          icon: '💳'
+          icon: 'credit-card'
         }
       },
       {
@@ -408,7 +392,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Exportador de Split',
           breadcrumb: 'Exportador de Split',
           breadcrumbParent: 'Financeiro',
-          icon: '📤'
+          icon: 'upload'
         }
       },
       {
@@ -424,7 +408,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Habilitar Pagamento',
           breadcrumb: 'Habilitar Pagamento',
           breadcrumbParent: 'Financeiro',
-          icon: '✅'
+          icon: 'check-circle'
         }
       },
       {
@@ -440,7 +424,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Pagamento Dashboard',
           breadcrumb: 'Pagamento Dashboard',
           breadcrumbParent: 'Financeiro',
-          icon: '📊'
+          icon: 'chart'
         }
       },
       {
@@ -448,10 +432,10 @@ export const routes: RouteRecordRaw[] = [
         name: 'Owners',
         component: () => import('@/pages/owners/OwnersListPage.vue'),
         meta: {
-          title: 'Clientes',
-          breadcrumb: 'Clientes',
+          title: 'Tutores',
+          breadcrumb: 'Tutores',
           breadcrumbParent: 'Cadastros',
-          icon: '👤'
+          icon: 'user'
         }
       },
       {
@@ -459,10 +443,10 @@ export const routes: RouteRecordRaw[] = [
         name: 'OwnerNew',
         component: () => import('@/pages/owners/OwnerFormPage.vue'),
         meta: {
-          title: 'Novo Cliente',
-          breadcrumb: 'Novo Cliente',
-          breadcrumbParent: 'Clientes',
-          icon: '👤'
+          title: 'Novo Tutor',
+          breadcrumb: 'Novo Tutor',
+          breadcrumbParent: 'Tutores',
+          icon: 'user'
         }
       },
       {
@@ -470,10 +454,10 @@ export const routes: RouteRecordRaw[] = [
         name: 'OwnerDetail',
         component: () => import('@/pages/owners/OwnerDetailPage.vue'),
         meta: {
-          title: 'Detalhes do Cliente',
+          title: 'Detalhes do Tutor',
           breadcrumb: 'Detalhes',
-          breadcrumbParent: 'Clientes',
-          icon: '👤'
+          breadcrumbParent: 'Tutores',
+          icon: 'user'
         }
       },
       {
@@ -481,10 +465,10 @@ export const routes: RouteRecordRaw[] = [
         name: 'OwnerEdit',
         component: () => import('@/pages/owners/OwnerFormPage.vue'),
         meta: {
-          title: 'Editar Cliente',
+          title: 'Editar Tutor',
           breadcrumb: 'Editar',
-          breadcrumbParent: 'Clientes',
-          icon: '👤'
+          breadcrumbParent: 'Tutores',
+          icon: 'user'
         }
       },
       {
@@ -492,10 +476,10 @@ export const routes: RouteRecordRaw[] = [
         name: 'Patients',
         component: () => import('@/pages/patients/PatientsListPage.vue'),
         meta: {
-          title: 'Animais',
-          breadcrumb: 'Animais',
+          title: 'Pacientes',
+          breadcrumb: 'Pacientes',
           breadcrumbParent: 'Cadastros',
-          icon: '🐾'
+          icon: 'paw'
         }
       },
       {
@@ -503,10 +487,10 @@ export const routes: RouteRecordRaw[] = [
         name: 'PatientNew',
         component: () => import('@/pages/patients/PatientFormPage.vue'),
         meta: {
-          title: 'Novo Animal',
-          breadcrumb: 'Novo Animal',
-          breadcrumbParent: 'Animais',
-          icon: '🐾'
+          title: 'Novo Paciente',
+          breadcrumb: 'Novo Paciente',
+          breadcrumbParent: 'Pacientes',
+          icon: 'paw'
         }
       },
       {
@@ -514,10 +498,10 @@ export const routes: RouteRecordRaw[] = [
         name: 'PatientDetail',
         component: () => import('@/pages/patients/PatientDetailPage.vue'),
         meta: {
-          title: 'Detalhes do Animal',
+          title: 'Detalhes do Paciente',
           breadcrumb: 'Detalhes',
-          breadcrumbParent: 'Animais',
-          icon: '🐾'
+          breadcrumbParent: 'Pacientes',
+          icon: 'paw'
         }
       },
       {
@@ -525,10 +509,10 @@ export const routes: RouteRecordRaw[] = [
         name: 'PatientEdit',
         component: () => import('@/pages/patients/PatientFormPage.vue'),
         meta: {
-          title: 'Editar Animal',
+          title: 'Editar Paciente',
           breadcrumb: 'Editar',
-          breadcrumbParent: 'Animais',
-          icon: '🐾'
+          breadcrumbParent: 'Pacientes',
+          icon: 'paw'
         }
       },
       {
@@ -543,7 +527,7 @@ export const routes: RouteRecordRaw[] = [
           '/cadastro/raças'
         ],
         component: () => import('@/pages/breeds/BreedsListPage.vue'),
-        meta: { title: 'Raças', breadcrumb: 'Raças', breadcrumbParent: 'Cadastros', icon: '🧬' }
+        meta: { title: 'Raças', breadcrumb: 'Raças', breadcrumbParent: 'Cadastros', icon: 'dna' }
       },
       {
         path: 'breeds/new',
@@ -553,7 +537,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Nova Raça',
           breadcrumb: 'Nova Raça',
           breadcrumbParent: 'Raças',
-          icon: '🧬'
+          icon: 'dna'
         }
       },
       {
@@ -564,7 +548,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes da Raça',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Raças',
-          icon: '🧬'
+          icon: 'dna'
         }
       },
       {
@@ -575,7 +559,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Editar Raça',
           breadcrumb: 'Editar',
           breadcrumbParent: 'Raças',
-          icon: '🧬'
+          icon: 'dna'
         }
       },
       {
@@ -594,7 +578,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Espécies',
           breadcrumb: 'Espécies',
           breadcrumbParent: 'Cadastros',
-          icon: '🦴'
+          icon: 'bone'
         }
       },
       {
@@ -605,7 +589,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Nova Espécie',
           breadcrumb: 'Nova Espécie',
           breadcrumbParent: 'Espécies',
-          icon: '🦴'
+          icon: 'bone'
         }
       },
       {
@@ -616,7 +600,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes da Espécie',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Espécies',
-          icon: '🦴'
+          icon: 'bone'
         }
       },
       {
@@ -627,7 +611,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Editar Espécie',
           breadcrumb: 'Editar',
           breadcrumbParent: 'Espécies',
-          icon: '🦴'
+          icon: 'bone'
         }
       },
       {
@@ -639,7 +623,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Cores/Pelagens',
           breadcrumb: 'Cores/Pelagens',
           breadcrumbParent: 'Cadastros',
-          icon: '🎨'
+          icon: 'palette'
         }
       },
       {
@@ -650,7 +634,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Nova Cor/Pelagem',
           breadcrumb: 'Nova Cor/Pelagem',
           breadcrumbParent: 'Cores/Pelagens',
-          icon: '🎨'
+          icon: 'palette'
         }
       },
       {
@@ -661,7 +645,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes da Cor/Pelagem',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Cores/Pelagens',
-          icon: '🎨'
+          icon: 'palette'
         }
       },
       {
@@ -672,7 +656,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Editar Cor/Pelagem',
           breadcrumb: 'Editar',
           breadcrumbParent: 'Cores/Pelagens',
-          icon: '🎨'
+          icon: 'palette'
         }
       },
       {
@@ -688,7 +672,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Grupos de Clientes',
           breadcrumb: 'Grupos de Clientes',
           breadcrumbParent: 'Cadastros',
-          icon: '👥'
+          icon: 'users'
         }
       },
       {
@@ -699,7 +683,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Novo Grupo de Clientes',
           breadcrumb: 'Novo Grupo de Clientes',
           breadcrumbParent: 'Grupos de Clientes',
-          icon: '👥'
+          icon: 'users'
         }
       },
       {
@@ -710,7 +694,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes do Grupo de Clientes',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Grupos de Clientes',
-          icon: '👥'
+          icon: 'users'
         }
       },
       {
@@ -721,7 +705,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Editar Grupo de Clientes',
           breadcrumb: 'Editar',
           breadcrumbParent: 'Grupos de Clientes',
-          icon: '👥'
+          icon: 'users'
         }
       },
       { path: 'cadastros/racas', redirect: '/breeds' },
@@ -750,7 +734,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Atendimentos',
           breadcrumb: 'Atendimentos',
           breadcrumbParent: 'Atendimento',
-          icon: '🏥'
+          icon: 'hospital'
         }
       },
       {
@@ -761,7 +745,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Abrir Atendimento',
           breadcrumb: 'Novo Atendimento',
           breadcrumbParent: 'Atendimentos',
-          icon: '🏥'
+          icon: 'hospital'
         }
       },
       {
@@ -772,7 +756,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes do Atendimento',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Atendimentos',
-          icon: '🏥'
+          icon: 'hospital'
         }
       },
       {
@@ -783,7 +767,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Recepção',
           breadcrumb: 'Recepção',
           breadcrumbParent: 'Atendimento',
-          icon: 'RC'
+          icon: 'reception'
         }
       },
       {
@@ -796,7 +780,7 @@ export const routes: RouteRecordRaw[] = [
           '/atendimento/agenda',
           '/atendimento/atendimentos/agenda'
         ],
-        meta: { title: 'Agenda', breadcrumb: 'Agenda', breadcrumbParent: 'Atendimento', icon: '📅' }
+        meta: { title: 'Agenda', breadcrumb: 'Agenda', breadcrumbParent: 'Atendimento', icon: 'calendar' }
       },
       {
         path: 'appointments/availability',
@@ -806,7 +790,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Disponibilidade',
           breadcrumb: 'Disponibilidade',
           breadcrumbParent: 'Agenda',
-          icon: '🕒'
+          icon: 'clock'
         }
       },
       {
@@ -817,7 +801,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Tipos de Agendamento',
           breadcrumb: 'Tipos',
           breadcrumbParent: 'Agenda',
-          icon: '🧷'
+          icon: 'tag'
         }
       },
       {
@@ -829,7 +813,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Novo Agendamento',
           breadcrumb: 'Novo Agendamento',
           breadcrumbParent: 'Agenda',
-          icon: '📅'
+          icon: 'calendar'
         }
       },
       {
@@ -840,7 +824,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes do Agendamento',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Agenda',
-          icon: '📅'
+          icon: 'calendar'
         }
       },
       {
@@ -851,7 +835,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Prontuário',
           breadcrumb: 'Prontuário',
           breadcrumbParent: 'Atendimento',
-          icon: '📋'
+          icon: 'clipboard'
         }
       },
       {
@@ -862,7 +846,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes do Prontuário',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Prontuário',
-          icon: '📋'
+          icon: 'clipboard'
         }
       },
       {
@@ -873,7 +857,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Central Diagnóstica',
           breadcrumb: 'Central Diagnóstica',
           breadcrumbParent: 'Laboratório',
-          icon: '🧪'
+          icon: 'test-tube'
         }
       },
       {
@@ -889,7 +873,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Esteira de Exames',
           breadcrumb: 'Esteira de Exames',
           breadcrumbParent: 'Atendimento',
-          icon: '🧪'
+          icon: 'test-tube'
         }
       },
       {
@@ -900,7 +884,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Resultados API',
           breadcrumb: 'Resultados API',
           breadcrumbParent: 'Laboratório',
-          icon: '🧪'
+          icon: 'test-tube'
         }
       },
       {
@@ -911,7 +895,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Laboratório',
           breadcrumb: 'Laboratório',
           breadcrumbParent: 'Laboratório',
-          icon: '🔬'
+          icon: 'microscope'
         }
       },
       {
@@ -928,7 +912,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Exames',
           breadcrumb: 'Exames',
           breadcrumbParent: 'Laboratório',
-          icon: '🧪'
+          icon: 'test-tube'
         }
       },
       {
@@ -940,7 +924,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Laudos',
           breadcrumb: 'Laudos',
           breadcrumbParent: 'Laboratório',
-          icon: '📋'
+          icon: 'clipboard'
         }
       },
       {
@@ -957,7 +941,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Hemogramas',
           breadcrumb: 'Hemogramas',
           breadcrumbParent: 'Laboratório',
-          icon: '🩸'
+          icon: 'droplet'
         }
       },
       {
@@ -976,7 +960,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Urina',
           breadcrumb: 'Urina',
           breadcrumbParent: 'Laboratório',
-          icon: '💧'
+          icon: 'droplet'
         }
       },
       {
@@ -995,7 +979,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Bioquímico',
           breadcrumb: 'Bioquímico',
           breadcrumbParent: 'Laboratório',
-          icon: '⚗️'
+          icon: 'flask'
         }
       },
       {
@@ -1011,7 +995,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Equipamentos',
           breadcrumb: 'Equipamentos',
           breadcrumbParent: 'Laboratório',
-          icon: '🔧'
+          icon: 'wrench'
         }
       },
       {
@@ -1022,7 +1006,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Incluir Equipamento',
           breadcrumb: 'Incluir',
           breadcrumbParent: 'Equipamentos',
-          icon: '🔧'
+          icon: 'wrench'
         }
       },
       {
@@ -1033,7 +1017,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes do Equipamento',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Equipamentos',
-          icon: '🔧'
+          icon: 'wrench'
         }
       },
       {
@@ -1044,7 +1028,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Editar Equipamento',
           breadcrumb: 'Editar',
           breadcrumbParent: 'Equipamentos',
-          icon: '🔧'
+          icon: 'wrench'
         }
       },
       {
@@ -1060,7 +1044,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Tipos de Laudo',
           breadcrumb: 'Tipos de Laudo',
           breadcrumbParent: 'Laboratório',
-          icon: '📄'
+          icon: 'file'
         }
       },
       {
@@ -1071,7 +1055,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Incluir Tipo de Laudo',
           breadcrumb: 'Incluir',
           breadcrumbParent: 'Tipos de Laudo',
-          icon: '📄'
+          icon: 'file'
         }
       },
       {
@@ -1082,7 +1066,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes do Tipo de Laudo',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Tipos de Laudo',
-          icon: '📄'
+          icon: 'file'
         }
       },
       {
@@ -1093,7 +1077,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Editar Tipo de Laudo',
           breadcrumb: 'Editar',
           breadcrumbParent: 'Tipos de Laudo',
-          icon: '📄'
+          icon: 'file'
         }
       },
       {
@@ -1104,7 +1088,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Valores de Referência',
           breadcrumb: 'Valores de Referência',
           breadcrumbParent: 'Laboratório',
-          icon: '📈'
+          icon: 'chart'
         }
       },
       {
@@ -1120,7 +1104,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Vlr. Ref. Hemograma',
           breadcrumb: 'Vlr. Ref. Hemograma',
           breadcrumbParent: 'Laboratório',
-          icon: '📈'
+          icon: 'chart'
         }
       },
       {
@@ -1131,7 +1115,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Incluir Valor de Referência',
           breadcrumb: 'Incluir',
           breadcrumbParent: 'Vlr. Ref. Hemograma',
-          icon: '📈'
+          icon: 'chart'
         }
       },
       {
@@ -1143,7 +1127,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes do Valor de Referência',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Vlr. Ref. Hemograma',
-          icon: '📈'
+          icon: 'chart'
         }
       },
       {
@@ -1154,7 +1138,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Editar Valor de Referência',
           breadcrumb: 'Editar',
           breadcrumbParent: 'Vlr. Ref. Hemograma',
-          icon: '📈'
+          icon: 'chart'
         }
       },
       {
@@ -1170,7 +1154,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Vlr. Ref. Bioquímico',
           breadcrumb: 'Vlr. Ref. Bioquímico',
           breadcrumbParent: 'Laboratório',
-          icon: '⚗️'
+          icon: 'flask'
         }
       },
       {
@@ -1182,7 +1166,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Incluir Valor Bioquímico',
           breadcrumb: 'Incluir',
           breadcrumbParent: 'Vlr. Ref. Bioquímico',
-          icon: '⚗️'
+          icon: 'flask'
         }
       },
       {
@@ -1194,7 +1178,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes do Valor Bioquímico',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Vlr. Ref. Bioquímico',
-          icon: '⚗️'
+          icon: 'flask'
         }
       },
       {
@@ -1206,7 +1190,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Editar Valor Bioquímico',
           breadcrumb: 'Editar',
           breadcrumbParent: 'Vlr. Ref. Bioquímico',
-          icon: '⚗️'
+          icon: 'flask'
         }
       },
       {
@@ -1217,7 +1201,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Prescrições',
           breadcrumb: 'Prescrições',
           breadcrumbParent: 'Atendimento',
-          icon: '💊'
+          icon: 'clipboard'
         }
       },
       {
@@ -1228,7 +1212,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Execuções de Prescrição',
           breadcrumb: 'Execuções',
           breadcrumbParent: 'Atendimento',
-          icon: '🩺'
+          icon: 'stethoscope'
         }
       },
       {
@@ -1239,7 +1223,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Altas',
           breadcrumb: 'Altas',
           breadcrumbParent: 'Internação',
-          icon: '🏠'
+          icon: 'home'
         }
       },
       {
@@ -1251,7 +1235,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Cirurgias',
           breadcrumb: 'Cirurgias',
           breadcrumbParent: 'Atendimento',
-          icon: '🔪'
+          icon: 'tools'
         }
       },
       {
@@ -1262,7 +1246,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Internação',
           breadcrumb: 'Internação',
           breadcrumbParent: 'Atendimento',
-          icon: '🛏️'
+          icon: 'bed'
         }
       },
       {
@@ -1274,7 +1258,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Mapa de Leitos',
           breadcrumb: 'Mapa de Leitos',
           breadcrumbParent: 'Internação',
-          icon: '🗺️'
+          icon: 'map'
         }
       },
       {
@@ -1286,7 +1270,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Diárias de Internação',
           breadcrumb: 'Diárias',
           breadcrumbParent: 'Internação',
-          icon: '💵'
+          icon: 'money'
         }
       },
       {
@@ -1297,7 +1281,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Admitir paciente',
           breadcrumb: 'Admitir',
           breadcrumbParent: 'Internação',
-          icon: '🛏️'
+          icon: 'bed'
         }
       },
       {
@@ -1308,7 +1292,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes da Internação',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Internação',
-          icon: '🛏️'
+          icon: 'bed'
         }
       },
       {
@@ -1319,7 +1303,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Setores',
           breadcrumb: 'Setores',
           breadcrumbParent: 'Internação',
-          icon: '🏢'
+          icon: 'building'
         }
       },
       {
@@ -1335,7 +1319,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Boxes de Internação',
           breadcrumb: 'Boxes de Internação',
           breadcrumbParent: 'Cadastros',
-          icon: '🛏️'
+          icon: 'bed'
         }
       },
       {
@@ -1346,7 +1330,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Incluir Box de Internação',
           breadcrumb: 'Incluir',
           breadcrumbParent: 'Boxes de Internação',
-          icon: '🛏️'
+          icon: 'bed'
         }
       },
       {
@@ -1357,7 +1341,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Box de Internação',
           breadcrumb: 'Abrir',
           breadcrumbParent: 'Boxes de Internação',
-          icon: '🛏️'
+          icon: 'bed'
         }
       },
       {
@@ -1368,7 +1352,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Editar Box de Internação',
           breadcrumb: 'Editar',
           breadcrumbParent: 'Boxes de Internação',
-          icon: '🛏️'
+          icon: 'bed'
         }
       },
       {
@@ -1384,7 +1368,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Contas a Receber',
           breadcrumb: 'Contas a Receber',
           breadcrumbParent: 'Financeiro',
-          icon: '💰'
+          icon: 'money'
         }
       },
       {
@@ -1395,7 +1379,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes da Conta a Receber',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Contas a Receber',
-          icon: '💰'
+          icon: 'money'
         }
       },
       {
@@ -1407,7 +1391,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Contas a Pagar',
           breadcrumb: 'Contas a Pagar',
           breadcrumbParent: 'Financeiro',
-          icon: '💸'
+          icon: 'money'
         }
       },
       {
@@ -1424,7 +1408,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Conciliação Financeira',
           breadcrumb: 'Conciliação Financeira',
           breadcrumbParent: 'Financeiro',
-          icon: '🧾'
+          icon: 'receipt'
         }
       },
       {
@@ -1436,7 +1420,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Pagamento Antecipado',
           breadcrumb: 'Pagamento Antecipado',
           breadcrumbParent: 'Financeiro',
-          icon: '⏩'
+          icon: 'arrow-right'
         }
       },
       {
@@ -1453,7 +1437,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Contas Adm. Cartão',
           breadcrumb: 'Contas Adm. Cartão',
           breadcrumbParent: 'Financeiro',
-          icon: '💳'
+          icon: 'credit-card'
         }
       },
       {
@@ -1465,7 +1449,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Cheques',
           breadcrumb: 'Cheques',
           breadcrumbParent: 'Financeiro',
-          icon: '📄'
+          icon: 'file'
         }
       },
       {
@@ -1477,7 +1461,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Fluxo de Caixa',
           breadcrumb: 'Fluxo de Caixa',
           breadcrumbParent: 'Financeiro',
-          icon: '📈'
+          icon: 'chart'
         }
       },
       {
@@ -1488,7 +1472,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Triagem',
           breadcrumb: 'Triagem',
           breadcrumbParent: 'Atendimento',
-          icon: '🏷️'
+          icon: 'tag'
         }
       },
       {
@@ -1499,7 +1483,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Nova Triagem',
           breadcrumb: 'Nova Triagem',
           breadcrumbParent: 'Triagem',
-          icon: '🏷️'
+          icon: 'tag'
         }
       },
       {
@@ -1510,7 +1494,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes da Triagem',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Triagem',
-          icon: '🏷️'
+          icon: 'tag'
         }
       },
       {
@@ -1521,7 +1505,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Usuários',
           breadcrumb: 'Usuários',
           breadcrumbParent: 'RH',
-          icon: '👤'
+          icon: 'user'
         }
       },
       {
@@ -1532,7 +1516,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Novo Usuário',
           breadcrumb: 'Novo Usuário',
           breadcrumbParent: 'Usuários',
-          icon: '👤'
+          icon: 'user'
         }
       },
       {
@@ -1543,7 +1527,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes do Usuário',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Usuários',
-          icon: '👤'
+          icon: 'user'
         }
       },
       {
@@ -1554,7 +1538,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Editar Usuário',
           breadcrumb: 'Editar',
           breadcrumbParent: 'Usuários',
-          icon: '👤'
+          icon: 'user'
         }
       },
       {
@@ -1564,8 +1548,8 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Grupos de Acesso',
           breadcrumb: 'Grupos de Acesso',
-          breadcrumbParent: 'RH',
-          icon: '🔐'
+          breadcrumbParent: 'Governança',
+          icon: 'shield'
         }
       },
       {
@@ -1576,7 +1560,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Auditoria',
           breadcrumb: 'Auditoria',
           breadcrumbParent: 'Governança',
-          icon: '🧾'
+          icon: 'receipt'
         }
       },
       {
@@ -1587,7 +1571,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'LGPD',
           breadcrumb: 'LGPD',
           breadcrumbParent: 'Governança',
-          icon: '🔒'
+          icon: 'lock'
         }
       },
       {
@@ -1598,7 +1582,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Busca mestre',
           breadcrumb: 'Busca mestre',
           breadcrumbParent: 'Utilidades',
-          icon: '🔎'
+          icon: 'search'
         }
       },
       {
@@ -1610,7 +1594,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Hubs Administrativos',
           breadcrumb: 'Hubs Administrativos',
           breadcrumbParent: 'Relatórios',
-          icon: '📊'
+          icon: 'chart'
         }
       },
       {
@@ -1621,7 +1605,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Relatórios por Domínio',
           breadcrumb: 'Visão por Domínio',
           breadcrumbParent: 'Relatórios',
-          icon: '📈'
+          icon: 'chart'
         }
       },
       {
@@ -1632,7 +1616,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Motor Enterprise de Relatórios',
           breadcrumb: 'Motor Enterprise',
           breadcrumbParent: 'Relatórios',
-          icon: '📊'
+          icon: 'chart'
         }
       },
       {
@@ -1645,7 +1629,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Fluxo de Caixa',
           breadcrumb: 'Fluxo de Caixa',
           breadcrumbParent: 'Relatórios Financeiros',
-          icon: '📈'
+          icon: 'chart'
         }
       },
       {
@@ -1658,7 +1642,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'DRE - Demonstrativo de Resultados',
           breadcrumb: 'DRE - Demonstrativo de Resultados',
           breadcrumbParent: 'Relatórios Financeiros',
-          icon: '💰'
+          icon: 'money'
         }
       },
       {
@@ -1669,7 +1653,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Contas',
           breadcrumb: 'Contas',
           breadcrumbParent: 'Relatórios',
-          icon: '🧾'
+          icon: 'receipt'
         }
       },
       {
@@ -1682,7 +1666,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Comandas/Vendas',
           breadcrumb: 'Comandas/Vendas',
           breadcrumbParent: 'Relatórios de Atendimentos',
-          icon: '💸'
+          icon: 'money'
         }
       },
       {
@@ -1695,7 +1679,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Agenda',
           breadcrumb: 'Agenda',
           breadcrumbParent: 'Relatórios de Atendimentos',
-          icon: '📅'
+          icon: 'calendar'
         }
       },
       {
@@ -1706,7 +1690,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Relatórios de Atendimento',
           breadcrumb: 'Relatórios de Atendimento',
           breadcrumbParent: 'Atendimento',
-          icon: '🩺'
+          icon: 'stethoscope'
         }
       },
       {
@@ -1717,7 +1701,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Relatórios de Cadastros',
           breadcrumb: 'Relatórios de Cadastros',
           breadcrumbParent: 'Cadastros',
-          icon: '📋'
+          icon: 'clipboard'
         }
       },
       {
@@ -1730,7 +1714,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Estoque',
           breadcrumb: 'Estoque',
           breadcrumbParent: 'Relatórios de Estoque',
-          icon: '📦'
+          icon: 'package'
         }
       },
       {
@@ -1743,7 +1727,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Produção',
           breadcrumb: 'Produção',
           breadcrumbParent: 'Relatórios de Atendimentos',
-          icon: '🏭'
+          icon: 'factory'
         }
       },
       {
@@ -1754,7 +1738,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Cliente API',
           breadcrumb: 'Cliente API',
           breadcrumbParent: 'Integrações',
-          icon: '🛠️'
+          icon: 'tools'
         }
       },
       {
@@ -1765,7 +1749,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Chaves de API',
           breadcrumb: 'Chaves de API',
           breadcrumbParent: 'Integrações',
-          icon: '🔐'
+          icon: 'shield'
         }
       },
       {
@@ -1776,7 +1760,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Envio de SMS Simples',
           breadcrumb: 'Envio de SMS Simples',
           breadcrumbParent: 'Marketing',
-          icon: '📱'
+          icon: 'message'
         }
       },
       {
@@ -1788,7 +1772,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Campanhas de Marketing',
           breadcrumb: 'Campanhas',
           breadcrumbParent: 'Marketing',
-          icon: '📣'
+          icon: 'message'
         }
       },
       {
@@ -1799,7 +1783,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Campanhas de SMS Marketing',
           breadcrumb: 'Campanhas de SMS Marketing',
           breadcrumbParent: 'Marketing',
-          icon: '🔔'
+          icon: 'bell'
         }
       },
       {
@@ -1810,7 +1794,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Layout de Email de Vacina',
           breadcrumb: 'Layout de Email de Vacina',
           breadcrumbParent: 'Marketing',
-          icon: '📧'
+          icon: 'message'
         }
       },
       {
@@ -1821,7 +1805,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Configurações de SMS',
           breadcrumb: 'Configurações de SMS',
           breadcrumbParent: 'Marketing',
-          icon: '⚙️'
+          icon: 'settings'
         }
       },
       {
@@ -1832,7 +1816,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'WhatsApp Operacional',
           breadcrumb: 'WhatsApp',
           breadcrumbParent: 'Marketing',
-          icon: '💬'
+          icon: 'message'
         }
       },
       {
@@ -1843,7 +1827,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'PIX',
           breadcrumb: 'PIX',
           breadcrumbParent: 'Financeiro',
-          icon: '💸'
+          icon: 'money'
         }
       },
       {
@@ -1855,7 +1839,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Gaveta',
           breadcrumb: 'Gaveta',
           breadcrumbParent: 'Financeiro',
-          icon: '🧾'
+          icon: 'receipt'
         }
       },
       {
@@ -1871,7 +1855,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Formas de Pagamento',
           breadcrumb: 'Formas de Pagamento',
           breadcrumbParent: 'Financeiro',
-          icon: '💳'
+          icon: 'credit-card'
         }
       },
       {
@@ -1883,7 +1867,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Bancos',
           breadcrumb: 'Bancos',
           breadcrumbParent: 'Financeiro',
-          icon: '🏦'
+          icon: 'building'
         }
       },
       {
@@ -1899,7 +1883,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Centros de Custo',
           breadcrumb: 'Centros de Custo',
           breadcrumbParent: 'Financeiro',
-          icon: '📊'
+          icon: 'chart'
         }
       },
       {
@@ -1915,7 +1899,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Cartões Débito/Crédito',
           breadcrumb: 'Cartões Débito/Crédito',
           breadcrumbParent: 'Financeiro',
-          icon: '💳'
+          icon: 'credit-card'
         }
       },
       {
@@ -1931,7 +1915,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Custos e Despesas',
           breadcrumb: 'Custos e Despesas',
           breadcrumbParent: 'Financeiro',
-          icon: '🧾'
+          icon: 'receipt'
         }
       },
       {
@@ -1943,7 +1927,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Vendas',
           breadcrumb: 'Vendas',
           breadcrumbParent: 'Atendimento',
-          icon: '💸'
+          icon: 'money'
         }
       },
       { path: 'sales/beta', redirect: '/sales' },
@@ -1956,7 +1940,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Comandas',
           breadcrumb: 'Comandas',
           breadcrumbParent: 'Atendimento',
-          icon: '🧾'
+          icon: 'receipt'
         }
       },
       {
@@ -1968,7 +1952,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Orçamentos',
           breadcrumb: 'Orçamentos',
           breadcrumbParent: 'Atendimento',
-          icon: '📝'
+          icon: 'file'
         }
       },
       {
@@ -1980,7 +1964,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Pacotes',
           breadcrumb: 'Pacotes',
           breadcrumbParent: 'Atendimento',
-          icon: '📦'
+          icon: 'package'
         }
       },
       {
@@ -1995,7 +1979,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Agenda Operacional (Legado)',
           breadcrumb: 'Agenda Operacional',
           breadcrumbParent: 'Agenda',
-          icon: '📅'
+          icon: 'calendar'
         }
       },
       {
@@ -2010,7 +1994,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Novo Agendamento (Legado)',
           breadcrumb: 'Novo Agendamento',
           breadcrumbParent: 'Agenda Operacional',
-          icon: '📅'
+          icon: 'calendar'
         }
       },
       {
@@ -2022,7 +2006,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Esteira',
           breadcrumb: 'Esteira',
           breadcrumbParent: 'Atendimento',
-          icon: '🏥'
+          icon: 'hospital'
         }
       },
       {
@@ -2033,7 +2017,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Vacinas e Vermífugos',
           breadcrumb: 'Vacinas e Vermífugos',
           breadcrumbParent: 'Atendimento',
-          icon: '💉'
+          icon: 'syringe'
         }
       },
       {
@@ -2044,7 +2028,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Estoque',
           breadcrumb: 'Estoque',
           breadcrumbParent: 'Estoque',
-          icon: '📦'
+          icon: 'package'
         }
       },
       {
@@ -2055,7 +2039,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Novo Item',
           breadcrumb: 'Novo Item',
           breadcrumbParent: 'Estoque',
-          icon: '📦'
+          icon: 'package'
         }
       },
       {
@@ -2066,7 +2050,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes do Item',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Estoque',
-          icon: '📦'
+          icon: 'package'
         }
       },
       {
@@ -2077,7 +2061,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Editar Item',
           breadcrumb: 'Editar',
           breadcrumbParent: 'Estoque',
-          icon: '📦'
+          icon: 'package'
         }
       },
       {
@@ -2093,7 +2077,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Consulta de Preços',
           breadcrumb: 'Consulta de Preços',
           breadcrumbParent: 'Estoque',
-          icon: '🔎'
+          icon: 'search'
         }
       },
       {
@@ -2110,7 +2094,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Transação no Estoque',
           breadcrumb: 'Transação no Estoque',
           breadcrumbParent: 'Estoque',
-          icon: '📥'
+          icon: 'inbox'
         }
       },
       {
@@ -2128,7 +2112,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Requisição à Farmácia',
           breadcrumb: 'Requisição à Farmácia',
           breadcrumbParent: 'Estoque',
-          icon: '💊'
+          icon: 'clipboard'
         }
       },
       {
@@ -2145,7 +2129,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Auditoria de Estoque',
           breadcrumb: 'Auditoria de Estoque',
           breadcrumbParent: 'Estoque',
-          icon: '🧾'
+          icon: 'receipt'
         }
       },
       {
@@ -2163,7 +2147,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Auditoria de Preços',
           breadcrumb: 'Auditoria de Preços',
           breadcrumbParent: 'Estoque',
-          icon: '🏷️'
+          icon: 'tag'
         }
       },
       {
@@ -2181,7 +2165,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Compras',
           breadcrumb: 'Compras',
           breadcrumbParent: 'Estoque',
-          icon: '🛒'
+          icon: 'package'
         }
       },
       {
@@ -2192,7 +2176,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhe da compra',
           breadcrumb: 'Detalhe da compra',
           breadcrumbParent: 'Compras',
-          icon: '🛒'
+          icon: 'package'
         }
       },
       {
@@ -2210,7 +2194,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Reajuste de Preços',
           breadcrumb: 'Reajuste de Preços',
           breadcrumbParent: 'Estoque',
-          icon: '📈'
+          icon: 'chart'
         }
       },
       {
@@ -2228,7 +2212,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Coletores de Dados',
           breadcrumb: 'Coletores de Dados',
           breadcrumbParent: 'Estoque',
-          icon: '📟'
+          icon: 'activity'
         }
       },
       {
@@ -2246,7 +2230,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Transferência entre Estoques',
           breadcrumb: 'Transferência entre Estoques',
           breadcrumbParent: 'Estoque',
-          icon: '🔄'
+          icon: 'refresh'
         }
       },
       {
@@ -2263,7 +2247,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Entrada de Nota Fiscal',
           breadcrumb: 'Entrada de Nota Fiscal',
           breadcrumbParent: 'Estoque',
-          icon: '🧾'
+          icon: 'receipt'
         }
       },
       {
@@ -2280,7 +2264,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Validade de Produtos',
           breadcrumb: 'Validade de Produtos',
           breadcrumbParent: 'Estoque',
-          icon: '📅'
+          icon: 'calendar'
         }
       },
       {
@@ -2299,7 +2283,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Tabelas de Preço',
           breadcrumb: 'Tabelas de Preço',
           breadcrumbParent: 'Estoque',
-          icon: '🏷️'
+          icon: 'tag'
         }
       },
       {
@@ -2310,7 +2294,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Pontos de venda',
           breadcrumb: 'Pontos de venda',
           breadcrumbParent: 'Estoque',
-          icon: '🧾'
+          icon: 'receipt'
         }
       },
       {
@@ -2321,7 +2305,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Configuração Fiscal',
           breadcrumb: 'Fiscal',
           breadcrumbParent: 'Configurações Fiscais',
-          icon: '📋'
+          icon: 'clipboard'
         }
       },
       {
@@ -2337,7 +2321,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Tabela ICMS',
           breadcrumb: 'Tabela ICMS',
           breadcrumbParent: 'Configurações Fiscais',
-          icon: '📊'
+          icon: 'chart'
         }
       },
       {
@@ -2353,7 +2337,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Tabela IPI',
           breadcrumb: 'Tabela IPI',
           breadcrumbParent: 'Configurações Fiscais',
-          icon: '🏷️'
+          icon: 'tag'
         }
       },
       {
@@ -2365,7 +2349,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'IPI Operacional',
           breadcrumb: 'IPI Operacional',
           breadcrumbParent: 'Configurações Fiscais',
-          icon: '🏷️'
+          icon: 'tag'
         }
       },
       {
@@ -2383,7 +2367,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Tabela IBS/CBS',
           breadcrumb: 'Tabela IBS/CBS',
           breadcrumbParent: 'Configurações Fiscais',
-          icon: '🧮'
+          icon: 'chart'
         }
       },
       {
@@ -2394,7 +2378,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'PIS / COFINS',
           breadcrumb: 'PIS / COFINS',
           breadcrumbParent: 'Configurações Fiscais',
-          icon: '📈'
+          icon: 'chart'
         }
       },
       {
@@ -2410,7 +2394,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Tabela PIS',
           breadcrumb: 'Tabela PIS',
           breadcrumbParent: 'Configurações Fiscais',
-          icon: '📈'
+          icon: 'chart'
         }
       },
       {
@@ -2426,7 +2410,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Tabela COFINS',
           breadcrumb: 'Tabela COFINS',
           breadcrumbParent: 'Configurações Fiscais',
-          icon: '📉'
+          icon: 'chart'
         }
       },
       {
@@ -2442,7 +2426,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Tabela CFOP',
           breadcrumb: 'Tabela CFOP',
           breadcrumbParent: 'Configurações Fiscais',
-          icon: '🔢'
+          icon: 'chart'
         }
       },
       {
@@ -2458,7 +2442,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Tabela NFS-e',
           breadcrumb: 'Tabela NFS-e',
           breadcrumbParent: 'Configurações Fiscais',
-          icon: '📄'
+          icon: 'file'
         }
       },
       {
@@ -2469,7 +2453,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'IBPT / NCM',
           breadcrumb: 'IBPT / NCM',
           breadcrumbParent: 'Configurações Fiscais',
-          icon: '🏷️'
+          icon: 'tag'
         }
       },
       {
@@ -2485,7 +2469,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Matriz Estado ICMS',
           breadcrumb: 'Matriz Estado ICMS',
           breadcrumbParent: 'Configurações Fiscais',
-          icon: '📊'
+          icon: 'chart'
         }
       },
       {
@@ -2496,8 +2480,8 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Webhooks',
           breadcrumb: 'Webhooks',
-          breadcrumbParent: 'Cadastros',
-          icon: '🔗'
+          breadcrumbParent: 'Integrações',
+          icon: 'link'
         }
       },
       {
@@ -2508,7 +2492,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Incluir Webhook',
           breadcrumb: 'Incluir Webhook',
           breadcrumbParent: 'Webhooks',
-          icon: '🔗'
+          icon: 'link'
         }
       },
       {
@@ -2519,7 +2503,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes do Webhook',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Webhooks',
-          icon: '🔗'
+          icon: 'link'
         }
       },
       {
@@ -2530,7 +2514,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Editar Webhook',
           breadcrumb: 'Editar',
           breadcrumbParent: 'Webhooks',
-          icon: '🔗'
+          icon: 'link'
         }
       },
       {
@@ -2547,7 +2531,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Produtos',
           breadcrumb: 'Produtos',
           breadcrumbParent: 'Cadastros',
-          icon: '📦'
+          icon: 'package'
         }
       },
       {
@@ -2564,7 +2548,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Fornecedores e Despesas',
           breadcrumb: 'Fornecedores e Despesas',
           breadcrumbParent: 'Cadastros',
-          icon: '🚚'
+          icon: 'truck'
         }
       },
       {
@@ -2576,7 +2560,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Fabricantes',
           breadcrumb: 'Fabricantes',
           breadcrumbParent: 'Cadastros',
-          icon: '🏭'
+          icon: 'factory'
         }
       },
       {
@@ -2597,7 +2581,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Grupos de Produto',
           breadcrumb: 'Grupos de Produto',
           breadcrumbParent: 'Cadastros',
-          icon: '🗂️'
+          icon: 'file'
         }
       },
       {
@@ -2616,7 +2600,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Setores da Empresa',
           breadcrumb: 'Setores da Empresa',
           breadcrumbParent: 'Cadastros',
-          icon: '🏢'
+          icon: 'building'
         }
       },
       {
@@ -2635,7 +2619,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Unidades de Medida',
           breadcrumb: 'Unidades de Medida',
           breadcrumbParent: 'Cadastros',
-          icon: '📏'
+          icon: 'tools'
         }
       },
       {
@@ -2647,7 +2631,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Estoques',
           breadcrumb: 'Estoques',
           breadcrumbParent: 'Cadastros',
-          icon: '🏬'
+          icon: 'building'
         }
       },
       {
@@ -2663,7 +2647,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Importar Dados Produtos',
           breadcrumb: 'Importar Dados Produtos',
           breadcrumbParent: 'Produtos',
-          icon: '⬆️'
+          icon: 'upload'
         }
       },
       {
@@ -2675,7 +2659,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Novo Produto',
           breadcrumb: 'Novo Produto',
           breadcrumbParent: 'Produtos',
-          icon: '📦'
+          icon: 'package'
         }
       },
       {
@@ -2687,7 +2671,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes do Produto',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Produtos',
-          icon: '📦'
+          icon: 'package'
         }
       },
       {
@@ -2699,7 +2683,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Editar Produto',
           breadcrumb: 'Editar',
           breadcrumbParent: 'Produtos',
-          icon: '📦'
+          icon: 'package'
         }
       },
       {
@@ -2710,7 +2694,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Serviços',
           breadcrumb: 'Serviços',
           breadcrumbParent: 'Cadastros',
-          icon: '🛠️'
+          icon: 'tools'
         }
       },
       {
@@ -2721,7 +2705,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Novo Serviço',
           breadcrumb: 'Novo Serviço',
           breadcrumbParent: 'Serviços',
-          icon: '🛠️'
+          icon: 'tools'
         }
       },
       {
@@ -2732,7 +2716,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Importar Dados Serviços',
           breadcrumb: 'Importar Dados Serviços',
           breadcrumbParent: 'Serviços',
-          icon: '⬆️'
+          icon: 'upload'
         }
       },
       {
@@ -2748,7 +2732,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Importação Assistida Vetus',
           breadcrumb: 'Importação Assistida Vetus',
           breadcrumbParent: 'Cadastros',
-          icon: '⬆️'
+          icon: 'upload'
         }
       },
       {
@@ -2760,7 +2744,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Termos de Responsabilidade',
           breadcrumb: 'Termos de Responsabilidade',
           breadcrumbParent: 'Cadastros',
-          icon: '📄'
+          icon: 'file'
         }
       },
       {
@@ -2771,7 +2755,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Incluir Termo de Responsabilidade',
           breadcrumb: 'Incluir',
           breadcrumbParent: 'Termos de Responsabilidade',
-          icon: '📄'
+          icon: 'file'
         }
       },
       {
@@ -2782,7 +2766,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes do Termo',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Termos de Responsabilidade',
-          icon: '📄'
+          icon: 'file'
         }
       },
       {
@@ -2793,7 +2777,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Editar Termo de Responsabilidade',
           breadcrumb: 'Editar',
           breadcrumbParent: 'Termos de Responsabilidade',
-          icon: '📄'
+          icon: 'file'
         }
       },
       {
@@ -2804,7 +2788,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes do Serviço',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Serviços',
-          icon: '🛠️'
+          icon: 'tools'
         }
       },
       {
@@ -2815,7 +2799,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Editar Serviço',
           breadcrumb: 'Editar',
           breadcrumbParent: 'Serviços',
-          icon: '🛠️'
+          icon: 'tools'
         }
       },
       {
@@ -2827,7 +2811,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Resgate de Pontos',
           breadcrumb: 'Fidelidade',
           breadcrumbParent: 'Atendimento',
-          icon: '🎯'
+          icon: 'target'
         }
       },
       {
@@ -2838,7 +2822,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Profissionais',
           breadcrumb: 'Profissionais',
           breadcrumbParent: 'RH',
-          icon: '👨‍⚕️'
+          icon: 'stethoscope'
         }
       },
       {
@@ -2849,7 +2833,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Novo Profissional',
           breadcrumb: 'Novo Profissional',
           breadcrumbParent: 'Profissionais',
-          icon: '👨‍⚕️'
+          icon: 'stethoscope'
         }
       },
       {
@@ -2860,7 +2844,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Detalhes do Profissional',
           breadcrumb: 'Detalhes',
           breadcrumbParent: 'Profissionais',
-          icon: '👨‍⚕️'
+          icon: 'stethoscope'
         }
       },
       {
@@ -2871,7 +2855,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Editar Profissional',
           breadcrumb: 'Editar',
           breadcrumbParent: 'Profissionais',
-          icon: '👨‍⚕️'
+          icon: 'stethoscope'
         }
       },
       {
@@ -2882,7 +2866,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Regras de Comissão',
           breadcrumb: 'Regras de Comissão',
           breadcrumbParent: 'Comissões',
-          icon: '📐'
+          icon: 'tools'
         }
       },
       {
@@ -2893,7 +2877,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Cálculo de Comissões',
           breadcrumb: 'Cálculo de Comissões',
           breadcrumbParent: 'Comissões',
-          icon: '🧮'
+          icon: 'chart'
         }
       },
       {
@@ -2904,7 +2888,7 @@ export const routes: RouteRecordRaw[] = [
           title: 'Folgas',
           breadcrumb: 'Folgas',
           breadcrumbParent: 'RH',
-          icon: '🌴'
+          icon: 'activity'
         }
       },
       {
@@ -2915,11 +2899,11 @@ export const routes: RouteRecordRaw[] = [
           title: 'Profissões',
           breadcrumb: 'Profissões',
           breadcrumbParent: 'RH',
-          icon: '🪪'
+          icon: 'user'
         }
       },
       ...reportWorkbenchRoutes,
-      ...placeholderRoutes
+      ...platformRoutes
     ]
   },
   {

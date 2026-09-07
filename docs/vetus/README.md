@@ -3,8 +3,8 @@
 ## Estrutura
 
 - `guides/` — documentação consolidada e relatórios premium
-- `screenshots/` — capturas do shell SPA e rotas beta
-- `modulos/` — capturas diretas de rotinas legacy e anexos de verificação
+- `legado/docs/vetus/screenshots/` — capturas históricas do shell SPA e rotas beta
+- `legado/docs/vetus/modulos/` e `legado/docs/vetus/inspection/` — capturas históricas de pesquisa externa
 
 ## Guias principais
 
@@ -36,3 +36,5 @@ O acervo documenta um produto híbrido:
 - e várias rotas quebradas preservadas como evidência.
 
 Leia primeiro o relatório mestre e o catálogo de evidências antes de usar qualquer screenshot como requisito funcional.
+
+Os scripts de captura externa estão em `legado/scripts/vetus-inspect*.mjs`. Os guias permanecem ativos como referência do contrato de paridade; capturas arquivadas são contexto opcional.

@@ -8,6 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   plugins: [vue()],
   resolve: {
+    dedupe: ['vue', 'vue-router'],
     alias: {
       '@': resolve(__dirname, 'src'),
       '@cvg-his-v2/design-system/vue': resolve(

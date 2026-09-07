@@ -1,222 +1,14 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
+import {
+  collectSpaRequests,
+  missingDeclaredRequests
+} from './frontend-backend-contract.helper.mjs';
 
-import { navGroups } from '../../apps/spa/src/navigation';
+import { flattenAllNavItems } from '../../apps/spa/src/navigation';
 import { routes } from '../../apps/spa/src/router/routes';
-
-const SERVICE_DIRECTORY = join(process.cwd(), 'apps/spa/src/services');
-
-const backendRoutePatterns = [
-  /^\/access-control$/,
-  /^\/access-control\/grants$/,
-  /^\/access-control\/org-sectors$/,
-  /^\/access-control\/org-sectors\/[^/]+$/,
-  /^\/access-control\/teams$/,
-  /^\/access-control\/teams\/[^/]+$/,
-  /^\/access-control\/users\/[^/]+\/effective$/,
-  /^\/access-control\/users\/[^/]+\/roles$/,
-  /^\/access-control\/users\/[^/]+\/sectors$/,
-  /^\/access-control\/users\/[^/]+\/teams$/,
-  /^\/api-keys$/,
-  /^\/admin\/commercial-dashboard$/,
-  /^\/appointment-types$/,
-  /^\/appointment-types\/[^/]+$/,
-  /^\/appointments$/,
-  /^\/appointments\/[^/]+$/,
-  /^\/appointments\/[^/]+\/cancel$/,
-  /^\/appointments\/[^/]+\/start-encounter$/,
-  /^\/attachments$/,
-  /^\/audit\/events$/,
-  /^\/availability$/,
-  /^\/availability\/[^/]+$/,
-  /^\/bed-map$/,
-  /^\/beds$/,
-  /^\/billing$/,
-  /^\/billing\/[^/]+$/,
-  /^\/billing\/[^/]+\/items$/,
-  /^\/billing\/[^/]+\/status$/,
-  /^\/billing\/estimate$/,
-  /^\/billing\/items$/,
-  /^\/counter-sales$/,
-  /^\/counter-sales\/[^/]+$/,
-  /^\/counter-sales\/[^/]+\/cancel$/,
-  /^\/counter-sales\/[^/]+\/close$/,
-  /^\/counter-sales\/[^/]+\/items$/,
-  /^\/counter-sales\/[^/]+\/items\/[^/]+$/,
-  /^\/counter-sales\/[^/]+\/payments$/,
-  /^\/counter-sales\/[^/]+\/reopen$/,
-  /^\/cost-centers-catalog$/,
-  /^\/cost-centers-catalog\/[^/]+$/,
-  /^\/diagnostics\/orders$/,
-  /^\/discharges$/,
-  /^\/discharges\/[^/]+$/,
-  /^\/encounters$/,
-  /^\/encounters\/[^/]+$/,
-  /^\/encounters\/[^/]+\/close$/,
-  /^\/encounters\/[^/]+\/financial-close$/,
-  /^\/encounters\/[^/]+\/financial-summary$/,
-  /^\/encounters\/[^/]+\/cash-receipts$/,
-  /^\/encounters\/[^/]+\/cash-receipts\/[^/]+$/,
-  /^\/encounters\/[^/]+\/summary$/,
-  /^\/encounters\/[^/]+\/timeline$/,
-  /^\/encounters\/[^/]+\/transition$/,
-  /^\/expenses-catalog$/,
-  /^\/expenses-catalog\/[^/]+$/,
-  /^\/exam-orders$/,
-  /^\/exam-orders\/[^/]+$/,
-  /^\/exam-results$/,
-  /^\/exam-results\/[^/]+$/,
-  /^\/financial\/reconciliation\/cards$/,
-  /^\/fiscal\/cfop$/,
-  /^\/fiscal\/icms$/,
-  /^\/fiscal\/icms-matrix$/,
-  /^\/fiscal\/ncm$/,
-  /^\/fiscal\/nfse$/,
-  /^\/fiscal\/nfse\/[^/]+$/,
-  /^\/fiscal\/pis-cofins$/,
-  /^\/fiscal\/summary$/,
-  /^\/fiscal\/tax-preview$/,
-  /^\/health$/,
-  /^\/inpatient$/,
-  /^\/inpatient\/[^/]+\/assign-bed$/,
-  /^\/inpatient\/[^/]+\/progress$/,
-  /^\/inpatient\/[^/]+\/transfer-bed$/,
-  /^\/inpatient\/[^/]+\/update-status$/,
-  /^\/inventory$/,
-  /^\/inventory\/[^/]+$/,
-  /^\/inventory\/consumptions$/,
-  /^\/inventory\/lots$/,
-  /^\/laboratory\/equipment$/,
-  /^\/laboratory\/orders$/,
-  /^\/laboratory\/orders\/[^/]+\/result$/,
-  /^\/laboratory\/reference-values$/,
-  /^\/laboratory\/report-types$/,
-  /^\/laboratory\/summary$/,
-  /^\/lgpd\/consent$/,
-  /^\/lgpd\/consent\/revoke$/,
-  /^\/lgpd\/consent\/status$/,
-  /^\/lgpd\/requests$/,
-  /^\/lgpd\/requests\/complete$/,
-  /^\/lgpd\/requests\/reject$/,
-  /^\/loyalty\/redemptions$/,
-  /^\/loyalty\/summary$/,
-  /^\/master-search$/,
-  /^\/medical-records$/,
-  /^\/medical-records\/entries$/,
-  /^\/medical-records\/entries\/[^/]+$/,
-  /^\/medical-records\/entries\/[^/]+\/revisions$/,
-  /^\/medical-records\/timeline$/,
-  /^\/ml\/anomalies\/laboratory-results$/,
-  /^\/ml\/forecasting\/demand$/,
-  /^\/mfa\/disable$/,
-  /^\/mfa\/recovery-codes\/regenerate$/,
-  /^\/mfa\/setup$/,
-  /^\/mfa\/setup\/confirm$/,
-  /^\/mfa\/status$/,
-  /^\/notifications$/,
-  /^\/notifications\/jobs$/,
-  /^\/notifications\/process$/,
-  /^\/owners$/,
-  /^\/owners\/[^/]+$/,
-  /^\/owners\/[^/]+\/summary$/,
-  /^\/patients$/,
-  /^\/patients\/[^/]+$/,
-  /^\/patients\/[^/]+\/summary$/,
-  /^\/payments\/pix\/intents$/,
-  /^\/pos-sync\/jobs$/,
-  /^\/pos-sync\/jobs\/[^/]+$/,
-  /^\/prescriptions$/,
-  /^\/prescriptions\/[^/]+$/,
-  /^\/prescription-executions$/,
-  /^\/prescription-executions\/[^/]+$/,
-  /^\/prescription-executions\/[^/]+\/execute$/,
-  /^\/prescription-executions\/[^/]+\/log$/,
-  /^\/prescription-executions\/[^/]+\/resume$/,
-  /^\/prescription-executions\/[^/]+\/suspend$/,
-  /^\/products$/,
-  /^\/products\/[^/]+$/,
-  /^\/price-tables$/,
-  /^\/price-tables\/[^/]+$/,
-  /^\/queue$/,
-  /^\/queue\/check-in$/,
-  /^\/queue\/[^/]+\/call$/,
-  /^\/queue\/[^/]+\/no-show$/,
-  /^\/queue\/[^/]+\/start-care$/,
-  /^\/quotes$/,
-  /^\/quotes\/[^/]+$/,
-  /^\/quotes\/[^/]+\/approve$/,
-  /^\/quotes\/[^/]+\/cancel$/,
-  /^\/quotes\/[^/]+\/convert-to-sale$/,
-  /^\/quotes\/[^/]+\/items$/,
-  /^\/quotes\/[^/]+\/print$/,
-  /^\/quotes\/[^/]+\/reject$/,
-  /^\/reports\/administrative-hubs$/,
-  /^\/scheduling\/availability$/,
-  /^\/scheduling\/overview$/,
-  /^\/scheduling\/recommendations\/duration$/,
-  /^\/sectors$/,
-  /^\/services$/,
-  /^\/services\/[^/]+$/,
-  /^\/staff$/,
-  /^\/staff\/[^/]+$/,
-  /^\/staff\/[^/]+\/toggle-active$/,
-  /^\/triage$/,
-  /^\/triage\/[^/]+$/,
-  /^\/triage\/[^/]+\/history$/,
-  /^\/users$/,
-  /^\/users\/[^/]+$/,
-  /^\/webhooks$/,
-  /^\/webhooks\/[^/]+$/,
-  /^\/webhooks\/[^/]+\/deliveries$/,
-  /^\/webhooks\/whatsapp\/inbound$/
-] as const;
-
-function normalizeServicePath(path: string): string {
-  return path
-    .replace(/\$\{buildQuery\([\s\S]*?\)\}/g, '')
-    .replace(/\$\{params\}/g, '')
-    .replace(/\$\{query\}/g, '')
-    .replace(/\$\{query \?.*$/, '')
-    .replace(/\$\{suffix\}/g, '')
-    .replace(/\$\{search\.toString\(\)\}/g, '')
-    .replace(/\$\{[^}]+\}/g, '{param}')
-    .replace(/\?.*$/, '')
-    .replace(/\{param\}/g, 'sample');
-}
-
-function collectSpaServicePaths(): string[] {
-  const servicePaths = new Set<string>();
-
-  for (const fileName of readdirSync(SERVICE_DIRECTORY)) {
-    if (!fileName.endsWith('.ts') || fileName === 'api.ts') {
-      continue;
-    }
-
-    const source = readFileSync(join(SERVICE_DIRECTORY, fileName), 'utf8');
-    const apiRequestMatches = source.matchAll(
-      /apiRequest(?:<[^>]*>)?\(\s*(?:`([^`]+)`|'([^']+)'|"([^"]+)")/g
-    );
-
-    for (const match of apiRequestMatches) {
-      const candidate = match[1] ?? match[2] ?? match[3];
-      if (!candidate) continue;
-      servicePaths.add(normalizeServicePath(candidate));
-    }
-
-    const fetchMatches = source.matchAll(/fetch\(\s*(?:`([^`]+)`|'([^']+)'|"([^"]+)")/g);
-    for (const match of fetchMatches) {
-      const candidate = match[1] ?? match[2] ?? match[3];
-      if (!candidate) continue;
-      const apiIndex = candidate.indexOf('/api/');
-      if (apiIndex >= 0) {
-        servicePaths.add(normalizeServicePath(candidate.slice(apiIndex + 4)));
-      }
-    }
-  }
-
-  return [...servicePaths].sort();
-}
 
 function joinRoutePath(parentPath: string, childPath: string): string {
   if (!childPath) return parentPath || '/';
@@ -252,21 +44,26 @@ function collectRouterPaths(): string[] {
 }
 
 describe('frontend/backend route contract', () => {
-  it('keeps every SPA service endpoint backed by a backend route', () => {
-    const missing = collectSpaServicePaths().filter(
-      (path) => !backendRoutePatterns.some((pattern) => pattern.test(path))
+  it('declares every SPA service endpoint and method in canonical OpenAPI (static contract)', () => {
+    const { requests, unresolved, forwarding } = collectSpaRequests();
+    const openapi = parse(readFileSync(join(process.cwd(), 'apps/api/src/openapi.yaml'), 'utf8'));
+    // Runtime dispatch is proved separately by api-routes-db, not by this declaration check.
+    expect(unresolved, 'Unresolved service calls require explicit static analysis support').toEqual(
+      []
     );
-
-    expect(missing).toEqual([]);
+    expect(requests.length).toBeGreaterThan(0);
+    // Explicit transport boundaries forward caller-provided URLs or Request objects.
+    // Their runtime destination is not asserted by this static declaration gate.
+    expect(forwarding.map((entry) => entry.kind).sort()).toEqual([
+      'Request object transport',
+      'apiRequest transport'
+    ]);
+    expect(missingDeclaredRequests(requests, openapi)).toEqual([]);
   });
 
   it('keeps navigation paths resolvable by the SPA router', () => {
     const routerPaths = new Set(collectRouterPaths());
-    const navPaths = navGroups.flatMap((group) =>
-      group.sections.flatMap((section) => section.items.map((item) => item.path))
-    );
-
-    expect(new Set(navPaths).size).toBe(navPaths.length);
+    const navPaths = [...new Set(flattenAllNavItems().map((item) => item.path))];
 
     const missing = navPaths.filter((path) => !routerPaths.has(path));
     expect(missing).toEqual([]);

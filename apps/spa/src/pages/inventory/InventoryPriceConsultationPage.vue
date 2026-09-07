@@ -3,24 +3,17 @@
     <AppPageHeader
       :breadcrumbs="['Estoque', 'Controles', 'Consulta de Preços']"
       title="Consulta de Preços"
-      subtitle="Consulta rápida de preço, custo, saldo e disponibilidade para balcão, comanda e atendimento"
+      subtitle="Confira os preços cadastrados e os saldos de estoque."
     >
       <template #actions>
-        <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
-        <DsButton variant="primary" tag="a" to="/products/new" icon="➕">Novo Produto</DsButton>
+        <DsButton variant="secondary" :loading="loading" :disabled="loading" @click="load">Atualizar</DsButton>
+        <DsButton variant="secondary" tag="a" to="/products/new" icon="plus">Novo Produto</DsButton>
       </template>
     </AppPageHeader>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
     </DsAlert>
-
-    <section class="hub-kpis" aria-label="Resumo da consulta de preços">
-      <DsStatCard :label="`${rows.length} item(ns)`" value="" icon="🔎" />
-      <DsStatCard :label="`${availableCount} com saldo`" value="" icon="📦" />
-      <DsStatCard :label="`${lowStockCount} abaixo do ponto`" value="" icon="⚠️" />
-      <DsStatCard :label="averageMarginLabel" value="" icon="💵" />
-    </section>
 
     <section class="filter-panel" aria-label="Filtros da consulta de preços">
       <form class="filters" @submit.prevent="applyFilters">
@@ -40,17 +33,24 @@
             <option value="inventory">Estoque</option>
           </select>
         </label>
-        <DsButton type="submit" variant="primary">Pesquisar</DsButton>
+        <DsButton type="submit" variant="primary" :disabled="loading">Pesquisar</DsButton>
       </form>
     </section>
 
-    <DataTable
+    <div v-if="available && !loading" class="query-status" role="status">
+      <span>{{ filteredRows.length }} {{ filteredRows.length === 1 ? 'registro encontrado' : 'registros encontrados' }}</span>
+      <DsButton v-if="hasFilters" variant="ghost" @click="clearFilters">Limpar filtros</DsButton>
+    </div>
+    <EmptyState v-if="failed && !loading" icon="search" title="Consulta indisponível" description="Não foi possível carregar preços e saldos. Tente novamente." size="sm">
+      <template #action><DsButton variant="secondary" @click="load">Tentar novamente</DsButton></template>
+    </EmptyState>
+    <DataTable v-else
       :columns="columns"
       :rows="filteredRows"
       :loading="loading"
       empty-icon="🔎"
       empty-title="Nenhum registro encontrado"
-      empty-description="Use os filtros acima ou cadastre produtos e itens de estoque."
+      :empty-description="hasFilters ? 'Tente outro código, nome ou origem.' : 'Cadastre produtos ou itens de estoque para consultar seus dados.'"
       variant="hoverable"
     >
       <template #cell-code="{ row }">
@@ -74,7 +74,7 @@
         {{ formatCurrency((row as PriceConsultationRow).costAmount) }}
       </template>
       <template #cell-margin="{ row }">
-        <span :class="{ 'text-danger': (row as PriceConsultationRow).marginAmount < 0 }">
+        <span :class="{ 'text-danger': ((row as PriceConsultationRow).marginAmount ?? 0) < 0 }">
           {{ formatCurrency((row as PriceConsultationRow).marginAmount) }}
         </span>
       </template>
@@ -99,6 +99,16 @@
         </DsButton>
       </template>
     </DataTable>
+    <details class="query-summary">
+      <summary>Resumo da consulta</summary>
+      <dl>
+        <div><dt>Registros</dt><dd>{{ available && !loading ? filteredRows.length : '—' }}</dd></div>
+        <div><dt>Com saldo informado positivo</dt><dd>{{ available && !loading ? availableCount : '—' }}</dd></div>
+        <div><dt>No ponto de reposição ou abaixo</dt><dd>{{ available && !loading ? lowStockCount : '—' }}</dd></div>
+        <div><dt>Margem média</dt><dd>{{ available && !loading ? averageMarginLabel : '—' }}</dd></div>
+      </dl>
+      <p>Resumo dos registros desta consulta. O traço indica um valor não informado. A margem exige preço e custo vinculados ao mesmo cadastro.</p>
+    </details>
   </div>
 </template>
 
@@ -109,7 +119,7 @@ import DataTable from '@/components/DataTable.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
-import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import { inventoryService } from '@/services/inventory';
 import { productsService, type ProductSummary } from '@/services/products';
 import type { DataTableColumn } from '@/components/DataTable.vue';
@@ -125,9 +135,9 @@ interface PriceConsultationRow {
   code: string;
   name: string;
   description: string;
-  salePrice: number;
-  costAmount: number;
-  marginAmount: number;
+  salePrice: number | null;
+  costAmount: number | null;
+  marginAmount: number | null;
   stockQuantity: number | null;
   unit: string;
   stockLabel: string;
@@ -138,7 +148,10 @@ interface PriceConsultationRow {
 
 const products = ref<ProductSummary[]>([]);
 const inventoryItems = ref<InventoryItemSummary[]>([]);
-const loading = ref(false);
+const loading = ref(true);
+const available = ref(false);
+const failed = ref(false);
+let requestVersion = 0;
 const error = ref('');
 const draftFilters = reactive({
   code: '',
@@ -149,7 +162,7 @@ const appliedFilters = reactive({ ...draftFilters });
 
 const columns: DataTableColumn[] = [
   { key: 'code', label: 'Código', width: '140px' },
-  { key: 'name', label: 'Produto' },
+  { key: 'name', label: 'Produto', class: 'price-product-column' },
   { key: 'source', label: 'Origem', width: '120px' },
   { key: 'salePrice', label: 'Preço', width: '120px' },
   { key: 'costAmount', label: 'Custo', width: '120px' },
@@ -176,17 +189,16 @@ const filteredRows = computed(() => {
   });
 });
 
+const hasFilters = computed(() => Boolean(appliedFilters.code || appliedFilters.name || appliedFilters.source));
 const availableCount = computed(() =>
-  rows.value.filter((row) => row.stockQuantity === null || row.stockQuantity > 0).length
+  filteredRows.value.filter((row) => row.stockQuantity !== null && row.stockQuantity > 0).length
 );
 const lowStockCount = computed(() =>
-  rows.value.filter((row) => row.statusLabel === 'Abaixo do ponto').length
+  filteredRows.value.filter((row) => row.statusLabel === 'Abaixo do ponto').length
 );
 const averageMarginLabel = computed(() => {
-  const pricedRows = rows.value.filter((row) => row.marginAmount !== 0);
-  if (!pricedRows.length) return '0 margem média';
-  const average = pricedRows.reduce((sum, row) => sum + row.marginAmount, 0) / pricedRows.length;
-  return `${formatCurrency(average)} margem média`;
+  const margins = filteredRows.value.map(row => row.marginAmount).filter((margin): margin is number => margin !== null && Number.isFinite(margin));
+  return margins.length ? formatCurrency(margins.reduce((sum, margin) => sum + margin, 0) / margins.length) : '—';
 });
 
 function productToRow(product: ProductSummary): PriceConsultationRow {
@@ -198,8 +210,8 @@ function productToRow(product: ProductSummary): PriceConsultationRow {
     name: product.name,
     description: product.description ?? 'Cadastro comercial',
     salePrice: product.basePrice,
-    costAmount: 0,
-    marginAmount: product.basePrice,
+    costAmount: null,
+    marginAmount: null,
     stockQuantity: null,
     unit: 'un',
     stockLabel: 'Sem saldo vinculado',
@@ -210,7 +222,6 @@ function productToRow(product: ProductSummary): PriceConsultationRow {
 }
 
 function inventoryItemToRow(item: InventoryItemSummary): PriceConsultationRow {
-  const salePrice = Math.round(item.unitCostAmount * 1.35 * 100) / 100;
   const lowStock = item.onHandQuantity <= item.reorderLevel;
   return {
     id: item.id,
@@ -219,9 +230,9 @@ function inventoryItemToRow(item: InventoryItemSummary): PriceConsultationRow {
     code: item.sku,
     name: item.name,
     description: 'Item de estoque com custo e saldo operacional',
-    salePrice,
+    salePrice: null,
     costAmount: item.unitCostAmount,
-    marginAmount: salePrice - item.unitCostAmount,
+    marginAmount: null,
     stockQuantity: item.onHandQuantity,
     unit: item.unit,
     stockLabel: `${formatQuantity(item.onHandQuantity)} ${item.unit}`,
@@ -235,7 +246,8 @@ function normalizeSearch(value: string): string {
   return value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
 }
 
-function formatCurrency(value: number): string {
+function formatCurrency(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return '—';
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
@@ -244,27 +256,41 @@ function formatQuantity(value: number): string {
 }
 
 function applyFilters() {
-  Object.assign(appliedFilters, draftFilters);
+  void load();
+}
+
+function clearFilters() {
+  Object.assign(draftFilters, { code: '', name: '', source: '' });
   void load();
 }
 
 async function load() {
+  const version = ++requestVersion;
+  const filters = { code: draftFilters.code.trim(), name: draftFilters.name.trim(), source: draftFilters.source };
   loading.value = true;
+  available.value = false;
+  failed.value = false;
   error.value = '';
   try {
-    const query = draftFilters.name || draftFilters.code || undefined;
+    // Fetch the same complete lists as the initial view; local filtering uses
+    // displayed codes and accent-insensitive names consistently across both sources.
     const [productItems, stockItems] = await Promise.all([
-      productsService.list(query),
-      inventoryService.list(query)
+      productsService.list(undefined),
+      inventoryService.list(undefined)
     ]);
+    if (version !== requestVersion) return;
     products.value = productItems;
     inventoryItems.value = stockItems;
+    Object.assign(appliedFilters, filters);
+    available.value = true;
   } catch (err: unknown) {
+    if (version !== requestVersion) return;
+    failed.value = true;
     error.value = err instanceof Error ? err.message : 'Erro ao carregar consulta de preços';
     products.value = [];
     inventoryItems.value = [];
   } finally {
-    loading.value = false;
+    if (version === requestVersion) loading.value = false;
   }
 }
 
@@ -278,11 +304,14 @@ onMounted(load);
   gap: 16px;
 }
 
-.hub-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
+.query-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--color-text-secondary); }
+.query-summary { border: 1px solid var(--color-border); border-radius: 12px; padding: 0 16px; background: var(--color-surface); }
+.query-summary summary { min-height: 44px; padding: 12px 0; cursor: pointer; font-weight: 600; }
+.query-summary dl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 12px 0; }
+.query-summary dt { color: var(--color-text-secondary); font-size: 13px; }
+.query-summary dd { margin: 4px 0 0; font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.query-summary p { color: var(--color-text-secondary); font-size: 13px; margin: 12px 0 16px; }
+.filter-field input:focus-visible, .filter-field select:focus-visible, .query-summary summary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
 
 .filter-panel {
   padding: 16px;
@@ -310,7 +339,7 @@ onMounted(load);
 .filter-field input,
 .filter-field select {
   width: 100%;
-  min-height: 38px;
+  min-height: 44px;
   padding: 8px 10px;
   border: 1px solid var(--color-border, #d7dde8);
   border-radius: 6px;
@@ -318,6 +347,8 @@ onMounted(load);
   color: var(--color-text, #0f172a);
   font: inherit;
 }
+
+.inventory-price-consultation-page :deep(.price-product-column) { min-width: 240px; }
 
 .record-id {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
@@ -341,8 +372,7 @@ onMounted(load);
 }
 
 @media (max-width: 620px) {
-  .filters {
-    grid-template-columns: 1fr;
-  }
+  .filters, .query-summary dl { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .filter-field { min-width: 0; }
 }
 </style>

@@ -10,14 +10,14 @@ Escopo:
 
 Evidências principais:
 
-- [clientes-detalhe-expandido.png](../inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/clientes-detalhe-expandido.png)
-- [animais-detalhe-expandido.png](../inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/animais-detalhe-expandido.png)
-- [comandas.png](../inspection/2026-04-23T22-00-01-706Z/screenshots/-comandas.png)
-- [agenda.png](../inspection/2026-04-23T22-00-01-706Z/screenshots/-agenda.png)
-- [dashboard-financeiro.png](../inspection/2026-04-23T22-00-01-706Z/screenshots/-dashboard-financeiro.png)
-- [clientes-detalhe-expandido.json](../inspection/2026-04-23T22-48-13-795Z-cadastros/clientes-detalhe-expandido.json)
-- [animais-detalhe-expandido.json](../inspection/2026-04-23T22-48-13-795Z-cadastros/animais-detalhe-expandido.json)
-- [artifacts.json](../inspection/2026-04-23T22-00-01-706Z/artifacts.json)
+- clientes-detalhe-expandido.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/clientes-detalhe-expandido.png`)
+- animais-detalhe-expandido.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T22-48-13-795Z-cadastros/screenshots/animais-detalhe-expandido.png`)
+- comandas.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T22-00-01-706Z/screenshots/-comandas.png`)
+- agenda.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T22-00-01-706Z/screenshots/-agenda.png`)
+- dashboard-financeiro.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T22-00-01-706Z/screenshots/-dashboard-financeiro.png`)
+- clientes-detalhe-expandido.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T22-48-13-795Z-cadastros/clientes-detalhe-expandido.json`)
+- animais-detalhe-expandido.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T22-48-13-795Z-cadastros/animais-detalhe-expandido.json`)
+- artifacts.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T22-00-01-706Z/artifacts.json`)
 
 ## 1. Síntese executiva
 

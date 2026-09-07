@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { requestProcessCoverageCheckpoint } from '../../helpers/process-coverage-control.mjs';
 import { createServer, type AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
 
@@ -106,6 +107,7 @@ function startApi(port: number, label: string): ApiProcess {
     env: {
       ...process.env,
       API_PROCESS_FIXTURE: '1',
+      CVG_PROCESS_COVERAGE_CONTROL: process.env.CVG_CRITICAL_PROCESS_COVERAGE === '1' ? '1' : '0',
       NODE_ENV: 'test',
       APP_NAME: 'inpatient-cash-receipt-concurrency-' + label,
       HOST: '127.0.0.1',
@@ -119,7 +121,7 @@ function startApi(port: number, label: string): ApiProcess {
       SMS_MOCK_MODE: 'true',
       GOOGLE_CALENDAR_MOCK_MODE: 'true'
     },
-    stdio: ['ignore', 'pipe', 'pipe']
+    stdio: process.env.CVG_CRITICAL_PROCESS_COVERAGE === '1' ? ['ignore', 'pipe', 'pipe', 'ipc'] : ['ignore', 'pipe', 'pipe']
   });
   if (child.pid === undefined) throw new Error('API process fixture did not expose a PID');
   let output = '';
@@ -739,5 +741,9 @@ describe('inpatient cash receipt real API-process concurrency boundary', () => {
     expect(foreign.status).toBe(404);
     await assertTenantBHasNoReceipt();
     await assertExactlyOneReceipt(winner?.key ?? '', loser?.key ?? '');
+    await Promise.all([
+      requestProcessCoverageCheckpoint(firstApi.child),
+      requestProcessCoverageCheckpoint(secondApi.child)
+    ]);
   }, 120_000);
 });

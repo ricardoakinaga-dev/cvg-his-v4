@@ -10,13 +10,13 @@ Escopo:
 
 Evidências principais:
 
-- [orcamentos-lista.png](../inspection/2026-04-23T23-50-42-311Z-orcamentos/screenshots/orcamentos-lista.png)
-- [orcamentos-lista.json](../inspection/2026-04-23T23-50-42-311Z-orcamentos/orcamentos-lista.json)
-- [orcamentos-lista-pos-pesquisa.png](../inspection/2026-04-23T23-50-42-311Z-orcamentos/screenshots/orcamentos-lista-pos-pesquisa.png)
-- [orcamentos-lista-pos-pesquisa.json](../inspection/2026-04-23T23-50-42-311Z-orcamentos/orcamentos-lista-pos-pesquisa.json)
-- [orcamentos-detalhe.png](../inspection/2026-04-23T23-50-42-311Z-orcamentos/screenshots/orcamentos-detalhe.png)
-- [orcamentos-detalhe.json](../inspection/2026-04-23T23-50-42-311Z-orcamentos/orcamentos-detalhe.json)
-- [network.json](../inspection/2026-04-23T23-50-42-311Z-orcamentos/network.json)
+- orcamentos-lista.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-50-42-311Z-orcamentos/screenshots/orcamentos-lista.png`)
+- orcamentos-lista.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-50-42-311Z-orcamentos/orcamentos-lista.json`)
+- orcamentos-lista-pos-pesquisa.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-50-42-311Z-orcamentos/screenshots/orcamentos-lista-pos-pesquisa.png`)
+- orcamentos-lista-pos-pesquisa.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-50-42-311Z-orcamentos/orcamentos-lista-pos-pesquisa.json`)
+- orcamentos-detalhe.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-50-42-311Z-orcamentos/screenshots/orcamentos-detalhe.png`)
+- orcamentos-detalhe.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-50-42-311Z-orcamentos/orcamentos-detalhe.json`)
+- network.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-50-42-311Z-orcamentos/network.json`)
 - [2026-04-23-relatorio-entidade-comanda.md](../guides/2026-04-23-relatorio-entidade-comanda.md)
 - [2026-04-23-relatorio-entidade-vendas.md](../guides/2026-04-23-relatorio-entidade-vendas.md)
 - [2026-04-23-relatorio-entidade-pacotes.md](../guides/2026-04-23-relatorio-entidade-pacotes.md)

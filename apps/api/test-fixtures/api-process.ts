@@ -9,4 +9,6 @@ if (process.env.API_PROCESS_FIXTURE !== '1' || process.env.NODE_ENV !== 'test') 
   throw new Error('api process fixture requires API_PROCESS_FIXTURE=1 and NODE_ENV=test');
 }
 
+const { installProcessCoverageControl } = await import('../../../tests/helpers/process-coverage-control.mjs');
+installProcessCoverageControl();
 await import('../src/index.js');

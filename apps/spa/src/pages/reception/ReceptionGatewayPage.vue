@@ -2,12 +2,8 @@
   <div class="reception-gateway-page">
     <AppPageHeader
       title="Recepção"
-      subtitle="Mesa operacional para localizar tutor ou paciente e direcionar para cadastro, Agenda ou Esteira."
-      :breadcrumb-items="headerBreadcrumbs"
-      :context-items="headerContextItems"
-      :next-steps="headerNextSteps"
-      :primary-action="headerPrimaryAction"
-      :secondary-actions="headerSecondaryActions"
+      class="reception-header"
+      subtitle="Localize tutor ou paciente para seguir com o atendimento."
     />
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
@@ -16,288 +12,16 @@
 
     <form class="reception-search" role="search" @submit.prevent="runSearch">
       <DsInput
+        id="reception-query"
         v-model="query"
         type="search"
         label="Busca da recepção"
-        placeholder="Buscar tutor ou paciente por nome, documento, telefone, e-mail, ID ou microchip"
+        placeholder="Nome, documento, telefone ou ID"
+        hint="Também por e-mail ou microchip."
       />
       <DsButton type="submit" variant="primary" :loading="loading">Buscar</DsButton>
       <DsButton v-if="hasQuery" type="button" variant="ghost" @click="clearSearch">Limpar</DsButton>
     </form>
-
-    <section
-      v-if="searched && contextualQuickActions.length > 0"
-      class="contextual-quick-actions"
-      aria-label="Acoes rapidas contextuais da recepcao"
-    >
-      <div class="contextual-quick-actions__head">
-        <div>
-          <span class="reception-funnel__eyebrow">Menos cliques</span>
-          <h2>Ações rápidas contextuais</h2>
-          <p>Atalhos derivados da busca atual para seguir sem redigitar tutor ou paciente.</p>
-        </div>
-        <RouterLink class="text-link" to="/master-search">Busca global</RouterLink>
-      </div>
-
-      <div class="contextual-quick-actions__grid">
-        <RouterLink
-          v-for="action in contextualQuickActions"
-          :key="action.key"
-          class="contextual-action"
-          :class="`contextual-action--${action.tone}`"
-          :to="action.to"
-        >
-          <span>{{ action.label }}</span>
-          <strong>{{ action.title }}</strong>
-          <small>{{ action.description }}</small>
-        </RouterLink>
-      </div>
-    </section>
-
-    <section class="reception-workflow" aria-label="Proximos passos da recepcao">
-      <div class="workflow-step">
-        <span class="workflow-step__number">1</span>
-        <div>
-          <strong>Tutor</strong>
-          <p>Localizar ou cadastrar responsavel.</p>
-        </div>
-      </div>
-      <div class="workflow-step">
-        <span class="workflow-step__number">2</span>
-        <div>
-          <strong>Paciente</strong>
-          <p>Confirmar animal ou criar vinculo.</p>
-        </div>
-      </div>
-      <div class="workflow-step">
-        <span class="workflow-step__number">3</span>
-        <div>
-          <strong>Agenda ou Esteira</strong>
-          <p>Programar chegada ou acompanhar trabalho vivo.</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="reception-funnel" aria-label="Funil operacional da recepcao">
-      <div class="reception-funnel__head">
-        <div>
-          <span class="reception-funnel__eyebrow">Esteira central</span>
-          <h2>Funil operacional</h2>
-          <p>Entradas vivas da recepcao, atendimento em andamento e finalizacoes da esteira.</p>
-        </div>
-        <RouterLink class="text-link" to="/queue">Abrir Esteira</RouterLink>
-      </div>
-
-      <DsAlert v-if="queueError" variant="warning" dismissible @dismiss="queueError = ''">
-        {{ queueError }}
-      </DsAlert>
-
-      <div class="funnel-metrics" aria-label="Resumo da esteira operacional">
-        <article class="funnel-metric">
-          <span>Aguardando recepção</span>
-          <strong>{{ receptionQueueCount }}</strong>
-        </article>
-        <article class="funnel-metric">
-          <span>Em atendimento</span>
-          <strong>{{ clinicalQueueCount }}</strong>
-        </article>
-        <article class="funnel-metric">
-          <span>Finalizados</span>
-          <strong>{{ completedQueueCount }}</strong>
-        </article>
-        <article class="funnel-metric">
-          <span>Cancelados</span>
-          <strong>{{ cancelledQueueCount }}</strong>
-        </article>
-      </div>
-
-      <div v-if="queueLoading" class="queue-preview queue-preview--loading">
-        Carregando esteira operacional...
-      </div>
-      <div v-else-if="activeQueueEntries.length > 0" class="queue-preview">
-        <article v-for="entry in activeQueueEntries" :key="entry.id" class="queue-preview-row">
-          <div class="queue-preview-row__body">
-            <span class="queue-preview-row__eyebrow">{{ queueStatusLabel(entry.status) }}</span>
-            <strong>{{ entry.reason || 'Entrada sem motivo informado' }}</strong>
-            <p>
-              Paciente {{ entry.patientId }} · Tutor {{ entry.ownerId }} · Prioridade
-              {{ queuePriorityLabel(entry.priority) }}
-            </p>
-          </div>
-          <div class="queue-preview-row__actions">
-            <RouterLink
-              class="button-link button-link--secondary"
-              :to="`/patients/${entry.patientId}`"
-            >
-              Paciente
-            </RouterLink>
-            <RouterLink class="button-link button-link--secondary" :to="`/owners/${entry.ownerId}`">
-              Tutor
-            </RouterLink>
-            <RouterLink
-              v-if="entry.encounterId"
-              class="button-link button-link--primary"
-              :to="`/encounters/${entry.encounterId}`"
-            >
-              Atendimento
-            </RouterLink>
-            <RouterLink
-              class="button-link button-link--secondary"
-              :to="queueCounterSalePath(entry)"
-            >
-              Comanda
-            </RouterLink>
-          </div>
-        </article>
-      </div>
-      <EmptyState
-        v-else
-        icon="RC"
-        title="Nenhuma entrada ativa na recepção"
-        description="Use a busca, a agenda ou a esteira para iniciar uma nova entrada operacional."
-        size="sm"
-      />
-    </section>
-
-    <section class="handoff-preview" aria-label="Inbox minima de handoffs clinicos da recepcao">
-      <div class="reception-funnel__head">
-        <div>
-          <span class="reception-funnel__eyebrow">Inbox minima</span>
-          <h2>Handoffs da recepção</h2>
-          <p>
-            Recebimento operacional dos casos enviados pela clinica, sem criar cobranca ou comanda.
-          </p>
-        </div>
-        <DsButton
-          variant="secondary"
-          size="sm"
-          :loading="handoffLoading"
-          @click="loadClinicalHandoffs"
-        >
-          Atualizar
-        </DsButton>
-      </div>
-
-      <DsAlert v-if="handoffError" variant="warning" dismissible @dismiss="handoffError = ''">
-        {{ handoffError }}
-      </DsAlert>
-
-      <div class="handoff-metrics" aria-label="Resumo da inbox minima de handoffs">
-        <article class="handoff-metric">
-          <span>Aguardando ACK</span>
-          <strong>{{ pendingHandoffs.length }}</strong>
-        </article>
-        <article class="handoff-metric">
-          <span>Alta ou crítica</span>
-          <strong>{{ urgentPendingHandoffs }}</strong>
-        </article>
-        <article class="handoff-metric">
-          <span>Recebidos</span>
-          <strong>{{ acknowledgedHandoffs.length }}</strong>
-        </article>
-      </div>
-
-      <div class="handoff-tabs" aria-label="Filtro da inbox minima">
-        <button
-          type="button"
-          class="handoff-tab"
-          :class="{ 'handoff-tab--active': handoffInboxMode === 'pending' }"
-          @click="handoffInboxMode = 'pending'"
-        >
-          Aguardando
-        </button>
-        <button
-          type="button"
-          class="handoff-tab"
-          :class="{ 'handoff-tab--active': handoffInboxMode === 'acknowledged' }"
-          @click="handoffInboxMode = 'acknowledged'"
-        >
-          Recebidos
-        </button>
-      </div>
-
-      <div v-if="handoffLoading" class="queue-preview queue-preview--loading">
-        Carregando handoffs clinicos...
-      </div>
-      <div v-else-if="visibleClinicalHandoffs.length > 0" class="queue-preview">
-        <article
-          v-for="handoff in visibleClinicalHandoffs"
-          :key="handoff.id"
-          class="queue-preview-row"
-        >
-          <div class="queue-preview-row__body">
-            <span class="queue-preview-row__eyebrow">
-              {{ handoffStatusLabel(handoff.handoffStatus) }} ·
-              {{ handoffPriorityLabel(handoff.priority) }} · {{ formatDateTime(handoff.sentAt) }}
-            </span>
-            <strong>{{ handoff.clinicalSummary }}</strong>
-            <p>
-              Paciente {{ handoff.patientId }} · Tutor {{ handoff.ownerId }} ·
-              {{ handoff.receptionInstructions }}
-            </p>
-            <p v-if="handoff.acknowledgedAt" class="handoff-ack-note">
-              Recebido em {{ formatDateTime(handoff.acknowledgedAt) }}
-              <span v-if="handoff.acknowledgeNote">· {{ handoff.acknowledgeNote }}</span>
-            </p>
-          </div>
-          <div class="queue-preview-row__actions">
-            <RouterLink
-              class="button-link button-link--secondary"
-              :to="`/encounters/${handoff.encounterId}`"
-            >
-              Atendimento
-            </RouterLink>
-            <RouterLink
-              class="button-link button-link--secondary"
-              :to="`/patients/${handoff.patientId}`"
-            >
-              Paciente
-            </RouterLink>
-            <RouterLink
-              class="button-link button-link--secondary"
-              :to="`/owners/${handoff.ownerId}`"
-            >
-              Tutor
-            </RouterLink>
-            <DsButton
-              v-if="handoff.handoffStatus === 'sent_to_reception'"
-              size="sm"
-              variant="primary"
-              :loading="acknowledgingHandoffId === handoff.id"
-              @click="acknowledgeClinicalHandoff(handoff.id)"
-            >
-              Confirmar recebimento
-            </DsButton>
-          </div>
-        </article>
-      </div>
-      <EmptyState
-        v-else
-        icon="HO"
-        :title="handoffEmptyTitle"
-        :description="handoffEmptyDescription"
-        size="sm"
-      />
-    </section>
-
-    <section class="reception-primary-actions" aria-label="Acoes principais da recepcao">
-      <RouterLink class="operation-link operation-link--primary" to="/owners/new">
-        <strong>Cadastrar tutor</strong>
-        <span>Criar responsavel antes do paciente.</span>
-      </RouterLink>
-      <RouterLink class="operation-link operation-link--primary" to="/patients/new">
-        <strong>Cadastrar paciente</strong>
-        <span>Vincular animal a um tutor existente.</span>
-      </RouterLink>
-      <RouterLink class="operation-link operation-link--primary" to="/appointments/new">
-        <strong>Criar agendamento</strong>
-        <span>Usar a Agenda como coluna temporal.</span>
-      </RouterLink>
-      <RouterLink class="operation-link operation-link--primary" to="/queue">
-        <strong>Abrir Esteira</strong>
-        <span>Acompanhar check-ins e proximas acoes.</span>
-      </RouterLink>
-    </section>
 
     <section v-if="searched" class="reception-results" aria-label="Resultados da busca da recepcao">
       <div class="results-section">
@@ -428,6 +152,290 @@
       </div>
     </section>
 
+    <section
+      v-if="searched && contextualQuickActions.length > 0"
+      class="contextual-quick-actions"
+      aria-label="Acoes rapidas contextuais da recepcao"
+    >
+      <div class="contextual-quick-actions__head">
+        <div>
+          <span class="reception-funnel__eyebrow">Menos cliques</span>
+          <h2>Ações rápidas contextuais</h2>
+          <p>Atalhos derivados da busca atual para seguir sem redigitar tutor ou paciente.</p>
+        </div>
+        <RouterLink class="text-link" to="/master-search">Busca global</RouterLink>
+      </div>
+
+      <div class="contextual-quick-actions__grid">
+        <RouterLink
+          v-for="action in contextualQuickActions"
+          :key="action.key"
+          class="contextual-action"
+          :class="`contextual-action--${action.tone}`"
+          :to="action.to"
+        >
+          <span>{{ action.label }}</span>
+          <strong>{{ action.title }}</strong>
+          <small>{{ action.description }}</small>
+        </RouterLink>
+      </div>
+    </section>
+
+    <section class="reception-funnel" aria-label="Funil operacional da recepcao">
+      <div class="reception-funnel__head">
+        <div>
+          <h2>Funil operacional</h2>
+          <p>{{ queueLoading ? 'Carregando entradas…' : queueError ? 'Não foi possível atualizar as entradas' : `${activeQueueEntries.length} entrada(s) ativa(s)` }}</p>
+        </div>
+        <RouterLink class="text-link" to="/queue">Abrir Esteira</RouterLink>
+      </div>
+
+      <DsAlert v-if="queueError" variant="warning" dismissible @dismiss="queueError = ''">
+        {{ queueError }}
+      </DsAlert>
+
+      <div v-if="queueLoading" class="queue-preview queue-preview--loading">
+        Carregando esteira operacional...
+      </div>
+      <div v-else-if="activeQueueEntries.length > 0" class="queue-preview">
+        <article v-for="entry in activeQueueEntries" :key="entry.id" class="queue-preview-row">
+          <div class="queue-preview-row__body">
+            <span class="queue-preview-row__eyebrow">{{ queueStatusLabel(entry.status) }}</span>
+            <strong>{{ entry.reason || 'Entrada sem motivo informado' }}</strong>
+            <p>
+              Paciente {{ entry.patientId }} · Tutor {{ entry.ownerId }} · Prioridade
+              {{ queuePriorityLabel(entry.priority) }}
+            </p>
+          </div>
+          <div class="queue-preview-row__actions">
+            <RouterLink
+              class="button-link button-link--secondary"
+              :to="`/patients/${entry.patientId}`"
+            >
+              Paciente
+            </RouterLink>
+            <RouterLink class="button-link button-link--secondary" :to="`/owners/${entry.ownerId}`">
+              Tutor
+            </RouterLink>
+            <RouterLink
+              v-if="entry.encounterId"
+              class="button-link button-link--primary"
+              :to="`/encounters/${entry.encounterId}`"
+            >
+              Atendimento
+            </RouterLink>
+            <RouterLink
+              class="button-link button-link--secondary"
+              :to="queueCounterSalePath(entry)"
+            >
+              Comanda
+            </RouterLink>
+          </div>
+        </article>
+      </div>
+      <EmptyState
+        v-else
+        icon="RC"
+        title="Nenhuma entrada ativa na recepção"
+        description="Use a busca, a agenda ou a esteira para iniciar uma nova entrada operacional."
+        size="sm"
+      />
+      <details class="reception-disclosure">
+        <summary>Indicadores da esteira</summary>
+      <div class="funnel-metrics" aria-label="Resumo da esteira operacional">
+        <article class="funnel-metric">
+          <span>Aguardando recepção</span>
+          <strong>{{ receptionQueueCount }}</strong>
+        </article>
+        <article class="funnel-metric">
+          <span>Em atendimento</span>
+          <strong>{{ clinicalQueueCount }}</strong>
+        </article>
+        <article class="funnel-metric">
+          <span>Finalizados</span>
+          <strong>{{ completedQueueCount }}</strong>
+        </article>
+        <article class="funnel-metric">
+          <span>Cancelados</span>
+          <strong>{{ cancelledQueueCount }}</strong>
+        </article>
+      </div>
+
+      </details>
+    </section>
+
+    <section class="handoff-preview" aria-label="Inbox minima de handoffs clinicos da recepcao">
+      <div class="reception-funnel__head">
+        <div>
+          <span class="reception-funnel__eyebrow">Inbox minima</span>
+          <h2>Handoffs da recepção</h2>
+          <p>
+            Recebimento operacional dos casos enviados pela clinica, sem criar cobranca ou comanda.
+          </p>
+        </div>
+        <DsButton
+          variant="secondary"
+          size="sm"
+          :loading="handoffLoading"
+          @click="loadClinicalHandoffs"
+        >
+          Atualizar
+        </DsButton>
+      </div>
+
+      <DsAlert v-if="handoffError" variant="warning" dismissible @dismiss="handoffError = ''">
+        {{ handoffError }}
+      </DsAlert>
+
+      <div class="handoff-tabs" aria-label="Filtro da inbox minima">
+        <button
+          type="button"
+          class="handoff-tab"
+          :class="{ 'handoff-tab--active': handoffInboxMode === 'pending' }"
+          @click="handoffInboxMode = 'pending'"
+        >
+          Aguardando
+        </button>
+        <button
+          type="button"
+          class="handoff-tab"
+          :class="{ 'handoff-tab--active': handoffInboxMode === 'acknowledged' }"
+          @click="handoffInboxMode = 'acknowledged'"
+        >
+          Recebidos
+        </button>
+      </div>
+
+      <div v-if="handoffLoading" class="queue-preview queue-preview--loading">
+        Carregando handoffs clinicos...
+      </div>
+      <div v-else-if="visibleClinicalHandoffs.length > 0" class="queue-preview">
+        <article
+          v-for="handoff in visibleClinicalHandoffs"
+          :key="handoff.id"
+          class="queue-preview-row"
+        >
+          <div class="queue-preview-row__body">
+            <span class="queue-preview-row__eyebrow">
+              {{ handoffStatusLabel(handoff.handoffStatus) }} ·
+              {{ handoffPriorityLabel(handoff.priority) }} · {{ formatDateTime(handoff.sentAt) }}
+            </span>
+            <strong>{{ handoff.clinicalSummary }}</strong>
+            <p>
+              Paciente {{ handoff.patientId }} · Tutor {{ handoff.ownerId }} ·
+              {{ handoff.receptionInstructions }}
+            </p>
+            <p v-if="handoff.acknowledgedAt" class="handoff-ack-note">
+              Recebido em {{ formatDateTime(handoff.acknowledgedAt) }}
+              <span v-if="handoff.acknowledgeNote">· {{ handoff.acknowledgeNote }}</span>
+            </p>
+          </div>
+          <div class="queue-preview-row__actions">
+            <RouterLink
+              class="button-link button-link--secondary"
+              :to="`/encounters/${handoff.encounterId}`"
+            >
+              Atendimento
+            </RouterLink>
+            <RouterLink
+              class="button-link button-link--secondary"
+              :to="`/patients/${handoff.patientId}`"
+            >
+              Paciente
+            </RouterLink>
+            <RouterLink
+              class="button-link button-link--secondary"
+              :to="`/owners/${handoff.ownerId}`"
+            >
+              Tutor
+            </RouterLink>
+            <DsButton
+              v-if="handoff.handoffStatus === 'sent_to_reception'"
+              size="sm"
+              variant="primary"
+              :loading="acknowledgingHandoffId === handoff.id"
+              @click="acknowledgeClinicalHandoff(handoff.id)"
+            >
+              Confirmar recebimento
+            </DsButton>
+          </div>
+        </article>
+      </div>
+      <EmptyState
+        v-else
+        icon="HO"
+        :title="handoffEmptyTitle"
+        :description="handoffEmptyDescription"
+        size="sm"
+      />
+      <details class="reception-disclosure">
+        <summary>Indicadores de handoffs</summary>
+      <div class="handoff-metrics" aria-label="Resumo da inbox minima de handoffs">
+        <article class="handoff-metric">
+          <span>Aguardando ACK</span>
+          <strong>{{ pendingHandoffs.length }}</strong>
+        </article>
+        <article class="handoff-metric">
+          <span>Alta ou crítica</span>
+          <strong>{{ urgentPendingHandoffs }}</strong>
+        </article>
+        <article class="handoff-metric">
+          <span>Recebidos</span>
+          <strong>{{ acknowledgedHandoffs.length }}</strong>
+        </article>
+      </div>
+
+      </details>
+    </section>
+
+    <details class="reception-disclosure reception-shortcuts">
+      <summary>Cadastros, atalhos e guia da recepção</summary>
+      <nav class="reception-shortcuts__agenda" aria-label="Agenda da recepção">
+        <RouterLink class="text-link" to="/appointments">Abrir Agenda</RouterLink>
+      </nav>
+    <section class="reception-workflow" aria-label="Proximos passos da recepcao">
+      <div class="workflow-step">
+        <span class="workflow-step__number">1</span>
+        <div>
+          <strong>Tutor</strong>
+          <p>Localizar ou cadastrar responsavel.</p>
+        </div>
+      </div>
+      <div class="workflow-step">
+        <span class="workflow-step__number">2</span>
+        <div>
+          <strong>Paciente</strong>
+          <p>Confirmar animal ou criar vinculo.</p>
+        </div>
+      </div>
+      <div class="workflow-step">
+        <span class="workflow-step__number">3</span>
+        <div>
+          <strong>Agenda ou Esteira</strong>
+          <p>Programar chegada ou acompanhar trabalho vivo.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="reception-primary-actions" aria-label="Acoes principais da recepcao">
+      <RouterLink class="operation-link operation-link--primary" to="/owners/new">
+        <strong>Cadastrar tutor</strong>
+        <span>Criar responsavel antes do paciente.</span>
+      </RouterLink>
+      <RouterLink class="operation-link operation-link--primary" to="/patients/new">
+        <strong>Cadastrar paciente</strong>
+        <span>Vincular animal a um tutor existente.</span>
+      </RouterLink>
+      <RouterLink class="operation-link operation-link--primary" to="/appointments/new">
+        <strong>Criar agendamento</strong>
+        <span>Usar a Agenda como coluna temporal.</span>
+      </RouterLink>
+      <RouterLink class="operation-link operation-link--primary" to="/queue">
+        <strong>Abrir Esteira</strong>
+        <span>Acompanhar check-ins e proximas acoes.</span>
+      </RouterLink>
+    </section>
+
     <section class="secondary-shortcuts" aria-label="Atalhos secundarios da recepcao">
       <div class="secondary-shortcuts__head">
         <h2>Atalhos secundarios</h2>
@@ -448,17 +456,13 @@
         </RouterLink>
       </div>
     </section>
+    </details>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import AppPageHeader, {
-  type PageAction,
-  type PageBreadcrumb,
-  type PageContextItem,
-  type PageNextStep
-} from '@/components/AppPageHeader.vue';
+import AppPageHeader from '@/components/AppPageHeader.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
@@ -704,100 +708,6 @@ const contextualQuickActions = computed<ContextualQuickAction[]>(() => {
 
   return actions;
 });
-
-const headerBreadcrumbs: PageBreadcrumb[] = [
-  { label: 'Inicio', to: '/' },
-  { label: 'Atendimento', to: '/appointments' },
-  { label: 'Recepcao', current: true }
-];
-
-const headerContextItems = computed<PageContextItem[]>(() => [
-  {
-    key: 'search',
-    label: 'Busca',
-    value: searched.value ? query.value.trim() || 'Sem termo ativo' : 'Aguardando entrada',
-    tone: searched.value ? 'info' : 'neutral'
-  },
-  {
-    key: 'owners',
-    label: 'Tutores',
-    value: String(owners.value.length)
-  },
-  {
-    key: 'patients',
-    label: 'Pacientes',
-    value: String(patients.value.length)
-  },
-  {
-    key: 'queue',
-    label: 'Esteira',
-    value: String(activeQueueEntries.value.length),
-    tone: activeQueueEntries.value.length > 0 ? 'warning' : 'neutral'
-  },
-  {
-    key: 'handoffs',
-    label: 'Handoffs',
-    value: String(pendingHandoffs.value.length),
-    tone: pendingHandoffs.value.length > 0 ? 'warning' : 'neutral'
-  }
-]);
-
-const headerNextSteps = computed<PageNextStep[]>(() => {
-  if (!searched.value) {
-    return [
-      {
-        key: 'search',
-        label: 'Buscar tutor ou paciente',
-        description: 'Depois direcione para cadastro, Agenda ou Esteira'
-      }
-    ];
-  }
-
-  if (patients.value.length > 0) {
-    return [
-      {
-        key: 'schedule',
-        label: 'Criar agendamento',
-        description: 'Agenda organiza a chegada antes da Esteira',
-        to: appointmentPath(patients.value[0].primaryOwnerId, patients.value[0].id)
-      }
-    ];
-  }
-
-  if (owners.value.length > 0) {
-    return [
-      {
-        key: 'patient',
-        label: 'Cadastrar paciente vinculado',
-        description: owners.value[0].fullName,
-        to: `/patients/new?ownerId=${encode(owners.value[0].id)}`
-      }
-    ];
-  }
-
-  return [
-    {
-      key: 'new-owner',
-      label: 'Cadastrar tutor',
-      description: 'Nenhum registro encontrado para a busca',
-      to: '/owners/new'
-    }
-  ];
-});
-
-const headerPrimaryAction: PageAction = {
-  key: 'new-appointment',
-  label: 'Criar agendamento',
-  variant: 'primary',
-  to: '/appointments/new'
-};
-
-const headerSecondaryActions: PageAction[] = [
-  { key: 'new-owner', label: 'Novo tutor', variant: 'secondary', to: '/owners/new' },
-  { key: 'new-patient', label: 'Novo paciente', variant: 'secondary', to: '/patients/new' },
-  { key: 'agenda', label: 'Abrir Agenda', variant: 'secondary', to: '/appointments' },
-  { key: 'queue', label: 'Abrir Esteira', variant: 'secondary', to: '/queue' }
-];
 
 const receptionQueueStatuses = new Set<QueueStatus>(['waiting', 'called']);
 const clinicalQueueStatuses = new Set<QueueStatus>(['in_triage', 'in_care', 'observation']);
@@ -1121,7 +1031,7 @@ function handoffStatusLabel(status: string): string {
 
 .reception-search {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 12px;
   align-items: end;
   padding: 16px;
@@ -1323,14 +1233,14 @@ function handoffStatusLabel(status: string): string {
 
 .funnel-metric span {
   display: block;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 12px;
   font-weight: 700;
 }
 
 .handoff-metric span {
   display: block;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 12px;
   font-weight: 700;
 }
@@ -1359,7 +1269,7 @@ function handoffStatusLabel(status: string): string {
 }
 
 .handoff-tab {
-  min-height: 34px;
+  min-height: 44px;
   padding: 7px 12px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
@@ -1392,7 +1302,7 @@ function handoffStatusLabel(status: string): string {
   padding: 14px;
   border: 1px dashed #cbd5e1;
   border-radius: 8px;
-  color: #64748b;
+  color: var(--color-text-muted);
   background: #f8fafc;
 }
 
@@ -1495,7 +1405,7 @@ function handoffStatusLabel(status: string): string {
 
 .button-link,
 .text-link {
-  color: #0f766e;
+  color: var(--color-text);
   font-weight: 700;
   text-decoration: none;
 }
@@ -1503,13 +1413,13 @@ function handoffStatusLabel(status: string): string {
 .text-link {
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
+  min-height: 44px;
 }
 
 .button-link {
   display: inline-flex;
   align-items: center;
-  min-height: 34px;
+  min-height: 44px;
   padding: 7px 10px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
@@ -1534,18 +1444,57 @@ function handoffStatusLabel(status: string): string {
   padding: 16px;
 }
 
-@media (max-width: 860px) {
-  .reception-search,
-  .reception-results,
+.reception-disclosure {
+  margin-top: 12px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.reception-disclosure > summary {
+  min-height: 44px;
+  padding: 12px 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.reception-disclosure > summary:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.reception-shortcuts { margin-top: 0; }
+
+.reception-shortcuts[open] > section,
+.reception-shortcuts__agenda { margin-bottom: 16px; }
+
+.reception-funnel__head .text-link,
+.reception-funnel__head > .ds-btn { flex-shrink: 0; }
+
+@media (max-width: 600px) {
+  .reception-search {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 12px;
+  }
+  .reception-search > :first-child { grid-column: 1 / -1; }
+  .reception-search > .ds-btn { width: 100%; }
   .funnel-metrics,
-  .handoff-metrics,
+  .handoff-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .reception-funnel,
+  .handoff-preview { padding: 12px; }
+  .reception-funnel__head { gap: 8px; }
+  .reception-funnel__head .text-link { font-size: 12px; }
+}
+
+@media (max-width: 860px) {
+  .reception-results,
   .contextual-quick-actions__grid,
   .queue-preview-row,
   .result-row {
     grid-template-columns: 1fr;
   }
 
-  .reception-funnel__head,
   .contextual-quick-actions__head {
     flex-direction: column;
   }
@@ -1609,7 +1558,7 @@ function handoffStatusLabel(status: string): string {
 :root[data-theme='dark'] .reception-gateway-page .handoff-tab--active {
   border-color: var(--color-success-300);
   background: var(--color-success-50);
-  color: var(--color-success-300);
+  color: var(--color-text);
 }
 
 :root[data-theme='dark'] .reception-gateway-page .button-link--primary {

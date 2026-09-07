@@ -85,6 +85,16 @@ describe('cash register lifecycle persistence on PostgreSQL', () => {
     const register = await command(ACCOUNT_ID, USER_ID, () =>
       cash.openRegister(ACCOUNT_ID, USER_ID, { openingAmount: 100, notes: 'Turno manhã' })
     );
+    await expect(
+      command(FOREIGN_ACCOUNT_ID, FOREIGN_USER_ID, () =>
+        cash.recordMovement(
+          register.id,
+          FOREIGN_ACCOUNT_ID,
+          { movementType: 'supply', amount: 10, reference: 'FOREIGN-001' },
+          FOREIGN_USER_ID
+        )
+      )
+    ).rejects.toThrow('Cash register not found');
     await command(ACCOUNT_ID, USER_ID, () =>
       cash.recordMovement(
         register.id,

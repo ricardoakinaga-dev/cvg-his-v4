@@ -139,20 +139,10 @@ export const validateDeploySurface = (root) => {
     }
   }
 
-  const legacyReadmePath = path.join(root, LEGACY_HELM_SURFACE, 'README.md');
-  if (!fs.existsSync(legacyReadmePath)) {
-    errors.push('legacy Helm track must retain a deprecation README');
-  } else {
-    const legacyReadme = fs.readFileSync(legacyReadmePath, 'utf8');
-    if (!legacyReadme.includes('LEGACY') || !legacyReadme.includes(CANONICAL_HELM_SURFACE)) {
-      errors.push('legacy Helm README does not identify the canonical replacement');
-    }
-    if (
-      legacyReadme.includes('/health/startup') ||
-      /\bhelm\s+(install|upgrade)\b/.test(legacyReadme)
-    ) {
-      errors.push('legacy Helm README still contains executable or stale deployment instructions');
-    }
+  // Archived material is optional and may be deleted without affecting deploy.
+  // The former track must not reappear in the active repository.
+  if (fs.existsSync(path.join(root, LEGACY_HELM_SURFACE))) {
+    errors.push('legacy Helm track must remain outside the active deployment tree');
   }
 
   const files = activeDeployFiles(root).map((relativePath) => ({

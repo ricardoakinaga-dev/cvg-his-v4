@@ -120,6 +120,7 @@ export default defineConfig(({ mode }) => {
           ])
     ],
     resolve: {
+      dedupe: ['vue', 'vue-router'],
       alias: {
         '@': resolve(__dirname, 'src'),
         '@cvg-his-v2/design-system/vue': resolve(__dirname, '../../packages/design-system/src/vue'),

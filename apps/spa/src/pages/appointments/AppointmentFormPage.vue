@@ -6,7 +6,7 @@
         {{ pageSubtitle }}
       </template>
       <template #actions>
-        <DsButton variant="secondary" tag="a" href="/appointments">Voltar à agenda</DsButton>
+        <DsButton variant="secondary" tag="a" to="/appointments">Voltar à agenda</DsButton>
       </template>
     </AppPageHeader>
 

@@ -1,0 +1,33 @@
+
+ RUN  v4.1.2 /home/ricardo/cvg-his-v4/apps/spa
+
+ ❯ src/composables/__tests__/useUnsavedChanges.test.ts (6 tests | 1 failed) 147ms
+     × settles pending departure when the component is disposed 19ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/composables/__tests__/useUnsavedChanges.test.ts > concurrent navigation and teardown > settles pending departure when the component is disposed
+AssertionError: expected '/' to be '/form/1' // Object.is equality
+
+Expected: "/form/1"
+Received: "/"
+
+ ❯ src/composables/__tests__/useUnsavedChanges.test.ts:69:44
+     67|     expect(protection.leaveRequested.value).toBe(true);
+     68|     wrapper.unmount(); await navigation;
+     69|     expect(router.currentRoute.value.path).toBe('/form/1');
+       |                                            ^
+     70|   });
+     71|   it('shares a confirmation for rapid competing destinations without d…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 16 passed (17)
+   Start at  23:31:59
+   Duration  4.15s (transform 810ms, setup 243ms, import 150ms, tests 1.89s, environment 1.63s)
+
+undefined
+/home/ricardo/cvg-his-v4/apps/spa:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/composables/__tests__/useUnsavedChanges.test.ts src/pages/owners/__tests__/OwnerFormPage.test.ts --maxWorkers=1

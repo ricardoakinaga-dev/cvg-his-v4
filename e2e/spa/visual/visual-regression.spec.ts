@@ -1,6 +1,11 @@
 import { test, expect, type Page } from '@playwright/test';
 import { stabilizeVisual, waitForPageSettled, pageProfiles } from './stabilize-visual';
-import { loginViaToken } from '../fixtures/spa-fixture';
+import { getE2EAccessToken, loginViaToken } from '../fixtures/spa-fixture';
+import {
+  assertDashboardVisualState,
+  DASHBOARD_VISUAL_PERMISSIONS,
+  installDashboardVisualFixture
+} from './dashboard-fixture';
 
 /**
  * SPA E2E — Visual Regression Tests (Fases 2.27b + 2.28)
@@ -391,7 +396,9 @@ test.describe('Visual Regression — Theme and Responsive Shell', () => {
     });
 
     test('patient detail page', async ({ page }) => {
-      await capturePatientDetailVisual(page, 'patient-detail-page-dark.png');
+      await capturePatientDetailVisual(page, 'patient-detail-page-dark.png', {
+        forceLightTheme: false
+      });
     });
 
     test('encounter detail page', async ({ page }) => {
@@ -431,6 +438,13 @@ test.describe('Visual Regression — Theme and Responsive Shell', () => {
 
     test('owners list page', async ({ page }) => {
       await captureOwnerListVisual(page, 'owners-list-page-mobile.png', {
+        expandSidebar: false
+      });
+    });
+
+    test('patient detail page', async ({ page }) => {
+      await capturePatientDetailVisual(page, 'patient-detail-page-mobile.png', {
+        forceLightTheme: true,
         expandSidebar: false
       });
     });
@@ -523,12 +537,21 @@ async function captureOwnerListVisual(
   }
 }
 
-async function capturePatientDetailVisual(page: Page, screenshotName: string): Promise<void> {
+async function capturePatientDetailVisual(
+  page: Page,
+  screenshotName: string,
+  stabilization: Parameters<typeof stabilizeVisual>[1] = pageProfiles.detailPage
+): Promise<void> {
   const token = await ensureAuthToken(page);
   const owner = await createVisualOwner(token);
   const patient = await createVisualPatient(token, owner.id);
 
+  const targetTheme = stabilization.forceLightTheme === false ? 'dark' : 'light';
   try {
+    // Seed before the full navigation so bootstrapTheme and Pinia agree with the capture.
+    await page.evaluate((theme) => {
+      localStorage.setItem('cvg-his-v2:theme', theme);
+    }, targetTheme);
     await navigateTo(page, `/patients/${patient.id}`);
     await waitForPageSettled(page, {
       contentSelector: HEADING_SELECTOR,
@@ -541,15 +564,24 @@ async function capturePatientDetailVisual(page: Page, screenshotName: string): P
     });
     await normalizeDateTimes(page);
     await normalizePatientIdentifiers(page);
-    await page.evaluate(() => {
-      document.documentElement.setAttribute('data-theme', 'dark');
-      document.documentElement.style.colorScheme = 'dark';
-    });
+    await page.evaluate((forceDark) => {
+      document.documentElement.setAttribute('data-theme', forceDark ? 'dark' : 'light');
+      document.documentElement.style.colorScheme = forceDark ? 'dark' : 'light';
+    }, stabilization.forceLightTheme === false);
 
     await stabilizeVisual(page, {
       ...pageProfiles.detailPage,
-      forceLightTheme: false
+      ...stabilization
     });
+
+    await expect(page.locator('html')).toHaveAttribute('data-theme', targetTheme);
+    expect(await page.evaluate(() => document.documentElement.style.colorScheme)).toBe(targetTheme);
+    await expect(
+      page.getByRole('button', {
+        name: targetTheme === 'light' ? 'Mudar para tema escuro' : 'Mudar para tema claro',
+        exact: true
+      })
+    ).toBeVisible();
 
     await expect(page).toHaveScreenshot(screenshotName, {
       maxDiffPixels: 220,
@@ -638,25 +670,52 @@ async function captureMedicalRecordVisual(page: Page, screenshotName: string): P
 
 async function captureDashboardVisual(page: Page, screenshotName: string): Promise<void> {
   await ensureAuthToken(page);
-  await navigateTo(page, '/');
-  await waitForPageSettled(page, {
-    contentSelector: '.dashboard-page',
-    timeout: 15000
-  });
-  await page.evaluate(() => {
-    document.documentElement.setAttribute('data-theme', 'dark');
-    document.documentElement.style.colorScheme = 'dark';
-  });
+  const fixture = await installDashboardVisualFixture(page, [API_URL, SPA_URL]);
+  try {
+    // Bootstrap the requested theme before mounting; DOM-only overrides leave Pinia stale.
+    await page.evaluate(() => localStorage.setItem('cvg-his-v2:theme', 'dark'));
+    const [sessionResponse] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/api/auth/session' &&
+          response.request().method() === 'GET'
+      ),
+      navigateTo(page, '/')
+    ]);
+    expect(sessionResponse.ok()).toBe(true);
+    const session = await sessionResponse.json();
+    // Fail if the real session lacks this scenario's permissions; never grant them in a screenshot mock.
+    expect(session.access?.permissionCodes).toEqual(
+      expect.arrayContaining(DASHBOARD_VISUAL_PERMISSIONS)
+    );
+    await waitForPageSettled(page, {
+      contentSelector: '.dashboard-page',
+      timeout: 15000
+    });
+    await page.evaluate(() => {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.documentElement.style.colorScheme = 'dark';
+    });
 
-  await stabilizeVisual(page, {
-    ...pageProfiles.detailPage,
-    forceLightTheme: false
-  });
+    await stabilizeVisual(page, {
+      ...pageProfiles.detailPage,
+      forceLightTheme: false
+    });
 
-  await expect(page).toHaveScreenshot(screenshotName, {
-    maxDiffPixels: 500,
-    fullPage: false
-  });
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    expect(await page.evaluate(() => document.documentElement.style.colorScheme)).toBe('dark');
+    await expect(
+      page.getByRole('button', { name: 'Mudar para tema claro', exact: true })
+    ).toBeVisible();
+    await assertDashboardVisualState(page);
+
+    await expect(page).toHaveScreenshot(screenshotName, {
+      maxDiffPixels: 500,
+      fullPage: false
+    });
+  } finally {
+    await fixture.dispose();
+  }
 }
 
 async function capturePageVisual(
@@ -893,12 +952,15 @@ async function captureAppointmentsVisual(
 }
 
 async function ensureAuthToken(page: Page): Promise<string> {
-  await loginViaToken(page);
+  // Each visual test creates data through a Node-side request. Acquire a
+  // fresh access token so the long visual matrix cannot reuse an expired
+  // worker token after the 15-minute production TTL.
+  const token = await getE2EAccessToken();
+  await loginViaToken(page, { accessToken: token });
   await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 
-  const token = process.env.E2E_AUTH_TOKEN;
   expect(token, 'E2E_AUTH_TOKEN must be available after browser login').toBeTruthy();
-  return token as string;
+  return token;
 }
 
 async function createVisualOwner(token: string): Promise<{ id: string; documentId: string }> {

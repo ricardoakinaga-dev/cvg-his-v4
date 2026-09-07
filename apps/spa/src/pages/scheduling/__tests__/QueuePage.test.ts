@@ -1,3 +1,4 @@
+import { config } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 
@@ -132,7 +133,8 @@ vi.mock('@/services/encounter', () => ({
   }
 }));
 
-vi.mock('vue-router', () => ({
+vi.mock('vue-router', async (importOriginal) => ({
+  ...await importOriginal<typeof import('vue-router')>(),
   useRouter: () => ({
     push: mockRouterPush
   })
@@ -158,6 +160,8 @@ vi.mock('@/composables/useEntityCache', () => ({
 
 describe('QueuePage', () => {
   beforeEach(() => {
+    // These page tests inspect link destinations/content; navigation is covered with a real router separately.
+    config.global.stubs = { ...config.global.stubs, RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } };
     vi.clearAllMocks();
     window.history.pushState({}, '', '/queue');
     mockListQueueFn.mockResolvedValue(mockQueueEntries);
@@ -215,7 +219,9 @@ describe('QueuePage', () => {
 
     await flushPromises();
     expect(wrapper.text()).toContain('Esteira de Atendimento');
-    expect(wrapper.text()).toContain('Atendimento > Atendimentos > Esteira');
+    expect(wrapper.text()).toContain('Pacientes, prioridades e próximos cuidados.');
+    expect(wrapper.find('.queue-filter-panel').attributes('open')).toBeUndefined();
+    expect(wrapper.find('.queue-filter-panel summary').text()).toContain('Filtrar esteira');
   });
 
   it('shows loading state initially', async () => {
@@ -300,7 +306,7 @@ describe('QueuePage', () => {
     expect(wrapper.text()).toContain('Nenhuma comanda nesta esteira');
   });
 
-  it('renders the Vetus-like filter bar and operational table columns', async () => {
+  it('preserves operational columns and shows applied filters in the disclosure', async () => {
     const QueuePage = (await import('../QueuePage.vue')).default;
     const wrapper = mount(QueuePage, {
       global: {
@@ -342,6 +348,15 @@ describe('QueuePage', () => {
     expect(wrapper.text()).toContain('RECEPÇÃO');
     expect(wrapper.text()).toContain('Destino provável');
     expect(wrapper.text()).toContain('Deve chamar ou priorizar');
+    await wrapper.get('#queue-animal').setValue('pat-1');
+    expect(wrapper.get('.queue-filter-panel summary').text()).not.toContain('ativo(s)');
+    await wrapper.get('.queue-filters').trigger('submit');
+    expect(wrapper.get('.queue-filter-panel summary').text()).toContain('1 ativo(s)');
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1);
+    await wrapper.get('#queue-animal').setValue('');
+    await wrapper.get('.queue-filters').trigger('submit');
+    expect(wrapper.get('.queue-filter-panel summary').text()).not.toContain('ativo(s)');
+    expect(wrapper.findAll('tbody tr')).toHaveLength(4);
   });
 
   it('renders queue entries with status badges for all lifecycle states', async () => {

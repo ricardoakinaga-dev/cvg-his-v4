@@ -234,3 +234,53 @@ describe('LabAnomalyDetectionService', () => {
     expect(result.flags[0]?.severity).toBe('warning');
   });
 });
+
+import { canUseMlResult, validateClassification, validateRegression } from './validation.service.js';
+
+describe('Governed ML validation', () => {
+  it('fails closed when a holdout is too small and requires human review', () => {
+    const result = validateClassification({
+      modelVersion: 'duration-v1',
+      datasetFingerprint: 'sha256:test',
+      task: 'classification',
+      policy: { minSamples: 3, minAccuracy: 0.8 }
+    }, [{ actual: 'short', predicted: 'short' }]);
+    expect(result.status).toBe('insufficient_data');
+    expect(result.humanReviewRequired).toBe(true);
+    expect(canUseMlResult(result)).toBe(false);
+  });
+
+  it('computes accuracy, precision and coverage and only allows reviewed passes', () => {
+    const result = validateClassification({
+      modelVersion: 'duration-v2',
+      datasetFingerprint: 'sha256:holdout',
+      task: 'classification',
+      reviewerId: 'qa-1',
+      policy: { minSamples: 4, minAccuracy: 0.75, minPrecision: 0.7, minConfidence: 0.6, minCoverage: 0.5 }
+    }, [
+      { actual: 'short', predicted: 'short', confidence: 0.9 },
+      { actual: 'short', predicted: 'short', confidence: 0.8 },
+      { actual: 'long', predicted: 'long', confidence: 0.7 },
+      { actual: 'long', predicted: 'short', confidence: 0.4 }
+    ]);
+    expect(result.status).toBe('passed');
+    expect(result.metrics.accuracy).toBe(0.75);
+    expect(result.metrics.coverage).toBe(0.75);
+    expect(canUseMlResult(result)).toBe(true);
+  });
+
+  it('rejects regression models above the MAE ceiling and non-finite values', () => {
+    const rejected = validateRegression({
+      modelVersion: 'forecast-v1', datasetFingerprint: 'sha256:forecast', task: 'forecasting',
+      policy: { minSamples: 2, maxMae: 2 }
+    }, [{ actual: 10, predicted: 14 }, { actual: 20, predicted: 21 }]);
+    expect(rejected.status).toBe('failed');
+    expect(rejected.metrics.mae).toBe(2.5);
+    const invalid = validateRegression({
+      modelVersion: 'forecast-v1', datasetFingerprint: 'sha256:bad', task: 'regression',
+      policy: { minSamples: 1 }
+    }, [{ actual: Number.NaN, predicted: 1 }]);
+    expect(invalid.status).toBe('failed');
+    expect(invalid.reasons).toContain('non_finite_example');
+  });
+});

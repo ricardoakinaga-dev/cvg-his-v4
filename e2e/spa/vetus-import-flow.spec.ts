@@ -43,7 +43,7 @@ test.describe('Importação Assistida Vetus — fluxo de revisão e persistênci
       await spaPage.goto('/vetus-imports');
       await expect(page.getByRole('heading', { name: 'Importação Assistida Vetus' })).toBeVisible();
 
-      await page.getByLabel('Dados').fill(csv);
+      await page.getByLabel('Dados', { exact: true }).fill(csv);
       await page.getByRole('button', { name: 'Validar', exact: true }).click();
       await expect(page.getByText(ownerName)).toBeVisible();
       await expect(page.getByText(patientName)).toBeVisible();

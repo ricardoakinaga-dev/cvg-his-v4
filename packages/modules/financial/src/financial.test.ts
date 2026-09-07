@@ -820,6 +820,49 @@ test('FinancialPayablesService prevents invalid payment and cancellation flows',
   );
 });
 
+test('FinancialPayablesService rejects invalid calendar dates before persistence', async () => {
+  const service = new FinancialPayablesService(new InMemoryFinancialPayablesRepository());
+  const input = {
+    supplierName: 'Fornecedor de testes',
+    description: 'Data inválida',
+    category: 'Testes',
+    costCenterCode: 'QA',
+    costCenterName: 'Qualidade',
+    issuedAt: '2026-05-01',
+    dueAt: '2026-05-20',
+    totalAmount: 100
+  };
+
+  await assert.rejects(
+    () =>
+      service.createPayable('acc_cvg_demo' as never, 'user_finance' as never, {
+        ...input,
+        dueAt: '2026-02-30'
+      }),
+    /dueAt must be a valid ISO date/
+  );
+  await assert.rejects(
+    () =>
+      service.createPayable('acc_cvg_demo' as never, 'user_finance' as never, {
+        ...input,
+        issuedAt: '2026-05-01Tinvalid'
+      }),
+    /issuedAt must be a valid ISO date/
+  );
+
+  const timestampInput = await service.createPayable(
+    'acc_cvg_demo' as never,
+    'user_finance' as never,
+    {
+      ...input,
+      issuedAt: '2026-05-01T23:59:59.999Z',
+      dueAt: '2026-05-20T00:00:00.000Z'
+    }
+  );
+  assert.equal(timestampInput.issuedAt, '2026-05-01');
+  assert.equal(timestampInput.dueAt, '2026-05-20');
+});
+
 test('FinancialPayablesService reconciles non-cash payable payments', async () => {
   const service = new FinancialPayablesService(new InMemoryFinancialPayablesRepository());
   const payable = await service.createPayable('acc_cvg_demo' as never, 'user_finance' as never, {

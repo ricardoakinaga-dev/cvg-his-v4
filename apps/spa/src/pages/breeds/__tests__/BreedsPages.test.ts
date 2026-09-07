@@ -94,6 +94,18 @@ describe('Breeds pages', () => {
     expect(wrapper.text()).toContain('Raça salva com sucesso.');
   });
 
+  it('rejects an update response that belongs to another breed', async () => {
+    routeParams = { id: 'breed-1' };
+    vi.mocked(breedsService.update).mockResolvedValue({ ...mockBreed, id: 'breed-other' });
+    const wrapper = mount(BreedFormPage);
+    await flushPromises();
+
+    await wrapper.find('form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('A raça retornada não corresponde ao endereço solicitado.');
+  });
+
   it('opens detail with duplicate, delete and operational integrations', async () => {
     routeParams = { id: 'breed-1' };
     const wrapper = mount(BreedDetailPage);

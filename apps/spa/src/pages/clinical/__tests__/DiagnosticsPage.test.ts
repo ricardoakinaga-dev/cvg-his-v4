@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
+import { createRouter, createMemoryHistory } from 'vue-router';
+import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 
 const mockEncounterList = vi.fn();
 const mockTimeline = vi.fn();
@@ -43,6 +45,25 @@ vi.mock('@/services/laboratory', () => ({
     recordResult: (...args: unknown[]) => mockLaboratoryRecordResult(...args)
   }
 }));
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: Error) => void;
+  const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej; });
+  return { promise, resolve, reject };
+}
+const encounterPair = [
+  { id: 'enc-A', patientId: 'pat-A', reason: 'Paciente A', status: 'in_care' },
+  { id: 'enc-B', patientId: 'pat-B', reason: 'Paciente B', status: 'in_care' }
+];
+function note(id: string) { return { id: `note-${id}`, title: `Nota ${id}`, content: `Achados ${id}`, createdAt: '2026-04-10T00:00:00Z' }; }
+async function mountPage() { return mount((await import('../DiagnosticsPage.vue')).default); }
+function expectNoWrites() {
+  expect(mockLaboratoryCreateOrder).not.toHaveBeenCalled();
+  expect(mockDiagnosticsCreate).not.toHaveBeenCalled();
+  expect(mockAttachmentsUpload).not.toHaveBeenCalled();
+  expect(mockLaboratoryRecordResult).not.toHaveBeenCalled();
+}
 
 describe('DiagnosticsPage', () => {
   beforeEach(() => {
@@ -273,4 +294,242 @@ describe('DiagnosticsPage', () => {
     expect(wrapper.find('[variant="warning"]').text()).toContain('Pedido laboratorial registrado');
     expect(wrapper.find('[variant="warning"]').text()).toContain('Prontuário indisponível');
   });
+  it('masks the previous encounter records and drafts while a new context is pending', async () => {
+    mockEncounterList.mockResolvedValue([
+      { id: 'enc-A', patientId: 'pat-A', reason: 'Paciente A', status: 'in_care' },
+      { id: 'enc-B', patientId: 'pat-B', reason: 'Paciente B', status: 'in_care' }
+    ]);
+    mockDiagnosticsList.mockResolvedValue([{ id: 'note-A', title: 'Nota exclusiva A', content: 'Achados A', createdAt: '2026-04-10T00:00:00Z' }]);
+    const Page = (await import('../DiagnosticsPage.vue')).default;
+    const wrapper = mount(Page);
+    await flushPromises();
+    mockDiagnosticsList.mockReturnValueOnce(new Promise(() => {}));
+    await wrapper.get('select').setValue('enc-B');
+    expect(wrapper.text()).not.toContain('Nota exclusiva A');
+    expect(wrapper.find('form').exists()).toBe(false);
+    expect(mockLaboratoryCreateOrder).not.toHaveBeenCalled();
+  });
+
+  it('resets drafts and ignores late B data after switching back to A', async () => {
+    mockEncounterList.mockResolvedValue(encounterPair);
+    mockDiagnosticsList.mockResolvedValue([note('A')]);
+    const wrapper = await mountPage();
+    await flushPromises();
+    await wrapper.get('textarea').setValue('Justificativa privada A');
+    const attachmentInputs = wrapper.findAll('form')[1].findAll('input');
+    await attachmentInputs[0].setValue('Laudo privado A');
+    await attachmentInputs[3].setValue('Checksum privado A');
+    const pendingB = deferred<unknown[]>();
+    mockTimeline.mockImplementation((id: string) => id === 'enc-B' ? pendingB.promise : Promise.resolve([]));
+    mockDiagnosticsList.mockImplementation(async (id: string) => [note(id)]);
+    await wrapper.get('select').setValue('enc-B');
+    expect(wrapper.find('form').exists()).toBe(false);
+    await wrapper.get('select').setValue('enc-A');
+    await flushPromises();
+    expect((wrapper.get('textarea').element as HTMLTextAreaElement).value).toBe('');
+    expect(wrapper.findAll('form')[1].findAll('input').map((x) => (x.element as HTMLInputElement).value)).not.toContain('Laudo privado A');
+    pendingB.resolve([{ id: 'event-B', eventType: 'diagnostic_requested', summary: 'Evento antigo B', occurredAt: '2026-04-10T00:00:00Z' }]);
+    await flushPromises();
+    expect(wrapper.text()).toContain('Nota enc-A');
+    expect(wrapper.text()).not.toContain('Nota enc-B');
+    expect(wrapper.text()).not.toContain('Evento antigo B');
+    expectNoWrites();
+  });
+
+  it('allows blank selection during a pending read and ignores its later rejection', async () => {
+    mockEncounterList.mockResolvedValue(encounterPair);
+    const wrapper = await mountPage();
+    await flushPromises();
+    const pendingB = deferred<unknown[]>();
+    mockTimeline.mockReturnValueOnce(pendingB.promise);
+    await wrapper.get('select').setValue('enc-B');
+    await wrapper.get('select').setValue('');
+    pendingB.reject(new Error('Erro antigo B'));
+    await flushPromises();
+    expect(wrapper.find('form').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('Erro antigo B');
+    expect(wrapper.text()).toContain('Selecione um atendimento para consultar');
+    expect(wrapper.find('a[href="/encounters"]').exists()).toBe(true);
+    expectNoWrites();
+  });
+
+  it('keeps a timeline failure distinct from empty records and retries after alert dismissal', async () => {
+    mockTimeline.mockRejectedValueOnce(new Error('Timeline indisponível'));
+    const wrapper = await mountPage();
+    await flushPromises();
+    expect(wrapper.find('form').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('Nenhum pedido laboratorial');
+    expect(wrapper.findAll('.overview-metric dd').slice(1).map((x) => x.text())).toEqual(['—', '—', '—']);
+    wrapper.findComponent(DsAlert).vm.$emit('dismiss');
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('Timeline indisponível');
+    expect(wrapper.text()).toContain('Não foi possível carregar os dados diagnósticos');
+    await wrapper.get('.context-state button').trigger('click');
+    await flushPromises();
+    expect(wrapper.findAll('form')).toHaveLength(2);
+    expectNoWrites();
+  });
+
+  it('shows loading then catalog failure then closed-only empty as distinct states', async () => {
+    const catalog = deferred<unknown[]>();
+    mockLaboratoryListReportTypes.mockReturnValueOnce(catalog.promise);
+    const wrapper = await mountPage();
+    await flushPromises();
+    expect(wrapper.findAll('.overview-metric dd').map((x) => x.text())).toEqual(['—', '—', '—', '—']);
+    expect(wrapper.find('form').exists()).toBe(false);
+    catalog.reject(new Error('Catálogo indisponível'));
+    await flushPromises();
+    wrapper.findComponent(DsAlert).vm.$emit('dismiss');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Não foi possível carregar os atendimentos e tipos de exame');
+    mockEncounterList.mockResolvedValueOnce([{ ...encounterPair[0], status: 'closed' }]);
+    await wrapper.get('.context-state button').trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Nenhum atendimento aberto disponível');
+    expect(wrapper.find('form').exists()).toBe(false);
+    expect(wrapper.findAll('.overview-metric dd').map((x) => x.text())).toEqual(['0', '—', '—', '—']);
+    expect(mockRecord).not.toHaveBeenCalled();
+    expectNoWrites();
+  });
+
+  it('opens an explicitly linked closed encounter as read only', async () => {
+    window.history.pushState({}, '', '/diagnostics?encounter=enc-B');
+    mockEncounterList.mockResolvedValue([encounterPair[0], { ...encounterPair[1], status: 'closed' }]);
+    const wrapper = await mountPage();
+    await flushPromises();
+    expect(mockRecord).toHaveBeenCalledWith('enc-B');
+    expect(mockRecord).not.toHaveBeenCalledWith('enc-A');
+    expect(wrapper.text()).toContain('somente leitura');
+    expect(wrapper.find('form').exists()).toBe(false);
+    const vm = wrapper.vm as unknown as { submitRequest: () => Promise<void>; submitAttachment: () => Promise<void> };
+    await vm.submitRequest();
+    await vm.submitAttachment();
+    expectNoWrites();
+  });
+
+  it.each(['encounter=missing', 'encounter=missing&patientId=pat-B', 'patientId=missing', 'encounter=enc-B&patientId=pat-A'])(
+    'does not substitute unrelated context for %s', async (query) => {
+      window.history.pushState({}, '', `/diagnostics?${query}`);
+      mockEncounterList.mockResolvedValue(encounterPair);
+      const wrapper = await mountPage();
+      await flushPromises();
+      expect(mockRecord).not.toHaveBeenCalled();
+      expect(wrapper.text()).toContain('Contexto solicitado indisponível');
+      expect(wrapper.find('form').exists()).toBe(false);
+      expectNoWrites();
+    }
+  );
+
+  it('updates same-route query selection and ignores late data from the previous encounter', async () => {
+    const Page = (await import('../DiagnosticsPage.vue')).default;
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/diagnostics', component: Page }] });
+    await router.push('/diagnostics?encounter=enc-A');
+    mockEncounterList.mockResolvedValue([encounterPair[0], { ...encounterPair[1], status: 'closed' }]);
+    const pendingA = deferred<unknown[]>();
+    mockDiagnosticsList.mockImplementation((id: string) => id === 'enc-A' ? pendingA.promise : Promise.resolve([note('B')]));
+    const wrapper = mount(Page, { global: { plugins: [router] } });
+    await flushPromises();
+    await router.push('/diagnostics?encounter=enc-B');
+    await flushPromises();
+    expect(mockRecord).toHaveBeenLastCalledWith('enc-B');
+    expect(wrapper.text()).toContain('Nota B');
+    expect(wrapper.find('form').exists()).toBe(false);
+    pendingA.resolve([note('A')]);
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('Nota A');
+    await router.push('/diagnostics?encounter=missing');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Contexto solicitado indisponível');
+    expect(wrapper.text()).not.toContain('Nota B');
+    expectNoWrites();
+    wrapper.unmount();
+  });
+
+  it('ignores a superseded encounter-list response after a query change', async () => {
+    const Page = (await import('../DiagnosticsPage.vue')).default;
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/diagnostics', component: Page }] });
+    await router.push('/diagnostics?encounter=enc-A');
+    const pendingList = deferred<unknown[]>();
+    mockEncounterList.mockReturnValueOnce(pendingList.promise).mockResolvedValue(encounterPair);
+    const wrapper = mount(Page, { global: { plugins: [router] } });
+    await flushPromises();
+    await router.push('/diagnostics?encounter=enc-B');
+    await flushPromises();
+    expect(mockRecord).toHaveBeenCalledWith('enc-B');
+    pendingList.resolve([encounterPair[0]]);
+    await flushPromises();
+    expect((wrapper.get('select').element as HTMLSelectElement).value).toBe('enc-B');
+    expect(mockRecord).not.toHaveBeenCalledWith('enc-A');
+    expectNoWrites();
+    wrapper.unmount();
+  });
+
+  it('preserves patient selection and does not fall back after it disappears on refresh', async () => {
+    window.history.pushState({}, '', '/diagnostics?patientId=pat-B');
+    mockEncounterList.mockResolvedValue(encounterPair);
+    const wrapper = await mountPage();
+    await flushPromises();
+    expect((wrapper.get('select').element as HTMLSelectElement).value).toBe('enc-B');
+    mockRecord.mockClear();
+    mockEncounterList.mockResolvedValueOnce([encounterPair[0]]);
+    await wrapper.findAll('button').find((x) => x.text() === 'Atualizar')!.trigger('click');
+    await flushPromises();
+    expect((wrapper.get('select').element as HTMLSelectElement).value).toBe('');
+    expect(mockRecord).not.toHaveBeenCalled();
+    expectNoWrites();
+  });
+
+  it('keeps the diagnostic-note payload bound to the request snapshot when the active context changes during creation', async () => {
+    mockEncounterList.mockResolvedValue(encounterPair);
+    const wrapper = await mountPage();
+    await flushPromises();
+    const pendingCreate = deferred<unknown>();
+    mockLaboratoryCreateOrder.mockReturnValueOnce(pendingCreate.promise);
+    await wrapper.get('textarea').setValue('Justificativa A');
+    await wrapper.findAll('input')[0].setValue('Título A');
+    await wrapper.get('form').trigger('submit');
+    expect(wrapper.get('select').attributes('disabled')).toBeDefined();
+    const refresh = wrapper.findAll('button').find(button => button.text() === 'Atualizar')!;
+    expect(refresh.attributes('disabled')).toBeDefined();
+    const readsBefore = mockEncounterList.mock.calls.length;
+    await (wrapper.vm as unknown as { loadData: () => Promise<void> }).loadData();
+    expect(mockEncounterList).toHaveBeenCalledTimes(readsBefore);
+    // Simulate context invalidation despite the UI lock, e.g. external context change.
+    (wrapper.vm as unknown as { selectedEncounterId: string }).selectedEncounterId = 'enc-B';
+    await flushPromises();
+    pendingCreate.resolve({ id: 'order-A' });
+    await flushPromises();
+    expect(mockDiagnosticsCreate).toHaveBeenCalledWith({
+      encounterId: 'enc-A', patientId: 'pat-A', title: 'Título A',
+      content: 'Tipo de exame: Hemograma (HEM)\nJustificativa: Justificativa A'
+    });
+    expect(wrapper.text()).not.toContain('Pedido laboratorial registrado e vinculado ao prontuário.');
+    expect((wrapper.get('select').element as HTMLSelectElement).value).toBe('enc-B');
+  });
+
+  it('keeps the original linked order and result summary through an in-flight attachment upload', async () => {
+    mockEncounterList.mockResolvedValue(encounterPair);
+    const wrapper = await mountPage();
+    await flushPromises();
+    const linkedId = (wrapper.findAll('select')[2].element as HTMLSelectElement).value;
+    const pendingUpload = deferred<unknown>();
+    mockAttachmentsUpload.mockReturnValueOnce(pendingUpload.promise);
+    await wrapper.findAll('form')[1].findAll('input')[0].setValue('Resultado do paciente A');
+    await wrapper.findAll('form')[1].trigger('submit');
+    const refresh = wrapper.findAll('button').find(button => button.text() === 'Atualizar')!;
+    expect(refresh.attributes('disabled')).toBeDefined();
+    const readsBefore = mockEncounterList.mock.calls.length;
+    await (wrapper.vm as unknown as { loadData: () => Promise<void> }).loadData();
+    expect(mockEncounterList).toHaveBeenCalledTimes(readsBefore);
+    (wrapper.vm as unknown as { selectedEncounterId: string }).selectedEncounterId = 'enc-B';
+    await flushPromises();
+    pendingUpload.resolve({ id: 'attachment-A', fileName: 'arquivo-A.pdf' });
+    await flushPromises();
+    expect(mockAttachmentsUpload.mock.calls[0][0]).toBe('enc-A');
+    expect(mockLaboratoryRecordResult).toHaveBeenLastCalledWith(linkedId, {
+      status: 'resulted', resultSummary: 'Resultado do paciente A', resultAttachmentId: 'attachment-A'
+    });
+    expect(wrapper.text()).not.toContain('Resultado anexado ao prontuário e liberado no laboratório.');
+  });
+
 });

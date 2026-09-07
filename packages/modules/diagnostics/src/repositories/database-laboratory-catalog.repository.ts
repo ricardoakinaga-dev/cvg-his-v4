@@ -6,6 +6,7 @@ import {
   laboratoryReferenceValues,
   laboratoryReportTypes
 } from '@cvg-his-v2/shared-database';
+import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import { nowIso } from '@cvg-his-v2/shared-utils';
 import type {
   CreateLaboratoryEquipmentRequest,
@@ -153,7 +154,7 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
   ): Promise<LaboratoryEquipmentSummary> {
     const existing = await this.getEquipment(accountId, equipmentId);
     if (!existing) {
-      throw new Error('Laboratory equipment not found');
+      throw new NotFoundError('Laboratory equipment not found');
     }
 
     await this.#db
@@ -174,7 +175,7 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
 
     const updated = await this.getEquipment(accountId, equipmentId);
     if (!updated) {
-      throw new Error('Laboratory equipment not found');
+      throw new NotFoundError('Laboratory equipment not found');
     }
     return updated;
   }
@@ -250,7 +251,7 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
   ): Promise<LaboratoryReportTypeSummary> {
     const existing = await this.getReportType(accountId, reportTypeId);
     if (!existing) {
-      throw new Error('Laboratory report type not found');
+      throw new NotFoundError('Laboratory report type not found');
     }
 
     await this.#db
@@ -272,7 +273,7 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
 
     const updated = await this.getReportType(accountId, reportTypeId);
     if (!updated) {
-      throw new Error('Laboratory report type not found');
+      throw new NotFoundError('Laboratory report type not found');
     }
     return updated;
   }
@@ -356,12 +357,12 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
   ): Promise<LaboratoryReferenceValueSummary> {
     const existing = await this.getReferenceValue(accountId, referenceValueId);
     if (!existing) {
-      throw new Error('Laboratory reference value not found');
+      throw new NotFoundError('Laboratory reference value not found');
     }
     const minValue = payload.minValue ?? existing.minValue;
     const maxValue = payload.maxValue ?? existing.maxValue;
     if (minValue > maxValue) {
-      throw new Error('Laboratory reference value minimum cannot be greater than maximum');
+      throw new ValidationError('Laboratory reference value minimum cannot be greater than maximum');
     }
 
     await this.#db
@@ -383,7 +384,7 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
 
     const updated = await this.getReferenceValue(accountId, referenceValueId);
     if (!updated) {
-      throw new Error('Laboratory reference value not found');
+      throw new NotFoundError('Laboratory reference value not found');
     }
     return updated;
   }

@@ -1,3 +1,4 @@
+import { config } from '@vue/test-utils';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -27,7 +28,8 @@ vi.mock('@/services/vaccinesDewormers', async () => {
   };
 });
 
-vi.mock('vue-router', () => ({
+vi.mock('vue-router', async (importOriginal) => ({
+  ...await importOriginal<typeof import('vue-router')>(),
   useRoute: () => ({
     query: mockRouteQuery
   })
@@ -87,6 +89,8 @@ function daysFromToday(days: number): string {
 
 describe('VaccinesDewormersPage', () => {
   beforeEach(() => {
+    // These page tests inspect link destinations/content; navigation is covered with a real router separately.
+    config.global.stubs = { ...config.global.stubs, RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } };
     vi.clearAllMocks();
     for (const key of Object.keys(mockRouteQuery)) {
       delete mockRouteQuery[key];

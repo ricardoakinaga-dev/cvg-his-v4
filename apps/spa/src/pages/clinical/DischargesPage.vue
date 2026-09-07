@@ -1,8 +1,8 @@
 <template>
   <div class="clinical-page">
-    <AppPageHeader :breadcrumbs="['Atendimento', 'Internação', 'Altas']" title="Altas" subtitle="Trilha real de alta clínica ligada aos atendimentos">
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Internação', 'Altas']" title="Altas" subtitle="Registre a evolução e as orientações de continuidade do cuidado.">
       <template #actions>
-        <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
+        <DsButton variant="secondary" :loading="loading" :disabled="loading || submitting" @click="loadData">Atualizar</DsButton>
       </template>
     </AppPageHeader>
 
@@ -13,44 +13,32 @@
       {{ successMessage }}
     </DsAlert>
 
-    <section class="clinical-overview">
-      <DsCard title="Resumo de altas">
-        <div class="overview-grid">
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ encounters.length }}</span>
-            <span class="overview-metric__label">Atendimentos carregados</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ discharges.length }}</span>
-            <span class="overview-metric__label">Altas registradas</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ followUpCount }}</span>
-            <span class="overview-metric__label">Com retorno</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ editingDischargeId ? '1' : '0' }}</span>
-            <span class="overview-metric__label">Em edição</span>
-          </div>
-        </div>
-      </DsCard>
-    </section>
+
 
     <div class="clinical-grid clinical-grid--two">
       <DsCard title="Atendimento selecionado">
-        <DsInput v-model="selectedEncounterId" type="select" label="Atendimento" @change="syncForm">
+        <DsInput v-model="selectedEncounterId" type="select" label="Atendimento" :disabled="loading || submitting || loadFailed" @change="syncForm">
+          <option value="">{{ loading ? 'Carregando atendimentos…' : encounters.length ? 'Selecione um atendimento' : 'Nenhum atendimento disponível' }}</option>
           <option v-for="enc in encounters" :key="enc.id" :value="enc.id">
             {{ enc.id.slice(0, 8) }} • {{ enc.reason || 'Sem descrição' }}
           </option>
         </DsInput>
-        <div v-if="selectedEncounter" class="summary-list">
+        <div v-if="selectedEncounter && !loading && !loadFailed" class="summary-list">
           <div><strong>Paciente:</strong> {{ selectedEncounter.patientId }}</div>
-          <div><strong>Status:</strong> {{ selectedEncounter.status }}</div>
+          <div><strong>Status:</strong> {{ encounterStatusLabel(selectedEncounter.status) }}</div>
           <div><strong>Motivo:</strong> {{ selectedEncounter.reason }}</div>
+        </div>
+        <div v-if="loadFailed" class="context-feedback" role="status">
+          <p>Não foi possível carregar os atendimentos e as altas.</p>
+          <DsButton variant="secondary" @click="loadData">Tentar novamente</DsButton>
+        </div>
+        <div v-else-if="!loading && !selectedEncounter" class="context-feedback">
+          <p>{{ encounters.length ? 'Selecione o atendimento para registrar ou revisar uma alta.' : 'Abra um atendimento para registrar a alta e as orientações de continuidade.' }}</p>
+          <DsButton tag="a" to="/encounters" variant="secondary">Ver atendimentos</DsButton>
         </div>
       </DsCard>
 
-      <DsCard :title="editingDischargeId ? 'Editar alta' : 'Registrar alta'">
+      <DsCard v-if="selectedEncounter && !loading && !loadFailed" :title="editingDischargeId ? 'Editar alta' : 'Registrar alta'">
         <form class="form-grid" @submit.prevent="submitDischarge">
           <DsInput v-model="form.dischargeType" type="select" label="Tipo" required>
             <option value="ambulatory">Ambulatorial</option>
@@ -81,23 +69,23 @@
             :rows="2"
           />
           <div class="form-actions">
-            <DsButton variant="primary" :loading="submitting">
+            <DsButton type="submit" variant="primary" :loading="submitting" :disabled="submitting">
               {{ editingDischargeId ? 'Atualizar' : 'Registrar' }}
             </DsButton>
-            <DsButton variant="secondary" type="button" @click="resetForm">Limpar</DsButton>
+            <DsButton variant="secondary" type="button" :disabled="submitting" @click="resetForm">{{ editingDischargeId ? 'Restaurar dados salvos' : 'Limpar' }}</DsButton>
           </div>
         </form>
       </DsCard>
     </div>
 
-    <DsCard title="Altas registradas">
+    <DsCard v-if="!loadFailed" title="Altas registradas">
       <DataTable
         :columns="columns"
         :rows="discharges"
         :loading="loading"
         empty-icon="🏠"
         empty-title="Nenhuma alta encontrada"
-        empty-description="Registre a primeira alta para iniciar a trilha clínica."
+        empty-description="As altas registradas ficam disponíveis aqui para consulta e revisão."
         variant="hoverable"
       >
         <template #cell-encounterId="{ row }">
@@ -110,12 +98,35 @@
           {{ formatDateTime((row as DischargeSummary).dischargedAt) }}
         </template>
         <template #cell-actions="{ row }">
-          <DsButton size="sm" variant="secondary" @click="editDischarge(row as DischargeSummary)">
+          <DsButton size="sm" variant="secondary" :disabled="loading || submitting" @click="editDischarge(row as DischargeSummary)">
             Editar
           </DsButton>
         </template>
       </DataTable>
     </DsCard>
+    <details class="clinical-overview">
+      <summary>Resumo de altas</summary>
+      <DsCard>
+        <div class="overview-grid">
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ loading || loadFailed ? '—' : (encounters.length) }}</span>
+            <span class="overview-metric__label">Atendimentos carregados</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ loading || loadFailed ? '—' : (discharges.length) }}</span>
+            <span class="overview-metric__label">Altas registradas</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ loading || loadFailed ? '—' : (followUpCount) }}</span>
+            <span class="overview-metric__label">Com retorno</span>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-metric__value">{{ loading || loadFailed ? '—' : (editingDischargeId ? '1' : '0') }}</span>
+            <span class="overview-metric__label">Em edição</span>
+          </div>
+        </div>
+      </DsCard>
+    </details>
   </div>
 </template>
 
@@ -132,13 +143,15 @@ import { dischargeService } from '@/services/discharges';
 import type { EncounterSummary } from '@/types/encounter';
 import type { DischargeSummary } from '@cvg-his-v2/shared-types';
 import type { DataTableColumn } from '@/components/DataTable.vue';
-import { formatDateTime } from '@/utils/labels';
+import { formatDateTime, encounterStatusLabel } from '@/utils/labels';
 
 const encounters = ref<EncounterSummary[]>([]);
 const discharges = ref<DischargeSummary[]>([]);
 const selectedEncounterId = ref('');
 const editingDischargeId = ref('');
-const loading = ref(false);
+const loading = ref(true);
+const loadFailed = ref(false);
+let loadSequence = 0;
 const submitting = ref(false);
 const error = ref('');
 const successMessage = ref('');
@@ -179,7 +192,7 @@ function dischargeTypeLabel(dischargeType: DischargeSummary['dischargeType']): s
   return labels[dischargeType];
 }
 
-function resetForm() {
+function clearForm() {
   editingDischargeId.value = '';
   form.value = {
     dischargeType: 'ambulatory',
@@ -189,18 +202,16 @@ function resetForm() {
     followUpDate: '',
     followUpNotes: ''
   };
-  syncForm();
 }
+
+function resetForm() { clearForm(); syncForm(); }
 
 function syncForm() {
   const current = discharges.value.find(
     (discharge) => discharge.encounterId === selectedEncounterId.value
   );
   if (!current) {
-    editingDischargeId.value = '';
-    if (!editingDischargeId.value) {
-      form.value.dischargeType = 'ambulatory';
-    }
+    clearForm();
     return;
   }
 
@@ -216,6 +227,7 @@ function syncForm() {
 }
 
 function editDischarge(discharge: DischargeSummary) {
+  if (loading.value || submitting.value || loadFailed.value) return;
   selectedEncounterId.value = discharge.encounterId;
   editingDischargeId.value = discharge.id;
   form.value = {
@@ -229,27 +241,33 @@ function editDischarge(discharge: DischargeSummary) {
 }
 
 async function loadData() {
+  const sequence = ++loadSequence;
   loading.value = true;
+  loadFailed.value = false;
   error.value = '';
   try {
     const [loadedEncounters, loadedDischarges] = await Promise.all([
       encounterService.list(),
       dischargeService.list()
     ]);
+    if (sequence !== loadSequence) return;
     encounters.value = loadedEncounters;
     discharges.value = loadedDischarges;
-    if (!selectedEncounterId.value && encounters.value.length > 0) {
-      selectedEncounterId.value = encounters.value[0].id;
+    if (!encounters.value.some(encounter => encounter.id === selectedEncounterId.value)) {
+      selectedEncounterId.value = encounters.value[0]?.id ?? '';
     }
     syncForm();
   } catch (err: unknown) {
+    if (sequence !== loadSequence) return;
+    loadFailed.value = true;
     error.value = err instanceof Error ? err.message : 'Erro ao carregar altas';
   } finally {
-    loading.value = false;
+    if (sequence === loadSequence) loading.value = false;
   }
 }
 
 async function submitDischarge() {
+  if (loading.value || loadFailed.value || submitting.value) return;
   if (!selectedEncounter.value) {
     error.value = 'Selecione um atendimento';
     return;
@@ -289,17 +307,21 @@ onMounted(loadData);
 </script>
 
 <style scoped>
+.clinical-page { display: grid; gap: 16px; }
+.clinical-overview summary { min-height: 44px; padding-block: 12px; box-sizing: border-box; cursor: pointer; font-weight: 700; color: var(--color-text-secondary); }
+.context-feedback { color: var(--color-text-secondary); line-height: 1.6; }
+.summary-list { overflow-wrap: anywhere; }
 .clinical-grid {
   display: grid;
   gap: 16px;
 }
 
 .clinical-grid--two {
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
 }
 
 .clinical-overview {
-  margin-bottom: 16px;
+  margin-block: 16px;
 }
 
 .overview-grid {
@@ -344,5 +366,8 @@ onMounted(loadData);
   gap: 6px;
   margin-top: 12px;
   color: var(--color-text-secondary, #475569);
+}
+@media (max-width: 600px) {
+  .form-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
 }
 </style>

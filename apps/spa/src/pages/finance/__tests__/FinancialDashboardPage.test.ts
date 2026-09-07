@@ -196,7 +196,7 @@ describe('FinancialDashboardPage', () => {
     expect(wrapper.text()).toContain('Até');
     expect(wrapper.text()).toContain('Visão');
     expect(wrapper.text()).toContain('Pesquisar');
-    expect(wrapper.text()).toContain('Exportar Dashboard');
+    expect(wrapper.findAll('button').some(button => button.text() === 'Exportar Dashboard')).toBe(false);
     expect(wrapper.text()).toContain('Contas a Receber');
     expect(wrapper.text()).toContain('Contas a Pagar');
     expect(wrapper.text()).toContain('Fluxo de Caixa');
@@ -310,10 +310,14 @@ describe('FinancialDashboardPage', () => {
 
     mockGetHubs.mockRejectedValueOnce(new Error('Falha no dashboard financeiro'));
     mockGetIncomeStatement.mockResolvedValueOnce(makeIncomeStatement());
-    const errorWrapper = mount(FinancialDashboardPage);
+    const errorWrapper = mount(FinancialDashboardPage, { global: { stubs: { DsAlert: false } } });
 
     await flushPromises();
     expect(errorWrapper.text()).toContain('Falha no dashboard financeiro');
+    expect(errorWrapper.findAll('.ds-stat-card__value').map(value => value.text())).toEqual(Array(6).fill('—'));
+    await errorWrapper.get('button[aria-label="Fechar alerta"]').trigger('click');
+    await flushPromises();
+    expect(errorWrapper.findAll('.ds-stat-card__value').map(value => value.text())).toEqual(Array(6).fill('—'));
   });
 
   it('opens the receivables surface from financial indicator rows', async () => {
@@ -333,6 +337,17 @@ describe('FinancialDashboardPage', () => {
 
     const openLinks = wrapper.findAll('a').filter((anchor) => anchor.text() === 'Abrir');
     expect(openLinks.some((anchor) => anchor.attributes('href') === '/billing')).toBe(true);
+  });
+
+  it('labels results with the applied period until the new dates are submitted', async () => {
+    const FinancialDashboardPage = (await import('../FinancialDashboardPage.vue')).default;
+    const wrapper = mount(FinancialDashboardPage);
+    await flushPromises();
+    await wrapper.get('#financial-dashboard-from').setValue('2026-04-02');
+    expect(wrapper.get('.financial-dashboard-period span').text()).toContain('01/04/2026');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+    expect(wrapper.get('.financial-dashboard-period span').text()).toContain('02/04/2026');
   });
 
   it('filters the dashboard to income statement rows', async () => {

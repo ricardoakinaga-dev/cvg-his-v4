@@ -2,10 +2,9 @@
   <div class="queue-page">
     <AppPageHeader
       title="Esteira de Atendimento"
-      subtitle="Atendimento > Atendimentos > Esteira. Fila viva por setor, responsável, paciente, urgência e comanda."
+      subtitle="Pacientes, prioridades e próximos cuidados."
       :breadcrumb-items="headerBreadcrumbItems"
       :context-items="headerContextItems"
-      :next-steps="headerNextSteps"
       :primary-action="headerPrimaryAction"
       :secondary-actions="headerSecondaryActions"
     />
@@ -42,7 +41,12 @@
       <DsSpinner size="md" />
     </div>
 
-    <form v-else class="queue-filters" @submit.prevent="applyFilters">
+    <details v-else class="queue-filter-panel">
+      <summary>
+        <span>Filtrar esteira<span v-if="activeFilterCount"> · {{ activeFilterCount }} ativo(s)</span></span>
+        <span class="queue-filter-panel__updated">{{ lastRefresh ? `Atualizado ${formatTime(lastRefresh.toISOString())}` : 'Aguardando atualização' }}</span>
+      </summary>
+      <form class="queue-filters" @submit.prevent="applyFilters">
       <div class="queue-filters__field">
         <label for="queue-sector">Setor Atual</label>
         <select id="queue-sector" v-model="draftFilters.sector">
@@ -76,20 +80,21 @@
       </div>
       <label class="queue-filters__check">
         <input v-model="draftFilters.includeTerminal" type="checkbox" />
-        <span>Todas</span>
+        <span>Incluir finalizados e cancelados</span>
       </label>
       <DsButton variant="primary" type="submit">Pesquisar</DsButton>
-    </form>
+      </form>
+    </details>
 
     <EmptyState
       v-if="!loading && filteredRows.length === 0"
       icon="🏥"
       title="Nenhuma comanda nesta esteira"
-      description="Nenhum paciente encontrado para os filtros atuais. Use Todas para incluir finalizados e cancelados ou faça um check-in rápido."
+      description="Nenhum paciente encontrado para os filtros atuais. Ajuste os filtros ou faça um check-in rápido."
     >
       <template #action>
         <div class="queue-page__empty-actions">
-          <DsButton variant="secondary" tag="a" href="/appointments">📅 Ver Agenda</DsButton>
+          <DsButton variant="secondary" tag="a" to="/appointments">📅 Ver Agenda</DsButton>
           <DsButton variant="success" @click="openCheckInModal">Check-in Rápido</DsButton>
         </div>
       </template>
@@ -166,13 +171,13 @@
             <td>
               <div class="queue-next-step">
                 <strong>{{ row.nextStep }}</strong>
-                <a
+                <RouterLink
                   v-if="row.entry.encounterId"
                   class="queue-link"
-                  :href="`/encounters/${row.entry.encounterId}`"
+                  :to="`/encounters/${row.entry.encounterId}`"
                 >
                   Abrir atendimento
-                </a>
+                </RouterLink>
                 <span v-else>{{ row.nextStepHint }}</span>
               </div>
             </td>
@@ -182,14 +187,14 @@
               </DsBadge>
             </td>
             <td>
-              <a
+              <RouterLink
                 v-if="row.entry.encounterId"
                 class="queue-link"
-                :href="`/billing/${row.entry.encounterId}`"
+                :to="`/billing/${row.entry.encounterId}`"
               >
                 Cobrança
-              </a>
-              <a class="queue-link" :href="queueCounterSalePath(row.entry)">Comanda</a>
+              </RouterLink>
+              <RouterLink class="queue-link" :to="queueCounterSalePath(row.entry)">Comanda</RouterLink>
             </td>
             <td class="table__actions-col">
               <div class="actions-group">
@@ -228,7 +233,7 @@
                 <DsButton
                   v-if="row.entry.encounterId"
                   tag="a"
-                  :href="`/medical-records/${row.entry.encounterId}`"
+                  :to="`/medical-records/${row.entry.encounterId}`"
                   variant="secondary"
                   size="sm"
                 >
@@ -363,8 +368,7 @@ import type { SearchSelectOption } from '@/components/SearchSelect.vue';
 import AppPageHeader, {
   type PageAction,
   type PageBreadcrumb,
-  type PageContextItem,
-  type PageNextStep
+  type PageContextItem
 } from '@/components/AppPageHeader.vue';
 
 const router = useRouter();
@@ -446,6 +450,13 @@ const emptyFilters = (): QueueFilters => ({
 
 const draftFilters = ref<QueueFilters>(emptyFilters());
 const appliedFilters = ref<QueueFilters>(emptyFilters());
+const activeFilterCount = computed(() => [
+  appliedFilters.value.sector,
+  appliedFilters.value.responsible.trim(),
+  appliedFilters.value.client.trim(),
+  appliedFilters.value.patientId.trim(),
+  !appliedFilters.value.includeTerminal
+].filter(Boolean).length);
 const receptionCheckInContext = ref<ReceptionCheckInContext | null>(readReceptionCheckInQuery());
 const receptionCheckInConsumed = ref(false);
 
@@ -536,10 +547,6 @@ const inCareCount = computed(
   () => activeEntries.value.filter((entry) => ['in_triage', 'in_care'].includes(entry.status)).length
 );
 
-const nextActionableEntry = computed(
-  () => sortedEntries.value.find((entry) => canHandleEncounter(entry) || entry.status === 'waiting') ?? null
-);
-
 const preparedPatient = computed(() => {
   const context = receptionCheckInContext.value;
   if (!context) return null;
@@ -560,7 +567,6 @@ const showReceptionCheckInContext = computed(
 const headerBreadcrumbItems = computed<PageBreadcrumb[]>(() => [
   { key: 'home', label: 'Início', to: '/' },
   { key: 'attendance', label: 'Atendimento' },
-  { key: 'attendances', label: 'Atendimentos' },
   { key: 'queue', label: 'Esteira', current: true }
 ]);
 
@@ -588,47 +594,8 @@ const headerContextItems = computed<PageContextItem[]>(() => [
     label: 'Clínica',
     value: String(inCareCount.value),
     tone: inCareCount.value > 0 ? 'success' : 'neutral'
-  },
-  {
-    key: 'refresh',
-    label: 'Atualizado',
-    value: lastRefresh.value ? formatTime(lastRefresh.value.toISOString()) : 'Aguardando'
   }
 ]);
-
-const headerNextSteps = computed<PageNextStep[]>(() => {
-  const entry = nextActionableEntry.value;
-  if (!entry) {
-    return [
-      {
-        key: 'triage',
-        label: 'Aguardar nova entrada',
-        description: 'Use o check-in quando o tutor chegar',
-        to: '/appointments'
-      }
-    ];
-  }
-
-  if (entry.status === 'waiting') {
-    return [
-      {
-        key: 'call-next',
-        label: 'Chamar próximo paciente',
-        description: patientNameCache.value[entry.patientId] ?? queueStatusLabel(entry.status),
-        to: '/queue'
-      }
-    ];
-  }
-
-  return [
-    {
-      key: 'continue-care',
-      label: encounterActionLabel(entry),
-      description: patientNameCache.value[entry.patientId] ?? queueStatusLabel(entry.status),
-      to: entry.encounterId ? `/encounters/${entry.encounterId}` : '/queue'
-    }
-  ];
-});
 
 const headerPrimaryAction = computed<PageAction>(() => ({
   key: 'quick-checkin',
@@ -1253,15 +1220,43 @@ defineExpose({
   max-width: 1280px;
 }
 
+.queue-filter-panel {
+  margin-bottom: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+
+.queue-filter-panel summary {
+  min-height: 48px;
+  padding: 12px 16px;
+  cursor: pointer;
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.queue-filter-panel summary:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+.queue-filter-panel__updated {
+  float: right;
+  margin-left: 12px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
 .queue-filters {
   display: grid;
-  grid-template-columns: minmax(180px, 1.1fr) repeat(3, minmax(150px, 1fr)) auto auto;
+  grid-template-columns: minmax(180px, 1.1fr) repeat(3, minmax(120px, 1fr)) minmax(140px, 1fr) auto;
   gap: 12px;
   align-items: end;
   padding: 16px;
-  margin-bottom: 16px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 8px;
+  margin: 0;
+  border-top: 1px solid var(--color-border, #e2e8f0);
   background: var(--color-surface, #ffffff);
 }
 
@@ -1319,7 +1314,7 @@ defineExpose({
 
 .queue-filters__field input,
 .queue-filters__field select {
-  min-height: 38px;
+  min-height: var(--touch-min, 44px);
   padding: 8px 10px;
   border: 1px solid var(--color-border, #cbd5e1);
   border-radius: 6px;
@@ -1331,7 +1326,7 @@ defineExpose({
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 38px;
+  min-height: var(--touch-min, 44px);
 }
 
 .table-wrapper--wide {
@@ -1476,6 +1471,12 @@ td small {
 }
 
 @media (max-width: 640px) {
+  .queue-filter-panel__updated {
+    display: block;
+    float: none;
+    margin: 4px 0 0 16px;
+  }
+
   .queue-filters {
     grid-template-columns: 1fr;
   }

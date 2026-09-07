@@ -1,0 +1,43 @@
+{
+  "hash": "366f329a",
+  "configHash": "5501df3e",
+  "lockfileHash": "68c8402a",
+  "browserHash": "f79f4abe",
+  "optimized": {
+    "pinia": {
+      "src": "../../../../../../../node_modules/.pnpm/pinia@2.3.1_typescript@5.7.3_vue@3.5.32_typescript@5.7.3_/node_modules/pinia/dist/pinia.mjs",
+      "file": "pinia.js",
+      "fileHash": "5daf45df",
+      "needsInterop": false
+    },
+    "vue": {
+      "src": "../../../../../../../node_modules/.pnpm/vue@3.5.32_typescript@5.7.3/node_modules/vue/dist/vue.runtime.esm-bundler.js",
+      "file": "vue.js",
+      "fileHash": "f2481ead",
+      "needsInterop": false
+    },
+    "vue-router": {
+      "src": "../../../../../../../node_modules/.pnpm/vue-router@4.6.4_vue@3.5.32_typescript@5.7.3_/node_modules/vue-router/dist/vue-router.mjs",
+      "file": "vue-router.js",
+      "fileHash": "efb9781c",
+      "needsInterop": false
+    },
+    "zod": {
+      "src": "../../../../../../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/index.js",
+      "file": "zod.js",
+      "fileHash": "922dff3e",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-YUBF24JI": {
+      "file": "chunk-YUBF24JI.js"
+    },
+    "chunk-PGWHQTRK": {
+      "file": "chunk-PGWHQTRK.js"
+    },
+    "chunk-PZ5AY32C": {
+      "file": "chunk-PZ5AY32C.js"
+    }
+  }
+}

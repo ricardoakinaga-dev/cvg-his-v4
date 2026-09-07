@@ -29,6 +29,7 @@ const USER_B = uuid();
 const OWNER_A = uuid();
 const OWNER_B = uuid();
 const PATIENT_A = uuid();
+const HYDRATION_PATIENT_A = uuid();
 const PATIENT_B = uuid();
 const RLS_ENCOUNTER_A = uuid();
 const ENCOUNTER_B = uuid();
@@ -63,9 +64,9 @@ async function seedBaseRows(): Promise<void> {
 
   await pool.query(
     `
-      INSERT INTO users (id, account_id, email, password_hash, full_name)
-      VALUES ($1, $3, $5, 'hash', 'Clinical Handoff User A'),
-             ($2, $4, $6, 'hash', 'Clinical Handoff User B')
+      INSERT INTO users (id, account_id, email, password_hash, full_name, username)
+      VALUES ($1, $3, $5, 'hash', 'Clinical Handoff User A', 'fixture_' || $1::uuid::text),
+             ($2, $4, $6, 'hash', 'Clinical Handoff User B', 'fixture_' || $2::uuid::text)
       ON CONFLICT (id) DO NOTHING
     `,
     [
@@ -98,12 +99,19 @@ async function seedBaseRows(): Promise<void> {
     [PATIENT_A, PATIENT_B, ACCOUNT_A, ACCOUNT_B, OWNER_A, OWNER_B]
   );
 
+  // Each active encounter has its own patient, as required by the canonical uniqueness rule.
+  await pool.query(
+    `INSERT INTO patients (id, account_id, owner_id, name, species)
+     VALUES ($1, $2, $3, 'Clinical Handoff Hydration Patient A', 'canine')`,
+    [HYDRATION_PATIENT_A, ACCOUNT_A, OWNER_A]
+  );
+
   await pool.query(
     `
       INSERT INTO encounters (id, account_id, patient_id, owner_id, opened_by_user_id, reason)
       VALUES ($1, $4, $6, $8, $10, 'Clinical handoff RLS A'),
              ($2, $5, $7, $9, $11, 'Clinical handoff B'),
-             ($3, $4, $6, $8, $10, 'Clinical handoff hydration A')
+             ($3, $4, $12, $8, $10, 'Clinical handoff hydration A')
       ON CONFLICT (id) DO NOTHING
     `,
     [
@@ -117,7 +125,8 @@ async function seedBaseRows(): Promise<void> {
       OWNER_A,
       OWNER_B,
       USER_A,
-      USER_B
+      USER_B,
+      HYDRATION_PATIENT_A
     ]
   );
 }
@@ -240,6 +249,7 @@ describe('HOFF-MIN-1 clinical handoff persistence migration', () => {
           toResponsibleId: 'reception',
           clinicalSummary: 'RLS handoff summary',
           receptionInstructions: 'RLS handoff instructions',
+          pendingIssues: [],
           priority: 'medium',
           handoffStatus: 'sent_to_reception',
           createdBy: USER_A as UserId,

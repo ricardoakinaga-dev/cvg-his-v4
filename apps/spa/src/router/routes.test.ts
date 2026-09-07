@@ -50,9 +50,9 @@ describe('router convergence', () => {
     expect(findChildRoute('encounters')?.meta?.breadcrumbParent).toBe('Atendimento');
     expect(findChildRoute('queue')?.meta?.title).toBe('Esteira');
     expect(findChildRoute('queue')?.meta?.breadcrumbParent).toBe('Atendimento');
-    expect(findChildRoute('patients')?.meta?.title).toBe('Animais');
+    expect(findChildRoute('patients')?.meta?.title).toBe('Pacientes');
     expect(findChildRoute('patients')?.meta?.breadcrumbParent).toBe('Cadastros');
-    expect(findChildRoute('owners')?.meta?.title).toBe('Clientes');
+    expect(findChildRoute('owners')?.meta?.title).toBe('Tutores');
     expect(findChildRoute('owners')?.meta?.breadcrumbParent).toBe('Cadastros');
     expect(findChildRoute('quotes')?.meta?.breadcrumbParent).toBe('Atendimento');
     expect(findChildRoute('triage')?.meta?.breadcrumbParent).toBe('Atendimento');
@@ -121,8 +121,10 @@ describe('router convergence', () => {
       '/estoque/cadastros/tabelas-ibs-cbs'
     ]);
     expect(findChildRoute('fiscal/pis-cofins')?.meta?.title).toBe('PIS / COFINS');
+    expect(findChildRoute('users')?.meta?.breadcrumbParent).toBe('RH');
     expect(findChildRoute('access-control')?.meta?.title).toBe('Grupos de Acesso');
-    expect(findChildRoute('access-control')?.meta?.breadcrumbParent).toBe('RH');
+    expect(findChildRoute('access-control')?.meta?.breadcrumbParent).toBe('Governança');
+    expect(findChildRoute('webhooks')?.meta?.breadcrumbParent).toBe('Integrações');
   });
 
   it('adds concrete placeholder routes for the new menu items that do not have modules yet', () => {
@@ -563,7 +565,7 @@ describe('router convergence', () => {
     expect(findChildRoute('marketing/vaccine-email')?.meta?.breadcrumbParent).toBe('Marketing');
     expect(findChildRoute('marketing/sms-settings')?.meta?.title).toBe('Configurações de SMS');
     expect(findChildRoute('marketing/sms-settings')?.meta?.breadcrumbParent).toBe('Marketing');
-    expect(findChildRoute('administration/settings')?.meta?.breadcrumbParent).toBe('Administração');
+    expect(findChildRoute('administration/settings')?.meta?.breadcrumbParent).toBe('Plataforma');
     expect(findChildRoute('dashboards/multifilial')?.meta?.breadcrumbParent).toBe('Financeiro');
     expect(findChildRoute('vaccines-dewormers')?.meta?.breadcrumbParent).toBe('Atendimento');
     expect(findChildRoute('responsibility-terms')?.meta?.title).toBe('Termos de Responsabilidade');
@@ -890,14 +892,14 @@ describe('router convergence', () => {
     expect(findChildRoute('reports/registers/services')?.alias).toEqual([
       '/relatorios/cadastros/servicos'
     ]);
-    expect(findChildRoute('reports/registers/owners')?.meta?.title).toBe('Clientes');
+    expect(findChildRoute('reports/registers/owners')?.meta?.title).toBe('Tutores');
     expect(findChildRoute('reports/registers/owners')?.meta?.breadcrumbParent).toBe(
       'Relatórios de Cadastros'
     );
     expect(findChildRoute('reports/registers/owners')?.alias).toEqual([
       '/relatorios/cadastros/clientes'
     ]);
-    expect(findChildRoute('reports/registers/patients')?.meta?.title).toBe('Animais');
+    expect(findChildRoute('reports/registers/patients')?.meta?.title).toBe('Pacientes');
     expect(findChildRoute('reports/registers/patients')?.meta?.breadcrumbParent).toBe(
       'Relatórios de Cadastros'
     );

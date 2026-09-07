@@ -2,10 +2,8 @@
   <div class="clinical-page">
     <AppPageHeader
       title="Central Diagnóstica"
-      subtitle="Satélite clínico para exames e laudos vinculados ao atendimento"
+      subtitle="Solicite exames e acompanhe os resultados do atendimento."
       :breadcrumb-items="headerBreadcrumbItems"
-      :context-items="headerContextItems"
-      :next-steps="headerNextSteps"
       :secondary-actions="headerSecondaryActions"
       :primary-action="headerPrimaryAction"
     />
@@ -20,85 +18,37 @@
       {{ warningMessage }}
     </DsAlert>
 
-    <section
-      v-if="hasWorkflowContext"
-      class="clinical-context-strip"
-      aria-label="Contexto do atendimento clínico"
-    >
-      <div>
-        <span>Contexto do atendimento clínico</span>
-        <strong>{{ selectedEncounterContextLabel }}</strong>
-        <small
-          >Paciente {{ shortId(selectedEncounter?.patientId || workflowContext.patientId) }} · Tutor
-          {{ shortId(selectedEncounter?.ownerId || workflowContext.ownerId) }}</small
-        >
+    <DsCard title="Atendimento selecionado">
+      <DsInput v-model="selectedEncounterId" type="select" label="Atendimento" :disabled="loading || loadFailed || submittingRequest || submittingAttachment">
+        <option value="">{{ loading ? 'Carregando atendimentos…' : encounters.length ? 'Selecione um atendimento' : 'Nenhum atendimento disponível' }}</option>
+        <option v-for="enc in encounters" :key="enc.id" :value="enc.id">{{ enc.id.slice(0, 8) }} • {{ enc.reason || 'Sem descrição' }}</option>
+      </DsInput>
+      <div v-if="selectedEncounter && !loading && !loadFailed" class="summary-list">
+        <strong v-if="hasWorkflowContext">Contexto do atendimento clínico</strong>
+        <div><strong>Paciente:</strong> {{ selectedEncounter.patientId }}</div>
+        <div><strong>Status:</strong> {{ encounterStatusLabel(selectedEncounter.status) }}</div>
+        <div><strong>Motivo:</strong> {{ selectedEncounter.reason }}</div>
       </div>
-      <div class="clinical-context-strip__actions">
-        <DsButton
-          v-if="selectedEncounterContextId"
-          size="sm"
-          variant="secondary"
-          tag="a"
-          :to="`/encounters/${selectedEncounterContextId}`"
-        >
-          Voltar ao atendimento
-        </DsButton>
-        <DsButton
-          v-if="selectedEncounterContextId"
-          size="sm"
-          variant="secondary"
-          tag="a"
-          :to="`/medical-records/${selectedEncounterContextId}`"
-        >
-          Abrir prontuário
-        </DsButton>
+      <div v-if="loadFailed" class="context-state" role="status">
+        <p>Não foi possível carregar os atendimentos e tipos de exame.</p>
+        <DsButton variant="secondary" @click="loadData">Tentar novamente</DsButton>
       </div>
-    </section>
+      <div v-else-if="!loading && !selectedEncounter" class="context-state" role="status">
+        <p>{{ explicitContext ? 'Contexto solicitado indisponível. Verifique o atendimento ou paciente informado.' : encounters.length ? 'Selecione um atendimento para consultar exames e laudos.' : 'Nenhum atendimento aberto disponível para diagnóstico.' }}</p>
+        <DsButton variant="secondary" tag="a" to="/encounters">Ver atendimentos</DsButton>
+      </div>
+      <p v-else-if="loading || contextState === 'loading'" class="muted" role="status">Carregando contexto diagnóstico…</p>
+      <div v-else-if="contextState === 'failed'" class="context-state" role="status">
+        <p>Não foi possível carregar os dados diagnósticos deste atendimento.</p>
+        <DsButton variant="secondary" @click="refreshContext">Tentar novamente</DsButton>
+      </div>
+    </DsCard>
 
-    <section class="clinical-overview">
-      <DsCard title="Resumo diagnóstico">
-        <div class="overview-grid">
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ encounters.length }}</span>
-            <span class="overview-metric__label">Atendimentos carregados</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ laboratoryOrders.length }}</span>
-            <span class="overview-metric__label">Pedidos laboratoriais</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ attachments.length }}</span>
-            <span class="overview-metric__label">Anexos</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ diagnosticTimeline.length }}</span>
-            <span class="overview-metric__label">Eventos na timeline</span>
-          </div>
-        </div>
-      </DsCard>
-    </section>
-
-    <div class="clinical-grid clinical-grid--two">
-      <DsCard title="Atendimento selecionado">
-        <DsInput
-          v-model="selectedEncounterId"
-          type="select"
-          label="Atendimento"
-          @change="refreshContext"
-        >
-          <option v-for="enc in encounters" :key="enc.id" :value="enc.id">
-            {{ enc.id.slice(0, 8) }} • {{ enc.reason || 'Sem descrição' }}
-          </option>
-        </DsInput>
-        <div v-if="selectedEncounter" class="summary-list">
-          <div><strong>Paciente:</strong> {{ selectedEncounter.patientId }}</div>
-          <div><strong>Status:</strong> {{ selectedEncounter.status }}</div>
-          <div><strong>Motivo:</strong> {{ selectedEncounter.reason }}</div>
-        </div>
-      </DsCard>
-
-      <DsCard title="Novo pedido laboratorial">
-        <form class="form-grid" @submit.prevent="submitRequest">
+    <template v-if="contextReady">
+      <DsAlert v-if="!canWriteContext" variant="info">Atendimento encerrado: somente leitura do histórico diagnóstico.</DsAlert>
+      <DsCard v-if="canWriteContext" title="Novo pedido laboratorial">
+        <form @submit.prevent="submitRequest">
+          <fieldset class="form-grid" :disabled="submittingRequest || submittingAttachment">
           <DsInput v-model="requestForm.reportTypeId" type="select" label="Tipo de exame" required>
             <option value="">Selecione</option>
             <option v-for="reportType in reportTypes" :key="reportType.id" :value="reportType.id">
@@ -119,13 +69,14 @@
             >
             <DsButton variant="secondary" type="button" @click="resetRequestForm">Limpar</DsButton>
           </div>
+          </fieldset>
         </form>
       </DsCard>
-    </div>
 
     <div class="clinical-grid clinical-grid--two">
-      <DsCard title="Anexar resultado e liberar pedido">
-        <form class="form-grid" @submit.prevent="submitAttachment">
+      <DsCard v-if="canWriteContext" title="Anexar resultado e liberar pedido">
+        <form @submit.prevent="submitAttachment">
+          <fieldset class="form-grid" :disabled="submittingRequest || submittingAttachment">
           <DsInput v-model="attachmentForm.orderId" type="select" label="Pedido vinculado">
             <option value="">Somente anexar ao prontuário</option>
             <option v-for="order in laboratoryOrders" :key="order.id" :value="order.id">
@@ -159,19 +110,23 @@
               >Limpar</DsButton
             >
           </div>
+          </fieldset>
         </form>
       </DsCard>
 
-      <DsCard title="Timeline diagnóstica">
+      <DsCard title="Histórico diagnóstico">
         <DataTable
           :columns="timelineColumns"
           :rows="diagnosticTimeline"
-          :loading="loading"
+          :loading="false"
           empty-icon="🧪"
           empty-title="Nenhum evento diagnóstico encontrado"
-          empty-description="A timeline clínica será preenchida quando diagnósticos forem registrados."
+          empty-description="O histórico clínico será preenchida quando diagnósticos forem registrados."
           variant="hoverable"
         >
+          <template #cell-eventType="{ row }">
+            <span :title="(row as ClinicalTimelineEventSummary).eventType">{{ timelineEventLabel((row as ClinicalTimelineEventSummary).eventType) }}</span>
+          </template>
           <template #cell-occurredAt="{ row }">
             {{ formatDateTime((row as ClinicalTimelineEventSummary).occurredAt) }}
           </template>
@@ -184,7 +139,7 @@
         <DataTable
           :columns="orderColumns"
           :rows="laboratoryOrders"
-          :loading="loading"
+          :loading="false"
           empty-icon="🧾"
           empty-title="Nenhum pedido laboratorial"
           empty-description="Registre o primeiro pedido para iniciar a trilha laboratorial."
@@ -208,7 +163,7 @@
         <DataTable
           :columns="requestColumns"
           :rows="diagnosticRequests"
-          :loading="loading"
+          :loading="false"
           empty-icon="📝"
           empty-title="Nenhuma nota clínica"
           empty-description="A ponte diagnóstica também registra a narrativa clínica no prontuário."
@@ -224,10 +179,10 @@
         <DataTable
           :columns="attachmentColumns"
           :rows="attachments"
-          :loading="loading"
+          :loading="false"
           empty-icon="📎"
           empty-title="Nenhum anexo encontrado"
-          empty-description="Anexe laudos, PDFs e imagens ao prontuário."
+          :empty-description="canWriteContext ? 'Anexe laudos, PDFs e imagens ao prontuário.' : 'Não há anexos registrados neste atendimento.'"
           variant="hoverable"
         >
           <template #cell-createdAt="{ row }">
@@ -236,16 +191,25 @@
         </DataTable>
       </DsCard>
     </div>
+    </template>
+    <details class="clinical-overview">
+      <summary>Resumo diagnóstico</summary>
+      <dl class="overview-grid">
+        <div class="overview-metric"><dt>Atendimentos abertos carregados</dt><dd>{{ loading || loadFailed ? '—' : encounters.filter(enc => enc.status !== 'closed').length }}</dd></div>
+        <div class="overview-metric"><dt>Pedidos do atendimento</dt><dd>{{ contextReady ? laboratoryOrders.length : '—' }}</dd></div>
+        <div class="overview-metric"><dt>Anexos do atendimento</dt><dd>{{ contextReady ? attachments.length : '—' }}</dd></div>
+        <div class="overview-metric"><dt>Eventos diagnósticos</dt><dd>{{ contextReady ? diagnosticTimeline.length : '—' }}</dd></div>
+      </dl>
+    </details>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, inject, onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { routeLocationKey } from 'vue-router';
 import AppPageHeader, {
   type PageAction,
-  type PageBreadcrumb,
-  type PageContextItem,
-  type PageNextStep
+  type PageBreadcrumb
 } from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
@@ -265,7 +229,7 @@ import type {
   DiagnosticOrderSummary,
   LaboratoryReportTypeSummary
 } from '@cvg-his-v2/shared-types';
-import { formatDateTime } from '@/utils/labels';
+import { encounterStatusLabel, formatDateTime } from '@/utils/labels';
 
 const encounters = ref<EncounterSummary[]>([]);
 const diagnosticRequests = ref<ClinicalEntrySummary[]>([]);
@@ -275,12 +239,18 @@ const laboratoryOrders = ref<DiagnosticOrderSummary[]>([]);
 const reportTypes = ref<LaboratoryReportTypeSummary[]>([]);
 const selectedEncounterId = ref('');
 const loading = ref(false);
+const loadFailed = ref(false);
+const contextState = ref<'idle' | 'loading' | 'ready' | 'failed'>('idle');
+let listRequestVersion = 0;
+let contextRequestVersion = 0;
 const submittingRequest = ref(false);
 const submittingAttachment = ref(false);
 const error = ref('');
 const successMessage = ref('');
 const warningMessage = ref('');
-const workflowContext = readWorkflowContext();
+const route = inject(routeLocationKey, undefined);
+const workflowContext = computed(() => readWorkflowContext());
+const explicitContext = computed(() => Boolean(workflowContext.value.encounterId || workflowContext.value.patientId));
 
 const requestForm = ref({
   title: '',
@@ -296,6 +266,16 @@ const attachmentForm = ref({
   checksum: '',
   category: 'lab' as AttachmentSummary['category']
 });
+
+
+function timelineEventLabel(eventType: string): string {
+  const labels: Record<string, string> = {
+    diagnostic_requested: 'Exame solicitado',
+    diagnostic_collected: 'Coleta registrada',
+    diagnostic_resulted: 'Resultado registrado',
+  };
+  return labels[eventType] ?? 'Atualização clínica';
+}
 
 const timelineColumns: DataTableColumn[] = [
   { key: 'eventType', label: 'Evento' },
@@ -328,57 +308,23 @@ const selectedEncounter = computed(() =>
 );
 
 const hasWorkflowContext = computed(() =>
-  Boolean(workflowContext.encounterId || workflowContext.patientId || workflowContext.ownerId)
+  Boolean(workflowContext.value.encounterId || workflowContext.value.patientId || workflowContext.value.ownerId)
 );
 
 const selectedEncounterContextId = computed(
-  () => selectedEncounter.value?.id || workflowContext.encounterId
+  () => !loading.value && !loadFailed.value ? selectedEncounter.value?.id : undefined
 );
 
-const selectedEncounterContextLabel = computed(() => {
-  const id = selectedEncounterContextId.value;
-  const reason = selectedEncounter.value?.reason;
-  return `${shortId(id)}${reason ? ` · ${reason}` : ''}`;
-});
+const contextReady = computed(() =>
+  !loading.value && !loadFailed.value && Boolean(selectedEncounter.value) && contextState.value === 'ready'
+);
+
+const canWriteContext = computed(() => contextReady.value && selectedEncounter.value?.status !== 'closed');
 
 const headerBreadcrumbItems = computed<PageBreadcrumb[]>(() => [
   { key: 'home', label: 'Início', to: '/' },
   { key: 'attendance', label: 'Atendimento', to: '/encounters' },
   { key: 'diagnostics', label: 'Exames', current: true }
-]);
-
-const headerContextItems = computed<PageContextItem[]>(() => {
-  const items: PageContextItem[] = [
-    {
-      key: 'encounter',
-      label: 'Atendimento',
-      value: selectedEncounterContextId.value
-        ? shortId(selectedEncounterContextId.value)
-        : 'Não selecionado',
-      tone: selectedEncounterContextId.value ? 'info' : 'warning'
-    },
-    {
-      key: 'patient',
-      label: 'Paciente',
-      value: shortId(selectedEncounter.value?.patientId || workflowContext.patientId)
-    }
-  ];
-  if (selectedEncounter.value?.ownerId || workflowContext.ownerId) {
-    items.push({
-      key: 'owner',
-      label: 'Tutor',
-      value: shortId(selectedEncounter.value?.ownerId || workflowContext.ownerId)
-    });
-  }
-  return items;
-});
-
-const headerNextSteps = computed<PageNextStep[]>(() => [
-  {
-    key: 'record-order',
-    label: 'Registrar pedido quando necessário',
-    description: selectedEncounter.value?.reason || 'Selecione o atendimento clínico'
-  }
 ]);
 
 const headerSecondaryActions = computed<PageAction[]>(() => {
@@ -389,6 +335,7 @@ const headerSecondaryActions = computed<PageAction[]>(() => {
       label: 'Atualizar',
       variant: 'secondary',
       loading: loading.value,
+      disabled: submittingRequest.value || submittingAttachment.value,
       onClick: () => void loadData()
     }
   ];
@@ -468,77 +415,111 @@ function resetAttachmentForm() {
   };
 }
 
-async function loadData() {
-  loading.value = true;
+function clearContext() {
+  contextRequestVersion += 1;
+  contextState.value = 'idle';
+  diagnosticRequests.value = [];
+  attachments.value = [];
+  diagnosticTimeline.value = [];
+  laboratoryOrders.value = [];
+  resetRequestForm();
+  resetAttachmentForm();
+}
+
+watch(selectedEncounterId, () => {
+  clearContext();
   error.value = '';
+  successMessage.value = '';
+  warningMessage.value = '';
+  if (!loading.value && !loadFailed.value) void refreshContext();
+}, { flush: 'sync' });
+
+async function loadData() {
+  if (submittingRequest.value || submittingAttachment.value) return;
+  const requestVersion = ++listRequestVersion;
+  loading.value = true;
+  loadFailed.value = false;
+  error.value = '';
+  successMessage.value = '';
+  warningMessage.value = '';
+  clearContext();
   try {
     const [loadedEncounters, loadedReportTypes] = await Promise.all([
       encounterService.list(),
       laboratoryService.listReportTypes()
     ]);
-    encounters.value = loadedEncounters.filter((encounter) => encounter.status !== 'closed');
+    if (requestVersion !== listRequestVersion) return;
+    const context = workflowContext.value;
+    encounters.value = loadedEncounters.filter((encounter) =>
+      context.encounterId
+        ? encounter.id === context.encounterId && (!context.patientId || encounter.patientId === context.patientId)
+        : context.patientId
+          ? encounter.patientId === context.patientId
+          : encounter.status !== 'closed'
+    );
     reportTypes.value = loadedReportTypes;
-
-    if (!selectedEncounterId.value && encounters.value.length > 0) {
-      selectedEncounterId.value =
-        encounters.value.find((encounter) => encounter.id === workflowContext.encounterId)?.id ??
-        encounters.value.find((encounter) => encounter.patientId === workflowContext.patientId)
-          ?.id ??
-        encounters.value[0].id;
+    if (!selectedEncounter.value) {
+      selectedEncounterId.value = encounters.value.find((encounter) => encounter.status !== 'closed')?.id
+        ?? encounters.value[0]?.id ?? '';
     }
-
-    if (!requestForm.value.reportTypeId && reportTypes.value.length > 0) {
-      requestForm.value.reportTypeId = reportTypes.value[0].id;
-    }
-
+    if (!selectedReportType.value) requestForm.value.reportTypeId = reportTypes.value[0]?.id ?? '';
     await refreshContext();
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar diagnósticos';
+    if (requestVersion !== listRequestVersion) return;
+    loadFailed.value = true;
+    encounters.value = [];
+    reportTypes.value = [];
+    selectedEncounterId.value = '';
+    clearContext();
+    error.value = err instanceof Error ? err.message : 'Erro ao carregar atendimentos e tipos de exame';
   } finally {
-    loading.value = false;
+    if (requestVersion === listRequestVersion) loading.value = false;
   }
 }
 
 async function refreshContext() {
-  if (!selectedEncounter.value) {
-    diagnosticRequests.value = [];
-    attachments.value = [];
-    diagnosticTimeline.value = [];
-    laboratoryOrders.value = [];
+  const encounter = selectedEncounter.value;
+  const requestVersion = ++contextRequestVersion;
+  diagnosticRequests.value = [];
+  attachments.value = [];
+  diagnosticTimeline.value = [];
+  laboratoryOrders.value = [];
+  error.value = '';
+  if (!encounter || loadFailed.value) {
+    contextState.value = 'idle';
     return;
   }
-
-  const [record, requests, uploadedAttachments, timeline, orders] = await Promise.all([
-    medicalRecordsService.getByEncounter(selectedEncounter.value.id),
-    diagnosticsService.listByEncounter(selectedEncounter.value.id),
-    diagnosticsService.listAttachments(selectedEncounter.value.id),
-    medicalRecordsService.getTimeline(selectedEncounter.value.id),
-    laboratoryService.listOrders(selectedEncounter.value.id)
-  ]);
-
-  diagnosticRequests.value = requests;
-  attachments.value = uploadedAttachments;
-  diagnosticTimeline.value = timeline.filter((event) => event.eventType.startsWith('diagnostic_'));
-  laboratoryOrders.value = orders;
-
-  if (!requestForm.value.title.trim()) {
-    requestForm.value.title = `Diagnóstico para ${selectedEncounter.value.reason || 'atendimento'}`;
-  }
-
-  if (!attachmentForm.value.fileName.trim()) {
-    attachmentForm.value.fileName = `resultado-${record.record.id.slice(0, 8)}.pdf`;
-  }
-
-  if (!attachmentForm.value.orderId && laboratoryOrders.value.length > 0) {
-    attachmentForm.value.orderId =
-      laboratoryOrders.value.find((order) => order.status !== 'resulted')?.id ??
-      laboratoryOrders.value[0].id;
+  const encounterId = encounter.id;
+  contextState.value = 'loading';
+  try {
+    const [record, requests, uploadedAttachments, timeline, orders] = await Promise.all([
+      medicalRecordsService.getByEncounter(encounterId),
+      diagnosticsService.listByEncounter(encounterId),
+      diagnosticsService.listAttachments(encounterId),
+      medicalRecordsService.getTimeline(encounterId),
+      laboratoryService.listOrders(encounterId)
+    ]);
+    if (requestVersion !== contextRequestVersion || selectedEncounterId.value !== encounterId) return;
+    diagnosticRequests.value = requests;
+    attachments.value = uploadedAttachments;
+    diagnosticTimeline.value = timeline.filter((event) => event.eventType.startsWith('diagnostic_'));
+    laboratoryOrders.value = orders;
+    if (!requestForm.value.title.trim()) requestForm.value.title = `Diagnóstico para ${encounter.reason || 'atendimento'}`;
+    if (!attachmentForm.value.fileName.trim()) attachmentForm.value.fileName = `resultado-${record.record.id.slice(0, 8)}.pdf`;
+    if (!attachmentForm.value.orderId && orders.length) {
+      attachmentForm.value.orderId = orders.find((order) => order.status !== 'resulted')?.id ?? orders[0].id;
+    }
+    contextState.value = 'ready';
+  } catch (err: unknown) {
+    if (requestVersion !== contextRequestVersion || selectedEncounterId.value !== encounterId) return;
+    contextState.value = 'failed';
+    error.value = err instanceof Error ? err.message : 'Erro ao carregar o contexto diagnóstico';
   }
 }
 
 async function submitRequest() {
-  if (!selectedEncounter.value) {
-    error.value = 'Selecione um atendimento';
+  if (!canWriteContext.value || !selectedEncounter.value || submittingRequest.value || submittingAttachment.value) {
+    error.value = 'Selecione um atendimento com o contexto carregado';
     return;
   }
 
@@ -547,6 +528,12 @@ async function submitRequest() {
     return;
   }
 
+  const encounterId = selectedEncounter.value.id;
+  const patientId = selectedEncounter.value.patientId;
+  const reportType = { ...selectedReportType.value };
+  const draft = { ...requestForm.value };
+  const requestVersion = contextRequestVersion;
+  const isCurrent = () => requestVersion === contextRequestVersion && selectedEncounterId.value === encounterId;
   submittingRequest.value = true;
   error.value = '';
   successMessage.value = '';
@@ -554,62 +541,67 @@ async function submitRequest() {
 
   try {
     await laboratoryService.createOrder({
-      encounterId: selectedEncounter.value.id,
-      patientId: selectedEncounter.value.patientId,
-      examType: selectedReportType.value.name,
-      reason: requestForm.value.reason.trim() || 'Solicitação registrada na central diagnóstica.'
+      encounterId,
+      patientId,
+      examType: reportType.name,
+      reason: draft.reason.trim() || 'Solicitação registrada na central diagnóstica.'
     });
 
     try {
       await diagnosticsService.createRequest({
-        encounterId: selectedEncounter.value.id,
-        patientId: selectedEncounter.value.patientId,
-        title: (requestForm.value.title.trim() || selectedReportType.value.name).trim(),
+        encounterId,
+        patientId,
+        title: (draft.title.trim() || reportType.name).trim(),
         content: [
-          `Tipo de exame: ${selectedReportType.value.name} (${selectedReportType.value.code})`,
-          requestForm.value.reason.trim() ? `Justificativa: ${requestForm.value.reason.trim()}` : ''
+          `Tipo de exame: ${reportType.name} (${reportType.code})`,
+          draft.reason.trim() ? `Justificativa: ${draft.reason.trim()}` : ''
         ]
           .filter(Boolean)
           .join('\n')
       });
-      successMessage.value = 'Pedido laboratorial registrado e vinculado ao prontuário.';
+      if (isCurrent()) successMessage.value = 'Pedido laboratorial registrado e vinculado ao prontuário.';
     } catch (err: unknown) {
       const detail = err instanceof Error ? err.message : 'Erro ao registrar anotação clínica';
-      warningMessage.value = `Pedido laboratorial registrado, mas a anotação clínica não foi persistida: ${detail}`;
+      if (isCurrent()) warningMessage.value = `Pedido laboratorial registrado, mas a anotação clínica não foi persistida: ${detail}`;
     }
 
+    if (!isCurrent()) return;
     resetRequestForm();
     await refreshContext();
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao registrar solicitação';
-    warningMessage.value = '';
+    if (isCurrent()) {
+      error.value = err instanceof Error ? err.message : 'Erro ao registrar solicitação';
+      warningMessage.value = '';
+    }
   } finally {
     submittingRequest.value = false;
   }
 }
 
 async function submitAttachment() {
-  if (!selectedEncounter.value) {
-    error.value = 'Selecione um atendimento';
+  if (!canWriteContext.value || !selectedEncounter.value || submittingRequest.value || submittingAttachment.value) {
+    error.value = 'Selecione um atendimento com o contexto carregado';
     return;
   }
 
+  const encounterId = selectedEncounter.value.id;
+  const draft = { ...attachmentForm.value };
+  const linkedOrder = laboratoryOrders.value.find((order) => order.id === draft.orderId);
+  const requestVersion = contextRequestVersion;
+  const isCurrent = () => requestVersion === contextRequestVersion && selectedEncounterId.value === encounterId;
   submittingAttachment.value = true;
   error.value = '';
   successMessage.value = '';
   warningMessage.value = '';
 
   try {
-    const attachment = await diagnosticsService.uploadAttachment(selectedEncounter.value.id, {
-      fileName: attachmentForm.value.fileName.trim(),
-      mimeType: attachmentForm.value.mimeType.trim(),
-      checksum: attachmentForm.value.checksum.trim(),
-      category: attachmentForm.value.category
+    const attachment = await diagnosticsService.uploadAttachment(encounterId, {
+      fileName: draft.fileName.trim(),
+      mimeType: draft.mimeType.trim(),
+      checksum: draft.checksum.trim(),
+      category: draft.category
     });
 
-    const linkedOrder = laboratoryOrders.value.find(
-      (order) => order.id === attachmentForm.value.orderId
-    );
     if (linkedOrder && linkedOrder.status !== 'cancelled' && linkedOrder.status !== 'resulted') {
       if (linkedOrder.status === 'requested') {
         await laboratoryService.recordResult(linkedOrder.id, {
@@ -620,31 +612,53 @@ async function submitAttachment() {
 
       await laboratoryService.recordResult(linkedOrder.id, {
         status: 'resulted',
-        resultSummary: attachmentForm.value.resultSummary.trim() || attachment.fileName,
+        resultSummary: draft.resultSummary.trim() || attachment.fileName,
         resultAttachmentId: attachment.id
       });
-      successMessage.value = 'Resultado anexado ao prontuário e liberado no laboratório.';
+      if (isCurrent()) successMessage.value = 'Resultado anexado ao prontuário e liberado no laboratório.';
     } else {
-      successMessage.value = 'Anexo diagnóstico enviado.';
+      if (isCurrent()) successMessage.value = 'Anexo diagnóstico enviado.';
     }
 
+    if (!isCurrent()) return;
     resetAttachmentForm();
     await refreshContext();
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao enviar anexo';
-    warningMessage.value = '';
+    if (isCurrent()) {
+      error.value = err instanceof Error ? err.message : 'Erro ao enviar anexo';
+      warningMessage.value = '';
+    }
   } finally {
     submittingAttachment.value = false;
   }
 }
 
+watch(workflowContext, () => {
+  // Invalidate old reads immediately, including when a write keeps list refresh locked.
+  listRequestVersion += 1;
+  clearContext();
+  selectedEncounterId.value = '';
+  encounters.value = [];
+  void loadData();
+}, { flush: 'sync' });
+watch([submittingRequest, submittingAttachment], ([request, attachment]) => {
+  if (!request && !attachment && !selectedEncounterId.value) void loadData();
+});
 onMounted(loadData);
+onBeforeUnmount(() => { listRequestVersion += 1; contextRequestVersion += 1; });
 
 function shortId(value?: string): string {
   return value ? value.slice(0, 8) : 'Não informado';
 }
 
 function readWorkflowContext() {
+  if (route) {
+    const value = (key: string) => {
+      const raw = route.query[key];
+      return (Array.isArray(raw) ? raw[0] : raw)?.trim() || '';
+    };
+    return { encounterId: value('encounterId') || value('encounter'), patientId: value('patientId'), ownerId: value('ownerId') };
+  }
   if (typeof window === 'undefined') {
     return { encounterId: '', patientId: '', ownerId: '' };
   }
@@ -659,51 +673,28 @@ function readWorkflowContext() {
 </script>
 
 <style scoped>
+.clinical-page { display: grid; gap: 16px; min-width: 0; }
+.clinical-overview summary { min-height: 44px; padding-block: 12px; box-sizing: border-box; cursor: pointer; font-weight: 700; color: var(--color-text-secondary); }
+.overview-metric dt { color: var(--color-text-secondary); font-size: 13px; }
+.overview-metric dd { margin: 8px 0 0; font-size: 24px; font-weight: 700; color: var(--color-text); }
+.context-state p, .muted { color: var(--color-text-secondary); }
+.form-grid { border: 0; padding: 0; margin: 0; min-width: 0; }
+
 .clinical-grid {
   display: grid;
   gap: 16px;
 }
 
 .clinical-grid--two {
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
 }
 
 .clinical-grid--three {
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
 }
 
 .clinical-overview {
   margin-bottom: 16px;
-}
-
-.clinical-context-strip {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 12px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 8px;
-  background: var(--color-bg-subtle, #f8fafc);
-}
-
-.clinical-context-strip span,
-.clinical-context-strip small {
-  display: block;
-  color: var(--color-text-muted, #64748b);
-}
-
-.clinical-context-strip strong {
-  display: block;
-  color: var(--color-text, #0f172a);
-}
-
-.clinical-context-strip__actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 .overview-grid {
@@ -723,19 +714,6 @@ function readWorkflowContext() {
   );
 }
 
-.overview-metric__value {
-  display: block;
-  font-size: 24px;
-  font-weight: 800;
-}
-
-.overview-metric__label {
-  display: block;
-  margin-top: 4px;
-  font-size: 13px;
-  color: var(--color-text-muted, #64748b);
-}
-
 .form-grid {
   display: grid;
   gap: 12px;
@@ -748,20 +726,11 @@ function readWorkflowContext() {
 }
 
 .summary-list {
+  overflow-wrap: anywhere;
   display: grid;
   gap: 6px;
   margin-top: 12px;
   color: var(--color-text-secondary, #475569);
 }
 
-@media (max-width: 720px) {
-  .clinical-context-strip {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .clinical-context-strip__actions {
-    justify-content: flex-start;
-  }
-}
 </style>

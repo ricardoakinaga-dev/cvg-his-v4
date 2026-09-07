@@ -4,6 +4,7 @@ import { WebhooksService } from '@cvg-his-v2/module-webhooks';
 import { createDatabaseClient, getDatabaseClient, getPool, closeDatabaseClient } from '@cvg-his-v2/shared-database';
 import { runWithTenantContext } from '@cvg-his-v2/tenant-context';
 import { DatabaseWebhookRepository } from '@cvg-his-v2/module-webhooks';
+import { flushProcessCoverageCheckpoint } from '../../../tests/helpers/process-coverage-checkpoint.mjs';
 
 const databaseUrl = process.env.DATABASE_URL;
 const accountId = process.env.WEBHOOK_PROCESS_ACCOUNT_ID;
@@ -14,6 +15,7 @@ const waitForRelease = process.env.WEBHOOK_PROCESS_WAIT_FOR_RELEASE === '1';
 const waitBeforeComplete = process.env.WEBHOOK_PROCESS_WAIT_BEFORE_COMPLETE === '1';
 
 function emit(event: string, payload: Record<string, unknown>): void {
+  flushProcessCoverageCheckpoint();
   process.stdout.write(`${event} ${JSON.stringify(payload)}\n`);
 }
 

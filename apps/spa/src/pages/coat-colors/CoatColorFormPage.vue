@@ -15,6 +15,9 @@
     <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
       {{ successMessage }}
     </DsAlert>
+    <DsAlert v-if="loading" variant="info">
+      Carregando dados da cor/pelagem para edição…
+    </DsAlert>
 
     <div class="form-layout">
       <DsCard>
@@ -72,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import AppPageHeader from '@/components/AppPageHeader.vue';
@@ -87,9 +90,10 @@ const route = useRoute();
 const coatColorId = computed(() => route.params.id as string | undefined);
 const isEditing = computed(() => Boolean(coatColorId.value));
 const submitting = ref(false);
+const loading = ref(false);
 const error = ref('');
 const successMessage = ref('');
-const form = ref({
+const form = reactive({
   name: '',
   code: '',
   colorGroup: '',
@@ -97,58 +101,101 @@ const form = ref({
   description: '',
   active: true
 });
+const routeKey = computed(() => `${route.path}|${coatColorId.value ?? ''}`);
+const pageGeneration = ref(0);
+let active = true;
 
-async function loadCoatColor() {
-  if (!coatColorId.value) return;
+function isCurrentRequest(generation: number, key: string) {
+  return active && generation === pageGeneration.value && routeKey.value === key;
+}
+
+function resetForm() {
+  Object.assign(form, { name: '', code: '', colorGroup: '', hexColor: '#7c5f46', description: '', active: true });
+  error.value = '';
+  successMessage.value = '';
+}
+
+async function loadCoatColor(id: string, generation: number, key: string) {
+  if (!id) {
+    loading.value = false;
+    return;
+  }
+  loading.value = true;
   try {
-    const coatColor = await coatColorService.getById(coatColorId.value);
-    form.value = {
+    const coatColor = await coatColorService.getById(id);
+    if (!isCurrentRequest(generation, key)) return;
+    if (coatColor.id !== id) throw new Error('A cor/pelagem retornada não corresponde ao endereço solicitado.');
+    Object.assign(form, {
       name: coatColor.name,
       code: coatColor.code ?? '',
       colorGroup: coatColor.colorGroup ?? '',
       hexColor: coatColor.hexColor ?? '#7c5f46',
       description: coatColor.description ?? '',
       active: coatColor.active
-    };
+    });
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar cor/pelagem';
+    if (isCurrentRequest(generation, key)) error.value = err instanceof Error ? err.message : 'Erro ao carregar cor/pelagem';
+  } finally {
+    if (isCurrentRequest(generation, key)) loading.value = false;
   }
 }
 
 async function submitForm() {
-  if (!form.value.name.trim()) {
+  if (!form.name.trim()) {
     error.value = 'Descrição é obrigatória';
     return;
   }
 
+  const targetId = coatColorId.value;
+  const targetKey = routeKey.value;
+  const generation = pageGeneration.value;
+  const editing = Boolean(targetId);
   submitting.value = true;
   error.value = '';
   successMessage.value = '';
   try {
     const payload = {
-      name: form.value.name.trim(),
-      code: form.value.code.trim() || null,
-      colorGroup: form.value.colorGroup.trim() || null,
-      hexColor: form.value.hexColor,
-      description: form.value.description.trim() || null,
-      active: form.value.active
+      name: form.name.trim(),
+      code: form.code.trim() || null,
+      colorGroup: form.colorGroup.trim() || null,
+      hexColor: form.hexColor,
+      description: form.description.trim() || null,
+      active: form.active
     };
 
-    if (isEditing.value && coatColorId.value) {
-      await coatColorService.update(coatColorId.value, payload);
+    if (editing && targetId) {
+      const updated = await coatColorService.update(targetId, payload);
+      if (!isCurrentRequest(generation, targetKey)) return;
+      if (updated.id !== targetId) throw new Error('A cor/pelagem retornada não corresponde ao endereço solicitado.');
     } else {
-      await coatColorService.create(payload);
+      const created = await coatColorService.create(payload);
+      if (!isCurrentRequest(generation, targetKey)) return;
+      if (!created.id) throw new Error('A cor/pelagem criada não retornou um identificador.');
     }
+    if (!isCurrentRequest(generation, targetKey)) return;
     successMessage.value = 'Cor/Pelagem salva com sucesso.';
-    setTimeout(() => router.push('/coat-colors'), 1200);
+    setTimeout(() => {
+      if (isCurrentRequest(generation, targetKey)) void router.push('/coat-colors');
+    }, 1200);
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao salvar cor/pelagem';
+    if (isCurrentRequest(generation, targetKey)) error.value = err instanceof Error ? err.message : 'Erro ao salvar cor/pelagem';
   } finally {
-    submitting.value = false;
+    if (isCurrentRequest(generation, targetKey)) submitting.value = false;
   }
 }
 
-onMounted(loadCoatColor);
+watch(routeKey, (key, previousKey) => {
+  if (key === previousKey) return;
+  const generation = pageGeneration.value + 1;
+  pageGeneration.value = generation;
+  resetForm();
+  void loadCoatColor(coatColorId.value ?? '', generation, key);
+}, { immediate: true });
+
+onBeforeUnmount(() => {
+  active = false;
+  pageGeneration.value += 1;
+});
 </script>
 
 <style scoped>
@@ -195,7 +242,7 @@ onMounted(loadCoatColor);
 .color-field input {
   width: 100%;
   min-width: 160px;
-  height: 40px;
+  height: 44px;
   border: 1px solid var(--color-border, #cbd5e1);
   border-radius: 8px;
   background: var(--color-surface, #fff);
@@ -204,6 +251,10 @@ onMounted(loadCoatColor);
 .toggle-label input {
   width: 18px;
   height: 18px;
+}
+
+.toggle-label {
+  min-height: 44px;
 }
 
 .form-actions {

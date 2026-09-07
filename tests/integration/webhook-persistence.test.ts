@@ -21,6 +21,7 @@ let webhookRepo: DatabaseWebhookRepository;
 let webhooksService: WebhooksService;
 
 beforeAll(async () => {
+  schema.createDatabaseClient(process.env.DATABASE_URL_TEST ?? process.env.DATABASE_URL!);
   pool = new Pool({
     connectionString:
       process.env.DATABASE_URL_TEST ??
@@ -50,6 +51,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await cleanupWebhooks();
   await pool.end();
+  await schema.closeDatabaseClient();
 });
 
 async function cleanupWebhooks(): Promise<void> {
@@ -202,6 +204,15 @@ describe('WH-002 — Webhook Delivery Dispatch and Delivery Log', () => {
     );
 
     expect(dispatched).toBe(1);
+
+    const queued = await webhooksService.listDeliveries(TEST_ACCOUNT_ID as never, webhook.id);
+    expect(queued).toHaveLength(1);
+    expect(queued[0].status).toBe('pending');
+    const processed = await webhooksService.processPendingDeliveries(TEST_ACCOUNT_ID as never, {
+      workerId: 'webhook-persistence-test',
+      limit: 25
+    });
+    expect(processed).toMatchObject({ claimed: 1, delivered: 1, retried: 0, failed: 0, leaseLost: 0 });
 
     const deliveries = await webhooksService.listDeliveries(TEST_ACCOUNT_ID as never, webhook.id);
     expect(deliveries.length).toBe(1);

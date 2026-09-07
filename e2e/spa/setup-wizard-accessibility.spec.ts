@@ -16,6 +16,13 @@ const setupRequestPayload = {
   adminPassword: 'Clinica2026!vet'
 };
 
+test.afterEach(async ({ page }, testInfo) => {
+  await testInfo.attach('setup-render', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png'
+  });
+});
+
 function assertSetupPostRequest(route: Route): void {
   const request = route.request();
   expect(request.method()).toBe('POST');

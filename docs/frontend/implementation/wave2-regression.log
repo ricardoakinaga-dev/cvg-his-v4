@@ -1,0 +1,86 @@
+
+ RUN  v4.1.2 /home/ricardo/cvg-his-v4/apps/spa
+
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > renders the new customer title 816ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > renders the new grouped form fields 82ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > shows validation error when name is empty 66ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > shows validation error when no contact is provided 67ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > submits the new customer payload successfully 132ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > hydrates the expanded fields in edit mode 150ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > reloads the current owner and ignores a late previous response after a route switch 236ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > rejects a successful owner response whose identity differs from the edit route 62ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > does not report update success when the returned owner belongs to another route 52ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > does not duplicate a pending save or navigate away from edits made during it 69ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > preserves entered values after a failed save 28ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > blocks mutation after failed hydration and allows a successful retry 141ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > keeps edits entered while an existing tutor update is pending 204ms
+stderr | src/pages/reception/__tests__/ReceptionGatewayPage.test.ts > ReceptionGatewayPage > renders the reception gateway with primary operational actions
+[Vue warn]: Extraneous non-props attributes (class) were passed to component but could not be automatically inherited because component renders fragment or text or teleport root nodes. 
+  at <AppPageHeader title="Recepção" class="reception-header" subtitle="Localize tutor ou paciente para seguir com o atendimento." > 
+  at <ReceptionGatewayPage ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+ ✓ src/pages/reception/__tests__/ReceptionGatewayPage.test.ts > ReceptionGatewayPage > renders the reception gateway with primary operational actions 305ms
+stderr | src/pages/reception/__tests__/ReceptionGatewayPage.test.ts > ReceptionGatewayPage > puts search results before operational summaries while retaining secondary controls in disclosures
+[Vue warn]: Extraneous non-props attributes (class) were passed to component but could not be automatically inherited because component renders fragment or text or teleport root nodes. 
+  at <AppPageHeader title="Recepção" class="reception-header" subtitle="Localize tutor ou paciente para seguir com o atendimento." > 
+  at <ReceptionGatewayPage ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | src/pages/reception/__tests__/ReceptionGatewayPage.test.ts > ReceptionGatewayPage > searches owners and patients from the same field
+[Vue warn]: Extraneous non-props attributes (class) were passed to component but could not be automatically inherited because component renders fragment or text or teleport root nodes. 
+  at <AppPageHeader title="Recepção" class="reception-header" subtitle="Localize tutor ou paciente para seguir com o atendimento." > 
+  at <ReceptionGatewayPage ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | src/pages/reception/__tests__/ReceptionGatewayPage.test.ts > ReceptionGatewayPage > exposes safe next steps without creating an encounter automatically
+[Vue warn]: Extraneous non-props attributes (class) were passed to component but could not be automatically inherited because component renders fragment or text or teleport root nodes. 
+  at <AppPageHeader title="Recepção" class="reception-header" subtitle="Localize tutor ou paciente para seguir com o atendimento." > 
+  at <ReceptionGatewayPage ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+ ✓ src/pages/reception/__tests__/ReceptionGatewayPage.test.ts > ReceptionGatewayPage > puts search results before operational summaries while retaining secondary controls in disclosures 140ms
+ ✓ src/pages/reception/__tests__/ReceptionGatewayPage.test.ts > ReceptionGatewayPage > searches owners and patients from the same field 68ms
+stderr | src/pages/reception/__tests__/ReceptionGatewayPage.test.ts > ReceptionGatewayPage > uses financial pending as priority after clinical and preventive signals
+[Vue warn]: Extraneous non-props attributes (class) were passed to component but could not be automatically inherited because component renders fragment or text or teleport root nodes. 
+  at <AppPageHeader title="Recepção" class="reception-header" subtitle="Localize tutor ou paciente para seguir com o atendimento." > 
+  at <ReceptionGatewayPage ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | src/pages/reception/__tests__/ReceptionGatewayPage.test.ts > ReceptionGatewayPage > shows contextual owner actions when only tutor is found
+[Vue warn]: Extraneous non-props attributes (class) were passed to component but could not be automatically inherited because component renders fragment or text or teleport root nodes. 
+  at <AppPageHeader title="Recepção" class="reception-header" subtitle="Localize tutor ou paciente para seguir com o atendimento." > 
+  at <ReceptionGatewayPage ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+ ✓ src/pages/reception/__tests__/ReceptionGatewayPage.test.ts > ReceptionGatewayPage > exposes safe next steps without creating an encounter automatically 77ms
+ ✓ src/pages/reception/__tests__/ReceptionGatewayPage.test.ts > ReceptionGatewayPage > uses financial pending as priority after clinical and preventive signals 76ms
+stderr | src/pages/reception/__tests__/ReceptionGatewayPage.test.ts > ReceptionGatewayPage > loads the central queue as the reception operational funnel
+[Vue warn]: Extraneous non-props attributes (class) were passed to component but could not be automatically inherited because component renders fragment or text or teleport root nodes. 
+  at <AppPageHeader title="Recepção" class="reception-header" subtitle="Localize tutor ou paciente para seguir com o atendimento." > 
+  at <ReceptionGatewayPage ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | src/pages/reception/__tests__/ReceptionGatewayPage.test.ts > ReceptionGatewayPage > shows a minimal handoff inbox without financial automation links
+[Vue warn]: Extraneous non-props attributes (class) were passed to component but could not be automatically inherited because component renders fragment or text or teleport root nodes. 
+  at <AppPageHeader title="Recepção" class="reception-header" subtitle="Localize tutor ou paciente para seguir com o atendimento." > 
+  at <ReceptionGatewayPage ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+ ✓ src/pages/reception/__tests__/ReceptionGatewayPage.test.ts > ReceptionGatewayPage > shows contextual owner actions when only tutor is found 66ms
+ ✓ src/pages/reception/__tests__/ReceptionGatewayPage.test.ts > ReceptionGatewayPage > loads the central queue as the reception operational funnel 44ms
+ ✓ src/pages/reception/__tests__/ReceptionGatewayPage.test.ts > ReceptionGatewayPage > shows a minimal handoff inbox without financial automation links 44ms
+ ✓ src/composables/__tests__/useUnsavedChanges.test.ts > unsaved changes through router navigation > keeps edits when leaving is declined, then permits explicit discard 69ms
+ ✓ src/composables/__tests__/useUnsavedChanges.test.ts > unsaved changes through router navigation > protects changing the record in the same component 9ms
+ ✓ src/composables/__tests__/useUnsavedChanges.test.ts > unsaved changes through router navigation > marks only the submitted snapshot clean, retaining subsequent edits 34ms
+ ✓ src/composables/__tests__/useUnsavedChanges.test.ts > unsaved changes through router navigation > allows clean navigation and warns on browser unload only while dirty 12ms
+ ✓ src/composables/__tests__/useUnsavedChanges.test.ts > concurrent navigation and teardown > settles pending departure when the component is disposed 8ms
+ ✓ src/composables/__tests__/useUnsavedChanges.test.ts > concurrent navigation and teardown > shares a confirmation for rapid competing destinations without discarding on cancel 6ms
+ ✓ src/composables/__tests__/useUnsavedChanges.test.ts > workspace logout consent > keeps session and draft on decline; discard permits logout navigation without a second prompt 10ms
+ ✓ src/composables/__tests__/useUnsavedChanges.test.ts > workspace logout consent > does not discard a different record or changed values while awaiting consent 1ms
+
+ Test Files  3 passed (3)
+      Tests  29 passed (29)
+   Start at  23:55:29
+   Duration  7.86s (transform 849ms, setup 306ms, import 184ms, tests 3.09s, environment 3.52s)
+

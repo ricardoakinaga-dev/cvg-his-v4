@@ -1,77 +1,53 @@
 # CVG-HIS V4 - Documentacao ativa
 
-**Atualizado em:** 2026-09-03 (implementacao local e matriz de dependencias externas)
+**Atualizado em:** 2026-09-06 (programa executivo State of Art / Triplo AAA)
 
 Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afirmacao de funcionalidade so e considerada valida quando estiver sustentada por codigo executavel e teste comportamental.
 
 ## Comece aqui
 
-### Baseline executiva vigente
+### Programa ativo — ERP State of Art / Triplo AAA
 
-1. [`2026-09-02-relatorio-reauditoria-cvg-his-v4.md`](2026-09-02-relatorio-reauditoria-cvg-his-v4.md) - reauditoria executável, notas por item e domínio, bloqueadores e decisão de uso.
-2. [`2026-09-02-plano-executivo-melhorias-cvg-his-v4.md`](2026-09-02-plano-executivo-melhorias-cvg-his-v4.md) - metas, frentes, gates, indicadores, responsabilidades e riscos.
-3. [`2026-09-02-roadmap-melhorias-cvg-his-v4.md`](2026-09-02-roadmap-melhorias-cvg-his-v4.md) - ondas R0-R4, dependências, critérios de saída e evolução esperada das notas.
-4. [`2026-09-02-backlog-priorizado-cvg-his-v4.md`](2026-09-02-backlog-priorizado-cvg-his-v4.md) - backlog P0/P1/P2, critérios de aceite e definições de Ready/Done.
-5. [`2026-09-03-implementacao-plano-cvg-his-v4.md`](2026-09-03-implementacao-plano-cvg-his-v4.md) - estado evidenciado de cada ticket, validações locais e dependências que exigem ambiente ou aceite externo.
+Esta é a fonte ativa para decisão, execução e acompanhamento do programa. O
+objetivo é elevar o ERP de uma base extensa em construção para um candidato
+reproduzível, integrado, seguro, acessível e operável com régua Triplo AAA.
 
-Esses quatro documentos substituem, para decisão executiva corrente, o relatório, o plano e o backlog de 7 de agosto. A documentação anterior permanece como histórico e evidência de evolução.
+1. [Relatório de estado atual](2026-09-06-relatorio-estado-atual-erp-cvg-his-v4.md) — 67 itens pontuados, evidências executadas, limites e decisão atual **75/100, NO-GO**.
+2. [Plano executivo State of Art / Triplo AAA](2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md) — objetivos, investimento, gates, governança e decisões necessárias.
+3. [Roadmap State of Art / Triplo AAA](2026-09-06-roadmap-erp-state-of-art-triplo-aaa.md) — fases relativas a T0, caminho crítico, marcos e trajetória de maturidade.
+4. [Backlog State of Art / Triplo AAA](2026-09-06-backlog-erp-state-of-art-triplo-aaa.md) — 50 entregas `AAA-*`, status, dependências, owners e critérios de aceite.
+5. [Quality Bar](engineering/QUALITY_BAR.md) e [matriz de evidências](engineering/REQUIREMENT_EVIDENCE_MATRIX.md) — gates que impedem que uma nota ou um arquivo substitua prova.
 
-A unicidade e os links dessa baseline são definidos no
-[`document-governance.json`](document-governance.json) e verificados por
-`pnpm docs:validate` no CI.
+O selo “Triplo AAA” é aspiracional e só poderá ser usado após nota global ≥95,
+dimensões ≥90, nenhum item crítico abaixo de 85, gates obrigatórios aprovados,
+evidência fresca no mesmo SHA, revisão independente e aceites de Produto,
+Operação, Segurança/DPO e liberação.
 
-### Evidências técnicas recentes
+- Ponto de salvamento de06/09/2026 (histórico arquivado: `legado/docs/2026-09-06-checkpoint-salvamento.md`) —
+  retomada da execução interrompida a pedido do usuário; falhas e próximos passos
+  preservados, sem declaração de release pronta.
 
-#### Estabilização hospitalar Playwright — 03/09/2026
+### Subprograma frontend — Precisão sensível
 
-1. [`2026-09-03-relatorio-testes-playwright-rotinas-hospitalares.md`](2026-09-03-relatorio-testes-playwright-rotinas-hospitalares.md) - execução de 404 casos Playwright, cinco jornadas hospitalares, falhas, bloqueios PostgreSQL e evidências.
-2. [`2026-09-03-plano-executivo-playwright-rotinas-hospitalares.md`](2026-09-03-plano-executivo-playwright-rotinas-hospitalares.md) - decisão, metas, frentes e gates para certificar o recorte hospitalar.
-3. [`2026-09-03-backlog-priorizado-playwright-rotinas-hospitalares.md`](2026-09-03-backlog-priorizado-playwright-rotinas-hospitalares.md) - tickets P0/P1/P2, dependências, critérios de aceite e Definition of Done.
-4. [`2026-09-03-roadmap-playwright-rotinas-hospitalares.md`](2026-09-03-roadmap-playwright-rotinas-hospitalares.md) - ondas de 03/09 a 16/10, caminho crítico, indicadores e critérios de saída.
-5. [`2026-09-03-dossie-certificacao-playwright-rotinas-hospitalares.md`](2026-09-03-dossie-certificacao-playwright-rotinas-hospitalares.md) - execução dos 37 tickets, SHA certificado, rodadas integrais, matriz cross-browser e dependências de aceite humano.
-6. [`usability-certification-runbook.md`](usability-certification-runbook.md) - contrato de aprovação visual, UAT das cinco funções, revisão assistiva e disparo seguro do gate GH4.
+- [Auditoria de frontend, usabilidade e estética](2026-09-06-auditoria-frontend-usabilidade-estetica.md) — diagnóstico de 18 achados e limites da evidência.
+- [Plano executivo frontend premium](2026-09-06-plano-executivo-frontend-premium.md) — direção de arte, experiência, controles, movimento e critérios de qualidade.
+- [Roadmap frontend premium](2026-09-06-roadmap-frontend-premium.md) — ondas, capacidade proposta, dependências e gates.
+- [Backlog frontend premium](2026-09-06-backlog-frontend-premium.md) — 34 entregas propostas, aceites e cobertura dos achados.
+- [Caderno visual interativo](frontend/caderno-visual.html) e [assets/fonte](frontend/assets/README.md) — estudos próprios de material e movimento, ainda sem homologação no produto.
 
-#### Handoffs e evidências anteriores
+Este subprograma detalha o frontend; não substitui a governança nem encerra os gates do programa ERP acima.
 
-1. [`2026-08-24-handoff-inpatient-bed-status-idempotency.md`](2026-08-24-handoff-inpatient-bed-status-idempotency.md) - assignment, transferência e status com replay/conflict cross-instance, failpoints PostgreSQL de timeline/leito/auditoria, callback clínico aguardado, restart/SIGKILL e liberação durável de leitos.
-2. [`2026-08-24-handoff-inpatient-clinical-notes-idempotency.md`](2026-08-24-handoff-inpatient-clinical-notes-idempotency.md) - handoff, evolução e ocorrência com replay/conflict cross-instance, recuperação de cache e timeline clínica persistida.
-3. [`2026-08-24-handoff-inpatient-command-idempotency.md`](2026-08-24-handoff-inpatient-command-idempotency.md) - admissão e criação de diária com unidade de trabalho tenant-scoped, replay/conflict, auditoria transacional e hidratação cross-instance.
-4. [`2026-08-24-handoff-reports-server-audited-receivables-export.md`](2026-08-24-handoff-reports-server-audited-receivables-export.md) - export server-side auditável de Contas a Receber e Contas Recebidas a partir do subledger tenant-scoped.
-5. [`2026-08-24-handoff-reports-server-audited-payables-export.md`](2026-08-24-handoff-reports-server-audited-payables-export.md) - export server-side auditável de Contas a Pagar e Contas Pagas a partir do subledger persistido.
-6. [`2026-08-24-handoff-reports-workbench-payables-export.md`](2026-08-24-handoff-reports-workbench-payables-export.md) - exportação CSV bounded anterior do workbench financeiro.
-7. [`2026-08-24-handoff-reports-workbench-inventory-export.md`](2026-08-24-handoff-reports-workbench-inventory-export.md) - exportação CSV bounded dos recortes de estoque já carregados no workbench Vetus.
-8. [`2026-08-24-handoff-reports-workbench-export.md`](2026-08-24-handoff-reports-workbench-export.md) - exportação CSV bounded do workbench Vetus para auditoria, financeiro e atendimento, com teste unitário, componente e E2E.
-9. [`2026-08-24-handoff-pix-runtime-role.md`](2026-08-24-handoff-pix-runtime-role.md) - settlement PIX sob role worker real, ACL/RLS, A/B, SIGKILL e fencing; não promove ERP, produção ou release.
-10. [`2026-08-24-handoff-reports-run-once.md`](2026-08-24-handoff-reports-run-once.md) - execução one-shot de relatórios agendados, entrega controlada, recovery após SIGKILL e lease distribuído de retry no PostgreSQL.
-11. [`2026-08-24-handoff-webhook-storage-audit.md`](2026-08-24-handoff-webhook-storage-audit.md) - reconciliação do diagnóstico histórico com o executor webhook durável já implementado e seus limites honestos.
-12. [`2026-08-24-handoff-laboratory-bootstrap-concurrency.md`](2026-08-24-handoff-laboratory-bootstrap-concurrency.md) - dois PIDs reais, catálogo laboratorial idempotente, reparo parcial e isolamento A/B.
-13. [`../.agent/artifacts/CVG-002C6-laboratory-bootstrap-concurrency-2026-08-24.md`](../.agent/artifacts/CVG-002C6-laboratory-bootstrap-concurrency-2026-08-24.md) - RED/GREEN da corrida de bootstrap, crítica independente, suíte de regressão e limitações.
-14. [`2026-08-24-handoff-cash-receipt-concurrency.md`](2026-08-24-handoff-cash-receipt-concurrency.md) - corrida GREEN bounded entre duas APIs, isolamento A/B e barreira PostgreSQL.
-15. [`2026-08-24-handoff-cash-receipt-sigkill.md`](2026-08-24-handoff-cash-receipt-sigkill.md) - rollback/restart/replay do recebimento sob SIGKILL e limites da prova.
-16. [`2026-08-24-handoff-worker-account-scope.md`](2026-08-24-handoff-worker-account-scope.md) - escopo fail-closed do worker em Helm e limite explícito de renderização/cluster.
-17. [`2026-08-23-auditoria-documental-global-e-handoff.md`](2026-08-23-auditoria-documental-global-e-handoff.md) - inventário e Quality Bar global reconciliada; ler junto com os handoffs de 24/08.
-18. [`../.agent/artifacts/CVG-002C6-cash-receipt-concurrency-2026-08-24.md`](../.agent/artifacts/CVG-002C6-cash-receipt-concurrency-2026-08-24.md) - RED/GREEN da corrida, barreira PostgreSQL e crítica independente.
-19. [`../.agent/artifacts/CVG-002C6-worker-account-scope-2026-08-24.md`](../.agent/artifacts/CVG-002C6-worker-account-scope-2026-08-24.md) - RED/GREEN do Secret obrigatório do worker e limites de Helm.
-20. [`2026-08-23-checkpoint-retomada-sessao-atualizado.md`](2026-08-23-checkpoint-retomada-sessao-atualizado.md) - índice curto para retomar em cinco minutos.
-21. [`../.agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md`](../.agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md) - evidência fresca do `test:critical`, guardrails e limites de revisão.
-22. [`../.agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md`](../.agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md) - RED/GREEN da fencing com A vivo e reconciliação SQL.
-23. [`../.agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md`](../.agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md) - vínculo billing→consumo, hash canônico e replay divergente.
-24. [`../.agent/artifacts/CVG-002C6-cross-instance-hydration-2026-08-24.md`](../.agent/artifacts/CVG-002C6-cross-instance-hydration-2026-08-24.md) - RED/GREEN de leitura authoritative na API secundária e isolamento A/B.
-25. [`phase-9-migration-manifest.json`](phase-9-migration-manifest.json) - ondas documentais de migração, explicitamente `PLAN_ONLY`.
-26. [`2026-08-23-checkpoint-retomada-integral.md`](2026-08-23-checkpoint-retomada-integral.md) - baseline executável e histórico detalhado de retomada.
-27. [`2026-08-23-handoff-sessao-atual.md`](2026-08-23-handoff-sessao-atual.md) - handoff amplo da sessão, evidências e decisões independentes.
-28. [`2026-08-23-pesquisa-mercado-erp-veterinario.md`](2026-08-23-pesquisa-mercado-erp-veterinario.md) - sinais de produto em fontes oficiais e implicações para a barra de paridade.
-29. [`2026-08-22-auditoria-integral-e-pesquisa-erp.md`](2026-08-22-auditoria-integral-e-pesquisa-erp.md) - auditoria consolidada, lacunas de código e pesquisa de PIMS oficiais.
-30. [`2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md) - plano executivo histórico, substituído pelo plano de 02/09.
-31. [`2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md) - backlog e roadmap históricos, substituídos pelos documentos de 02/09.
-32. [`2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md`](2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md) - baseline histórica da auditoria técnica e funcional; não substitui a Quality Bar nem os handoffs de 24/08.
-33. [`430-fonte-de-verdade-documental.md`](430-fonte-de-verdade-documental.md) - regras de governança e precedência.
-34. [`vetus/README.md`](vetus/README.md) - acervo factual capturado do Vetus.
+### Continuidade técnica
 
-A baseline de 02/09 consolida a decisão executiva atual. Os handoffs de 24/08 e
-a Quality Bar global de 23/08 permanecem como evidências técnicas detalhadas;
-não promovem gates globais isoladamente. Os demais documentos históricos ficam
-disponíveis apenas para contexto e rastreabilidade.
+- Execução da consolidação (histórico arquivado: `legado/docs/2026-09-05-execucao-consolidacao-cvg-his-v4.md`): evidências e pendências da implementação anterior.
+- [Manifesto de migração](phase-9-migration-manifest.json): planejamento das ondas, sem comprovação de execução.
+
+Os planos e relatórios executivos superados foram arquivados em `legado/docs/`.
+O manifesto `legado/manifest.json` registra origem, destino e integridade dos arquivos.
+
+### Certificação de uso
+
+[Runbook de certificação](usability-certification-runbook.md): procedimento vigente de revisão visual, UAT e acessibilidade. Relatórios e handoffs de execuções anteriores ficam em `legado/docs/` e não comprovam o candidato atual.
 
 ## Documentacao vigente
 
@@ -109,12 +85,12 @@ disponíveis apenas para contexto e rastreabilidade.
 - `navigation-copy-and-breadcrumb-conventions.md`
 - `navigation-matrix-current-vs-target.md`
 - `routine-state-model.md`
-- `micro-build/` - estudos de fluxo; nao substituem prova funcional.
+- `legado/docs/micro-build/` - estudos de fluxo; nao substituem prova funcional.
 
 ## Referencia e historico
 
 - `vetus/`: evidencia e guias do produto de referencia. Nao e especificacao automatica do CVG-HIS.
-- `docs2/`: arquivo historico somente leitura. Nao usar como fonte de verdade operacional.
+- `legado/docs/docs2/`: arquivo historico somente leitura. Nao usar como fonte de verdade operacional.
 - `SOC2/` e `game-day/`: material especializado de operacao e conformidade.
 
 ## Regra de precedencia
@@ -123,10 +99,10 @@ Em divergencias, use esta ordem:
 
 1. comportamento reproduzido na aplicacao e testes sobre runtime real;
 2. codigo e contratos da API;
-3. baseline executiva de 2 de setembro de 2026 e procedimentos posteriores explicitamente vigentes;
-4. arquitetura e ADRs vigentes;
+3. baseline/relatório e plano ativos de 6 de setembro de 2026, incluindo a Quality Bar e procedimentos posteriores explicitamente vigentes;
+4. baseline executiva de 2 de setembro de 2026 e arquitetura/ADRs vigentes quando não contraditos pelo programa atual;
 5. auditorias de julho de 2026, como baseline anterior;
 6. acervo Vetus como referencia de produto;
-7. historico em `docs2/`, apenas para contexto.
+7. historico em `legado/docs/docs2/`, apenas para contexto.
 
 Relatorios antigos com notas de 85-96/100 foram arquivados porque mediam presenca de arquivos, planos ou implementacoes parciais e nao comprovavam a jornada completa.

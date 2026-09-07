@@ -7,37 +7,45 @@
       'app-layout--collapsed': appStore.sidebarCollapsed,
       'app-layout--dark': themeStore.theme === 'dark'
     }"
-    role="application"
-    aria-label="CVG HIS - Sistema de Gestao de Saude"
   >
-    <header class="topbar">
+    <header class="topbar" aria-label="Cabeçalho do sistema">
       <div class="topbar__brand-pill">
-        <img
-          class="topbar__brand-logo"
-          src="https://www.cevetguarapiranga.com.br/assets/uploads/gallery/img_6924fdbaa85a4.jpg"
-          alt="Centro Veterinário Guarapiranga"
-        />
-        <div class="topbar__brand-copy">
+        <span class="topbar__brand-logo">
+          <img src="/art/hospital-guarapiranga-logo.jpeg" alt="CVG Pulse · Centro Veterinário Guarapiranga" width="300" height="500" />
+        </span>
+        <div class="topbar__brand-copy" aria-hidden="true">
+          <span class="topbar__brand-kicker">CVG PULSE</span>
           <strong>Centro Veterinário Guarapiranga</strong>
-          <span>ERP operacional Premium</span>
         </div>
       </div>
 
       <button
+        ref="sidebarToggleEl"
         class="topbar__collapse-btn"
         type="button"
-        @click="appStore.toggleSidebar()"
+        aria-controls="primary-navigation"
+        :aria-expanded="!appStore.sidebarCollapsed"
+        @click="toggleSidebar"
         :aria-label="appStore.sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'"
         :title="appStore.sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'"
       >
-        <span class="topbar__collapse-icon">{{ appStore.sidebarCollapsed ? '☰' : '⇤' }}</span>
+        <span class="topbar__collapse-icon" aria-hidden="true">
+          <IconSymbol :name="appStore.sidebarCollapsed ? 'menu' : 'panel-left'" :size="18" />
+        </span>
         <span class="topbar__collapse-label">{{
           appStore.sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'
         }}</span>
       </button>
 
-      <button class="topbar__search-shell" type="button" @click="openPalette">
-        <span class="topbar__search-shell-icon">🔎</span>
+      <button
+        class="topbar__search-shell"
+        type="button"
+        aria-label="Buscar módulo, rotina ou relatório (Ctrl+K)"
+        @click="openPalette"
+      >
+        <span class="topbar__search-shell-icon" aria-hidden="true">
+          <IconSymbol name="search" :size="18" />
+        </span>
         <span class="topbar__search-shell-copy">Buscar módulo, rotina ou relatório</span>
         <kbd>Ctrl+K</kbd>
       </button>
@@ -46,48 +54,64 @@
         <button
           class="topbar__icon-btn topbar__icon-btn--notifications"
           type="button"
+          aria-label="Notificações"
           title="Notificações"
           @click="navigateTo('/notifications')"
         >
-          🔔
+          <IconSymbol name="bell" :size="18" />
         </button>
 
         <button
           class="topbar__icon-btn topbar__icon-btn--whatsapp"
           type="button"
+          aria-label="WhatsApp operacional"
           title="WhatsApp operacional"
           @click="navigateTo('/notifications/whatsapp')"
         >
-          💬
+          <IconSymbol name="message-circle" :size="18" />
         </button>
 
         <button
           class="topbar__icon-btn"
           type="button"
+          :aria-label="
+            themeStore.theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'
+          "
           :title="themeStore.theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'"
           @click="themeStore.toggle()"
         >
-          {{ themeStore.theme === 'dark' ? '☀️' : '🌙' }}
+          <IconSymbol :name="themeStore.theme === 'dark' ? 'sun' : 'moon'" :size="18" />
         </button>
 
-        <div class="topbar__profile">
+        <div class="topbar__profile" aria-label="Sessão atual">
           <strong>{{ authStore.userName }}</strong>
           <span>{{ userBadgeId }}</span>
         </div>
 
-        <button class="topbar__logout-btn" @click="handleLogout()">Sair</button>
+        <button
+          class="topbar__logout-btn"
+          type="button"
+          aria-label="Sair do sistema"
+          title="Sair do sistema"
+          @click="handleLogout()"
+        >
+          <IconSymbol class="topbar__logout-icon" name="log-out" :size="18" />
+          <span class="topbar__logout-label">Sair</span>
+        </button>
       </div>
     </header>
 
     <aside
       class="sidebar"
-      role="navigation"
-      aria-label="Navegacao principal"
+      aria-label="Navegação lateral"
       :aria-hidden="isCompactViewport && appStore.sidebarCollapsed ? 'true' : undefined"
       :inert="isCompactViewport && appStore.sidebarCollapsed"
     >
       <div class="sidebar__search">
+        <label class="sr-only" for="sidebar-module-search">Buscar módulo</label>
         <input
+          id="sidebar-module-search"
+          ref="sidebarSearchInputEl"
           v-model="searchQuery"
           type="search"
           class="sidebar__search-input"
@@ -105,7 +129,7 @@
           'sidebar__content--bottom-fade': !isSidebarNearBottom
         }"
       >
-        <nav class="sidebar__nav" aria-label="Navegação principal">
+        <nav id="primary-navigation" class="sidebar__nav" aria-label="Navegação principal">
           <details
             v-for="group in filteredGroups"
             :key="group.id"
@@ -113,15 +137,26 @@
             :class="{ 'sidebar__group--active': matchingNavGroup?.id === group.id }"
             :open="shouldOpenGroup(group.id)"
           >
-            <summary class="sidebar__group-summary">
+            <summary
+              class="sidebar__group-summary"
+              :aria-label="`${group.label}: ${group.description}`"
+            >
               <span class="sidebar__group-summary-text">
-                <span class="sidebar__group-icon">{{ group.icon }}</span>
+                <span class="sidebar__group-icon" aria-hidden="true">
+                  <IconSymbol :name="group.icon" :size="18" />
+                </span>
                 <span v-if="!appStore.sidebarCollapsed" class="sidebar__group-copy">
                   <span class="sidebar__group-label">{{ group.label }}</span>
                   <small class="sidebar__group-description">{{ group.description }}</small>
                 </span>
               </span>
-              <span v-if="!appStore.sidebarCollapsed" class="sidebar__group-chevron">▾</span>
+              <span
+                v-if="!appStore.sidebarCollapsed"
+                class="sidebar__group-chevron"
+                aria-hidden="true"
+              >
+                <IconSymbol name="chevron-down" :size="15" />
+              </span>
             </summary>
 
             <div class="sidebar__group-body">
@@ -141,8 +176,11 @@
                   class="sidebar__link"
                   :class="{ 'sidebar__link--active': isActivePath(item.path) }"
                   :title="item.label"
+                  :aria-label="item.label"
                 >
-                  <span class="sidebar__link-icon">{{ item.icon ?? '•' }}</span>
+                  <span class="sidebar__link-icon" aria-hidden="true">
+                    <IconSymbol :name="item.icon ?? 'dot'" :size="16" />
+                  </span>
                   <span v-if="!appStore.sidebarCollapsed" class="sidebar__link-label">
                     {{ item.label }}
                   </span>
@@ -152,17 +190,25 @@
           </details>
         </nav>
 
-        <section class="sidebar__utility-stack">
+        <section class="sidebar__utility-stack" aria-label="Utilitários">
           <div v-if="!appStore.sidebarCollapsed" class="sidebar__utility-label">Utilitários</div>
           <details
             v-if="filteredEnterpriseSections.length"
             class="sidebar__utility-group sidebar__utility-group--enterprise"
+            :class="{ 'sidebar__utility-group--active': currentLocation?.area === 'enterprise' }"
+            :open="currentLocation?.area === 'enterprise' || undefined"
           >
-            <summary class="sidebar__utility-summary">
+            <summary
+              class="sidebar__utility-summary"
+              aria-label="Console Enterprise: Governança e integrações"
+            >
               <span class="sidebar__eyebrow">Console Enterprise</span>
               <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy"
                 >Governança e integrações</span
               >
+              <span class="sidebar__utility-chevron" aria-hidden="true">
+                <IconSymbol name="chevron-down" :size="14" />
+              </span>
             </summary>
             <div class="sidebar__panel sidebar__panel--enterprise">
               <div class="sidebar__enterprise-groups">
@@ -181,8 +227,11 @@
                     class="sidebar__link sidebar__link--utility"
                     :class="{ 'sidebar__link--active': isActivePath(item.path) }"
                     :title="item.label"
+                    :aria-label="item.label"
                   >
-                    <span class="sidebar__link-icon">{{ item.icon ?? '•' }}</span>
+                    <span class="sidebar__link-icon" aria-hidden="true">
+                      <IconSymbol :name="item.icon ?? 'dot'" :size="16" />
+                    </span>
                     <span v-if="!appStore.sidebarCollapsed" class="sidebar__link-label">
                       {{ item.label }}
                     </span>
@@ -193,11 +242,14 @@
           </details>
 
           <details v-if="favoriteLinks.length" class="sidebar__utility-group">
-            <summary class="sidebar__utility-summary">
+            <summary class="sidebar__utility-summary" aria-label="Favoritos: Atalhos pessoais">
               <span class="sidebar__eyebrow">Favoritos</span>
               <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy"
                 >Atalhos pessoais</span
               >
+              <span class="sidebar__utility-chevron" aria-hidden="true">
+                <IconSymbol name="chevron-down" :size="14" />
+              </span>
             </summary>
             <section class="sidebar__panel">
               <div class="sidebar__panel-head">
@@ -217,8 +269,12 @@
                   :to="item.path"
                   class="sidebar__quick-link"
                   :class="{ 'sidebar__quick-link--active': isActivePath(item.path) }"
+                  :aria-label="item.label"
+                  :title="item.label"
                 >
-                  <span class="sidebar__quick-link-icon">{{ item.icon ?? '★' }}</span>
+                  <span class="sidebar__quick-link-icon" aria-hidden="true">
+                    <IconSymbol :name="item.icon ?? 'star'" :size="16" />
+                  </span>
                   <span v-if="!appStore.sidebarCollapsed" class="sidebar__quick-link-label">
                     {{ item.label }}
                   </span>
@@ -228,11 +284,14 @@
           </details>
 
           <details v-if="recentLinks.length" class="sidebar__utility-group">
-            <summary class="sidebar__utility-summary">
+            <summary class="sidebar__utility-summary" aria-label="Recentes: Histórico de navegação">
               <span class="sidebar__eyebrow">Recentes</span>
               <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy"
                 >Histórico de navegação</span
               >
+              <span class="sidebar__utility-chevron" aria-hidden="true">
+                <IconSymbol name="chevron-down" :size="14" />
+              </span>
             </summary>
             <section class="sidebar__panel sidebar__panel--recent">
               <div class="sidebar__panel-head">
@@ -252,8 +311,12 @@
                   :to="item.path"
                   class="sidebar__recent-link"
                   :class="{ 'sidebar__recent-link--active': isActivePath(item.path) }"
+                  :aria-label="item.label"
+                  :title="item.label"
                 >
-                  <span class="sidebar__recent-link-icon">{{ item.icon ?? '↗' }}</span>
+                  <span class="sidebar__recent-link-icon" aria-hidden="true">
+                    <IconSymbol :name="item.icon ?? 'arrow-up-right'" :size="16" />
+                  </span>
                   <span v-if="!appStore.sidebarCollapsed" class="sidebar__recent-link-label">
                     {{ item.label }}
                   </span>
@@ -270,29 +333,92 @@
       class="sidebar__backdrop"
       type="button"
       aria-label="Fechar menu lateral"
-      @click="appStore.toggleSidebar()"
+      @click="toggleSidebar"
     />
 
     <main id="main-content" class="workspace" aria-label="Conteúdo principal" tabindex="-1">
-      <section class="workspace__body">
+      <div class="workspace__utility-bar">
+        <div class="workspace__context">
+          <span class="workspace__overline"
+            >Operations OS <span aria-hidden="true">/</span> {{ currentAreaLabel }}</span
+          >
+          <strong class="workspace__title">{{ currentPageTitle }}</strong>
+          <nav
+            v-if="shellBreadcrumbs.length > 1"
+            class="workspace__breadcrumbs"
+            aria-label="Contexto da página"
+          >
+            <span
+              v-for="(crumb, index) in shellBreadcrumbs.slice(0, -1)"
+              :key="`${crumb.label}-${index}`"
+              class="workspace__breadcrumb"
+            >
+              <span v-if="index > 0" class="workspace__breadcrumb-separator" aria-hidden="true"
+                >/</span
+              >
+              {{ crumb.label }}
+            </span>
+          </nav>
+        </div>
+        <div class="workspace__actions" aria-label="Ações do shell">
+          <button
+            class="workspace__history-btn"
+            type="button"
+            aria-label="Voltar"
+            title="Voltar"
+            :disabled="!canGoBack"
+            @click="goBack"
+          >
+            <IconSymbol name="arrow-left" :size="16" />
+          </button>
+          <button
+            class="workspace__history-btn"
+            type="button"
+            aria-label="Avançar"
+            title="Avançar"
+            :disabled="!canGoForward"
+            @click="goForward"
+          >
+            <IconSymbol name="arrow-right" :size="16" />
+          </button>
+          <button
+            class="workspace__support-btn"
+            type="button"
+            aria-label="Suporte"
+            @click="openSupportCenter"
+          >
+            <IconSymbol name="life-buoy" :size="16" />
+            <span>Suporte</span>
+          </button>
+        </div>
+      </div>
+
+      <section ref="workspaceBodyEl" class="workspace__body">
         <router-view />
       </section>
     </main>
 
-    <DsModal :open="commandPaletteOpen" title="Buscar rotina" size="lg" @close="closePalette">
+    <DsModal :open="commandPaletteOpen" title="Buscar rotina" size="lg" initial-focus="#command-palette-input" @close="closePalette">
       <div class="command-palette">
         <div class="command-palette__search">
+          <label class="sr-only" for="command-palette-input">Buscar módulo, rota ou ação</label>
           <input
+            id="command-palette-input"
             ref="commandInputEl"
             v-model.trim="commandQuery"
             class="command-palette__input"
             type="search"
+            role="combobox"
+            aria-controls="command-palette-results"
+            aria-autocomplete="list"
+            :aria-activedescendant="selectedCommandItemId"
+            :aria-expanded="commandPaletteOpen"
             placeholder="Digite um módulo, rota ou ação..."
             autocomplete="off"
             @keydown.enter.prevent="executeSelected"
             @keydown.esc.prevent="closePalette"
-            @keydown.up.prevent="moveSelectionUp"
-            @keydown.down.prevent="moveSelectionDown"
+            @keydown.up.prevent.stop="moveSelectionUp"
+            @keydown.down.prevent.stop="moveSelectionDown"
           />
           <p class="command-palette__hint">
             <kbd>↑</kbd><kbd>↓</kbd> navegar &nbsp;·&nbsp; <kbd>Enter</kbd> selecionar &nbsp;·&nbsp;
@@ -300,11 +426,17 @@
           </p>
         </div>
 
-        <div class="command-palette__results" role="listbox">
+        <div
+          id="command-palette-results"
+          class="command-palette__results"
+          role="listbox"
+          aria-label="Resultados da busca"
+        >
           <template v-if="filteredActionItems.length">
             <div class="command-palette__section-label">Ações</div>
             <button
               v-for="(item, index) in filteredActionItems"
+              :id="commandItemId('action', item.id)"
               :key="'action-' + item.id"
               type="button"
               class="command-palette__item"
@@ -314,7 +446,9 @@
               @click="executeAction(item)"
               @mouseenter="selectedIndex = index"
             >
-              <span class="command-palette__item-icon">{{ item.icon }}</span>
+              <span class="command-palette__item-icon" aria-hidden="true">
+                <IconSymbol :name="item.icon" :size="18" />
+              </span>
               <span class="command-palette__item-text">
                 <strong>{{ item.label }}</strong>
                 <small>{{ item.description }}</small>
@@ -329,6 +463,7 @@
             <div class="command-palette__section-label">Rotas</div>
             <button
               v-for="(item, index) in filteredRouteItems"
+              :id="commandItemId('route', item.path)"
               :key="'route-' + item.path"
               type="button"
               class="command-palette__item"
@@ -341,7 +476,9 @@
               @click="navigateTo(item.path)"
               @mouseenter="selectedIndex = filteredActionItems.length + index"
             >
-              <span class="command-palette__item-icon">{{ item.icon ?? '•' }}</span>
+              <span class="command-palette__item-icon" aria-hidden="true">
+                <IconSymbol :name="item.icon ?? 'dot'" :size="18" />
+              </span>
               <span class="command-palette__item-text">
                 <strong>{{ item.label }}</strong>
                 <small>{{ item.groupLabel }}</small>
@@ -363,7 +500,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
+import { createUnsavedChangesCoordinator, unsavedChangesCoordinatorKey } from '@/composables/unsavedChangesCoordinator';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
@@ -372,12 +510,14 @@ import {
   enterpriseConsole,
   findMatchingNavGroup,
   findMatchingNavLocation,
+  findMatchingNavItem,
   findNavItem,
   navGroups,
   type AppNavGroup,
   type AppNavItem,
   type AppNavSection
 } from '@/navigation';
+import IconSymbol from '@/components/IconSymbol.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 
 const route = useRoute();
@@ -393,10 +533,16 @@ const commandInputEl = ref<HTMLInputElement | null>(null);
 const selectedIndex = ref(0);
 const historyPosition = ref(readHistoryPosition());
 const maxHistoryPosition = ref(readHistoryPosition());
+const sidebarToggleEl = ref<HTMLButtonElement | null>(null);
+const sidebarSearchInputEl = ref<HTMLInputElement | null>(null);
+const sidebarFocusReturnTarget = ref<HTMLElement | null>(null);
 const sidebarNavEl = ref<HTMLElement | null>(null);
+const workspaceBodyEl = ref<HTMLElement | null>(null);
+let navigationAnimation: Animation | undefined;
 const isSidebarScrolled = ref(false);
 const isSidebarNearBottom = ref(false);
 const compactViewportQuery = window.matchMedia?.('(max-width: 860px)');
+const reducedMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
 const isCompactViewport = ref(compactViewportQuery?.matches ?? false);
 
 interface CommandAction {
@@ -481,7 +627,7 @@ const commandActions = computed<CommandAction[]>(() => [
     id: 'toggle-theme',
     label: 'Alternar tema',
     description: themeStore.theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro',
-    icon: themeStore.theme === 'dark' ? '☀️' : '🌙',
+    icon: themeStore.theme === 'dark' ? 'sun' : 'moon',
     shortcut: 'T',
     action: () => themeStore.toggle()
   },
@@ -489,15 +635,15 @@ const commandActions = computed<CommandAction[]>(() => [
     id: 'toggle-sidebar',
     label: 'Recolher/Expandir menu',
     description: appStore.sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral',
-    icon: '↔️',
+    icon: 'panel',
     shortcut: 'M',
-    action: () => appStore.toggleSidebar()
+    action: () => toggleSidebar()
   },
   {
     id: 'toggle-favorite',
     label: isCurrentRouteFavorite.value ? 'Remover favorito da rota atual' : 'Favoritar rota atual',
     description: favoriteTargetPath.value,
-    icon: isCurrentRouteFavorite.value ? '★' : '☆',
+    icon: 'star',
     shortcut: 'F',
     action: () => toggleCurrentFavoriteRoute()
   },
@@ -505,7 +651,7 @@ const commandActions = computed<CommandAction[]>(() => [
     id: 'create-patient',
     label: 'Novo paciente',
     description: 'Cadastrar um novo paciente no sistema',
-    icon: '➕',
+    icon: 'plus',
     shortcut: 'P',
     action: () => navigateTo('/patients/new')
   },
@@ -513,7 +659,7 @@ const commandActions = computed<CommandAction[]>(() => [
     id: 'create-appointment',
     label: 'Novo agendamento',
     description: 'Criar um novo agendamento',
-    icon: '📅',
+    icon: 'calendar',
     shortcut: 'A',
     action: () => navigateTo('/appointments/new')
   },
@@ -521,7 +667,7 @@ const commandActions = computed<CommandAction[]>(() => [
     id: 'open-support',
     label: 'Abrir suporte operacional',
     description: 'Levar para a busca mestre e rotinas de ajuda',
-    icon: '🆘',
+    icon: 'life-buoy',
     shortcut: '?',
     action: () => navigateTo('/master-search')
   },
@@ -529,7 +675,7 @@ const commandActions = computed<CommandAction[]>(() => [
     id: 'logout',
     label: 'Sair do sistema',
     description: 'Encerrar sessão e redirecionar para login',
-    icon: '🚪',
+    icon: 'log-out',
     shortcut: 'Sair',
     action: () => handleLogout()
   }
@@ -544,6 +690,7 @@ function itemMatchesQuery(
   return (
     item.label.toLowerCase().includes(query) ||
     item.path.toLowerCase().includes(query) ||
+    item.aliases?.some((alias) => alias.toLowerCase().includes(query)) === true ||
     item.keywords?.some((keyword) => keyword.toLowerCase().includes(query)) === true ||
     groupLabel.toLowerCase().includes(query) ||
     sectionLabel.toLowerCase().includes(query)
@@ -680,6 +827,16 @@ const filteredRouteItems = computed(() => {
 const totalItems = computed(
   () => filteredActionItems.value.length + filteredRouteItems.value.length
 );
+const selectedCommandItemId = computed(() => {
+  const actionItem = filteredActionItems.value[selectedIndex.value];
+  if (actionItem) {
+    return commandItemId('action', actionItem.id);
+  }
+
+  const routeIndex = selectedIndex.value - filteredActionItems.value.length;
+  const routeItem = filteredRouteItems.value[routeIndex];
+  return routeItem ? commandItemId('route', routeItem.path) : undefined;
+});
 const canGoBack = computed(() => historyPosition.value > 0);
 const canGoForward = computed(() => historyPosition.value < maxHistoryPosition.value);
 
@@ -690,7 +847,8 @@ function readHistoryPosition() {
 }
 
 function isActivePath(path: string): boolean {
-  return route.path === path || route.path.startsWith(`${path}/`);
+  if (route.path === path || route.path.startsWith(`${path}/`)) return true;
+  return findMatchingNavItem(route.path)?.path === path;
 }
 
 function shouldOpenGroup(groupId: string): boolean {
@@ -704,10 +862,46 @@ function openPalette() {
   selectedIndex.value = 0;
 }
 
+function commandItemId(kind: 'action' | 'route', value: string): string {
+  const safeValue = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  return `command-palette-${kind}-${safeValue || 'item'}`;
+}
+
 function closePalette() {
   commandPaletteOpen.value = false;
   commandQuery.value = '';
   selectedIndex.value = 0;
+}
+
+function toggleSidebar() {
+  if (!isCompactViewport.value) {
+    appStore.toggleSidebar();
+    return;
+  }
+
+  if (appStore.sidebarCollapsed) {
+    const activeElement = document.activeElement;
+    sidebarFocusReturnTarget.value =
+      activeElement instanceof HTMLElement ? activeElement : sidebarToggleEl.value;
+    appStore.toggleSidebar();
+    void nextTick(() => {
+      sidebarSearchInputEl.value?.focus({ preventScroll: true });
+      scrollActiveSidebarItemIntoView();
+    });
+    return;
+  }
+
+  appStore.toggleSidebar();
+  const returnTarget = sidebarFocusReturnTarget.value ?? sidebarToggleEl.value;
+  sidebarFocusReturnTarget.value = null;
+  void nextTick(() => {
+    if (returnTarget?.isConnected) {
+      returnTarget.focus({ preventScroll: true });
+    }
+  });
 }
 
 function navigateTo(path: string) {
@@ -799,13 +993,16 @@ function onKeydown(event: KeyboardEvent) {
     if (commandPaletteOpen.value) {
       event.preventDefault();
       closePalette();
+    } else if (isCompactViewport.value && !appStore.sidebarCollapsed) {
+      event.preventDefault();
+      toggleSidebar();
     } else if (searchQuery.value) {
       searchQuery.value = '';
     }
     return;
   }
 
-  if (commandPaletteOpen.value) {
+  if (commandPaletteOpen.value && event.target !== commandInputEl.value) {
     if (event.key === 'ArrowUp') {
       event.preventDefault();
       moveSelectionUp();
@@ -855,7 +1052,11 @@ function scrollActiveSidebarItemIntoView() {
   activeItem.closest('details')?.setAttribute('open', 'true');
 
   window.requestAnimationFrame(() => {
-    activeItem.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+    activeItem.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest',
+      behavior: reducedMotionQuery?.matches ? 'auto' : 'smooth'
+    });
     syncSidebarScrollState();
   });
 }
@@ -871,6 +1072,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  navigationAnimation?.cancel();
   window.removeEventListener('keydown', onKeydown);
   compactViewportQuery?.removeEventListener('change', syncCompactViewport);
   sidebarNavEl.value?.removeEventListener('scroll', syncSidebarScrollState);
@@ -894,6 +1096,19 @@ watch(totalItems, (nextTotal) => {
 });
 
 watch(
+  () => route.path,
+  async () => {
+    navigationAnimation?.cancel();
+    await nextTick();
+    if (reducedMotionQuery?.matches) return;
+    navigationAnimation = workspaceBodyEl.value?.animate?.(
+      [{ opacity: 0.72, transform: 'translateY(4px)' }, { opacity: 1, transform: 'translateY(0)' }],
+      { duration: 180, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+    );
+  }
+);
+
+watch(
   () => route.fullPath,
   async () => {
     syncHistoryPosition();
@@ -903,53 +1118,121 @@ watch(
   }
 );
 
-function handleLogout() {
-  authStore.logout();
-  void router.push('/login');
+const unsavedChanges = createUnsavedChangesCoordinator();
+provide(unsavedChangesCoordinatorKey, unsavedChanges);
+let logoutPending = false;
+
+async function handleLogout() {
+  if (logoutPending) return;
+  logoutPending = true;
+  try {
+    if (!await unsavedChanges.confirmAndDiscard()) return;
+    authStore.logout();
+    await router.replace('/login');
+  } finally {
+    logoutPending = false;
+  }
 }
 </script>
 
 <style scoped>
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .skip-link {
   position: absolute;
-  top: -100px;
-  left: 16px;
-  z-index: 9999;
+  top: -120px;
+  left: 20px;
+  z-index: 999;
   padding: 12px 16px;
-  background: var(--color-primary-600, #2563eb);
-  color: var(--color-text-inverse, #ffffff);
+  border: 1px solid var(--shell-accent, #22b8c3);
+  border-radius: 10px;
+  background: var(--shell-ink-deep, #081c2b);
+  color: #f4fffd;
   font-weight: 600;
-  border-radius: var(--radius-md, 6px);
   text-decoration: none;
-  transition: top 0.2s ease;
+  box-shadow: 0 12px 28px rgba(5, 25, 38, 0.24);
+  transition: top 180ms ease;
 }
 
 .skip-link:focus {
-  top: 16px;
-  outline: none;
-  box-shadow: var(--shadow-focus, 0 0 0 3px rgba(37, 99, 235, 0.4));
+  top: 20px;
+  outline: 3px solid var(--shell-accent, #22b8c3);
+  outline-offset: 3px;
 }
 
 .app-layout {
-  --brand-blue: var(--color-primary-600, #2563eb);
-  --brand-blue-dark: var(--color-primary-700, #1d4ed8);
-  --brand-blue-soft: var(--color-primary-subtle, #eaf3ff);
-  --brand-blue-ink: var(--color-primary-800, #1e40af);
-  --shell-border: var(--color-border, #dbe4ee);
-  --shell-text: var(--color-text, #162235);
-  --shell-muted: var(--color-text-muted, #718198);
+  --shell-ink-deep: #081c2b;
+  --shell-ink: #102e40;
+  --shell-ink-raised: #174357;
+  --shell-nav-text: #d9eef0;
+  --shell-nav-muted: #91b0b8;
+  --shell-bg: #eef3f1;
+  --shell-surface: #fbfcfa;
+  --shell-surface-raised: #ffffff;
+  --shell-surface-muted: #e8efed;
+  --shell-border: #d5e1df;
+  --shell-border-strong: #b8cbc9;
+  --shell-text: #142b39;
+  --shell-muted: #627580;
+  --shell-accent: #22b8c3;
+  --shell-accent-strong: #087c8b;
+  --shell-accent-soft: #dff5f3;
+  --shell-coral: #db624f;
+  --shell-coral-soft: #fce8e2;
+  --shell-mint: #9edfc6;
+  --shell-mint-soft: #e2f5eb;
+  --brand-blue: var(--shell-accent);
+  --brand-blue-dark: var(--shell-accent-strong);
+  --brand-blue-soft: var(--shell-accent-soft);
+  --brand-blue-ink: var(--shell-accent-strong);
   --topbar-height: var(--app-topbar-height, 72px);
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
-  grid-template-columns: var(--app-sidebar-width, 248px) minmax(0, 1fr);
+  grid-template-columns: var(--app-sidebar-width, 264px) minmax(0, 1fr);
   grid-template-rows: var(--topbar-height) minmax(0, 1fr);
-  background: var(--color-bg, #f4f7fb);
+  overflow-x: hidden;
+  background: var(--shell-bg);
   color: var(--shell-text);
   font-family: var(--font-family-sans, Inter, system-ui, sans-serif);
 }
 
 .app-layout--collapsed {
-  grid-template-columns: var(--app-sidebar-collapsed-width, 64px) minmax(0, 1fr);
+  grid-template-columns: var(--app-sidebar-collapsed-width, 72px) minmax(0, 1fr);
+}
+
+.app-layout--dark {
+  color-scheme: dark;
+  --shell-ink-deep: #061522;
+  --shell-ink: #0c2233;
+  --shell-ink-raised: #153b50;
+  --shell-nav-text: #e0f3f2;
+  --shell-nav-muted: #8eafb7;
+  --shell-bg: #081722;
+  --shell-surface: #0c2131;
+  --shell-surface-raised: #112c3f;
+  --shell-surface-muted: #102638;
+  --shell-border: #234354;
+  --shell-border-strong: #3a6070;
+  --shell-text: #e4f0f1;
+  --shell-muted: #9ab2b9;
+  --shell-accent: #55d2d2;
+  --shell-accent-strong: #8be4df;
+  --shell-accent-soft: #143b45;
+  --shell-coral: #ff8d76;
+  --shell-coral-soft: #4a2728;
+  --shell-mint: #8fddbe;
+  --shell-mint-soft: #183b34;
 }
 
 .sidebar {
@@ -958,110 +1241,90 @@ function handleLogout() {
   grid-column: 1;
   grid-row: 2;
   height: calc(100vh - var(--topbar-height));
+  height: calc(100dvh - var(--topbar-height));
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 8px;
-  border-right: 1px solid var(--shell-border);
-  background: var(--color-surface, #ffffff);
+  gap: 14px;
   min-width: 0;
-  box-shadow: inset -1px 0 0 var(--color-border, #dbe4ee);
+  padding: 16px 12px 14px;
+  overflow: hidden;
+  border-right: 1px solid rgba(173, 221, 221, 0.14);
+  background: var(--shell-ink-deep);
+  color: var(--shell-nav-text);
+  box-shadow: 14px 0 30px rgba(6, 21, 34, 0.08);
 }
 
-.sidebar__panel {
-  padding: 8px;
-  border-radius: 8px;
-  background: var(--color-bg-subtle, #f8fafc);
-  border: 1px solid var(--color-border, #dbe4ee);
-}
-
-.sidebar__panel--enterprise {
-  background: var(--color-primary-surface, #f7fbff);
-}
-
-.sidebar__panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
-.sidebar__eyebrow {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--brand-blue-dark);
-}
-
-.sidebar__microcopy {
-  font-size: 12px;
-  color: var(--shell-muted);
+.sidebar__backdrop {
+  display: none;
 }
 
 .sidebar__search {
-  padding: 0;
+  flex: 0 0 auto;
 }
 
 .sidebar__search-input {
   width: 100%;
-  min-height: 36px;
-  padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: var(--color-bg-subtle, #f8fafc);
-  color: var(--shell-text);
-  outline: none;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgba(173, 221, 221, 0.16);
+  border-radius: 11px;
+  outline: 0;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--shell-nav-text);
+  box-shadow: inset 0 1px 1px rgba(4, 16, 26, 0.14);
+}
+
+.sidebar__search-input::placeholder {
+  color: var(--shell-nav-muted);
+}
+
+.sidebar__search-input:focus {
+  border-color: var(--shell-accent);
+  box-shadow: 0 0 0 3px rgba(85, 210, 210, 0.22);
 }
 
 .app-layout--collapsed .sidebar__search {
   display: none;
 }
 
-.sidebar__search-input:focus {
-  border-color: var(--color-primary-400, #60a5fa);
-  box-shadow: var(--shadow-focus, 0 0 0 3px rgba(37, 99, 235, 0.36));
-}
-
 .sidebar__content {
   position: relative;
   display: grid;
-  gap: 8px;
-  min-height: 0;
   flex: 1;
-  overflow-y: auto;
+  gap: 12px;
+  min-height: 0;
+  padding-right: 4px;
   overflow-x: hidden;
-  padding-right: 3px;
+  overflow-y: auto;
+  scrollbar-color: rgba(173, 221, 221, 0.28) transparent;
   scrollbar-width: thin;
-  scrollbar-color: var(--color-border-strong, #c4d0de) transparent;
-  transition: box-shadow 0.18s ease;
+  transition: box-shadow 180ms ease;
 }
 
 .sidebar__content::before,
 .sidebar__content::after {
-  content: '';
   position: sticky;
   left: 0;
   right: 0;
+  z-index: 2;
   display: block;
   height: 18px;
-  z-index: 2;
+  content: '';
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.18s ease;
+  transition: opacity 180ms ease;
 }
 
 .sidebar__content::before {
   top: 0;
   margin-bottom: -18px;
-  background: linear-gradient(180deg, var(--color-surface, #ffffff), transparent);
+  background: linear-gradient(180deg, var(--shell-ink-deep), transparent);
 }
 
 .sidebar__content::after {
   bottom: 0;
   margin-top: -18px;
-  background: linear-gradient(0deg, var(--color-surface, #ffffff), transparent);
+  background: linear-gradient(0deg, var(--shell-ink-deep), transparent);
 }
 
 .sidebar__content--top-fade::before,
@@ -1074,13 +1337,13 @@ function handleLogout() {
 }
 
 .sidebar__content::-webkit-scrollbar-thumb {
+  border: 1px solid var(--shell-ink-deep);
   border-radius: 999px;
-  background: var(--color-border-strong, #c4d0de);
-  border: 1px solid var(--color-surface, #ffffff);
+  background: rgba(173, 221, 221, 0.28);
 }
 
 .sidebar__content::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-muted, #718198);
+  background: var(--shell-accent);
 }
 
 .sidebar__content::-webkit-scrollbar-track {
@@ -1088,90 +1351,110 @@ function handleLogout() {
 }
 
 .sidebar__content--scrolled {
-  box-shadow: inset 0 10px 14px rgba(15, 23, 42, 0.04);
+  box-shadow: inset 0 10px 16px rgba(2, 13, 22, 0.18);
 }
 
 .sidebar__nav {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   min-height: auto;
 }
 
 .sidebar__utility-stack {
   display: grid;
-  gap: 6px;
-  padding-top: 8px;
-  border-top: 1px solid var(--color-border, #dbe4ee);
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(173, 221, 221, 0.14);
 }
 
 .sidebar__utility-label {
-  padding: 0 4px;
+  padding: 0 6px;
+  color: var(--shell-nav-muted);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--shell-muted);
+}
+
+.sidebar__utility-group,
+.sidebar__group {
+  overflow: hidden;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
 }
 
 .sidebar__utility-group {
-  border-radius: 8px;
-  border: 0;
-  background: var(--color-bg-subtle, #f8fafc);
-  overflow: hidden;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.055);
 }
 
 .sidebar__utility-group--enterprise {
-  background: var(--color-primary-subtle, #eaf3ff);
+  background: rgba(34, 184, 195, 0.08);
 }
 
-.sidebar__utility-summary {
-  list-style: none;
+.sidebar__utility-group--active {
+  box-shadow: inset 3px 0 var(--shell-accent);
+}
+
+.sidebar__utility-group--active > .sidebar__utility-summary {
+  background: rgba(34, 184, 195, 0.12);
+}
+
+.sidebar__utility-group--active > .sidebar__utility-summary .sidebar__eyebrow {
+  color: var(--shell-mint);
+}
+
+.sidebar__utility-group--active > .sidebar__utility-summary .sidebar__microcopy {
+  color: var(--shell-nav-text);
+}
+
+.sidebar__utility-summary,
+.sidebar__group-summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 9px;
+  min-height: 44px;
+  padding: 8px 10px;
   cursor: pointer;
-}
-
-.sidebar__utility-summary::-webkit-details-marker {
-  display: none;
-}
-
-.sidebar__group {
-  border-radius: 8px;
-  border: 0;
-  background: transparent;
-  overflow: hidden;
-}
-
-.sidebar__group--active {
-  background: var(--color-bg-subtle, #f8fafc);
-  box-shadow: inset 2px 0 0 var(--brand-blue);
+  user-select: none;
+  transition: background-color 180ms ease;
 }
 
 .sidebar__group-summary {
+  min-height: 48px;
+  padding: 7px 9px;
+}
+
+.sidebar__utility-summary,
+.sidebar__group-summary {
   list-style: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 8px;
-  cursor: pointer;
-  user-select: none;
+}
+
+.sidebar__utility-summary::-webkit-details-marker,
+.sidebar__group-summary::-webkit-details-marker {
+  display: none;
+}
+
+.sidebar__group--active {
+  background: rgba(34, 184, 195, 0.07);
+  box-shadow: inset 3px 0 0 var(--shell-accent);
 }
 
 .sidebar__group--active > .sidebar__group-summary {
-  background: var(--color-primary-subtle, #eaf3ff);
+  background: rgba(34, 184, 195, 0.12);
 }
 
-.sidebar__group-summary::-webkit-details-marker {
-  display: none;
+.sidebar__group-summary:hover,
+.sidebar__utility-summary:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .sidebar__group-summary-text {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -1181,66 +1464,78 @@ function handleLogout() {
 }
 
 .sidebar__group-icon {
-  width: 22px;
-  text-align: center;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  flex: 0 0 32px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(173, 221, 221, 0.16);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.065);
+  color: var(--shell-accent);
 }
 
 .sidebar__group-label {
+  color: var(--shell-nav-text);
   font-size: 12px;
   font-weight: 700;
-  color: var(--shell-text);
 }
 
 .sidebar__group-description {
+  overflow: hidden;
+  color: var(--shell-nav-muted);
   font-size: 10px;
   line-height: 1.3;
-  color: var(--shell-muted);
-  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.sidebar__group-chevron {
-  color: var(--shell-muted);
+.sidebar__group-chevron,
+.sidebar__utility-chevron {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--shell-nav-muted);
+  transition: transform 180ms ease;
+}
+
+.sidebar__utility-group[open] > .sidebar__utility-summary .sidebar__utility-chevron,
+.sidebar__group[open] > .sidebar__group-summary .sidebar__group-chevron {
+  transform: rotate(180deg);
 }
 
 .sidebar__group-body,
 .sidebar__enterprise-groups {
   display: grid;
-  gap: 4px;
-  padding: 2px 4px 6px;
-}
-
-.sidebar__group-body {
-  background: transparent;
+  gap: 5px;
+  padding: 4px 5px 8px;
 }
 
 .sidebar__section {
   display: grid;
-  gap: 2px;
-  padding: 3px 2px;
-  border-radius: 8px;
+  gap: 4px;
+  padding: 4px 2px;
+  border-radius: 9px;
 }
 
 .sidebar__section--active {
-  background: var(--color-bg-subtle, #f8fafc);
-  border: 0;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .sidebar__section-label {
   margin: 0;
   padding: 2px 8px 3px;
+  color: var(--shell-nav-muted);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--shell-muted);
 }
 
 .sidebar__quick-links,
 .sidebar__recent-list {
   display: grid;
-  gap: 2px;
+  gap: 3px;
 }
 
 .sidebar__quick-link,
@@ -1248,69 +1543,116 @@ function handleLogout() {
 .sidebar__link {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 34px;
-  padding: 7px 7px;
-  border-radius: 7px;
-  border: 0;
-  color: var(--color-text-secondary, #475569);
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--shell-nav-text);
   text-decoration: none;
   transition:
-    transform 0.15s ease,
-    background 0.15s ease,
-    border-color 0.15s ease;
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
 }
 
 .sidebar__quick-link:hover,
 .sidebar__recent-link:hover,
 .sidebar__link:hover {
-  transform: none;
-  background: var(--color-primary-subtle, #eaf3ff);
+  border-color: rgba(85, 210, 210, 0.2);
+  background: rgba(85, 210, 210, 0.12);
+  color: #f0ffff;
   text-decoration: none;
 }
 
 .sidebar__quick-link--active,
 .sidebar__recent-link--active,
 .sidebar__link--active {
-  background: var(--color-primary-subtle, #eaf3ff);
-  color: var(--brand-blue-ink);
+  border-color: rgba(85, 210, 210, 0.28);
+  background: rgba(85, 210, 210, 0.18);
+  color: #f0ffff;
   font-weight: 600;
 }
 
 .sidebar__link--utility {
-  background: var(--color-bg-elevated, #ffffff);
+  background: rgba(5, 24, 37, 0.2);
 }
 
 .sidebar__quick-link-icon,
 .sidebar__recent-link-icon,
 .sidebar__link-icon {
   width: 20px;
-  flex-shrink: 0;
-  text-align: center;
+  height: 24px;
+  display: inline-flex;
+  flex: 0 0 20px;
+  align-items: center;
+  justify-content: center;
+  color: var(--shell-accent);
 }
 
 .sidebar__link-label,
 .sidebar__quick-link-label,
 .sidebar__recent-link-label {
-  font-size: 13px;
-  max-width: 154px;
+  display: -webkit-box;
   min-width: 0;
-  line-height: 1.25;
+  max-width: 172px;
   overflow: hidden;
+  font-size: 13px;
+  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: normal;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.sidebar__panel {
+  padding: 10px;
+  border: 1px solid rgba(173, 221, 221, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.sidebar__panel--enterprise {
+  border-color: rgba(85, 210, 210, 0.22);
+  background: rgba(34, 184, 195, 0.12);
+}
+
+.sidebar__panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.sidebar__eyebrow {
+  color: var(--shell-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sidebar__microcopy {
+  color: var(--shell-nav-muted);
+  font-size: 12px;
+  text-align: right;
 }
 
 .sidebar__ghost-btn {
-  background: none;
+  min-height: 44px;
+  padding: 0 8px;
   border: 0;
-  color: var(--brand-blue-dark);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--shell-accent);
   font-size: 12px;
   font-weight: 600;
-  padding: 0;
+}
+
+.sidebar__ghost-btn:hover {
+  background: rgba(85, 210, 210, 0.12);
+  color: #f0ffff;
 }
 
 .workspace {
@@ -1319,6 +1661,121 @@ function handleLogout() {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+}
+
+.workspace__utility-bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  min-width: 0;
+  padding: 20px clamp(16px, 2.2vw, 30px) 16px;
+  border-bottom: 1px solid var(--shell-border);
+  background: var(--shell-surface);
+}
+
+.workspace__context {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.workspace__overline {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--shell-accent-strong);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.workspace__title {
+  overflow: hidden;
+  color: var(--shell-text);
+  font-size: clamp(19px, 2vw, 25px);
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace__breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  overflow: visible;
+  color: var(--shell-muted);
+  font-size: 12px;
+  white-space: normal;
+}
+
+.workspace__breadcrumb {
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+
+.workspace__breadcrumb:last-child {
+  color: var(--shell-text);
+  font-weight: 600;
+}
+
+.workspace__breadcrumb-separator {
+  color: var(--shell-border-strong);
+}
+
+.workspace__actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.workspace__history-btn,
+.workspace__support-btn {
+  min-height: 44px;
+  border: 1px solid var(--shell-border);
+  border-radius: 10px;
+  background: var(--shell-surface-raised);
+  color: var(--shell-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.workspace__history-btn {
+  width: 44px;
+}
+
+.workspace__support-btn {
+  gap: 7px;
+  padding: 0 13px;
+  color: var(--shell-accent-strong);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.workspace__history-btn:hover:not(:disabled),
+.workspace__support-btn:hover {
+  border-color: var(--shell-accent);
+  background: var(--shell-accent-soft);
+  color: var(--shell-accent-strong);
+}
+
+.workspace__history-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .topbar {
@@ -1327,71 +1784,115 @@ function handleLogout() {
   z-index: 40;
   grid-column: 1 / -1;
   grid-row: 1;
-  min-height: var(--topbar-height);
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 18px;
-  border-bottom: 1px solid var(--shell-border);
-  background: var(--color-surface-glass, rgba(255, 255, 255, 0.86));
+  gap: 14px;
   min-width: 0;
-  box-shadow: var(--shadow-sm, 0 2px 8px rgba(15, 23, 42, 0.06));
-  backdrop-filter: blur(16px);
+  min-height: var(--topbar-height);
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--shell-border);
+  background: var(--shell-surface);
+  box-shadow: 0 8px 24px rgba(6, 25, 38, 0.06);
+  backdrop-filter: blur(18px);
 }
 
 .topbar__brand-pill {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-width: 0;
   flex-shrink: 0;
+  gap: 11px;
+  min-width: 0;
 }
 
 .topbar__brand-logo {
-  width: 42px;
-  height: 42px;
-  border-radius: 999px;
-  object-fit: cover;
-  border: 2px solid var(--color-primary-200, #bfdbfe);
-  box-shadow: var(--shadow-sm, 0 2px 8px rgba(15, 23, 42, 0.06));
+  position: relative;
+  overflow: hidden;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  flex: 0 0 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(34, 184, 195, 0.34);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--shell-accent);
+  box-shadow: 0 8px 18px rgba(6, 25, 38, 0.16);
+}
+
+ .topbar__brand-logo img {
+  position: absolute;
+  width: 100%;
+  height: auto;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -54%);
 }
 
 .topbar__brand-copy {
   display: grid;
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
 }
 
+.topbar__brand-kicker {
+  color: var(--shell-accent-strong);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
 .topbar__brand-copy strong {
-  font-size: 14px;
+  overflow: hidden;
   color: var(--shell-text);
+  font-size: 14px;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.topbar__brand-copy span {
+.topbar__brand-copy > span:not(.topbar__brand-kicker) {
+  color: var(--shell-muted);
   font-size: 11px;
-  color: var(--brand-blue-dark);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.topbar__collapse-btn {
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border-radius: 9px;
+.topbar__collapse-btn,
+.topbar__icon-btn,
+.topbar__logout-btn {
+  min-height: 44px;
   border: 1px solid var(--shell-border);
-  background: var(--color-bg-elevated, #ffffff);
-  color: var(--color-text-secondary, #475569);
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: 11px;
+  background: var(--shell-surface-raised);
+  color: var(--shell-text);
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
 }
 
-.topbar__collapse-icon {
-  font-size: 14px;
+.topbar__collapse-btn {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  flex: 0 0 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.topbar__collapse-icon,
+.topbar__search-shell-icon,
+.topbar__logout-icon {
+  display: inline-flex;
+}
+
+.topbar__collapse-icon,
+.topbar__search-shell-icon {
+  color: var(--shell-accent-strong);
 }
 
 .topbar__collapse-label {
@@ -1399,63 +1900,61 @@ function handleLogout() {
 }
 
 .topbar__search-shell {
-  flex: 1;
-  min-height: 42px;
-  max-width: 620px;
-  padding: 0 16px;
-  border-radius: 999px;
-  border: 1px solid var(--color-border, #dbe4ee);
-  background: var(--color-bg-elevated, #ffffff);
-  color: var(--color-text-muted, #718198);
   display: inline-flex;
   align-items: center;
+  flex: 1 1 auto;
   gap: 10px;
-  justify-content: flex-start;
-  box-shadow: var(--shadow-inner, inset 0 1px 2px rgba(15, 23, 42, 0.04));
+  min-width: 0;
+  min-height: 46px;
+  max-width: 640px;
+  padding: 0 16px;
+  border: 1px solid var(--shell-border);
+  border-radius: 999px;
+  background: var(--shell-surface-raised);
+  color: var(--shell-muted);
+  text-align: left;
+  box-shadow: inset 0 1px 2px rgba(6, 25, 38, 0.05);
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.topbar__search-shell:hover {
+  border-color: var(--shell-accent);
+  box-shadow: 0 0 0 3px rgba(34, 184, 195, 0.1);
 }
 
 .topbar__search-shell-copy {
   flex: 1;
-  text-align: left;
-  white-space: nowrap;
+  min-width: 0;
   overflow: hidden;
+  text-align: left;
   text-overflow: ellipsis;
-}
-
-.topbar__search-shell-icon {
-  font-size: 14px;
-}
-
-.command-palette__item-shortcut {
-  font-size: 11px;
-  color: var(--shell-muted);
+  white-space: nowrap;
 }
 
 .topbar__actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  flex: 0 0 auto;
+  gap: 7px;
   min-width: 0;
 }
 
 .topbar__icon-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  border: 1px solid var(--shell-border);
-  background: var(--color-bg-elevated, #ffffff);
-  color: var(--color-text-secondary, #475569);
+  width: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
 }
 
 .topbar__icon-btn--notifications,
 .topbar__icon-btn--whatsapp {
-  color: var(--color-text-secondary, #475569);
-  border-color: var(--color-border, #dbe4ee);
-  background: var(--color-bg-elevated, #ffffff);
+  color: var(--shell-text);
 }
 
 .topbar__icon-btn--whatsapp {
@@ -1463,58 +1962,60 @@ function handleLogout() {
 }
 
 .topbar__icon-btn--whatsapp::after {
-  content: '';
   position: absolute;
-  right: 7px;
-  bottom: 7px;
+  right: 8px;
+  bottom: 8px;
   width: 7px;
   height: 7px;
+  border: 2px solid var(--shell-surface-raised);
   border-radius: 999px;
-  background: var(--color-success-600, #059669);
+  background: var(--shell-mint);
+  content: '';
 }
 
 .topbar__profile {
   display: grid;
   align-items: center;
-  min-height: 38px;
-  max-width: 190px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--color-primary-200, #bfdbfe);
-  background: var(--color-primary-subtle, #eaf3ff);
   min-width: 0;
+  min-height: 44px;
+  max-width: 190px;
+  padding: 6px 13px;
+  border: 1px solid var(--shell-border);
+  border-radius: 12px;
+  background: var(--shell-surface-muted);
+}
+
+.topbar__profile strong,
+.topbar__profile span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .topbar__profile strong {
-  font-size: 13px;
   color: var(--shell-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 13px;
 }
 
 .topbar__profile span {
+  color: var(--shell-accent-strong);
   font-size: 11px;
-  color: var(--brand-blue-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .topbar__logout-btn {
-  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   padding: 0 14px;
-  border-radius: 10px;
-  border: 1px solid var(--color-border, #dbe4ee);
-  background: var(--color-bg-elevated, #ffffff);
-  color: var(--brand-blue-ink);
+  color: var(--shell-accent-strong);
   font-weight: 600;
 }
 
 .workspace__body {
-  padding: clamp(16px, 2.2vw, 28px);
   min-width: 0;
-  background: transparent;
+  padding: clamp(18px, 2.4vw, 32px);
+  background: var(--shell-bg);
 }
 
 .command-palette {
@@ -1529,33 +2030,36 @@ function handleLogout() {
 
 .command-palette__input {
   width: 100%;
-  min-height: 46px;
+  min-height: 48px;
   padding: 0 14px;
-  border-radius: 14px;
-  border: 1px solid var(--color-border, #dbe4ee);
-  background: var(--color-bg-elevated, #ffffff);
-  color: var(--color-text, #162235);
+  border: 1px solid var(--shell-border);
+  border-radius: 12px;
+  background: var(--shell-surface-raised);
+  color: var(--shell-text);
 }
 
 .command-palette__input:focus {
+  border-color: var(--shell-accent);
   outline: none;
-  border-color: var(--color-primary-400, #60a5fa);
-  box-shadow: var(--shadow-focus, 0 0 0 3px rgba(37, 99, 235, 0.36));
+  box-shadow: 0 0 0 3px rgba(34, 184, 195, 0.16);
+}
+
+.command-palette__hint,
+.command-palette__section-label {
+  color: var(--shell-muted);
 }
 
 .command-palette__hint {
   margin: 0;
   font-size: 12px;
-  color: var(--color-text-muted, #94a3b8);
 }
 
 .command-palette__section-label {
+  padding: 4px 0;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-text-muted, #94a3b8);
-  padding: 4px 0;
 }
 
 .command-palette__results {
@@ -1565,35 +2069,55 @@ function handleLogout() {
 
 .command-palette__item {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid var(--color-border, #dbe4ee);
-  background: var(--color-bg-elevated, #ffffff);
+  min-height: 64px;
+  padding: 10px 13px;
+  border: 1px solid var(--shell-border);
+  border-radius: 12px;
+  background: var(--shell-surface-raised);
+  color: var(--shell-text);
   text-align: left;
-  color: var(--color-text, #0f172a);
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
 }
 
-.command-palette__item:hover {
-  border-color: var(--color-primary-300, #93c5fd);
-  background: var(--color-primary-subtle, #eaf3ff);
+.command-palette__item:hover,
+.command-palette__item--selected {
+  border-color: var(--shell-accent);
+  background: var(--shell-accent-soft);
 }
 
 .command-palette__item--selected {
-  border-color: var(--color-primary-400, #60a5fa);
-  background: var(--color-primary-subtle, #eaf3ff);
+  box-shadow: inset 3px 0 0 var(--shell-accent);
 }
 
 .command-palette__item-icon {
-  text-align: center;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: var(--shell-accent-soft);
+  color: var(--shell-accent-strong);
 }
 
 .command-palette__item-text {
   display: grid;
   gap: 2px;
+  min-width: 0;
+}
+
+.command-palette__item-text strong,
+.command-palette__item-text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .command-palette__item-text strong {
@@ -1601,64 +2125,100 @@ function handleLogout() {
 }
 
 .command-palette__item-text small {
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--shell-muted);
+}
+
+.command-palette__item-shortcut {
+  color: var(--shell-muted);
+  font-size: 11px;
 }
 
 .command-palette__empty {
   padding: 16px;
+  border: 1px dashed var(--shell-border-strong);
   border-radius: 14px;
-  border: 1px dashed var(--color-border-strong, #c4d0de);
-  color: var(--color-text-muted, #94a3b8);
+  color: var(--shell-muted);
   text-align: center;
-}
-
-.app-layout--dark {
-  color-scheme: dark;
-  background: var(--color-bg, #0b1220);
-}
-
-.sidebar__backdrop {
-  display: none;
 }
 
 .topbar button:focus-visible,
 .sidebar a:focus-visible,
 .sidebar summary:focus-visible,
-.sidebar button:focus-visible {
-  outline: none;
-  box-shadow: var(--shadow-focus, 0 0 0 3px rgba(37, 99, 235, 0.36));
+.sidebar button:focus-visible,
+.workspace button:focus-visible,
+.skip-link:focus-visible {
+  outline: 3px solid var(--shell-accent);
+  outline-offset: 2px;
 }
 
 .topbar__collapse-btn:hover,
 .topbar__icon-btn:hover,
 .topbar__logout-btn:hover {
-  border-color: var(--color-primary-300, #93c5fd);
-  background: var(--color-primary-subtle, #eaf3ff);
+  border-color: var(--shell-accent);
+  background: var(--shell-accent-soft);
+  color: var(--shell-accent-strong);
 }
 
 @media (max-width: 1200px) {
-  .app-layout,
-  .app-layout--collapsed {
-    grid-template-columns: var(--app-sidebar-collapsed-width, 64px) minmax(0, 1fr);
+  .app-layout {
+    grid-template-columns: var(--app-sidebar-width, 248px) minmax(0, 1fr);
   }
 
-  .sidebar__search,
-  .sidebar__group-label,
-  .sidebar__group-description,
-  .sidebar__link-label,
-  .sidebar__quick-link-label,
-  .sidebar__recent-link-label,
-  .sidebar__microcopy,
-  .sidebar__section-label,
-  .sidebar__ghost-btn,
-  .sidebar__utility-label {
+  .app-layout--collapsed {
+    grid-template-columns: var(--app-sidebar-collapsed-width, 72px) minmax(0, 1fr);
+  }
+
+  .app-layout--collapsed .sidebar__search,
+  .app-layout--collapsed .sidebar__group-copy,
+  .app-layout--collapsed .sidebar__link-label,
+  .app-layout--collapsed .sidebar__quick-link-label,
+  .app-layout--collapsed .sidebar__recent-link-label,
+  .app-layout--collapsed .sidebar__microcopy,
+  .app-layout--collapsed .sidebar__section-label,
+  .app-layout--collapsed .sidebar__ghost-btn,
+  .app-layout--collapsed .sidebar__utility-label {
+    display: none;
+  }
+
+  .app-layout--collapsed .sidebar__group-summary {
+    justify-content: center;
+    padding-inline: 5px;
+  }
+
+  .app-layout--collapsed .sidebar__group-summary-text {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .app-layout--collapsed .sidebar__group-icon {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+
+  .app-layout--collapsed .sidebar__utility-summary {
+    justify-content: center;
+    padding-inline: 4px;
+  }
+
+  .app-layout--collapsed .sidebar__eyebrow {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 9px;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-layout--collapsed .sidebar__utility-chevron {
     display: none;
   }
 }
 
 @media (max-width: 980px) {
-  .app-layout {
-    --topbar-height: 112px;
+  .app-layout,
+  .app-layout--collapsed {
+    --topbar-height: 129px;
   }
 
   .topbar {
@@ -1669,7 +2229,7 @@ function handleLogout() {
       'search search search';
     height: auto;
     min-height: var(--topbar-height);
-    padding: 10px 14px;
+    padding: 12px 16px;
   }
 
   .topbar__brand-pill {
@@ -1694,33 +2254,29 @@ function handleLogout() {
 @media (max-width: 860px) {
   .app-layout,
   .app-layout--collapsed {
-    --topbar-height: 112px;
+    --topbar-height: 129px;
     grid-template-columns: 1fr;
     grid-template-rows: auto minmax(0, 1fr);
     min-height: 100dvh;
   }
 
   .topbar {
-    position: sticky;
     grid-column: 1;
     grid-row: 1;
     z-index: 90;
+    position: sticky;
   }
 
   .topbar__brand-copy strong {
     max-width: 180px;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
-  .topbar__brand-copy span,
-  .topbar__search-shell kbd {
+  .topbar__brand-copy > span {
     display: none;
   }
 
   .topbar__actions {
-    flex: 0 0 auto;
-    gap: 6px;
+    gap: 5px;
   }
 
   .topbar__profile {
@@ -1736,12 +2292,12 @@ function handleLogout() {
     position: fixed;
     inset: var(--topbar-height) auto 0 0;
     z-index: 80;
-    width: min(88vw, 320px);
+    width: min(88vw, 344px);
     height: auto;
     max-height: none;
     transform: translateX(0);
-    transition: transform var(--duration-normal, 250ms) var(--ease-default, ease);
-    box-shadow: var(--shadow-lg, 0 8px 32px rgba(15, 23, 42, 0.1));
+    transition: transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: 18px 0 42px rgba(2, 13, 22, 0.26);
   }
 
   .app-layout--collapsed .sidebar {
@@ -1756,7 +2312,7 @@ function handleLogout() {
     width: 100%;
     padding: 0;
     border: 0;
-    background: var(--color-bg-overlay, rgba(15, 23, 42, 0.48));
+    background: rgba(3, 16, 27, 0.64);
     cursor: pointer;
   }
 
@@ -1765,8 +2321,6 @@ function handleLogout() {
   }
 
   .sidebar__search,
-  .sidebar__group-label,
-  .sidebar__group-description,
   .sidebar__link-label,
   .sidebar__quick-link-label,
   .sidebar__recent-link-label,
@@ -1777,14 +2331,20 @@ function handleLogout() {
     display: initial;
   }
 
+  .sidebar__group-copy {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .workspace {
     grid-column: 1;
     grid-row: 2;
     min-height: calc(100dvh - var(--topbar-height));
   }
 
-  .app-layout .sidebar__search {
-    display: block;
+  .workspace__utility-bar {
+    align-items: flex-start;
+    padding: 16px 12px 13px;
   }
 
   .workspace__body {
@@ -1795,32 +2355,32 @@ function handleLogout() {
 @media (max-width: 600px) {
   .app-layout,
   .app-layout--collapsed {
-    --topbar-height: 104px;
+    --topbar-height: 113px;
   }
 
   .topbar {
-    padding: 8px 12px;
     gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .topbar__brand-logo,
+  .topbar__collapse-btn,
+  .topbar__icon-btn {
+    width: 44px;
+    height: 44px;
   }
 
   .topbar__brand-logo {
-    width: 36px;
-    height: 36px;
+    flex-basis: 44px;
   }
 
   .topbar__brand-copy {
     display: none;
   }
 
-  .topbar__collapse-btn,
-  .topbar__icon-btn {
-    width: 36px;
-    height: 36px;
-  }
-
   .topbar__profile {
     max-width: 108px;
-    min-height: 36px;
+    min-height: 44px;
     padding-inline: 8px;
   }
 
@@ -1829,20 +2389,114 @@ function handleLogout() {
   }
 
   .topbar__logout-btn {
-    width: 36px;
-    min-height: 36px;
+    width: 44px;
+    min-height: 44px;
     padding: 0;
-    font-size: 0;
   }
 
-  .topbar__logout-btn::after {
-    content: '↪';
-    font-size: 18px;
+  .topbar__logout-label,
+  .workspace__breadcrumbs,
+  .workspace__support-btn span {
+    display: none;
   }
 
   .topbar__search-shell {
-    min-height: 40px;
+    min-height: 44px;
     padding-inline: 12px;
   }
+
+  .workspace__utility-bar {
+    gap: 10px;
+  }
+
+  .workspace__overline {
+    font-size: 9px;
+  }
+
+  .workspace__title {
+    font-size: 18px;
+  }
+
+  .workspace__actions {
+    gap: 4px;
+  }
+
+  .workspace__support-btn {
+    width: 44px;
+    padding: 0;
+  }
+
+  .sidebar__group-summary {
+    align-items: flex-start;
+  }
+
+  .sidebar__group-copy {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .sidebar__group-description {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    text-overflow: clip;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
 }
+
+@media (max-width: 360px) {
+  .topbar {
+    gap: 6px;
+    padding-inline: 8px;
+  }
+
+  .topbar__actions {
+    gap: 4px;
+  }
+
+  /* Keep the compact shell usable at 320px. These secondary channels remain
+     available through the command palette and the enterprise utility area. */
+  .topbar__icon-btn--notifications,
+  .topbar__icon-btn--whatsapp {
+    display: none;
+  }
+
+  .topbar__brand-logo,
+  .topbar__collapse-btn,
+  .topbar__icon-btn,
+  .topbar__logout-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .topbar__brand-logo {
+    flex-basis: 40px;
+  }
+
+  .topbar__profile {
+    max-width: 64px;
+    padding-inline: 6px;
+  }
+
+  .topbar__logout-btn {
+    min-height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-layout *,
+  .app-layout *::before,
+  .app-layout *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+/* The page header owns its title; retain the utility title for headerless pages. */
+.workspace:has(.app-page-header) .workspace__title { display: none; }
+.workspace:has(.app-page-header) .workspace__utility-bar { align-items: center; padding-block: 8px; }
+.workspace:has(.app-page-header) .workspace__breadcrumbs { display: flex; }
 </style>

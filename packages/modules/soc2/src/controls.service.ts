@@ -6,7 +6,7 @@
  * Priority: MFA Universal, Vulnerability Scanning, Access Reviews
  */
 
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 
 // Control CC6.2 - MFA Enforcement
 export interface MfaEnforcementConfig {
@@ -82,6 +82,8 @@ export class MfaControlService {
 
 // Control CC3.1 - Vulnerability Scanning
 export interface VulnerabilityScanResult {
+  readonly provenance: 'simulated';
+  readonly operationallyVerified: false;
   id: string;
   severity: 'critical' | 'high' | 'medium' | 'low' | 'info';
   title: string;
@@ -107,7 +109,9 @@ export class VulnerabilityControlService {
         ...v,
         id: `${scanId}_${v.affectedComponent}`,
         detectedAt: new Date().toISOString(),
-        status: 'open' as const
+        status: 'open' as const,
+        provenance: 'simulated' as const,
+        operationallyVerified: false as const
       })));
     }
 
@@ -142,20 +146,17 @@ export class VulnerabilityControlService {
   }
 
   getDaysSinceLastScan(): number {
-    if (this.scans.length === 0) return Infinity;
-    const lastScan = this.scans[this.scans.length - 1];
-    const lastDate = new Date(lastScan.detectedAt);
-    const now = new Date();
-    return Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+    // This service has no scanner adapter. Fixtures never satisfy the schedule.
+    return Infinity;
   }
 
   isScanOverdue(): boolean {
     return this.getDaysSinceLastScan() > this.scanScheduleDays;
   }
 
-  private detectVulnerabilities(component: string): Omit<VulnerabilityScanResult, 'id' | 'detectedAt' | 'status'>[] {
+  private detectVulnerabilities(component: string): Omit<VulnerabilityScanResult, 'id' | 'detectedAt' | 'status' | 'provenance' | 'operationallyVerified'>[] {
     // Simulated vulnerability detection based on component
-    const knownPatterns: Record<string, Omit<VulnerabilityScanResult, 'id' | 'detectedAt' | 'status'>[]> = {
+    const knownPatterns: Record<string, Omit<VulnerabilityScanResult, 'id' | 'detectedAt' | 'status' | 'provenance' | 'operationallyVerified'>[]> = {
       'api': [
         { severity: 'high', title: 'SQL Injection Risk', description: 'Parameterized queries should be verified', affectedComponent: 'api', remediation: 'Use parameterized queries exclusively' },
         { severity: 'medium', title: 'Rate Limiting Gap', description: 'Some endpoints lack rate limiting', affectedComponent: 'api', remediation: 'Add rate limiting to all public endpoints' }
@@ -257,9 +258,12 @@ export class AccessReviewControlService {
 export interface DrTestResult {
   id: string;
   testType: 'failover' | 'recovery' | 'backup-restore';
-  conductedAt: string;
-  duration: number; // seconds
-  status: 'passed' | 'failed' | 'partial';
+  readonly provenance: 'not_executed';
+  readonly operationallyVerified: false;
+  requestedAt: string;
+  conductedAt: string | null;
+  duration: number | null; // seconds, null when no execution occurred
+  status: 'passed' | 'failed' | 'partial' | 'not_verified';
   findings: string[];
   nextScheduledAt: string;
 }
@@ -269,57 +273,42 @@ export class DisasterRecoveryControlService {
   private testScheduleDays = 180; // Semi-annually
 
   async conductFailoverTest(): Promise<DrTestResult> {
-    const test: DrTestResult = {
-      id: `dr_${Date.now().toString(36)}`,
-      testType: 'failover',
-      conductedAt: new Date().toISOString(),
-      duration: 0, // Would be measured in real test
-      status: 'passed',
-      findings: [
-        'Primary database failed over to replica in 45 seconds',
-        'All services recovered automatically',
-        'No data loss detected'
-      ],
-      nextScheduledAt: this.getNextTestDate()
-    };
-    this.tests.push(test);
-    return test;
+    return this.recordUnexecutedTest('failover');
   }
 
   async conductRecoveryTest(): Promise<DrTestResult> {
+    return this.recordUnexecutedTest('recovery');
+  }
+
+  private recordUnexecutedTest(testType: DrTestResult['testType']): DrTestResult {
     const test: DrTestResult = {
-      id: `dr_${Date.now().toString(36)}`,
-      testType: 'recovery',
-      conductedAt: new Date().toISOString(),
-      duration: 0,
-      status: 'passed',
-      findings: [
-        'Backup restored in 12 minutes',
-        'Point-in-time recovery verified',
-        'All critical data recovered'
-      ],
+      id: `dr_${randomBytes(12).toString('hex')}`,
+      testType,
+      provenance: 'not_executed',
+      operationallyVerified: false,
+      requestedAt: new Date().toISOString(),
+      conductedAt: null,
+      duration: null,
+      status: 'not_verified',
+      findings: ['No DR executor is configured; recovery, failover and data integrity were not verified.'],
       nextScheduledAt: this.getNextTestDate()
     };
     this.tests.push(test);
-    return test;
+    return structuredClone(test);
   }
 
   async getLastTest(): Promise<DrTestResult | null> {
     if (this.tests.length === 0) return null;
-    return this.tests[this.tests.length - 1];
+    return structuredClone(this.tests[this.tests.length - 1]);
   }
 
   isTestOverdue(): boolean {
-    if (this.tests.length === 0) return true;
-    const lastTest = this.tests[this.tests.length - 1];
-    const lastDate = new Date(lastTest.conductedAt);
-    const now = new Date();
-    const daysSince = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
-    return daysSince > this.testScheduleDays;
+    // Requests without an executor are not completed tests.
+    return true;
   }
 
   getTestHistory(): DrTestResult[] {
-    return this.tests;
+    return structuredClone(this.tests);
   }
 
   private getNextTestDate(): string {
@@ -406,6 +395,9 @@ export class IncidentResponseControlService {
 
 // Security Score Calculator
 export interface SecurityScore {
+  readonly status: 'not_verified';
+  readonly operationalApproval: false;
+  readonly provenance: 'unverified';
   overall: number;
   security: number;
   availability: number;
@@ -417,59 +409,22 @@ export interface SecurityScore {
 }
 
 export async function calculateSecurityScore(mfa: MfaControlService, vuln: VulnerabilityControlService, access: AccessReviewControlService, dr: DisasterRecoveryControlService): Promise<SecurityScore> {
-  const criticalGaps: string[] = [];
-  const recommendations: string[] = [];
-
-  // Security (CC6)
-  let security = 50;
-  const criticalVulns = await vuln.getCriticalVulnerabilities();
-  if (criticalVulns.length > 0) {
-    security -= criticalVulns.length * 10;
-    criticalGaps.push(`${criticalVulns.length} critical vulnerabilities open`);
-  }
-  if (vuln.isScanOverdue()) {
-    security -= 10;
-    criticalGaps.push('Vulnerability scan overdue');
-    recommendations.push('Run vulnerability scan immediately');
-  }
-  security = Math.max(0, Math.min(100, security));
-
-  // Availability (CC7)
-  let availability = 50;
-  if (dr.isTestOverdue()) {
-    availability -= 20;
-    criticalGaps.push('DR test overdue');
-    recommendations.push('Schedule and conduct DR failover test');
-  }
-  availability = Math.max(0, Math.min(100, availability));
-
-  // Confidentiality (P3)
-  let confidentiality = 40;
+  // Configuration, fixtures and local registers cannot establish deployment-wide
+  // effectiveness. Zero denotes no verified credit, not a measured security rating.
+  const criticalGaps = ['Operational control effectiveness has not been verified'];
   const staleAccess = access.getUsersWithStaleAccess();
-  if (staleAccess.length > 0) {
-    confidentiality -= 10;
-    criticalGaps.push(`${staleAccess.length} users with stale access`);
-  }
-  confidentiality = Math.max(0, Math.min(100, confidentiality));
-
-  // Processing Integrity (CC8) - Change management
-  let processingIntegrity = 60;
-  processingIntegrity = Math.max(0, Math.min(100, processingIntegrity));
-
-  // Privacy (P5)
-  let privacy = 30;
-  privacy = Math.max(0, Math.min(100, privacy));
-
-  const overall = Math.round((security + availability + confidentiality + processingIntegrity + privacy) / 5);
-
+  if (staleAccess.length > 0) criticalGaps.push(`${staleAccess.length} users with stale access in local records`);
   return {
-    overall,
-    security,
-    availability,
-    confidentiality,
-    processingIntegrity,
-    privacy,
+    status: 'not_verified',
+    operationalApproval: false,
+    provenance: 'unverified',
+    overall: 0,
+    security: 0,
+    availability: 0,
+    confidentiality: 0,
+    processingIntegrity: 0,
+    privacy: 0,
     criticalGaps,
-    recommendations
+    recommendations: ['Collect attributable operational evidence before assigning security score credit']
   };
 }

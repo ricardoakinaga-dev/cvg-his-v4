@@ -20,8 +20,8 @@ import {
 describe('labels', () => {
   describe('speciesLabel', () => {
     it('returns correct label for known species', () => {
-      expect(speciesLabel('canine')).toBe('🐕 Canina');
-      expect(speciesLabel('feline')).toBe('🐈 Felina');
+      expect(speciesLabel('canine')).toBe('Canina');
+      expect(speciesLabel('feline')).toBe('Felina');
     });
 
     it('returns fallback for unknown species', () => {
@@ -32,8 +32,8 @@ describe('labels', () => {
 
   describe('sexLabel', () => {
     it('returns correct label for known sexes', () => {
-      expect(sexLabel('male')).toBe('♂ Macho');
-      expect(sexLabel('female')).toBe('♀ Fêmea');
+      expect(sexLabel('male')).toBe('Macho');
+      expect(sexLabel('female')).toBe('Fêmea');
     });
 
     it('returns fallback for unknown sex', () => {
@@ -50,15 +50,15 @@ describe('labels', () => {
 
   describe('visitTypeLabel', () => {
     it('returns correct label', () => {
-      expect(visitTypeLabel('walk_in')).toBe('🚶 Walk-in');
-      expect(visitTypeLabel('scheduled')).toBe('📅 Agendado');
+      expect(visitTypeLabel('walk_in')).toBe('Walk-in');
+      expect(visitTypeLabel('scheduled')).toBe('Agendado');
     });
   });
 
   describe('encounterStatusLabel', () => {
     it('returns correct label', () => {
-      expect(encounterStatusLabel('reception')).toBe('📋 Recepção');
-      expect(encounterStatusLabel('closed')).toBe('✅ Finalizado');
+      expect(encounterStatusLabel('reception')).toBe('Recepção');
+      expect(encounterStatusLabel('closed')).toBe('Finalizado');
     });
   });
 

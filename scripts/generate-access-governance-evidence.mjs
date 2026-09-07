@@ -10,6 +10,10 @@ function read(path) {
 
 const sources = {
   accessService: read('packages/modules/access-control/src/index.ts'),
+  // The runtime service consumes the canonical seed catalog from the RBAC
+  // package. Inspect that source as well; checking only the adapter produced
+  // false failures whenever the catalog was intentionally kept centralized.
+  rbacCatalog: read('packages/rbac/src/access-control-catalog.ts'),
   abac: read('packages/modules/access-control/src/abac.ts'),
   routes: read('apps/api/src/routes/access-control-routes.ts'),
   routeTests: read('apps/api/src/routes/access-control-audit-events.test.ts'),
@@ -73,9 +77,13 @@ function addCheck(area, item, pass, evidence, action = '-') {
 
 function hasPermissionForModule(moduleName) {
   const normalized = moduleName.replaceAll('-', '[-_]');
-  const modulePattern = new RegExp(`module:\\s*['"]${moduleName}['"]`);
-  const codePattern = new RegExp(`code:\\s*['"]${normalized}\\.(read|manage|write|admin|execute)['"]`);
-  return modulePattern.test(sources.accessService) || codePattern.test(sources.accessService);
+  // API keys are a capability of the integrations module, while their
+  // permission code deliberately keeps the api_keys namespace.
+  const moduleNames = moduleName === 'api-keys' ? ['api-keys', 'integrations'] : [moduleName];
+  const modulePattern = new RegExp(`module:\\s*['"](?:${moduleNames.join('|')})['"]`);
+  const codePattern = new RegExp(`(?:key|code):\\s*['"]${normalized}\\.(read|manage|write|admin|execute)['"]`);
+  const catalog = `${sources.accessService}\n${sources.rbacCatalog}`;
+  return modulePattern.test(catalog) || codePattern.test(catalog);
 }
 
 for (const moduleName of requiredPermissionModules) {
@@ -92,8 +100,8 @@ for (const role of ['admin', 'reception', 'nurse', 'veterinarian', 'finance', 'i
   addCheck(
     'Role catalog',
     `role ${role}`,
-    new RegExp(`code:\\s*['"]${role}['"]`).test(sources.accessService),
-    'packages/modules/access-control/src/index.ts',
+    new RegExp(`(?:code|name):\\s*['"]${role}['"]`).test(`${sources.accessService}\n${sources.rbacCatalog}`),
+    'packages/modules/access-control/src/index.ts; packages/rbac/src/access-control-catalog.ts',
     `Adicionar role ${role}.`,
   );
 }

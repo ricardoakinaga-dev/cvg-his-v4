@@ -469,17 +469,19 @@ export class AuthService {
     const principal = this.#buildPrincipal(user, rotatedSession);
     const tokens = this.#createTokens(rotatedSession);
 
-    this.#audit.write({
-      actorId: user.id,
-      accountId: user.accountId,
-      module: 'auth',
-      action: 'refresh',
-      entityType: 'session',
-      entityId: rotatedSession.sessionId,
-      correlationId,
-      payloadSummary: 'Session refreshed',
-      riskLevel: 'low'
-    });
+    await this.#runAsUser(user, correlationId, () =>
+      this.#audit.writeAndWait({
+        actorId: user.id,
+        accountId: user.accountId,
+        module: 'auth',
+        action: 'refresh',
+        entityType: 'session',
+        entityId: rotatedSession.sessionId,
+        correlationId,
+        payloadSummary: 'Session refreshed',
+        riskLevel: 'low'
+      })
+    );
 
     return {
       ...tokens,

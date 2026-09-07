@@ -1,7 +1,7 @@
 <template>
   <div class="scheduling-list-page">
     <AppPageHeader>
-      <template #title>📅 Agenda Operacional</template>
+      <template #title>Agenda Operacional</template>
       <template #subtitle>
         <span class="muted">Atendimento &gt; Agenda. Painel tático para conferir o dia e seguir para fila, triagem e atendimento.</span>
         <span v-if="lastRefresh" class="muted">Atualizado: {{ formatTime(lastRefresh.toISOString()) }}</span>
@@ -9,9 +9,9 @@
       </template>
       <template #actions>
         <DsButton variant="secondary" @click="loadAppointments" :loading="loading">🔄 Atualizar</DsButton>
-        <DsButton variant="secondary" tag="a" href="/appointments">Ver quadro da agenda</DsButton>
-        <DsButton variant="primary" tag="a" href="/appointments/new">+ Novo Agendamento</DsButton>
-        <DsButton variant="secondary" tag="a" href="/queue">🏥 Ver Fila</DsButton>
+        <DsButton variant="secondary" tag="a" to="/appointments">Ver quadro da agenda</DsButton>
+        <DsButton variant="primary" tag="a" to="/appointments/new">+ Novo Agendamento</DsButton>
+        <DsButton variant="secondary" tag="a" to="/queue">🏥 Ver Fila</DsButton>
       </template>
     </AppPageHeader>
 
@@ -40,7 +40,7 @@
       description="Crie o primeiro agendamento para iniciar a programação operacional do dia e abastecer a recepção."
     >
       <template #action>
-        <DsButton variant="primary" tag="a" href="/appointments/new">+ Novo Agendamento</DsButton>
+        <DsButton variant="primary" tag="a" to="/appointments/new">+ Novo Agendamento</DsButton>
       </template>
     </EmptyState>
 
@@ -74,7 +74,7 @@
               </DsBadge>
             </td>
             <td class="table__actions-col">
-              <DsButton variant="secondary" size="sm" tag="a" :href="`/appointments/${apt.id}`">
+              <DsButton variant="secondary" size="sm" tag="a" :to="`/appointments/${apt.id}`">
                 Ver
               </DsButton>
               <DsButton

@@ -47,11 +47,11 @@ function createRegistry(): FeatureFlagRegistry {
   return registry;
 }
 
-export function createWorkerFeatureFlags(params: {
+export async function createWorkerFeatureFlags(params: {
   readonly environment: string;
   readonly enabledKeys: readonly string[];
   readonly metrics?: FeatureFlagMetricsCollector;
-}): WorkerFeatureFlagsSnapshot {
+}): Promise<WorkerFeatureFlagsSnapshot> {
   const registry = createRegistry();
   const baseProvider = createEnvFeatureFlagProvider(params.enabledKeys);
   const metrics = params.metrics ?? noOpFeatureFlagMetricsCollector;
@@ -64,10 +64,11 @@ export function createWorkerFeatureFlags(params: {
     environment: params.environment
   };
   const decisions = Object.fromEntries(
-    registry.list().map((definition) => [
-      definition.key,
-      provider.evaluate(definition, context) as FlagDecision
-    ])
+    await Promise.all(
+      registry
+        .list()
+        .map(async (definition) => [definition.key, await provider.evaluate(definition, context)])
+    )
   ) as Readonly<Record<string, FlagDecision>>;
   const enabledKeys = normalizeFeatureFlagKeys(
     Object.values(decisions)

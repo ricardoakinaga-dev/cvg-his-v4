@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
+import { reactive } from 'vue';
 
 const mockOwner = {
   id: 'owner-1',
@@ -49,7 +50,17 @@ const mockGetByIdFn = vi.fn().mockResolvedValue(mockOwner);
 const mockCreateFn = vi.fn().mockResolvedValue({ id: 'owner-new' });
 const mockUpdateFn = vi.fn().mockResolvedValue(mockOwner);
 const mockRouterPush = vi.fn();
-const mockRouteParams = vi.fn().mockReturnValue({ params: {}, path: '/owners/new' });
+const mockRoute = reactive({ params: {} as Record<string, string>, path: '/owners/new' });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+  return { promise, resolve, reject };
+}
 
 vi.mock('@/services/owner', () => ({
   ownerService: {
@@ -65,8 +76,11 @@ vi.mock('@/services/owner', () => ({
   }
 }));
 
-vi.mock('vue-router', () => ({
-  useRoute: () => mockRouteParams(),
+vi.mock('vue-router', async (importOriginal) => ({
+  ...await importOriginal<typeof import('vue-router')>(),
+  onBeforeRouteLeave: vi.fn(),
+  onBeforeRouteUpdate: vi.fn(),
+  useRoute: () => mockRoute,
   useRouter: () => ({
     push: mockRouterPush
   })
@@ -79,7 +93,8 @@ describe('OwnerFormPage', () => {
     mockCreateFn.mockResolvedValue({ id: 'owner-new' });
     mockUpdateFn.mockResolvedValue(mockOwner);
     mockRouterPush.mockResolvedValue(undefined);
-    mockRouteParams.mockReturnValue({ params: {}, path: '/owners/new' });
+    mockRoute.params = {};
+    mockRoute.path = '/owners/new';
   });
 
   it('renders the new customer title', async () => {
@@ -87,7 +102,7 @@ describe('OwnerFormPage', () => {
     const wrapper = mount(OwnerFormPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Cadastrar Novo Cliente');
+    expect(wrapper.text()).toContain('Cadastrar Novo Tutor');
   });
 
   it('renders the new grouped form fields', async () => {
@@ -177,14 +192,15 @@ describe('OwnerFormPage', () => {
   });
 
   it('hydrates the expanded fields in edit mode', async () => {
-    mockRouteParams.mockReturnValue({ params: { id: 'owner-1' }, path: '/owners/owner-1/edit' });
+    mockRoute.params = { id: 'owner-1' };
+    mockRoute.path = '/owners/owner-1/edit';
 
     const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
     const wrapper = mount(OwnerFormPage);
 
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Editar Cliente');
+    expect(wrapper.text()).toContain('Editar Tutor');
     expect((wrapper.find('#birthDate').element as HTMLInputElement).value).toBe('1990-05-10');
     expect((wrapper.find('#group').element as HTMLInputElement).value).toBe('VIP');
     expect((wrapper.find('#mobile').element as HTMLInputElement).value).toBe('(11) 99999-1111');
@@ -194,4 +210,126 @@ describe('OwnerFormPage', () => {
     expect((wrapper.find('#legacyVetusId').element as HTMLInputElement).value).toBe('3835');
     expect((wrapper.find('#originalCreatedAt').element as HTMLInputElement).value).toBe('2024-05-03');
   });
+
+  it('reloads the current owner and ignores a late previous response after a route switch', async () => {
+    const first = deferred<typeof mockOwner>();
+    const secondOwner = { ...mockOwner, id: 'owner-2', fullName: 'Marina Costa', status: 'inactive' as const };
+    mockRoute.params = { id: 'owner-1' };
+    mockRoute.path = '/owners/owner-1/edit';
+    mockGetByIdFn.mockImplementation((id: string) => id === 'owner-1' ? first.promise : Promise.resolve(secondOwner));
+
+    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
+    const wrapper = mount(OwnerFormPage);
+    mockRoute.params = { id: 'owner-2' };
+    mockRoute.path = '/owners/owner-2/edit';
+    await flushPromises();
+
+    expect((wrapper.find('#fullName').element as HTMLInputElement).value).toBe('Marina Costa');
+    first.resolve(mockOwner);
+    await flushPromises();
+    expect((wrapper.find('#fullName').element as HTMLInputElement).value).toBe('Marina Costa');
+  });
+
+  it('rejects a successful owner response whose identity differs from the edit route', async () => {
+    mockRoute.params = { id: 'owner-expected' };
+    mockRoute.path = '/owners/owner-expected/edit';
+    mockGetByIdFn.mockResolvedValue({ ...mockOwner, id: 'owner-other' });
+
+    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
+    const wrapper = mount(OwnerFormPage);
+    await flushPromises();
+
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('não corresponde ao endereço solicitado');
+  });
+
+  it('does not report update success when the returned owner belongs to another route', async () => {
+    mockRoute.params = { id: 'owner-1' };
+    mockRoute.path = '/owners/owner-1/edit';
+    mockUpdateFn.mockResolvedValue({ ...mockOwner, id: 'owner-other' });
+
+    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
+    const wrapper = mount(OwnerFormPage);
+    await flushPromises();
+    await wrapper.find('#fullName').setValue('Joao Silva');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('não corresponde ao endereço solicitado');
+    expect(wrapper.text()).not.toContain('Cliente atualizado com sucesso');
+  });
+  it('does not duplicate a pending save or navigate away from edits made during it', async () => {
+    const request = deferred<{ id: string }>();
+    mockCreateFn.mockReturnValueOnce(request.promise);
+    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
+    const wrapper = mount(OwnerFormPage);
+    await flushPromises();
+    await wrapper.find('#fullName').setValue('Nome enviado');
+    await wrapper.find('#mobile').setValue('11999990000');
+    await wrapper.find('form').trigger('submit');
+    await wrapper.find('form').trigger('submit');
+    expect(mockCreateFn).toHaveBeenCalledTimes(1);
+    await wrapper.find('#fullName').setValue('Alteração posterior');
+    request.resolve({ id: 'created' });
+    await flushPromises();
+    expect(mockRouterPush).not.toHaveBeenCalled();
+    expect((wrapper.find('#fullName').element as HTMLInputElement).value).toBe('Alteração posterior');
+    mockUpdateFn.mockResolvedValueOnce({ ...mockOwner, id: 'created' });
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(mockCreateFn).toHaveBeenCalledTimes(1);
+    expect(mockUpdateFn).toHaveBeenCalledWith('created', expect.objectContaining({ fullName: 'Alteração posterior' }));
+    wrapper.unmount();
+  });
+
+  it('preserves entered values after a failed save', async () => {
+    mockCreateFn.mockRejectedValueOnce(new Error('Serviço indisponível'));
+    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
+    const wrapper = mount(OwnerFormPage);
+    await flushPromises();
+    await wrapper.find('#fullName').setValue('Rascunho');
+    await wrapper.find('#mobile').setValue('11999990000');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Serviço indisponível');
+    expect((wrapper.find('#fullName').element as HTMLInputElement).value).toBe('Rascunho');
+    expect(mockRouterPush).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('blocks mutation after failed hydration and allows a successful retry', async () => {
+    mockRoute.params = { id: 'owner-1' };
+    mockRoute.path = '/owners/owner-1/edit';
+    mockGetByIdFn.mockRejectedValueOnce(new Error('Falha de conexão'));
+    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
+    const wrapper = mount(OwnerFormPage);
+    await flushPromises();
+    expect(wrapper.find('fieldset').attributes('disabled')).toBeDefined();
+    await wrapper.find('form').trigger('submit');
+    expect(mockUpdateFn).not.toHaveBeenCalled();
+    await wrapper.findAll('button').find(b => b.text() === 'Tentar carregar novamente')!.trigger('click');
+    await flushPromises();
+    expect(wrapper.find('fieldset').attributes('disabled')).toBeUndefined();
+    expect((wrapper.find('#fullName').element as HTMLInputElement).value).toBe(mockOwner.fullName);
+    wrapper.unmount();
+  });
+
+  it('keeps edits entered while an existing tutor update is pending', async () => {
+    mockRoute.params = { id: 'owner-1' }; mockRoute.path = '/owners/owner-1/edit';
+    const request = deferred<typeof mockOwner>(); mockUpdateFn.mockReturnValueOnce(request.promise);
+    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
+    const wrapper = mount(OwnerFormPage); await flushPromises();
+    await wrapper.find('#fullName').setValue('Nome enviado para atualização');
+    await wrapper.find('form').trigger('submit');
+    await wrapper.find('#fullName').setValue('Edição posterior ao envio');
+    request.resolve({ ...mockOwner, fullName: 'Nome enviado para atualização' }); await flushPromises();
+    expect(mockRouterPush).not.toHaveBeenCalled();
+    expect((wrapper.find('#fullName').element as HTMLInputElement).value).toBe('Edição posterior ao envio');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(mockUpdateFn).toHaveBeenLastCalledWith('owner-1', expect.objectContaining({ fullName: 'Edição posterior ao envio' }));
+    expect(mockRouterPush).toHaveBeenCalledWith('/owners/owner-1');
+    wrapper.unmount();
+  });
+
 });

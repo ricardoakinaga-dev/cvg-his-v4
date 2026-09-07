@@ -212,6 +212,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Verify clean checkout
+        run: node scripts/assert-clean-checkout.mjs
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -271,6 +274,11 @@ jobs:
           INSTALL_UPGRADE_REPORT_DIR=artifacts/operations/install-upgrade pnpm ops:install-upgrade:drill
           REQUIRE_TEST_DB=1 pnpm vitest run tests/unit/infra/requirement-evidence-matrix.test.ts --config vitest.config.ts
           node --test tests/unit/infra/gauntlet-subcriteria-evidence.test.mjs
+          node --test scripts/database-source-resolution.test.mjs
+          node --test scripts/database-schema-source-resolution.test.mjs
+          node --test scripts/critical-source-manifest.test.mjs
+          node --test scripts/build-source-map-contract.test.mjs
+          node --test scripts/process-reexport-coverage.test.mjs scripts/source-metric-presence.test.mjs scripts/check-critical-coverage.test.mjs
           pnpm vetus:parity:test
           pnpm vitest run tests/integration/process/runtime-lifecycle.test.ts --config vitest.integration.config.ts
           REQUIRE_TEST_DB=1 pnpm vitest run tests/integration/database/migration-integrity-runtime.test.ts --config vitest.integration.config.ts
@@ -576,6 +584,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Verify clean checkout
+        run: node scripts/assert-clean-checkout.mjs
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -635,6 +646,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Verify clean checkout
+        run: node scripts/assert-clean-checkout.mjs
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -852,6 +866,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Verify clean checkout
+        run: node scripts/assert-clean-checkout.mjs
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -994,7 +1011,10 @@ jobs:
           E2E_AUDIT_COMMAND: npx playwright test --config playwright-spa.config.ts
         run: |
           mkdir -p tmp
+          node scripts/prepare-usability-evidence-run.mjs
           npx playwright test --config playwright-spa.config.ts --list | tee tmp/playwright-discovery.txt
+          node scripts/generate-usability-test-inventory.mjs
+          export E2E_INVENTORY_DIGEST="$(node -e 'process.stdout.write(require("./tmp/usability-test-inventory.json").digest)')"
           npx playwright test --config playwright-spa.config.ts
 
       - name: Validate complete usability evidence
@@ -1029,6 +1049,8 @@ jobs:
             test-results/
             tmp/master-usability-audit.json
             tmp/playwright-discovery.txt
+            tmp/playwright-discovery.json
+            tmp/usability-test-inventory.json
             artifacts/playwright/${{ github.sha }}/
           if-no-files-found: warn
           retention-days: 30
@@ -1067,6 +1089,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Verify clean checkout
+        run: node scripts/assert-clean-checkout.mjs
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

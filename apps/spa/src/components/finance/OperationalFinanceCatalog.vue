@@ -8,13 +8,8 @@
       :primary-action="headerPrimaryAction"
     />
 
-    <DsAlert v-if="error" variant="danger">{{ error }}</DsAlert>
+    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">{{ error }}</DsAlert>
     <DsAlert v-if="successMessage" variant="success">{{ successMessage }}</DsAlert>
-    <DsAlert variant="info">
-      Alterações são persistidas por tenant, exigem a permissão <code>billing.manage</code> e geram
-      evento de auditoria. Segredos e credenciais de provedor não são aceitos neste cadastro.
-    </DsAlert>
-
     <form
       class="catalog-filters"
       :aria-label="`Filtros de ${metadata.title}`"
@@ -33,26 +28,24 @@
         <option value="inactive">Inativo</option>
       </DsInput>
       <div class="catalog-filter-actions">
-        <DsButton type="submit" variant="secondary" :loading="loading">Aplicar filtros</DsButton>
-        <DsButton type="button" variant="ghost" :disabled="loading" @click="clearFilters"
+        <DsButton type="submit" variant="secondary" :loading="loading" :disabled="submitting">Aplicar filtros</DsButton>
+        <DsButton type="button" variant="ghost" :disabled="loading || submitting" @click="clearFilters"
           >Limpar</DsButton
         >
       </div>
     </form>
 
-    <section class="catalog-summary" :aria-label="`Resumo de ${metadata.title}`">
-      <DsStatCard :label="`${totalItems} registro(s)`" value="Total" />
-      <DsStatCard :label="`${activeCount} nesta página`" value="Ativos" />
-      <DsStatCard :label="`${inactiveCount} nesta página`" value="Inativos" />
-      <DsStatCard :label="`Página ${page} de ${totalPages}`" value="Navegação" />
+    <section v-if="failed && !loading" class="catalog-recovery" role="status">
+      <h2>Consulta indisponível</h2>
+      <p>Não foi possível consultar os registros. Tente novamente para carregar os dados.</p>
+      <DsButton variant="secondary" :disabled="submitting" @click="retryLoad">Tentar novamente</DsButton>
     </section>
-
-    <DataTable
+    <DataTable v-else
       :columns="columns"
       :rows="rows"
       :loading="loading"
       :empty-icon="metadata.emptyIcon"
-      :empty-title="`Nenhum ${metadata.singular.toLowerCase()} encontrado`"
+      empty-title="Nenhum registro nesta consulta"
       empty-description="Ajuste os filtros ou crie o primeiro registro."
       :caption="metadata.title"
       row-key-field="id"
@@ -69,12 +62,15 @@
         />
       </template>
       <template #cell-details="{ row }">
+        <details class="configuration-details">
+          <summary>Ver configuração</summary>
         <dl class="configuration-summary">
           <div v-for="detail in configurationDetails(catalogRow(row))" :key="detail.label">
             <dt>{{ detail.label }}</dt>
             <dd>{{ detail.value }}</dd>
           </div>
         </dl>
+        </details>
       </template>
       <template #cell-version="{ row }">
         <span>v{{ catalogRow(row).version }}</span>
@@ -82,36 +78,46 @@
       </template>
       <template #cell-actions="{ row }">
         <div class="row-actions">
-          <DsButton size="sm" variant="secondary" @click="openEdit(catalogRow(row))"
+          <DsButton size="sm" variant="secondary" :disabled="submitting" @click="openEdit(catalogRow(row))"
             >Editar</DsButton
           >
-          <DsButton size="sm" variant="danger" @click="openDelete(catalogRow(row))"
+          <DsButton size="sm" variant="danger" :disabled="submitting" @click="openDelete(catalogRow(row))"
             >Excluir</DsButton
           >
         </div>
       </template>
       <template #emptyAction>
-        <DsButton variant="primary" @click="openCreate">Criar {{ metadata.singular }}</DsButton>
+        <DsButton variant="primary" :disabled="submitting" @click="openCreate">Criar {{ metadata.singular }}</DsButton>
       </template>
     </DataTable>
 
-    <nav v-if="totalPages > 1" class="catalog-pagination" aria-label="Paginação do catálogo">
-      <DsButton variant="secondary" :disabled="page <= 1 || loading" @click="load(page - 1)"
+    <nav v-if="ready && totalPages > 1" class="catalog-pagination" aria-label="Paginação do catálogo">
+      <DsButton variant="secondary" :disabled="page <= 1 || loading || submitting" @click="load(page - 1, true)"
         >Anterior</DsButton
       >
       <span aria-live="polite">Página {{ page }} de {{ totalPages }}</span>
       <DsButton
         variant="secondary"
-        :disabled="page >= totalPages || loading"
-        @click="load(page + 1)"
+        :disabled="page >= totalPages || loading || submitting"
+        @click="load(page + 1, true)"
         >Próxima</DsButton
       >
     </nav>
 
+    <details class="catalog-summary">
+      <summary>Resumo da consulta</summary>
+      <dl>
+        <div><dt>Registros encontrados</dt><dd>{{ ready ? totalItems : '—' }}</dd></div>
+        <div><dt>Ativos nesta página</dt><dd>{{ ready ? activeCount : '—' }}</dd></div>
+        <div><dt>Inativos nesta página</dt><dd>{{ ready ? inactiveCount : '—' }}</dd></div>
+        <div><dt>Página</dt><dd>{{ ready ? `${page} de ${totalPages}` : '—' }}</dd></div>
+      </dl>
+    </details>
+
     <DsModal
       :open="formOpen"
       :teleport="false"
-      :title="editingItem ? `Editar ${metadata.singular}` : `Novo ${metadata.singular}`"
+      :title="editingItem ? `Editar ${metadata.singular}` : createLabel"
       size="lg"
       @close="closeForm"
     >
@@ -236,7 +242,6 @@ import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
-import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 
 interface FieldOption {
   value: string;
@@ -384,7 +389,11 @@ const columns: readonly DataTableColumn[] = [
 ];
 const metadata = computed(() => CATALOG_METADATA[props.type]);
 const items = ref<FinanceOperationalCatalogItem[]>([]);
-const loading = ref(false);
+const loading = ref(true);
+const failed = ref(false);
+const ready = computed(() => !loading.value && !failed.value);
+let latestRequest = 0;
+let contextVersion = 0;
 const submitting = ref(false);
 const error = ref('');
 const successMessage = ref('');
@@ -401,6 +410,11 @@ const filters = reactive({
   search: '',
   status: '' as '' | FinanceOperationalCatalogStatus
 });
+const appliedFilters = reactive({ ...filters });
+const retryQuery = reactive({ ...filters });
+const retryPage = ref(1);
+const createLabel = computed(() => `${props.type === 'banks' ? 'Novo' : 'Nova'} ${metadata.value.singular}`);
+
 const form = reactive({
   code: '',
   name: '',
@@ -417,12 +431,22 @@ const canSubmit = computed(() => {
   if (submitting.value || !form.code.trim() || !form.name.trim()) return false;
   return metadata.value.fields.every((field) => {
     const value = form.configuration[field.key];
-    if (field.kind === 'number') return Number.isFinite(Number(value));
+    if (field.kind === 'number') {
+      if (String(value ?? '').trim() === '') return false;
+      const number = Number(value);
+      if (!Number.isFinite(number) || (field.min !== undefined && number < field.min) || (field.max !== undefined && number > field.max)) return false;
+      if (field.step !== undefined) {
+        const steps = (number - (field.min ?? 0)) / field.step;
+        if (Math.abs(steps - Math.round(steps)) > 1e-8) return false;
+      }
+      return true;
+    }
     return String(value ?? '').trim().length > 0;
   });
 });
 const headerPrimaryAction = computed(() => ({
-  label: `Novo ${metadata.value.singular}`,
+  label: createLabel.value,
+  disabled: submitting.value,
   onClick: () => openCreate()
 }));
 const headerSecondaryActions = computed(() => [
@@ -431,7 +455,8 @@ const headerSecondaryActions = computed(() => [
     label: 'Atualizar',
     variant: 'secondary' as const,
     loading: loading.value,
-    onClick: () => load(page.value)
+    disabled: loading.value || submitting.value,
+    onClick: () => load(page.value, true)
   }
 ]);
 
@@ -439,34 +464,53 @@ onMounted(() => void load(1));
 watch(
   () => props.type,
   () => {
+    contextVersion += 1;
+    formOpen.value = false;
+    deleteOpen.value = false;
+    editingItem.value = null;
+    deletingItem.value = null;
+    successMessage.value = '';
+    page.value = 1;
+    Object.assign(appliedFilters, { search: '', status: '' });
     clearFilters();
     resetForm();
   }
 );
 
-async function load(targetPage: number) {
+async function load(targetPage: number, useAppliedFilters = false, queryOverride?: typeof filters) {
+  const request = ++latestRequest;
+  const type = props.type;
+  const query = { ...(queryOverride ?? (useAppliedFilters ? appliedFilters : filters)) };
   loading.value = true;
   error.value = '';
   try {
-    const result = await financeOperationalCatalogService.list(props.type, {
-      ...(filters.search.trim() ? { search: filters.search.trim() } : {}),
-      ...(filters.status ? { status: filters.status } : {}),
+    const result = await financeOperationalCatalogService.list(type, {
+      ...(query.search.trim() ? { search: query.search.trim() } : {}),
+      ...(query.status ? { status: query.status } : {}),
       page: Math.max(1, targetPage),
       pageSize: 25
     });
+    if (request !== latestRequest || type !== props.type) return;
     items.value = result.items;
     page.value = result.page;
     totalPages.value = result.totalPages;
     totalItems.value = result.totalItems;
-  } catch (loadError) {
+    Object.assign(appliedFilters, query);
+    failed.value = false;
+  } catch {
+    if (request !== latestRequest || type !== props.type) return;
     items.value = [];
-    error.value = errorMessage(
-      loadError,
-      `Não foi possível carregar ${metadata.value.title.toLowerCase()}.`
-    );
+    failed.value = true;
+    Object.assign(retryQuery, query);
+    retryPage.value = Math.max(1, targetPage);
+    error.value = `Não foi possível carregar ${metadata.value.title.toLowerCase()}.`;
   } finally {
-    loading.value = false;
+    if (request === latestRequest && type === props.type) loading.value = false;
   }
+}
+
+function retryLoad() {
+  void load(retryPage.value, false, { ...retryQuery });
 }
 
 function clearFilters() {
@@ -489,6 +533,7 @@ function resetForm() {
 }
 
 function openCreate() {
+  if (submitting.value) return;
   editingItem.value = null;
   formError.value = '';
   resetForm();
@@ -496,6 +541,7 @@ function openCreate() {
 }
 
 function openEdit(item: FinanceOperationalCatalogItem) {
+  if (!ready.value || submitting.value) return;
   editingItem.value = item;
   formError.value = '';
   form.code = item.code;
@@ -538,6 +584,7 @@ function serializeConfiguration(): Record<string, unknown> {
 
 async function submitForm() {
   if (!canSubmit.value) return;
+  const version = contextVersion;
   submitting.value = true;
   formError.value = '';
   const input = {
@@ -554,15 +601,18 @@ async function submitForm() {
         editingItem.value.version,
         input as never
       );
-      successMessage.value = `${metadata.value.singular} atualizado com auditoria.`;
+      if (version !== contextVersion) return;
+      successMessage.value = 'Alterações salvas.';
     } else {
       await financeOperationalCatalogService.create(props.type, input as never);
-      successMessage.value = `${metadata.value.singular} criado com auditoria.`;
+      if (version !== contextVersion) return;
+      successMessage.value = 'Registro criado.';
     }
     formOpen.value = false;
     editingItem.value = null;
-    await load(page.value);
+    await load(page.value, true);
   } catch (submitError) {
+    if (version !== contextVersion) return;
     formError.value = errorMessage(submitError, 'Não foi possível salvar o registro.');
   } finally {
     submitting.value = false;
@@ -570,6 +620,7 @@ async function submitForm() {
 }
 
 function openDelete(item: FinanceOperationalCatalogItem) {
+  if (!ready.value || submitting.value) return;
   deletingItem.value = item;
   deleteError.value = '';
   deleteOpen.value = true;
@@ -583,16 +634,19 @@ function closeDelete() {
 }
 
 async function removeItem() {
-  if (!deletingItem.value) return;
+  if (!deletingItem.value || submitting.value) return;
+  const version = contextVersion;
   submitting.value = true;
   deleteError.value = '';
   try {
     await financeOperationalCatalogService.remove(props.type, deletingItem.value.id);
-    successMessage.value = `${metadata.value.singular} excluído com auditoria.`;
+    if (version !== contextVersion) return;
+    successMessage.value = 'Registro excluído.';
     deleteOpen.value = false;
     deletingItem.value = null;
-    await load(page.value);
+    await load(page.value, true);
   } catch (removeError) {
+    if (version !== contextVersion) return;
     deleteError.value = errorMessage(removeError, 'Não foi possível excluir o registro.');
   } finally {
     submitting.value = false;
@@ -656,11 +710,6 @@ resetForm();
   gap: 8px;
 }
 
-.catalog-summary {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
 
 .configuration-summary {
   display: grid;
@@ -704,7 +753,6 @@ code {
 }
 
 @media (max-width: 900px) {
-  .catalog-summary,
   .catalog-form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -720,7 +768,6 @@ code {
 
 @media (max-width: 640px) {
   .catalog-filters,
-  .catalog-summary,
   .catalog-form {
     grid-template-columns: 1fr;
   }
@@ -728,5 +775,30 @@ code {
   .catalog-filter-actions {
     grid-column: auto;
   }
+}
+
+.catalog-summary { display: block; padding: 0 16px 16px; border: 1px solid var(--color-border); border-radius: 12px; }
+.catalog-summary summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
+.catalog-summary summary::before { content: '▸'; margin-right: 8px; }
+.catalog-summary[open] summary::before { content: '▾'; }
+.catalog-summary dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
+.catalog-summary dt { color: var(--color-text-secondary); font-size: 13px; }
+.catalog-summary dd { margin: 4px 0 0; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.catalog-recovery { padding: 24px; border: 1px solid var(--color-border); border-radius: 12px; }
+.catalog-recovery h2 { font-size: 18px; margin: 0 0 8px; }
+.catalog-recovery p { color: var(--color-text-secondary); }
+.operational-catalog-page :deep(input), .operational-catalog-page :deep(select), .operational-catalog-page :deep(button) { min-height: 44px; }
+.operational-catalog-page :deep(th:first-child), .operational-catalog-page :deep(td:first-child) { min-width: 240px; }
+.operational-catalog-page :deep(.ds-modal__close) { min-width: 44px; }
+.configuration-details summary { min-height: 44px; cursor: pointer; display: flex; align-items: center; white-space: nowrap; }
+.configuration-details summary::before { content: '▸'; margin-right: 8px; }
+.configuration-details[open] summary::before { content: '▾'; }
+.operational-catalog-page :deep(td) { vertical-align: top; }
+@media (max-width: 640px) {
+  .catalog-filters { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+  .catalog-filter-actions { grid-column: 1 / -1; }
+  .operational-catalog-page :deep(.app-page-header__action-group) { grid-template-columns: auto minmax(0, 1fr); }
+  .operational-catalog-page :deep(.app-page-header__action-group > .app-page-header__primary) { grid-column: auto; }
+  .operational-catalog-page :deep(.app-page-header__action-group .ds-btn__label) { white-space: normal; }
 }
 </style>

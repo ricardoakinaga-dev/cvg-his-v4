@@ -13,4 +13,6 @@ if (
   );
 }
 
+const { installProcessCoverageControl } = await import('../../../tests/helpers/process-coverage-control.mjs');
+installProcessCoverageControl();
 await import('../src/index.js');

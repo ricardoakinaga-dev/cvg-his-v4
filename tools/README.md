@@ -1,13 +1,10 @@
-# tools
+# Ferramentas do repositório
 
-Ferramentas de sustentacao do monorepo V2.
+`migration-consistency-report.mjs` valida a estrutura do manifesto de migração
+em `docs/phase-9-migration-manifest.json`. Executar da raiz:
 
-## Estruturas previstas
+```sh
+node tools/migration-consistency-report.mjs
+```
 
-- `generators`: scaffolds para apps e modulos
-- `lint-rules`: regras customizadas para manter fronteiras
-- `codemods`: migracoes mecanicas seguras
-
-## Regra geral
-
-Ferramentas existem para reforcar a arquitetura, nao para contorna-la.
+As antigas pastas de scaffolds sem implementação foram arquivadas em `legado/tools/`.

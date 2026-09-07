@@ -86,7 +86,7 @@ test('internacao e cirurgia persistidas aparecem nos fluxos operacionais', async
   await expect(page.getByText('Diária UTI', { exact: true })).toBeVisible();
 
   await page.goto(`${SPA_URL}/surgery`);
-  await page.getByLabel('Atendimento').selectOption(stay.encounterId);
+  await page.getByLabel('Atendimento', { exact: true }).selectOption(stay.encounterId);
   await expect(page.getByText('Ovariohisterectomia demonstrativa')).toBeVisible();
   await expect(page.getByText('Solicitada')).toBeVisible();
 

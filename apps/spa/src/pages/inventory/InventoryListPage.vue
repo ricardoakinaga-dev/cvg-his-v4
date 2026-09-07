@@ -1,160 +1,30 @@
 <template>
   <div class="inventory-list-page">
-    <AppPageHeader
-      title="Estoque"
-      :breadcrumbs="['Estoque', 'Controles', 'Estoque']"
-      subtitle="Controle de estoque, movimentações e níveis de reposição"
-      :secondary-actions="headerSecondaryActions"
-      :primary-action="headerPrimaryAction"
-    />
-
-    <!-- Hub: KPI StatCards -->
-    <section class="hub-kpis">
-      <DsStatCard :label="items.length + ' item(s)'" value="" icon="📦" />
-      <DsStatCard :label="lowStockCount + ' abaixo do ponto'" value="" icon="⚠️" :error="lowStockCount > 0 ? 'Estoque precisa de atenção' : undefined" />
-      <DsStatCard :label="totalQuantity + ' unidade(s)'" value="" icon="🔢" />
-      <DsStatCard :label="totalValueFormatted" value="" icon="💵" />
-    </section>
-
-    <!-- Hub: Operational Alerts -->
-    <section v-if="inventoryAlerts.length > 0" class="hub-alerts">
-      <DsAlert
-        v-for="(alert, i) in inventoryAlerts"
-        :key="i"
-        :variant="alert.variant"
-        dismissible
-      >
-        <strong>{{ alert.title }}</strong> — {{ alert.message }}
-      </DsAlert>
-    </section>
-
-    <!-- Hub: Quick Actions -->
-    <section class="hub-actions">
-      <DsCard title="Controle de Estoque" variant="compact">
-        <div class="quick-actions">
-          <DsButton variant="primary" tag="a" to="/inventory/new" icon="➕">
-            Novo Item
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/inventory/movements" icon="📥">
-            Movimentações
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/inventory/validity" icon="📅">
-            Validade / Lotes
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/quotes" icon="🧾">
-            Orçamentos
-          </DsButton>
-          <DsButton variant="secondary" tag="a" to="/fiscal" icon="📋">
-            Fiscal
-          </DsButton>
-          <DsButton variant="ghost" :loading="loading" @click="load" icon="🔄">
-            Atualizar
-          </DsButton>
-        </div>
-      </DsCard>
-    </section>
-
-    <section class="hub-sections">
-      <DsCard title="Cadastros beta" variant="compact">
-        <div class="hub-links">
-          <DsButton variant="secondary" tag="a" to="/products">Produtos</DsButton>
-          <DsButton variant="secondary" tag="a" to="/warehouses">Estoques</DsButton>
-          <DsButton variant="secondary" tag="a" to="/suppliers">Fornecedores e despesas</DsButton>
-          <DsButton variant="secondary" tag="a" to="/manufacturers">Fabricantes</DsButton>
-          <DsButton variant="secondary" tag="a" to="/product-groups">Grupos de produto</DsButton>
-        </div>
-      </DsCard>
-      <DsCard title="Operação legacy mapeada" variant="compact">
-        <div class="hub-links">
-          <DsButton variant="secondary" tag="a" to="/inventory/movements">Transação no estoque</DsButton>
-          <DsButton variant="secondary" tag="a" to="/inventory/movements">Transferência entre estoques</DsButton>
-          <DsButton variant="secondary" tag="a" to="/inventory/nf">Entrada de nota fiscal</DsButton>
-          <DsButton variant="secondary" tag="a" to="/quotes">Compras e orçamentos</DsButton>
-        </div>
-      </DsCard>
-      <DsCard title="Consulta balcão" variant="compact">
-        <div class="hub-links">
-          <DsButton variant="secondary" tag="a" to="/inventory/price-consultation">Consulta de preços</DsButton>
-          <DsButton variant="secondary" tag="a" to="/counter-sales">Consumir em comanda</DsButton>
-          <DsButton variant="secondary" tag="a" to="/billing">Reflexo financeiro</DsButton>
-        </div>
-      </DsCard>
-    </section>
-
-    <section class="inventory-domain-map">
-      <DsCard title="Cadeia operacional do estoque">
-        <div class="domain-flow">
-          <article v-for="step in domainFlow" :key="step.title" class="domain-flow__card">
-            <span>{{ step.eyebrow }}</span>
-            <strong>{{ step.title }}</strong>
-            <p>{{ step.description }}</p>
-          </article>
-        </div>
-      </DsCard>
-    </section>
-
-    <section class="inventory-operations-grid">
-      <DsCard title="Consulta de Preços e Saldo">
-        <div v-if="items.length === 0" class="inventory-empty-inline">
-          Nenhum item carregado para consulta operacional.
-        </div>
-        <div v-else class="price-lookup-list">
-          <article v-for="item in priceLookupItems" :key="item.id" class="price-lookup-card">
-            <div>
-              <strong>{{ item.name }}</strong>
-              <span>SKU/Cód. barras: {{ item.sku }}</span>
-            </div>
-            <div class="price-lookup-card__metrics">
-              <span>Saldo em Estoque: {{ item.onHandQuantity }} {{ item.unit }}</span>
-              <span>Custo Unitário: {{ formatCurrency(item.unitCostAmount) }}</span>
-              <span :class="{ 'text-danger': isLowStock(item) }">
-                {{ isLowStock(item) ? 'Abaixo do ponto de reposição' : 'Saldo operacional' }}
-              </span>
-            </div>
-          </article>
-        </div>
-      </DsCard>
-
-      <DsCard title="Estoques físicos e setoriais">
-        <div class="stock-location-grid">
-          <article v-for="location in stockLocations" :key="location.name" class="stock-location-card">
-            <strong>{{ location.name }}</strong>
-            <span>{{ location.role }}</span>
-          </article>
-        </div>
-      </DsCard>
-    </section>
-
-    <section class="legacy-operation-grid">
-      <article v-for="operation in legacyOperations" :key="operation.title" class="legacy-operation-card">
-        <span>{{ operation.route }}</span>
-        <strong>{{ operation.title }}</strong>
-        <p>{{ operation.description }}</p>
-        <small>{{ operation.fields }}</small>
-      </article>
-    </section>
-
-    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
-      {{ error }}
-    </DsAlert>
-
-    <div class="search-bar">
-      <DsInput
-        v-model="search"
-        type="search"
-        placeholder="Buscar por SKU, código de barras, nome ou unidade..."
-        @keyup.enter="load"
-      />
-      <DsButton variant="secondary" @click="load">Buscar</DsButton>
+    <AppPageHeader title="Estoque" :breadcrumbs="['Estoque', 'Controles', 'Estoque']" subtitle="Consulte itens, saldos e pontos de reposição.">
+      <template #actions>
+        <DsButton variant="secondary" :loading="loading" :disabled="loading" @click="load">Atualizar</DsButton>
+        <DsButton variant="primary" tag="a" to="/inventory/new" icon="plus">Novo item</DsButton>
+      </template>
+    </AppPageHeader>
+    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">{{ error }}</DsAlert>
+    <form class="search-bar" @submit.prevent="load">
+      <DsInput v-model="search" label="Buscar item" type="search" placeholder="Buscar por SKU, código de barras, nome ou unidade..." />
+      <DsButton type="submit" variant="primary" :disabled="loading">Buscar</DsButton>
+    </form>
+    <div v-if="available && !loading" class="query-status" role="status">
+      <span>{{ items.length }} {{ items.length === 1 ? 'item encontrado' : 'itens encontrados' }}{{ appliedSearch ? ` para “${appliedSearch}”` : '' }}</span>
+      <DsButton v-if="appliedSearch" variant="ghost" @click="clearSearch">Limpar busca</DsButton>
     </div>
-
-    <DataTable
+    <EmptyState v-if="failed && !loading" icon="package" title="Estoque indisponível" description="Não foi possível carregar os itens. Tente novamente para consultar o estoque." size="sm">
+      <template #action><DsButton variant="secondary" @click="load">Tentar novamente</DsButton></template>
+    </EmptyState>
+    <DataTable v-else
       :columns="columns"
       :rows="items"
       :loading="loading"
       empty-icon="📦"
       empty-title="Nenhum item encontrado"
-      empty-description="Cadastre o primeiro item de estoque para começar."
+      :empty-description="appliedSearch ? 'Tente outro nome ou código para localizar o item.' : 'Cadastre o primeiro item de estoque para começar.'"
       variant="hoverable"
     >
       <template #cell-name="{ row }">
@@ -183,281 +53,105 @@
         >
       </template>
     </DataTable>
+    <details class="inventory-summary">
+      <summary>Resumo da consulta</summary>
+      <dl class="summary-grid">
+        <div><dt>Itens</dt><dd>{{ available && !loading ? items.length : '—' }}</dd></div>
+        <div><dt>No ponto de reposição ou abaixo</dt><dd>{{ available && !loading ? lowStockCount : '—' }}</dd></div>
+        <div><dt>Custo dos itens em estoque</dt><dd>{{ available && !loading ? totalValueFormatted : '—' }}</dd></div>
+      </dl>
+      <p>Valores referentes aos itens desta consulta.</p>
+    </details>
+    <section class="inventory-navigation" aria-labelledby="inventory-navigation-title">
+      <h2 id="inventory-navigation-title">Operações de estoque</h2>
+      <nav class="operation-links" aria-label="Operações de estoque">
+        <DsButton v-for="link in operationalLinks" :key="link.to" tag="a" :to="link.to" variant="secondary">{{ link.label }}</DsButton>
+      </nav>
+      <details class="related-navigation">
+        <summary>Cadastros e áreas relacionadas</summary>
+        <nav class="operation-links" aria-label="Cadastros e áreas relacionadas">
+          <DsButton v-for="link in relatedLinks" :key="link.to" tag="a" :to="link.to" variant="ghost">{{ link.label }}</DsButton>
+        </nav>
+      </details>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { inventoryService } from '@/services/inventory';
 import type { InventoryItemSummary } from '@/types/inventory';
-import { useListData } from '@/composables/useListData';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
-import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
-import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DataTable from '@/components/DataTable.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 
-function isLowStock(item: InventoryItemSummary): boolean {
-  return item.onHandQuantity <= item.reorderLevel;
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-}
-
+const operationalLinks = [
+  { label: 'Movimentações', to: '/inventory/movements' },
+  { label: 'Transferências', to: '/inventory/transfers' },
+  { label: 'Notas fiscais', to: '/inventory/nf' },
+  { label: 'Compras', to: '/inventory/purchases' },
+  { label: 'Validade e lotes', to: '/inventory/validity' },
+  { label: 'Consulta de preços', to: '/inventory/price-consultation' }
+];
+const relatedLinks = [
+  { label: 'Produtos', to: '/products' }, { label: 'Estoques', to: '/warehouses' },
+  { label: 'Fornecedores e despesas', to: '/suppliers' }, { label: 'Fabricantes', to: '/manufacturers' },
+  { label: 'Grupos de produto', to: '/product-groups' }, { label: 'Orçamentos', to: '/quotes' },
+  { label: 'Fiscal', to: '/fiscal' }, { label: 'Comandas', to: '/counter-sales' }, { label: 'Financeiro', to: '/billing' }
+];
 const columns: DataTableColumn[] = [
-  { key: 'name', label: 'Item' },
-  { key: 'onHandQuantity', label: 'Em Estoque' },
-  { key: 'reorderLevel', label: 'Ponto de Reposição' },
-  { key: 'unitCostAmount', label: 'Custo Unitário' },
+  { key: 'name', label: 'Item' }, { key: 'onHandQuantity', label: 'Em estoque' },
+  { key: 'reorderLevel', label: 'Ponto de reposição' }, { key: 'unitCostAmount', label: 'Custo unitário' },
   { key: 'actions', label: 'Ações', class: 'table__actions-col' }
 ];
-
-const domainFlow = [
-  {
-    eyebrow: 'Beta',
-    title: 'Cadastro mestre',
-    description: 'Produtos, estoques, fornecedores, fabricantes e grupos estruturam o catálogo.'
-  },
-  {
-    eyebrow: 'Legacy',
-    title: 'Movimentação real',
-    description: 'Nota fiscal, compra, estocagem manual e transferência alteram saldo e custo.'
-  },
-  {
-    eyebrow: 'Operação',
-    title: 'Preço e disponibilidade',
-    description: 'Consulta de preço/saldo apoia balcão, comanda, venda e atendimento.'
-  },
-  {
-    eyebrow: 'Financeiro',
-    title: 'Reflexo monetário',
-    description: 'Compra gera custo/contas a pagar; venda e comanda geram receita.'
-  }
-];
-
-const stockLocations = [
-  { name: 'Geladeira Vacinas', role: 'Cadeia fria e vacinas' },
-  { name: 'Farmácia', role: 'Medicamentos e controlados' },
-  { name: 'Centro Cirúrgico', role: 'Insumos cirúrgicos' },
-  { name: 'Laboratório', role: 'Materiais diagnósticos' },
-  { name: 'Recepção/Escritório', role: 'Balcão e consumo administrativo' }
-];
-
-const legacyOperations = [
-  {
-    title: 'Entrada de Nota Fiscal',
-    route: 'EntradaNotaFiscal.htm',
-    description: 'Registra fornecedor, nota, data de entrada, quantidade e valor unitário.',
-    fields: 'Nota Fiscal · Data da Entrada · Fornecedor · Produto · Unidade'
-  },
-  {
-    title: 'Transação no Estoque',
-    route: 'TransacaoNoEstoque.htm',
-    description: 'Estocagem manual com estoque alvo, saldo atual, quantidade e observação.',
-    fields: 'Estoque · Código de Barras · Produto · Quantidade a Estocar'
-  },
-  {
-    title: 'Transferência entre Estoques',
-    route: 'TransferenciaEntreEstoques.htm',
-    description: 'Move saldo entre locais físicos com leitura de origem e destino.',
-    fields: 'Estoque Origem · Estoque Destino · Saldo Origem · Saldo Destino'
-  },
-  {
-    title: 'Compras',
-    route: 'Compras.htm',
-    description: 'Planeja e registra aquisição antes da entrada fiscal efetiva.',
-    fields: 'Fornecedor · Data · Compras fechadas · Abrir'
-  }
-];
-
-const lowStockCount = computed(() => items.value.filter((item) => isLowStock(item)).length);
-const totalQuantity = computed(() => items.value.reduce((sum, item) => sum + item.onHandQuantity, 0));
-const totalValueFormatted = computed(() =>
-  formatCurrency(items.value.reduce((sum, item) => sum + item.onHandQuantity * item.unitCostAmount, 0))
-);
-const priceLookupItems = computed(() => items.value.slice(0, 5));
-interface InventoryAlert {
-  variant: 'warning' | 'danger' | 'info';
-  title: string;
-  message: string;
+const items = ref<InventoryItemSummary[]>([]);
+const loading = ref(true);
+const failed = ref(false);
+const available = ref(false);
+const error = ref('');
+const search = ref('');
+const appliedSearch = ref('');
+let requestVersion = 0;
+function isLowStock(item: InventoryItemSummary) { return item.onHandQuantity <= item.reorderLevel; }
+function formatCurrency(value: number) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value); }
+const lowStockCount = computed(() => items.value.filter(isLowStock).length);
+const totalValueFormatted = computed(() => formatCurrency(items.value.reduce((sum, item) => sum + item.onHandQuantity * item.unitCostAmount, 0)));
+async function load() {
+  const version = ++requestVersion;
+  const query = search.value.trim();
+  loading.value = true; failed.value = false; available.value = false; error.value = '';
+  try {
+    const result = await inventoryService.list(query || undefined);
+    if (version !== requestVersion) return;
+    items.value = result; appliedSearch.value = query; available.value = true;
+  } catch (cause) {
+    if (version !== requestVersion) return;
+    failed.value = true;
+    error.value = cause instanceof Error ? cause.message : 'Erro ao carregar o estoque.';
+  } finally { if (version === requestVersion) loading.value = false; }
 }
-
-const inventoryAlerts = computed<InventoryAlert[]>(() => {
-  const alerts: InventoryAlert[] = [];
-  if (lowStockCount.value > 0) {
-    alerts.push({ variant: 'warning', title: 'Estoque baixo', message: `${lowStockCount.value} item(s) estão abaixo do ponto de reposição.` });
-  }
-  if (lowStockCount.value === 0 && items.value.length > 0) {
-    alerts.push({ variant: 'info', title: 'Estoque okay', message: 'Todos os itens estão acima do ponto de reposição.' });
-  }
-  return alerts;
-});
-
-const headerSecondaryActions = computed(() => [
-  {
-    key: 'refresh-inventory',
-    label: 'Atualizar',
-    variant: 'secondary' as const,
-    loading: loading.value,
-    onClick: () => load()
-  }
-]);
-
-const headerPrimaryAction = computed(() => ({
-  key: 'new-item',
-  label: '+ Novo Item',
-  variant: 'primary' as const,
-  to: '/inventory/new'
-}));
-
-const { items, loading, error, search, load } = useListData<InventoryItemSummary>({
-  fetchFn: (q) => inventoryService.list(q),
-  entityLabel: 'itens de estoque',
-  withSearch: true
-});
+function clearSearch() { search.value = ''; void load(); }
+onMounted(load);
 </script>
 
 <style scoped>
-.inventory-list-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.hub-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-}
-
-.hub-alerts {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.hub-actions {
-  margin-bottom: 0;
-}
-
-.hub-sections {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
-}
-
-.inventory-domain-map,
-.inventory-operations-grid {
-  display: grid;
-  gap: 12px;
-}
-
-.domain-flow,
-.legacy-operation-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-}
-
-.domain-flow__card,
-.legacy-operation-card,
-.price-lookup-card,
-.stock-location-card {
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
-  padding: 14px;
-}
-
-.domain-flow__card,
-.legacy-operation-card {
-  display: grid;
-  gap: 8px;
-}
-
-.domain-flow__card span,
-.legacy-operation-card span {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted, #64748b);
-}
-
-.domain-flow__card p,
-.legacy-operation-card p,
-.legacy-operation-card small {
-  margin: 0;
-  color: var(--color-text-secondary, #475569);
-}
-
-.legacy-operation-card small {
-  font-size: 12px;
-}
-
-.inventory-operations-grid {
-  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
-}
-
-.price-lookup-list,
-.stock-location-grid {
-  display: grid;
-  gap: 10px;
-}
-
-.price-lookup-card {
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-  align-items: flex-start;
-}
-
-.price-lookup-card > div,
-.price-lookup-card__metrics,
-.stock-location-card {
-  display: grid;
-  gap: 5px;
-}
-
-.price-lookup-card span,
-.stock-location-card span,
-.inventory-empty-inline {
-  color: var(--color-text-muted, #64748b);
-  font-size: 13px;
-}
-
-.hub-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.quick-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.search-bar {
-  max-width: 400px;
-}
-
-.row-actions {
-  display: flex;
-  gap: 8px;
-}
-
-@media (max-width: 920px) {
-  .inventory-operations-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .price-lookup-card {
-    flex-direction: column;
-  }
-}
+.inventory-list-page { display: grid; gap: 16px; min-width: 0; }
+.search-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; }
+.query-status { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; color: var(--color-text-secondary); font-size: 14px; }
+summary { min-height: 44px; box-sizing: border-box; padding-block: 12px; font-weight: 700; cursor: pointer; color: var(--color-text-secondary); }
+.summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 8px 0; }
+.summary-grid > div { padding: 16px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); min-width: 0; }
+dt, .inventory-summary p { font-size: 13px; color: var(--color-text-secondary); }
+dd { margin: 8px 0 0; font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--color-text); overflow-wrap: anywhere; }
+.inventory-navigation { padding-top: 8px; border-top: 1px solid var(--color-border); }
+h2 { font: 700 16px var(--font-family-sans); color: var(--color-text); margin: 8px 0 16px; }
+.operation-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.operation-links :deep(.ds-btn__label) { white-space: normal; overflow: visible; text-overflow: clip; }
+.text-danger { color: var(--color-danger-600); font-weight: 700; }
+.muted { color: var(--color-text-secondary); font-size: 12px; }
+@media (max-width: 600px) { .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .summary-grid > div:last-child { grid-column: 1 / -1; } .operation-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>

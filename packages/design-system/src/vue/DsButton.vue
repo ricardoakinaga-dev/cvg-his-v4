@@ -4,16 +4,19 @@
     :class="classes"
     :disabled="isDisabled"
     :type="resolvedTag === 'button' ? type : undefined"
-    :href="resolvedTag === 'a' ? resolvedHref : undefined"
-    :aria-label="ariaLabel"
+    :href="resolvedTag === 'a' && !isDisabled ? resolvedHref : undefined"
+    :aria-label="resolvedAriaLabel"
     :aria-disabled="resolvedTag === 'a' && isDisabled ? 'true' : undefined"
     :tabindex="resolvedTag === 'a' && isDisabled ? -1 : undefined"
     :aria-busy="loading"
     @click="onClick"
+    @auxclick="onAuxClick"
   >
     <span v-if="loading" class="ds-btn__spinner" aria-hidden="true" />
-    <span v-if="$slots.icon || icon" class="ds-btn__icon">
-      <slot name="icon">{{ icon }}</slot>
+    <span v-if="$slots.icon || icon" class="ds-btn__icon" aria-hidden="true">
+      <slot name="icon">
+        <DsIcon :name="icon" size="sm" />
+      </slot>
     </span>
     <span v-if="$slots.default" class="ds-btn__label">
       <slot />
@@ -22,7 +25,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, getCurrentInstance, useSlots } from 'vue';
+import type { Router } from 'vue-router';
+import DsIcon from './DsIcon.vue';
 
 export interface DsButtonProps {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
@@ -52,17 +57,34 @@ const props = withDefaults(defineProps<DsButtonProps>(), {
   icon: undefined
 });
 
+const slots = useSlots();
+// Read the installed router through Vue's public app context instead of
+// importing vue-router's runtime injection symbol. This keeps the design
+// system usable in isolated mounts/storybooks and in tests with partial
+// vue-router mocks, while retaining SPA navigation when a router is present.
+const router = (getCurrentInstance()?.proxy as { $router?: Router } | null)?.$router;
+
 const emit = defineEmits<{
   click: [event: MouseEvent];
 }>();
 
 const resolvedTag = computed(() => {
-  if (props.to) return 'a';
+  if (props.to || props.href) return 'a';
   return props.tag;
 });
 
+const isRouterDestination = computed(() =>
+  Boolean(router && props.to && !/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(props.to))
+);
+
 const resolvedHref = computed(() => {
+  if (isRouterDestination.value) return router!.resolve(props.to!).href;
   return props.to || props.href;
+});
+
+const resolvedAriaLabel = computed(() => {
+  if (props.ariaLabel) return props.ariaLabel;
+  return !slots.default && props.icon ? props.icon : undefined;
 });
 
 const isDisabled = computed(() => {
@@ -86,113 +108,160 @@ function onClick(event: MouseEvent) {
     return;
   }
   emit('click', event);
+
+  const anchor = event.currentTarget as HTMLAnchorElement;
+  const target = anchor.getAttribute('target');
+  if (
+    !isRouterDestination.value ||
+    event.defaultPrevented ||
+    event.metaKey ||
+    event.altKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.button !== 0 ||
+    anchor.hasAttribute('download') ||
+    (target && target.toLowerCase() !== '_self')
+  )
+    return;
+
+  event.preventDefault();
+  return router!.push(props.to!);
+}
+
+function onAuxClick(event: MouseEvent) {
+  if (isDisabled.value) event.preventDefault();
 }
 </script>
 
 <style scoped>
 .ds-btn {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
-  font-weight: 500;
+  gap: var(--space-2, 0.5rem);
+  min-width: var(--touch-min, 44px);
+  min-height: var(--touch-min, 44px);
+  padding: 0.625rem 1rem;
+  font-family: var(--font-family-sans, system-ui, sans-serif);
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: var(--font-weight-semibold, 600);
+  letter-spacing: 0.01em;
   border: 1px solid transparent;
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md, 0.5rem);
   cursor: pointer;
   transition:
-    background 0.15s ease,
-    opacity 0.15s ease,
-    box-shadow 0.15s ease,
-    transform 0.15s ease;
+    background-color var(--duration-fast, 150ms) var(--ease-default, ease),
+    border-color var(--duration-fast, 150ms) var(--ease-default, ease),
+    box-shadow var(--duration-fast, 150ms) var(--ease-default, ease),
+    transform var(--duration-fast, 150ms) var(--ease-default, ease),
+    opacity var(--duration-fast, 150ms) var(--ease-default, ease);
   white-space: nowrap;
   user-select: none;
   text-decoration: none;
-  line-height: 1;
+  line-height: 1.2;
 }
 
 .ds-btn:hover:not(:disabled):not(.ds-btn--loading) {
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(20, 34, 56, 0.07));
 }
 
 .ds-btn:active:not(:disabled):not(.ds-btn--loading) {
-  transform: scale(0.97);
+  transform: translateY(0);
+}
+
+.ds-btn:focus {
+  outline: none;
 }
 
 .ds-btn:focus-visible {
-  outline: none;
-  box-shadow: var(--shadow-focus, 0 0 0 3px rgba(37, 99, 235, 0.4));
+  outline: 3px solid var(--color-focus-ring, #075f70);
+  outline-offset: 2px;
 }
 
 .ds-btn--sm {
-  padding: 6px 12px;
-  font-size: 12px;
-  min-height: 32px;
+  padding: 0.5rem 0.75rem;
+  font-size: var(--font-size-xs, 0.75rem);
+  min-height: var(--touch-min, 44px);
 }
 
 .ds-btn--md {
-  padding: 8px 16px;
-  font-size: 14px;
-  min-height: 40px;
+  padding: 0.625rem 1rem;
+  font-size: var(--font-size-sm, 0.8125rem);
+  min-height: var(--touch-min, 44px);
 }
 
 .ds-btn--lg {
-  padding: 12px 24px;
-  font-size: 16px;
-  min-height: 48px;
+  padding: 0.75rem 1.25rem;
+  font-size: var(--font-size-base, 0.9375rem);
+  min-height: 52px;
 }
 
 .ds-btn--primary {
   background: var(--color-primary-600, #2563eb);
   color: var(--color-text-inverse, #ffffff);
+  border-color: var(--color-primary-600, #2563eb);
 }
 
 .ds-btn--primary:hover:not(:disabled) {
   background: var(--color-primary-700, #1d4ed8);
+  border-color: var(--color-primary-700, #1d4ed8);
 }
 
 .ds-btn--secondary {
   background: var(--color-surface, #ffffff);
-  color: var(--color-text, #0f172a);
-  border-color: var(--color-border, #e2e8f0);
+  color: var(--color-text, #142238);
+  border-color: var(--color-border-strong, #b8cac7);
 }
 
 .ds-btn--secondary:hover:not(:disabled) {
   background: var(--color-surface-hover, #f8fafc);
+  border-color: var(--color-primary-300, #5bd2d9);
 }
 
 .ds-btn--ghost {
   background: transparent;
-  color: var(--color-text-secondary, #475569);
+  color: var(--color-text-secondary, #475b6d);
+  border-color: transparent;
 }
 
 .ds-btn--ghost:hover:not(:disabled) {
-  background: var(--color-surface-hover, #f8fafc);
+  background: var(--color-primary-subtle, #e0f7f7);
+  color: var(--color-text, #142238);
 }
 
 .ds-btn--danger {
   background: var(--color-danger-600, #dc2626);
   color: var(--color-text-inverse, #ffffff);
+  border-color: var(--color-danger-600, #dc2626);
 }
 
 .ds-btn--danger:hover:not(:disabled) {
   background: var(--color-danger-700, #b91c1c);
+  border-color: var(--color-danger-700, #b91c1c);
 }
 
 .ds-btn--success {
-  background: var(--color-success-600, #16a34a);
+  background: var(--color-success-600, #17775a);
   color: var(--color-text-inverse, #ffffff);
+  border-color: var(--color-success-600, #17775a);
 }
 
 .ds-btn--success:hover:not(:disabled) {
-  background: var(--color-success-700, #15803d);
+  background: var(--color-success-700, #125c47);
+  border-color: var(--color-success-700, #125c47);
 }
 
 .ds-btn:disabled,
-.ds-btn--disabled {
-  opacity: 0.5;
+.ds-btn--disabled,
+.ds-btn--loading {
+  opacity: 0.58;
   cursor: not-allowed;
+}
+
+.ds-btn--loading {
+  cursor: wait;
 }
 
 .ds-btn--full-width {
@@ -202,7 +271,12 @@ function onClick(event: MouseEvent) {
 .ds-btn__icon {
   display: inline-flex;
   align-items: center;
-  font-size: 16px;
+  justify-content: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  font-size: 1rem;
+  line-height: 1;
+  flex: 0 0 auto;
 }
 
 .ds-btn__label {
@@ -213,17 +287,31 @@ function onClick(event: MouseEvent) {
 }
 
 .ds-btn__spinner {
-  width: 16px;
-  height: 16px;
+  width: 1rem;
+  height: 1rem;
   border: 2px solid currentColor;
   border-top-color: transparent;
   border-radius: 50%;
-  animation: ds-spin 0.6s linear infinite;
+  animation: ds-spin var(--duration-normal, 250ms) linear infinite;
+  flex: 0 0 auto;
 }
 
 @keyframes ds-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-btn,
+  .ds-btn:hover,
+  .ds-btn:active {
+    transition: none;
+    transform: none;
+  }
+
+  .ds-btn__spinner {
+    animation: none;
   }
 }
 </style>

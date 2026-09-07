@@ -10,12 +10,12 @@ Escopo:
 
 Evidências principais:
 
-- [vacinas-lista.png](../inspection/2026-04-24T00-12-53-716Z-vacinas/screenshots/vacinas-lista.png)
-- [vacinas-lista.json](../inspection/2026-04-24T00-12-53-716Z-vacinas/vacinas-lista.json)
-- [vacinas-lista.html](../inspection/2026-04-24T00-12-53-716Z-vacinas/vacinas-lista.html)
-- [vacinas-vacina.png](../inspection/2026-04-24T00-12-53-716Z-vacinas/screenshots/vacinas-vacina.png)
-- [vacinas-vacina.json](../inspection/2026-04-24T00-12-53-716Z-vacinas/vacinas-vacina.json)
-- [network.json](../inspection/2026-04-24T00-12-53-716Z-vacinas/network.json)
+- vacinas-lista.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-12-53-716Z-vacinas/screenshots/vacinas-lista.png`)
+- vacinas-lista.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-12-53-716Z-vacinas/vacinas-lista.json`)
+- vacinas-lista.html (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-12-53-716Z-vacinas/vacinas-lista.html`)
+- vacinas-vacina.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-12-53-716Z-vacinas/screenshots/vacinas-vacina.png`)
+- vacinas-vacina.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-12-53-716Z-vacinas/vacinas-vacina.json`)
+- network.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-12-53-716Z-vacinas/network.json`)
 - [2026-04-24-relatorio-entidade-marketing.md](../guides/2026-04-24-relatorio-entidade-marketing.md)
 - [01-PLANEJAMENTO-ERP-ENTERPRISE.md](../guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md)
 - [03-MODELO-DADOS.md](../guides/03-MODELO-DADOS.md)

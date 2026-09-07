@@ -44,7 +44,7 @@ export default defineConfig({
   ],
   webServer: {
     command: E2E_DATABASE_MODE
-      ? `bash -lc 'fuser -k ${E2E_API_PORT}/tcp 2>/dev/null || true; env NODE_ENV=test API_DISABLE_INCOMPATIBLE_DB_REPOS="0" AUTH_SECRET="e2e-test-secret-key-do-not-use-in-production-12345678" AUTH_RATE_LIMIT_MAX_REQUESTS="${process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || '200'}" CORS_ALLOWED_ORIGINS="${E2E_API_URL}" DATABASE_URL="${E2E_DATABASE_URL}" DATABASE_URL_TEST="${E2E_DATABASE_URL}" REDIS_URL="${E2E_REDIS_URL}" PORT=${E2E_API_PORT} HOST=127.0.0.1 node apps/api/dist/index.js'`
+      ? `bash -lc 'fuser -k ${E2E_API_PORT}/tcp 2>/dev/null || true; env NODE_ENV=test REQUIRE_TEST_DB="1" API_DISABLE_INCOMPATIBLE_DB_REPOS="0" AUTH_SECRET="e2e-test-secret-key-do-not-use-in-production-12345678" AUTH_RATE_LIMIT_MAX_REQUESTS="${process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || '200'}" CORS_ALLOWED_ORIGINS="${E2E_API_URL}" DATABASE_URL="${E2E_DATABASE_URL}" DATABASE_URL_TEST="${E2E_DATABASE_URL}" REDIS_URL="${E2E_REDIS_URL}" PORT=${E2E_API_PORT} HOST=127.0.0.1 node apps/api/dist/index.js'`
       : "bash -lc 'fuser -k 3001/tcp 2>/dev/null || true; pnpm dev:api'",
     url: `${E2E_API_URL}/health`,
     reuseExistingServer: E2E_DATABASE_MODE,

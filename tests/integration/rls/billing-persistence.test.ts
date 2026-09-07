@@ -24,6 +24,8 @@ const USER_B = uuid();
 const OWNER_A = uuid();
 const OWNER_B = uuid();
 const PATIENT_A = uuid();
+const REPOSITORY_PATIENT_A = uuid();
+const BLOCKED_PATIENT_A = uuid();
 const PATIENT_B = uuid();
 const RLS_ENCOUNTER_A = uuid();
 const RLS_ENCOUNTER_B = uuid();
@@ -65,9 +67,9 @@ async function seedBaseRows(): Promise<void> {
 
   await pool.query(
     `
-      INSERT INTO users (id, account_id, email, password_hash, full_name)
-      VALUES ($1, $3, $5, 'hash', 'Billing User A'),
-             ($2, $4, $6, 'hash', 'Billing User B')
+      INSERT INTO users (id, account_id, email, password_hash, full_name, username)
+      VALUES ($1, $3, $5, 'hash', 'Billing User A', 'fixture_' || $1::uuid::text),
+             ($2, $4, $6, 'hash', 'Billing User B', 'fixture_' || $2::uuid::text)
       ON CONFLICT (id) DO NOTHING
     `,
     [
@@ -100,13 +102,21 @@ async function seedBaseRows(): Promise<void> {
     [PATIENT_A, PATIENT_B, ACCOUNT_A, ACCOUNT_B, OWNER_A, OWNER_B]
   );
 
+  // Repository and denied-write cases use distinct active patients within account A.
+  await pool.query(
+    `INSERT INTO patients (id, account_id, owner_id, name, species)
+     VALUES ($1, $3, $4, 'Billing Repository Patient A', 'canine'),
+            ($2, $3, $4, 'Billing Blocked Patient A', 'canine')`,
+    [REPOSITORY_PATIENT_A, BLOCKED_PATIENT_A, ACCOUNT_A, OWNER_A]
+  );
+
   await pool.query(
     `
       INSERT INTO encounters (id, account_id, patient_id, owner_id, opened_by_user_id, reason)
       VALUES ($1, $5, $7, $9, $11, 'Billing RLS A'),
              ($2, $6, $8, $10, $12, 'Billing RLS B'),
-             ($3, $5, $7, $9, $11, 'Billing repository A'),
-             ($4, $5, $7, $9, $11, 'Billing blocked A')
+             ($3, $5, $13, $9, $11, 'Billing repository A'),
+             ($4, $5, $14, $9, $11, 'Billing blocked A')
       ON CONFLICT (id) DO NOTHING
     `,
     [
@@ -121,7 +131,9 @@ async function seedBaseRows(): Promise<void> {
       OWNER_A,
       OWNER_B,
       USER_A,
-      USER_B
+      USER_B,
+      REPOSITORY_PATIENT_A,
+      BLOCKED_PATIENT_A
     ]
   );
 
@@ -304,7 +316,7 @@ describe('EP-BILL-1 billing RLS isolation', () => {
             id, account_id, encounter_id, patient_id, owner_id, status, subtotal_amount, currency
           )
           VALUES ($1, $2, $3, $4, $5, 'draft', 0, 'BRL')`,
-          [`bill-blocked-${uuid()}`, ACCOUNT_A, BLOCKED_ENCOUNTER_A, PATIENT_A, OWNER_A]
+          [`bill-blocked-${uuid()}`, ACCOUNT_A, BLOCKED_ENCOUNTER_A, BLOCKED_PATIENT_A, OWNER_A]
         )
       ).rejects.toThrow();
 
@@ -347,7 +359,7 @@ describe('EP-BILL-1 database billing repository', () => {
       id: REPOSITORY_RECORD_A as never,
       accountId: ACCOUNT_A as AccountId,
       encounterId: REPOSITORY_ENCOUNTER_A as EncounterId,
-      patientId: PATIENT_A as never,
+      patientId: REPOSITORY_PATIENT_A as never,
       ownerId: OWNER_A as never,
       status: 'draft',
       subtotalAmount: 0,

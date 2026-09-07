@@ -148,7 +148,7 @@ A trilha oficial de persistencia e migracao do CVG-HIS V2 e o Drizzle ORM.
 A cadeia viva inicia em `0000_vengeful_pet_avengers.sql` e evolui por migrations
 ordenadas no mesmo diretorio. Nao congele neste runbook o numero da ultima
 migration: o runner oficial `packages/db/src/migrate.ts` aplica automaticamente
-todas as migrations `.sql` em ordem, ignorando apenas arquivos `.revert.sql`.
+todas as migrations `.sql` em ordem, ignorando arquivos `.revert.sql` e `.seed.sql`.
 O contrato de auditoria estrutural inclui
 `packages/db/migrations/0012_audit_events_alignment.sql`; a referencia serve
 para validar a trilha canonica e nao e uma declaracao de que um ambiente alvo
@@ -229,15 +229,67 @@ O proxy reverso (Caddy) aponta:
 
 **Validacao pos-deploy da SPA (frontend canonico):**
 
-```bash
-# Verificar que o dominio entrega a SPA (apps/spa)
-curl -s https://his.centroveterinarioguarapiranga.com/ | grep -o '<title>[^<]*</title>'
-# Esperado: <title>CVG HIS V2</title>
+> Nota de escopo: esta correcao atualiza somente a identificacao e a validacao da
+> SPA. Nao representa recertificacao do deploy e nao altera a data de validacao
+> deste documento.
 
-# Verificar que a SPA contem as paginas novas (API Keys, MFA, etc.)
-curl -s https://his.centroveterinarioguarapiranga.com/assets/ApiKeysPage*.js | head -c 100
-# Esperado: conteudo JS do componente ApiKeysPage
+A identidade da release nao deve ser inferida pelo `<title>` nem por um nome de
+chunk Vite presumido. Use a origem autorizada do ambiente e as URLs exatas
+referenciadas pelo HTML servido e pelas requisicoes observadas no Network do
+navegador:
+
+1. Abra a origem autorizada da SPA no navegador, habilite **Disable cache** no
+   Network e recarregue `/`. Registre o `src` dos scripts e o `href` dos modulepreload
+   referenciados pelo HTML e os URLs JavaScript efetivamente solicitados ao
+   navegar pelas rotas do smoke. Nao construa nomes de chunks nem use curingas.
+2. Para cada URL registrada, valide status HTTP `200`, `Content-Type` de
+   JavaScript/ECMAScript e corpo JavaScript real, nao HTML. Um fallback pode
+   devolver `index.html` com status `200` para um asset inexistente; por isso o
+   status deve ser conferido por URL junto com o tipo e o conteudo.
+3. Registre o SHA-256 de cada resposta e compare-o com a identidade do artefato
+   e o hash constantes no manifesto/evidencia de release aprovado. O hash
+   calculado localmente, isoladamente, nao aprova a release.
+
+Exemplo reproduzivel depois de copiar para `ASSET_URLS` somente os URLs exatos
+vistos no HTML/Network (sem inventar nomes remotos):
+
+```bash
+set -eu
+evidence_dir="$(mktemp -d)"
+index_headers="$evidence_dir/index.headers"
+index_body="$evidence_dir/index.html"
+index_status="$(curl -sS -D "$index_headers" -o "$index_body" -w '%{http_code}' '<origem-autorizada-do-ambiente>/')"
+test "$index_status" = 200
+grep -Eiq '^Content-Type:.*text/html' "$index_headers"
+
+ASSET_URLS=(
+  '<URL exata copiada do HTML ou Network>'
+  # inclua aqui cada URL JavaScript realmente observado no smoke
+)
+asset_number=0
+for asset_url in "${ASSET_URLS[@]}"; do
+  asset_number=$((asset_number + 1))
+  asset_headers="$evidence_dir/asset-${asset_number}.headers"
+  asset_body="$evidence_dir/asset-${asset_number}.mjs"
+  asset_status="$(curl -sS -D "$asset_headers" -o "$asset_body" -w '%{http_code}' "$asset_url")"
+  test "$asset_status" = 200
+  grep -Eiq '^Content-Type:.*(javascript|ecmascript)' "$asset_headers"
+  if grep -Eiq '^[[:space:]]*(<!doctype[[:space:]]+html|<html([[:space:]>]|$))' "$asset_body"; then
+    echo 'Asset devolveu HTML; validacao interrompida.' >&2
+    exit 1
+  fi
+  node --check "$asset_body"
+  sha256sum "$asset_body"
+done
 ```
+
+Com uma conta de teste autorizada, conclua no navegador um smoke real de `/`,
+`/login`, `/api-keys`, `/access-control`, `/audit` e `/lgpd`, alem das rotas ou
+aliases de compatibilidade exigidos pela release. Recarregue diretamente ao
+menos uma rota protegida e confirme a tela esperada, ausencia de erros no
+console e carregamento dos recursos observados sem resposta HTML no lugar de
+JavaScript. Registre URLs, status, tipos, hashes, artefato aprovado e rotas
+exercitadas; qualquer divergencia interrompe a validacao.
 
 ## Artefatos operacionais oficiais
 
@@ -363,15 +415,15 @@ A SPA e considerada pronta quando:
 
 - Servidor HTTP responde na porta configurada (3002)
 - Homepage (`/`) retorna 200 com `index.html` da SPA (apps/spa)
-- O bundle JS e o da SPA (apps/spa)
+- Os scripts e chunks JavaScript realmente referenciados pelo HTML/Network
+  passam a validacao de status, tipo, conteudo nao-HTML e hash do artefato
+  aprovado descrita acima
+- O smoke real no navegador confirma as rotas da SPA e os aliases de
+  compatibilidade exigidos pela release
 
-**Sinal de que a SPA correta esta sendo servida:**
-```bash
-curl -s http://127.0.0.1:3002/assets/ApiKeysPage*.js | head -c 200
-# Deve retornar codigo JS do componente ApiKeysPage (presente apenas em apps/spa)
-```
-
-Para o checklist completo de release enterprise, ver `520-checklist-release-enterprise.md`.
+Para os contratos vigentes de release e cutover, ver
+[identidade de release e deploy](engineering/RELEASE_IDENTITY.md) e
+[checklist de cutover no servidor](131-checklist-cutover-servidor.md).
 
 ## Regra de seguranca operacional
 
@@ -383,10 +435,17 @@ Para o checklist completo de release enterprise, ver `520-checklist-release-ente
 
 **Regra anti-regressao:**
 
-Antes de validar o deploy, SEMPRE verificar:
-1. `curl https://his.centroveterinarioguarapiranga.com/assets/ApiKeysPage*.js` — deve existir (SPA nova)
-2. Se a chamada acima falhar, o dominio nao esta servindo a SPA correta (erro de roteamento)
+Antes de validar o deploy, SEMPRE executar a validacao pos-deploy acima: usar
+somente URLs JavaScript reais capturadas do HTML/Network, conferir `200`,
+`Content-Type`, corpo nao-HTML e o hash contra o artefato aprovado, e concluir
+o smoke real das rotas da SPA. Nao considerar o `<title>` ou a existencia de um
+nome de chunk presumido como evidencia de identidade; se qualquer verificacao
+falhar, interromper a validacao e investigar o roteamento/artefato.
 
 ## Fonte complementar
 
-Para a politica consolidada de banco, deploy e convergencia de trilhas, ver `470-politica-migracao-e-deploy.md`.
+Para a politica vigente de migrations, compatibilidade e rollback, ver
+[instalacao, upgrade e rollback](engineering/INSTALL_UPGRADE_ROLLBACK.md).
+Para a convergencia de trilhas, ver
+[superficie canonica de deploy e migracao](132-superficie-canonica-deploy-e-migracao.md).
+Os antigos documentos470 e520 estao no arquivo historico, nao na raiz viva de `docs/`.

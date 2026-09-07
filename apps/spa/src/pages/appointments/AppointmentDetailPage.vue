@@ -1,16 +1,23 @@
 <template>
   <div class="appointment-detail-page">
-    <div v-if="!appointment" class="page-loading">
+    <div v-if="!appointment && !contextWarning" class="page-loading">
       <p>Carregando ou agendamento não encontrado.</p>
-      <DsButton variant="secondary" tag="a" href="/appointments">Voltar à agenda</DsButton>
+      <DsButton variant="secondary" tag="a" to="/appointments">Voltar à agenda</DsButton>
     </div>
-    <template v-else>
+    <DsAlert v-else-if="!appointment && contextWarning" variant="warning">
+      {{ contextWarning }}
+      <DsButton variant="secondary" tag="a" to="/appointments">Voltar à agenda</DsButton>
+    </DsAlert>
+    <template v-if="appointment">
       <DsAlert v-if="whatsappNotice" :variant="whatsappNotice.variant" dismissible @dismiss="clearWhatsappNotice">
         {{ whatsappNotice.message }}
       </DsAlert>
+      <DsAlert v-if="contextWarning" variant="warning">
+        {{ contextWarning }}
+      </DsAlert>
 
       <AppPageHeader :subtitle="detailSubtitle">
-        <template #title>📅 Agendamento</template>
+        <template #title>Agendamento</template>
         <template #subtitle>
           <StatusBadge
             :label="appointmentStatusLabel(appointment.status)"
@@ -22,7 +29,7 @@
           <DsButton
             v-if="canGoToQueue"
             tag="a"
-            href="/queue"
+            to="/queue"
             variant="primary"
           >
             Ir para fila operacional
@@ -44,7 +51,7 @@
           <DsButton v-if="canCancel" variant="danger" :loading="cancelling" @click="handleCancel">
             {{ cancelling ? 'Cancelando...' : 'Cancelar Agendamento' }}
           </DsButton>
-          <DsButton variant="secondary" tag="a" href="/appointments">Voltar</DsButton>
+          <DsButton variant="secondary" tag="a" to="/appointments">Voltar</DsButton>
         </template>
       </AppPageHeader>
 
@@ -207,7 +214,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onBeforeUnmount, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { appointmentService } from '@/services/appointment';
 import type { AppointmentSummary } from '@/types/appointment';
@@ -242,6 +249,25 @@ const activePatientEncounter = ref<EncounterSummary | null>(null);
 const patientName = ref('');
 const ownerName = ref('');
 const whatsappNotice = ref<{ variant: 'success' | 'danger'; message: string } | null>(null);
+const contextWarning = ref('');
+let active = true;
+let pageGeneration = 0;
+
+function isCurrentLoad(generation: number, id: string) {
+  return active && generation === pageGeneration && String(route.params.id ?? '') === id;
+}
+
+function resetPageState() {
+  appointment.value = null;
+  owner.value = null;
+  patient.value = null;
+  activePatientEncounter.value = null;
+  patientName.value = '';
+  ownerName.value = '';
+  contextWarning.value = '';
+  whatsappNotice.value = null;
+  startingEncounterContext.value = false;
+}
 
 function appointmentStatusVariant(s: string) {
   const map: Record<string, string> = {
@@ -253,18 +279,34 @@ function appointmentStatusVariant(s: string) {
   return (map[s] || 'default') as any;
 }
 
-async function loadEntityNames(appt: AppointmentSummary) {
-  patientName.value = await entityCache.getPatientName(appt.patientId);
+async function loadEntityNames(appt: AppointmentSummary, generation: number) {
   try {
-    owner.value = await ownerService.getById(appt.ownerId);
-    ownerName.value = owner.value.fullName;
+    const name = await entityCache.getPatientName(appt.patientId);
+    if (!isCurrentLoad(generation, appt.id)) return;
+    patientName.value = name;
   } catch {
-    owner.value = null;
-    ownerName.value = await entityCache.getOwnerName(appt.ownerId);
+    if (isCurrentLoad(generation, appt.id)) contextWarning.value = 'Paciente ou tutor indisponível; revise os vínculos antes de operar.';
+  }
+
+  try {
+    const ownerRecord = await ownerService.getById(appt.ownerId);
+    if (!isCurrentLoad(generation, appt.id)) return;
+    owner.value = ownerRecord;
+    ownerName.value = ownerRecord.fullName;
+  } catch {
+    try {
+      const name = await entityCache.getOwnerName(appt.ownerId);
+      if (!isCurrentLoad(generation, appt.id)) return;
+      owner.value = null;
+      ownerName.value = name;
+      contextWarning.value = 'Dados completos do tutor indisponíveis; confirme o contato antes de enviar mensagens.';
+    } catch {
+      if (isCurrentLoad(generation, appt.id)) contextWarning.value = 'Paciente ou tutor indisponível; revise os vínculos antes de operar.';
+    }
   }
 }
 
-async function loadStartEncounterContext(appt: AppointmentSummary) {
+async function loadStartEncounterContext(appt: AppointmentSummary, generation: number) {
   startingEncounterContext.value = true;
   try {
     const [patientRecord, encounters] = await Promise.all([
@@ -272,12 +314,13 @@ async function loadStartEncounterContext(appt: AppointmentSummary) {
       encounterService.list().catch(() => [])
     ]);
 
+    if (!isCurrentLoad(generation, appt.id)) return;
     patient.value = patientRecord;
     activePatientEncounter.value = encounters
       .filter((encounter) => encounter.patientId === appt.patientId && encounter.status !== 'closed')
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0] ?? null;
   } finally {
-    startingEncounterContext.value = false;
+    if (isCurrentLoad(generation, appt.id)) startingEncounterContext.value = false;
   }
 }
 
@@ -368,8 +411,10 @@ async function handleCancel() {
 
 async function openStartEncounterConfirmation() {
   if (!appointment.value) return;
-  await loadStartEncounterContext(appointment.value);
-  showStartEncounterConfirm.value = true;
+  const appt = appointment.value;
+  const generation = pageGeneration;
+  await loadStartEncounterContext(appt, generation);
+  if (isCurrentLoad(generation, appt.id)) showStartEncounterConfirm.value = true;
 }
 
 function closeStartEncounterConfirmation() {
@@ -411,21 +456,45 @@ function clearWhatsappNotice() {
   whatsappNotice.value = null;
 }
 
-onMounted(async () => {
+async function loadPage(id: string) {
+  const generation = ++pageGeneration;
+  resetPageState();
+  if (!id) return;
+
   const fromState = history.state?.appointment as AppointmentSummary | undefined;
-  if (fromState) {
+  if (fromState && fromState.id === id) {
     appointment.value = fromState;
-    await Promise.all([loadEntityNames(fromState), loadStartEncounterContext(fromState)]);
+    await Promise.all([loadEntityNames(fromState, generation), loadStartEncounterContext(fromState, generation)]);
     return;
   }
-  const id = route.params.id as string;
+
   try {
     const appt = await appointmentService.getById(id);
+    if (!isCurrentLoad(generation, id)) return;
+    if (appt.id !== id) {
+      contextWarning.value = 'O agendamento retornado não corresponde ao endereço solicitado.';
+      return;
+    }
     appointment.value = appt;
-    await Promise.all([loadEntityNames(appt), loadStartEncounterContext(appt)]);
+    await Promise.all([loadEntityNames(appt, generation), loadStartEncounterContext(appt, generation)]);
   } catch {
-    // Appointment not found, keep null
+    if (isCurrentLoad(generation, id)) {
+      contextWarning.value = 'Não foi possível carregar este agendamento.';
+    }
   }
+}
+
+watch(
+  () => String(route.params.id ?? ''),
+  (id) => {
+    void loadPage(id);
+  },
+  { immediate: true, flush: 'sync' }
+);
+
+onBeforeUnmount(() => {
+  active = false;
+  pageGeneration += 1;
 });
 </script>
 

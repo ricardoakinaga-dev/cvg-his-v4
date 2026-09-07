@@ -1,7 +1,9 @@
+import { config } from '@vue/test-utils';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import LaboratoryOrdersPage from '../LaboratoryOrdersPage.vue';
+import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import { laboratoryService } from '@/services/laboratory';
 import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
@@ -27,6 +29,8 @@ vi.mock('@/services/owner', () => ({
 
 describe('LaboratoryOrdersPage', () => {
   beforeEach(() => {
+    // These page tests inspect link destinations/content; navigation is covered with a real router separately.
+    config.global.stubs = { ...config.global.stubs, RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } };
     vi.clearAllMocks();
     vi.mocked(laboratoryService.recordResult).mockImplementation(async (orderId, payload) => ({
       id: orderId as never,
@@ -111,8 +115,8 @@ describe('LaboratoryOrdersPage', () => {
     expect(wrapper.text()).toContain('Status');
     expect(wrapper.text()).toContain('Esteira');
     expect(wrapper.text()).toContain('Vínculo');
-    expect(wrapper.text()).toContain('1 exame(s)');
-    expect(wrapper.text()).toContain('1 aguardando coleta');
+    expect(wrapper.findAll('.summary-grid dd').map((item) => item.text())).toEqual(['1', '1', '0', '0']);
+    expect(wrapper.get('.summary-disclosure').attributes('open')).toBeUndefined();
     expect(wrapper.text()).toContain('Aguardando coleta');
     expect(wrapper.text()).toContain('1. Pedido recebido');
     expect(wrapper.text()).toContain('Coleta pendente');
@@ -139,8 +143,19 @@ describe('LaboratoryOrdersPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Exames');
+    expect(wrapper.text()).toContain('Não foi possível carregar os exames');
+    expect(wrapper.text()).not.toContain('Nenhum registro encontrado');
+    expect(wrapper.findAll('.summary-grid dd').map((item) => item.text())).toEqual(['—', '—', '—', '—']);
+    await wrapper.findComponent(DsAlert).vm.$emit('dismiss');
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('Unexpected error');
+    expect(wrapper.find('.load-failure').exists()).toBe(true);
+    vi.mocked(laboratoryService.listOrders).mockResolvedValueOnce([]);
+    await wrapper.get('.load-failure button').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('.load-failure').exists()).toBe(false);
     expect(wrapper.text()).toContain('Nenhum registro encontrado');
-    expect(wrapper.text()).toContain('Unexpected error');
+
   });
 
   it('filters exams by client, animal and date before searching', async () => {
@@ -374,4 +389,17 @@ describe('LaboratoryOrdersPage', () => {
     expect(wrapper.text()).toContain('Reportar resultado');
     expect(wrapper.text()).toContain('Tentativa 1');
   });
+  it('keeps summary values unknown until the records request resolves', async () => {
+    let resolveRecords!: (value: never[]) => void;
+    vi.mocked(laboratoryService.listOrders).mockImplementationOnce(() => new Promise((resolve) => { resolveRecords = resolve; }));
+    const wrapper = mount(LaboratoryOrdersPage);
+    await flushPromises();
+    expect(wrapper.find('.record-count').exists()).toBe(false);
+    expect(wrapper.findAll('.summary-grid dd').every((item) => item.text() === '—')).toBe(true);
+    resolveRecords([]);
+    await flushPromises();
+    expect(wrapper.get('.record-count').text()).toContain('0 registro');
+    expect(wrapper.findAll('.summary-grid dd')[0].text()).toBe('0');
+  });
+
 });

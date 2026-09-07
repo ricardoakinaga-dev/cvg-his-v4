@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
+import { reactive } from 'vue';
 
 const mockAppointment = {
   id: 'appt-1',
@@ -12,6 +13,13 @@ const mockAppointment = {
   status: 'scheduled' as const,
   createdAt: '2024-01-14T10:00:00Z',
   updatedAt: '2024-01-14T10:00:00Z'
+};
+const mockAppointmentLuna = {
+  ...mockAppointment,
+  id: 'appt-2',
+  patientId: 'pat-2',
+  ownerId: 'owner-2',
+  reason: 'Consulta felina'
 };
 
 const mockGetByIdFn = vi.fn().mockResolvedValue(mockAppointment);
@@ -45,6 +53,16 @@ const mockGetOwnerById = vi.fn().mockResolvedValue({
   updatedAt: '2024-01-01T00:00:00Z'
 });
 const mockRouterPush = vi.fn();
+const mockRoute = reactive({ params: { id: 'appt-1' }, path: '/appointments/appt-1' });
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
 
 vi.mock('@/services/appointment', () => ({
   appointmentService: {
@@ -95,10 +113,7 @@ vi.mock('@/composables/useEntityCache', () => ({
 }));
 
 vi.mock('vue-router', () => ({
-  useRoute: () => ({
-    params: { id: 'appt-1' },
-    path: '/appointments/appt-1'
-  }),
+  useRoute: () => mockRoute,
   useRouter: () => ({
     push: mockRouterPush
   })
@@ -138,6 +153,8 @@ describe('AppointmentDetailPage', () => {
       updatedAt: '2024-01-01T00:00:00Z'
     });
     mockRouterPush.mockResolvedValue(undefined);
+    mockRoute.params.id = 'appt-1';
+    mockRoute.path = '/appointments/appt-1';
     history.replaceState({}, '', '/');
   });
 
@@ -173,7 +190,7 @@ describe('AppointmentDetailPage', () => {
     });
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Carregando ou agendamento');
+    expect(wrapper.text()).toContain('Não foi possível carregar este agendamento');
   });
 
   it('renders appointment details when loaded', async () => {
@@ -424,5 +441,36 @@ describe('AppointmentDetailPage', () => {
     expect(mockGetByIdFn).not.toHaveBeenCalled();
 
     history.replaceState({}, '', '/');
+  });
+
+  it('ignores a late previous-appointment response after the route changes', async () => {
+    const first = deferred<typeof mockAppointment>();
+    const second = deferred<typeof mockAppointmentLuna>();
+    mockGetByIdFn.mockImplementation((id: string) => (id === 'appt-1' ? first.promise : second.promise));
+
+    const AppointmentDetailPage = (await import('../AppointmentDetailPage.vue')).default;
+    const wrapper = mount(AppointmentDetailPage);
+    mockRoute.params.id = 'appt-2';
+    mockRoute.path = '/appointments/appt-2';
+    await flushPromises();
+    second.resolve(mockAppointmentLuna);
+    await flushPromises();
+    first.resolve(mockAppointment);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Consulta felina');
+    expect(wrapper.text()).not.toContain('Vacina anual');
+    expect(wrapper.text()).not.toContain('appt-1');
+  });
+
+  it('rejects a successful appointment read with a different identity', async () => {
+    mockGetByIdFn.mockResolvedValue({ ...mockAppointment, id: 'unexpected-appt' });
+
+    const AppointmentDetailPage = (await import('../AppointmentDetailPage.vue')).default;
+    const wrapper = mount(AppointmentDetailPage);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('O agendamento retornado não corresponde');
+    expect(wrapper.text()).not.toContain('Consulta de rotina');
   });
 });

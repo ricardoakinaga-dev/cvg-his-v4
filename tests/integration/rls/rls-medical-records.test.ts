@@ -46,10 +46,10 @@ beforeAll(async () => {
 
   await pool.query(
     `
-      INSERT INTO users (id, account_id, email, password_hash, full_name)
+      INSERT INTO users (id, account_id, email, password_hash, full_name, username)
       VALUES
-        ($1, $3, 'rls-medical-a@example.com', 'hash', 'RLS Medical User A'),
-        ($2, $4, 'rls-medical-b@example.com', 'hash', 'RLS Medical User B')
+        ($1, $3, 'rls-medical-a@example.com', 'hash', 'RLS Medical User A', 'fixture_' || $1::uuid::text),
+        ($2, $4, 'rls-medical-b@example.com', 'hash', 'RLS Medical User B', 'fixture_' || $2::uuid::text)
       ON CONFLICT (id) DO NOTHING
     `,
     [USER_A, USER_B, ACCOUNT_A, ACCOUNT_B]
@@ -104,7 +104,16 @@ beforeAll(async () => {
         ($2, $4, $6, $8, 'open', 1, NOW(), NOW())
       ON CONFLICT (id) DO NOTHING
     `,
-    [MEDICAL_RECORD_A, MEDICAL_RECORD_B, ACCOUNT_A, ACCOUNT_B, ENCOUNTER_A, ENCOUNTER_B, PATIENT_A, PATIENT_B]
+    [
+      MEDICAL_RECORD_A,
+      MEDICAL_RECORD_B,
+      ACCOUNT_A,
+      ACCOUNT_B,
+      ENCOUNTER_A,
+      ENCOUNTER_B,
+      PATIENT_A,
+      PATIENT_B
+    ]
   );
 
   await pool.query(
@@ -176,18 +185,16 @@ beforeAll(async () => {
 });
 
 describe('RLS-MED-001 — RLS Enabled on Medical Record Tables', () => {
-  it.each([
-    'medical_records',
-    'clinical_entries',
-    'clinical_timeline',
-    'entry_revisions'
-  ])('%s has RLS enabled', async (tableName) => {
-    const result = await queryOne<{ rowsecurity: boolean }>(
-      `SELECT rowsecurity FROM pg_tables WHERE schemaname = 'public' AND tablename = $1`,
-      [tableName]
-    );
-    expect(result?.rowsecurity).toBe(true);
-  });
+  it.each(['medical_records', 'clinical_entries', 'clinical_timeline', 'entry_revisions'])(
+    '%s has RLS enabled',
+    async (tableName) => {
+      const result = await queryOne<{ rowsecurity: boolean }>(
+        `SELECT rowsecurity FROM pg_tables WHERE schemaname = 'public' AND tablename = $1`,
+        [tableName]
+      );
+      expect(result?.rowsecurity).toBe(true);
+    }
+  );
 });
 
 describe('RLS-MED-002 — Policies Exist on Medical Record Tables', () => {

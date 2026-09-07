@@ -99,20 +99,20 @@
       </template>
       <template #cell-links="{ row }">
         <div class="record-links">
-          <a
+          <RouterLink
             v-if="(row as PreventiveEventSummary).patientId"
-            :href="`/patients/${(row as PreventiveEventSummary).patientId}`"
+            :to="`/patients/${(row as PreventiveEventSummary).patientId}`"
             class="record-link"
           >
             Abrir paciente
-          </a>
-          <a
+          </RouterLink>
+          <RouterLink
             v-if="(row as PreventiveEventSummary).ownerId"
-            :href="`/owners/${(row as PreventiveEventSummary).ownerId}`"
+            :to="`/owners/${(row as PreventiveEventSummary).ownerId}`"
             class="record-link"
           >
             Abrir tutor
-          </a>
+          </RouterLink>
           <span
             v-if="!(row as PreventiveEventSummary).patientId && !(row as PreventiveEventSummary).ownerId"
             class="record-links__empty"

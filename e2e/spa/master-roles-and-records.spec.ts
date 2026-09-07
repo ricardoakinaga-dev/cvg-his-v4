@@ -12,7 +12,10 @@ const roles = [
 ] as const;
 
 async function login(page: Page, username = 'admin', password = 'seed_admin') {
-  await page.goto(`${SPA_URL}/login`, { waitUntil: 'domcontentloaded' });
+  // Wait for the initial cookie-backed restore attempt to settle before
+  // submitting credentials; otherwise refresh-token rotation can race the
+  // interactive login in a newly created context.
+  await page.goto(`${SPA_URL}/login`, { waitUntil: 'networkidle' });
   if (!page.url().includes('/login')) return;
   await page.locator('#email').fill(username);
   await page.locator('#password').fill(password);
@@ -41,7 +44,7 @@ test.describe('Cadastros fictícios e perfis operacionais via interface', () => 
       await page.getByLabel('Nome Completo').fill(`Teste Master ${profile.name} ${RUN_ID}`);
       await page.getByLabel('E-mail').fill(`${username}@cvg.test`);
       await page.getByLabel('Usuário (login)').fill(username);
-      await page.getByLabel('Setor').selectOption(profile.department);
+      await page.getByLabel('Setor', { exact: true }).selectOption(profile.department);
       await page.getByLabel('Perfil (Role)').selectOption(profile.role);
       await page.getByLabel('Cargo/Função').fill(profile.name);
       await page.locator('#password').fill(PASSWORD);

@@ -504,7 +504,7 @@ test.describe('Rotinas hospitalares completas por persona', () => {
     const equipmentName = `Analisador Bioquímico ${run}`;
     await page.goto(`${SPA_URL}/laboratory/equipment/new`, { waitUntil: 'networkidle' });
     await page.getByLabel('Descrição').fill(equipmentName);
-    await page.getByLabel('Tipo').fill('Bioquímica automatizada');
+    await page.getByRole('textbox', { name: 'Tipo', exact: true }).fill('Bioquímica automatizada');
     await page.getByLabel('Nº Série').fill(`BIO-${run}`);
     await page.getByLabel('Última Calibração').fill(new Date().toISOString().slice(0, 10));
     await page.getByRole('button', { name: 'Salvar', exact: true }).click();
@@ -520,7 +520,7 @@ test.describe('Rotinas hospitalares completas por persona', () => {
         waitUntil: 'networkidle'
       });
       await page.getByLabel('Parâmetro').fill(enzyme.parameter);
-      await page.getByLabel('Unidade').fill('U/L');
+      await page.getByRole('textbox', { name: 'Unidade', exact: true }).fill('U/L');
       await page.getByLabel('Valor Mínimo').fill(enzyme.min);
       await page.getByLabel('Valor Máximo').fill(enzyme.max);
       await page.getByRole('button', { name: 'Salvar', exact: true }).click();
@@ -705,7 +705,7 @@ test.describe('Rotinas hospitalares completas por persona', () => {
       await page.getByLabel('Nome Completo').fill(profile.name);
       await page.getByLabel('E-mail').fill(`${username}@cvg.test`);
       await page.getByLabel('Usuário (login)').fill(username);
-      await page.getByLabel('Setor').selectOption(profile.department);
+      await page.getByLabel('Setor', { exact: true }).selectOption(profile.department);
       await page.getByLabel('Perfil (Role)').selectOption(profile.role);
       await page.getByLabel('Cargo/Função').fill(profile.name);
       await page.locator('#password').fill(PERSONA_PASSWORD);
@@ -743,7 +743,7 @@ test.describe('Rotinas hospitalares completas por persona', () => {
     expect(sector).toBeTruthy();
 
     await page.getByRole('button', { name: 'Matriz', exact: true }).click();
-    await page.getByLabel('Tipo').selectOption('team');
+    await page.getByRole('main').getByLabel('Tipo').selectOption('team');
     await page.getByLabel('Alvo').selectOption(team.id);
     await page.getByPlaceholder('Filtrar permissões da matriz').fill('diagnostics.read');
     const permissionRow = page
@@ -755,7 +755,7 @@ test.describe('Rotinas hospitalares completas por persona', () => {
     await expect(page.getByText('Permissão atualizada com sucesso')).toBeVisible();
 
     await page.getByRole('button', { name: 'Usuários', exact: true }).click();
-    await page.getByLabel('Usuário').selectOption(partner.id);
+    await page.getByRole('main').getByLabel('Usuário').selectOption(partner.id);
     await page.getByLabel(teamName, { exact: true }).check();
     await page.getByLabel(sectorName, { exact: true }).check();
     await page.getByRole('button', { name: 'Salvar vínculos' }).click();

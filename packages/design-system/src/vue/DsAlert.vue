@@ -1,7 +1,9 @@
 <template>
   <div :class="classes" role="alert" :aria-live="variant === 'danger' ? 'assertive' : 'polite'">
     <span v-if="$slots.icon || icon" class="ds-alert__icon" aria-hidden="true">
-      <slot name="icon">{{ icon }}</slot>
+      <slot name="icon">
+        <DsIcon :name="icon" size="sm" />
+      </slot>
     </span>
     <div class="ds-alert__content">
       <p v-if="title" class="ds-alert__title">{{ title }}</p>
@@ -16,13 +18,14 @@
       @click="$emit('dismiss')"
       aria-label="Fechar alerta"
     >
-      ×
+      <DsIcon name="close" size="sm" />
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import DsIcon from './DsIcon.vue';
 
 export interface DsAlertProps {
   variant?: 'info' | 'success' | 'warning' | 'danger';
@@ -106,21 +109,27 @@ const classes = computed(() => ['ds-alert', `ds-alert--${props.variant}`]);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 24px;
-  min-height: 24px;
+  width: var(--touch-min, 44px);
+  min-width: var(--touch-min, 44px);
+  height: var(--touch-min, 44px);
+  min-height: var(--touch-min, 44px);
   background: none;
   border: none;
-  font-size: 20px;
   cursor: pointer;
   color: currentColor;
   opacity: 0.6;
   padding: 0;
-  line-height: 1;
   flex-shrink: 0;
 }
 
 .ds-alert__dismiss:hover {
   opacity: 1;
+}
+
+.ds-alert__dismiss:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: -2px;
+  border-radius: var(--radius-sm, 6px);
 }
 
 /* Dark mode support follows the explicit application theme. */

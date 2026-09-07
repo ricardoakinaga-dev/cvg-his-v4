@@ -1,8 +1,35 @@
-# CVG-HIS V4 — Quality Bar v1
+---
+document_status: current
+document_kind: quality-bar
+effective_date: 2026-09-06
+owner: Engenharia e QA
+review_cycle: weekly
+---
 
-**Congelada em:** 2026-08-25  
+# CVG-HIS V4 — Quality Bar v2: baseline técnica + overlay Triplo AAA
+
+**Baseline v1 congelada em:** 2026-08-25
 **Aplicação:** consolidação sem rewrite, operação 24x7 e parity comportamental.  
 **Regra de veredicto:** ausência de evidência é `PARTIAL`/`BLOCKED`, nunca PASS.
+
+## Overlay vigente — Triplo AAA — 2026-09-06
+
+Este overlay acrescenta a régua executiva do programa [ERP State of Art / Triplo AAA](../2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md). Ele não reclassifica evidências históricas nem transforma `PASS_BOUNDED` em release. O selo AAA só pode ser emitido com todos os gates obrigatórios abaixo aprovados no mesmo candidato.
+
+| ID | Gate | Critério rejeitante | Meta AAA | Estado em 06/09 |
+|---|---|---|---|---|
+| AAA-ENG | Engenharia | checkout limpo, critical gate, migrações, RLS, auth, testes e contratos falham ou usam fallback/skip oculto | nota de Engenharia ≥95; zero Critical/High | `PARTIAL` |
+| AAA-PROD | Produto e paridade | jornada não persiste, não reconcilia, não recupera ou é aceita só por arquivo/mock | nota de Produto ≥95; 11/11 domínios ou exceção formal | `PARTIAL` — 4/11 |
+| AAA-INT | Providers | callback não autenticado, estado incorreto, retry/replay ou conciliação não observados em sandbox autorizado | 100% dos providers do escopo com matriz sucesso/falha/recuperação | `BLOCKED` |
+| AAA-OPS | Operação | artefato, deploy, restore, carga, alerta ou rollback não executados no target | nota de Operação ≥95; RPO/RTO/SLO atingidos | `BLOCKED` |
+| AAA-UX | UX e acessibilidade | overflow, estado ausente, foco/teclado quebrado, WCAG não verificada ou crítica independente ausente | WCAG 2.2 AA, 375/768/1440, light/dark e estados críticos | `PARTIAL` — escopo scoped |
+| AAA-GOV | Governança | evidência sem SHA/ambiente/resultado/revisor, DPO/Produto/Operação sem aceite ou risco sem owner | nota de Governança ≥95 e dossiê íntegro | `PARTIAL` |
+| AAA-SCORE | Nota de maturidade | nota composta usada para compensar uma falha obrigatória | global ≥95; cada dimensão ≥90; item crítico ≥85 | `FAIL` — 75 global |
+
+`PASS_BOUNDED` continua significando apenas o envelope executado. Evidência
+`NOT_RUN`, stale, simulada, sem ambiente válido ou de SHA diferente permanece
+fora de PASS para promoção. O score é um indicador de maturidade, não um
+substituto dos gates.
 
 | ID         | Critério                                             | Evidência mínima                                                  | Estado atual                                                                                                                                                                                                                                                                     |
 | ---------- | ---------------------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -262,3 +289,29 @@ execução remota, target e rollout permanecem fora da prova. A revisão
 independente final de Averroes foi `CONDITIONAL PASS`: os achados HIGH/MEDIUM
 foram resolvidos; restam somente as limitações de target/remote e o risco
 menor de constantes Helm duplicadas.
+
+## Correção da unidade de medição R05-010 — 06/09/2026
+
+A [reconciliação de identidades de fonte](CRITICAL_SOURCE_IDENTITY_RECONCILIATION.md)
+foi revisada por crítico I1 e aplicada:575fontes canônicas ativas e41identidades
+de cópias geradas retiradas, totalizando616registros históricos. As41fontesTS
+correspondentes já eram exigidas e permanecem com hashes/componentes intactos.
+A inclusão simultânea de originais e cópias obsoletas era um defeito do inventário.
+Não houve dispensa de domínio, comportamento, SQL/Vue especializado, shard ou
+meta85%. O digest novo exige novas provas; o gate continuaFAIL. O guard de
+identidade entrou no CI e a regressão passou67/67, sem aprovação global.
+
+## Rechecagem de estado — 2026-09-06
+
+O pacote atual passou typecheck, lint, build, testes locais, OpenAPI,
+namespaces, migration-source, RLS, deploy-surface, security scan e
+`complexity:check`. A cobertura executada passou com 2.433 testes e 1 skip,
+mas preservou o banco explicitado no `.env` e tem escopo instrumentado reduzido.
+
+O `test:critical:bootstrap` falhou por ausência do banco de teste isolado e
+Docker; `test:e2e:spa:setup` falhou após fallback de memória e health unhealthy.
+`external:check` registrou 0/10 dependências externas prontas e o audit de
+paridade verificou 4/11 domínios. Portanto `AAA-ENG`, `AAA-PROD`, `AAA-INT`,
+`AAA-OPS`, `AAA-UX` e `AAA-GOV` permanecem sem aprovação global; consulte o
+[relatório atual](../2026-09-06-relatorio-estado-atual-erp-cvg-his-v4.md) e o
+[dashboard](EVIDENCE_RISK_DASHBOARD.md) para o ledger e as limitações.

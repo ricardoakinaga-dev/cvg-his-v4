@@ -203,7 +203,7 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
 
     await expect(page.getByText(/Coluna temporal por data/)).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole('button', { name: 'Atualizar' })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('link', { name: 'Esteira', exact: true })).toBeVisible({
+    await expect(page.getByLabel('Ações da página').getByRole('link', { name: 'Esteira', exact: true })).toBeVisible({
       timeout: 10000
     });
     await expect(

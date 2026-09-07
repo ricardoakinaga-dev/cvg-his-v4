@@ -380,11 +380,11 @@ export class DiagnosticsService {
   ): DiagnosticOrderSummary {
     const encounter = this.getEncounterForAccount(accountId, payload.encounterId);
     if (payload.patientId !== encounter.patientId) {
-      throw new Error('patientId must match the encounter patient');
+      throw new ValidationError('patientId must match the encounter patient');
     }
 
     if (payload.examCatalogId && !this.getCatalogEntry(payload.examCatalogId)) {
-      throw new Error(`Unknown exam catalog entry '${payload.examCatalogId}'`);
+      throw new NotFoundError(`Unknown exam catalog entry '${payload.examCatalogId}'`);
     }
 
     const now = nowIso();
@@ -517,7 +517,7 @@ export class DiagnosticsService {
     const current = this.getOrderOrThrow(orderId);
 
     if (!this.isValidTransition(current.status, payload.status)) {
-      throw new Error(`Invalid status transition from '${current.status}' to '${payload.status}'`);
+      throw new ConflictError(`Invalid status transition from '${current.status}' to '${payload.status}'`);
     }
 
     if (payload.status === 'collected') {
@@ -538,7 +538,7 @@ export class DiagnosticsService {
       !resultAttachmentId &&
       !resultValues?.length
     ) {
-      throw new Error(
+      throw new ValidationError(
         'resultSummary or resultAttachmentId or resultValues is required when status is resulted'
       );
     }
@@ -640,7 +640,7 @@ export class DiagnosticsService {
     const currentWorkflow = this.getLaboratoryWorkflow(currentOrder);
     const allowed = VALID_LABORATORY_TRANSITIONS[currentWorkflow.status] ?? [];
     if (!allowed.includes(payload.status)) {
-      throw new Error(
+      throw new ConflictError(
         `Invalid laboratory status transition from '${currentWorkflow.status}' to '${payload.status}'`
       );
     }
@@ -714,7 +714,7 @@ export class DiagnosticsService {
       const resultAttachmentId = payload.resultAttachmentId?.trim();
       const resultValues = normalizeLaboratoryResultValues(payload.resultValues);
       if (!resultSummary && !resultAttachmentId && !resultValues?.length) {
-        throw new Error(
+        throw new ValidationError(
           'resultSummary or resultAttachmentId or resultValues is required when status is reported'
         );
       }
@@ -775,11 +775,11 @@ export class DiagnosticsService {
       );
       const deliveryChannel = requireNonEmptyString(payload.deliveryChannel, 'deliveryChannel');
       if (deliveryChannel.length > 80) {
-        throw new Error('deliveryChannel must be at most 80 characters');
+        throw new ValidationError('deliveryChannel must be at most 80 characters');
       }
       const deliveredAt = payload.deliveredAt ? new Date(payload.deliveredAt) : new Date(now);
       if (Number.isNaN(deliveredAt.getTime())) {
-        throw new Error('deliveredAt must be a valid date');
+        throw new ValidationError('deliveredAt must be a valid date');
       }
       const deliveredAtIso = deliveredAt.toISOString();
       const workflow = this.appendLaboratoryEvent(
@@ -836,7 +836,7 @@ export class DiagnosticsService {
     const currentOrder = this.getOrderOrThrow(orderId);
     const currentWorkflow = this.getLaboratoryWorkflow(currentOrder);
     if (!['collected', 'in_analysis', 'reported', 'delivered'].includes(currentWorkflow.status)) {
-      throw new Error(`Laboratory order cannot be recollected from '${currentWorkflow.status}'`);
+      throw new ConflictError(`Laboratory order cannot be recollected from '${currentWorkflow.status}'`);
     }
     const reason = requireNonEmptyString(payload.reason, 'reason');
     const collectedByUserId = requireNonEmptyString(payload.collectedByUserId, 'collectedByUserId');

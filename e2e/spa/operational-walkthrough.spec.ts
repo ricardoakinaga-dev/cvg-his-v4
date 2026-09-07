@@ -73,6 +73,10 @@ test.describe('Walkthrough operacional principal', () => {
     await page.getByRole('button', { name: `Selecionar ${referenceDate}`, exact: true }).click();
     await page.getByRole('button', { name: 'Aplicar', exact: true }).click();
     await page.waitForLoadState('networkidle');
+    await page.getByText('Filtros avançados CVG', { exact: true }).click();
+    await page.getByLabel('Busca geral').fill(patientName);
+    await page.getByRole('button', { name: 'Aplicar', exact: true }).click();
+    await page.waitForLoadState('networkidle');
     await expect(page.getByText(patientName)).toBeVisible({ timeout: 15000 });
 
     await page.goto(`${SPA_URL}/reception`);

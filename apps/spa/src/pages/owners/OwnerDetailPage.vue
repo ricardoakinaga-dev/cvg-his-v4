@@ -14,7 +14,7 @@
     </DsAlert>
 
     <template v-else-if="owner">
-      <AppPageHeader :breadcrumbs="['Atendimento', 'Cadastros', 'Clientes', owner.fullName]">
+      <AppPageHeader :breadcrumbs="['Atendimento', 'Cadastros', 'Tutores', owner.fullName]">
         <template #title>{{ owner.fullName }}</template>
         <template #subtitle>
           <StatusBadge
@@ -781,7 +781,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
@@ -829,6 +829,16 @@ const creatingRelationshipQuote = ref(false);
 const creatingPackageQuoteId = ref('');
 const loading = ref(true);
 const error = ref('');
+let active = true;
+let pageGeneration = 0;
+
+function isCurrentLoad(ownerId: string, generation: number): boolean {
+  return (
+    active &&
+    pageGeneration === generation &&
+    String(route.params.id ?? '') === ownerId
+  );
+}
 
 type PendingQuoteConfirmation =
   | {
@@ -1519,13 +1529,18 @@ async function confirmPendingQuote() {
   }
 }
 
-async function loadOwnerHub(ownerId: string) {
+async function loadOwnerHub(ownerId: string, generation: number) {
+  const isCurrent = () => isCurrentLoad(ownerId, generation);
   const [ownerResponse, patientResponse, appointmentResponse, encounterResponse] = await Promise.all([
     ownerService.getById(ownerId),
     patientService.list({ ownerId }),
     appointmentService.list(),
     encounterService.list()
   ]);
+  if (!isCurrent()) return;
+  if (ownerResponse.id !== ownerId) {
+    throw new Error('O tutor retornado não corresponde ao cadastro solicitado');
+  }
 
   owner.value = ownerResponse;
   patients.value = patientResponse;
@@ -1536,7 +1551,9 @@ async function loadOwnerHub(ownerId: string) {
 
   try {
     ownerSummary.value = await ownerService.getSummary(ownerId);
+    if (!isCurrent()) return;
   } catch {
+    if (!isCurrent()) return;
     ownerSummary.value = null;
     relatedWarnings.value.push('owner-summary');
   }
@@ -1550,6 +1567,7 @@ async function loadOwnerHub(ownerId: string) {
     }),
     laboratoryService.listOrders()
   ]);
+  if (!isCurrent()) return;
 
   if (billingResult.status === 'fulfilled') {
     billingRecords.value = billingResult.value;
@@ -1581,16 +1599,64 @@ async function loadOwnerHub(ownerId: string) {
   }
 }
 
-onMounted(async () => {
-  const ownerId = route.params.id as string;
+function resetOwnerHub() {
+  owner.value = null;
+  patients.value = [];
+  appointments.value = [];
+  encounters.value = [];
+  billingRecords.value = [];
+  quotes.value = [];
+  preventiveEvents.value = [];
+  laboratoryOrders.value = [];
+  ownerSummary.value = null;
+  relatedWarnings.value = [];
+  actionError.value = '';
+  actionMessage.value = '';
+  quoteActionError.value = '';
+  pendingQuoteConfirmation.value = null;
+}
+
+async function loadPage() {
+  const ownerId = String(route.params.id ?? '');
+  const generation = ++pageGeneration;
+  const isCurrent = () => isCurrentLoad(ownerId, generation);
+
+  loading.value = true;
+  error.value = '';
+  resetOwnerHub();
+
+  if (!ownerId) {
+    if (isCurrent()) {
+      error.value = 'Tutor inválido';
+      loading.value = false;
+    }
+    return;
+  }
 
   try {
-    await loadOwnerHub(ownerId);
+    await loadOwnerHub(ownerId, generation);
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar cliente';
+    if (isCurrent()) {
+      error.value = err instanceof Error ? err.message : 'Erro ao carregar cliente';
+    }
   } finally {
-    loading.value = false;
+    if (isCurrent()) {
+      loading.value = false;
+    }
   }
+}
+
+watch(
+  () => String(route.params.id ?? ''),
+  () => {
+    void loadPage();
+  },
+  { immediate: true, flush: 'sync' }
+);
+
+onBeforeUnmount(() => {
+  active = false;
+  pageGeneration += 1;
 });
 </script>
 
@@ -1762,6 +1828,13 @@ onMounted(async () => {
   gap: 4px;
   justify-items: end;
   white-space: nowrap;
+}
+
+.owner-360-timeline__meta a {
+  display: inline-flex;
+  min-height: var(--touch-min, 44px);
+  align-items: center;
+  padding-inline: 8px;
 }
 
 .vetus-client-grid {

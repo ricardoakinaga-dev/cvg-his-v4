@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import LaboratoryResultsPage from '../LaboratoryResultsPage.vue';
+import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import { laboratoryService } from '@/services/laboratory';
 import { mlService } from '@/services/ml';
 import { ownerService } from '@/services/owner';
@@ -114,7 +115,9 @@ describe('LaboratoryResultsPage', () => {
     expect(wrapper.text()).toContain('Mel');
     expect(wrapper.text()).toContain('25/04/2026');
     expect(wrapper.text()).toContain('24/04/2026');
-    expect(wrapper.text()).toContain('R$ 0,00');
+    expect(wrapper.text()).not.toContain('R$ 0,00');
+    expect(wrapper.findAll('.summary-grid dd').map((item) => item.text())).toEqual(['1', '1', '0']);
+    expect(wrapper.get('.advanced-filters').attributes('open')).toBeUndefined();
     expect(wrapper.text()).toContain('Laudo');
   });
 
@@ -190,7 +193,40 @@ describe('LaboratoryResultsPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Laudos');
+    expect(wrapper.text()).toContain('Não foi possível carregar os laudos');
+    expect(wrapper.text()).not.toContain('Nenhum registro encontrado');
+    expect(wrapper.findAll('.summary-grid dd').map((item) => item.text())).toEqual(['—', '—', '—']);
+    await wrapper.findComponent(DsAlert).vm.$emit('dismiss');
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('Unexpected error');
+    expect(wrapper.find('.load-failure').exists()).toBe(true);
+    vi.mocked(laboratoryService.listResults).mockResolvedValueOnce([]);
+    await wrapper.get('.load-failure button').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('.load-failure').exists()).toBe(false);
     expect(wrapper.text()).toContain('Nenhum registro encontrado');
-    expect(wrapper.text()).toContain('Unexpected error');
+
   });
+  it('keeps summary values unknown until the records request resolves', async () => {
+    let resolveRecords!: (value: never[]) => void;
+    vi.mocked(laboratoryService.listResults).mockImplementationOnce(() => new Promise((resolve) => { resolveRecords = resolve; }));
+    const wrapper = mount(LaboratoryResultsPage);
+    await flushPromises();
+    expect(wrapper.find('.record-count').exists()).toBe(false);
+    expect(wrapper.findAll('.summary-grid dd').every((item) => item.text() === '—')).toBe(true);
+    resolveRecords([]);
+    await flushPromises();
+    expect(wrapper.get('.record-count').text()).toContain('0 registro');
+    expect(wrapper.findAll('.summary-grid dd')[0].text()).toBe('0');
+  });
+
+  it('does not report zero anomalies when the analysis service fails', async () => {
+    vi.mocked(mlService.getLabAnomalies).mockRejectedValueOnce(new Error('Offline'));
+    const wrapper = mount(LaboratoryResultsPage);
+    await flushPromises();
+    expect(wrapper.findAll('.summary-grid dd').map((item) => item.text())).toEqual(['1', '1', '—']);
+    expect(wrapper.text()).toContain('Análise de anomalias indisponível');
+    expect(wrapper.text()).toContain('Mel');
+  });
+
 });

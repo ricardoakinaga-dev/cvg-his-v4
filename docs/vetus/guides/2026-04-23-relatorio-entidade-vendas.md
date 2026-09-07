@@ -11,13 +11,13 @@ Escopo:
 
 Evidências principais:
 
-- [vendas-beta-lista.png](../inspection/2026-04-23T23-26-06-167Z-vendas/screenshots/vendas-beta-lista.png)
-- [vendas-beta-lista.json](../inspection/2026-04-23T23-26-06-167Z-vendas/vendas-beta-lista.json)
-- [vendas-legacy-lista.png](../inspection/2026-04-23T23-26-06-167Z-vendas/screenshots/vendas-legacy-lista.png)
-- [vendas-legacy-lista.json](../inspection/2026-04-23T23-26-06-167Z-vendas/vendas-legacy-lista.json)
-- [vendas-legacy-lista.html](../inspection/2026-04-23T23-26-06-167Z-vendas/vendas-legacy-lista.html)
-- [estado-vendas-legacy.json](../inspection/2026-04-23T23-26-06-167Z-vendas/estado-vendas-legacy.json)
-- [network.json](../inspection/2026-04-23T23-26-06-167Z-vendas/network.json)
+- vendas-beta-lista.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-26-06-167Z-vendas/screenshots/vendas-beta-lista.png`)
+- vendas-beta-lista.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-26-06-167Z-vendas/vendas-beta-lista.json`)
+- vendas-legacy-lista.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-26-06-167Z-vendas/screenshots/vendas-legacy-lista.png`)
+- vendas-legacy-lista.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-26-06-167Z-vendas/vendas-legacy-lista.json`)
+- vendas-legacy-lista.html (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-26-06-167Z-vendas/vendas-legacy-lista.html`)
+- estado-vendas-legacy.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-26-06-167Z-vendas/estado-vendas-legacy.json`)
+- network.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-23T23-26-06-167Z-vendas/network.json`)
 - [2026-04-23-relatorio-entidade-comanda.md](../guides/2026-04-23-relatorio-entidade-comanda.md)
 - [2026-04-23-relatorio-entidade-servico.md](../guides/2026-04-23-relatorio-entidade-servico.md)
 - [2026-04-23-relatorio-fluxos-detalhe-comanda-agenda-financeiro.md](../guides/2026-04-23-relatorio-fluxos-detalhe-comanda-agenda-financeiro.md)

@@ -49,6 +49,9 @@ jobs:
           git merge-base --is-ancestor "$CANDIDATE_SHA" origin/main
           echo "sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
 
+      - name: Verify clean checkout
+        run: node scripts/assert-clean-checkout.mjs
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -78,11 +81,16 @@ jobs:
       - run: npx playwright install --with-deps chromium
 
       - name: Execute full database-backed suite
-        run: bash infra/scripts/run-e2e-spa.sh
+        run: GITHUB_SHA="$CANDIDATE_SHA" bash infra/scripts/run-e2e-spa.sh
 
       - name: Validate complete run evidence
         if: always()
-        run: node scripts/validate-usability-playwright-evidence.mjs
+        run: >-
+          GITHUB_SHA="$CANDIDATE_SHA" node scripts/validate-usability-playwright-evidence.mjs
+          "artifacts/playwright/${CANDIDATE_SHA}/certification-${{ matrix.run }}/results.json"
+          "artifacts/playwright/${CANDIDATE_SHA}/certification-${{ matrix.run }}/master-usability-audit.json"
+          "artifacts/playwright/${CANDIDATE_SHA}/certification-${{ matrix.run }}/usability-test-inventory.json"
+          "artifacts/playwright/${CANDIDATE_SHA}/certification-${{ matrix.run }}/playwright-discovery.json"
 
       - name: Record certification metadata
         if: always()
@@ -103,6 +111,8 @@ jobs:
             playwright-report/usability/
             test-results/
             tmp/master-usability-audit.json
+            tmp/playwright-discovery.json
+            tmp/usability-test-inventory.json
             tmp/playwright-discovery.txt
             artifacts/playwright/${{ steps.candidate.outputs.sha }}/certification-${{ matrix.run }}/
           if-no-files-found: warn
@@ -140,6 +150,9 @@ jobs:
           test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
           git merge-base --is-ancestor "$CANDIDATE_SHA" origin/main
           echo "sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Verify clean checkout
+        run: node scripts/assert-clean-checkout.mjs
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -151,7 +164,7 @@ jobs:
       - name: Install selected browser
         run: npx playwright install --with-deps "${E2E_BROWSER}"
       - name: Execute essential database-backed journeys
-        run: bash infra/scripts/run-e2e-spa.sh
+        run: GITHUB_SHA="$CANDIDATE_SHA" bash infra/scripts/run-e2e-spa.sh
       - name: Archive cross-browser evidence
         if: always()
         env:
@@ -159,7 +172,7 @@ jobs:
           E2E_ENVIRONMENT: certification-cross-browser
           E2E_INCLUDE_MASTER_AUDIT: '0'
           E2E_EVIDENCE_COMMAND: bash infra/scripts/run-e2e-spa.sh
-        run: node scripts/archive-playwright-evidence.mjs
+        run: GITHUB_SHA="$CANDIDATE_SHA" node scripts/archive-playwright-evidence.mjs
       - name: Upload cross-browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -192,6 +205,9 @@ jobs:
           git cat-file -e "$CANDIDATE_SHA^{commit}"
           git merge-base --is-ancestor "$CANDIDATE_SHA" origin/main
           echo "sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Verify clean checkout
+        run: node scripts/assert-clean-checkout.mjs
 
       - name: Test manual certification contract
         run: node --test scripts/usability-certification.test.mjs

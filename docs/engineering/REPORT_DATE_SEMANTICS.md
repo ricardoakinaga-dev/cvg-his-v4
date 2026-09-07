@@ -28,6 +28,7 @@
 | Familia                           | Campo de referencia                           | Implementacao persistida |
 | --------------------------------- | --------------------------------------------- | ------------------------ |
 | vendas e cheques                  | `created_at`                                  | intervalo UTC semiaberto |
+| histórico de cancelamentos        | `audit_events.occurred_at`                    | intervalo UTC semiaberto |
 | agenda e atendimento profissional | `start_at`                                    | intervalo UTC semiaberto |
 | estoque e movimentacoes           | `created_at`                                  | intervalo UTC semiaberto |
 | produtos, compras e catalogos     | `created_at`                                  | data UTC inclusiva       |
@@ -38,6 +39,11 @@
 O dispatcher de relatorios valida o periodo antes de consultar a fonte. As
 fontes database-backed repetem a validacao na fronteira do modulo e aplicam
 tenant/RLS, limite de linhas e ordem deterministica.
+
+O histórico `commercial-cancellation-history` usa o instante do evento e os
+valores registrados no cancelamento. A consulta `commercial-deleted-sales`
+mantém a data de abertura e o estado atual, preservando os agendamentos
+existentes. Consulte o [guia de uso](../reports-cancellation-history.md).
 
 ## Evidencia de regressao
 

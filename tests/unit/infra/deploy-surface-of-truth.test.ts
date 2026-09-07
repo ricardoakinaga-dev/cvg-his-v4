@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
@@ -15,6 +17,29 @@ describe('canonical deploy surface contract', () => {
     const result = validateDeploySurface(process.cwd());
 
     expect(result.errors).toEqual([]);
+  });
+
+  it('works without the archive and rejects restoring the old deploy track', () => {
+    const fixture = mkdtempSync(join(tmpdir(), 'cvg-deploy-cleanup-'));
+    try {
+      const paths = new Set([
+        ...validateDeploySurface(process.cwd()).scannedFiles,
+        'docs/engineering/RELEASE_IDENTITY.md',
+        'infra/helm/cvg-his-v2/Chart.yaml'
+      ]);
+      for (const relativePath of paths) {
+        const target = join(fixture, relativePath);
+        mkdirSync(dirname(target), { recursive: true });
+        copyFileSync(relativePath, target);
+      }
+      expect(validateDeploySurface(fixture).errors).toEqual([]);
+      mkdirSync(join(fixture, 'charts', 'helm'), { recursive: true });
+      expect(validateDeploySurface(fixture).errors).toContain(
+        'legacy Helm track must remain outside the active deployment tree'
+      );
+    } finally {
+      rmSync(fixture, { recursive: true, force: true });
+    }
   });
 
   it('rejects an active reference to the legacy Helm track', () => {

@@ -1,7 +1,7 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { navGroups } from '../../apps/spa/src/navigation';
+import { flattenAllNavItems } from '../../apps/spa/src/navigation';
 
 const SPA_URL = process.env.SPA_URL || 'http://127.0.0.1:3112';
 const ARTIFACT_PATH = process.env.E2E_AUDIT_ARTIFACT || 'tmp/master-usability-audit.json';
@@ -34,6 +34,7 @@ type AuditRecord = {
 };
 
 type AuditMetadata = {
+  inventoryDigest: string;
   sha: string;
   environment: string;
   command: string;
@@ -58,6 +59,7 @@ function currentGitSha(): string {
 }
 
 const auditMetadata: AuditMetadata = {
+  inventoryDigest: process.env.E2E_INVENTORY_DIGEST || '',
   sha: process.env.GITHUB_SHA || process.env.CI_COMMIT_SHA || currentGitSha(),
   environment: process.env.E2E_ENVIRONMENT || (process.env.CI ? 'ci' : 'local'),
   command:
@@ -72,18 +74,14 @@ const auditMetadata: AuditMetadata = {
 
 const navRoutes = Array.from(
   new Map(
-    navGroups.flatMap((group) =>
-      group.sections.flatMap((section) =>
-        section.items.map((item) => [item.path, { path: item.path, title: item.label }] as const)
-      )
-    )
+    flattenAllNavItems().map((item) => [item.path, { path: item.path, title: item.label }] as const)
   ).values()
 );
 
 const auditRecords: AuditRecord[] = [];
 
 async function login(page: Page) {
-  await page.goto(`${SPA_URL}/login`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${SPA_URL}/login`, { waitUntil: 'networkidle' });
   if (!page.url().includes('/login')) return;
 
   await page.locator('#email').fill(process.env.E2E_ADMIN_USERNAME || 'admin');

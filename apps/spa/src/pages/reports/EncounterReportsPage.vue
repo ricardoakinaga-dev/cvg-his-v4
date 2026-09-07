@@ -3,22 +3,50 @@
     <AppPageHeader
       title="Relatórios de Atendimento"
       :breadcrumbs="['Relatórios', 'Atendimento', 'Relatórios de Atendimento']"
-      subtitle="Entrada para relatórios de comandas, produção, agenda e atendimento por profissional"
+      subtitle="Escolha a consulta para acompanhar a rotina assistencial."
     />
-
-    <DsAlert variant="info">
-      Os relatórios específicos de atendimento foram materializados como páginas operacionais, com dados
-      conectados ao hub administrativo quando a fonte já existe e estados vazios explícitos quando a fonte
-      analítica ainda precisa evoluir.
-    </DsAlert>
+    <ReportCategoryNavigation label="Relatórios de Atendimento" :groups="groups" />
   </div>
 </template>
 
 <script setup lang="ts">
 import AppPageHeader from '@/components/AppPageHeader.vue';
-import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
+import ReportCategoryNavigation from '@/components/reports/ReportCategoryNavigation.vue';
+
+const groups = [
+  {
+    "title": "Atendimento e produção",
+    "items": [
+      {
+        "title": "Comandas e Vendas",
+        "description": "Consulta de comandas e vendas.",
+        "to": "/reports/sales"
+      },
+      {
+        "title": "Produtos e Serviços Produzidos",
+        "description": "Itens associados à produção.",
+        "to": "/reports/produced-items"
+      },
+      {
+        "title": "Atendimento por Profissional",
+        "description": "Consulta por profissional.",
+        "to": "/reports/professional-care"
+      }
+    ]
+  },
+  {
+    "title": "Agenda",
+    "items": [
+      {
+        "title": "Agenda",
+        "description": "Consulta dos agendamentos.",
+        "to": "/reports/appointments"
+      }
+    ]
+  }
+];
 </script>
 
 <style scoped>
-.reports-page { display: grid; gap: 16px; }
+.reports-page { display: grid; gap: 24px; }
 </style>

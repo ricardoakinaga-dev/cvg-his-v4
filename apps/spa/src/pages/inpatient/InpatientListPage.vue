@@ -1,36 +1,55 @@
 <template>
   <div class="inpatient-list-page">
-    <AppPageHeader :breadcrumbs="['Atendimento', 'Internação', 'Internação']" title="🛏️ Internação" subtitle="Atendimento > Internação. Acompanhe admissões, leitos e evolução dos pacientes internados.">
+    <AppPageHeader :breadcrumbs="['Atendimento', 'Internação', 'Internação']" title="Internação" subtitle="Atendimento > Internação. Acompanhe admissões, leitos e evolução dos pacientes internados.">
       <template #actions>
-        <DsButton variant="secondary" :loading="loading" @click="reload">🔄 Atualizar</DsButton>
-        <DsButton tag="a" to="/inpatient/board" variant="secondary">🗺️ Mapa de Leitos</DsButton>
-        <DsButton tag="a" to="/inpatient/daily-charges" variant="secondary">💵 Diárias</DsButton>
-        <DsButton tag="a" to="/sectors" variant="ghost">🏢 Setores</DsButton>
-        <DsButton tag="a" to="/queue" variant="secondary">🏥 Ver Fila</DsButton>
-        <DsButton tag="a" to="/inpatient/admit" variant="primary">+ Admitir Paciente</DsButton>
+        <DsButton variant="secondary" :loading="loading" @click="reload">
+          <template #icon><DsIcon name="refresh" size="sm" aria-hidden="true" /></template>
+          Atualizar
+        </DsButton>
+        <DsButton tag="a" to="/inpatient/board" variant="secondary">
+          <template #icon><DsIcon name="map" size="sm" aria-hidden="true" /></template>
+          Mapa de Leitos
+        </DsButton>
+        <DsButton tag="a" to="/inpatient/daily-charges" variant="secondary">
+          <template #icon><DsIcon name="money" size="sm" aria-hidden="true" /></template>
+          Diárias
+        </DsButton>
+        <DsButton tag="a" to="/sectors" variant="ghost">
+          <template #icon><DsIcon name="building" size="sm" aria-hidden="true" /></template>
+          Setores
+        </DsButton>
+        <DsButton tag="a" to="/queue" variant="secondary">
+          <template #icon><DsIcon name="hospital" size="sm" aria-hidden="true" /></template>
+          Ver Fila
+        </DsButton>
+        <DsButton tag="a" to="/inpatient/admit" variant="primary">
+          <template #icon><DsIcon name="plus" size="sm" aria-hidden="true" /></template>
+          Admitir Paciente
+        </DsButton>
       </template>
     </AppPageHeader>
 
-    <section class="inpatient-list-page__overview" aria-label="Resumo da internação">
+    <section class="inpatient-list-page__overview" aria-label="Resumo da internação" :aria-busy="loading">
       <div class="overview-metric overview-metric--primary">
-        <span class="overview-metric__value">{{ occupancyRate }}</span>
-        <span class="overview-metric__label">{{ occupiedCount }} de {{ activeBedCount }} leitos em uso</span>
+        <span class="overview-metric__value">{{ hasData ? occupancyRate : '—' }}</span>
+        <span class="overview-metric__label">{{ occupancyLabel }}</span>
       </div>
       <div class="overview-metric">
-        <span class="overview-metric__value">{{ admittedCount }}</span>
-        <span class="overview-metric__label">Em cuidado</span>
+        <span class="overview-metric__value">{{ hasData ? admittedCount : '—' }}</span>
+        <span class="overview-metric__label">Em cuidado nesta lista</span>
       </div>
       <div class="overview-metric">
-        <span class="overview-metric__value">{{ stableCount }}</span>
-        <span class="overview-metric__label">Estáveis</span>
+        <span class="overview-metric__value">{{ hasData ? stableCount : '—' }}</span>
+        <span class="overview-metric__label">Estáveis nesta lista</span>
       </div>
     </section>
 
-    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
+    <DsAlert v-if="error" variant="danger">
       {{ error }}
     </DsAlert>
 
     <DataTable
+      v-if="!error"
       :columns="columns"
       :rows="items"
       :loading="loading"
@@ -75,25 +94,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { inpatientService } from '@/services/inpatient';
 import type { InpatientStaySummary } from '@/types/inpatient';
 import { useEntityCache } from '@/composables/useEntityCache';
-import { useListData } from '@/composables/useListData';
 import { formatDate } from '@/utils/labels';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import DsIcon from '@cvg-his-v2/design-system/vue/DsIcon.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
-import { computed } from 'vue';
 
 const entityCache = useEntityCache();
 const route = useRoute();
 const patientNames = ref<Record<string, string>>({});
 const activeBedCount = ref(0);
+const occupiedCount = ref(0);
+const items = ref<InpatientStaySummary[]>([]);
+const loading = ref(true);
+const error = ref('');
+const hasData = computed(() => !loading.value && !error.value);
+let loadGeneration = 0;
 
 const columns: DataTableColumn[] = [
   { key: 'patient', label: 'Paciente' },
@@ -132,34 +156,62 @@ function patientName(id: string): string {
 
 const admittedCount = computed(() => items.value.filter((stay) => stay.status === 'admitted').length);
 const stableCount = computed(() => items.value.filter((stay) => stay.status === 'stable').length);
-const occupiedCount = computed(() => admittedCount.value + stableCount.value);
 const occupancyRate = computed(() => {
-  if (!activeBedCount.value) return '0%';
+  if (!activeBedCount.value) return '—';
   return `${Math.round((occupiedCount.value / activeBedCount.value) * 100)}%`;
 });
 
-const { items, loading, error, load } = useListData<InpatientStaySummary>({
-  fetchFn: async () => {
+const occupancyLabel = computed(() => {
+  if (loading.value) return 'Carregando ocupação…';
+  if (error.value) return 'Ocupação indisponível';
+  if (!activeBedCount.value) return 'Nenhum leito ativo';
+  return `${occupiedCount.value} de ${activeBedCount.value} leitos em uso`;
+});
+
+async function load() {
+  const generation = ++loadGeneration;
+  loading.value = true;
+  error.value = '';
+  items.value = [];
+  activeBedCount.value = 0;
+  occupiedCount.value = 0;
+  patientNames.value = {};
+  try {
     const patientIdFilter = typeof route.query.patientId === 'string' ? route.query.patientId : undefined;
     const [stays, beds] = await Promise.all([
       inpatientService.list(patientIdFilter ? { patientId: patientIdFilter } : undefined),
       inpatientService.listBeds({ active: true })
     ]);
-    activeBedCount.value = beds.filter((bed) => bed.active).length;
-    const patientIds = [...new Set(stays.map((s) => s.patientId))];
-    await Promise.all(
-      patientIds.map(async (id) => {
-        patientNames.value[id] = await entityCache.getPatientName(id);
+    if (generation !== loadGeneration) return;
+    items.value = stays;
+    const activeBeds = beds.filter((bed) => bed.active);
+    activeBedCount.value = activeBeds.length;
+    occupiedCount.value = activeBeds.filter((bed) => bed.status === 'occupied').length;
+    void Promise.allSettled(
+      [...new Set(stays.map((stay) => stay.patientId))].map(async (id) => {
+        const name = await entityCache.getPatientName(id);
+        if (generation === loadGeneration) patientNames.value[id] = name;
       })
     );
-    return stays;
-  },
-  entityLabel: 'internações'
-});
+  } catch (err: unknown) {
+    if (generation === loadGeneration) {
+      error.value = err instanceof Error ? err.message : 'Erro ao carregar internações';
+    }
+  } finally {
+    if (generation === loadGeneration) loading.value = false;
+  }
+}
 
 function reload() {
   void load();
 }
+
+onMounted(reload);
+onBeforeUnmount(() => {
+  ++loadGeneration;
+});
+watch(() => route.query.patientId, reload);
+
 </script>
 
 <style scoped>

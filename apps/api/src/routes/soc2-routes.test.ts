@@ -128,3 +128,38 @@ test('handleSoc2Routes calculates a security score for authenticated requests', 
   assert.ok(payload.overall >= 0);
   assert.ok(payload.overall <= 100);
 });
+
+test('SOC2 public responses and audit messages exclude simulated operational approval', async () => {
+  const handlers = createHandlers();
+  const audits: unknown[][] = [];
+  const withAudit = { ...handlers, appendAudit: (...args: unknown[]) => { audits.push(args); } };
+  await handlers.vulnerabilityControl.runScan(['api', 'database']);
+  await handlers.drControl.conductFailoverTest();
+  await handlers.drControl.conductRecoveryTest();
+  for (const pathname of ['/soc2/evidence', '/soc2/security-score']) {
+    const response = new MockResponse();
+    await handleSoc2Routes(pathname, { method: 'GET', url: pathname } as never, response as never, 'truth-check', withAudit);
+    assert.equal(response.statusCode, 200);
+    const payload = response.bodyJson<any>();
+    assert.equal(payload.operationalApproval, false);
+    assert.equal(payload.status, 'not_verified');
+    if (pathname.endsWith('evidence')) {
+      assert.equal(payload.summary.controlsPassing, 0);
+      assert.equal(payload.summary.coveragePercent, 0);
+      assert.equal(payload.summary.lastDrTest, null);
+      assert.equal(payload.summary.lastVulnerabilityScan, null);
+      assert.equal(payload.securityScore.overall, 0);
+      for (const criterion of payload.trustServiceCriteria) {
+        assert.notEqual(criterion.overallStatus, 'pass');
+        for (const control of criterion.controls) {
+          assert.equal(control.operationallyVerified, false);
+          assert.equal(control.lastTested, null);
+          assert.notEqual(control.status, 'pass');
+        }
+      }
+    } else assert.equal(payload.overall, 0);
+  }
+  assert.equal(audits.length, 2);
+  assert.match(String(audits[0][6]), /not verified/);
+  assert.match(String(audits[1][6]), /operational approval: false/);
+});

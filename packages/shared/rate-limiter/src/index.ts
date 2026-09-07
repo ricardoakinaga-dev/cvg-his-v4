@@ -536,7 +536,9 @@ export class RateLimiter {
     const userPart = key.userId ? `u:${key.userId}` : undefined;
     const accountPart =
       key.accountId && key.accountId !== 'pending' ? `a:${key.accountId}` : undefined;
-    const ipPart = key.ip ? `ip:${key.ip}` : undefined;
+    // A verified identity keeps the same quota when its network address changes.
+    // Anonymous/pending-account traffic is still isolated by source IP.
+    const ipPart = !userPart && !accountPart && key.ip ? `ip:${key.ip}` : undefined;
     const tenantPart = key.tenantId ? `t:${key.tenantId}` : undefined;
     const routePart = `r:${key.route}`;
 

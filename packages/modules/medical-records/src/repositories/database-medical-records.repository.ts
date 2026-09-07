@@ -51,6 +51,12 @@ function isInvalidUuidSyntaxError(error: unknown): boolean {
   );
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isDatabaseUuid(value: string): boolean {
+  return UUID_PATTERN.test(value);
+}
+
 function allowSchemaCompatibilityFallback(): boolean {
   if (process.env.DATABASE_ALLOW_SCHEMA_COMPATIBILITY === '1') return true;
   return process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development';
@@ -125,10 +131,13 @@ export class DatabaseMedicalRecordRepository implements MedicalRecordRepository 
     );
   }
 
-  public async findById(id: MedicalRecordId): Promise<MedicalRecordSummary | null> {
+  public async findById(
+    id: MedicalRecordId,
+    explicitAccountId?: AccountId
+  ): Promise<MedicalRecordSummary | null> {
     let result: (typeof medicalRecords.$inferSelect)[];
     try {
-      result = await withTenantDatabase(this.#db, resolveAccountId(), (database) =>
+      result = await withTenantDatabase(this.#db, resolveAccountId(explicitAccountId), (database) =>
         database.select().from(medicalRecords).where(eq(medicalRecords.id, id)).limit(1)
       );
     } catch (error) {
@@ -146,10 +155,18 @@ export class DatabaseMedicalRecordRepository implements MedicalRecordRepository 
     return this.mapRowToRecord(row);
   }
 
-  public async findByEncounterId(encounterId: EncounterId): Promise<MedicalRecordSummary | null> {
+  public async findByEncounterId(
+    encounterId: EncounterId,
+    explicitAccountId?: AccountId
+  ): Promise<MedicalRecordSummary | null> {
+    // medical_records.encounter_id is UUID-backed in the canonical schema. A
+    // prefixed legacy/in-memory ID cannot match a persisted row and must be
+    // treated as a miss before tenant-scoped SQL is attempted.
+    if (!isDatabaseUuid(encounterId)) return null;
+
     let result: (typeof medicalRecords.$inferSelect)[];
     try {
-      result = await withTenantDatabase(this.#db, resolveAccountId(), (database) =>
+      result = await withTenantDatabase(this.#db, resolveAccountId(explicitAccountId), (database) =>
         database
           .select()
           .from(medicalRecords)

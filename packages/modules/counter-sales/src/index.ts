@@ -15,11 +15,20 @@ import type {
   CounterSalePaymentRecord,
   CounterSaleReceiptRecord,
   CounterSaleListFilters,
-  CounterSaleCancellationHistoryRecord
+  CounterSaleCancellationHistoryRecord,
+  CounterSaleCancellationReportFilters,
+  CounterSaleCancellationReportRow
 } from './repositories/database-counter-sales.repository.js';
 import {
   MAX_CHEQUE_REPORT_ROWS,
-  MAX_COUNTER_SALE_REPORT_ROWS
+  MAX_COUNTER_SALE_REPORT_ROWS,
+  normalizeCancellationReportFilters,
+  validateCancellationReportRows
+} from './repositories/database-counter-sales.repository.js';
+
+export type {
+  CounterSaleCancellationReportFilters,
+  CounterSaleCancellationReportRow
 } from './repositories/database-counter-sales.repository.js';
 
 export interface CounterSaleSummary {
@@ -1109,8 +1118,10 @@ export class CounterSalesService {
       this.#sales.set(saleId, execution.sale);
       if (execution.transitioned && !this.#repository) {
         this.#recordInMemoryCancellation(input, execution);
+        return execution.sale;
+      } else {
+        return execution.sale;
       }
-      return execution.sale;
     } catch (error) {
       // The transaction wrapper rolls back durable writes. Restore this
       // projection too, so a failed audit append cannot expose a phantom
@@ -1159,6 +1170,20 @@ export class CounterSalesService {
           right.cancelledAt.localeCompare(left.cancelledAt) ||
           right.eventId.localeCompare(left.eventId)
       );
+  }
+
+  async listCancellationReportRows(
+    accountId: AccountId,
+    filters?: CounterSaleCancellationReportFilters
+  ): Promise<readonly CounterSaleCancellationReportRow[]> {
+    const normalized = normalizeCancellationReportFilters(accountId, filters);
+    if (!this.#repository?.listCancellationReportRows) {
+      throw new ConflictError(
+        'Cancellation history reports require a database-backed audit source'
+      );
+    }
+    const rows = await this.#repository.listCancellationReportRows(accountId, normalized);
+    return validateCancellationReportRows(accountId, normalized, rows);
   }
 
   #toCancellationHistory(

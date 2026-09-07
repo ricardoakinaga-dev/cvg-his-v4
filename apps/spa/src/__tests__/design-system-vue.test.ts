@@ -100,7 +100,7 @@ describe('DsButton', () => {
     });
     expect(wrapper.element.tagName).toBe('A');
     expect(wrapper.attributes('disabled')).toBeDefined();
-    expect(wrapper.attributes('href')).toBe('/test');
+    expect(wrapper.attributes('href')).toBeUndefined();
   });
 });
 

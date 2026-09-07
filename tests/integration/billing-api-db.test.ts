@@ -77,11 +77,11 @@ async function seedAuthenticatedBillingUser(): Promise<void> {
 
   await pool.query(
     `
-      INSERT INTO users (id, account_id, email, password_hash, full_name)
-      VALUES ($1, $2, $3, 'cvg-his-v2-seed-salt-v1:seed_admin', 'Billing API User')
+      INSERT INTO users (id, account_id, email, password_hash, full_name, username)
+      VALUES ($1, $2, $3, 'cvg-his-v2-seed-salt-v1:seed_admin', 'Billing API User', $4)
       ON CONFLICT (id) DO NOTHING
     `,
-    [USER_ID, ACCOUNT_ID, EMAIL]
+    [USER_ID, ACCOUNT_ID, EMAIL, USERNAME]
   );
 
   const roleResult = await pool.query<{ id: string }>(
@@ -186,6 +186,7 @@ beforeAll(async () => {
   server = createApiServer({
     appName: 'billing-api-db-test',
     environment: 'test',
+    preserveSeedUsersWithRepository: false,
     version: '0.1.0',
     authSecret: 'billing-api-db-test-secret',
     accessTokenTtlSeconds: 900,

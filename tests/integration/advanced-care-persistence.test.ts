@@ -139,10 +139,10 @@ async function seedCanonicalParents(): Promise<void> {
   await pool.query(
     `INSERT INTO inpatient_stays (
        id, account_id, patient_id, owner_id, encounter_id, ward_id, bed_id,
-       status, admitted_by_user_id
+       status, admitted_by_user_id, unit, ward, bed
      ) VALUES
-       ($1, $3, $5, $7, $9, $11, $13, 'active', $15),
-       ($2, $4, $6, $8, $10, $12, $14, 'active', $16)`,
+       ($1, $3, $5, $7, $9, $11, $13, 'admitted', $15, 'Internacao', 'Advanced Care Ward A', 'Advanced Care Bed A'),
+       ($2, $4, $6, $8, $10, $12, $14, 'admitted', $16, 'Internacao', 'Advanced Care Ward B', 'Advanced Care Bed B')`,
     [
       STAY_A,
       STAY_B,

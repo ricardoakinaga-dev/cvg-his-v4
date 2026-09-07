@@ -1,0 +1,22 @@
+
+ RUN  v4.1.2 /home/ricardo/cvg-his-v4/apps/spa
+
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > renders the new customer title 770ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > renders the new grouped form fields 76ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > shows validation error when name is empty 36ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > shows validation error when no contact is provided 58ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > submits the new customer payload successfully 180ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > hydrates the expanded fields in edit mode 103ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > reloads the current owner and ignores a late previous response after a route switch 167ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > rejects a successful owner response whose identity differs from the edit route 87ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > does not report update success when the returned owner belongs to another route 95ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > does not duplicate a pending save or navigate away from edits made during it 58ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > preserves entered values after a failed save 22ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > blocks mutation after failed hydration and allows a successful retry 76ms
+ ✓ src/pages/owners/__tests__/OwnerFormPage.test.ts > OwnerFormPage > keeps edits entered while an existing tutor update is pending 112ms
+
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
+   Start at  23:57:00
+   Duration  3.11s (transform 757ms, setup 165ms, import 127ms, tests 1.84s, environment 756ms)
+

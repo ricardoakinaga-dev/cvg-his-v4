@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "review_cycle_days": 7,
+  "owner": "LT/QA",
+  "documents": [
+    {
+      "path": "docs/2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md",
+      "kind": "plan"
+    },
+    {
+      "path": "docs/2026-09-06-roadmap-erp-state-of-art-triplo-aaa.md",
+      "kind": "roadmap"
+    },
+    {
+      "path": "docs/2026-09-06-backlog-erp-state-of-art-triplo-aaa.md",
+      "kind": "backlog"
+    },
+    {
+      "path": "docs/2026-09-06-relatorio-estado-atual-erp-cvg-his-v4.md",
+      "kind": "baseline"
+    },
+    {
+      "path": "docs/engineering/QUALITY_BAR.md",
+      "kind": "quality-bar"
+    },
+    {
+      "path": "docs/engineering/RISK_REGISTER.md",
+      "kind": "risk-register"
+    }
+  ]
+}

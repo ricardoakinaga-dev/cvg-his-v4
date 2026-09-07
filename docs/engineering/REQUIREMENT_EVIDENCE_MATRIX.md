@@ -41,6 +41,27 @@ ledger contiver procedimento, ambiente, resultado, artefato e limitações
 reproduzíveis. A matriz não converte `PASS_BOUNDED` em `DONE`: target,
 provider, parity, operações e autorização humana continuam gates independentes.
 
+## Rastreabilidade do programa Triplo AAA — 2026-09-06
+
+O [backlog AAA](../2026-09-06-backlog-erp-state-of-art-triplo-aaa.md) é a
+superfície executável; esta tabela mantém o vínculo entre a régua e a decisão.
+O estado atual é deliberadamente conservador: `PARTIAL` ou `BLOCKED` não é
+aprovação e a nota global 75 não compensa um gate obrigatório.
+
+| Gate AAA | Requisito de decisão | Evidência mínima para promoção | Estado atual | Próximos tickets |
+|---|---|---|---|---|
+| AAA-ENG | Engenharia integrada e fail-closed | checkout limpo, critical DB/API/browser, migrações, RLS, auth, cobertura crítica e CI no mesmo SHA | `PARTIAL/BLOCKED` | AAA-002, AAA-005, AAA-009–015 |
+| AAA-PROD | Jornadas e paridade comportamental | 11/11 domínios do escopo com dados persistidos, erro/recovery, reconciliação e aceite de Produto | `PARTIAL` — 4/11 | AAA-017–028 |
+| AAA-INT | Providers reais | sandbox aprovado, callback autenticado, estados, retry/DLQ, replay e conciliação observados | `BLOCKED` — 0/10 externos | AAA-003, AAA-022–024, AAA-029–034 |
+| AAA-OPS | Operação no target | artefato imutável, deploy, upgrade, restore/RPO-RTO, carga/SLO, alerta, game day e rollback | `BLOCKED` | AAA-015, AAA-035–043, AAA-046 |
+| AAA-UX | Experiência e acessibilidade | matriz visual 375/768/1440, light/dark, estados críticos, teclado, foco, leitor de tela, WCAG 2.2 AA e revisão independente | `PARTIAL` — scoped | AAA-007, AAA-013, AAA-044 |
+| AAA-GOV | Governança e aceite | documentação sem conflito, evidência current com owner/revisor, DPO/Segurança/Produto/OPS e ata go/no-go | `PARTIAL` | AAA-008, AAA-016, AAA-041–043, AAA-047 |
+| AAA-SCORE | Maturidade global | global ≥95, dimensões ≥90, críticos ≥85, sem Critical/High aberto | `FAIL` — 75/100 | relatório/roadmap/backlog de 06/09 |
+
+Cada item da matriz deve apontar para um procedimento e um ledger identificável
+antes de ser promovido. As evidências visuais scoped de 06/09 são sinais úteis,
+mas não provam o backend, a persistência, a autorização nem a cobertura global.
+
 ## QB-ARC-01 — atualização de evidência — 2026-08-26
 
 O contrato de identidade de release e superfície de deploy foi implementado e

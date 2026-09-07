@@ -22,22 +22,54 @@ describe('LaboratoryHubPage', () => {
     });
   });
 
-  it('renders the operational laboratory architecture from Vetus documents', async () => {
-    const wrapper = mount(LaboratoryHubPage);
+  it('shows the laboratory workload and preserves access to exams and reference settings', async () => {
+    const wrapper = mount(LaboratoryHubPage, { global: { stubs: { DsAlert: false } } });
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Arquitetura operacional do Laboratório');
-    expect(wrapper.text()).toContain('Requisição de exame');
-    expect(wrapper.text()).toContain('Esteira de Exames');
-    expect(wrapper.text()).toContain('Coleta');
-    expect(wrapper.text()).toContain('Resultado especializado');
-    expect(wrapper.text()).toContain('Laudo');
-    expect(wrapper.text()).toContain('Entrega');
-    expect(wrapper.text()).toContain('Exames');
-    expect(wrapper.text()).toContain('Laudos');
-    expect(wrapper.text()).toContain('Tipos de Laudo');
-    expect(wrapper.text()).toContain('Vlr. Ref. Hemograma');
-    expect(wrapper.text()).toContain('Vlr. Ref. Bioquímico');
-    expect(wrapper.text()).toContain('Equipamentos');
+    const metrics = wrapper.findAll('.ds-stat-card');
+    expect(metrics.map((card) => card.find('.ds-stat-card__value').text())).toEqual(['8', '2', '3', '5']);
+    expect(metrics.map((card) => card.find('.ds-stat-card__label').text())).toEqual([
+      'Pedidos de exame', 'Aguardando coleta', 'Aguardando laudo', 'Equipamentos ativos'
+    ]);
+    expect(wrapper.text()).toContain('3 laudo(s) ainda aguardam liberação.');
+    const destinations = wrapper.findAll('a').map((link) => link.attributes('href'));
+    expect(destinations).toEqual(expect.arrayContaining([
+      '/laboratory/orders', '/laboratory/results', '/diagnostics',
+      '/laboratory/results?type=HEM', '/laboratory/results?type=BIO', '/laboratory/results?type=URIN',
+      '/laboratory/equipment', '/laboratory/report-types', '/laboratory/reference-values',
+      '/laboratory/hemogram-reference-values', '/laboratory/biochemistry-reference-values'
+    ]));
   });
+
+  it('does not present unavailable metrics as zero and lets staff retry', async () => {
+    vi.mocked(laboratoryService.getDashboardSummary).mockRejectedValueOnce(new Error('Resumo indisponível'));
+    const wrapper = mount(LaboratoryHubPage, { global: { stubs: { DsAlert: false } } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Resumo indisponível');
+    expect(wrapper.findAll('.ds-stat-card__value').map((value) => value.text())).toEqual(['—', '—', '—', '—']);
+    const refresh = wrapper.findAll('button').find((button) => button.text().includes('Atualizar'))!;
+    await refresh.trigger('click');
+    await flushPromises();
+    expect(laboratoryService.getDashboardSummary).toHaveBeenCalledTimes(2);
+    expect(wrapper.text()).not.toContain('Resumo indisponível');
+    expect(wrapper.find('.ds-stat-card__value').text()).toBe('8');
+  });
+
+  it('keeps stale workload hidden after a failed refresh alert is dismissed', async () => {
+    const wrapper = mount(LaboratoryHubPage, { global: { stubs: { DsAlert: false } } });
+    await flushPromises();
+    expect(wrapper.text()).toContain('3 laudo(s) ainda aguardam liberação.');
+
+    vi.mocked(laboratoryService.getDashboardSummary).mockRejectedValueOnce(new Error('Resumo indisponível'));
+    const refresh = wrapper.findAll('button').find((button) => button.text().includes('Atualizar'))!;
+    await refresh.trigger('click');
+    await flushPromises();
+    await wrapper.get('.ds-alert--danger button[aria-label="Fechar alerta"]').trigger('click');
+
+    expect(wrapper.text()).not.toContain('Resumo indisponível');
+    expect(wrapper.findAll('.ds-stat-card__value').map((value) => value.text())).toEqual(['—', '—', '—', '—']);
+    expect(wrapper.text()).not.toContain('Fila laboratorial');
+  });
+
 });

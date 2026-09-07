@@ -1,7 +1,7 @@
 <template>
   <router-link :to="to" class="ds-domain-card" :class="{ 'ds-domain-card--compact': compact }">
     <div class="ds-domain-card__icon-wrap" aria-hidden="true">
-      <span class="ds-domain-card__icon">{{ icon }}</span>
+      <span class="ds-domain-card__icon"><DsIcon :name="icon" size="lg" /></span>
       <span v-if="badge !== undefined" class="ds-domain-card__badge">{{ badge > 99 ? '99+' : badge }}</span>
     </div>
     <div class="ds-domain-card__body">
@@ -13,6 +13,8 @@
 </template>
 
 <script setup lang="ts">
+import DsIcon from './DsIcon.vue';
+
 export interface DsDomainCardProps {
   label: string;
   to: string;
@@ -80,7 +82,7 @@ withDefaults(defineProps<DsDomainCardProps>(), {
   display: grid;
   place-items: center;
   border-radius: 12px;
-  background: rgba(37, 99, 235, 0.08);
+  background: var(--color-primary-subtle, rgba(37, 99, 235, 0.08));
   font-size: 20px;
 }
 

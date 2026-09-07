@@ -495,10 +495,12 @@ async function listCardReconciliationRows(
     const matchedReceivables = financialSummary
       ? financialSummary.receivables.filter((receivable) => receivableIds.includes(receivable.id))
       : [];
+    const financialPaymentLinked = !transaction.billingRecordId || matchedPayments.length > 0;
     const reconciliationState =
       transaction.status === 'captured' &&
       (transaction.billingSettlementStatus === 'applied' ||
-        transaction.billingSettlementStatus === 'not_applicable')
+        transaction.billingSettlementStatus === 'not_applicable') &&
+      financialPaymentLinked
         ? 'reconciled'
         : transaction.status === 'captured'
           ? 'attention_required'

@@ -99,7 +99,7 @@ describe('BedBoardPage', () => {
     expect(wrapper.text()).toContain('Mapa de Leitos');
   });
 
-  it('starts with zero stats before data loads', async () => {
+  it('keeps occupancy unavailable until the map loads', async () => {
     let resolvePromise: (value: any) => void;
     const slowPromise = new Promise((resolve) => {
       resolvePromise = resolve;
@@ -110,11 +110,19 @@ describe('BedBoardPage', () => {
     const wrapper = mount(BedBoardPage);
 
     await wrapper.vm.$nextTick();
-    expect(wrapper.text()).toContain('Total: 0');
+    expect(wrapper.findAll('.board-stats dd').map((value) => value.text())).toEqual([
+      '—',
+      '—',
+      '—'
+    ]);
 
     resolvePromise!(mockBedMap);
     await flushPromises();
-    expect(wrapper.text()).toContain('Total: 3');
+    expect(wrapper.findAll('.board-stats dd').map((value) => value.text())).toEqual([
+      '3',
+      '1',
+      '1'
+    ]);
   });
 
   it('shows error message when API fails', async () => {
@@ -125,6 +133,32 @@ describe('BedBoardPage', () => {
 
     await flushPromises();
     expect(wrapper.text()).toContain('Network error');
+  });
+
+  it('does not show an empty map or zero occupancy after dismissing a load failure', async () => {
+    mockGetBedMapFn.mockRejectedValue(new Error('Mapa temporariamente indisponível'));
+    const BedBoardPage = (await import('../BedBoardPage.vue')).default;
+    const wrapper = mount(BedBoardPage, { global: { stubs: { DsAlert: false } } });
+    await flushPromises();
+    await wrapper.get('button[aria-label="Fechar alerta"]').trigger('click');
+    expect(wrapper.text()).toContain('Mapa indisponível');
+    expect(wrapper.text()).not.toContain('Nenhum setor configurado');
+    expect(wrapper.findAll('.board-stats dd').map((value) => value.text())).toEqual([
+      '—',
+      '—',
+      '—'
+    ]);
+    mockGetBedMapFn.mockResolvedValue(mockBedMap);
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Tentar novamente')!
+      .trigger('click');
+    await flushPromises();
+    expect(wrapper.findAll('.board-stats dd').map((value) => value.text())).toEqual([
+      '3',
+      '1',
+      '1'
+    ]);
   });
 
   it('shows empty state when no sectors configured', async () => {
@@ -140,6 +174,7 @@ describe('BedBoardPage', () => {
 
     await flushPromises();
     expect(wrapper.text()).toContain('Nenhum setor configurado');
+    expect(wrapper.text()).toContain('Configurar setores');
   });
 
   it('renders sectors with their names', async () => {
@@ -179,9 +214,11 @@ describe('BedBoardPage', () => {
     const wrapper = mount(BedBoardPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Total: 3');
-    expect(wrapper.text()).toContain('Ocupados: 1');
-    expect(wrapper.text()).toContain('Disponíveis: 1');
+    expect(wrapper.findAll('.board-stats dd').map((value) => value.text())).toEqual([
+      '3',
+      '1',
+      '1'
+    ]);
   });
 
   it('shows patient name for occupied beds', async () => {
@@ -190,6 +227,86 @@ describe('BedBoardPage', () => {
 
     await flushPromises();
     expect(wrapper.text()).toContain('Rex');
+  });
+
+  it('shows occupancy while patient names are still loading', async () => {
+    let resolveName!: (name: string) => void;
+    mockGetPatientName.mockReturnValue(
+      new Promise<string>((resolve) => {
+        resolveName = resolve;
+      })
+    );
+    const BedBoardPage = (await import('../BedBoardPage.vue')).default;
+    const wrapper = mount(BedBoardPage);
+    await flushPromises();
+    expect(wrapper.findAll('.bed-card')).toHaveLength(3);
+    expect(wrapper.findAll('.board-stats dd').map((value) => value.text())).toEqual([
+      '3',
+      '1',
+      '1'
+    ]);
+    expect(wrapper.text()).toContain('Paciente pat-1');
+    resolveName('Rex');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Rex');
+    wrapper.unmount();
+  });
+
+  it('keeps the loaded map available when a patient name lookup fails', async () => {
+    mockGetPatientName.mockRejectedValue(new Error('Name service unavailable'));
+    const BedBoardPage = (await import('../BedBoardPage.vue')).default;
+    const wrapper = mount(BedBoardPage);
+    await flushPromises();
+    expect(wrapper.findAll('.bed-card')).toHaveLength(3);
+    expect(wrapper.text()).toContain('Paciente pat-1');
+    expect(wrapper.text()).not.toContain('Mapa indisponível');
+    wrapper.unmount();
+  });
+
+  it('ignores a patient name from an older refresh', async () => {
+    let resolveOldName!: (name: string) => void;
+    mockGetPatientName
+      .mockReturnValueOnce(
+        new Promise<string>((resolve) => {
+          resolveOldName = resolve;
+        })
+      )
+      .mockResolvedValueOnce('Nome atualizado');
+    const BedBoardPage = (await import('../BedBoardPage.vue')).default;
+    const wrapper = mount(BedBoardPage);
+    await flushPromises();
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Atualizar')!
+      .trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Nome atualizado');
+    resolveOldName('Nome antigo');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Nome atualizado');
+    expect(wrapper.text()).not.toContain('Nome antigo');
+    wrapper.unmount();
+  });
+
+  it('does not present the previous occupancy as current after a failed refresh', async () => {
+    const BedBoardPage = (await import('../BedBoardPage.vue')).default;
+    const wrapper = mount(BedBoardPage);
+    await flushPromises();
+    expect(wrapper.findAll('.bed-card')).toHaveLength(3);
+    mockGetBedMapFn.mockRejectedValueOnce(new Error('Atualização indisponível'));
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Atualizar')!
+      .trigger('click');
+    await flushPromises();
+    expect(wrapper.findAll('.bed-card')).toHaveLength(0);
+    expect(wrapper.findAll('.board-stats dd').map((value) => value.text())).toEqual([
+      '—',
+      '—',
+      '—'
+    ]);
+    expect(wrapper.text()).toContain('Mapa indisponível');
+    wrapper.unmount();
   });
 
   it('shows sector badge with occupancy count', async () => {

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -13,6 +14,7 @@ import { bootstrapServices, shutdownServices } from '../../apps/api/src/bootstra
 import { ApiKeysService } from '../../packages/modules/api-keys/src/index.ts';
 import { runWithTenantContext } from '../../packages/tenant-context/src/index.ts';
 import { TEST_DB_URL } from '../setup/env.ts';
+import { hashSeedPassword } from '../../packages/db/src/password.ts';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -53,6 +55,9 @@ let accessToken: string;
 let refreshToken: string;
 let rawApiKey: string;
 let createdApiKeyId: string;
+const principal = { userId: randomUUID(), accountId: randomUUID(), tenantId: randomUUID() };
+const USERNAME = `route-probe-${principal.userId}`;
+const PASSWORD = 'route-probe-test-password';
 let repositoriesUnderTest: Awaited<ReturnType<typeof bootstrapServices>>['repositories'];
 
 function loadOpenApiDocument(): OpenApiDocument {
@@ -127,8 +132,8 @@ function buildRequestBody(method: HttpMethod, pathname: string): Record<string, 
   if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
     if (pathname === '/auth/login') {
       return {
-        username: 'admin',
-        password: 'seed_admin'
+        username: USERNAME,
+        password: PASSWORD
       };
     }
 
@@ -170,12 +175,27 @@ function isPublicOperation(operation: OpenApiOperation | undefined, pathname: st
 async function cleanupProbeRows(): Promise<void> {
   await pool.query(`DELETE FROM api_key_usage WHERE api_key_id = $1`, [createdApiKeyId ?? null]);
   await pool.query(`DELETE FROM api_key_rate_limits WHERE api_key_id = $1`, [createdApiKeyId ?? null]);
-  await pool.query(`DELETE FROM api_keys WHERE name LIKE 'Route Probe %'`);
-  await pool.query(`DELETE FROM webhook_deliveries WHERE webhook_id IN (SELECT id FROM webhooks WHERE url LIKE 'https://route-probe.%')`);
-  await pool.query(`DELETE FROM webhooks WHERE url LIKE 'https://route-probe.%'`);
+  await pool.query('DELETE FROM api_keys WHERE account_id = $1', [principal.accountId]);
+  await pool.query('DELETE FROM webhook_deliveries WHERE webhook_id IN (SELECT id FROM webhooks WHERE account_id = $1)', [principal.accountId]);
+  await pool.query('DELETE FROM webhooks WHERE account_id = $1', [principal.accountId]);
+  await pool.query('DELETE FROM audit_events WHERE account_id = $1 OR actor_user_id = $2', [principal.accountId, principal.userId]);
+  await pool.query('DELETE FROM quotes WHERE account_id = $1', [principal.accountId]);
+  await pool.query('DELETE FROM counter_sales WHERE account_id = $1', [principal.accountId]);
+  await pool.query('DELETE FROM sessions WHERE account_id = $1', [principal.accountId]);
+  await pool.query('DELETE FROM user_roles WHERE user_id = $1', [principal.userId]);
+  await pool.query('DELETE FROM users WHERE id = $1', [principal.userId]);
+  await pool.query('DELETE FROM accounts WHERE id = $1', [principal.accountId]);
+  await pool.query('DELETE FROM tenants WHERE id = $1', [principal.tenantId]);
 }
 
 beforeAll(async () => {
+  pool = new Pool({ connectionString: TEST_DB_URL, max: 2 });
+  await pool.query(`INSERT INTO tenants (id, slug, name, status) VALUES ($1, $2, 'Route Probe Tenant', 'active')`, [principal.tenantId, `probe-${principal.tenantId}`]);
+  await pool.query(`INSERT INTO accounts (id, tenant_id, slug, name) VALUES ($1, $2, $3, 'Route Probe Account')`, [principal.accountId, principal.tenantId, `probe-${principal.accountId}`]);
+  await pool.query(`INSERT INTO users (id, account_id, username, email, password_hash, full_name) VALUES ($1, $2, $3, $4, $5, 'Route Probe User')`, [principal.userId, principal.accountId, USERNAME, `${USERNAME}@example.test`, await hashSeedPassword(PASSWORD)]);
+  const role = await pool.query<{ id: string }>(`SELECT id FROM roles WHERE name = 'admin'`);
+  expect(role.rowCount).toBe(1);
+  await pool.query(`INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`, [principal.userId, role.rows[0].id]);
   const bootstrap = await bootstrapServices({
     databaseUrl: TEST_DB_URL,
     fileStoragePath: mkdtempSync(join(tmpdir(), 'cvg-his-v2-route-tests-')),
@@ -184,7 +204,7 @@ beforeAll(async () => {
   });
 
   expect(bootstrap.databaseHealthy).toBe(true);
-  expect(bootstrap.repositories.session?.constructor.name).toBe('InMemorySessionRepository');
+  expect(bootstrap.repositories.session?.constructor.name).toBe('DatabaseSessionRepository');
   expect(bootstrap.repositories.audit?.constructor.name).toBe('DatabaseAuditRepository');
   repositoriesUnderTest = bootstrap.repositories;
 
@@ -208,21 +228,22 @@ beforeAll(async () => {
     authSecret: 'test-secret',
     accessTokenTtlSeconds: 900,
     refreshTokenTtlSeconds: 604800,
+    preserveSeedUsersWithRepository: false,
     repositories: repositoriesUnderTest,
-    fileStorage: bootstrap.fileStorage
+    fileStorage: bootstrap.fileStorage,
+    unitOfWork: bootstrap.unitOfWork
   });
 
+  await server.ready;
   await new Promise<void>((resolve) => {
     server.listen(0, '127.0.0.1', () => resolve());
   });
 
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  pool = new Pool({ connectionString: TEST_DB_URL, max: 2 });
-
   const loginResponse = await requestJson<LoginResponse>('/auth/login', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ username: 'admin', password: 'seed_admin' })
+    body: JSON.stringify({ username: USERNAME, password: PASSWORD })
   });
 
   expect(loginResponse.status).toBe(200);
@@ -232,17 +253,15 @@ beforeAll(async () => {
   const apiKeys = new ApiKeysService(repositoriesUnderTest.apiKey);
   const createdApiKey = await runWithTenantContext(
     {
-      tenantId: 'tenant-route-probe',
-      accountId: 'acc_cvg_demo',
-      userId: 'user_admin',
+      ...principal,
       correlationId: 'corr-route-probe-api-key-bootstrap'
     },
     () =>
       apiKeys.create({
-        accountId: 'acc_cvg_demo' as never,
+        accountId: principal.accountId as never,
         name: 'Route Probe Bootstrap Key',
         permissions: ['integrations.read', 'payments.manage'],
-        createdBy: 'user_admin'
+        createdBy: principal.userId
       })
   );
 
@@ -275,7 +294,7 @@ afterAll(async () => {
 });
 
 describe('API Routes with Database', () => {
-  it('persists audit events in the database while preserving legacy runtime ids in metadata', async () => {
+  it('persists audit events with the authenticated database principal', async () => {
     const beforeCountResult = await pool.query<{ total: string }>(
       `SELECT COUNT(*)::int AS total FROM audit_events`
     );
@@ -284,7 +303,7 @@ describe('API Routes with Database', () => {
     const loginResponse = await requestJson<LoginResponse>('/auth/login', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: 'admin', password: 'seed_admin' })
+      body: JSON.stringify({ username: USERNAME, password: PASSWORD })
     });
 
     expect(loginResponse.status).toBe(200);
@@ -327,15 +346,15 @@ describe('API Routes with Database', () => {
 
     expect(persistedRow).toBeDefined();
     expect(persistedRow?.action).toBe('login');
-    expect(persistedRow?.account_id).toBeNull();
-    expect(persistedRow?.actor_user_id).toBeNull();
+    expect(persistedRow?.account_id).toBe(principal.accountId);
+    expect(persistedRow?.actor_user_id).toBe(principal.userId);
     expect(persistedRow?.metadata).toMatchObject({
       module: 'auth',
-      legacyAccountId: 'acc_cvg_demo',
-      legacyActorId: 'user_admin',
-      payloadSummary: 'User admin authenticated',
+      payloadSummary: `User ${USERNAME} authenticated`,
       riskLevel: 'medium'
     });
+    expect(persistedRow?.metadata).not.toHaveProperty('legacyAccountId');
+    expect(persistedRow?.metadata).not.toHaveProperty('legacyActorId');
   });
 
   it('persists webhook routes in the database', async () => {
@@ -401,15 +420,65 @@ describe('API Routes with Database', () => {
 
     expect(apiKeyRow.rowCount).toBe(1);
     expect(apiKeyRow.rows[0].name).toBe('Route Probe Bootstrap Key');
-    expect(apiKeyRow.rows[0].created_by).toBe('user_admin');
+    expect(apiKeyRow.rows[0].created_by).toBe(principal.userId);
   });
+
+  it.each([null, true, [], '', 'not-a-number', 4])(
+    'rejects invalid laboratory reference ranges without an internal error (%j)',
+    async (minValue) => {
+      const response = await request('/laboratory/hemogram-reference-values', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ parameter: 'probe', unit: 'g/L', minValue, maxValue: 3 })
+      });
+      expect(response.status).toBe(400);
+      expect(response.json?.code).toBe('VALIDATION_ERROR');
+    }
+  );
+
+  it.each(['equipment', 'report-types', 'reference-values'])(
+    'returns not-found for an absent laboratory %s record',
+    async (resource) => {
+      const response = await request(`/laboratory/${resource}/${randomUUID()}`, {
+        method: 'PATCH',
+        headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      expect(response.status).toBe(404);
+      expect(response.json?.code).toBe('NOT_FOUND');
+    }
+  );
 
   it('does not leave documented routes unmapped in the runtime router', async () => {
     const spec = loadOpenApiDocument();
     const failures: string[] = [];
 
+    async function ensureAuthenticatedProbe(): Promise<void> {
+      const session = await request('/auth/session', {
+        headers: { authorization: `Bearer ${accessToken}` }
+      });
+      if (session.status !== 200) {
+        // Probing logout legitimately revokes the fixture's session. Restore it
+        // before judging another route, so a global 401 cannot hide a missing route.
+        const login = await requestJson<LoginResponse>('/auth/login', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ username: USERNAME, password: PASSWORD })
+        });
+        expect(login.status).toBe(200);
+        accessToken = login.body.accessToken;
+      }
+      const missing = await request(`/route-probe-nonexistent-${principal.userId}`, {
+        headers: { authorization: `Bearer ${accessToken}` }
+      });
+      expect(missing.status).toBe(404);
+      expect(missing.json?.message).toBe('Route not found');
+    }
+
     for (const [rawPath, operations] of Object.entries(spec.paths)) {
       for (const [rawMethod, operation] of Object.entries(operations)) {
+        if (!['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace'].includes(rawMethod)) continue;
+        await ensureAuthenticatedProbe();
         const method = rawMethod.toUpperCase() as HttpMethod;
         const pathname = resolveRoutePath(rawPath);
         const body = buildRequestBody(method, rawPath);
@@ -419,12 +488,13 @@ describe('API Routes with Database', () => {
           headers['content-type'] = 'application/json';
         }
 
+        if (!isPublicOperation(operation, rawPath)) {
+          headers.authorization = `Bearer ${accessToken}`;
+        }
         if (needsApiKey(rawPath)) {
           headers['x-api-key'] = rawApiKey;
-        } else if (!isPublicOperation(operation, rawPath)) {
-          headers.authorization = `Bearer ${accessToken}`;
         } else if (!rawPath.startsWith('/health') && rawPath !== '/ready' && rawPath !== '/live') {
-          headers['x-account-id'] = 'acc_cvg_demo';
+          headers['x-account-id'] = principal.accountId;
         }
 
         const response = await request(pathname, {
@@ -438,6 +508,9 @@ describe('API Routes with Database', () => {
 
         if (routeWasMissing) {
           failures.push(`${method} ${rawPath}`);
+        }
+        if (response.status === 429) {
+          failures.push(`${method} ${rawPath}: rate limit prevented runtime dispatch verification`);
         }
       }
     }

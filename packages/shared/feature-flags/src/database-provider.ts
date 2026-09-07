@@ -1,4 +1,4 @@
-import { eq, and, type SQL } from 'drizzle-orm';
+import { eq, and, or, isNull } from 'drizzle-orm';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
 import { featureFlags, featureFlagOverrides } from '@cvg-his-v2/shared-database/schemas';
 import type {
@@ -10,124 +10,117 @@ import type {
 } from './index.js';
 import { createFlagDecision, noOpFeatureFlagMetricsCollector } from './index.js';
 
-/**
- * Caches flag decisions for a configurable TTL to avoid repeated DB hits.
- * Uses a simple Map with timestamp-based eviction.
- */
-class FlagCache {
-  readonly #cache = new Map<string, { decision: FlagDecision; expiresAt: number }>();
-  readonly #ttlMs: number;
-
-  constructor(ttlMs = 60_000) {
-    this.#ttlMs = ttlMs;
-  }
-
-  get(key: string, nowMs: number): FlagDecision | undefined {
-    const entry = this.#cache.get(key);
-    if (!entry) return undefined;
-    if (entry.expiresAt <= nowMs) {
-      this.#cache.delete(key);
-      return undefined;
-    }
-    return entry.decision;
-  }
-
-  set(key: string, decision: FlagDecision, nowMs: number): void {
-    this.#cache.set(key, {
-      decision,
-      expiresAt: nowMs + this.#ttlMs
-    });
-  }
-
-  invalidate(key?: string): void {
-    if (!key) {
-      this.#cache.clear();
-      return;
-    }
-    this.#cache.delete(key);
-  }
-}
-
 export interface DatabaseFeatureFlagProviderOptions {
-  /**
-   * Pre-populate the internal registry with these definitions.
-   * If a flag is not in this list, its definition is loaded from the DB.
-   */
+  /** Retained for source compatibility; evaluate receives the authoritative definition. */
   readonly definitions?: readonly FlagDefinition[];
-  /**
-   * Cache TTL in milliseconds. Defaults to 60 seconds.
-   */
   readonly cacheTtlMs?: number;
-  /**
-   * Metrics collector for observability. Defaults to no-op.
-   */
+  /** Maximum retained decisions, default 1024. Zero disables caching. */
+  readonly maxCacheEntries?: number;
   readonly metrics?: FeatureFlagMetricsCollector;
 }
 
+export interface DatabaseFeatureFlagProvider extends FeatureFlagProvider {
+  evaluate(definition: FlagDefinition, context: EvaluationContext): Promise<FlagDecision>;
+  invalidateCache(key?: string): void;
+}
+
 /**
- * Creates a database-backed FeatureFlagProvider that:
- * - Loads flag definitions from the DB on first evaluation (and caches them)
- * - Evaluates overrides by environment, account, and user
- * - Falls back to a secondary provider (e.g. env) on DB errors
- * - Supports rollout percentage and allowlist per override
- * - Records metrics via FeatureFlagMetricsCollector
+ * Tenant-aware database provider. Without an account, evaluation delegates to
+ * fallback without issuing an unscoped query. Overrides prefer user, account,
+ * then environment specificity; equal specificity uses the newest row and ID.
  */
 export function createDatabaseFeatureFlagProvider(
   db: DatabaseClient,
   fallbackProvider: FeatureFlagProvider,
   options: DatabaseFeatureFlagProviderOptions = {}
-): FeatureFlagProvider {
-  const cache = new FlagCache(options.cacheTtlMs ?? 60_000);
+): DatabaseFeatureFlagProvider {
+  const ttl = options.cacheTtlMs ?? 60_000;
+  if (!Number.isFinite(ttl) || ttl < 0)
+    throw new RangeError('cacheTtlMs must be finite and nonnegative');
+  const capacity = options.maxCacheEntries ?? 1024;
+  if (!Number.isSafeInteger(capacity) || capacity < 0)
+    throw new RangeError('maxCacheEntries must be a nonnegative safe integer');
   const metrics = options.metrics ?? noOpFeatureFlagMetricsCollector;
-
-  function recordFallback(key: string, reason: string): void {
-    metrics.recordFallback({ flagKey: key, provider: 'database', fallbackReason: reason });
-  }
-
+  const cache = new Map<string, { decision: FlagDecision; expiresAt: number; flagKey: string }>();
+  let generation = 0;
   return {
     name: 'database',
     invalidateCache(key?: string): void {
-      cache.invalidate(key);
+      generation++;
+      for (const [entryKey, entry] of cache)
+        if (key === undefined || entry.flagKey === key) cache.delete(entryKey);
     },
-
-    async evaluate(
-      definition: FlagDefinition,
-      context: EvaluationContext
-    ): Promise<FlagDecision> {
-      const start = Date.now();
-      const now = context.now ?? new Date();
-      const nowMs = now.getTime();
-      const cacheKey = buildCacheKey(definition.key, context);
-
-      // 1. Check cache first
-      const cached = cache.get(cacheKey, nowMs);
-      if (cached) {
-        metrics.recordEvaluation({
-          flagKey: definition.key,
-          provider: 'database',
-          reason: cached.reason,
-          enabled: cached.enabled,
-          durationMs: Date.now() - start
-        });
-        return cached;
-      }
-
-      // 2. Try DB lookup
+    async evaluate(definition, context): Promise<FlagDecision> {
+      const start = Date.now(),
+        nowMs = (context.now ?? new Date()).getTime();
+      // Tuple encoding prevents delimiter collisions. Definition/attributes are
+      // inputs to fallback, so sharing their decisions would also be unsafe.
+      for (const [key, cached] of cache) if (cached.expiresAt <= nowMs) cache.delete(key);
+      const cacheKey = JSON.stringify([
+        definition,
+        context.environment,
+        context.tenantId,
+        context.accountId,
+        context.userId,
+        context.attributes,
+        context.correlationId,
+        context.now?.toISOString()
+      ]);
+      const entry = cache.get(cacheKey);
       let decision: FlagDecision;
-      try {
-        decision = await evaluateFromDb(db, definition, context, recordFallback);
-      } catch (err) {
-        // 3. Fall back to secondary provider on DB error
-        recordFallback(definition.key, 'database_error');
-        metrics.recordError({
-          flagKey: definition.key,
-          provider: 'database',
-          errorType: err instanceof Error ? err.constructor.name : 'UnknownError'
-        });
-        decision = fallbackProvider.evaluate(definition, context);
+      if (entry && entry.expiresAt > nowMs) {
+        decision = createFlagDecision(
+          definition,
+          context,
+          structuredClone({
+            enabled: entry.decision.enabled,
+            provider: entry.decision.provider,
+            reason: entry.decision.reason,
+            metadata: entry.decision.metadata
+          })
+        );
+      } else {
+        cache.delete(cacheKey);
+        const pendingGeneration = generation;
+        let expiry: number | undefined;
+        const fallback = async (reason: string) => {
+          metrics.recordFallback({
+            flagKey: definition.key,
+            provider: 'database',
+            fallbackReason: reason
+          });
+          return await fallbackProvider.evaluate(definition, context);
+        };
+        if (!context.accountId) {
+          decision = await fallback('missing_account');
+        } else {
+          let result: { decision: FlagDecision; expiry?: number } | null;
+          try {
+            result = await evaluateFromDb(db, definition, context);
+          } catch (error) {
+            metrics.recordError({
+              flagKey: definition.key,
+              provider: 'database',
+              errorType: error instanceof Error ? error.constructor.name : 'UnknownError'
+            });
+            result = { decision: await fallback('database_error') };
+          }
+          if (result === null) decision = await fallback('not_found_in_db');
+          else {
+            decision = result.decision;
+            expiry = result.expiry;
+          }
+        }
+        // An invalidation while a query is in flight must not repopulate stale data.
+        if (pendingGeneration === generation && ttl > 0 && capacity > 0) {
+          while (cache.size >= capacity) cache.delete(cache.keys().next().value!);
+          cache.set(cacheKey, {
+            decision: structuredClone(decision),
+            flagKey: definition.key,
+            expiresAt: Math.min(nowMs + ttl, expiry ?? Infinity)
+          });
+        }
       }
-
-      // 4. Record evaluation metrics
       metrics.recordEvaluation({
         flagKey: definition.key,
         provider: 'database',
@@ -135,150 +128,97 @@ export function createDatabaseFeatureFlagProvider(
         enabled: decision.enabled,
         durationMs: Date.now() - start
       });
-
-      // 5. Cache the result (even fallback — avoids hammering DB on repeated errors)
-      cache.set(cacheKey, decision, nowMs);
       return decision;
     }
   };
 }
 
-function buildCacheKey(flagKey: string, context: EvaluationContext): string {
-  return `${flagKey}:${context.environment ?? ''}:${context.accountId ?? ''}:${context.userId ?? ''}`;
-}
-
 async function evaluateFromDb(
   db: DatabaseClient,
   definition: FlagDefinition,
-  context: EvaluationContext,
-  recordFallback: (key: string, reason: string) => void
-): Promise<FlagDecision> {
-  const accountId = context.accountId;
-  const environment = context.environment ?? 'development';
-  const userId = context.userId;
-
-  // Build the where conditions safely
-  const flagKeyCondition = eq(featureFlags.key, definition.key);
-  const accountCondition: SQL | undefined = accountId
-    ? eq(featureFlags.accountId, accountId)
-    : undefined;
-
-  // Load flag from DB
-  const flagWhere = accountCondition
-    ? and(flagKeyCondition, accountCondition)
-    : flagKeyCondition;
-
-  const flagRows = await db.select().from(featureFlags).where(flagWhere).limit(1);
-
-  // If flag not found in DB, delegate entirely to fallback
-  if (!flagRows || flagRows.length === 0) {
-    recordFallback(definition.key, 'not_found_in_db');
-    return createFlagDecision(definition, context, {
-      enabled: definition.defaultValue,
-      provider: 'database',
-      reason: 'default'
-    });
-  }
-
-  const flagRow = flagRows[0]!;
-
-  // Check if flag is disabled at the definition level (kill switch)
-  const globalEnabled = flagRow.enabled;
-  if (!globalEnabled) {
-    return createFlagDecision(definition, context, {
-      enabled: false,
-      provider: 'database',
-      reason: 'kill_switch',
-      metadata: { level: 'flag' }
-    });
-  }
-
-  // Build override conditions
-  const overrideFlagCondition = eq(featureFlagOverrides.flagId, flagRow.id);
-  const overrideEnvCondition: SQL | undefined = environment
-    ? eq(featureFlagOverrides.environment, environment)
-    : undefined;
-  const overrideAccountCondition: SQL | undefined = accountId
-    ? eq(featureFlagOverrides.accountIdOverride, accountId)
-    : undefined;
-
-  // Load override for this environment / account / user
-  const overrideWhere = and(overrideFlagCondition, overrideEnvCondition, overrideAccountCondition);
-  const overrideRows = await db
+  context: EvaluationContext
+): Promise<{ decision: FlagDecision; expiry?: number } | null> {
+  const accountId = context.accountId!,
+    environment = context.environment ?? 'development',
+    userId = context.userId;
+  const [flag] = await db
     .select()
-    .from(featureFlagOverrides)
-    .where(overrideWhere)
+    .from(featureFlags)
+    .where(and(eq(featureFlags.key, definition.key), eq(featureFlags.accountId, accountId)))
     .limit(1);
-
-  if (!overrideRows || overrideRows.length === 0) {
-    // No override → use the flag's own enabled + defaultValue
-    return createFlagDecision(definition, context, {
-      enabled: Boolean(flagRow.defaultValue),
-      provider: 'database',
-      reason: 'default'
-    });
-  }
-
-  const override = overrideRows[0]!;
-
-  // Kill switch on override
-  if (!override.enabled) {
-    return createFlagDecision(definition, context, {
-      enabled: false,
-      provider: 'database',
-      reason: 'kill_switch',
-      metadata: { level: 'override' }
-    });
-  }
-
-  // Allowlist check
-  const allowedUsers: string[] = override.allowedUsers ?? [];
-  if (allowedUsers.length > 0 && userId) {
-    if (allowedUsers.includes(userId)) {
-      return createFlagDecision(definition, context, {
-        enabled: true,
-        provider: 'database',
-        reason: 'allowlist'
-      });
-    } else {
-      return createFlagDecision(definition, context, {
-        enabled: false,
-        provider: 'database',
-        reason: 'allowlist_excluded'
-      });
-    }
-  }
-
-  // Percentage rollout
-  const percentage = override.percentage;
-  if (percentage !== null && percentage !== undefined && accountId) {
-    const hash = hashAccount(accountId, definition.key);
-    const enabled = hash < percentage;
-    return createFlagDecision(definition, context, {
+  if (!flag) return null;
+  const expiry = flag.expiresAt?.getTime();
+  const decide = (
+    enabled: boolean,
+    reason: string,
+    metadata?: Readonly<Record<string, unknown>>
+  ) => ({
+    decision: createFlagDecision(definition, context, {
       enabled,
       provider: 'database',
-      reason: 'percentage',
-      metadata: { percentage, hash }
+      reason,
+      metadata
+    }),
+    expiry
+  });
+  if (expiry !== undefined && expiry <= (context.now ?? new Date()).getTime())
+    return decide(false, 'expired');
+  if (!flag.enabled) return decide(false, 'kill_switch', { level: 'flag' });
+  const overrides = await db
+    .select()
+    .from(featureFlagOverrides)
+    .where(
+      and(
+        eq(featureFlagOverrides.flagId, flag.id),
+        eq(featureFlagOverrides.accountId, accountId),
+        or(
+          isNull(featureFlagOverrides.environment),
+          eq(featureFlagOverrides.environment, environment)
+        ),
+        or(
+          isNull(featureFlagOverrides.accountIdOverride),
+          eq(featureFlagOverrides.accountIdOverride, accountId)
+        ),
+        userId
+          ? or(isNull(featureFlagOverrides.userId), eq(featureFlagOverrides.userId, userId))
+          : isNull(featureFlagOverrides.userId)
+      )
+    );
+  const specificity = (o: (typeof overrides)[number]) =>
+    (o.userId ? 4 : 0) + (o.accountIdOverride ? 2 : 0) + (o.environment ? 1 : 0);
+  overrides.sort(
+    (a, b) =>
+      specificity(b) - specificity(a) ||
+      b.updatedAt.getTime() - a.updatedAt.getTime() ||
+      a.id.localeCompare(b.id)
+  );
+  const override = overrides[0];
+  if (!override) return decide(flag.defaultValue, 'default');
+  if (!override.enabled) return decide(false, 'kill_switch', { level: 'override' });
+  if (override.allowedUsers.length > 0)
+    return decide(
+      Boolean(userId && override.allowedUsers.includes(userId)),
+      userId && override.allowedUsers.includes(userId) ? 'allowlist' : 'allowlist_excluded'
+    );
+  if (override.percentage !== null) {
+    if (
+      !Number.isFinite(override.percentage) ||
+      override.percentage < 0 ||
+      override.percentage > 100
+    )
+      throw new Error('Invalid feature flag percentage');
+    const hash = hashAccount(accountId, definition.key);
+    return decide(hash < override.percentage, 'percentage', {
+      percentage: override.percentage,
+      hash
     });
   }
-
-  return createFlagDecision(definition, context, {
-    enabled: true,
-    provider: 'database',
-    reason: 'override'
-  });
+  return decide(true, 'override');
 }
 
-/**
- * Deterministic hash for rollout distribution.
- * Same account + flag key always produces the same hash (0–99).
- */
 function hashAccount(accountId: string, flagKey: string): number {
   let hash = 5381;
   const input = `${accountId}:${flagKey}`;
-  for (let i = 0; i < input.length; i++) {
-    hash = ((hash << 5) + hash) ^ input.charCodeAt(i);
-    hash = hash >>> 0; // keep as unsigned 32-bit
-  }
+  for (let i = 0; i < input.length; i++) hash = (((hash << 5) + hash) ^ input.charCodeAt(i)) >>> 0;
   return hash % 100;
 }

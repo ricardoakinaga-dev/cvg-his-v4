@@ -3,7 +3,7 @@
     <AppPageHeader
       title="Profissionais"
       :breadcrumbs="['RH', 'Cadastros', 'Profissionais']"
-      subtitle="Cadastro beta de profissionais, funções, disponibilidade e produção operacional"
+      subtitle="Profissionais, funções, disponibilidade e produção operacional"
     >
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
@@ -13,128 +13,14 @@
       </template>
     </AppPageHeader>
 
-    <DsAlert variant="info">
-      Superfície Vetus-like para a rota beta cadastro/profissionais, registrada no acervo como
-      rh-profissionais-01.png. Profissional representa pessoa operacional de agenda, produção,
-      folgas e comissões; usuário autenticável continua separado em RH / Usuários.
-    </DsAlert>
-
-    <section class="list-page__overview">
-      <DsCard title="Resumo da equipe">
-        <div class="overview-grid">
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ staff.length }}</span>
-            <span class="overview-metric__label">Profissionais cadastrados</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ activeStaff }}</span>
-            <span class="overview-metric__label">Ativos</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ departmentsCount }}</span>
-            <span class="overview-metric__label">Departamentos</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ jobTitlesCount }}</span>
-            <span class="overview-metric__label">Cargos distintos</span>
-          </div>
-          <div class="overview-metric">
-            <span class="overview-metric__value">{{ filteredStaff.length }}</span>
-            <span class="overview-metric__label">Resultados atuais</span>
-          </div>
-        </div>
-      </DsCard>
-    </section>
-
     <section class="list-page__toolbar">
-      <DsCard title="Busca por ID ou nome" variant="compact">
-        <DsInput
-          v-model="search"
-          aria-label="Buscar profissional por ID ou nome"
-          placeholder="por ID ou nome"
-        />
-      </DsCard>
-    </section>
-
-    <section class="professional-cards" aria-label="Profissionais cadastrados">
-      <article v-for="member in filteredStaff" :key="member.id" class="professional-card">
-        <header class="professional-card__header">
-          <div>
-            <span class="professional-card__id">ID {{ member.id }}</span>
-            <h2>{{ member.fullName }}</h2>
-          </div>
-          <span
-            :class="[
-              'status-badge',
-              member.status === 'active' ? 'status-badge--active' : 'status-badge--inactive'
-            ]"
-          >
-            {{ member.status === 'active' ? 'Ativo' : 'Inativo' }}
-          </span>
-        </header>
-
-        <dl class="professional-card__facts">
-          <div>
-            <dt>Código</dt>
-            <dd>{{ member.employeeCode }}</dd>
-          </div>
-          <div>
-            <dt>Cargo</dt>
-            <dd>{{ member.jobTitle || '—' }}</dd>
-          </div>
-          <div>
-            <dt>Departamento</dt>
-            <dd>{{ member.department || '—' }}</dd>
-          </div>
-        </dl>
-
-        <details class="professional-card__contact">
-          <summary>Informações de Contato</summary>
-          <p>Contrato atual de profissionais não expõe telefone ou e-mail na listagem.</p>
-        </details>
-
-        <div class="professional-card__actions">
-          <DsButton size="sm" variant="secondary" @click="router.push(`/staff/${member.id}`)">
-            Ver Detalhes
-          </DsButton>
-        </div>
-      </article>
-    </section>
-
-    <section class="list-page__story">
-      <DsCard title="Leitura executiva">
-        <div class="story-grid">
-          <div v-for="card in storyCards" :key="card.label" class="story-card">
-            <span class="story-card__label">{{ card.label }}</span>
-            <strong class="story-card__value">{{ card.value }}</strong>
-            <span class="story-card__hint">{{ card.hint }}</span>
-          </div>
-        </div>
-      </DsCard>
-    </section>
-
-    <section class="list-page__actions">
-      <DsCard title="Integrações do profissional" variant="compact">
-        <div class="integration-grid">
-          <article
-            v-for="integration in integrations"
-            :key="integration.title"
-            class="integration-card"
-          >
-            <span>{{ integration.scope }}</span>
-            <strong>{{ integration.title }}</strong>
-            <p>{{ integration.description }}</p>
-          </article>
-        </div>
-        <div class="quick-actions">
-          <DsButton tag="a" to="/appointments" variant="primary">Agenda</DsButton>
-          <DsButton tag="a" to="/time-off" variant="secondary">Folgas</DsButton>
-          <DsButton tag="a" to="/commission-calculations" variant="secondary">Comissões</DsButton>
-          <DsButton tag="a" to="/commission-rules" variant="secondary">Regras de Comissão</DsButton>
-          <DsButton tag="a" to="/users" variant="secondary">Usuários</DsButton>
-          <DsButton tag="a" to="/access-control" variant="secondary">Grupos de Acesso</DsButton>
-        </div>
-      </DsCard>
+      <DsInput
+        label="Busca por ID ou nome"
+        v-model="search"
+        aria-label="Buscar profissional por ID ou nome"
+        placeholder="por ID ou nome"
+      />
+      <span class="staff-results" role="status">{{ filteredStaff.length }} {{ filteredStaff.length === 1 ? 'profissional encontrado' : 'profissionais encontrados' }}</span>
     </section>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
@@ -142,6 +28,7 @@
     </DsAlert>
 
     <DataTable
+      caption="Profissionais cadastrados"
       :columns="columns"
       :rows="staffRows"
       :loading="loading"
@@ -151,7 +38,8 @@
       variant="hoverable"
     >
       <template #cell-fullName="{ row }">
-        {{ staffRow(row).fullName }}
+        <strong class="staff-name">{{ staffRow(row).fullName }}</strong>
+        <span class="staff-id">ID {{ staffRow(row).id }}</span>
       </template>
       <template #cell-employeeCode="{ row }">
         {{ staffRow(row).employeeCode }}
@@ -191,6 +79,72 @@
         </div>
       </template>
     </DataTable>
+
+    <details class="staff-context">
+      <summary>Resumo da equipe</summary>
+      <section class="list-page__overview">
+        <DsCard>
+          <div class="overview-grid">
+            <div class="overview-metric">
+              <span class="overview-metric__value">{{ staff.length }}</span>
+              <span class="overview-metric__label">Profissionais cadastrados</span>
+            </div>
+            <div class="overview-metric">
+              <span class="overview-metric__value">{{ activeStaff }}</span>
+              <span class="overview-metric__label">Ativos</span>
+            </div>
+            <div class="overview-metric">
+              <span class="overview-metric__value">{{ departmentsCount }}</span>
+              <span class="overview-metric__label">Departamentos</span>
+            </div>
+            <div class="overview-metric">
+              <span class="overview-metric__value">{{ jobTitlesCount }}</span>
+              <span class="overview-metric__label">Cargos distintos</span>
+            </div>
+            <div class="overview-metric">
+              <span class="overview-metric__value">{{ filteredStaff.length }}</span>
+              <span class="overview-metric__label">Resultados atuais</span>
+            </div>
+            <div class="overview-metric">
+              <span class="overview-metric__value">{{ activeCoverage }}%</span>
+              <span class="overview-metric__label">Percentual de membros ativos</span>
+            </div>
+          </div>
+        </DsCard>
+      </section>
+    </details>
+
+    <details class="staff-context">
+      <summary>Agenda, folgas e acessos</summary>
+      <DsAlert variant="info">
+        Gerencie os profissionais da agenda, as folgas e as comissões. Para configurar acesso ao
+        sistema, use RH / Usuários.
+      </DsAlert>
+
+      <section class="list-page__actions">
+        <DsCard title="Integrações do profissional" variant="compact">
+          <div class="integration-grid">
+            <article
+              v-for="integration in integrations"
+              :key="integration.title"
+              class="integration-card"
+            >
+              <span>{{ integration.scope }}</span>
+              <strong>{{ integration.title }}</strong>
+              <p>{{ integration.description }}</p>
+            </article>
+          </div>
+          <div class="quick-actions">
+            <DsButton tag="a" to="/appointments" variant="primary">Agenda</DsButton>
+            <DsButton tag="a" to="/time-off" variant="secondary">Folgas</DsButton>
+            <DsButton tag="a" to="/commission-calculations" variant="secondary">Comissões</DsButton>
+            <DsButton tag="a" to="/commission-rules" variant="secondary">Regras de Comissão</DsButton>
+            <DsButton tag="a" to="/users" variant="secondary">Usuários</DsButton>
+            <DsButton tag="a" to="/access-control" variant="secondary">Grupos de Acesso</DsButton>
+          </div>
+        </DsCard>
+      </section>
+    </details>
   </div>
 </template>
 
@@ -244,30 +198,9 @@ const departmentsCount = computed(
 const jobTitlesCount = computed(
   () => new Set(staff.value.map((member) => member.jobTitle).filter(Boolean)).size
 );
-const storyCards = computed(() => [
-  {
-    label: 'Ativos',
-    value: activeStaff.value.toString(),
-    hint: 'Membros disponíveis para operação'
-  },
-  {
-    label: 'Departamentos',
-    value: departmentsCount.value.toString(),
-    hint: 'Áreas diferentes identificadas'
-  },
-  {
-    label: 'Cargos',
-    value: jobTitlesCount.value.toString(),
-    hint: 'Distribuição funcional'
-  },
-  {
-    label: 'Cobertura',
-    value: staff.value.length
-      ? `${Math.round((activeStaff.value / staff.value.length) * 100)}%`
-      : '0%',
-    hint: 'Percentual de membros ativos'
-  }
-]);
+const activeCoverage = computed(() =>
+  staff.value.length ? Math.round((activeStaff.value / staff.value.length) * 100) : 0
+);
 
 const integrations = [
   {
@@ -322,95 +255,47 @@ function staffRow(row: unknown): StaffSummary {
   margin-bottom: 4px;
 }
 
-.list-page__story {
-  margin-bottom: 4px;
+.list-page__toolbar {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
-.list-page__toolbar {
-  margin-bottom: 4px;
+.list-page__toolbar :deep(.form-field) {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.staff-results {
+  padding-block: 12px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.staff-context > summary {
+  min-height: 44px;
+  align-content: center;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.staff-context > summary:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.staff-context[open] > summary { margin-bottom: 12px; }
+.staff-name, .staff-id { display: block; }
+.staff-id { margin-top: 4px; font-size: 12px; color: var(--color-text-muted); }
+
+@media (max-width: 720px) {
+  .staff-results { padding-block: 0; }
 }
 
 .list-page__actions {
   margin-bottom: 4px;
-}
-
-.professional-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 12px;
-}
-
-.professional-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 8px;
-  background: var(--color-surface, #ffffff);
-}
-
-.professional-card__header {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-.professional-card__header h2 {
-  margin: 2px 0 0;
-  font-size: 18px;
-  line-height: 1.25;
-}
-
-.professional-card__id {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-text-muted, #64748b);
-}
-
-.professional-card__facts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 10px;
-  margin: 0;
-}
-
-.professional-card__facts div {
-  min-width: 0;
-}
-
-.professional-card__facts dt {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-text-muted, #64748b);
-}
-
-.professional-card__facts dd {
-  margin: 2px 0 0;
-  color: var(--color-text, #0f172a);
-}
-
-.professional-card__contact {
-  border-top: 1px solid var(--color-border, #e2e8f0);
-  padding-top: 10px;
-}
-
-.professional-card__contact summary {
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.professional-card__contact p {
-  margin: 8px 0 0;
-  color: var(--color-text-muted, #64748b);
-  font-size: 13px;
-}
-
-.professional-card__actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: auto;
 }
 
 .overview-grid {
@@ -440,47 +325,6 @@ function staffRow(row: unknown): StaffSummary {
   display: block;
   margin-top: 4px;
   font-size: 13px;
-  color: var(--color-text-muted, #64748b);
-}
-
-.story-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-}
-
-.story-card {
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  background: linear-gradient(
-    180deg,
-    var(--color-surface, #ffffff),
-    var(--color-bg-subtle, #f8fafc)
-  );
-}
-
-.story-card__label {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted, #64748b);
-}
-
-.story-card__value {
-  display: block;
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--color-text, #0f172a);
-}
-
-.story-card__hint {
-  display: block;
-  margin-top: 4px;
-  font-size: 12px;
   color: var(--color-text-muted, #64748b);
 }
 
@@ -542,5 +386,8 @@ function staffRow(row: unknown): StaffSummary {
 .status-badge--inactive {
   background: var(--color-neutral-100, #f1f5f9);
   color: var(--color-neutral-600, #475569);
+}
+@media (max-width: 720px) {
+  .overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>

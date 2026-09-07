@@ -51,6 +51,7 @@
       <DsInput
         v-model="query"
         type="search"
+        label="Buscar registros"
         placeholder="Buscar por tutor, paciente, documento, produto, comanda ou relação..."
         @input="onQueryInput"
         @keyup.enter="runSearch"

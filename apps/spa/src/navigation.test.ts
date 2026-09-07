@@ -25,6 +25,13 @@ function findSectionItemLabels(groupId: string, sectionLabel: string) {
 }
 
 describe('navigation groups', () => {
+  it('places the existing sector registry in Atendimento / Internação', () => {
+    const location = findMatchingNavLocation('/sectors');
+    expect(location?.group.id).toBe('atendimento');
+    expect(location?.section.id).toBe('atendimento-internacao');
+    expect(location?.item.path).toBe('/sectors');
+  });
+
   it('publishes the ERP modules in the vetus-like layout order', () => {
     expect(navGroups.map((group) => group.label)).toEqual([
       'Início',
@@ -34,8 +41,7 @@ describe('navigation groups', () => {
       'Financeiro',
       'Marketing',
       'RH',
-      'Relatórios',
-      'Administração'
+      'Relatórios'
     ]);
   });
 
@@ -59,10 +65,10 @@ describe('navigation groups', () => {
       'Resgate de Pontos',
       'Vendas (beta)'
     ]);
-    expect(findSectionItemLabels('atendimento', 'Internação')).toEqual(['Internação', 'Diárias de Internação']);
+    expect(findSectionItemLabels('atendimento', 'Internação')).toEqual(['Internação', 'Diárias de Internação', 'Setores']);
     expect(findSectionItemLabels('atendimento', 'Cadastros')).toEqual([
-      'Animais',
-      'Clientes',
+      'Pacientes',
+      'Tutores',
       'Serviços',
       'Importar Dados Serviços',
       'Importação Assistida Vetus',
@@ -71,8 +77,7 @@ describe('navigation groups', () => {
       'Espécies',
       'Cores',
       'Grupos de Clientes',
-      'Boxes de Internação',
-      'Webhooks'
+      'Boxes de Internação'
     ]);
   });
 
@@ -107,10 +112,13 @@ describe('navigation groups', () => {
   });
 
   it('finds direct nav items with the new labels exposed in the frontend', () => {
-    expect(findMatchingNavItem('/patients')?.label).toBe('Animais');
-    expect(findMatchingNavItem('/owners')?.label).toBe('Clientes');
+    expect(findMatchingNavItem('/patients')?.label).toBe('Pacientes');
+    expect(findMatchingNavItem('/owners')?.label).toBe('Tutores');
     expect(findMatchingNavItem('/reception')?.label).toBe('Recepção');
     expect(findMatchingNavItem('/queue')?.label).toBe('Esteira');
+    expect(findMatchingNavItem('/comandas')?.label).toBe('Comandas');
+    expect(findMatchingNavItem('/esteira')?.label).toBe('Esteira');
+    expect(findMatchingNavItem('/atendimento/atendimentos/esteira')?.label).toBe('Esteira');
     expect(findMatchingNavItem('/marketing/campaigns')?.label).toBe('Campanhas de Marketing');
     expect(findMatchingNavItem('/access-control')?.label).toBe('Grupos de Acesso');
     expect(findMatchingNavItem('/encounters')?.label).toBe('Atendimentos');
@@ -121,6 +129,7 @@ describe('navigation groups', () => {
     expect(findMatchingNavItem('/sales/beta')?.label).toBe('Vendas (beta)');
     expect(findMatchingNavItem('/pix')?.label).toBe('PIX');
     expect(findMatchingNavItem('/reports')?.label).toBe('Visão por Domínio');
+    expect(findMatchingNavItem('/relatorios/financeiros/fluxo-de-caixa')?.label).toBe('Fluxo de Caixa');
   });
 
   it('keeps scheduling only as a legacy route outside the primary menu', () => {
@@ -163,8 +172,7 @@ describe('navigation groups', () => {
         '/breeds',
         '/species',
         '/coat-colors',
-        '/customer-groups',
-        '/webhooks'
+        '/customer-groups'
       ])
     );
 
@@ -255,7 +263,7 @@ describe('navigation groups', () => {
     );
 
     expect(findGroupPaths('rh')).toEqual(
-      expect.arrayContaining(['/users', '/access-control', '/staff', '/commission-calculations', '/commission-rules', '/time-off'])
+      expect.arrayContaining(['/users', '/staff', '/commission-calculations', '/commission-rules', '/time-off'])
     );
 
     expect(findGroupPaths('relatorios')).toEqual(
@@ -279,9 +287,16 @@ describe('navigation groups', () => {
     expect(findMatchingNavGroup('/inventory/transfers/manual')?.id).toBe('estoque');
     expect(findMatchingNavGroup('/fiscal/icms/rules')?.id).toBe('estoque');
     expect(findMatchingNavGroup('/dashboards/financial/detail')?.id).toBe('financeiro');
-    expect(findMatchingNavGroup('/access-control/roles')?.id).toBe('rh');
+    expect(findMatchingNavLocation('/access-control/roles')?.area).toBe('enterprise');
+    expect(findMatchingNavLocation('/access-control/roles')?.section.label).toBe('Governança');
+    expect(findMatchingNavLocation('/webhooks/wh-1')?.area).toBe('enterprise');
+    expect(findMatchingNavLocation('/webhooks/wh-1')?.section.label).toBe('Integrações');
     expect(findMatchingNavGroup('/prescription-executions/enc-1')?.id).toBe('atendimento');
     expect(findMatchingNavGroup('/reports/appointments/monthly')?.id).toBe('relatorios');
+    expect(findMatchingNavLocation('/comandas/sale-1')?.group.id).toBe('atendimento');
+    expect(findMatchingNavLocation('/relatorios/financeiros/fluxo-de-caixa/detail')?.group.id).toBe(
+      'relatorios'
+    );
   });
 
   it('keeps extra platform tools in the enterprise utility area', () => {
@@ -289,6 +304,20 @@ describe('navigation groups', () => {
     expect(location?.area).toBe('enterprise');
     expect(location?.group.id).toBe(enterpriseConsole.id);
     expect(location?.item.label).toBe('Chaves de API');
+
+    const platformLocation = findMatchingNavLocation('/administration/settings/general');
+    expect(platformLocation?.area).toBe('enterprise');
+    expect(platformLocation?.section.label).toBe('Plataforma');
+    expect(platformLocation?.item.label).toBe('Configurações');
+
+    const governanceLocation = findMatchingNavLocation('/access-control');
+    expect(governanceLocation?.area).toBe('enterprise');
+    expect(governanceLocation?.section.label).toBe('Governança');
+
+    const integrationsLocation = findMatchingNavLocation('/webhooks');
+    expect(integrationsLocation?.area).toBe('enterprise');
+    expect(integrationsLocation?.section.label).toBe('Integrações');
+    expect(findMatchingNavItem('/cadastros/webhooks')?.label).toBe('Webhooks');
   });
 
   it('falls back to the first group when the path is unknown', () => {

@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { requestProcessCoverageCheckpoint } from '../../helpers/process-coverage-control.mjs';
 import { createServer, type AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
 
@@ -116,6 +117,7 @@ function startApi(port: number): ApiProcess {
     env: {
       ...process.env,
       API_PROCESS_FIXTURE: '1',
+      CVG_PROCESS_COVERAGE_CONTROL: process.env.CVG_CRITICAL_PROCESS_COVERAGE === '1' ? '1' : '0',
       NODE_ENV: 'test',
       APP_NAME: 'inpatient-cash-receipt-sigkill',
       HOST: '127.0.0.1',
@@ -129,7 +131,7 @@ function startApi(port: number): ApiProcess {
       SMS_MOCK_MODE: 'true',
       GOOGLE_CALENDAR_MOCK_MODE: 'true'
     },
-    stdio: ['ignore', 'pipe', 'pipe']
+    stdio: process.env.CVG_CRITICAL_PROCESS_COVERAGE === '1' ? ['ignore', 'pipe', 'pipe', 'ipc'] : ['ignore', 'pipe', 'pipe']
   });
   if (child.pid === undefined) throw new Error('API process fixture did not expose a PID');
   let output = '';
@@ -670,6 +672,7 @@ describe('inpatient cash receipt real API-process SIGKILL boundary', () => {
       (error: unknown) => error
     );
     await waitForReceiptPause();
+    await requestProcessCoverageCheckpoint(primary.child);
     expect(await stopApi(primary, 'SIGKILL')).toEqual({ code: null, signal: 'SIGKILL' });
     primary = undefined;
     expect(await pendingReceipt).toBeInstanceOf(Error);
@@ -728,5 +731,6 @@ describe('inpatient cash receipt real API-process SIGKILL boundary', () => {
     );
     expect(foreign.status).toBe(404);
     await assertExactlyOneReceipt(idempotencyKey);
+    await requestProcessCoverageCheckpoint(primary.child);
   }, 120_000);
 });

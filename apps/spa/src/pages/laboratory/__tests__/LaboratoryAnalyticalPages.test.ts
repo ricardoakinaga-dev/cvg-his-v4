@@ -1,4 +1,4 @@
-import { flushPromises, mount } from '@vue/test-utils';
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import LaboratoryBiochemistryPage from '../LaboratoryBiochemistryPage.vue';
@@ -19,19 +19,55 @@ vi.mock('@/services/laboratory', () => ({
 
 vi.mock('@/services/patient', () => ({
   patientService: {
-    list: vi.fn()
+    list: vi.fn(),
+    getById: vi.fn()
   }
 }));
 
 vi.mock('@/services/owner', () => ({
   ownerService: {
-    list: vi.fn()
+    list: vi.fn(),
+    getById: vi.fn()
   }
 }));
+
+
+const selectResult = async (wrapper: VueWrapper, index = 0) => {
+  const buttons = wrapper.findAll('button').filter((button) => button.text() === 'Ver resultado');
+  expect(buttons.length).toBeGreaterThan(index);
+  await buttons[index].trigger('click');
+  await flushPromises();
+};
+
+const filterInput = (wrapper: VueWrapper, label: string) => {
+  const field = wrapper.findAll('form label').find((candidate) => candidate.text().includes(label));
+  expect(field, `Filter ${label} exists`).toBeDefined();
+  const id = field!.attributes('for');
+  return id ? wrapper.get(`[id="${id}"]`) : field!.get('input, select');
+};
+
+const selectedResult = (wrapper: VueWrapper) => wrapper.get('section[aria-label="Resultado selecionado"]');
+
+const biochemistryRecord = (overrides: Record<string, unknown> = {}) => ({
+  id: 'diag_bio_1', accountId: 'acc_1', encounterId: 'enc_1', patientId: 'patient_1',
+  examType: 'Bioquimico', examCatalogId: 'cat_002', reason: 'Perfil bioquimico', status: 'resulted',
+  resultValues: [{ parameter: 'ALT', value: '92', unit: 'U/L', outOfRange: false }],
+  createdAt: '2026-04-24T08:30:00.000Z', updatedAt: '2026-04-25T10:00:00.000Z',
+  ...overrides
+}) as unknown as Awaited<ReturnType<typeof laboratoryService.listBiochemistry>>[number];
+
+const deferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (error: Error) => void;
+  const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej; });
+  return { promise, resolve, reject };
+};
 
 describe('Laboratory analytical result pages', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(patientService.getById).mockRejectedValue(new Error('Patient unavailable'));
+    vi.mocked(ownerService.getById).mockRejectedValue(new Error('Owner unavailable'));
     vi.mocked(laboratoryService.listHemograms).mockResolvedValue([
       {
         id: 'diag_hem_1' as never,
@@ -187,26 +223,22 @@ describe('Laboratory analytical result pages', () => {
     ]);
   });
 
-  it('renders hemograms as an operational result flow with references, filters and history', async () => {
+  it('renders hemograms with examination selection, references and preserved filters', async () => {
     const wrapper = mount(LaboratoryHemogramsPage);
     await flushPromises();
+    await selectResult(wrapper);
 
     expect(wrapper.text()).toContain('Hemogramas');
-    expect(wrapper.text()).toContain('Registro completo de hemograma');
     expect(wrapper.text()).toContain('Código do Hemograma');
-    expect(wrapper.text()).toContain('Cliente');
-    expect(wrapper.text()).toContain('Proprietário');
+    expect(wrapper.text()).toContain('Tutor');
     expect(wrapper.text()).toContain('Animal');
-    expect(wrapper.text()).toContain('Data da Análise');
-    expect(wrapper.text()).toContain('Data de Entrada');
-    expect(wrapper.text()).toContain('Pesquisar Hemogramas Fechados');
+    expect(wrapper.text()).toContain('Data da análise (UTC)');
+    expect(wrapper.text()).toContain('Data de entrada (UTC)');
+    expect(wrapper.text()).toContain('Situação');
     expect(wrapper.text()).toContain('Cliente Exemplo');
     expect(wrapper.text()).toContain('Mel');
-    expect(wrapper.text()).toContain('Série vermelha');
-    expect(wrapper.text()).toContain('Série branca');
-    expect(wrapper.text()).toContain('Hemácias');
-    expect(wrapper.text()).toContain('Leucócitos');
-    expect(wrapper.text()).toContain('Histórico comparativo');
+    expect(wrapper.text()).toContain('Hemacias');
+    expect(wrapper.text()).toContain('Leucocitos');
     expect(wrapper.text()).toContain('6.2');
     expect(laboratoryService.listHemograms).toHaveBeenCalledWith({
       code: undefined,
@@ -222,12 +254,10 @@ describe('Laboratory analytical result pages', () => {
     const wrapper = mount(LaboratoryHemogramsPage);
     await flushPromises();
 
-    const searchInputs = wrapper.findAll('input[type="search"]');
-    await searchInputs[0].setValue('diag');
-    await searchInputs[4].setValue('Hemacias');
-    const dateInputs = wrapper.findAll('input[type="date"]');
-    await dateInputs[0].setValue('2026-04-25');
-    await dateInputs[1].setValue('2026-04-24');
+    await filterInput(wrapper, 'Código').setValue('diag');
+    await filterInput(wrapper, 'Corpo do resultado').setValue('Hemacias');
+    await filterInput(wrapper, 'Data da análise').setValue('2026-04-25');
+    await filterInput(wrapper, 'Data de entrada').setValue('2026-04-24');
     await wrapper.find('form').trigger('submit');
     await flushPromises();
 
@@ -240,27 +270,22 @@ describe('Laboratory analytical result pages', () => {
     });
   });
 
-  it('renders urinalysis as an operational physical chemical and microscopic flow', async () => {
+  it('renders the selected urinalysis without invented parameter categories', async () => {
     const wrapper = mount(LaboratoryUrinalysisPage);
     await flushPromises();
+    await selectResult(wrapper);
 
     expect(wrapper.text()).toContain('Urina');
-    expect(wrapper.text()).toContain('Análise urinária completa');
     expect(wrapper.text()).toContain('Código do Exame');
-    expect(wrapper.text()).toContain('Cliente');
-    expect(wrapper.text()).toContain('Proprietário');
+    expect(wrapper.text()).toContain('Tutor');
     expect(wrapper.text()).toContain('Animal');
-    expect(wrapper.text()).toContain('Data da Análise');
-    expect(wrapper.text()).toContain('Data de Entrada');
-    expect(wrapper.text()).toContain('Pesquisar Exames Fechados');
+    expect(wrapper.text()).toContain('Data da análise (UTC)');
+    expect(wrapper.text()).toContain('Data de entrada (UTC)');
+    expect(wrapper.text()).toContain('Situação');
     expect(wrapper.text()).toContain('Cliente Exemplo');
     expect(wrapper.text()).toContain('Mel');
-    expect(wrapper.text()).toContain('Exame físico');
-    expect(wrapper.text()).toContain('Exame químico');
-    expect(wrapper.text()).toContain('Exame microscópico');
-    expect(wrapper.text()).toContain('Achados observacionais');
-    expect(wrapper.text()).toContain('Densidade urinária');
-    expect(wrapper.text()).toContain('pH urinário');
+    expect(wrapper.text()).toContain('Densidade urinaria');
+    expect(wrapper.text()).toContain('pH urinario');
     expect(wrapper.text()).toContain('1.035');
     expect(laboratoryService.listUrinalysis).toHaveBeenCalledWith({
       code: undefined,
@@ -276,12 +301,10 @@ describe('Laboratory analytical result pages', () => {
     const wrapper = mount(LaboratoryUrinalysisPage);
     await flushPromises();
 
-    const searchInputs = wrapper.findAll('input[type="search"]');
-    await searchInputs[0].setValue('diag');
-    await searchInputs[4].setValue('Densidade');
-    const dateInputs = wrapper.findAll('input[type="date"]');
-    await dateInputs[0].setValue('2026-04-25');
-    await dateInputs[1].setValue('2026-04-24');
+    await filterInput(wrapper, 'Código').setValue('diag');
+    await filterInput(wrapper, 'Corpo do resultado').setValue('Densidade');
+    await filterInput(wrapper, 'Data da análise').setValue('2026-04-25');
+    await filterInput(wrapper, 'Data de entrada').setValue('2026-04-24');
     await wrapper.find('form').trigger('submit');
     await flushPromises();
 
@@ -294,29 +317,24 @@ describe('Laboratory analytical result pages', () => {
     });
   });
 
-  it('renders biochemistry as an operational compact tabular panel with species references', async () => {
+  it('renders selected biochemistry with its own structured values', async () => {
     const wrapper = mount(LaboratoryBiochemistryPage);
     await flushPromises();
+    await selectResult(wrapper);
 
     expect(wrapper.text()).toContain('Bioquímico');
-    expect(wrapper.text()).toContain('Painel bioquímico completo');
     expect(wrapper.text()).toContain('Código do Exame');
-    expect(wrapper.text()).toContain('Cliente');
-    expect(wrapper.text()).toContain('Proprietário');
+    expect(wrapper.text()).toContain('Tutor');
     expect(wrapper.text()).toContain('Animal');
-    expect(wrapper.text()).toContain('Data da Análise');
-    expect(wrapper.text()).toContain('Data de Entrada');
-    expect(wrapper.text()).toContain('Pesquisar Bioquímicos Fechados');
+    expect(wrapper.text()).toContain('Data da análise (UTC)');
+    expect(wrapper.text()).toContain('Data de entrada (UTC)');
+    expect(wrapper.text()).toContain('Situação');
     expect(wrapper.text()).toContain('Cliente Exemplo');
     expect(wrapper.text()).toContain('Mel');
     expect(wrapper.text()).toContain('Resultado estruturado');
-    expect(wrapper.text()).toContain('Painel hepático');
-    expect(wrapper.text()).toContain('Painel renal');
-    expect(wrapper.text()).toContain('Metabólico');
     expect(wrapper.text()).toContain('ALT');
     expect(wrapper.text()).toContain('92');
     expect(wrapper.text()).toContain('Creatinina');
-    expect(wrapper.text()).toContain('Vlr. Ref. Bioquímico');
     expect(laboratoryService.listBiochemistry).toHaveBeenCalledWith({
       code: undefined,
       finalizedAt: undefined,
@@ -331,12 +349,10 @@ describe('Laboratory analytical result pages', () => {
     const wrapper = mount(LaboratoryBiochemistryPage);
     await flushPromises();
 
-    const searchInputs = wrapper.findAll('input[type="search"]');
-    await searchInputs[0].setValue('diag');
-    await searchInputs[4].setValue('ALT');
-    const dateInputs = wrapper.findAll('input[type="date"]');
-    await dateInputs[0].setValue('2026-04-25');
-    await dateInputs[1].setValue('2026-04-24');
+    await filterInput(wrapper, 'Código').setValue('diag');
+    await filterInput(wrapper, 'Corpo do resultado').setValue('ALT');
+    await filterInput(wrapper, 'Data da análise').setValue('2026-04-25');
+    await filterInput(wrapper, 'Data de entrada').setValue('2026-04-24');
     await wrapper.find('form').trigger('submit');
     await flushPromises();
 
@@ -370,12 +386,14 @@ describe('Laboratory analytical result pages', () => {
 
     const wrapper = mount(LaboratoryBiochemistryPage);
     await flushPromises();
+    await selectResult(wrapper);
     expect(wrapper.text()).toContain('92');
 
-    await wrapper.findAll('input[type="search"]')[4].setValue('ALT');
+    await filterInput(wrapper, 'Corpo do resultado').setValue('ALT');
     await wrapper.find('form').trigger('submit');
     await flushPromises();
 
+    await selectResult(wrapper);
     expect(wrapper.text()).toContain('92');
     expect(laboratoryService.listBiochemistry).toHaveBeenLastCalledWith({
       code: undefined,
@@ -385,4 +403,236 @@ describe('Laboratory analytical result pages', () => {
       closed: true
     });
   });
+
+  it('keeps a newer legacy summary separate from an older patient’s structured examination', async () => {
+    vi.mocked(laboratoryService.listBiochemistry).mockResolvedValue([
+      biochemistryRecord({ id: 'bio-new', resultValues: [], resultSummary: 'ALT: 999', updatedAt: '2026-04-26T10:00:00Z' }),
+      biochemistryRecord({ id: 'bio-old', patientId: 'patient_2', resultSummary: undefined,
+        resultValues: [{ parameter: 'Creatinina', value: '1.7', unit: 'mg/dL', outOfRange: true }] })
+    ]);
+    const patients = await patientService.list();
+    vi.mocked(patientService.list).mockResolvedValue([
+      ...patients, { ...patients[0], id: 'patient_2', name: 'Thor' }
+    ]);
+    const wrapper = mount(LaboratoryBiochemistryPage);
+    await flushPromises();
+    await selectResult(wrapper);
+    expect(selectedResult(wrapper).text()).toContain('Mel');
+    expect(selectedResult(wrapper).text()).toContain('bio-new');
+    expect(selectedResult(wrapper).text()).toContain('ALT: 999');
+    expect(selectedResult(wrapper).text()).not.toContain('Creatinina');
+    expect(selectedResult(wrapper).find('tbody').exists()).toBe(false);
+    await selectResult(wrapper, 1);
+    expect(selectedResult(wrapper).text()).toContain('Thor');
+    expect(selectedResult(wrapper).text()).toContain('bio-old');
+    expect(selectedResult(wrapper).text()).toContain('Creatinina');
+    expect(selectedResult(wrapper).text()).toContain('1.7');
+    expect(selectedResult(wrapper).text()).not.toContain('ALT: 999');
+    expect(selectedResult(wrapper).text()).not.toContain('Mel');
+  });
+
+  it('renders explicit range flags and leaves omitted flags unknown without borrowing catalog references', async () => {
+    vi.mocked(laboratoryService.listBiochemistry).mockResolvedValue([biochemistryRecord({
+      resultValues: [
+        { parameter: 'ALT', value: '999', unit: 'U/L' },
+        { parameter: 'Creatinina', value: '1.3', unit: 'mg/dL', outOfRange: true },
+        { parameter: 'Glicose', value: '999', unit: 'mg/dL', outOfRange: false }
+      ]
+    })]);
+    const wrapper = mount(LaboratoryBiochemistryPage);
+    await flushPromises();
+    await selectResult(wrapper);
+    const rows = selectedResult(wrapper).findAll('tbody tr');
+    expect(rows).toHaveLength(3);
+    expect(rows[0].text()).toContain('Não informada');
+    expect(rows[0].text()).not.toContain('125');
+    expect(rows[1].text()).toMatch(/fora|alterad/i);
+    expect(rows[2].text()).toMatch(/dentro|normal/i);
+    expect(wrapper.text()).toContain('Referências cadastradas');
+  });
+
+  it('preserves structured results while explicitly reporting a reference catalog failure', async () => {
+    vi.mocked(laboratoryService.listReferenceValues).mockRejectedValue(new Error('Reference unavailable'));
+    const wrapper = mount(LaboratoryBiochemistryPage);
+    await flushPromises();
+    await selectResult(wrapper);
+    expect(selectedResult(wrapper).text()).toContain('92');
+    expect(selectedResult(wrapper).text()).toContain('10-125 U/L');
+    expect(wrapper.text()).toMatch(/referências.{0,90}(indispon|carregar|falh)|(?:indispon|carregar|falh).{0,90}referências/i);
+  });
+
+  it('clears populated records and selected detail on source failure and retains failure after dismissing feedback', async () => {
+    const wrapper = mount(LaboratoryBiochemistryPage);
+    await flushPromises();
+    await selectResult(wrapper);
+    expect(selectedResult(wrapper).text()).toContain('92');
+    vi.mocked(laboratoryService.listBiochemistry).mockRejectedValueOnce(new Error('Source unavailable'));
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(wrapper.find('section[aria-label="Resultado selecionado"]').exists()).toBe(false);
+    expect(wrapper.findAll('button').filter((button) => button.text() === 'Ver resultado')).toHaveLength(0);
+    expect(wrapper.text()).toMatch(/não foi possível|falha|erro ao/i);
+    const dismiss = wrapper.findAll('button').find((button) => /fechar|dispensar/i.test(`${button.text()} ${button.attributes('aria-label') ?? ''}`));
+    if (dismiss) await dismiss.trigger('click');
+    expect(wrapper.text()).toMatch(/não foi possível|falha|erro ao/i);
+    expect(wrapper.text()).not.toMatch(/nenhum exame|nenhum resultado/i);
+  });
+
+  it('ignores an older successful response after a newer search completes', async () => {
+    type Records = Awaited<ReturnType<typeof laboratoryService.listBiochemistry>>;
+    const first = deferred<Records>();
+    const second = deferred<Records>();
+    vi.mocked(laboratoryService.listBiochemistry)
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    const wrapper = mount(LaboratoryBiochemistryPage);
+    await filterInput(wrapper, 'Código').setValue('current');
+    await wrapper.find('form').trigger('submit');
+    second.resolve([biochemistryRecord({ id: 'current-exam', resultSummary: 'Current result' })]);
+    await flushPromises();
+    await selectResult(wrapper);
+    first.resolve([biochemistryRecord({ id: 'obsolete-exam', resultSummary: 'Obsolete result' })]);
+    await flushPromises();
+    expect(wrapper.text()).toContain('current-exam');
+    expect(wrapper.text()).not.toContain('obsolete-exam');
+    expect(selectedResult(wrapper).text()).toContain('Current result');
+    wrapper.unmount();
+  });
+
+  it('does not present identity lookup failure as an empty match for an animal name filter', async () => {
+    const wrapper = mount(LaboratoryBiochemistryPage);
+    await flushPromises();
+    vi.mocked(patientService.list).mockRejectedValue(new Error('Patient lookup unavailable'));
+    await filterInput(wrapper, 'Animal').setValue('Mel');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(wrapper.text()).toMatch(/pacientes|identifica|animais/i);
+    expect(wrapper.text()).toMatch(/não foi possível|indispon|falha/i);
+    expect(wrapper.text()).not.toMatch(/nenhum exame|nenhum resultado/i);
+    expect(wrapper.find('section[aria-label="Resultado selecionado"]').exists()).toBe(false);
+  });
+
+
+  it('ignores an obsolete request failure after a newer result succeeds', async () => {
+    type Records = Awaited<ReturnType<typeof laboratoryService.listBiochemistry>>;
+    const obsolete = deferred<Records>();
+    vi.mocked(laboratoryService.listBiochemistry)
+      .mockReturnValueOnce(obsolete.promise)
+      .mockResolvedValueOnce([biochemistryRecord({ id: 'current-exam' })]);
+    const wrapper = mount(LaboratoryBiochemistryPage);
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    await selectResult(wrapper);
+    obsolete.reject(new Error('Obsolete request failed'));
+    await flushPromises();
+    expect(selectedResult(wrapper).text()).toContain('current-exam');
+    expect(wrapper.text()).not.toContain('Obsolete request failed');
+    wrapper.unmount();
+  });
+
+
+  it('sends closed false when searching examinations that are not concluded', async () => {
+    const wrapper = mount(LaboratoryHemogramsPage);
+    await flushPromises();
+    const status = filterInput(wrapper, 'Situação');
+    const option = status.findAll('option').find((candidate) => candidate.text() === 'Não concluídos');
+    expect(option).toBeDefined();
+    await status.setValue(option!.element.value);
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(laboratoryService.listHemograms).toHaveBeenLastCalledWith({
+      code: undefined, finalizedAt: undefined, enteredAt: undefined, body: undefined, closed: false
+    });
+  });
+
+
+  it('resolves an examination patient omitted from the first list page before filtering by animal name', async () => {
+    const [patient] = await patientService.list();
+    vi.mocked(patientService.list).mockResolvedValue([]);
+    vi.mocked(patientService.getById).mockResolvedValue(patient);
+    const wrapper = mount(LaboratoryBiochemistryPage);
+    await flushPromises();
+    await filterInput(wrapper, 'Animal').setValue('Mel');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(patientService.getById).toHaveBeenCalledWith('patient_1');
+    expect(selectedResult(wrapper).text()).toContain('Mel');
+    expect(selectedResult(wrapper).text()).toContain('diag_bio_1');
+    expect(wrapper.text()).not.toContain('Nenhum exame encontrado');
+  });
+
+  it('resolves an examination tutor omitted from the first list page before filtering by tutor name', async () => {
+    const [owner] = await ownerService.list();
+    vi.mocked(ownerService.list).mockResolvedValue([]);
+    vi.mocked(ownerService.getById).mockResolvedValue(owner);
+    const wrapper = mount(LaboratoryBiochemistryPage);
+    await flushPromises();
+    await filterInput(wrapper, 'Tutor').setValue('Cliente Exemplo');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(ownerService.getById).toHaveBeenCalledWith('owner_1');
+    expect(selectedResult(wrapper).text()).toContain('Cliente Exemplo');
+    expect(selectedResult(wrapper).text()).toContain('diag_bio_1');
+    expect(wrapper.text()).not.toContain('Nenhum exame encontrado');
+  });
+
+  it.each(['Animal', 'Tutor'])('reports unresolved %s identity rather than a false empty filtered result', async (filter) => {
+    if (filter === 'Animal') vi.mocked(patientService.list).mockResolvedValue([]);
+    else vi.mocked(ownerService.list).mockResolvedValue([]);
+    const wrapper = mount(LaboratoryBiochemistryPage);
+    await flushPromises();
+    expect(wrapper.text()).toMatch(/identifica.{0,60}(indispon|incomplet)|(?:indispon|incomplet).{0,60}identifica/i);
+    await filterInput(wrapper, filter).setValue(filter === 'Animal' ? 'Mel' : 'Cliente Exemplo');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(wrapper.text()).toMatch(/não foi possível|indispon|falha/i);
+    expect(wrapper.text()).not.toContain('Nenhum exame encontrado');
+    expect(wrapper.find('section[aria-label="Resultado selecionado"]').exists()).toBe(false);
+  });
+
+  it.each(['Animal', 'Tutor'])('rejects a mismatched exact identity response for the %s filter', async (filter) => {
+    if (filter === 'Animal') {
+      const [patient] = await patientService.list();
+      vi.mocked(patientService.list).mockResolvedValue([]);
+      vi.mocked(patientService.getById).mockResolvedValue({ ...patient, id: 'wrong-patient' });
+    } else {
+      const [owner] = await ownerService.list();
+      vi.mocked(ownerService.list).mockResolvedValue([]);
+      vi.mocked(ownerService.getById).mockResolvedValue({ ...owner, id: 'wrong-owner' });
+    }
+    const wrapper = mount(LaboratoryBiochemistryPage);
+    await flushPromises();
+    await filterInput(wrapper, filter).setValue(filter === 'Animal' ? 'Mel' : 'Cliente Exemplo');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(wrapper.text()).toMatch(/não foi possível|indispon|falha/i);
+    expect(wrapper.text()).not.toContain('Nenhum exame encontrado');
+    expect(wrapper.find('section[aria-label="Resultado selecionado"]').exists()).toBe(false);
+  });
+
+  it('does not let a delayed old patient lookup overwrite the newer examination and identity', async () => {
+    const [patient] = await patientService.list();
+    const obsolete = deferred<Awaited<ReturnType<typeof patientService.getById>>>();
+    vi.mocked(patientService.list).mockResolvedValue([]);
+    vi.mocked(patientService.getById).mockImplementation((id) => id === 'patient_1'
+      ? obsolete.promise : Promise.resolve({ ...patient, id: 'patient_2', name: 'Thor' }));
+    vi.mocked(laboratoryService.listBiochemistry)
+      .mockResolvedValueOnce([biochemistryRecord({ id: 'old-exam' })])
+      .mockResolvedValueOnce([biochemistryRecord({ id: 'new-exam', patientId: 'patient_2' })]);
+    const wrapper = mount(LaboratoryBiochemistryPage);
+    await flushPromises();
+    expect(patientService.getById).toHaveBeenCalledWith('patient_1');
+    await filterInput(wrapper, 'Código').setValue('new-exam');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(selectedResult(wrapper).text()).toContain('Thor');
+    obsolete.resolve(patient);
+    await flushPromises();
+    expect(selectedResult(wrapper).text()).toContain('new-exam');
+    expect(selectedResult(wrapper).text()).toContain('Thor');
+    expect(selectedResult(wrapper).text()).not.toContain('Mel');
+    expect(wrapper.text()).not.toContain('old-exam');
+    wrapper.unmount();
+  });
+
 });

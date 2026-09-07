@@ -3,12 +3,11 @@
     <AppPageHeader
       :breadcrumbs="['Estoque', 'Controles', 'Compras']"
       title="Compras"
-      subtitle="Sugestão, cotação e preparação de compra conectadas ao saldo, ponto de reposição e lotes"
+      subtitle="Consulte compras e prepare novos rascunhos."
     >
       <template #actions>
-        <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
-        <DsButton variant="secondary" tag="a" to="/inventory/nf" icon="🧾">Entrada NF</DsButton>
-        <DsButton variant="primary" tag="a" to="/suppliers" icon="🚚">Fornecedores</DsButton>
+        <DsButton variant="secondary" :loading="loading" :disabled="loading" @click="load">Atualizar</DsButton>
+        <DsButton variant="primary" @click="openPreparation">Novo rascunho</DsButton>
       </template>
     </AppPageHeader>
 
@@ -20,24 +19,19 @@
       {{ successMessage }}
     </DsAlert>
 
-    <section class="hub-kpis" aria-label="Resumo de compras">
-      <DsStatCard :label="`${items.length} item(ns)`" value="" icon="📦" />
-      <DsStatCard :label="`${suggestedRowsCount} sugestão(ões)`" value="" icon="🛒" />
-      <DsStatCard :label="`${supplierCount} fornecedor(es)`" value="" icon="🚚" />
-      <DsStatCard :label="totalOpenValueLabel" value="" icon="💵" />
-    </section>
-
-    <section class="purchase-layout">
+    <details ref="preparationPanel" class="preparation-panel">
+      <summary>Preparar compra</summary>
       <form
         class="purchase-panel"
         aria-label="Preparar compra de estoque"
         @submit.prevent="submitPurchase"
       >
-        <h2>Compra</h2>
+        <p class="draft-notice">Rascunho temporário: fica apenas nesta página e será perdido ao sair ou recarregar. O estoque não é alterado.</p>
         <div class="purchase-grid">
           <label class="field">
             <span>Fornecedor</span>
             <input
+              ref="supplierInput"
               v-model="purchase.supplier"
               type="text"
               autocomplete="off"
@@ -118,7 +112,7 @@
           <span
             >Saldo atual:
             {{
-              selectedItem
+              loading || failed ? 'Saldo indisponível' : selectedItem
                 ? formatQuantity(selectedItem.onHandQuantity, selectedItem.unit)
                 : 'Selecione um produto'
             }}</span
@@ -127,12 +121,14 @@
         </div>
 
         <div class="purchase-actions">
-          <DsButton type="submit" variant="primary" :loading="saving">Preparar Pedido</DsButton>
+          <DsButton type="submit" variant="primary" :loading="saving" :disabled="loading || failed">Preparar rascunho</DsButton>
           <DsButton type="button" variant="secondary" @click="resetPurchase">Limpar</DsButton>
         </div>
       </form>
+    </details>
 
-      <section class="filter-panel" aria-label="Filtros de compras">
+    <details class="filter-panel">
+      <summary>Filtrar compras por produto, fornecedor ou situação</summary>
         <form class="filters" @submit.prevent="applyFilters">
           <label class="field">
             <span>Código</span>
@@ -152,7 +148,7 @@
               <option value="">Todas</option>
               <option value="suggested">Sugerida</option>
               <option value="quote">Cotação</option>
-              <option value="ordered">Pedido</option>
+              <option value="ordered">Rascunho temporário</option>
               <option value="draft">Rascunho</option>
               <option value="approved">Aprovada</option>
               <option value="partially_received">Recebimento parcial</option>
@@ -166,16 +162,22 @@
           </label>
           <DsButton type="submit" variant="primary">Pesquisar</DsButton>
         </form>
-      </section>
+    </details>
+
+    <section v-if="loading || failed" class="remote-state" :aria-busy="loading">
+      <p role="status">{{ loading ? 'Carregando compras, produtos e lotes…' : 'Dados de compras indisponíveis. Tente carregar novamente.' }}</p>
+      <DsButton v-if="failed && !loading" variant="secondary" @click="load">Tentar novamente</DsButton>
+      <p v-if="preparedRows.length">Rascunhos temporários preservados abaixo. Os dados salvos e saldos estão indisponíveis.</p>
     </section>
 
     <DataTable
+      v-if="remoteReady || preparedRows.length > 0"
       :columns="columns"
-      :rows="filteredRows"
-      :loading="loading"
+      :rows="remoteReady ? filteredRows : preparedRows"
+      :loading="false"
       empty-icon="🛒"
       empty-title="Nenhuma compra encontrada"
-      empty-description="Sugestões, cotações e pedidos preparados aparecerão aqui."
+      empty-description="Sugestões, cotações e rascunhos temporários aparecerão aqui."
       variant="hoverable"
     >
       <template #cell-code="{ row }">
@@ -183,6 +185,12 @@
       </template>
       <template #cell-product="{ row }">
         <strong>{{ (row as PurchaseRow).product }}</strong>
+        <details v-if="(row as PurchaseRow).source === 'prepared'" class="draft-detail" data-testid="temporary-draft-detail">
+          <summary>Rascunho temporário · Revisar</summary>
+          <p>Será perdido ao sair ou recarregar. Estoque não alterado.</p>
+          <p>Observação: {{ (row as PurchaseRow).notes || 'Sem observação' }}</p>
+          <p>Condição: {{ (row as PurchaseRow).condition }}</p>
+        </details>
       </template>
       <template #cell-quantity="{ row }">
         {{ formatQuantity((row as PurchaseRow).quantity, (row as PurchaseRow).unit) }}
@@ -194,7 +202,10 @@
         {{ formatCurrency((row as PurchaseRow).total) }}
       </template>
       <template #cell-stock="{ row }">
-        {{ (row as PurchaseRow).stockLabel }}
+        {{ remoteReady ? (row as PurchaseRow).stockLabel : 'Indisponível' }}
+      </template>
+      <template #cell-minimumLabel="{ row }">
+        {{ remoteReady ? (row as PurchaseRow).minimumLabel : 'Indisponível' }}
       </template>
       <template #cell-status="{ row }">
         <StatusBadge
@@ -212,18 +223,33 @@
         </DsButton>
       </template>
     </DataTable>
+
+    <details class="purchase-summary">
+      <summary>Resumo de compras</summary>
+      <dl>
+        <div><dt>Itens</dt><dd>{{ remoteReady ? items.length : '—' }}</dd></div>
+        <div><dt>Sugestões</dt><dd>{{ remoteReady ? suggestedRowsCount : '—' }}</dd></div>
+        <div><dt>Fornecedores</dt><dd>{{ remoteReady ? supplierCount : '—' }}</dd></div>
+        <div><dt>Em aberto em compras salvas</dt><dd>{{ remoteReady ? totalOpenValueLabel : '—' }}</dd></div>
+        <div><dt>Rascunhos temporários</dt><dd>{{ preparedRows.length }}</dd></div>
+      </dl>
+    </details>
+
+    <nav class="related-navigation" aria-label="Rotinas relacionadas a compras">
+      <DsButton variant="secondary" tag="a" to="/inventory/nf" icon="🧾">Entrada NF</DsButton>
+      <DsButton variant="secondary" tag="a" to="/suppliers" icon="🚚">Fornecedores</DsButton>
+    </nav>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
-import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import { inventoryService } from '@/services/inventory';
 import type {
   InventoryItemSummary,
@@ -253,13 +279,25 @@ interface PurchaseRow {
   condition: string;
   expectedDate: string;
   detailPath: string;
+  notes?: string;
 }
 
 const items = ref<InventoryItemSummary[]>([]);
 const lots = ref<InventoryLotSummary[]>([]);
 const purchases = ref<InventoryPurchaseSummary[]>([]);
 const preparedRows = ref<PurchaseRow[]>([]);
-const loading = ref(false);
+const loading = ref(true);
+const failed = ref(false);
+const remoteReady = computed(() => !loading.value && !failed.value);
+let requestVersion = 0;
+const preparationPanel = ref<HTMLDetailsElement | null>(null);
+const supplierInput = ref<HTMLInputElement | null>(null);
+
+async function openPreparation() {
+  if (preparationPanel.value) preparationPanel.value.open = true;
+  await nextTick();
+  supplierInput.value?.focus();
+}
 const saving = ref(false);
 const error = ref('');
 const successMessage = ref('');
@@ -286,7 +324,7 @@ const appliedFilters = reactive({ ...draftFilters });
 
 const columns: DataTableColumn[] = [
   { key: 'code', label: 'Código', width: '130px' },
-  { key: 'product', label: 'Produto' },
+  { key: 'product', label: 'Produto', class: 'draft-product-column' },
   { key: 'supplier', label: 'Fornecedor', width: '170px' },
   { key: 'quantity', label: 'Quantidade', width: '130px' },
   { key: 'unitCost', label: 'Custo Unit.', width: '120px' },
@@ -329,13 +367,7 @@ const totalOpenValueLabel = computed(() => {
       (sum, purchase) => sum + Math.max(purchase.totalAmount - purchase.receivedAmount, 0),
       0
     );
-  const derivedOpenTotal = rows.value
-    .filter(
-      (row) => row.source !== 'persisted' && row.status !== 'received' && row.status !== 'cancelled'
-    )
-    .reduce((sum, row) => sum + row.total, 0);
-  const total = Number((persistedOpenTotal + derivedOpenTotal).toFixed(2));
-  return `${formatCurrency(total)} em aberto`;
+  return formatCurrency(persistedOpenTotal);
 });
 const rows = computed<PurchaseRow[]>(() => {
   const persisted = purchases.value.flatMap(purchaseToRows);
@@ -561,6 +593,7 @@ function resetPurchase() {
 }
 
 async function submitPurchase() {
+  if (loading.value || failed.value) return;
   error.value = '';
   successMessage.value = '';
   const item = selectedItem.value;
@@ -595,14 +628,15 @@ async function submitPurchase() {
       stockLabel: formatQuantity(item.onHandQuantity, item.unit),
       minimumLabel: formatQuantity(item.reorderLevel, item.unit),
       status: 'ordered',
-      statusLabel: 'Pedido',
+      statusLabel: 'Rascunho temporário',
       statusVariant: 'info',
       condition: purchase.condition,
+      notes: purchase.notes,
       expectedDate: purchase.expectedDate || todayIsoDate(),
       detailPath: `/inventory/${item.id}`
     };
     preparedRows.value = [row, ...preparedRows.value];
-    successMessage.value = `${item.name} preparado para compra com ${row.supplier}`;
+    successMessage.value = `Rascunho temporário de compra: ${item.name} com ${row.supplier}. Será perdido ao sair ou recarregar. Estoque não alterado.`;
     resetPurchase();
   } finally {
     saving.value = false;
@@ -610,25 +644,27 @@ async function submitPurchase() {
 }
 
 async function load() {
+  const version = ++requestVersion;
+  const query = appliedFilters.product || appliedFilters.code || undefined;
   loading.value = true;
+  failed.value = false;
   error.value = '';
   try {
-    const query = draftFilters.product || draftFilters.code || undefined;
     const [loadedItems, loadedLots, loadedPurchases] = await Promise.all([
       inventoryService.list(query),
       inventoryService.listLots(),
       inventoryService.listPurchases()
     ]);
+    if (version !== requestVersion) return;
     items.value = loadedItems;
     lots.value = loadedLots;
     purchases.value = loadedPurchases;
   } catch (err: unknown) {
+    if (version !== requestVersion) return;
+    failed.value = true;
     error.value = err instanceof Error ? err.message : 'Erro ao carregar compras de estoque';
-    items.value = [];
-    lots.value = [];
-    purchases.value = [];
   } finally {
-    loading.value = false;
+    if (version === requestVersion) loading.value = false;
   }
 }
 
@@ -636,32 +672,45 @@ onMounted(load);
 </script>
 
 <style scoped>
+:deep(.draft-product-column) { min-width: 260px; }
 .inventory-purchases-page {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.hub-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.purchase-layout {
-  display: grid;
-  grid-template-columns: minmax(340px, 1.25fr) minmax(280px, 0.75fr);
-  gap: 16px;
-  align-items: start;
-}
-
-.purchase-panel,
-.filter-panel {
-  padding: 16px;
+.preparation-panel,
+.filter-panel,
+.purchase-summary,
+.remote-state {
   border: 1px solid var(--color-border, #e2e8f0);
   border-radius: 8px;
   background: var(--color-surface, #ffffff);
+  min-width: 0;
 }
+.preparation-panel > summary,
+.filter-panel > summary,
+.purchase-summary > summary {
+  min-height: 44px;
+  padding: 12px 16px;
+  box-sizing: border-box;
+  cursor: pointer;
+  font-weight: 600;
+}
+summary:focus-visible {
+  outline: 2px solid var(--color-primary, #2563eb);
+  outline-offset: 2px;
+}
+.purchase-panel, .filters, .remote-state { padding: 16px; }
+.purchase-summary dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0 16px 16px;
+}
+.purchase-summary dt { font-size: 13px; color: var(--color-text-secondary, #475569); }
+.purchase-summary dd { margin: 6px 0 0; font-size: 20px; font-weight: 700; }
 
 .purchase-panel h2 {
   margin: 0 0 12px;
@@ -679,7 +728,8 @@ onMounted(load);
 }
 
 .filters {
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  align-items: end;
 }
 
 .field {
@@ -698,7 +748,7 @@ onMounted(load);
 .field input,
 .field select {
   width: 100%;
-  min-height: 38px;
+  min-height: 44px;
   padding: 8px 10px;
   border: 1px solid var(--color-border, #d7dde8);
   border-radius: 6px;
@@ -724,15 +774,34 @@ onMounted(load);
   margin-top: 14px;
 }
 
+.draft-notice,
+.draft-detail {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-secondary, #475569);
+}
+
+.draft-detail summary {
+  min-height: 44px;
+  padding: 12px 0;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.draft-detail p {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.related-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .record-id {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   font-size: 12px;
-}
-
-@media (max-width: 980px) {
-  .purchase-layout {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 620px) {

@@ -87,9 +87,9 @@ for (const [relativePath, expected] of requiredCanonicalConsumers) {
 
 const sharedMigrationDirectory = resolve(root, 'packages/shared/database/src/migrations');
 if (existsSync(sharedMigrationDirectory)) {
-  pass('shared-database migration SQL remains available as historical material only');
+  fail('historical shared-database SQL must remain outside the active source tree');
 } else {
-  fail('historical shared-database migration directory is unexpectedly missing');
+  pass('historical shared-database SQL is absent from the active source tree');
 }
 
 for (const artifact of [
@@ -97,10 +97,14 @@ for (const artifact of [
   'packages/db/src/migrate.d.ts',
   'packages/db/src/migrate.js.map',
   'packages/db/src/migrate.d.ts.map',
+  'packages/db/src/connection.js',
+  'packages/db/src/connection.js.map',
+  'packages/db/src/connection.d.ts',
+  'packages/db/src/connection.d.ts.map',
   'packages/db/drizzle.config.ts'
 ]) {
   if (existsSync(resolve(root, artifact))) {
-    fail(`${artifact} is a stale source-level migration entrypoint and must be removed`);
+    fail(`${artifact} is a stale source-level database artifact and must be removed`);
   } else {
     pass(`${artifact} is absent; TypeScript runner and generated dist output remain canonical`);
   }

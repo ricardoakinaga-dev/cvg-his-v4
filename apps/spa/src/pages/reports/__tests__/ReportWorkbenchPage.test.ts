@@ -12,8 +12,9 @@ import {
 import { financialReceivablesService } from '@/services/financialReceivables';
 import { inventoryService } from '@/services/inventory';
 import { ownerService } from '@/services/owner';
+import { packagesService, type CustomerPackageDetail } from '@/services/packages';
 import { patientService } from '@/services/patient';
-import { reportsService } from '@/services/reports';
+import { reportsService, type ReportExecutionDetail } from '@/services/reports';
 import { servicesService, type ServiceSummary } from '@/services/services';
 import type { AdministrativeReportsResponse } from '@/services/administrativeReports';
 import type { AppointmentSummary } from '@/types/appointment';
@@ -83,12 +84,27 @@ vi.mock('@/services/patient', () => ({
   }
 }));
 
+vi.mock('@/services/packages', () => ({ packagesService: { list: vi.fn() } }));
+
 vi.mock('@/services/reports', () => ({
   reportsService: {
     execute: vi.fn(),
     exportExecution: vi.fn()
   }
 }));
+
+const customerPackage: CustomerPackageDetail = {
+  id: 'package-1', accountId: 'account-1', ownerId: 'owner-1', patientId: null,
+  number: 'PKG-0042', status: 'active', startsAt: '2026-04-28T12:00:00Z', expiresAt: null,
+  notes: null, createdByUserId: 'user-1', renewedFromPackageId: null,
+  createdAt: '2026-04-28T12:00:00Z', updatedAt: '2026-04-28T12:00:00Z',
+  activatedAt: '2026-04-28T12:00:00Z', cancelledAt: null, completedAt: null,
+  items: [{ id: 'item-1', accountId: 'account-1', packageId: 'package-1', itemKind: 'service',
+    catalogItemId: null, nameSnapshot: 'Consulta', quantityPurchased: 5, quantityConsumed: 2,
+    unitPrice: 100, validFrom: null, validUntil: null, createdAt: '2026-04-28T12:00:00Z', updatedAt: '2026-04-28T12:00:00Z' }],
+  consumptions: [], balance: [{ packageItemId: 'item-1', itemKind: 'service', nameSnapshot: 'Consulta',
+    quantityPurchased: 5, quantityConsumed: 2, quantityAvailable: 3, validUntil: null }]
+};
 
 const report = {
   generatedAt: '2026-04-28T00:00:00.000Z',
@@ -535,6 +551,35 @@ const advancePaymentExecution = {
   ]
 } as never;
 
+const cancellationHistoryExecution: ReportExecutionDetail = {
+  id: 'rep-exec-cancellation-history',
+  accountId: 'account-1',
+  reportId: 'commercial-cancellation-history',
+  requestedByUserId: 'user-1',
+  status: 'completed',
+  filters: {},
+  rowCount: 1,
+  generatedAt: '2026-09-04T12:00:00.000Z',
+  expiresAt: '2026-09-05T12:00:00.000Z',
+  columns: [],
+  rows: [
+    {
+      eventId: 'event-cancellation-1',
+      counterSaleId: 'sale-100',
+      number: 'CV-100',
+      ownerId: null,
+      cancelledAt: '2026-09-04T00:05:00.000Z',
+      cancelledByUserId: 'user-gerente',
+      reason: 'Lançamento em duplicidade',
+      correlationId: 'correlation-cancellation-1',
+      total: 225,
+      discountAmount: 25,
+      paidAmount: 50,
+      balanceDue: 175
+    }
+  ]
+};
+
 const deletedSalesExecution = {
   id: 'rep-exec-deleted-sales',
   rowCount: 1,
@@ -916,6 +961,7 @@ const financialReceivables = [
 describe('ReportWorkbenchPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(packagesService.list).mockResolvedValue([customerPackage]);
     vi.mocked(administrativeReportsService.getHubs).mockResolvedValue(report);
     vi.mocked(auditService.listEvents).mockResolvedValue(auditEvents);
     vi.mocked(appointmentService.list).mockResolvedValue(appointments);
@@ -966,6 +1012,9 @@ describe('ReportWorkbenchPage', () => {
       if (payload.reportId === 'fiscal-service-invoices') return serviceInvoiceExecution;
       if (payload.reportId === 'inventory-stock') return inventoryStockExecution;
       if (payload.reportId === 'inventory-movements') return inventoryMovementExecution;
+      if (payload.reportId === 'commercial-cancellation-history')
+        return cancellationHistoryExecution;
+      if (payload.reportId === 'commercial-deleted-sales') return deletedSalesExecution;
       return { id: 'rep-exec-payables', rowCount: 1, rows: [] } as never;
     });
     vi.mocked(reportsService.exportExecution).mockResolvedValue({
@@ -991,7 +1040,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Contas a Receber');
     expect(wrapper.text()).toContain('Relatórios Financeiros');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/ContasAReceberRelatorio.htm');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/ContasAReceberRelatorio.htm');
     expect(wrapper.text()).toContain('Maiores recebíveis em aberto');
     expect(wrapper.text()).toContain('Paciente Teste');
     expect(wrapper.text()).toContain('Tutor Teste');
@@ -1013,7 +1062,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Contas Recebidas');
     expect(wrapper.text()).toContain('Relatórios Financeiros');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/ContasRecebidasRelatorio.htm');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/ContasRecebidasRelatorio.htm');
     expect(wrapper.text()).toContain('Recebimentos no período');
     expect(wrapper.text()).toContain('Paciente Recebido');
     expect(wrapper.text()).toContain('Tutor Recebido');
@@ -1055,7 +1104,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Contas a Pagar');
     expect(wrapper.text()).toContain('Relatórios Financeiros');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Financeiro/ContasAPagar.htm');
+    expect(wrapper.text()).not.toContain('Financeiro/ContasAPagar.htm');
     expect(wrapper.text()).toContain('Obrigações a pagar');
     expect(wrapper.text()).toContain('Fornecedor de medicamentos');
     expect(wrapper.text()).toContain('Laboratório parceiro');
@@ -1078,7 +1127,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Contas Pagas');
     expect(wrapper.text()).toContain('Relatórios Financeiros');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/ContasPagasRelatorio.htm');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/ContasPagasRelatorio.htm');
     expect(wrapper.text()).toContain('Pagamentos no período');
     expect(wrapper.text()).toContain('Laboratório parceiro');
     expect(wrapper.text()).not.toContain('Fornecedor de medicamentos');
@@ -1156,7 +1205,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Cheques');
     expect(wrapper.text()).toContain('Relatórios Financeiros');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/ChequesRelatorio.htm');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/ChequesRelatorio.htm');
     expect(wrapper.text()).toContain('Cheques no período');
     expect(wrapper.find('caption').text()).toBe('Cheques');
     expect(wrapper.text()).toContain('CHQ-0001');
@@ -1275,7 +1324,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Pagamento Antecipado');
     expect(wrapper.text()).toContain('Relatórios Financeiros');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Financeiro/PagamentoAntecipado.htm');
+    expect(wrapper.text()).not.toContain('Financeiro/PagamentoAntecipado.htm');
     expect(wrapper.text()).toContain('Pagamentos antecipados no período');
     expect(wrapper.text()).toContain('Maria Persistida');
     expect(wrapper.text()).toContain('cash_receipt');
@@ -1381,7 +1430,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Comandas/Vendas');
     expect(wrapper.text()).toContain('Relatórios de Atendimentos');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/ComandasVendasRelatorio.htm');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/ComandasVendasRelatorio.htm');
     expect(wrapper.text()).toContain('Comandas e vendas no período');
     expect(wrapper.text()).toContain('Receita bruta');
     expect(wrapper.text()).toContain('Ticket médio');
@@ -1400,11 +1449,11 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Produtos/Serviços Produzidos');
     expect(wrapper.text()).toContain('Relatórios de Atendimentos');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/ProdutosEServicosProduzidos.htm');
-    expect(wrapper.text()).toContain('Produtos e serviços produzidos');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/ProdutosEServicosProduzidos.htm');
+    expect(wrapper.text()).toContain('Produtos e serviços em destaque');
     expect(wrapper.text()).toContain('Vendas fechadas');
     expect(wrapper.text()).toContain('Receita comercial');
-    expect(wrapper.text()).toContain('Itens produzidos');
+    expect(wrapper.text()).toContain('Tipos de itens listados');
     expect(wrapper.text()).toContain('Consulta Teste');
     expect(wrapper.text()).toContain('Produto Teste');
     expect(wrapper.text()).not.toContain('Abrir vendas');
@@ -1420,15 +1469,74 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Produção');
     expect(wrapper.text()).toContain('Relatórios de Atendimentos');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/ProducaoRelatorio.htm');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/ProducaoRelatorio.htm');
     expect(wrapper.text()).toContain('Produção no período');
-    expect(wrapper.text()).toContain('Produção fechada');
-    expect(wrapper.text()).toContain('Receita produzida');
-    expect(wrapper.text()).toContain('Output operacional concluído');
-    expect(wrapper.text()).toContain('Serviços produzidos');
-    expect(wrapper.text()).toContain('Produtos produzidos');
+    expect(wrapper.text()).toContain('Vendas fechadas');
+    expect(wrapper.text()).toContain('Recebido em vendas fechadas');
+    expect(wrapper.text()).toContain('Valor das vendas fechadas');
+    expect(wrapper.text()).toContain('Serviços em destaque');
+    expect(wrapper.text()).toContain('Produtos em destaque');
     expect(wrapper.text()).not.toContain('Abrir hub executivo');
     expect(administrativeReportsService.getHubs).toHaveBeenCalled();
+  });
+
+  it('separates closed-sale totals from the limited production highlights', async () => {
+    vi.mocked(administrativeReportsService.getHubs).mockResolvedValue({
+      ...report,
+      domains: {
+        ...report.domains,
+        commercial: {
+          ...report.domains.commercial,
+          counterSales: {
+            ...report.domains.commercial.counterSales,
+            totalSales: 99,
+            closedCount: 3,
+            grossRevenue: 9000,
+            netRevenue: 7500
+          }
+        }
+      }
+    });
+    const wrapper = mount(ReportWorkbenchPage, { props: { reportKey: 'production' } });
+    await flushPromises();
+
+    const rowCells = (label: string) => wrapper.findAll('tbody tr')
+      .find(row => row.find('td').text() === label)!.findAll('td').map(cell => cell.text());
+    expect(rowCells('Valor das vendas fechadas')).toEqual([
+      'Valor das vendas fechadas', expect.stringMatching(/R\$\s*9\.000,00/), '3', 'Vendas fechadas'
+    ]);
+    expect(rowCells('Recebido em vendas fechadas')).toEqual([
+      'Recebido em vendas fechadas', expect.stringMatching(/R\$\s*7\.500,00/), '3', 'Comandas/Vendas fechadas'
+    ]);
+    expect(rowCells('Serviços em destaque')).toEqual([
+      'Serviços em destaque', expect.stringMatching(/R\$\s*800,00/), '2', 'Serviços listados: 1'
+    ]);
+    expect(rowCells('Produtos em destaque')).toEqual([
+      'Produtos em destaque', expect.stringMatching(/R\$\s*400,00/), '1', 'Produtos listados: 1'
+    ]);
+    expect(wrapper.text()).toContain('até 5 de cada tipo');
+    const closedSummary = wrapper.findAll('.report-summary dl > div')
+      .find(item => item.find('dt').text() === 'Vendas fechadas')!;
+    expect(closedSummary.find('dd').text()).toBe('3');
+  });
+
+  it('identifies produced items as a limited list alongside complete commercial totals', async () => {
+    vi.mocked(administrativeReportsService.getHubs).mockResolvedValue({
+      ...report,
+      executive: { ...report.executive, commercialRevenue: 9000 }
+    });
+    const wrapper = mount(ReportWorkbenchPage, { props: { reportKey: 'produced-items' } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Lista limitada a até 5 produtos e 5 serviços em destaque');
+    expect(wrapper.text()).toContain('os indicadores comerciais abrangem as vendas fechadas');
+    expect(wrapper.findAll('tbody tr')).toHaveLength(2);
+    expect(wrapper.find('tbody').text()).toMatch(/R\$\s*800,00/);
+    expect(wrapper.find('tbody').text()).toMatch(/R\$\s*400,00/);
+    expect(wrapper.find('.report-summary').text()).toMatch(/R\$\s*9\.000,00/);
+    const listedSummary = wrapper.findAll('.report-summary dl > div')
+      .find(item => item.find('dt').text() === 'Tipos de itens listados')!;
+    expect(listedSummary.find('dd').text()).toBe('2');
   });
 
   it('renders appointments attendance report as a read-only legacy report', async () => {
@@ -1440,7 +1548,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Agenda');
     expect(wrapper.text()).toContain('Relatórios de Atendimentos');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/AgendaRelatorio.htm');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/AgendaRelatorio.htm');
     expect(wrapper.text()).toContain('Agendamentos no período');
     expect(wrapper.text()).toContain('Agendamentos');
     expect(wrapper.text()).toContain('Comparecimentos');
@@ -1467,7 +1575,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Atendimento por Profissional');
     expect(wrapper.text()).toContain('Relatórios de Atendimentos');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/AtendimentoPorProfissional.htm');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/AtendimentoPorProfissional.htm');
     expect(wrapper.text()).toContain('Atendimentos por profissional');
     expect(wrapper.text()).toContain('Profissionais atendendo');
     expect(wrapper.text()).toContain('Atendimentos executados');
@@ -1592,7 +1700,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Relatório de NF de Serviços Prestados');
     expect(wrapper.text()).toContain('Relatórios Personalizados');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/RelatoriosDinamicosExecutor.htm?id=1');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/RelatoriosDinamicosExecutor.htm?id=1');
     expect(wrapper.text()).toContain('Documentos NFS-e persistidos');
     expect(wrapper.text()).toContain('Cliente NFS-e');
     expect(wrapper.text()).toContain('Consulta clínica');
@@ -1659,7 +1767,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Serviços');
     expect(wrapper.text()).toContain('Relatórios de Cadastros');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/ServicosRelatorio.htm');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/ServicosRelatorio.htm');
     expect(wrapper.text()).toContain('Serviços cadastrados');
     expect(wrapper.text()).toContain('Serviços ativos');
     expect(wrapper.text()).toContain('Preço médio');
@@ -1739,7 +1847,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Clientes');
     expect(wrapper.text()).toContain('Relatórios de Cadastros');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/ClientesRelatorio.htm');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/ClientesRelatorio.htm');
     expect(wrapper.text()).toContain('Clientes cadastrados');
     expect(wrapper.text()).toContain('Clientes ativos');
     expect(wrapper.text()).toContain('Responsáveis financeiros');
@@ -1788,7 +1896,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Animais');
     expect(wrapper.text()).toContain('Relatórios de Cadastros');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/AnimaisRelatorio.htm');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/AnimaisRelatorio.htm');
     expect(wrapper.text()).toContain('Animais cadastrados');
     expect(wrapper.text()).toContain('Animais ativos');
     expect(wrapper.text()).toContain('Falecidos');
@@ -1894,7 +2002,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Fornecedores');
     expect(wrapper.text()).toContain('Relatórios de Cadastros');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/FornecedoresRelatorio.htm');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/FornecedoresRelatorio.htm');
     expect(wrapper.text()).toContain('Registros cadastrados');
     expect(wrapper.text()).toContain('Despesas');
     expect(wrapper.text()).toContain('Com descrição');
@@ -1935,17 +2043,246 @@ describe('ReportWorkbenchPage', () => {
     expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-suppliers', 'csv');
   });
 
-  it('renders deleted sales and counter sales register report as a read-only legacy report', async () => {
-    vi.mocked(reportsService.execute).mockResolvedValue(deletedSalesExecution);
+  it('opens cancellation history by default with UTC dates, actor, reason and event-time amounts', async () => {
     const wrapper = mount(ReportWorkbenchPage, {
       props: { reportKey: 'deleted-sales-counter-sales' }
     });
     await flushPromises();
 
+    expect(wrapper.get('label[for="cancellation-report-view"]').text()).toBe('Consultar');
+    expect(wrapper.get<HTMLSelectElement>('#cancellation-report-view').element.value).toBe(
+      'history'
+    );
+    expect(wrapper.text()).toContain('Histórico por data de cancelamento');
+    expect(wrapper.text()).toContain('Canceladas por data de abertura');
+    expect(wrapper.text()).toContain('Cancelamentos de (UTC)');
+    expect(wrapper.text()).toContain('Cancelamentos até (UTC)');
+    expect(wrapper.text()).toContain('Os valores correspondem ao momento do cancelamento.');
+    expect(wrapper.text()).not.toContain('Vetus');
+    expect(wrapper.text()).not.toContain('server-side');
+    const cells = wrapper.get('tbody tr').findAll('td');
+    expect(cells[0]?.text()).toBe('CV-100');
+    expect(cells[1]?.text()).toContain('04/09/2026');
+    expect(cells[1]?.text()).toContain('00:05');
+    expect(cells[2]?.text()).toBe('user-gerente');
+    expect(cells[3]?.text()).toBe('Lançamento em duplicidade');
+    expect(cells.slice(4).map((cell) => cell.text())).toEqual([
+      'R$\u00A0225,00',
+      'R$\u00A025,00',
+      'R$\u00A050,00',
+      'R$\u00A0175,00'
+    ]);
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'commercial-cancellation-history',
+      filters: {}
+    });
+    expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
+    expect(auditService.listEvents).not.toHaveBeenCalled();
+  });
+
+  it('executes cancellation-date and search filters and clears them without leaving history', async () => {
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'deleted-sales-counter-sales' }
+    });
+    await flushPromises();
+
+    const dateInputs = wrapper.findAll('input[type="date"]');
+    await dateInputs[0]?.setValue('2026-09-04');
+    await dateInputs[1]?.setValue('2026-09-04');
+    await wrapper
+      .get('input[placeholder="Número da comanda, motivo ou ID do responsável"]')
+      .setValue('  duplicidade  ');
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Aplicar')
+      ?.trigger('click');
+    await flushPromises();
+
+    expect(reportsService.execute).toHaveBeenLastCalledWith({
+      reportId: 'commercial-cancellation-history',
+      filters: { dateFrom: '2026-09-04', dateTo: '2026-09-04', search: 'duplicidade' }
+    });
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Limpar')
+      ?.trigger('click');
+    await flushPromises();
+    expect(reportsService.execute).toHaveBeenLastCalledWith({
+      reportId: 'commercial-cancellation-history',
+      filters: {}
+    });
+    expect(wrapper.get<HTMLSelectElement>('#cancellation-report-view').element.value).toBe(
+      'history'
+    );
+  });
+
+  it('shows cancellation history loading and an actionable empty state', async () => {
+    let resolveExecution!: (execution: ReportExecutionDetail) => void;
+    vi.mocked(reportsService.execute).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveExecution = resolve;
+        })
+    );
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'deleted-sales-counter-sales' }
+    });
+    await flushPromises();
+
+    expect(wrapper.find('[aria-label="Carregando dados da tabela"]').exists()).toBe(true);
+    expect(wrapper.get('#cancellation-report-view').attributes('disabled')).toBeDefined();
+    expect(
+      wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Exportar CSV')
+        ?.attributes('disabled')
+    ).toBeDefined();
+    resolveExecution({ ...cancellationHistoryExecution, rowCount: 0, rows: [] });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Nenhum cancelamento encontrado');
+    expect(wrapper.text()).toContain('Ajuste as datas de cancelamento ou limpe os filtros');
+    expect(wrapper.find('[aria-label="Carregando dados da tabela"]').exists()).toBe(false);
+    expect(wrapper.get('#cancellation-report-view').attributes('disabled')).toBeUndefined();
+  });
+
+  it('clears stale history after an error and retries the same cancellation period', async () => {
+    vi.mocked(reportsService.execute)
+      .mockResolvedValueOnce(cancellationHistoryExecution)
+      .mockRejectedValueOnce(new Error('Não foi possível consultar os cancelamentos'))
+      .mockResolvedValueOnce(cancellationHistoryExecution);
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'deleted-sales-counter-sales' }
+    });
+    await flushPromises();
+    expect(wrapper.text()).toContain('CV-100');
+    await wrapper.findAll('input[type="date"]')[0]?.setValue('2026-09-04');
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Aplicar')
+      ?.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Não foi possível consultar os cancelamentos');
+    expect(wrapper.text()).toContain('Não foi possível carregar o relatório');
+    expect(wrapper.text()).not.toContain('CV-100');
+    expect(wrapper.text()).not.toContain('Nenhum cancelamento encontrado');
+    expect(wrapper.find('.report-kpis').exists()).toBe(false);
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Tentar novamente')
+      ?.trigger('click');
+    await flushPromises();
+
+    expect(reportsService.execute).toHaveBeenLastCalledWith({
+      reportId: 'commercial-cancellation-history',
+      filters: { dateFrom: '2026-09-04' }
+    });
+    expect(wrapper.text()).toContain('CV-100');
+    expect(wrapper.text()).not.toContain('Não foi possível consultar os cancelamentos');
+  });
+
+  it.each([
+    { reason: '' },
+    { cancelledAt: 'data inválida' },
+    { total: Number.NaN },
+    { correlationId: undefined }
+  ])(
+    'rejects malformed cancellation facts without showing partial history: %j',
+    async (invalid) => {
+      vi.mocked(reportsService.execute).mockResolvedValueOnce({
+        ...cancellationHistoryExecution,
+        rowCount: 2,
+        rows: [
+          cancellationHistoryExecution.rows[0]!,
+          { ...cancellationHistoryExecution.rows[0], ...invalid }
+        ]
+      });
+      const wrapper = mount(ReportWorkbenchPage, {
+        props: { reportKey: 'deleted-sales-counter-sales' }
+      });
+      await flushPromises();
+
+      expect(wrapper.text()).toContain('Resposta inválida do histórico de cancelamentos');
+      expect(wrapper.find('tbody').exists()).toBe(false);
+      expect(wrapper.text()).not.toContain('CV-100');
+      expect(wrapper.text()).not.toContain('Nenhum cancelamento encontrado');
+    }
+  );
+
+  it('exports cancellation history with current filters using the server-generated CSV content', async () => {
+    const content =
+      'Evento;Cancelamento;Responsável;Motivo;Total;Correlação\nevent-cancellation-1;2026-09-04T00:05:00.000Z;user-gerente;Lançamento em duplicidade;225;correlation-cancellation-1';
+    vi.mocked(reportsService.exportExecution).mockResolvedValue({
+      id: 'rep-export-cancellation-history',
+      accountId: 'account-1',
+      executionId: 'rep-exec-cancellation-history',
+      format: 'csv',
+      filename: 'commercial-cancellation-history-rep-exec-cancellation-history.csv',
+      contentType: 'text/csv;charset=utf-8',
+      contentEncoding: 'utf8',
+      content,
+      exportedByUserId: 'user-1',
+      exportedAt: '2026-09-04T12:00:00.000Z'
+    });
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:cancellation-history-report');
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
+    try {
+      const wrapper = mount(ReportWorkbenchPage, {
+        props: { reportKey: 'deleted-sales-counter-sales' }
+      });
+      await flushPromises();
+      await wrapper.findAll('input[type="date"]')[0]?.setValue('2026-09-04');
+      await wrapper
+        .get('input[placeholder="Número da comanda, motivo ou ID do responsável"]')
+        .setValue('user-gerente');
+      expect(wrapper.get('.report-query-note').text()).toContain('A tabela mostra a última consulta; o CSV será gerado com os filtros atuais.');
+      await wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Exportar CSV')
+        ?.trigger('click');
+      await flushPromises();
+
+      expect(reportsService.execute).toHaveBeenLastCalledWith({
+        reportId: 'commercial-cancellation-history',
+        filters: { dateFrom: '2026-09-04', search: 'user-gerente' }
+      });
+      expect(reportsService.exportExecution).toHaveBeenCalledWith(
+        'rep-exec-cancellation-history',
+        'csv'
+      );
+      expect(createObjectURL).toHaveBeenCalledOnce();
+      const downloaded = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsText(createObjectURL.mock.calls[0]![0]);
+      });
+      expect(downloaded).toBe(content);
+      expect(wrapper.text()).toContain('CSV gerado com 1 cancelamento(s).');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('switches to the existing opening-date snapshot with its original source and columns', async () => {
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'deleted-sales-counter-sales' }
+    });
+    await flushPromises();
+    await wrapper.get('#cancellation-report-view').setValue('opening-date');
+    await flushPromises();
+
     expect(wrapper.text()).toContain('Exclusão de Vendas e Comandas');
     expect(wrapper.text()).toContain('Relatórios de Cadastros');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/ExclusaoVendaComandaRelatorio.htm');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/ExclusaoVendaComandaRelatorio.htm');
+    expect(wrapper.text()).toContain('Aberturas de (UTC)');
+    expect(wrapper.text()).toContain('Aberturas até (UTC)');
+    expect(wrapper.text()).toContain('período pela data de abertura');
+    expect(wrapper.findAll('th').map((cell) => cell.text())).toContain('Usuário de abertura (ID)');
+    expect(wrapper.findAll('th').map((cell) => cell.text())).not.toContain('Cancelado por (ID)');
     expect(wrapper.text()).toContain('Exclusões registradas');
     expect(wrapper.text()).toContain('Valor cancelado');
     expect(wrapper.text()).toContain('Descontos cancelados');
@@ -1961,10 +2298,32 @@ describe('ReportWorkbenchPage', () => {
       reportId: 'commercial-deleted-sales',
       filters: {}
     });
+
+    await wrapper.findAll('input[type="date"]')[0]?.setValue('2026-04-07');
+    await wrapper
+      .get('input[placeholder="Número da comanda ou texto da observação"]')
+      .setValue('CV-100');
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Aplicar')
+      ?.trigger('click');
+    await flushPromises();
+    expect(reportsService.execute).toHaveBeenLastCalledWith({
+      reportId: 'commercial-deleted-sales',
+      filters: { dateFrom: '2026-04-07', search: 'CV-100' }
+    });
+    await wrapper.get('#cancellation-report-view').setValue('history');
+    await flushPromises();
+    expect(reportsService.execute).toHaveBeenLastCalledWith({
+      reportId: 'commercial-cancellation-history',
+      filters: { dateFrom: '2026-04-07', search: 'CV-100' }
+    });
+    expect(wrapper.text()).toContain('Cancelamentos de (UTC)');
+    expect(wrapper.text()).toContain('user-gerente');
+    expect(wrapper.text()).not.toContain('user-caixa');
   });
 
   it('exports deleted sales through the audited server-side report artifact', async () => {
-    vi.mocked(reportsService.execute).mockResolvedValue(deletedSalesExecution);
     vi.mocked(reportsService.exportExecution).mockResolvedValue({
       id: 'rep-export-deleted-sales',
       accountId: 'account-1',
@@ -1984,6 +2343,9 @@ describe('ReportWorkbenchPage', () => {
       const wrapper = mount(ReportWorkbenchPage, {
         props: { reportKey: 'deleted-sales-counter-sales' }
       });
+      await flushPromises();
+
+      await wrapper.get('#cancellation-report-view').setValue('opening-date');
       await flushPromises();
 
       const exportButton = wrapper
@@ -2013,7 +2375,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Estoque');
     expect(wrapper.text()).toContain('Relatórios de Estoque');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/EstoqueRelatorio.htm');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/EstoqueRelatorio.htm');
     expect(wrapper.text()).toContain('Itens em estoque');
     expect(wrapper.text()).toContain('Valor em estoque');
     expect(wrapper.text()).toContain('Abaixo do mínimo');
@@ -2087,7 +2449,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Movimentações no Estoque');
     expect(wrapper.text()).toContain('Relatórios de Estoque');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/MovimentacaoEstoqueRelatorio.htm');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/MovimentacaoEstoqueRelatorio.htm');
     expect(wrapper.text()).toContain('Movimentações registradas');
     expect(wrapper.text()).toContain('Entradas');
     expect(wrapper.text()).toContain('Saídas/consumos');
@@ -2119,7 +2481,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Entrada de NF');
     expect(wrapper.text()).toContain('Relatórios de Estoque');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/EntradaNotaFiscalRelatorio.htm');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/EntradaNotaFiscalRelatorio.htm');
     expect(wrapper.text()).toContain('Compras com referência de NF');
     expect(wrapper.text()).toContain('Fornecedores');
     expect(wrapper.text()).toContain('Valor comprado');
@@ -2140,6 +2502,53 @@ describe('ReportWorkbenchPage', () => {
     expect(inventoryService.listConsumptions).not.toHaveBeenCalled();
   });
 
+  it.each([
+    [null, '—'],
+    ['2026-05-11T00:30:00.000Z', '11/05/2026'],
+    ['2026-05-10T23:30:00-03:00', '11/05/2026']
+  ])('formats invoice receipt date %s as a UTC calendar date', async (receivedAt, expected) => {
+    const execution = inventoryInvoiceExecution as unknown as ReportExecutionDetail;
+    vi.mocked(reportsService.execute).mockResolvedValue({
+      ...execution,
+      rows: [{ ...execution.rows[0], receivedAt }]
+    });
+    const wrapper = mount(ReportWorkbenchPage, { props: { reportKey: 'inventory-invoices' } });
+    await flushPromises();
+
+    const receiptColumn = wrapper.findAll('th').findIndex(cell => cell.text() === 'Recebido em');
+    expect(receiptColumn).toBeGreaterThanOrEqual(0);
+    expect(wrapper.find('tbody tr').findAll('td')[receiptColumn]!.text()).toBe(expected);
+  });
+
+  it.each([
+    ['inventory-stock', 'Cadastros', 'Data de cadastro dos produtos. Os saldos mostrados são atuais.', inventoryStockExecution],
+    ['inventory-products', 'Cadastros', 'Data de cadastro dos produtos. Os saldos mostrados são atuais.', inventoryProductExecution],
+    ['inventory-invoices', 'Compras', 'Data de criação da compra, independentemente do recebimento.', inventoryInvoiceExecution],
+    ['inventory-movements', 'Movimentações', 'Data de registro da movimentação.', inventoryMovementExecution]
+  ] as const)('labels %s periods by their persisted date without changing the API filters', async (reportKey, subject, hint, execution) => {
+    vi.mocked(reportsService.execute).mockResolvedValue(execution);
+    const wrapper = mount(ReportWorkbenchPage, { props: { reportKey } });
+    await flushPromises();
+
+    const labels = wrapper.findAll('label').map(label => label.text());
+    expect(labels).toContain(`${subject} de`);
+    expect(labels).toContain(`${subject} até`);
+    expect(wrapper.find('.report-period-hint').text()).toBe(hint);
+    const dateInputs = wrapper.findAll('input[type="date"]');
+    await dateInputs[0]!.setValue('2026-04-01');
+    await dateInputs[1]!.setValue('2026-04-30');
+    await wrapper.findAll('button').find(button => button.text() === 'Aplicar')!.trigger('click');
+    await flushPromises();
+    expect(reportsService.execute).toHaveBeenLastCalledWith({
+      reportId: reportKey,
+      filters: { dateFrom: '2026-04-01', dateTo: '2026-04-30' }
+    });
+    expect(inventoryService.list).not.toHaveBeenCalled();
+    expect(inventoryService.listLots).not.toHaveBeenCalled();
+    expect(inventoryService.listConsumptions).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
   it('renders inventory products from the audited server report and does not load local lots', async () => {
     vi.mocked(reportsService.execute).mockResolvedValue(inventoryProductExecution);
     const wrapper = mount(ReportWorkbenchPage, {
@@ -2150,7 +2559,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Relatório de Produtos');
     expect(wrapper.text()).toContain('Relatórios de Estoque');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('fonte persistida de itens de estoque');
+    expect(wrapper.text()).toContain('Produtos cadastrados e seus saldos atuais.');
     expect(wrapper.text()).toContain('Produtos cadastrados');
     expect(wrapper.text()).toContain('Com saldo');
     expect(wrapper.text()).toContain('Abaixo do mínimo');
@@ -2267,7 +2676,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Gaveta');
     expect(wrapper.text()).toContain('Relatórios Financeiros');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/GavetaRelatorio.htm');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/GavetaRelatorio.htm');
     expect(wrapper.text()).toContain('Gavetas no período');
     expect(wrapper.text()).toContain('Saldo aberto');
     expect(wrapper.text()).toMatch(/R\$\s*500,00/);
@@ -2284,7 +2693,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Fluxo de Caixa');
     expect(wrapper.text()).toContain('Relatórios Financeiros');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/FluxoDeCaixaRelatorio.htm');
+    expect(wrapper.text()).not.toContain('Sistema/Relatorio/FluxoDeCaixaRelatorio.htm');
     expect(wrapper.text()).toContain('Receita comercial');
     expect(wrapper.text()).toContain('Recebíveis abertos');
     expect(wrapper.text()).toContain('Saldo aberto');
@@ -2293,41 +2702,36 @@ describe('ReportWorkbenchPage', () => {
     expect(administrativeReportsService.getHubs).toHaveBeenCalled();
   });
 
-  it('renders DRE financial report as a read-only legacy report', async () => {
-    const wrapper = mount(ReportWorkbenchPage, {
-      props: { reportKey: 'dre' }
-    });
+  it('keeps DRE unavailable without substituting commercial indicators or offering export', async () => {
+    const wrapper = mount(ReportWorkbenchPage, { props: { reportKey: 'dre' } });
     await flushPromises();
-
     expect(wrapper.text()).toContain('DRE - Demonstrativo de Resultados');
-    expect(wrapper.text()).toContain('Relatórios Financeiros');
-    expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/DRE.htm');
-    expect(wrapper.text()).toContain('Receita comercial');
-    expect(wrapper.text()).toContain('Faturamento bruto');
-    expect(wrapper.text()).toContain('Pipeline comercial');
-    expect(wrapper.text()).toContain('Receita comercial consolidada');
-    expect(wrapper.text()).toContain('Faturamento bruto registrado');
-    expect(wrapper.text()).not.toContain('Relatórios Financeiros específicos no menu lateral');
-    expect(administrativeReportsService.getHubs).toHaveBeenCalled();
+    expect(wrapper.text()).toContain('DRE indisponível');
+    expect(wrapper.text()).not.toContain('Exportar CSV');
+    expect(wrapper.text()).not.toContain('Receita comercial');
+    expect(wrapper.text()).not.toContain('Pipeline comercial');
+    expect(wrapper.find('table').exists()).toBe(false);
+    expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
+    expect(reportsService.execute).not.toHaveBeenCalled();
+    expect(packagesService.list).not.toHaveBeenCalled();
   });
 
-  it('renders packages financial report as a read-only legacy report', async () => {
-    const wrapper = mount(ReportWorkbenchPage, {
-      props: { reportKey: 'packages' }
-    });
+  it('renders package records and their actual quantities instead of commercial totals', async () => {
+    const wrapper = mount(ReportWorkbenchPage, { props: { reportKey: 'packages' } });
     await flushPromises();
-
-    expect(wrapper.text()).toContain('Pacotes');
-    expect(wrapper.text()).toContain('Relatórios Financeiros');
+    expect(wrapper.text()).toContain('PKG-0042');
+    expect(wrapper.text()).toContain('Ativo');
+    const cells = wrapper.findAll('tbody tr')[0]!.findAll('td').map(cell => cell.text());
+    expect(cells.slice(-2)).toEqual(['1', '3']);
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/PacoteRelatorio.htm');
-    expect(wrapper.text()).toContain('Indicadores de pacotes');
-    expect(wrapper.text()).toContain('Receita comercial relacionada');
-    expect(wrapper.text()).toContain('Pipeline comercial relacionado');
-    expect(wrapper.text()).toContain('Vendas fechadas relacionadas');
-    expect(wrapper.text()).not.toContain('Abrir pacotes');
-    expect(administrativeReportsService.getHubs).toHaveBeenCalled();
+    expect(wrapper.text()).not.toContain('Receita comercial relacionada');
+    expect(wrapper.text()).not.toContain('Pipeline comercial relacionado');
+    expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
+    expect(packagesService.list).toHaveBeenCalledOnce();
+    await wrapper.findAll('input[type="date"]')[0]!.setValue('2026-04-29');
+    expect(wrapper.text()).not.toContain('PKG-0042');
+    await wrapper.findAll('input[type="date"]')[0]!.setValue('2026-04-28');
+    expect(wrapper.text()).toContain('PKG-0042');
   });
 
   it('renders appointment audit report with Vetus filters and audit events only', async () => {
@@ -2398,4 +2802,110 @@ describe('ReportWorkbenchPage', () => {
       vi.unstubAllGlobals();
     }
   });
+  it('keeps hub failure distinct from empty after dismissing the alert and supports retry', async () => {
+    vi.mocked(administrativeReportsService.getHubs).mockRejectedValueOnce(new Error('Network unavailable'));
+    const wrapper = mount(ReportWorkbenchPage, { props: { reportKey: 'cash-flow' }, global: { stubs: { DsAlert: false } } });
+    await flushPromises();
+    expect(wrapper.text()).toContain('Não foi possível carregar o relatório');
+    expect(wrapper.find('.report-summary').exists()).toBe(false);
+    await wrapper.get('button[aria-label="Fechar alerta"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Não foi possível carregar o relatório');
+    expect(wrapper.text()).not.toContain('Sem fluxo consolidado');
+    expect(wrapper.findAll('button').find(b => b.text() === 'Exportar CSV')!.attributes('disabled')).toBeDefined();
+    await wrapper.findAll('button').find(b => b.text() === 'Tentar novamente')!.trigger('click');
+    await flushPromises();
+    expect(administrativeReportsService.getHubs).toHaveBeenCalledTimes(2);
+    expect(wrapper.text()).toContain('Receita comercial consolidada');
+    expect(wrapper.find('.report-summary').exists()).toBe(true);
+  });
+
+  it('does not show zero indicators during hub loading but preserves an actual zero result', async () => {
+    let resolve!: (value: AdministrativeReportsResponse) => void;
+    vi.mocked(administrativeReportsService.getHubs).mockReturnValueOnce(new Promise(done => { resolve = done; }));
+    const wrapper = mount(ReportWorkbenchPage, { props: { reportKey: 'cash-flow' } });
+    expect(wrapper.find('.report-summary').exists()).toBe(false);
+    expect(wrapper.find('[aria-label="Carregando dados da tabela"]').exists()).toBe(true);
+    expect(wrapper.findAll('tbody tr').filter(row => row.text().includes('Receita comercial consolidada'))).toHaveLength(0);
+    resolve({ ...report, executive: { ...report.executive, commercialRevenue: 0, outstandingReceivables: 0, openCashBalance: 0 } });
+    await flushPromises();
+    expect(wrapper.find('.report-summary').exists()).toBe(true);
+    expect(wrapper.find('.report-summary').text()).toMatch(/R\$\s*0,00/);
+  });
+
+  it('ignores a late hub response after a newer query has completed', async () => {
+    let resolve!: (value: AdministrativeReportsResponse) => void;
+    vi.mocked(administrativeReportsService.getHubs).mockReturnValueOnce(new Promise(done => { resolve = done; }));
+    const wrapper = mount(ReportWorkbenchPage, { props: { reportKey: 'cash-flow' } });
+    await wrapper.findAll('button').find(b => b.text() === 'Limpar')!.trigger('click');
+    await flushPromises();
+    expect(administrativeReportsService.getHubs).toHaveBeenCalledTimes(2);
+    const current = wrapper.find('.report-summary').text();
+    resolve({ ...report, executive: { ...report.executive, commercialRevenue: 987654 } });
+    await flushPromises();
+    expect(wrapper.find('.report-summary').text()).toBe(current);
+    expect(wrapper.text()).not.toContain('987.654');
+  });
+
+  it('ignores a pending hub failure when the component switches to packages', async () => {
+    let reject!: (error: Error) => void;
+    vi.mocked(administrativeReportsService.getHubs).mockReturnValueOnce(new Promise((_done, fail) => { reject = fail; }));
+    const wrapper = mount(ReportWorkbenchPage, { props: { reportKey: 'cash-flow' } });
+    await wrapper.setProps({ reportKey: 'packages' });
+    await flushPromises();
+    expect(wrapper.text()).toContain('PKG-0042');
+    reject(new Error('Late unrelated failure'));
+    await flushPromises();
+    expect(wrapper.text()).toContain('PKG-0042');
+    expect(wrapper.text()).not.toContain('Não foi possível carregar');
+    expect(wrapper.findAll('button').find(b => b.text() === 'Exportar CSV')!.attributes('disabled')).toBeUndefined();
+  });
+
+  it('shows an unknown open cash balance as a dash after a successful hub response', async () => {
+    vi.mocked(administrativeReportsService.getHubs).mockResolvedValueOnce({
+      ...report, executive: { ...report.executive, openCashBalance: null }
+    } as unknown as AdministrativeReportsResponse);
+    const wrapper = mount(ReportWorkbenchPage, { props: { reportKey: 'cash-flow' } });
+    await flushPromises();
+    const balance = wrapper.findAll('.report-summary dl > div').find(item => item.text().includes('Saldo aberto'))!;
+    expect(balance.get('dd').text()).toBe('—');
+    const row = wrapper.findAll('tbody tr').find(item => item.text().includes('Saldo da gaveta aberta'));
+    expect(row).toBeDefined();
+    expect(row!.text()).toContain('—');
+    expect(row!.text()).not.toMatch(/R\$\s*0,00/);
+  });
+
+  it('does not invent monetary totals for open or cancelled sales', async () => {
+    const wrapper = mount(ReportWorkbenchPage, {props:{reportKey:'sales-counter-sales'}});
+    await flushPromises();
+    for (const label of ['Comandas em aberto','Vendas canceladas']) {
+      const row = wrapper.findAll('tbody tr').find(row => row.text().includes(label));
+      expect(row).toBeDefined();
+      expect(row!.findAll('td')[1]!.text()).toBe('—');
+    }
+  });
+
+  it('formats received and outstanding amounts as money in receivable records', async () => {
+    const wrapper = mount(ReportWorkbenchPage, {props:{reportKey:'accounts-receivable'}});
+    await flushPromises();
+    const headers = wrapper.findAll('th').map(h => h.text());
+    const row = wrapper.findAll('tbody tr')[0]!;
+    for (const label of ['Recebido','Saldo']) {
+      const index = headers.findIndex(h => h === label);
+      expect(index).toBeGreaterThan(-1);
+      expect(row.findAll('td')[index]!.text()).toContain('R$');
+    }
+  });
+
+  it.each(['accounts-payable','accounts-receivable'] as const)('explains live filtering of loaded records in %s before exporting', async (reportKey) => {
+    const wrapper = mount(ReportWorkbenchPage, {props:{reportKey}});
+    await flushPromises();
+    expect(wrapper.findAll('tbody tr').length).toBeGreaterThan(0);
+    await wrapper.findAll('input[type="date"]')[0]!.setValue('2099-01-01');
+    expect(wrapper.findAll('tbody tr')).toHaveLength(0);
+    expect(wrapper.get('.report-query-note').text()).toContain('A tabela filtra os registros carregados;');
+    expect(wrapper.get('.report-query-note').text()).not.toContain('mostra a última consulta');
+    expect(reportsService.execute).not.toHaveBeenCalled();
+  });
+
 });

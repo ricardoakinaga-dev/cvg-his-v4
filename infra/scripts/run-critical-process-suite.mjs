@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, rmSync, unlinkSync } from 'node:fs';
+import { closeSync, constants, existsSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, realpathSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import process from 'node:process';
 import { Client } from 'pg';
+import { acquireCriticalProcessCoverage } from './critical-process-coverage.mjs';
 
 import {
   cleanupOwnedProcess,
@@ -336,6 +337,7 @@ function requireReportCounter(report, counterName) {
 
 export function validateTestReport(reportPath, testFile, reportDirectory = null) {
   let report;
+  let validatedText;
   try {
     const reportContent = readBoundedReportText(reportPath, reportDirectory);
     if (reportContent.truncated) {
@@ -343,6 +345,7 @@ export function validateTestReport(reportPath, testFile, reportDirectory = null)
     }
     report = JSON.parse(reportContent.content);
     if (!isPlainObject(report)) throw new Error('the Vitest result report must be a JSON object');
+    validatedText = reportContent.content;
   } catch (error) {
     throw new Error(
       `Could not read the Vitest result contract for ${testFile}: ${error instanceof Error ? error.message : String(error)}`
@@ -465,6 +468,31 @@ export function validateTestReport(reportPath, testFile, reportDirectory = null)
       })}`
     );
   }
+  return validatedText;
+}
+
+// Retain the exact sanitized bytes accepted by the validator, without a second
+// read of a replaceable source path. This is test evidence, not a release verdict.
+export function retainSuccessfulTestReport(reportPath, testFile, reportDirectory, artifactDirectory) {
+  if (process.platform !== 'linux') throw new Error('successful coverage reports require Linux procfs');
+  validateTestReport(reportPath, testFile, reportDirectory);
+  sanitizeReportInPlace(reportPath, reportDirectory, { requireComplete: true });
+  const content = validateTestReport(reportPath, testFile, reportDirectory);
+  const destination = resolve(artifactDirectory);
+  if (realpathSync(destination) !== destination) throw new Error('successful report directory must not contain symlinks');
+  const expected = lstatSync(destination);
+  if (!expected.isDirectory()) throw new Error('successful report destination is not a directory');
+  const descriptor = openSync(destination, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW);
+  try {
+    const actual = fstatSync(descriptor);
+    if (actual.dev !== expected.dev || actual.ino !== expected.ino) throw new Error('successful report directory changed');
+    writeFileSync(`/proc/${process.pid}/fd/${descriptor}/success-report.json`, content, {
+      encoding: 'utf8', mode: 0o600, flag: 'wx'
+    });
+  } finally {
+    closeSync(descriptor);
+  }
+  return join(destination, 'success-report.json');
 }
 
 function validateManifest() {
@@ -647,7 +675,7 @@ function installSignalHandlers(activeChildren) {
   };
 }
 
-function buildChildEnvironment(testSuffix, databaseUrl) {
+export function buildChildEnvironment(testSuffix, databaseUrl, coverageEnvironment = {}) {
   const inheritedEnvironment = Object.fromEntries(
     Object.entries(process.env).filter(
       ([key, value]) => CHILD_ENVIRONMENT_KEYS.has(key) && typeof value === 'string'
@@ -656,6 +684,7 @@ function buildChildEnvironment(testSuffix, databaseUrl) {
 
   return {
     ...inheritedEnvironment,
+    ...coverageEnvironment,
     DOTENV_CONFIG_PATH: process.platform === 'win32' ? 'NUL' : '/dev/null',
     CVG_CRITICAL_PROCESS_RUNNER: '1',
     DATABASE_URL: databaseUrl,
@@ -675,7 +704,8 @@ async function runTest(
   artifactRoot,
   activeChildren,
   databaseUrl,
-  signalHandlers
+  signalHandlers,
+  coverageEnvironment = {}
 ) {
   const testSuffix = resolveTestSuffix(suiteSuffix, index, test.id);
   const artifactDirectory = dryRun ? null : createArtifactDirectory(artifactRoot, test);
@@ -690,7 +720,7 @@ async function runTest(
     return 0;
   }
 
-  const env = buildChildEnvironment(testSuffix, databaseUrl);
+  const env = buildChildEnvironment(testSuffix, databaseUrl, coverageEnvironment);
 
   let outcome;
   try {
@@ -750,7 +780,11 @@ async function runTest(
   }
 
   try {
-    validateTestReport(reportPath, test.file, reportDirectory);
+    if (coverageEnvironment.CVG_CRITICAL_PROCESS_COVERAGE === '1') {
+      retainSuccessfulTestReport(reportPath, test.file, reportDirectory, artifactDirectory);
+    } else {
+      validateTestReport(reportPath, test.file, reportDirectory);
+    }
   } catch (error) {
     let failureArtifactPath;
     try {
@@ -793,7 +827,7 @@ async function runTest(
     );
     return 1;
   }
-  if (removeArtifactDirectory(artifactDirectory, test.file)) return 1;
+  if (coverageEnvironment.CVG_CRITICAL_PROCESS_COVERAGE !== '1' && removeArtifactDirectory(artifactDirectory, test.file)) return 1;
   return 0;
 }
 
@@ -821,8 +855,10 @@ async function main() {
   const signalHandlers = installSignalHandlers(activeChildren);
   let activeTestDatabase = null;
   let exitCode = 0;
+  let coverageSession = null;
 
   try {
+    if (!dryRun) coverageSession = acquireCriticalProcessCoverage();
     for (const [index, test] of PROCESS_TESTS.entries()) {
       if (signalHandlers.receivedSignal) {
         exitCode = SIGNAL_EXIT_CODES[signalHandlers.receivedSignal] ?? 1;
@@ -843,7 +879,8 @@ async function main() {
           artifactRoot,
           activeChildren,
           criticalTestDatabaseUrl,
-          signalHandlers
+          signalHandlers,
+          coverageSession?.environment
         );
       } finally {
         if (activeTestDatabase) {
@@ -901,6 +938,7 @@ async function main() {
       exitCode = SIGNAL_EXIT_CODES[signalHandlers.receivedSignal] ?? 1;
     }
     signalHandlers.remove();
+    coverageSession?.close();
   }
   return exitCode;
 }

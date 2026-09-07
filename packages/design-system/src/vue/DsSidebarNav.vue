@@ -7,7 +7,7 @@
         class="ds-sidebar-nav__group"
       >
         <div class="ds-sidebar-nav__group-header">
-          <span class="ds-sidebar-nav__group-icon">{{ group.icon }}</span>
+          <span class="ds-sidebar-nav__group-icon"><DsIcon :name="group.icon" size="sm" /></span>
           <span v-if="!collapsed" class="ds-sidebar-nav__group-label">{{ group.label }}</span>
         </div>
         <ul v-if="!collapsed" class="ds-sidebar-nav__item-list" role="list">
@@ -18,7 +18,7 @@
               :class="['ds-sidebar-nav__item', { 'ds-sidebar-nav__item--active': item.active }]"
               :aria-current="item.active ? 'page' : undefined"
             >
-              <span class="ds-sidebar-nav__item-icon">{{ item.icon ?? '•' }}</span>
+              <span class="ds-sidebar-nav__item-icon"><DsIcon :name="item.icon ?? '•'" size="sm" /></span>
               <span class="ds-sidebar-nav__item-label">{{ item.label }}</span>
             </component>
           </li>
@@ -29,6 +29,8 @@
 </template>
 
 <script setup lang="ts">
+import DsIcon from './DsIcon.vue';
+
 export interface SidebarNavItem {
   label: string;
   icon?: string;

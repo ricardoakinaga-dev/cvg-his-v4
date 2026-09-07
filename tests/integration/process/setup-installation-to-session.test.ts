@@ -1,5 +1,6 @@
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { requestProcessCoverageCheckpoint } from '../../helpers/process-coverage-control.mjs';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { createServer, type AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -382,6 +383,7 @@ function startApi(port: number, instance: 'a' | 'b'): ApiProcess {
     env: {
       ...process.env,
       API_PROCESS_FIXTURE: '1',
+      CVG_PROCESS_COVERAGE_CONTROL: process.env.CVG_CRITICAL_PROCESS_COVERAGE === '1' ? '1' : '0',
       NODE_ENV: 'test',
       APP_NAME: `setup-installation-session-${instance}`,
       HOST: '127.0.0.1',
@@ -401,7 +403,7 @@ function startApi(port: number, instance: 'a' | 'b'): ApiProcess {
       SMS_MOCK_MODE: 'true',
       GOOGLE_CALENDAR_MOCK_MODE: 'true'
     },
-    stdio: ['ignore', 'pipe', 'pipe']
+    stdio: process.env.CVG_CRITICAL_PROCESS_COVERAGE === '1' ? ['ignore', 'pipe', 'pipe', 'ipc'] : ['ignore', 'pipe', 'pipe']
   });
 
   if (child.pid === undefined) {
@@ -590,6 +592,7 @@ async function stopApi(processHandle: ApiProcess | undefined): Promise<void> {
 }
 
 async function killApi(processHandle: ApiProcess): Promise<void> {
+  await requestProcessCoverageCheckpoint(processHandle.child);
   if (processHandle.child.exitCode === null && processHandle.child.signalCode === null) {
     if (!processHandle.child.kill('SIGKILL')) {
       throw new Error(`Could not SIGKILL API process ${processHandle.child.pid}.`);
@@ -1124,6 +1127,10 @@ describe.skipIf(!canRunDisposableDistributedFixture && !requireDisposableDistrib
         })
       });
       expect(setupAgain.status).toBe(409);
+      await Promise.all([
+        requestProcessCoverageCheckpoint(apiA.child),
+        requestProcessCoverageCheckpoint(apiB.child)
+      ]);
     }, 120_000);
   }
 );

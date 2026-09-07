@@ -1,0 +1,1272 @@
+{
+  "scope": "Read-only current frontend visual audit, synthetic responses and no backend claim",
+  "generatedAt": "2026-09-07T02:36:34.518Z",
+  "before": {
+    "apps/spa/src/pages/owners/OwnerFormPage.vue": "55d1551f801096e8ec6a8660056260e74f150db67f01e1d57acdbecb756ab47e",
+    "apps/spa/src/pages/reception/ReceptionGatewayPage.vue": "f356d007e0e3babeb078e60b44e8a39d0515ba64f40046e0ebd94ddf7ea16edb",
+    "apps/spa/src/pages/sales/QuotesPage.vue": "a5d6996e85fa6d1bdac72c984c7fb19a8f0386cf58a14ecc2243becf8b658c60",
+    "apps/spa/src/composables/useListData.ts": "3f9015f3aeb49b76c93accf201425026475cb66f6c70e0ab296e693644115099",
+    "apps/spa/src/composables/useUnsavedChanges.ts": "16a1c104bd934e643a259fc4e3f116758d783c74e0f7e087e1ef3501e3c59e7e",
+    "packages/design-system/src/vue/DsButton.vue": "e43ad77d7c0a75aef77d895259b5916cef04b388b9391ef3a3687f55c6fa8923",
+    "apps/spa/src/pages/appointments/AppointmentsListPage.vue": "1e6cb191b9f735be5ebc349a7ba7e6ede6f433837be4fa5bbc284d455485de2b",
+    "apps/spa/src/components/AppPageHeader.vue": "56d7f857a470dc002ad255e9af6e7abf3f17b0cae897eed0b145fec5734316cb",
+    "apps/spa/src/components/EmptyState.vue": "f8518ebed14c204e5986531dc91c6f4b844f5bb0ae3c39ecc501eeb8f5c27dc5",
+    "apps/spa/src/services/scheduling.ts": "a46d749d3bd3d8ccbfe9bc1959f4b5ed13483ea1ca5b566bd588ac9b5660bc61",
+    "apps/spa/src/services/services.ts": "b6fc1a82612226547671ef41dd978e0179fb74c9ff0c98acbab84d676b5aa5f2",
+    "apps/spa/src/services/owner.ts": "41ab4d2492d20c7ceb750c5eb8e04985562ba8475017cad92b5e3654de1f9867",
+    "apps/spa/src/services/patient.ts": "7f274ab7a482d66ae702a73336a55cb1c09d902cc70b98ef1688e905224f9e1d",
+    "apps/spa/src/router/routes.ts": "faa36849632ee3b756c049dbedc549dd79c000132e4786a9984f0c541b2f8b3b",
+    "apps/spa/src/router/index.ts": "32fd7fb5ee615c8c081e6d9f950f816ca95fb5068ebfc500b0a8c47527c95b7f",
+    "apps/spa/src/layouts/AppLayout.vue": "e107decb669dde5c083c90358b91ada42d107000c2508aed64c244c3e1133156",
+    "apps/spa/src/stores/theme.ts": "970adb23d87e086993ad7d16b166a3056b2c3919e31c6a1d0546d8450ae16fd0",
+    "apps/spa/src/styles/main.css": "320ccdacc94a18a4eccf1d13394270ab537fcac8999f78dce4691e1b8fe96eb2",
+    "packages/design-system/src/tokens/variables.css": "33393ed721062c682504d58395bdb2776f215262005f09cc2f49d07d49ab3d0f"
+  },
+  "after": {
+    "apps/spa/src/pages/owners/OwnerFormPage.vue": "55d1551f801096e8ec6a8660056260e74f150db67f01e1d57acdbecb756ab47e",
+    "apps/spa/src/pages/reception/ReceptionGatewayPage.vue": "f356d007e0e3babeb078e60b44e8a39d0515ba64f40046e0ebd94ddf7ea16edb",
+    "apps/spa/src/pages/sales/QuotesPage.vue": "a5d6996e85fa6d1bdac72c984c7fb19a8f0386cf58a14ecc2243becf8b658c60",
+    "apps/spa/src/composables/useListData.ts": "3f9015f3aeb49b76c93accf201425026475cb66f6c70e0ab296e693644115099",
+    "apps/spa/src/composables/useUnsavedChanges.ts": "16a1c104bd934e643a259fc4e3f116758d783c74e0f7e087e1ef3501e3c59e7e",
+    "packages/design-system/src/vue/DsButton.vue": "e43ad77d7c0a75aef77d895259b5916cef04b388b9391ef3a3687f55c6fa8923",
+    "apps/spa/src/pages/appointments/AppointmentsListPage.vue": "1e6cb191b9f735be5ebc349a7ba7e6ede6f433837be4fa5bbc284d455485de2b",
+    "apps/spa/src/components/AppPageHeader.vue": "56d7f857a470dc002ad255e9af6e7abf3f17b0cae897eed0b145fec5734316cb",
+    "apps/spa/src/components/EmptyState.vue": "f8518ebed14c204e5986531dc91c6f4b844f5bb0ae3c39ecc501eeb8f5c27dc5",
+    "apps/spa/src/services/scheduling.ts": "a46d749d3bd3d8ccbfe9bc1959f4b5ed13483ea1ca5b566bd588ac9b5660bc61",
+    "apps/spa/src/services/services.ts": "b6fc1a82612226547671ef41dd978e0179fb74c9ff0c98acbab84d676b5aa5f2",
+    "apps/spa/src/services/owner.ts": "41ab4d2492d20c7ceb750c5eb8e04985562ba8475017cad92b5e3654de1f9867",
+    "apps/spa/src/services/patient.ts": "7f274ab7a482d66ae702a73336a55cb1c09d902cc70b98ef1688e905224f9e1d",
+    "apps/spa/src/router/routes.ts": "faa36849632ee3b756c049dbedc549dd79c000132e4786a9984f0c541b2f8b3b",
+    "apps/spa/src/router/index.ts": "32fd7fb5ee615c8c081e6d9f950f816ca95fb5068ebfc500b0a8c47527c95b7f",
+    "apps/spa/src/layouts/AppLayout.vue": "e107decb669dde5c083c90358b91ada42d107000c2508aed64c244c3e1133156",
+    "apps/spa/src/stores/theme.ts": "970adb23d87e086993ad7d16b166a3056b2c3919e31c6a1d0546d8450ae16fd0",
+    "apps/spa/src/styles/main.css": "320ccdacc94a18a4eccf1d13394270ab537fcac8999f78dce4691e1b8fe96eb2",
+    "packages/design-system/src/tokens/variables.css": "33393ed721062c682504d58395bdb2776f215262005f09cc2f49d07d49ab3d0f"
+  },
+  "inputsStable": true,
+  "rows": [
+    {
+      "target": "/owners/new",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/owners/new",
+      "title": "Novo Tutor · CVG HIS SPA",
+      "documentWidth": 1440,
+      "documentHeight": 2391,
+      "headings": [
+        {
+          "text": "Cadastrar Novo Tutor",
+          "x": 329,
+          "y": 190,
+          "width": 444.4375,
+          "height": 29.96875,
+          "right": 773.4375,
+          "bottom": 219.96875
+        },
+        {
+          "text": "Resumo em tempo real",
+          "x": 1058.671875,
+          "y": 346.34375,
+          "width": 331.453125,
+          "height": 21.09375,
+          "right": 1390.125,
+          "bottom": 367.4375
+        },
+        {
+          "text": "Guia de cadastro",
+          "x": 1058.671875,
+          "y": 654.3125,
+          "width": 331.453125,
+          "height": 21.09375,
+          "right": 1390.125,
+          "bottom": 675.40625
+        }
+      ],
+      "mainCount": 1,
+      "firstData": [],
+      "fonts": {
+        "body": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        "heading": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "scrollContainers": [],
+      "stem": "_owners_new-1440-light",
+      "errors": [],
+      "requests": [
+        {
+          "path": "/api/auth/refresh",
+          "query": "",
+          "method": "POST"
+        },
+        {
+          "path": "/api/auth/session",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/scheduling/overview",
+          "query": "?viewMode=day&referenceDate=2026-09-07T00%3A00%3A00.000Z",
+          "method": "GET"
+        },
+        {
+          "path": "/api/services",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/auth/refresh",
+          "query": "",
+          "method": "POST"
+        }
+      ],
+      "interactions": [
+        {
+          "test": "dirty-sidebar-continue",
+          "passed": true,
+          "preserved": [
+            "fullName",
+            "phone1"
+          ]
+        },
+        {
+          "test": "dirty-sidebar-discard",
+          "passed": true,
+          "documentRequests": []
+        },
+        {
+          "test": "clean-cancel-client-navigation",
+          "passed": true,
+          "documentRequests": []
+        }
+      ]
+    },
+    {
+      "target": "/owners/new",
+      "theme": "light",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "route": "/owners/new",
+      "title": "Novo Tutor · CVG HIS SPA",
+      "documentWidth": 390,
+      "documentHeight": 4277,
+      "headings": [
+        {
+          "text": "Cadastrar Novo Tutor",
+          "x": 29,
+          "y": 208,
+          "width": 334,
+          "height": 25.265625,
+          "right": 363,
+          "bottom": 233.265625
+        },
+        {
+          "text": "Resumo em tempo real",
+          "x": 27.875,
+          "y": 3677.109375,
+          "width": 334.25,
+          "height": 21.09375,
+          "right": 362.125,
+          "bottom": 3698.203125
+        },
+        {
+          "text": "Guia de cadastro",
+          "x": 27.875,
+          "y": 3985.078125,
+          "width": 334.25,
+          "height": 21.09375,
+          "right": 362.125,
+          "bottom": 4006.171875
+        }
+      ],
+      "mainCount": 1,
+      "firstData": [],
+      "fonts": {
+        "body": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        "heading": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "scrollContainers": [],
+      "stem": "_owners_new-390-light",
+      "errors": [],
+      "requests": [
+        {
+          "path": "/api/auth/refresh",
+          "query": "",
+          "method": "POST"
+        }
+      ],
+      "interactions": []
+    },
+    {
+      "target": "/owners/new",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/owners/new",
+      "title": "Novo Tutor · CVG HIS SPA",
+      "documentWidth": 1440,
+      "documentHeight": 2391,
+      "headings": [
+        {
+          "text": "Cadastrar Novo Tutor",
+          "x": 329,
+          "y": 190,
+          "width": 444.4375,
+          "height": 29.96875,
+          "right": 773.4375,
+          "bottom": 219.96875
+        },
+        {
+          "text": "Resumo em tempo real",
+          "x": 1058.671875,
+          "y": 346.34375,
+          "width": 331.453125,
+          "height": 21.09375,
+          "right": 1390.125,
+          "bottom": 367.4375
+        },
+        {
+          "text": "Guia de cadastro",
+          "x": 1058.671875,
+          "y": 654.3125,
+          "width": 331.453125,
+          "height": 21.09375,
+          "right": 1390.125,
+          "bottom": 675.40625
+        }
+      ],
+      "mainCount": 1,
+      "firstData": [],
+      "fonts": {
+        "body": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        "heading": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "scrollContainers": [],
+      "stem": "_owners_new-1440-dark",
+      "errors": [],
+      "requests": [
+        {
+          "path": "/api/auth/refresh",
+          "query": "",
+          "method": "POST"
+        }
+      ],
+      "interactions": []
+    },
+    {
+      "target": "/owners/new",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "route": "/owners/new",
+      "title": "Novo Tutor · CVG HIS SPA",
+      "documentWidth": 390,
+      "documentHeight": 4277,
+      "headings": [
+        {
+          "text": "Cadastrar Novo Tutor",
+          "x": 29,
+          "y": 208,
+          "width": 334,
+          "height": 25.265625,
+          "right": 363,
+          "bottom": 233.265625
+        },
+        {
+          "text": "Resumo em tempo real",
+          "x": 27.875,
+          "y": 3677.109375,
+          "width": 334.25,
+          "height": 21.09375,
+          "right": 362.125,
+          "bottom": 3698.203125
+        },
+        {
+          "text": "Guia de cadastro",
+          "x": 27.875,
+          "y": 3985.078125,
+          "width": 334.25,
+          "height": 21.09375,
+          "right": 362.125,
+          "bottom": 4006.171875
+        }
+      ],
+      "mainCount": 1,
+      "firstData": [],
+      "fonts": {
+        "body": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        "heading": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "scrollContainers": [],
+      "stem": "_owners_new-390-dark",
+      "errors": [],
+      "requests": [
+        {
+          "path": "/api/auth/refresh",
+          "query": "",
+          "method": "POST"
+        }
+      ],
+      "interactions": []
+    },
+    {
+      "target": "/reception",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/reception",
+      "title": "Recepção · CVG HIS SPA",
+      "documentWidth": 1440,
+      "documentHeight": 1885,
+      "headings": [
+        {
+          "text": "Recepção",
+          "x": 329,
+          "y": 246,
+          "width": 444.4375,
+          "height": 29.96875,
+          "right": 773.4375,
+          "bottom": 275.96875
+        },
+        {
+          "text": "Funil operacional",
+          "x": 321,
+          "y": 754.453125,
+          "width": 499.265625,
+          "height": 27,
+          "right": 820.265625,
+          "bottom": 781.453125
+        },
+        {
+          "text": "Nenhuma entrada ativa na recepção",
+          "x": 338,
+          "y": 980.640625,
+          "width": 1036,
+          "height": 27,
+          "right": 1374,
+          "bottom": 1007.640625
+        },
+        {
+          "text": "Handoffs da recepção",
+          "x": 321,
+          "y": 1157.828125,
+          "width": 552.96875,
+          "height": 27,
+          "right": 873.96875,
+          "bottom": 1184.828125
+        },
+        {
+          "text": "Nenhum handoff aguardando recepcao",
+          "x": 338,
+          "y": 1440.015625,
+          "width": 1036,
+          "height": 27,
+          "right": 1374,
+          "bottom": 1467.015625
+        },
+        {
+          "text": "Atalhos secundarios",
+          "x": 321,
+          "y": 1704.578125,
+          "width": 181.703125,
+          "height": 27,
+          "right": 502.703125,
+          "bottom": 1731.578125
+        }
+      ],
+      "mainCount": 1,
+      "firstData": [],
+      "fonts": {
+        "body": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        "heading": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "scrollContainers": [],
+      "stem": "_reception-1440-light",
+      "errors": [],
+      "requests": [
+        {
+          "path": "/api/auth/refresh",
+          "query": "",
+          "method": "POST"
+        },
+        {
+          "path": "/api/queue",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/clinical-handoffs",
+          "query": "",
+          "method": "GET"
+        }
+      ],
+      "interactions": []
+    },
+    {
+      "target": "/reception",
+      "theme": "light",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "route": "/reception",
+      "title": "Recepção · CVG HIS SPA",
+      "documentWidth": 390,
+      "documentHeight": 3552,
+      "headings": [
+        {
+          "text": "Recepção",
+          "x": 29,
+          "y": 260,
+          "width": 334,
+          "height": 25.265625,
+          "right": 363,
+          "bottom": 285.265625
+        },
+        {
+          "text": "Funil operacional",
+          "x": 27,
+          "y": 1304.921875,
+          "width": 336,
+          "height": 27,
+          "right": 363,
+          "bottom": 1331.921875
+        },
+        {
+          "text": "Nenhuma entrada ativa na recepção",
+          "x": 44,
+          "y": 1851.296875,
+          "width": 302,
+          "height": 27,
+          "right": 346,
+          "bottom": 1878.296875
+        },
+        {
+          "text": "Handoffs da recepção",
+          "x": 27,
+          "y": 2050.171875,
+          "width": 336,
+          "height": 27,
+          "right": 363,
+          "bottom": 2077.171875
+        },
+        {
+          "text": "Nenhum handoff aguardando recepcao",
+          "x": 44,
+          "y": 2570.546875,
+          "width": 302,
+          "height": 27,
+          "right": 346,
+          "bottom": 2597.546875
+        },
+        {
+          "text": "Atalhos secundarios",
+          "x": 27,
+          "y": 3151.921875,
+          "width": 108.8125,
+          "height": 54,
+          "right": 135.8125,
+          "bottom": 3205.921875
+        }
+      ],
+      "mainCount": 1,
+      "firstData": [],
+      "fonts": {
+        "body": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        "heading": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "scrollContainers": [],
+      "stem": "_reception-390-light",
+      "errors": [],
+      "requests": [
+        {
+          "path": "/api/auth/refresh",
+          "query": "",
+          "method": "POST"
+        },
+        {
+          "path": "/api/queue",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/clinical-handoffs",
+          "query": "",
+          "method": "GET"
+        }
+      ],
+      "interactions": []
+    },
+    {
+      "target": "/reception",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/reception",
+      "title": "Recepção · CVG HIS SPA",
+      "documentWidth": 1440,
+      "documentHeight": 1885,
+      "headings": [
+        {
+          "text": "Recepção",
+          "x": 329,
+          "y": 246,
+          "width": 444.4375,
+          "height": 29.96875,
+          "right": 773.4375,
+          "bottom": 275.96875
+        },
+        {
+          "text": "Funil operacional",
+          "x": 321,
+          "y": 754.453125,
+          "width": 499.265625,
+          "height": 27,
+          "right": 820.265625,
+          "bottom": 781.453125
+        },
+        {
+          "text": "Nenhuma entrada ativa na recepção",
+          "x": 338,
+          "y": 980.640625,
+          "width": 1036,
+          "height": 27,
+          "right": 1374,
+          "bottom": 1007.640625
+        },
+        {
+          "text": "Handoffs da recepção",
+          "x": 321,
+          "y": 1157.828125,
+          "width": 552.96875,
+          "height": 27,
+          "right": 873.96875,
+          "bottom": 1184.828125
+        },
+        {
+          "text": "Nenhum handoff aguardando recepcao",
+          "x": 338,
+          "y": 1440.015625,
+          "width": 1036,
+          "height": 27,
+          "right": 1374,
+          "bottom": 1467.015625
+        },
+        {
+          "text": "Atalhos secundarios",
+          "x": 321,
+          "y": 1704.578125,
+          "width": 181.703125,
+          "height": 27,
+          "right": 502.703125,
+          "bottom": 1731.578125
+        }
+      ],
+      "mainCount": 1,
+      "firstData": [],
+      "fonts": {
+        "body": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        "heading": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "scrollContainers": [],
+      "stem": "_reception-1440-dark",
+      "errors": [],
+      "requests": [
+        {
+          "path": "/api/auth/refresh",
+          "query": "",
+          "method": "POST"
+        },
+        {
+          "path": "/api/queue",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/clinical-handoffs",
+          "query": "",
+          "method": "GET"
+        }
+      ],
+      "interactions": []
+    },
+    {
+      "target": "/reception",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "route": "/reception",
+      "title": "Recepção · CVG HIS SPA",
+      "documentWidth": 390,
+      "documentHeight": 3552,
+      "headings": [
+        {
+          "text": "Recepção",
+          "x": 29,
+          "y": 260,
+          "width": 334,
+          "height": 25.265625,
+          "right": 363,
+          "bottom": 285.265625
+        },
+        {
+          "text": "Funil operacional",
+          "x": 27,
+          "y": 1304.921875,
+          "width": 336,
+          "height": 27,
+          "right": 363,
+          "bottom": 1331.921875
+        },
+        {
+          "text": "Nenhuma entrada ativa na recepção",
+          "x": 44,
+          "y": 1851.296875,
+          "width": 302,
+          "height": 27,
+          "right": 346,
+          "bottom": 1878.296875
+        },
+        {
+          "text": "Handoffs da recepção",
+          "x": 27,
+          "y": 2050.171875,
+          "width": 336,
+          "height": 27,
+          "right": 363,
+          "bottom": 2077.171875
+        },
+        {
+          "text": "Nenhum handoff aguardando recepcao",
+          "x": 44,
+          "y": 2570.546875,
+          "width": 302,
+          "height": 27,
+          "right": 346,
+          "bottom": 2597.546875
+        },
+        {
+          "text": "Atalhos secundarios",
+          "x": 27,
+          "y": 3151.921875,
+          "width": 108.8125,
+          "height": 54,
+          "right": 135.8125,
+          "bottom": 3205.921875
+        }
+      ],
+      "mainCount": 1,
+      "firstData": [],
+      "fonts": {
+        "body": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        "heading": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "scrollContainers": [],
+      "stem": "_reception-390-dark",
+      "errors": [],
+      "requests": [
+        {
+          "path": "/api/auth/refresh",
+          "query": "",
+          "method": "POST"
+        },
+        {
+          "path": "/api/queue",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/clinical-handoffs",
+          "query": "",
+          "method": "GET"
+        }
+      ],
+      "interactions": []
+    },
+    {
+      "target": "/appointments",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/appointments",
+      "title": "Agenda · CVG HIS SPA",
+      "documentWidth": 1440,
+      "documentHeight": 3895,
+      "headings": [
+        {
+          "text": "Agenda",
+          "x": 329,
+          "y": 246,
+          "width": 444.4375,
+          "height": 29.96875,
+          "right": 773.4375,
+          "bottom": 275.96875
+        },
+        {
+          "text": "Filtrar por...",
+          "x": 321.875,
+          "y": 524.65625,
+          "width": 316.25,
+          "height": 18.1875,
+          "right": 638.125,
+          "bottom": 542.84375
+        }
+      ],
+      "mainCount": 1,
+      "firstData": [
+        {
+          "text": "06:00 · 30 minAgendadoLuna VisualMaria VisualClínico geralClínico geral · Clínic",
+          "x": 1083,
+          "y": 1527.65625,
+          "width": 317,
+          "height": 267,
+          "right": 1400,
+          "bottom": 1794.65625
+        },
+        {
+          "text": "07:00 · 30 minEm triagemLuna VisualMaria VisualClínico geralClínico geral · Clín",
+          "x": 1083,
+          "y": 1811.65625,
+          "width": 317,
+          "height": 288.5,
+          "right": 1400,
+          "bottom": 2100.15625
+        }
+      ],
+      "fonts": {
+        "body": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        "heading": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "scrollContainers": [],
+      "stem": "_appointments-1440-light",
+      "errors": [],
+      "requests": [
+        {
+          "path": "/api/auth/refresh",
+          "query": "",
+          "method": "POST"
+        },
+        {
+          "path": "/api/auth/session",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/scheduling/overview",
+          "query": "?viewMode=day&referenceDate=2026-09-07T00%3A00%3A00.000Z",
+          "method": "GET"
+        },
+        {
+          "path": "/api/services",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/owners/synthetic-owner-1",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/owners/synthetic-owner-2",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/synthetic-patient-1",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/synthetic-patient-2",
+          "query": "",
+          "method": "GET"
+        }
+      ],
+      "interactions": []
+    },
+    {
+      "target": "/appointments",
+      "theme": "light",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "route": "/appointments",
+      "title": "Agenda · CVG HIS SPA",
+      "documentWidth": 390,
+      "documentHeight": 4363,
+      "headings": [
+        {
+          "text": "Agenda",
+          "x": 29,
+          "y": 260,
+          "width": 334,
+          "height": 25.265625,
+          "right": 363,
+          "bottom": 285.265625
+        },
+        {
+          "text": "Filtrar por...",
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "right": 0,
+          "bottom": 0
+        }
+      ],
+      "mainCount": 1,
+      "firstData": [
+        {
+          "text": "06:00 · 30 minAgendadoLuna VisualMaria VisualClínico geralClínico geral · Clínic",
+          "x": 271,
+          "y": 1964.890625,
+          "width": 166,
+          "height": 368.5,
+          "right": 437,
+          "bottom": 2333.390625
+        },
+        {
+          "text": "07:00 · 30 minEm triagemLuna VisualMaria VisualClínico geralClínico geral · Clín",
+          "x": 271,
+          "y": 2348.390625,
+          "width": 166,
+          "height": 390,
+          "right": 437,
+          "bottom": 2738.390625
+        }
+      ],
+      "fonts": {
+        "body": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        "heading": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "scrollContainers": [
+        {
+          "class": "time-matrix",
+          "clientWidth": 370,
+          "scrollWidth": 434,
+          "x": 10,
+          "y": 1242.890625,
+          "width": 370,
+          "height": 2905.5,
+          "right": 380,
+          "bottom": 4148.390625
+        }
+      ],
+      "stem": "_appointments-390-light",
+      "errors": [],
+      "requests": [
+        {
+          "path": "/api/auth/refresh",
+          "query": "",
+          "method": "POST"
+        },
+        {
+          "path": "/api/auth/session",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/scheduling/overview",
+          "query": "?viewMode=day&referenceDate=2026-09-07T00%3A00%3A00.000Z",
+          "method": "GET"
+        },
+        {
+          "path": "/api/services",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/owners/synthetic-owner-1",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/owners/synthetic-owner-2",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/synthetic-patient-1",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/synthetic-patient-2",
+          "query": "",
+          "method": "GET"
+        }
+      ],
+      "interactions": []
+    },
+    {
+      "target": "/appointments",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/appointments",
+      "title": "Agenda · CVG HIS SPA",
+      "documentWidth": 1440,
+      "documentHeight": 3895,
+      "headings": [
+        {
+          "text": "Agenda",
+          "x": 329,
+          "y": 246,
+          "width": 444.4375,
+          "height": 29.96875,
+          "right": 773.4375,
+          "bottom": 275.96875
+        },
+        {
+          "text": "Filtrar por...",
+          "x": 321.875,
+          "y": 524.65625,
+          "width": 316.25,
+          "height": 18.1875,
+          "right": 638.125,
+          "bottom": 542.84375
+        }
+      ],
+      "mainCount": 1,
+      "firstData": [
+        {
+          "text": "06:00 · 30 minAgendadoLuna VisualMaria VisualClínico geralClínico geral · Clínic",
+          "x": 1083,
+          "y": 1527.65625,
+          "width": 317,
+          "height": 267,
+          "right": 1400,
+          "bottom": 1794.65625
+        },
+        {
+          "text": "07:00 · 30 minEm triagemLuna VisualMaria VisualClínico geralClínico geral · Clín",
+          "x": 1083,
+          "y": 1811.65625,
+          "width": 317,
+          "height": 288.5,
+          "right": 1400,
+          "bottom": 2100.15625
+        }
+      ],
+      "fonts": {
+        "body": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        "heading": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "scrollContainers": [],
+      "stem": "_appointments-1440-dark",
+      "errors": [],
+      "requests": [
+        {
+          "path": "/api/auth/refresh",
+          "query": "",
+          "method": "POST"
+        },
+        {
+          "path": "/api/auth/session",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/scheduling/overview",
+          "query": "?viewMode=day&referenceDate=2026-09-07T00%3A00%3A00.000Z",
+          "method": "GET"
+        },
+        {
+          "path": "/api/services",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/owners/synthetic-owner-1",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/owners/synthetic-owner-2",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/synthetic-patient-1",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/synthetic-patient-2",
+          "query": "",
+          "method": "GET"
+        }
+      ],
+      "interactions": []
+    },
+    {
+      "target": "/appointments",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "route": "/appointments",
+      "title": "Agenda · CVG HIS SPA",
+      "documentWidth": 390,
+      "documentHeight": 4363,
+      "headings": [
+        {
+          "text": "Agenda",
+          "x": 29,
+          "y": 260,
+          "width": 334,
+          "height": 25.265625,
+          "right": 363,
+          "bottom": 285.265625
+        },
+        {
+          "text": "Filtrar por...",
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "right": 0,
+          "bottom": 0
+        }
+      ],
+      "mainCount": 1,
+      "firstData": [
+        {
+          "text": "06:00 · 30 minAgendadoLuna VisualMaria VisualClínico geralClínico geral · Clínic",
+          "x": 271,
+          "y": 1964.890625,
+          "width": 166,
+          "height": 368.5,
+          "right": 437,
+          "bottom": 2333.390625
+        },
+        {
+          "text": "07:00 · 30 minEm triagemLuna VisualMaria VisualClínico geralClínico geral · Clín",
+          "x": 271,
+          "y": 2348.390625,
+          "width": 166,
+          "height": 390,
+          "right": 437,
+          "bottom": 2738.390625
+        }
+      ],
+      "fonts": {
+        "body": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        "heading": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "scrollContainers": [
+        {
+          "class": "time-matrix",
+          "clientWidth": 370,
+          "scrollWidth": 434,
+          "x": 10,
+          "y": 1242.890625,
+          "width": 370,
+          "height": 2905.5,
+          "right": 380,
+          "bottom": 4148.390625
+        }
+      ],
+      "stem": "_appointments-390-dark",
+      "errors": [],
+      "requests": [
+        {
+          "path": "/api/auth/refresh",
+          "query": "",
+          "method": "POST"
+        },
+        {
+          "path": "/api/auth/session",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/scheduling/overview",
+          "query": "?viewMode=day&referenceDate=2026-09-07T00%3A00%3A00.000Z",
+          "method": "GET"
+        },
+        {
+          "path": "/api/services",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/owners/synthetic-owner-1",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/owners/synthetic-owner-2",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/synthetic-patient-1",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/patients/synthetic-patient-2",
+          "query": "",
+          "method": "GET"
+        }
+      ],
+      "interactions": []
+    },
+    {
+      "target": "/quotes",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/quotes",
+      "title": "Orçamentos · CVG HIS SPA",
+      "documentWidth": 1440,
+      "documentHeight": 1998,
+      "headings": [
+        {
+          "text": "Orçamentos",
+          "x": 329,
+          "y": 190,
+          "width": 444.4375,
+          "height": 29.96875,
+          "right": 773.4375,
+          "bottom": 219.96875
+        },
+        {
+          "text": "Ações rápidas",
+          "x": 318.125,
+          "y": 429.25,
+          "width": 1075.75,
+          "height": 21.09375,
+          "right": 1393.875,
+          "bottom": 450.34375
+        },
+        {
+          "text": "Painel comercial",
+          "x": 321.875,
+          "y": 545.71875,
+          "width": 1068.25,
+          "height": 21.09375,
+          "right": 1390.125,
+          "bottom": 566.8125
+        },
+        {
+          "text": "Incluir",
+          "x": 321.875,
+          "y": 884.6875,
+          "width": 1068.25,
+          "height": 21.09375,
+          "right": 1390.125,
+          "bottom": 905.78125
+        },
+        {
+          "text": "Orçamentos",
+          "x": 321.875,
+          "y": 1351.859375,
+          "width": 1068.25,
+          "height": 21.09375,
+          "right": 1390.125,
+          "bottom": 1372.953125
+        },
+        {
+          "text": "Nenhum orçamento encontrado",
+          "x": 346.875,
+          "y": 1695.6875,
+          "width": 1018.25,
+          "height": 27,
+          "right": 1365.125,
+          "bottom": 1722.6875
+        },
+        {
+          "text": "Detalhes e itens",
+          "x": 321.875,
+          "y": 1875.25,
+          "width": 1068.25,
+          "height": 21.09375,
+          "right": 1390.125,
+          "bottom": 1896.34375
+        }
+      ],
+      "mainCount": 1,
+      "firstData": [],
+      "fonts": {
+        "body": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        "heading": "Aptos, \"Segoe UI\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "scrollContainers": [],
+      "stem": "_quotes-1440-light",
+      "errors": [],
+      "requests": [
+        {
+          "path": "/api/auth/refresh",
+          "query": "",
+          "method": "POST"
+        },
+        {
+          "path": "/api/quotes",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/quotes",
+          "query": "",
+          "method": "GET"
+        },
+        {
+          "path": "/api/quotes",
+          "query": "?search=old",
+          "method": "GET"
+        },
+        {
+          "path": "/api/quotes",
+          "query": "?search=current",
+          "method": "GET"
+        },
+        {
+          "path": "/api/quotes/CURRENT-RESULT",
+          "query": "",
+          "method": "GET"
+        }
+      ],
+      "interactions": [
+        {
+          "test": "quotes-filter-old-after-current",
+          "passed": true,
+          "current": "CURRENT-RESULT",
+          "discarded": "OLD-RESULT"
+        }
+      ]
+    }
+  ],
+  "failures": [],
+  "harnessPath": "docs/frontend/implementation/browser-continuity.mjs",
+  "harnessSha256": "43fec7b7425b1893a4fe99d0b28d1ba80de7499aaebbdf1b9c99a8aba6403b63",
+  "limitations": [
+    "Real SPA routes with synthetic auth, scheduling, quotes, owner, patient and service responses; no backend, RLS, persistence or UAT claim.",
+    "Read-only source inspection; no CSS injection, code mutation, baseline update or snapshot promotion; collection responses are synthetic empty data except agenda and the controlled quotes race.",
+    "DPR1 at 1440x900 and 390x844, light/dark, motion enabled. Interactions exercised on desktop/light only; not full route coverage.",
+    "Vite development server, synthetic data, Chromium, desktop host and current date; not a production performance baseline or field INP evidence.",
+    "No participant study: five priority-task completion rates, elapsed times, errors and shift-work observations remain unmeasured."
+  ]
+}

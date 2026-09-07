@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
+import { createPinia, setActivePinia } from 'pinia';
 
 const mockApiRequest = vi.fn();
 const mockRouterPush = vi.fn();
@@ -30,6 +31,7 @@ vi.mock('vue-router', () => ({
 
 describe('LoginPage', () => {
   beforeEach(() => {
+    setActivePinia(createPinia());
     vi.clearAllMocks();
     mockApiRequest.mockReset();
     mockRouterPush.mockReset();

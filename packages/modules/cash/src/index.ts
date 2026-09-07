@@ -246,6 +246,9 @@ export class CashService {
   ): Promise<CashMovementSummary> {
     const register = this.#registers.get(registerId);
     if (!register) throw new NotFoundError('Cash register not found', { registerId });
+    if (register.accountId !== accountId) {
+      throw new NotFoundError('Cash register not found', { registerId });
+    }
     if (register.status === 'closed')
       throw new ConflictError('Cannot record movement on closed register');
 
@@ -305,6 +308,9 @@ export class CashService {
   ): Promise<CashMovementSummary> {
     const register = this.#registers.get(registerId);
     if (!register) throw new NotFoundError('Cash register not found', { registerId });
+    if (register.accountId !== accountId) {
+      throw new NotFoundError('Cash register not found', { registerId });
+    }
     if (register.status === 'closed')
       throw new ConflictError('Cannot record payment on closed register');
 
@@ -366,7 +372,15 @@ export class CashService {
     const movements = Array.from(this.#movements.values()).filter(
       (m) => m.cashRegisterId === registerId
     );
-    return movements.length > 0 ? movements[movements.length - 1].runningBalance : 0;
+    return Math.round(
+      movements.reduce((balance, movement) => {
+        if (movement.movementType === 'closing') return balance;
+        if (movement.movementType === 'withdrawal' || movement.movementType === 'deposit') {
+          return balance - movement.amount;
+        }
+        return balance + movement.amount;
+      }, 0) * 100
+    ) / 100;
   }
 
   async getMovements(registerId: string): Promise<CashMovementSummary[]> {
@@ -380,7 +394,7 @@ export class CashService {
 
     return Array.from(this.#movements.values())
       .filter((m) => m.cashRegisterId === registerId)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      .sort(compareCashMovements);
   }
 
   async getReconciliation(
@@ -422,7 +436,7 @@ export class CashService {
   listRegisters(accountId: AccountId, limit = 30): CashRegisterSummary[] {
     return Array.from(this.#registers.values())
       .filter((r) => r.accountId === accountId)
-      .sort((a, b) => b.openedAt.localeCompare(a.openedAt))
+      .sort((a, b) => b.openedAt.localeCompare(a.openedAt) || b.id.localeCompare(a.id))
       .slice(0, limit);
   }
 
@@ -435,6 +449,10 @@ export class CashService {
     if (!reg) throw new NotFoundError('Cash register not found', { id });
     return reg;
   }
+}
+
+function compareCashMovements(left: CashMovementSummary, right: CashMovementSummary): number {
+  return left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id);
 }
 
 export {

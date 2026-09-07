@@ -1,0 +1,17 @@
+file:///home/ricardo/cvg-his-v4/docs/frontend/implementation/browser-continuity.mjs:194
+          await fulfill({ items: [{ id: 'synthetic-queue', accountId: 'synthetic-account', ownerId: 'synthetic-owner-1', patientId: 'synthetic-patient-1', appointmentId: null, encounterId: null, status: 'waiting', priority: 'high', reason: 'Consulta sintética', checkedInAt: `${referenceDate}T09:00:00Z`, calledAt: null, createdAt: `${referenceDate}T09:00:00Z`, updatedAt: `${referenceDate}T09:00:00Z` }] }); return;
+                                                                                                                                                                                                                                                                                      ^
+
+ReferenceError: referenceDate is not defined
+    at file:///home/ricardo/cvg-his-v4/docs/frontend/implementation/browser-continuity.mjs:194:279
+    at RouteHandler._handleInternal (/home/ricardo/cvg-his-v4/node_modules/.pnpm/playwright-core@1.58.2/node_modules/playwright-core/lib/client/network.js:695:7)
+    at RouteHandler._handleImpl (/home/ricardo/cvg-his-v4/node_modules/.pnpm/playwright-core@1.58.2/node_modules/playwright-core/lib/client/network.js:662:25)
+    at /home/ricardo/cvg-his-v4/node_modules/.pnpm/playwright-core@1.58.2/node_modules/playwright-core/lib/client/network.js:656:55
+    at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:65:14)
+    at Zone.run (/home/ricardo/cvg-his-v4/node_modules/.pnpm/playwright-core@1.58.2/node_modules/playwright-core/lib/server/utils/zones.js:42:36)
+    at NodeZone.run (/home/ricardo/cvg-his-v4/node_modules/.pnpm/playwright-core@1.58.2/node_modules/playwright-core/lib/server/utils/nodePlatform.js:58:23)
+    at RouteHandler.handle (/home/ricardo/cvg-his-v4/node_modules/.pnpm/playwright-core@1.58.2/node_modules/playwright-core/lib/client/network.js:656:34)
+    at Page._onRoute (/home/ricardo/cvg-his-v4/node_modules/.pnpm/playwright-core@1.58.2/node_modules/playwright-core/lib/client/page.js:146:42)
+    at Proxy.<anonymous> (/home/ricardo/cvg-his-v4/node_modules/.pnpm/playwright-core@1.58.2/node_modules/playwright-core/lib/client/page.js:91:51)
+
+Node.js v24.20.0

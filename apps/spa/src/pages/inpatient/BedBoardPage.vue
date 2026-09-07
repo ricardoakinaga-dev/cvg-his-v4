@@ -1,22 +1,33 @@
 <template>
   <div class="bed-board-page">
-    <AppPageHeader :breadcrumbs="['Atendimento', 'Internação', 'Mapa de Leitos']" title="🗺️ Mapa de Leitos" subtitle="Atendimento > Internação > Mapa de Leitos. Visão geral da ocupação por setor e disponibilidade assistencial.">
+    <AppPageHeader
+      :breadcrumbs="['Atendimento', 'Internação', 'Mapa de Leitos']"
+      title="Mapa de Leitos"
+      subtitle="Ocupação e disponibilidade por setor."
+    >
       <template #actions>
-        <DsButton variant="secondary" tag="a" href="/inpatient">🛏️ Internações</DsButton>
-        <DsButton variant="ghost" tag="a" href="/sectors">🏢 Setores</DsButton>
-        <DsButton variant="ghost" tag="a" href="/beds">Leitos</DsButton>
+        <DsButton variant="secondary" tag="a" to="/inpatient" icon="🛏️">Internações</DsButton>
+        <DsButton variant="ghost" tag="a" to="/sectors" icon="🏢">Setores</DsButton>
+        <DsButton variant="ghost" tag="a" to="/beds">Leitos</DsButton>
         <DsButton variant="secondary" :loading="loading" @click="loadBoard">Atualizar</DsButton>
       </template>
     </AppPageHeader>
 
-    <section class="bed-board-page__overview">
-      <DsCard title="Ocupação geral">
-        <div class="board-stats">
-          <span class="stat stat--total">Total: {{ stats.totalBeds }}</span>
-          <span class="stat stat--occupied">Ocupados: {{ stats.occupiedBeds }}</span>
-          <span class="stat stat--available">Disponíveis: {{ stats.availableBeds }}</span>
+    <section class="bed-board-page__overview" aria-label="Ocupação geral" :aria-busy="loading">
+      <dl class="board-stats">
+        <div>
+          <dt>Total de leitos</dt>
+          <dd>{{ boardAvailable && !loading ? stats.totalBeds : '—' }}</dd>
         </div>
-      </DsCard>
+        <div>
+          <dt>Ocupados</dt>
+          <dd>{{ boardAvailable && !loading ? stats.occupiedBeds : '—' }}</dd>
+        </div>
+        <div>
+          <dt>Disponíveis</dt>
+          <dd>{{ boardAvailable && !loading ? stats.availableBeds : '—' }}</dd>
+        </div>
+      </dl>
     </section>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
@@ -28,11 +39,24 @@
     </div>
 
     <EmptyState
+      v-else-if="!boardAvailable"
+      icon="alert"
+      title="Mapa indisponível"
+      description="Atualize para consultar a ocupação dos leitos."
+      size="sm"
+    >
+      <template #action><DsButton @click="loadBoard">Tentar novamente</DsButton></template>
+    </EmptyState>
+
+    <EmptyState
       v-else-if="board.items.length === 0"
       icon="🗺️"
       title="Nenhum setor configurado"
-      description="Configure setores e leitos para visualizar a ocupação e preparar admissões na internação."
-    />
+      description="Cadastre o primeiro setor para organizar os leitos e receber pacientes."
+      size="sm"
+    >
+      <template #action><DsButton tag="a" to="/sectors">Configurar setores</DsButton></template>
+    </EmptyState>
 
     <div v-else class="board">
       <div v-for="sector in board.items" :key="sector.sectorId" class="board-sector">
@@ -51,9 +75,7 @@
           >
             <div class="bed-card__header">
               <span class="bed-card__code">{{ bed.code }}</span>
-              <span class="bed-card__status" :class="`bed-card__status--${bed.status}`">
-                {{ bedStatus(bed.status) }}
-              </span>
+              <StatusBadge :label="bedStatus(bed.status)" :variant="bedStatusVariant(bed.status)" />
             </div>
             <div class="bed-card__name">{{ bed.name }}</div>
             <div v-if="bed.patientId" class="bed-card__patient">
@@ -73,7 +95,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { inpatientService } from '@/services/inpatient';
 import type { BedMapResponse } from '@/types/inpatient';
 import { useEntityCache } from '@/composables/useEntityCache';
@@ -82,16 +104,28 @@ import EmptyState from '@/components/EmptyState.vue';
 import DsSpinner from '@cvg-his-v2/design-system/vue/DsSpinner.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
-import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 
 const board = ref<BedMapResponse>({ items: [], totalBeds: 0, occupiedBeds: 0, availableBeds: 0 });
-const loading = ref(false);
+const loading = ref(true);
+const boardAvailable = ref(false);
 const error = ref('');
 const entityCache = useEntityCache();
 const patientNames = ref<Record<string, string>>({});
+let loadGeneration = 0;
 
 const stats = ref({ totalBeds: 0, occupiedBeds: 0, availableBeds: 0 });
+
+function bedStatusVariant(status: string): 'success' | 'warning' | 'danger' | 'neutral' {
+  return status === 'available'
+    ? 'success'
+    : status === 'occupied'
+      ? 'danger'
+      : status === 'maintenance'
+        ? 'warning'
+        : 'neutral';
+}
 
 function bedStatus(status: string): string {
   const map: Record<string, string> = {
@@ -110,12 +144,20 @@ function patientName(id: string): string {
 onMounted(async () => {
   await loadBoard();
 });
+onUnmounted(() => {
+  loadGeneration++;
+});
 
 async function loadBoard() {
+  const generation = ++loadGeneration;
   loading.value = true;
   error.value = '';
   try {
-    board.value = await inpatientService.getBedMap();
+    const nextBoard = await inpatientService.getBedMap();
+    if (generation !== loadGeneration) return;
+    board.value = nextBoard;
+    patientNames.value = {};
+    boardAvailable.value = true;
     stats.value = {
       totalBeds: board.value.totalBeds,
       occupiedBeds: board.value.occupiedBeds,
@@ -129,47 +171,61 @@ async function loadBoard() {
           .map((b) => b.patientId!)
       )
     ];
-    await Promise.all(
+    // Occupancy must remain usable even if enrichment is slow or unavailable.
+    void Promise.allSettled(
       patientIds.map(async (id) => {
-        patientNames.value[id] = await entityCache.getPatientName(id);
+        const name = await entityCache.getPatientName(id);
+        if (generation === loadGeneration) patientNames.value[id] = name;
       })
     );
   } catch (err: unknown) {
+    if (generation !== loadGeneration) return;
+    boardAvailable.value = false;
     error.value = err instanceof Error ? err.message : 'Erro ao carregar mapa de leitos';
   } finally {
-    loading.value = false;
+    if (generation === loadGeneration) loading.value = false;
   }
 }
 </script>
 
 <style scoped>
-.bed-board-page__overview {
-  margin-bottom: 16px;
-}
-
-.board-stats {
-  display: flex;
+.bed-board-page {
+  display: grid;
   gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
+  min-width: 0;
 }
-.stat {
-  font-size: 14px;
-  font-weight: 600;
-  padding: 6px 12px;
-  border-radius: 8px;
+.board,
+.board-sector,
+.bed-card,
+.board-sector__title {
+  min-width: 0;
 }
-.stat--total {
-  background: var(--color-bg-subtle, #f8fafc);
-  color: var(--color-text-secondary, #475569);
+.board-sector__title,
+.bed-card {
+  overflow-wrap: anywhere;
 }
-.stat--occupied {
-  background: var(--color-danger-50, #fef2f2);
-  color: var(--color-danger-700, #b91c1c);
+.board-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
 }
-.stat--available {
-  background: var(--color-success-50, #ecfdf5);
-  color: var(--color-success-700, #047857);
+.board-stats > div {
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-surface);
+}
+.board-stats dt {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+.board-stats dd {
+  margin: 6px 0 0;
+  color: var(--color-text);
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 .board {
   display: flex;
@@ -186,6 +242,8 @@ async function loadBoard() {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
   padding: 16px 20px;
   border-bottom: 1px solid var(--color-border, #e2e8f0);
   background: var(--color-bg-subtle, #f8fafc);
@@ -207,7 +265,7 @@ async function loadBoard() {
 }
 .board-beds {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr));
   gap: 12px;
   padding: 16px 20px;
 }
@@ -225,55 +283,29 @@ async function loadBoard() {
 }
 .bed-card--available {
   border-color: var(--color-success-300, #6ee7b7);
-  background: var(--color-success-50, #ecfdf5);
 }
 .bed-card--occupied {
   border-color: var(--color-danger-300, #fca5a5);
-  background: var(--color-danger-50, #fef2f2);
 }
 .bed-card--maintenance {
   border-color: var(--color-warning-300, #fcd34d);
-  background: var(--color-warning-50, #fffbeb);
 }
 .bed-card--blocked {
   border-color: var(--color-text-muted, #94a3b8);
   background: var(--color-bg-subtle, #f8fafc);
-  opacity: 0.7;
 }
 .bed-card__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 6px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .bed-card__code {
   font-size: 15px;
   font-weight: 700;
   color: var(--color-text, #0f172a);
-}
-.bed-card__status {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-.bed-card__status--available {
-  background: var(--color-success-100, #d1fae5);
-  color: var(--color-success-700, #047857);
-}
-.bed-card__status--occupied {
-  background: var(--color-danger-100, #fee2e2);
-  color: var(--color-danger-700, #b91c1c);
-}
-.bed-card__status--maintenance {
-  background: var(--color-warning-100, #fef3c7);
-  color: var(--color-warning-700, #b45309);
-}
-.bed-card__status--blocked {
-  background: var(--color-bg-subtle, #f8fafc);
-  color: var(--color-text-muted, #94a3b8);
 }
 .bed-card__name {
   font-size: 13px;
@@ -294,5 +326,22 @@ async function loadBoard() {
   font-size: 11px;
   color: var(--color-text-muted, #94a3b8);
   margin-top: 4px;
+}
+@media (max-width: 720px) {
+  .bed-board-page :deep(.app-page-header) {
+    padding: 18px;
+  }
+  .bed-board-page :deep(.app-page-header__breadcrumbs) {
+    display: none;
+  }
+  .board-stats > div {
+    padding: 14px 10px;
+  }
+  .board-stats dd {
+    font-size: 24px;
+  }
+  .board-beds {
+    padding: 14px;
+  }
 }
 </style>

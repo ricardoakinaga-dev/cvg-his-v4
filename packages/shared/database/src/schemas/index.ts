@@ -17,6 +17,60 @@ import {
   smallint
 } from 'drizzle-orm/pg-core';
 
+// Runtime mappings for the tables owned by packages/db/migrations/0016_feature_flags.sql.
+// Schema changes and constraints remain owned by the canonical migrations.
+export const featureFlags = pgTable('feature_flags', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  key: varchar('key', { length: 128 }).notNull(),
+  owner: varchar('owner', { length: 64 }).notNull(),
+  description: text('description').notNull(),
+  defaultValue: jsonb('default_value')
+    .$type<boolean>()
+    .notNull()
+    .default(sql`'false'::jsonb`),
+  enabled: jsonb('enabled')
+    .$type<boolean>()
+    .notNull()
+    .default(sql`'true'::jsonb`),
+  scopes: jsonb('scopes')
+    .$type<string[]>()
+    .notNull()
+    .default(sql`'["environment"]'::jsonb`),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  auditRequired: jsonb('audit_required')
+    .$type<boolean>()
+    .notNull()
+    .default(sql`'false'::jsonb`),
+  tags: jsonb('tags')
+    .$type<string[]>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  metadata: jsonb('metadata').$type<Record<string, string | number | boolean>>(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
+export const featureFlagOverrides = pgTable('feature_flag_overrides', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  flagId: uuid('flag_id').notNull(),
+  environment: varchar('environment', { length: 32 }),
+  accountIdOverride: uuid('account_id_override'),
+  userId: uuid('user_id'),
+  percentage: jsonb('percentage').$type<number | null>(),
+  allowedUsers: jsonb('allowed_users')
+    .$type<string[]>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  enabled: jsonb('enabled')
+    .$type<boolean>()
+    .notNull()
+    .default(sql`'true'::jsonb`),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
 export const sessions = pgTable('sessions', {
   id: varchar('id', { length: 255 }).primaryKey(),
   accountId: uuid('account_id').notNull(),
@@ -61,8 +115,8 @@ export const owners = pgTable('owners', {
   phoneMain: text('phone_main'),
   phoneAlt: text('phone_alt'),
   addressJson: jsonb('address_json'),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const patients = pgTable('patients', {
@@ -78,8 +132,8 @@ export const patients = pgTable('patients', {
   weightKg: numeric('weight_kg', { precision: 10, scale: 3 }),
   microchip: text('microchip'),
   alertsJson: jsonb('alerts_json').notNull().default({}),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const ownerPatientLinks = pgTable('owner_patient_links', {
@@ -90,7 +144,7 @@ export const ownerPatientLinks = pgTable('owner_patient_links', {
   relationship: varchar('relationship', { length: 50 }).notNull(),
   isPrimary: boolean('is_primary').notNull().default(false),
   financialResponsible: boolean('financial_responsible').notNull().default(false),
-  createdAt: timestamp('created_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull()
 });
 
 export const patientMerges = pgTable('patient_merges', {
@@ -100,7 +154,7 @@ export const patientMerges = pgTable('patient_merges', {
   targetPatientId: uuid('target_patient_id').notNull(),
   mergedByUserId: uuid('merged_by_user_id').notNull(),
   reason: varchar('reason', { length: 1000 }).notNull(),
-  createdAt: timestamp('created_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull()
 });
 
 export const encounters = pgTable('encounters', {
@@ -111,12 +165,12 @@ export const encounters = pgTable('encounters', {
   status: varchar('status', { length: 50 }).notNull(),
   openedByUserId: uuid('opened_by_user_id').notNull(),
   closedByUserId: uuid('closed_by_user_id'),
-  openedAt: timestamp('opened_at').notNull(),
-  closedAt: timestamp('closed_at'),
+  openedAt: timestamp('opened_at', { withTimezone: true }).notNull(),
+  closedAt: timestamp('closed_at', { withTimezone: true }),
   closeReason: text('close_reason'),
   reason: text('reason'),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const encounterTimeline = pgTable('encounter_timeline', {
@@ -127,7 +181,7 @@ export const encounterTimeline = pgTable('encounter_timeline', {
   summary: varchar('summary', { length: 500 }),
   actorUserId: uuid('actor_user_id'),
   metadata: jsonb('metadata'),
-  occurredAt: timestamp('occurred_at').notNull()
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull()
 });
 
 export const medicalRecords = pgTable('medical_records', {
@@ -136,8 +190,8 @@ export const medicalRecords = pgTable('medical_records', {
   encounterId: uuid('encounter_id').notNull(),
   patientId: uuid('patient_id').notNull(),
   status: varchar('status', { length: 20 }).notNull().default('open'),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const clinicalEntries = pgTable('clinical_entries', {
@@ -151,11 +205,11 @@ export const clinicalEntries = pgTable('clinical_entries', {
   title: varchar('title', { length: 255 }).notNull(),
   content: varchar('content', { length: 10000 }).notNull(),
   version: integer('version').notNull().default(1),
-  deletedAt: timestamp('deleted_at'),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
   deletedByUserId: uuid('deleted_by_user_id'),
   deleteReason: varchar('delete_reason', { length: 1000 }),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const entryRevisions = pgTable('entry_revisions', {
@@ -166,7 +220,7 @@ export const entryRevisions = pgTable('entry_revisions', {
   content: varchar('content', { length: 10000 }).notNull(),
   authorUserId: uuid('author_user_id').notNull(),
   reason: varchar('reason', { length: 1000 }),
-  createdAt: timestamp('created_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull()
 });
 
 export const prescriptionSignatures = pgTable('prescription_signatures', {
@@ -176,7 +230,7 @@ export const prescriptionSignatures = pgTable('prescription_signatures', {
   version: integer('version').notNull(),
   signedByUserId: uuid('signed_by_user_id').notNull(),
   signatureHash: varchar('signature_hash', { length: 128 }).notNull(),
-  signedAt: timestamp('signed_at').notNull()
+  signedAt: timestamp('signed_at', { withTimezone: true }).notNull()
 });
 
 export const clinicalTimeline = pgTable('clinical_timeline', {
@@ -192,7 +246,7 @@ export const clinicalTimeline = pgTable('clinical_timeline', {
   // legacy documents used UUIDs. Keep the timeline link polymorphic across
   // both storage rails instead of coercing the active attachment ID to UUID.
   attachmentId: varchar('attachment_id', { length: 255 }),
-  occurredAt: timestamp('occurred_at').notNull()
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull()
 });
 
 export const attachments = pgTable('attachments', {
@@ -210,28 +264,31 @@ export const attachments = pgTable('attachments', {
   scanStatus: varchar('scan_status', { length: 32 }).notNull().default('available'),
   scanProvider: varchar('scan_provider', { length: 100 }),
   scanReason: varchar('scan_reason', { length: 500 }),
-  scannedAt: timestamp('scanned_at'),
+  scannedAt: timestamp('scanned_at', { withTimezone: true }),
   uploadedByUserId: varchar('uploaded_by_user_id', { length: 255 }),
-  createdAt: timestamp('created_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull()
 });
 
 export const appointments = pgTable('appointments', {
-  id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
-  ownerId: varchar('owner_id', { length: 255 }).notNull(),
-  patientId: varchar('patient_id', { length: 255 }).notNull(),
-  scheduledAt: timestamp('scheduled_at').notNull(),
-  duration: integer('duration'),
+  id: uuid('id').primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  ownerId: uuid('owner_id').notNull(),
+  patientId: uuid('patient_id').notNull(),
+  professionalUserId: uuid('professional_user_id'),
+  startAt: timestamp('start_at', { withTimezone: true }).notNull(),
+  endAt: timestamp('end_at', { withTimezone: true }).notNull(),
+  type: varchar('type', { length: 50 }).notNull(),
+  notes: text('notes'),
   visitType: varchar('visit_type', { length: 50 }).notNull(),
-  reason: varchar('reason', { length: 500 }),
-  practitionerStaffId: varchar('practitioner_staff_id', { length: 255 }),
-  serviceId: varchar('service_id', { length: 255 }),
+  reason: text('reason').notNull(),
+  practitionerStaffId: uuid('practitioner_staff_id'),
+  serviceId: uuid('service_id'),
   unit: varchar('unit', { length: 120 }),
   specialty: varchar('specialty', { length: 120 }),
   resourceLabel: varchar('resource_label', { length: 120 }),
   status: varchar('status', { length: 50 }).notNull(),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const billingRecords = pgTable('billing_records', {
@@ -245,8 +302,8 @@ export const billingRecords = pgTable('billing_records', {
   currency: varchar('currency', { length: 3 }).notNull().default('BRL'),
   administrativeNotes: varchar('administrative_notes', { length: 2000 }),
   activePaymentAttemptId: varchar('active_payment_attempt_id', { length: 255 }),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const billingItems = pgTable('billing_items', {
@@ -261,7 +318,7 @@ export const billingItems = pgTable('billing_items', {
   sourceEntityType: varchar('source_entity_type', { length: 50 }),
   sourceEntityId: varchar('source_entity_id', { length: 255 }),
   createdByUserId: varchar('created_by_user_id', { length: 255 }).notNull(),
-  createdAt: timestamp('created_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull()
 });
 
 export const inventoryItems = pgTable('inventory_items', {
@@ -274,8 +331,8 @@ export const inventoryItems = pgTable('inventory_items', {
   reorderLevel: numeric('reorder_level', { precision: 10, scale: 2 }).notNull(),
   unitCostAmount: numeric('unit_cost_amount', { precision: 12, scale: 2 }).notNull(),
   chargeUnitPriceAmount: numeric('charge_unit_price_amount', { precision: 12, scale: 2 }),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const inventoryConsumptions = pgTable('inventory_consumptions', {
@@ -290,7 +347,7 @@ export const inventoryConsumptions = pgTable('inventory_consumptions', {
   sourceEntityType: varchar('source_entity_type', { length: 50 }),
   sourceEntityId: varchar('source_entity_id', { length: 255 }),
   recordedByUserId: varchar('recorded_by_user_id', { length: 255 }).notNull(),
-  createdAt: timestamp('created_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull()
 });
 
 export const notifications = pgTable('notifications', {
@@ -306,8 +363,8 @@ export const notifications = pgTable('notifications', {
   severity: varchar('severity', { length: 20 }).notNull(),
   status: varchar('status', { length: 50 }).notNull(),
   createdByUserId: varchar('created_by_user_id', { length: 255 }),
-  createdAt: timestamp('created_at').notNull(),
-  sentAt: timestamp('sent_at')
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  sentAt: timestamp('sent_at', { withTimezone: true })
 });
 
 export const notificationJobs = pgTable('notification_jobs', {
@@ -316,8 +373,8 @@ export const notificationJobs = pgTable('notification_jobs', {
   notificationId: varchar('notification_id', { length: 255 }).notNull(),
   status: varchar('status', { length: 50 }).notNull(),
   attempts: integer('attempts').notNull().default(0),
-  scheduledAt: timestamp('scheduled_at').notNull(),
-  processedAt: timestamp('processed_at')
+  scheduledAt: timestamp('scheduled_at', { withTimezone: true }).notNull(),
+  processedAt: timestamp('processed_at', { withTimezone: true })
 });
 
 export const inpatientStays = pgTable('inpatient_stays', {
@@ -333,15 +390,15 @@ export const inpatientStays = pgTable('inpatient_stays', {
   sectorId: varchar('sector_id', { length: 255 }),
   bedId: uuid('bed_id'),
   status: varchar('status', { length: 50 }).notNull(),
-  admittedAt: timestamp('admitted_at').notNull(),
-  dischargedAt: timestamp('discharged_at'),
+  admittedAt: timestamp('admitted_at', { withTimezone: true }).notNull(),
+  dischargedAt: timestamp('discharged_at', { withTimezone: true }),
   dischargeReason: varchar('discharge_reason', { length: 500 }),
   transferToUnit: varchar('transfer_to_unit', { length: 100 }),
   transferToWard: varchar('transfer_to_ward', { length: 100 }),
   transferToSectorId: varchar('transfer_to_sector_id', { length: 255 }),
   transferToBedId: uuid('transfer_to_bed_id'),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const inpatientProgress = pgTable('inpatient_progress', {
@@ -351,7 +408,7 @@ export const inpatientProgress = pgTable('inpatient_progress', {
   encounterId: uuid('encounter_id').notNull(),
   note: text('note').notNull(),
   authoredByUserId: uuid('authored_by_user_id').notNull(),
-  createdAt: timestamp('created_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull()
 });
 
 export const inpatientOccurrences = pgTable('inpatient_occurrences', {
@@ -396,11 +453,11 @@ export const surgeryCases = pgTable('surgery_cases', {
   surgicalTeam: jsonb('surgical_team'),
   preparationNotes: varchar('preparation_notes', { length: 2000 }),
   operativeNotes: varchar('operative_notes', { length: 5000 }),
-  scheduledAt: timestamp('scheduled_at'),
-  startedAt: timestamp('started_at'),
-  endedAt: timestamp('ended_at'),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
+  startedAt: timestamp('started_at', { withTimezone: true }),
+  endedAt: timestamp('ended_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const diagnosticOrders = pgTable('diagnostic_orders', {
@@ -412,17 +469,17 @@ export const diagnosticOrders = pgTable('diagnostic_orders', {
   examCatalogId: varchar('exam_catalog_id', { length: 255 }),
   reason: varchar('reason', { length: 500 }).notNull(),
   status: varchar('status', { length: 50 }).notNull(),
-  collectedAt: timestamp('collected_at'),
+  collectedAt: timestamp('collected_at', { withTimezone: true }),
   collectedByUserId: varchar('collected_by_user_id', { length: 255 }),
   resultSummary: varchar('result_summary', { length: 5000 }),
   resultValues: jsonb('result_values'),
   resultAttachmentId: varchar('result_attachment_id', { length: 255 }),
-  resultedAt: timestamp('resulted_at'),
+  resultedAt: timestamp('resulted_at', { withTimezone: true }),
   releasedByUserId: varchar('released_by_user_id', { length: 255 }),
   signedByUserId: varchar('signed_by_user_id', { length: 255 }),
   signatureHash: varchar('signature_hash', { length: 128 }),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const laboratoryResultImports = pgTable(
@@ -458,9 +515,9 @@ export const laboratoryEquipment = pgTable('laboratory_equipment', {
   type: varchar('type', { length: 100 }).notNull(),
   serialNumber: varchar('serial_number', { length: 255 }).notNull(),
   status: varchar('status', { length: 50 }).notNull(),
-  lastCalibrationAt: timestamp('last_calibration_at').notNull(),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  lastCalibrationAt: timestamp('last_calibration_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const laboratoryReportTypes = pgTable('laboratory_report_types', {
@@ -471,8 +528,8 @@ export const laboratoryReportTypes = pgTable('laboratory_report_types', {
   category: varchar('category', { length: 100 }).notNull(),
   description: varchar('description', { length: 1000 }).notNull(),
   active: boolean('active').notNull().default(true),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const laboratoryReferenceValues = pgTable('laboratory_reference_values', {
@@ -483,8 +540,8 @@ export const laboratoryReferenceValues = pgTable('laboratory_reference_values', 
   minValue: numeric('min_value', { precision: 12, scale: 3 }).notNull(),
   maxValue: numeric('max_value', { precision: 12, scale: 3 }).notNull(),
   unit: varchar('unit', { length: 100 }).notNull(),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const sectors = pgTable('sectors', {
@@ -494,8 +551,8 @@ export const sectors = pgTable('sectors', {
   name: varchar('name', { length: 255 }).notNull(),
   kind: varchar('kind', { length: 50 }).notNull().default('other'),
   active: boolean('active').notNull().default(true),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const beds = pgTable('beds', {
@@ -507,8 +564,8 @@ export const beds = pgTable('beds', {
   status: varchar('status', { length: 50 }).notNull().default('available'),
   supportsSpecies: varchar('supports_species', { length: 100 }),
   active: boolean('active').notNull().default(true),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const mfaCredentials = pgTable('mfa_credentials', {
@@ -518,13 +575,15 @@ export const mfaCredentials = pgTable('mfa_credentials', {
   secretEncrypted: text('secret_encrypted').notNull(),
   isActive: boolean('is_active').notNull().default(false),
   recoveryCodesHash: jsonb('recovery_codes_hash').$type<string[]>().notNull().default([]),
-  createdAt: timestamp('created_at').notNull(),
-  activatedAt: timestamp('activated_at'),
-  lastUsedAt: timestamp('last_used_at'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  activatedAt: timestamp('activated_at', { withTimezone: true }),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
   lastTotpCounter: integer('last_totp_counter'),
   setupExpiresAt: timestamp('setup_expires_at', { withTimezone: true }),
   secretKeyVersion: text('secret_key_version'),
-  lastRecoveryCodesRegeneratedAt: timestamp('last_recovery_codes_regenerated_at')
+  lastRecoveryCodesRegeneratedAt: timestamp('last_recovery_codes_regenerated_at', {
+    withTimezone: true
+  })
 });
 
 export const mfaLoginChallenges = pgTable(
@@ -641,12 +700,12 @@ export const consentRecords = pgTable('consent_records', {
   status: text('status').notNull().default('granted'),
   origin: text('origin').notNull().default('api'),
   grantedBy: uuid('granted_by').notNull(),
-  grantedAt: timestamp('granted_at').notNull(),
+  grantedAt: timestamp('granted_at', { withTimezone: true }).notNull(),
   revokedBy: uuid('revoked_by'),
-  revokedAt: timestamp('revoked_at'),
-  expiresAt: timestamp('expires_at'),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
   metadata: jsonb('metadata').$type<Record<string, unknown>>(),
-  createdAt: timestamp('created_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull()
 });
 
 export const dataSubjectRequests = pgTable('data_subject_requests', {
@@ -657,14 +716,14 @@ export const dataSubjectRequests = pgTable('data_subject_requests', {
   requestType: text('request_type').notNull(),
   status: text('status').notNull().default('pending'),
   requestedBy: uuid('requested_by').notNull(),
-  requestedAt: timestamp('requested_at').notNull(),
-  completedAt: timestamp('completed_at'),
+  requestedAt: timestamp('requested_at', { withTimezone: true }).notNull(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
   completedBy: uuid('completed_by'),
   notes: text('notes'),
   rejectionReason: text('rejection_reason'),
   resultJson: jsonb('result_json').$type<Record<string, unknown>>(),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const responsibilityTerms = pgTable('responsibility_terms', {
@@ -677,8 +736,8 @@ export const responsibilityTerms = pgTable('responsibility_terms', {
   active: boolean('active').notNull().default(true),
   requiresOwnerSignature: boolean('requires_owner_signature').notNull().default(true),
   requiresWitnessSignature: boolean('requires_witness_signature').notNull().default(false),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const breeds = pgTable('breeds', {
@@ -689,8 +748,8 @@ export const breeds = pgTable('breeds', {
   species: varchar('species', { length: 32 }).notNull().default('canine'),
   description: text('description'),
   active: boolean('active').notNull().default(true),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const animalSpecies = pgTable('animal_species', {
@@ -701,8 +760,8 @@ export const animalSpecies = pgTable('animal_species', {
   systemCode: varchar('system_code', { length: 32 }).notNull().default('other'),
   description: text('description'),
   active: boolean('active').notNull().default(true),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const coatColors = pgTable('coat_colors', {
@@ -714,8 +773,8 @@ export const coatColors = pgTable('coat_colors', {
   hexColor: varchar('hex_color', { length: 16 }),
   description: text('description'),
   active: boolean('active').notNull().default(true),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const customerGroups = pgTable('customer_groups', {
@@ -729,8 +788,8 @@ export const customerGroups = pgTable('customer_groups', {
   creditLimitAmount: numeric('credit_limit_amount', { precision: 12, scale: 2 }),
   description: text('description'),
   active: boolean('active').notNull().default(true),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const preventiveEvents = pgTable('preventive_events', {
@@ -745,12 +804,12 @@ export const preventiveEvents = pgTable('preventive_events', {
   description: varchar('description', { length: 255 }).notNull(),
   status: varchar('status', { length: 32 }).notNull().default('scheduled'),
   observation: text('observation'),
-  executedAt: timestamp('executed_at'),
+  executedAt: timestamp('executed_at', { withTimezone: true }),
   executedObservation: text('executed_observation'),
   rescheduledFromId: varchar('rescheduled_from_id', { length: 255 }),
-  reminderEmailPreparedAt: timestamp('reminder_email_prepared_at'),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  reminderEmailPreparedAt: timestamp('reminder_email_prepared_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const webhooks = pgTable('webhooks', {
@@ -760,8 +819,8 @@ export const webhooks = pgTable('webhooks', {
   events: jsonb('events').$type<string[]>().notNull(),
   secret: varchar('secret', { length: 512 }),
   isActive: boolean('is_active').notNull().default(true),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
 });
 
 export const webhookDeliveries = pgTable('webhook_deliveries', {
@@ -773,15 +832,15 @@ export const webhookDeliveries = pgTable('webhook_deliveries', {
   status: varchar('status', { length: 50 }).notNull().default('pending'),
   attempts: integer('attempts').notNull().default(0),
   maxAttempts: integer('max_attempts').notNull().default(4),
-  lastAttemptAt: timestamp('last_attempt_at'),
+  lastAttemptAt: timestamp('last_attempt_at', { withTimezone: true }),
   responseStatus: integer('response_status'),
   responseBody: text('response_body'),
   responseError: text('response_error'),
-  nextRetryAt: timestamp('next_retry_at'),
-  deadLetteredAt: timestamp('dead_lettered_at'),
+  nextRetryAt: timestamp('next_retry_at', { withTimezone: true }),
+  deadLetteredAt: timestamp('dead_lettered_at', { withTimezone: true }),
   leaseOwner: varchar('lease_owner', { length: 160 }),
   leaseToken: uuid('lease_token'),
   leaseVersion: bigint('lease_version', { mode: 'number' }).notNull().default(0),
-  leaseExpiresAt: timestamp('lease_expires_at'),
-  createdAt: timestamp('created_at').notNull()
+  leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull()
 });

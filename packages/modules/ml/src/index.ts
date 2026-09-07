@@ -34,3 +34,15 @@ export { DemandForecastingService } from './demand-forecasting.service.js';
 export type { DemandForecast, DemandForecastDay, DemandForecastInput } from './demand-forecasting.service.js';
 export { LabAnomalyDetectionService } from './lab-anomaly-detection.service.js';
 export type { LabAnomalyDetectionResult, LabAnomalyFlag } from './lab-anomaly-detection.service.js';
+
+// Governed offline validation (R05-048)
+export { validateClassification, validateRegression, canUseMlResult } from './validation.service.js';
+export type {
+  MlValidationStatus,
+  MlTask,
+  MlClassificationExample,
+  MlRegressionExample,
+  MlValidationPolicy,
+  MlValidationInput,
+  MlValidationResult
+} from './validation.service.js';

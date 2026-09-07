@@ -134,6 +134,19 @@ test('ReportsService catalogs the persisted cancelled counter-sale report', () =
   });
 });
 
+test('ReportsService keeps cancellation history distinct from opening-date snapshots', () => {
+  const definitions = new ReportsService().listDefinitions(ACCOUNT);
+  const history = definitions.find((item) => item.id === 'commercial-cancellation-history');
+  const snapshot = definitions.find((item) => item.id === 'commercial-deleted-sales');
+  assert.equal(history?.requiredPermission, 'counter_sale.read');
+  assert.deepEqual(history?.filterSchema, { search: 'string', dateFrom: 'date', dateTo: 'date' });
+  assert.ok(history?.columns.some((column) => column.key === 'cancelledAt'));
+  assert.ok(history?.columns.some((column) => column.key === 'reason'));
+  assert.ok(history?.columns.some((column) => column.key === 'cancelledByUserId'));
+  assert.ok(snapshot?.columns.some((column) => column.key === 'createdAt'));
+  assert.ok(!snapshot?.columns.some((column) => column.key === 'cancelledAt'));
+});
+
 test('ReportsService catalogs the persisted appointments report', () => {
   const service = new ReportsService();
   const definition = service

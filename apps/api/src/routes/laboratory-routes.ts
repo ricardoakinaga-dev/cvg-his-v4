@@ -308,7 +308,7 @@ function normalizeEquipmentStatus(value: unknown): 'active' | 'maintenance' {
 function normalizeCalibrationDate(value: unknown): string {
   const date = new Date(requireNonEmptyString(String(value ?? ''), 'lastCalibrationAt'));
   if (Number.isNaN(date.getTime())) {
-    throw new Error('lastCalibrationAt must be a valid date');
+    throw new ValidationError('lastCalibrationAt must be a valid date');
   }
   return date.toISOString();
 }
@@ -396,9 +396,10 @@ function parseUpdateReportTypePayload(
 }
 
 function normalizeReferenceValueNumber(value: unknown, fieldName: string): number {
-  const normalized = Number(value);
+  const numericInput = typeof value === 'number' || (typeof value === 'string' && value.trim().length > 0);
+  const normalized = numericInput ? Number(value) : NaN;
   if (!Number.isFinite(normalized)) {
-    throw new Error(`${fieldName} must be a valid number`);
+    throw new ValidationError(`${fieldName} must be a valid number`);
   }
   return normalized;
 }
@@ -416,7 +417,7 @@ function parseCreateReferenceValuePayload(
   const minValue = normalizeReferenceValueNumber(payload.minValue, 'minValue');
   const maxValue = normalizeReferenceValueNumber(payload.maxValue, 'maxValue');
   if (minValue > maxValue) {
-    throw new Error('minValue must be less than or equal to maxValue');
+    throw new ValidationError('minValue must be less than or equal to maxValue');
   }
 
   return {
@@ -455,7 +456,7 @@ function parseUpdateReferenceValuePayload(
     update.maxValue !== undefined &&
     update.minValue > update.maxValue
   ) {
-    throw new Error('minValue must be less than or equal to maxValue');
+    throw new ValidationError('minValue must be less than or equal to maxValue');
   }
   return update;
 }
@@ -517,7 +518,7 @@ function parseCanonicalLaboratoryTransition(
       idempotencyKey
     };
   }
-  throw new Error(`Unsupported laboratory status '${String(status ?? '')}'`);
+  throw new ValidationError(`Unsupported laboratory status '${String(status ?? '')}'`);
 }
 
 function requireEnabledLaboratorySigner(principal: AuthenticatedPrincipal): string {
@@ -945,7 +946,7 @@ export async function handleLaboratoryRoutes(
     const orderId = requireNonEmptyString(printableReportMatch[1], 'diagnosticOrderId');
     const order = laboratory.getOrder(principal.user.accountId as never, orderId as never);
     if (order.status !== 'resulted') {
-      throw new Error('Only released laboratory reports can be printed');
+      throw new ValidationError('Only released laboratory reports can be printed');
     }
     const html = buildPrintableLaboratoryReportHtml(order);
 
@@ -1027,7 +1028,7 @@ export async function handleLaboratoryRoutes(
     }
 
     if (canonicalStatus !== 'resulted') {
-      throw new Error(`Unsupported laboratory status '${String(canonicalStatus ?? '')}'`);
+      throw new ValidationError(`Unsupported laboratory status '${String(canonicalStatus ?? '')}'`);
     }
 
     requireEnabledLaboratorySigner(principal);

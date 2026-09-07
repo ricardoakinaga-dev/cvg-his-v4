@@ -1,0 +1,21 @@
+{
+  "observed_at": "2026-09-07T02:58:06.400777+00:00",
+  "status": "PARTIAL",
+  "reception": {
+    "review": "critic_reception_layout I1: search visibility and hierarchy approved within scope, truncated Atualizar rejected and then corrected; source fix inspected by lead in populated dark capture",
+    "report": "evidence/continuity-CPWhKc/report.json",
+    "sha256": "e195ed73cb2f569e1d5e077d3ecb7e8758d9ba72fb72cdee77c8488167b683da",
+    "source_sha256": "b6d084156f7a7acb50fb8e5f8c0197cc153e629a29e6d0d3b675e1e9cc7c3d14",
+    "observed": "4 populated cases passed, stable source hashes; mobile first queue begins y592.94 before search; first result begins y623.94 after search; contextual scheduling link retains ownerId",
+    "limits": "Synthetic contracts; no scheduling mutation, real persistence or human UAT; populated result actions extend below initial viewport; clinical IDs/copy/action density still need broader improvements"
+  },
+  "logout": {
+    "report": "evidence/continuity-dnfBo7/report.json",
+    "observed": "4 viewport/theme logout cases passed; copied request arrays corrected; inputs stable"
+  },
+  "tokens": {
+    "contract": "design-token-contract.md",
+    "status": "additive foundation; application to controls and independent visual approval pending"
+  },
+  "tests": "wave2-regression.log:29 passed; typecheck first failed on private vm test access, replaced with public update assertion, see wave2-typecheck-r2.log"
+}

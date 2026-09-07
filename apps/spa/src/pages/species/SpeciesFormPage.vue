@@ -15,6 +15,9 @@
     <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
       {{ successMessage }}
     </DsAlert>
+    <DsAlert v-if="loading" variant="info">
+      Carregando dados da espécie para edição…
+    </DsAlert>
 
     <div class="form-layout">
       <DsCard>
@@ -69,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import AppPageHeader from '@/components/AppPageHeader.vue';
@@ -89,65 +92,109 @@ const route = useRoute();
 const speciesId = computed(() => route.params.id as string | undefined);
 const isEditing = computed(() => Boolean(speciesId.value));
 const submitting = ref(false);
+const loading = ref(false);
 const error = ref('');
 const successMessage = ref('');
-const form = ref({
+const form = reactive({
   name: '',
   code: '',
   systemCode: 'canine' as AnimalSpeciesSystemCode,
   description: '',
   active: true
 });
+const routeKey = computed(() => `${route.path}|${speciesId.value ?? ''}`);
+const pageGeneration = ref(0);
+let active = true;
 
-async function loadSpecies() {
-  if (!speciesId.value) return;
+function isCurrentRequest(generation: number, key: string) {
+  return active && generation === pageGeneration.value && routeKey.value === key;
+}
+
+function resetForm() {
+  Object.assign(form, { name: '', code: '', systemCode: 'canine' as AnimalSpeciesSystemCode, description: '', active: true });
+  error.value = '';
+  successMessage.value = '';
+}
+
+async function loadSpecies(id: string, generation: number, key: string) {
+  if (!id) {
+    loading.value = false;
+    return;
+  }
+  loading.value = true;
   try {
-    const species = await animalSpeciesService.getById(speciesId.value);
-    form.value = {
+    const species = await animalSpeciesService.getById(id);
+    if (!isCurrentRequest(generation, key)) return;
+    if (species.id !== id) throw new Error('A espécie retornada não corresponde ao endereço solicitado.');
+    Object.assign(form, {
       name: species.name,
       code: species.code ?? '',
       systemCode: species.systemCode,
       description: species.description ?? '',
       active: species.active
-    };
+    });
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar espécie';
+    if (isCurrentRequest(generation, key)) error.value = err instanceof Error ? err.message : 'Erro ao carregar espécie';
+  } finally {
+    if (isCurrentRequest(generation, key)) loading.value = false;
   }
 }
 
 async function submitForm() {
-  if (!form.value.name.trim()) {
+  if (!form.name.trim()) {
     error.value = 'Descrição é obrigatória';
     return;
   }
 
+  const targetId = speciesId.value;
+  const targetKey = routeKey.value;
+  const generation = pageGeneration.value;
+  const editing = Boolean(targetId);
   submitting.value = true;
   error.value = '';
   successMessage.value = '';
   try {
     const payload = {
-      name: form.value.name.trim(),
-      code: form.value.code.trim() || null,
-      systemCode: form.value.systemCode,
-      description: form.value.description.trim() || null,
-      active: form.value.active
+      name: form.name.trim(),
+      code: form.code.trim() || null,
+      systemCode: form.systemCode,
+      description: form.description.trim() || null,
+      active: form.active
     };
 
-    if (isEditing.value && speciesId.value) {
-      await animalSpeciesService.update(speciesId.value, payload);
+    if (editing && targetId) {
+      const updated = await animalSpeciesService.update(targetId, payload);
+      if (!isCurrentRequest(generation, targetKey)) return;
+      if (updated.id !== targetId) throw new Error('A espécie retornada não corresponde ao endereço solicitado.');
     } else {
-      await animalSpeciesService.create(payload);
+      const created = await animalSpeciesService.create(payload);
+      if (!isCurrentRequest(generation, targetKey)) return;
+      if (!created.id) throw new Error('A espécie criada não retornou um identificador.');
     }
+    if (!isCurrentRequest(generation, targetKey)) return;
     successMessage.value = 'Espécie salva com sucesso.';
-    setTimeout(() => router.push('/species'), 1200);
+    setTimeout(() => {
+      if (isCurrentRequest(generation, targetKey)) void router.push('/species');
+    }, 1200);
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao salvar espécie';
+    if (isCurrentRequest(generation, targetKey)) error.value = err instanceof Error ? err.message : 'Erro ao salvar espécie';
   } finally {
-    submitting.value = false;
+    if (isCurrentRequest(generation, targetKey)) submitting.value = false;
   }
 }
 
-onMounted(loadSpecies);
+watch(routeKey, (key, previousKey) => {
+  if (key === previousKey) return;
+  const generation = pageGeneration.value + 1;
+  pageGeneration.value = generation;
+  resetForm();
+  void loadSpecies(speciesId.value ?? '', generation, key);
+}, { immediate: true });
+
+onBeforeUnmount(() => {
+  active = false;
+  pageGeneration.value += 1;
+});
 </script>
 
 <style scoped>
@@ -180,6 +227,7 @@ onMounted(loadSpecies);
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-height: 44px;
   color: var(--color-text, #0f172a);
   font-size: 14px;
   font-weight: 600;

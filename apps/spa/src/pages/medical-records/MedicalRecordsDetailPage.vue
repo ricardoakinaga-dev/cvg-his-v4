@@ -925,7 +925,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { billingService } from '@/services/billing';
 import { diagnosticsService } from '@/services/diagnostics';
@@ -986,7 +986,7 @@ interface ClinicalAlert {
 }
 
 const route = useRoute();
-const routeRecordId = String(route.params.id ?? '');
+const routeRecordId = computed(() => String(route.params.id ?? ''));
 const entityCache = useEntityCache();
 
 const record = ref<MedicalRecordSummary | null>(null);
@@ -1019,6 +1019,39 @@ const editingEntry = ref<ClinicalEntrySummary | null>(null);
 const editReason = ref('');
 const archiveReason = ref('');
 const archiveTarget = ref<ClinicalEntrySummary | null>(null);
+let active = true;
+let pageGeneration = 0;
+
+function isCurrentLoad(generation: number, id: string) {
+  return active && generation === pageGeneration && routeRecordId.value === id;
+}
+
+function resetPageState() {
+  record.value = null;
+  entries.value = [];
+  timeline.value = [];
+  encounter.value = null;
+  patient.value = null;
+  owner.value = null;
+  billingRecord.value = null;
+  billingItems.value = [];
+  patientPrescriptions.value = [];
+  diagnosticEntries.value = [];
+  contextWarnings.value = [];
+  resolvedEncounterId.value = '';
+  error.value = '';
+  patientName.value = '';
+  ownerName.value = '';
+  successMessage.value = '';
+  entryFormError.value = '';
+  showNewEntryModal.value = false;
+  showEditEntryModal.value = false;
+  showArchiveModal.value = false;
+  archiveTarget.value = null;
+  submittingEntry.value = false;
+  submittingClinicalSheet.value = false;
+  archivingEntry.value = false;
+}
 
 const entryForm = ref({
   entryType: 'progress_note' as ClinicalEntryType,
@@ -1547,16 +1580,21 @@ function clearClinicalSheet() {
   }
 }
 
-async function loadRecord() {
+async function loadRecord(id: string, generation: number) {
   try {
-    const response = await loadRecordByRouteId(routeRecordId);
+    const response = await loadRecordByRouteId(id);
+    if (!isCurrentLoad(generation, id)) return;
+    if (response.record.id !== id && response.record.encounterId !== id) {
+      throw new Error('O prontuário retornado não corresponde ao endereço solicitado.');
+    }
     record.value = response.record;
     entries.value = response.entries;
     resolvedEncounterId.value = response.record.encounterId;
     patientName.value = await entityCache.getPatientName(response.record.patientId);
-    await loadClinicalContext(response.record);
+    if (!isCurrentLoad(generation, id)) return;
+    await loadClinicalContext(response.record, generation, id);
   } catch (err: unknown) {
-    error.value = getLoadRecordErrorMessage(err);
+    if (isCurrentLoad(generation, id)) error.value = getLoadRecordErrorMessage(err);
   }
 }
 
@@ -1596,7 +1634,7 @@ async function loadRecordByRouteId(id: string) {
   }
 }
 
-async function loadClinicalContext(currentRecord: MedicalRecordSummary) {
+async function loadClinicalContext(currentRecord: MedicalRecordSummary, generation: number, routeId: string) {
   contextWarnings.value = [];
   const [
     encounterResult,
@@ -1613,10 +1651,12 @@ async function loadClinicalContext(currentRecord: MedicalRecordSummary) {
     diagnosticsService.listByEncounter(currentRecord.encounterId),
     prescriptionsService.listByPatient(currentRecord.patientId)
   ]);
+  if (!isCurrentLoad(generation, routeId)) return;
 
   if (encounterResult.status === 'fulfilled') {
     encounter.value = encounterResult.value;
     ownerName.value = await entityCache.getOwnerName(encounterResult.value.ownerId);
+    if (!isCurrentLoad(generation, routeId)) return;
   } else {
     contextWarnings.value.push('atendimento');
   }
@@ -1631,6 +1671,7 @@ async function loadClinicalContext(currentRecord: MedicalRecordSummary) {
   if (ownerId) {
     try {
       owner.value = await ownerService.getById(ownerId);
+      if (!isCurrentLoad(generation, routeId)) return;
       ownerName.value = owner.value.fullName;
     } catch {
       contextWarnings.value.push('cliente');
@@ -1649,7 +1690,8 @@ async function loadClinicalContext(currentRecord: MedicalRecordSummary) {
     prescriptionsResult.status === 'fulfilled' ? prescriptionsResult.value : [];
 }
 
-async function loadTimeline() {
+async function loadTimeline(id: string, generation: number) {
+  if (!isCurrentLoad(generation, id)) return;
   timelineLoading.value = true;
   try {
     if (!resolvedEncounterId.value) {
@@ -1657,21 +1699,27 @@ async function loadTimeline() {
       return;
     }
 
-    timeline.value = await medicalRecordsService.getTimeline(resolvedEncounterId.value);
+    const nextTimeline = await medicalRecordsService.getTimeline(resolvedEncounterId.value);
+    if (isCurrentLoad(generation, id)) timeline.value = nextTimeline;
   } catch {
-    timeline.value = [];
+    if (isCurrentLoad(generation, id)) timeline.value = [];
   } finally {
-    timelineLoading.value = false;
+    if (isCurrentLoad(generation, id)) timelineLoading.value = false;
   }
 }
 
 async function refreshRecordAndTimeline() {
-  await loadRecord();
-  await loadTimeline();
+  const id = routeRecordId.value;
+  const generation = pageGeneration;
+  await loadRecord(id, generation);
+  await loadTimeline(id, generation);
 }
 
 async function saveClinicalSheet() {
   if (!record.value || !hasClinicalSheetContent.value) return;
+  const routeId = routeRecordId.value;
+  const generation = pageGeneration;
+  const currentRecord = record.value;
   submittingClinicalSheet.value = true;
   entryFormError.value = '';
   successMessage.value = '';
@@ -1686,92 +1734,131 @@ async function saveClinicalSheet() {
 
     for (const item of payloads) {
       await medicalRecordsService.createEntry({
-        encounterId: record.value.encounterId,
-        patientId: record.value.patientId,
+        encounterId: currentRecord.encounterId,
+        patientId: currentRecord.patientId,
         entryType: item.section.entryType,
         title: item.section.title,
         content: item.content
       });
+      if (!isCurrentLoad(generation, routeId)) return;
     }
 
+    if (!isCurrentLoad(generation, routeId)) return;
     clearClinicalSheet();
     successMessage.value = 'Ficha de atendimento salva no prontuário.';
     await refreshRecordAndTimeline();
   } catch (err: unknown) {
-    entryFormError.value =
-      err instanceof Error ? err.message : 'Erro ao salvar ficha de atendimento';
+    if (isCurrentLoad(generation, routeId)) {
+      entryFormError.value =
+        err instanceof Error ? err.message : 'Erro ao salvar ficha de atendimento';
+    }
   } finally {
-    submittingClinicalSheet.value = false;
+    if (isCurrentLoad(generation, routeId)) submittingClinicalSheet.value = false;
   }
 }
 
 async function handleSaveEntry() {
   if (!record.value || !isEntryFormValid.value) return;
+  const routeId = routeRecordId.value;
+  const generation = pageGeneration;
+  const currentRecord = record.value;
+  const currentEditingEntry = editingEntry.value;
   submittingEntry.value = true;
   entryFormError.value = '';
   successMessage.value = '';
 
   try {
-    if (editingEntry.value) {
+    if (currentEditingEntry) {
       const payload: UpdateClinicalEntryRequest = {
         title: entryForm.value.title.trim(),
         content: entryForm.value.content.trim(),
         reason: editReason.value.trim() || undefined,
-        expectedVersion: editingEntry.value.version
+        expectedVersion: currentEditingEntry.version
       };
-      await medicalRecordsService.updateEntry(editingEntry.value.id, payload);
+      await medicalRecordsService.updateEntry(currentEditingEntry.id, payload);
     } else {
       const payload: CreateClinicalEntryRequest = {
-        encounterId: record.value.encounterId,
-        patientId: record.value.patientId,
+        encounterId: currentRecord.encounterId,
+        patientId: currentRecord.patientId,
         entryType: entryForm.value.entryType,
         title: entryForm.value.title.trim(),
         content: entryForm.value.content.trim()
       };
       await medicalRecordsService.createEntry(payload);
     }
+    if (!isCurrentLoad(generation, routeId)) return;
     closeEntryModal();
     successMessage.value = 'Entrada clínica salva no prontuário.';
     await refreshRecordAndTimeline();
   } catch (err: unknown) {
-    entryFormError.value = err instanceof Error ? err.message : 'Erro ao salvar entrada';
+    if (isCurrentLoad(generation, routeId)) {
+      entryFormError.value = err instanceof Error ? err.message : 'Erro ao salvar entrada';
+    }
   } finally {
-    submittingEntry.value = false;
+    if (isCurrentLoad(generation, routeId)) submittingEntry.value = false;
   }
 }
 
 async function handleArchiveEntry() {
   if (!archiveTarget.value || !archiveReason.value.trim()) return;
+  const routeId = routeRecordId.value;
+  const generation = pageGeneration;
+  const currentArchiveTarget = archiveTarget.value;
+  const reason = archiveReason.value.trim();
   archivingEntry.value = true;
 
   try {
     const payload: ArchiveClinicalEntryRequest = {
-      reason: archiveReason.value.trim(),
-      expectedVersion: archiveTarget.value.version
+      reason,
+      expectedVersion: currentArchiveTarget.version
     };
-    await medicalRecordsService.archiveEntry(archiveTarget.value.id, payload);
+    await medicalRecordsService.archiveEntry(currentArchiveTarget.id, payload);
+    if (!isCurrentLoad(generation, routeId)) return;
     showArchiveModal.value = false;
     archiveTarget.value = null;
     archiveReason.value = '';
     await refreshRecordAndTimeline();
   } catch (err: unknown) {
-    alert(err instanceof Error ? err.message : 'Erro ao arquivar entrada');
+    if (isCurrentLoad(generation, routeId)) {
+      alert(err instanceof Error ? err.message : 'Erro ao arquivar entrada');
+    }
   } finally {
-    archivingEntry.value = false;
+    if (isCurrentLoad(generation, routeId)) archivingEntry.value = false;
   }
 }
 
-onMounted(async () => {
-  try {
-    await loadRecord();
-    await loadTimeline();
-    const requestedEntryType = routeEntryType();
-    if (requestedEntryType) {
-      startEntry(requestedEntryType);
-    }
-  } finally {
+async function loadPage(id: string) {
+  const generation = ++pageGeneration;
+  resetPageState();
+  loading.value = true;
+  if (!id) {
     loading.value = false;
+    return;
   }
+
+  try {
+    await loadRecord(id, generation);
+    if (!isCurrentLoad(generation, id) || !record.value) return;
+    await loadTimeline(id, generation);
+    if (!isCurrentLoad(generation, id)) return;
+    const requestedEntryType = routeEntryType();
+    if (requestedEntryType) startEntry(requestedEntryType);
+  } finally {
+    if (isCurrentLoad(generation, id)) loading.value = false;
+  }
+}
+
+watch(
+  () => String(route.params.id ?? ''),
+  (id) => {
+    void loadPage(id);
+  },
+  { immediate: true, flush: 'sync' }
+);
+
+onBeforeUnmount(() => {
+  active = false;
+  pageGeneration += 1;
 });
 </script>
 

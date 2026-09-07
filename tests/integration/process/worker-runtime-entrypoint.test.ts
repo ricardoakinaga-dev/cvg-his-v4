@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { reconcileRuntimeRoles } from '../../../packages/db/src/reconcile-runtime-roles.js';
 import { ADMIN_DB_URL, TEST_DB_URL } from '../../setup/env.js';
+import { requestProcessCoverageCheckpoint } from '../../helpers/process-coverage-control.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../../..');
 const suffix = randomUUID().replaceAll('-', '').slice(0, 16);
@@ -19,6 +20,10 @@ const tenantId = randomUUID();
 const accountId = randomUUID();
 const reportServiceUserId = randomUUID();
 const workerEntrypoint = resolve(ROOT, 'apps/worker/src/index.ts');
+const workerCoverageEntrypoint = resolve(
+  ROOT,
+  'apps/worker/test-fixtures/runtime-entrypoint-process.ts'
+);
 
 function databaseUrl(databaseName: string, role?: string, password?: string): string {
   const url = new URL(TEST_DB_URL);
@@ -104,23 +109,30 @@ interface WorkerHandle {
 const activeWorkers = new Set<WorkerHandle>();
 
 function startWorker(databaseUrlValue: string, port: number): WorkerHandle {
-  const child = spawn(process.execPath, ['--import', 'tsx/esm', workerEntrypoint], {
-    cwd: ROOT,
-    env: {
-      ...process.env,
-      NODE_ENV: 'staging',
-      DATABASE_URL: databaseUrlValue,
-      WORKER_ACCOUNT_ID: accountId,
-      WORKER_REPORTS_USER_ID: reportServiceUserId,
-      WORKER_INSTANCE_ID: `worker-entry-${suffix}-${port}`,
-      WORKER_HEALTH_PORT: String(port),
-      WORKER_INTERVAL_MS: '100',
-      WORKER_PIX_SETTLEMENT_ENABLED: '0',
-      WORKER_PIX_SYNTHETIC_ENABLED: '0',
-      OTEL_ENABLED: 'false'
-    },
-    stdio: ['ignore', 'pipe', 'pipe']
-  });
+  const coverage = process.env.CVG_CRITICAL_PROCESS_COVERAGE === '1';
+  const child = spawn(
+    process.execPath,
+    ['--import', 'tsx/esm', coverage ? workerCoverageEntrypoint : workerEntrypoint],
+    {
+      cwd: ROOT,
+      env: {
+        ...process.env,
+        NODE_ENV: 'staging',
+        CVG_CRITICAL_PROCESS_RUNTIME_FIXTURE: coverage ? 'worker-entrypoint' : '',
+        CVG_PROCESS_COVERAGE_CONTROL: coverage ? '1' : '0',
+        DATABASE_URL: databaseUrlValue,
+        WORKER_ACCOUNT_ID: accountId,
+        WORKER_REPORTS_USER_ID: reportServiceUserId,
+        WORKER_INSTANCE_ID: `worker-entry-${suffix}-${port}`,
+        WORKER_HEALTH_PORT: String(port),
+        WORKER_INTERVAL_MS: '100',
+        WORKER_PIX_SETTLEMENT_ENABLED: '0',
+        WORKER_PIX_SYNTHETIC_ENABLED: '0',
+        OTEL_ENABLED: 'false'
+      },
+      stdio: coverage ? ['ignore', 'pipe', 'pipe', 'ipc'] : ['ignore', 'pipe', 'pipe']
+    }
+  );
 
   let output = '';
   child.stdout?.setEncoding('utf8');
@@ -254,7 +266,7 @@ describe('real worker entrypoint under restricted runtime role', () => {
       [...activeWorkers].map((handle) => stopWorker(handle, 'SIGKILL').catch(() => undefined))
     );
     await scratchAdmin.query(
-      `REASSIGN OWNED BY ${quoteIdentifier(apiRole)}, ${quoteIdentifier(workerRole)} TO postgres`
+      `REASSIGN OWNED BY ${quoteIdentifier(apiRole)}, ${quoteIdentifier(workerRole)} TO CURRENT_USER`
     );
     await scratchAdmin.query(
       `DROP OWNED BY ${quoteIdentifier(apiRole)}, ${quoteIdentifier(workerRole)}`
@@ -319,6 +331,7 @@ describe('real worker entrypoint under restricted runtime role', () => {
     const firstForbidden = await inspectWorkerMutationPrivileges(workerUrl);
     expect(firstForbidden, JSON.stringify(firstForbidden)).toEqual([]);
 
+    await requestProcessCoverageCheckpoint(first.child);
     const killed = await stopWorker(first, 'SIGKILL');
     expect(killed.signal).toBe('SIGKILL');
     expect(first.output()).not.toMatch(/Unsafe PostgreSQL runtime role|database unavailable/i);
@@ -359,6 +372,7 @@ describe('real worker entrypoint under restricted runtime role', () => {
     });
     const secondForbidden = await inspectWorkerMutationPrivileges(workerUrl);
     expect(secondForbidden, JSON.stringify(secondForbidden)).toEqual([]);
+    await requestProcessCoverageCheckpoint(second.child);
     expect(await stopWorker(second, 'SIGTERM')).toEqual({ code: 0, signal: null });
     expect(second.output()).not.toMatch(/worker crashed|Unsafe PostgreSQL runtime role/i);
   }, 60_000);

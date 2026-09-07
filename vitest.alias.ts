@@ -50,8 +50,17 @@ export function createWorkspaceAliases(root: string): Record<string, string> {
     '@cvg-his-v2/module-counter-sales': from('packages/modules/counter-sales/src/index.ts'),
     '@cvg-his-v2/shared-auth-sdk': from('packages/shared/auth-sdk/src/index.ts'),
     '@cvg-his-v2/shared-config': from('packages/shared/config/src/index.ts'),
+    // Subpaths precede package roots because Vite aliases also match prefixes.
+    '@cvg-his-v2/shared-feature-flags/database-provider': from(
+      'packages/shared/feature-flags/src/database-provider.ts'
+    ),
+    '@cvg-his-v2/shared-feature-flags/repositories': from(
+      'packages/shared/feature-flags/src/repositories/index.ts'
+    ),
     '@cvg-his-v2/shared-feature-flags': from('packages/shared/feature-flags/src/index.ts'),
     '@cvg-his-v2/shared-contracts': from('packages/shared/contracts/src/index.ts'),
+    '@cvg-his-v2/shared-database/schemas': from('packages/shared/database/src/schemas/index.ts'),
+    '@cvg-his-v2/shared-database/client': from('packages/shared/database/src/client.ts'),
     '@cvg-his-v2/shared-database': from('packages/shared/database/src/index.ts'),
     '@cvg-his-v2/shared-errors': from('packages/shared/errors/src/index.ts'),
     '@cvg-his-v2/shared-logging': from('packages/shared/logging/src/index.ts'),

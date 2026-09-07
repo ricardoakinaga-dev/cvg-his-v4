@@ -209,6 +209,74 @@ test('financial PIX reconciliation keeps a notes-only legacy match in attention'
   assert.deepEqual(payload.data[0]?.receivablePaymentIds, ['payment-pix-notes']);
 });
 
+test('financial card reconciliation keeps a captured billing-bound card without a linked payment in attention', async () => {
+  const routeHandlers = {
+    ...handlers(),
+    billing: {
+      getOrThrow() {
+        return { id: 'billing-card-orphan', encounterId: 'enc-card-orphan' };
+      }
+    },
+    encounterFinancial: {
+      async getSummary() {
+        return {
+          encounterStatus: 'closed',
+          financialStatus: 'paid',
+          patientId: 'patient-card-orphan',
+          patientName: 'Luna',
+          ownerId: 'owner-card-orphan',
+          ownerName: 'Maria',
+          receivables: [],
+          payments: []
+        };
+      }
+    },
+    cardTransactions: {
+      async list() {
+        return [
+          {
+            transactionId: 'card-orphan',
+            provider: 'local-card',
+            accountId: 'acc-finance-1',
+            billingRecordId: 'billing-card-orphan',
+            amount: 100,
+            currency: 'BRL',
+            description: 'Cartão sem pagamento financeiro',
+            installments: 1,
+            status: 'captured',
+            createdAt: '2026-05-01T10:00:00.000Z',
+            updatedAt: '2026-05-01T10:05:00.000Z',
+            capturedAt: '2026-05-01T10:05:00.000Z',
+            billingSettlementStatus: 'applied'
+          }
+        ];
+      }
+    }
+  } as never;
+  const response = new MockResponse();
+
+  await handleFinancialRoutes(
+    '/financial/reconciliation/cards',
+    request('GET', '/financial/reconciliation/cards'),
+    response as never,
+    'corr-card-orphan',
+    routeHandlers
+  );
+
+  const payload = response.bodyJson<{
+    readonly reconciledCount: number;
+    readonly attentionCount: number;
+    readonly data: ReadonlyArray<{
+      readonly reconciliationState: string;
+      readonly receivablePaymentIds: readonly string[];
+    }>;
+  }>();
+  assert.equal(payload.reconciledCount, 0);
+  assert.equal(payload.attentionCount, 1);
+  assert.equal(payload.data[0]?.reconciliationState, 'attention_required');
+  assert.deepEqual(payload.data[0]?.receivablePaymentIds, []);
+});
+
 test('handleFinancialRoutes exposes the canonical ledger and reconciliation result', async () => {
   const routeHandlers = handlers();
   await routeHandlers.ledger!.postEntry({

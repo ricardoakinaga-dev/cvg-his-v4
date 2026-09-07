@@ -539,7 +539,10 @@ function sanitizeReportValue(value, state, depth = 0) {
     return '[report node limit reached]';
   }
   state.nodes += 1;
-  if (depth > 12) return '[report depth limit reached]';
+  if (depth > 12) {
+    state.truncated = true;
+    return '[report depth limit reached]';
+  }
   if (typeof value === 'string') return sanitizeDiagnostic(value);
   if (Array.isArray(value)) {
     const sanitized = [];
@@ -706,8 +709,9 @@ export function readBoundedReportText(reportPath, reportDirectory = null) {
   return readBoundedReport(reportPath, reportDirectory);
 }
 
-function serializeSanitizedReport(reportPath, reportDirectory = null) {
+function serializeSanitizedReport(reportPath, reportDirectory = null, requireComplete = false) {
   const reportContent = readBoundedReport(reportPath, reportDirectory);
+  const sanitization = { nodes: 0, truncated: false };
   let serializedReport;
   if (reportContent.truncated) {
     serializedReport = JSON.stringify(
@@ -722,7 +726,7 @@ function serializeSanitizedReport(reportPath, reportDirectory = null) {
     try {
       const report = JSON.parse(reportContent.content);
       serializedReport = JSON.stringify(
-        sanitizeReportValue(report, { nodes: 0, truncated: false }),
+        sanitizeReportValue(report, sanitization),
         null,
         2
       );
@@ -738,6 +742,9 @@ function serializeSanitizedReport(reportPath, reportDirectory = null) {
     }
   }
 
+  if (requireComplete && (reportContent.truncated || sanitization.truncated || Buffer.byteLength(serializedReport, 'utf8') > MAX_SANITIZED_REPORT_BYTES)) {
+    throw new Error('successful report sanitization would truncate evidence');
+  }
   if (Buffer.byteLength(serializedReport, 'utf8') > MAX_SANITIZED_REPORT_BYTES) {
     serializedReport = JSON.stringify(
       {
@@ -786,10 +793,10 @@ function writeSanitizedReport(reportPath, serializedReport, reportDirectory = nu
   }
 }
 
-export function sanitizeReportInPlace(reportPath, reportDirectory = null) {
+export function sanitizeReportInPlace(reportPath, reportDirectory = null, { requireComplete = false } = {}) {
   const report = resolveExistingReport(reportPath, reportDirectory);
   if (!report) return null;
-  const serializedReport = serializeSanitizedReport(report.reportPath, report.reportDirectory);
+  const serializedReport = serializeSanitizedReport(report.reportPath, report.reportDirectory, requireComplete);
   writeSanitizedReport(report.reportPath, serializedReport, report.reportDirectory);
   return reportPath;
 }

@@ -96,9 +96,9 @@ describe('VulnerabilityControlService (CC3.1)', () => {
     await expect(vuln.mitigateVulnerability(firstId)).resolves.not.toThrow();
   });
 
-  it('isScanOverdue returns false after fresh scan', async () => {
+  it('simulated scan does not satisfy operational schedule', async () => {
     await vuln.runScan(['api']);
-    expect(vuln.isScanOverdue()).toBe(false);
+    expect(vuln.isScanOverdue()).toBe(true);
   });
 });
 
@@ -149,13 +149,13 @@ describe('DisasterRecoveryControlService (CC7.1)', () => {
 
   it('conducts failover test', async () => {
     const result = await dr.conductFailoverTest();
-    expect(result.status).toBe('passed');
+    expect(result.status).toBe('not_verified');
     expect(result.testType).toBe('failover');
   });
 
   it('conducts recovery test', async () => {
     const result = await dr.conductRecoveryTest();
-    expect(result.status).toBe('passed');
+    expect(result.status).toBe('not_verified');
     expect(result.testType).toBe('recovery');
   });
 
@@ -175,9 +175,9 @@ describe('DisasterRecoveryControlService (CC7.1)', () => {
     expect(typeof overdue).toBe('boolean');
   });
 
-  it('isTestOverdue returns false after recent test', async () => {
+  it('unexecuted test does not satisfy operational schedule', async () => {
     await dr.conductFailoverTest();
-    expect(dr.isTestOverdue()).toBe(false);
+    expect(dr.isTestOverdue()).toBe(true);
   });
 });
 
@@ -259,13 +259,13 @@ describe('SecurityScore Calculation', () => {
 
     const score = await calculateSecurityScore(mfa, vuln, access, dr);
 
-    expect(score.overall).toBeGreaterThan(0);
+    expect(score.overall).toBe(0);
     expect(score.overall).toBeLessThanOrEqual(100);
     expect(Array.isArray(score.criticalGaps)).toBe(true);
     expect(Array.isArray(score.recommendations)).toBe(true);
   });
 
-  it('increases score when no critical gaps', async () => {
+  it('does not grant score credit to simulations', async () => {
     const mfa = new MfaControlService();
     const vuln = new VulnerabilityControlService();
     const access = new AccessReviewControlService();
@@ -275,6 +275,6 @@ describe('SecurityScore Calculation', () => {
     await vuln.runScan(['api']);
 
     const score = await calculateSecurityScore(mfa, vuln, access, dr);
-    expect(score.security).toBeGreaterThanOrEqual(40);
+    expect(score.security).toBe(0);
   });
 });

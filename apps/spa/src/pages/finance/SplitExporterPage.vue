@@ -3,21 +3,14 @@
     <AppPageHeader
       title="Exportador de Split"
       :breadcrumbs="['Financeiro', 'Maquininha de Cartão', 'Exportador de Split']"
-      subtitle="Prévia de exportação de repasses, recebedores e status de conciliação"
-      :secondary-actions="headerSecondaryActions"
+      subtitle="Exportação indisponível. Consulte os dados de cartão abaixo."
     />
-
-    <DsAlert variant="info">
-      Prévia somente leitura conectada à reconciliação financeira de cartões. Gerar arquivo, enviar ao provedor,
-      confirmar repasse e alterar configuração de split seguem bloqueados nesta etapa.
-    </DsAlert>
-
     <form class="split-exporter-filters" aria-label="Filtros do exportador de split" @submit.prevent="loadPreview">
       <DsInput
         id="split-exporter-search"
         v-model="filters.search"
         label="Cliente/Transação"
-        placeholder="Buscar por cliente, paciente, autorização ou descrição"
+        placeholder="Cliente, paciente ou código da transação"
       />
       <DsInput id="split-exporter-provider" v-model="filters.provider" label="Provedor" type="select">
         <option value="">Todos</option>
@@ -31,44 +24,27 @@
         <option value="failed">Falhou</option>
         <option value="not_authorized">Não autorizada</option>
       </DsInput>
-      <DsInput id="split-exporter-format" v-model="filters.format" label="Formato" type="select">
-        <option value="CSV">CSV</option>
-        <option value="OFX">OFX</option>
-        <option value="JSON">JSON</option>
-      </DsInput>
       <div class="split-exporter-filters__actions">
-        <DsButton variant="primary" type="submit" :loading="loading">Preparar Prévia</DsButton>
+        <DsButton variant="primary" type="submit" :loading="loading">Consultar</DsButton>
         <DsButton variant="ghost" type="button" @click="resetFilters">Limpar</DsButton>
       </div>
     </form>
 
-    <section class="split-exporter-summary-grid" aria-label="Resumo do exportador de split">
-      <DsStatCard :label="`${visibleRows.length} transação(ões)`" value="Linhas" />
-      <DsStatCard :label="formatCurrency(totalNet)" value="Líquido" />
-      <DsStatCard :label="formatCurrency(totalCvg)" value="Centro Veterinário Guarapiranga" />
-      <DsStatCard :label="formatCurrency(totalPlatform)" value="CVG Pagamentos" />
+
+    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">{{ error }}</DsAlert>
+    <section v-if="failed && !loading" class="split-exporter-recovery" aria-label="Falha na consulta">
+      <p>Não foi possível carregar as transações. Os valores desta consulta estão indisponíveis.</p>
+      <DsButton variant="secondary" @click="loadPreview">Tentar novamente</DsButton>
     </section>
-
-    <section class="split-exporter-actions" aria-label="Ações do exportador de split">
-      <DsButton variant="primary" disabled>Gerar Arquivo</DsButton>
-      <DsButton variant="secondary" tag="a" to="/finance/card-transactions">Transações de Cartão</DsButton>
-      <DsButton variant="secondary" tag="a" to="/finance/split/simulator">Simulador de Split</DsButton>
-      <DsButton variant="secondary" tag="a" to="/finance/split">Configuração do Split</DsButton>
-      <DsButton variant="ghost" type="button" :loading="loading" @click="loadPreview">Atualizar</DsButton>
-    </section>
-
-    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
-      {{ error }}
-    </DsAlert>
-
     <DataTable
+      v-else
       :columns="columns"
       :rows="visibleRows"
       :loading="loading"
       empty-icon="📤"
-      empty-title="Nenhuma transação elegível para exportação"
-      empty-description="Ajuste os filtros para visualizar a prévia de repasses por recebedor."
-      caption="Prévia de exportação de split"
+      empty-title="Nenhuma transação nesta consulta"
+      empty-description="Ajuste os filtros para consultar outras transações."
+      caption="Transações da consulta · até 100 registros"
       row-key-field="transactionId"
       variant="hoverable"
     >
@@ -80,32 +56,33 @@
         <strong>{{ exportRow(row).client }}</strong>
         <small>{{ exportRow(row).patient }}</small>
       </template>
-      <template #cell-receiver="{ row }">
-        <strong>{{ exportRow(row).primaryReceiver }}</strong>
-        <small>{{ exportRow(row).secondaryReceiver }}</small>
-      </template>
-      <template #cell-format="{ row }">
-        <span>{{ exportRow(row).format }}</span>
-      </template>
-      <template #cell-net="{ row }">
-        <strong>{{ formatCurrency(exportRow(row).net) }}</strong>
-      </template>
-      <template #cell-cvg="{ row }">
-        <span>{{ formatCurrency(exportRow(row).cvgAmount) }}</span>
-      </template>
-      <template #cell-platform="{ row }">
-        <span>{{ formatCurrency(exportRow(row).platformAmount) }}</span>
-      </template>
+      <template #cell-receiver><span title="Recebedores não informados pela fonte">—</span></template>
+      <template #cell-net="{ row }"><strong>{{ formatCardMoney(exportRow(row).net) }}</strong></template>
+      <template #cell-allocation><span title="Alocação de split não informada pela fonte">—</span></template>
       <template #cell-status="{ row }">
         <StatusBadge :label="statusLabel(exportRow(row).status)" :variant="statusVariant(exportRow(row).status)" />
       </template>
       <template #cell-reconciliation="{ row }">
-        <StatusBadge
-          :label="reconciliationLabel(exportRow(row).reconciliationState)"
-          :variant="reconciliationVariant(exportRow(row).reconciliationState)"
-        />
+        <StatusBadge :label="reconciliationLabel(exportRow(row).reconciliationState)" :variant="reconciliationVariant(exportRow(row).reconciliationState)" />
       </template>
     </DataTable>
+
+    <details class="split-exporter-summary">
+      <summary>Resumo da consulta · até 100 registros</summary>
+      <dl>
+        <div><dt>Registros carregados</dt><dd>{{ queryReady ? transactions.length : '—' }}</dd></div>
+        <div><dt>Líquido dos registros carregados</dt><dd>{{ formatCardMoney(totalNet) }}</dd></div>
+      </dl>
+      <p>O líquido só é totalizado quando todos os registros informam valor e a mesma moeda.</p>
+    </details>
+    <aside class="split-exporter-availability" aria-label="Disponibilidade da exportação">
+      <p><strong>Exportação indisponível.</strong> A fonte não informa recebedores, alocação de split ou liquidação de repasses. Esta prévia é somente leitura e não gera arquivos.</p>
+      <nav class="split-exporter-links" aria-label="Rotinas relacionadas">
+        <DsButton variant="ghost" tag="a" to="/finance/card-transactions">Transações de Cartão</DsButton>
+        <DsButton variant="ghost" tag="a" to="/finance/split/simulator">Simulador de Split</DsButton>
+        <DsButton variant="ghost" tag="a" to="/finance/split">Configuração do Split</DsButton>
+      </nav>
+    </aside>
   </div>
 </template>
 
@@ -118,203 +95,119 @@ import StatusBadge from '@/components/StatusBadge.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
-import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import { financeCardsService, type FinanceCardRow } from '@/services/financeCards';
+import { cardMoney, sumCardMoney, formatCardMoney, type CardMoney } from '@/utils/financeCardMoney';
 
-type ExportFormat = 'CSV' | 'OFX' | 'JSON';
-type ExportStatus = 'captured' | 'authorized_pending_capture' | 'failed' | 'not_authorized' | string;
-type ReconciliationStatus = 'reconciled' | 'pending' | 'attention_required' | string | null | undefined;
-
+type OptionalStatus = string | null | undefined;
 interface SplitExportRow {
   transactionId: string;
   description: string;
   client: string;
   patient: string;
-  primaryReceiver: string;
-  secondaryReceiver: string;
-  format: ExportFormat;
-  net: number;
-  cvgAmount: number;
-  platformAmount: number;
-  status: ExportStatus;
-  reconciliationState: ReconciliationStatus;
+  net: CardMoney;
+  status: OptionalStatus;
+  reconciliationState: OptionalStatus;
 }
-
-const cvgPercent = 85;
-const platformPercent = 15;
-
 const columns: DataTableColumn[] = [
   { key: 'transaction', label: 'Transação' },
   { key: 'client', label: 'Cliente' },
   { key: 'receiver', label: 'Recebedores' },
-  { key: 'format', label: 'Formato' },
   { key: 'net', label: 'Líquido' },
-  { key: 'cvg', label: 'Repasse CVG' },
-  { key: 'platform', label: 'Repasse Plataforma' },
+  { key: 'allocation', label: 'Repasse split' },
   { key: 'status', label: 'Status' },
   { key: 'reconciliation', label: 'Conciliação' }
 ];
-
-const filters = reactive({
-  search: '',
-  provider: '',
-  status: '',
-  format: 'CSV' as ExportFormat
-});
-const loading = ref(false);
+const filters = reactive({ search: '', provider: '', status: '' });
+const loading = ref(true);
+const failed = ref(false);
 const error = ref('');
 const transactions = ref<FinanceCardRow[]>([]);
-
+let requestId = 0;
+const queryReady = computed(() => !loading.value && !failed.value);
 const visibleRows = computed(() => transactions.value.map(toExportRow) as unknown as DataTableRow[]);
-const totalNet = computed(() => visibleRows.value.reduce((sum, row) => sum + exportRow(row).net, 0));
-const totalCvg = computed(() => visibleRows.value.reduce((sum, row) => sum + exportRow(row).cvgAmount, 0));
-const totalPlatform = computed(() => visibleRows.value.reduce((sum, row) => sum + exportRow(row).platformAmount, 0));
-const headerSecondaryActions = computed(() => [
-  {
-    key: 'refresh-split-exporter',
-    label: 'Atualizar',
-    variant: 'secondary' as const,
-    onClick: loadPreview
-  }
-]);
+const totalNet = computed(() => queryReady.value && transactions.value.length
+  ? sumCardMoney(transactions.value.map(card => cardMoney(card.netAmount, card.currency)))
+  : cardMoney(null));
 
 async function loadPreview() {
+  const id = ++requestId;
+  const query = { ...filters, search: filters.search.trim() };
   loading.value = true;
   error.value = '';
   try {
-    transactions.value = await financeCardsService.list({
-      search: filters.search.trim(),
-      provider: filters.provider,
-      status: filters.status,
-      pageSize: 100
-    });
+    const rows = await financeCardsService.list({ search: query.search, provider: query.provider, status: query.status, pageSize: 100 });
+    if (id !== requestId) return;
+    transactions.value = rows;
+    failed.value = false;
   } catch (err: unknown) {
+    if (id !== requestId) return;
     error.value = err instanceof Error ? err.message : 'Falha ao carregar prévia de exportação';
+    failed.value = true;
     transactions.value = [];
   } finally {
-    loading.value = false;
+    if (id === requestId) loading.value = false;
   }
 }
-
 function resetFilters() {
-  filters.search = '';
-  filters.provider = '';
-  filters.status = '';
-  filters.format = 'CSV';
+  Object.assign(filters, { search: '', provider: '', status: '' });
   void loadPreview();
 }
-
 function toExportRow(card: FinanceCardRow): SplitExportRow {
-  const gross = card.amount ?? 0;
-  const fee = card.feeAmount ?? (card.netAmount != null ? Math.max(gross - card.netAmount, 0) : 0);
-  const net = card.netAmount ?? Math.max(gross - fee, 0);
   return {
     transactionId: card.transactionId,
     description: card.description || card.providerAuthorizationCode || card.providerChargeId || card.transactionId,
     client: card.ownerName || card.cardHolderName || 'Cliente não informado',
     patient: card.patientName ? `Paciente: ${card.patientName}` : 'Paciente não vinculado',
-    primaryReceiver: 'Centro Veterinário Guarapiranga',
-    secondaryReceiver: 'CVG Pagamentos',
-    format: filters.format,
-    net,
-    cvgAmount: roundMoney(net * (cvgPercent / 100)),
-    platformAmount: roundMoney(net * (platformPercent / 100)),
-    status: card.status || 'pending',
-    reconciliationState: card.reconciliationState || 'pending'
+    net: cardMoney(card.netAmount, card.currency),
+    status: card.status,
+    reconciliationState: card.reconciliationState
   };
 }
-
-function exportRow(row: DataTableRow): SplitExportRow {
-  return row as unknown as SplitExportRow;
-}
-
-function statusLabel(status: ExportStatus): string {
+function exportRow(row: DataTableRow): SplitExportRow { return row as unknown as SplitExportRow; }
+function statusLabel(status: OptionalStatus): string {
   if (status === 'captured') return 'Capturada';
   if (status === 'authorized_pending_capture') return 'Autorizada';
   if (status === 'failed') return 'Falhou';
   if (status === 'not_authorized') return 'Não autorizada';
-  return status || 'Pendente';
+  return status || 'Não informado';
 }
-
-function statusVariant(status: ExportStatus): 'success' | 'warning' | 'danger' | 'neutral' {
+function statusVariant(status: OptionalStatus): 'success' | 'warning' | 'danger' | 'neutral' {
   if (status === 'captured') return 'success';
   if (status === 'authorized_pending_capture') return 'warning';
   if (status === 'failed' || status === 'not_authorized') return 'danger';
   return 'neutral';
 }
-
-function reconciliationLabel(status: ReconciliationStatus): string {
+function reconciliationLabel(status: OptionalStatus): string {
   if (status === 'reconciled') return 'Conciliada';
   if (status === 'attention_required') return 'Atenção';
   if (status === 'pending') return 'Pendente';
-  return 'Pendente';
+  return status || 'Não informada';
 }
-
-function reconciliationVariant(status: ReconciliationStatus): 'success' | 'warning' | 'danger' | 'neutral' {
+function reconciliationVariant(status: OptionalStatus): 'success' | 'warning' | 'danger' | 'neutral' {
   if (status === 'reconciled') return 'success';
   if (status === 'attention_required') return 'danger';
   if (status === 'pending') return 'warning';
   return 'neutral';
 }
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-}
-
-function roundMoney(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
 onMounted(loadPreview);
 </script>
 
 <style scoped>
-.split-exporter-page {
-  display: grid;
-  gap: 16px;
-}
-
-.split-exporter-filters {
-  align-items: end;
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-}
-
-.split-exporter-filters__actions,
-.split-exporter-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.split-exporter-summary-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.split-exporter-page small {
-  color: var(--color-text-secondary, #64748b);
-  display: block;
-  font-size: 12px;
-  margin-top: 3px;
-}
-
-@media (max-width: 1100px) {
-  .split-exporter-filters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .split-exporter-summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 720px) {
-  .split-exporter-filters,
-  .split-exporter-summary-grid {
-    grid-template-columns: 1fr;
-  }
-}
+.split-exporter-page { display: grid; gap: 16px; min-width: 0; }
+.split-exporter-filters { align-items: end; display: grid; gap: 12px; grid-template-columns: minmax(240px, 2fr) repeat(2, minmax(120px, 1fr)) auto; }
+.split-exporter-filters__actions, .split-exporter-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.split-exporter-page :deep(input), .split-exporter-page :deep(select), .split-exporter-page :deep(button), .split-exporter-links :deep(a) { min-height: 44px; }
+.split-exporter-page :deep(th:nth-child(-n+2)), .split-exporter-page :deep(td:nth-child(-n+2)) { min-width: 240px; }
+.split-exporter-page :deep(td:nth-child(4)) { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.split-exporter-page small { color: var(--color-text-secondary, #64748b); display: block; font-size: 12px; margin-top: 3px; }
+.split-exporter-summary, .split-exporter-availability, .split-exporter-recovery { padding: 16px; border: 1px solid var(--color-border, #e2e8f0); border-radius: 12px; }
+.split-exporter-summary summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
+.split-exporter-summary summary::before { content: '▸'; margin-right: 8px; }
+.split-exporter-summary[open] summary::before { content: '▾'; }
+.split-exporter-summary dl { display: flex; flex-wrap: wrap; gap: 24px; }
+.split-exporter-summary dt, .split-exporter-summary p, .split-exporter-availability p { color: var(--color-text-secondary, #64748b); font-size: 14px; }
+.split-exporter-summary dd { margin: 4px 0 0; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.split-exporter-availability p { margin: 0 0 8px; }
+@media (max-width: 1100px) { .split-exporter-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .split-exporter-filters > :first-child, .split-exporter-filters__actions { grid-column: 1 / -1; } }
 </style>

@@ -12,8 +12,9 @@
     </template>
 
     <template v-else-if="record">
+      <DsAlert v-if="historyWarning" variant="warning">{{ historyWarning }}</DsAlert>
       <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Triagem', patientName || 'Detalhes']" :subtitle="detailSubtitle">
-        <template #title>🧭 Triagem</template>
+        <template #title>Triagem</template>
         <template #actions>
           <DsButton variant="secondary" size="sm" tag="a" :to="`/encounters/${record.encounterId}`">
             Abrir atendimento
@@ -167,7 +168,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onBeforeUnmount, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { listTriageRecords, updateTriage, getTriageHistory } from '@/services/triage';
 import { useEntityCache } from '@/composables/useEntityCache';
@@ -193,12 +194,31 @@ const error = ref('');
 const loading = ref(true);
 const versions = ref<TriageVersionSummary[]>([]);
 const versionsLoading = ref(false);
+const historyWarning = ref('');
 const showEdit = ref(false);
 const updating = ref(false);
 const entityCache = useEntityCache();
 const patientName = ref('');
 const triagedByName = ref('');
 const versionAuthors = ref<Record<string, string>>({});
+let active = true;
+let pageGeneration = 0;
+
+function isCurrentLoad(generation: number, id: string) {
+  return active && generation === pageGeneration && String(route.params.id ?? '') === id;
+}
+
+function resetPageState() {
+  record.value = null;
+  error.value = '';
+  versions.value = [];
+  historyWarning.value = '';
+  patientName.value = '';
+  triagedByName.value = '';
+  versionAuthors.value = {};
+  showEdit.value = false;
+  versionsLoading.value = false;
+}
 
 const editForm = ref({
   priority: 'medium' as TriagePriority,
@@ -216,71 +236,116 @@ function versionAuthor(id: string): string {
   return versionAuthors.value[id] || `Usuário ${id.slice(0, 8)}...`;
 }
 
-async function loadEntityContext(currentRecord: TriageSummary, history: TriageVersionSummary[]) {
-  patientName.value = await entityCache.getPatientName(currentRecord.patientId);
+async function loadEntityContext(currentRecord: TriageSummary, history: TriageVersionSummary[], generation: number) {
+  const patient = await entityCache.getPatientName(currentRecord.patientId);
+  if (!isCurrentLoad(generation, currentRecord.id)) return;
+  patientName.value = patient;
   triagedByName.value = await entityCache.getUserName(currentRecord.triagedByUserId);
+  if (!isCurrentLoad(generation, currentRecord.id)) return;
 
   const authorIds = [...new Set(history.map((entry) => entry.changedByUserId).filter(Boolean))] as string[];
   if (authorIds.length > 0) {
     await entityCache.preloadUserNames(authorIds);
+    if (!isCurrentLoad(generation, currentRecord.id)) return;
     await Promise.all(
       authorIds.map(async (id) => {
-        versionAuthors.value[id] = await entityCache.getUserName(id);
+        const name = await entityCache.getUserName(id);
+        if (isCurrentLoad(generation, currentRecord.id)) versionAuthors.value[id] = name;
       })
     );
   }
 }
 
-onMounted(async () => {
-  const triageId = route.params.id as string;
+async function loadPage(triageId: string) {
+  const generation = ++pageGeneration;
+  resetPageState();
+  loading.value = true;
+  if (!triageId) {
+    loading.value = false;
+    return;
+  }
 
   try {
     const records = await listTriageRecords();
-    record.value = records.find((r) => r.id === triageId) || null;
-
-    if (!record.value) {
+    if (!isCurrentLoad(generation, triageId)) return;
+    const currentRecord = records.find((candidate) => candidate.id === triageId) || null;
+    if (!currentRecord) {
       error.value = 'Registro de triagem não encontrado';
-      loading.value = false;
       return;
     }
-
+    record.value = currentRecord;
     editForm.value = {
-      priority: record.value.priority,
-      destination: record.value.destination,
-      chiefComplaint: record.value.chiefComplaint,
-      initialNotes: record.value.initialNotes || ''
+      priority: currentRecord.priority,
+      destination: currentRecord.destination,
+      chiefComplaint: currentRecord.chiefComplaint,
+      initialNotes: currentRecord.initialNotes || ''
     };
 
     versionsLoading.value = true;
-    versions.value = await getTriageHistory(triageId);
-    await loadEntityContext(record.value, versions.value);
+    try {
+      const history = await getTriageHistory(triageId);
+      if (!isCurrentLoad(generation, triageId)) return;
+      versions.value = history;
+      await loadEntityContext(currentRecord, history, generation);
+    } catch {
+      if (!isCurrentLoad(generation, triageId)) return;
+      versions.value = [];
+      historyWarning.value = 'O histórico de versões está indisponível no momento.';
+      await loadEntityContext(currentRecord, [], generation);
+    } finally {
+      if (isCurrentLoad(generation, triageId)) versionsLoading.value = false;
+    }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Falha ao carregar triagem';
-    error.value = message;
+    if (isCurrentLoad(generation, triageId)) {
+      error.value = err instanceof Error ? err.message : 'Falha ao carregar triagem';
+    }
   } finally {
-    loading.value = false;
-    versionsLoading.value = false;
+    if (isCurrentLoad(generation, triageId)) loading.value = false;
   }
+}
+
+watch(
+  () => String(route.params.id ?? ''),
+  (id) => {
+    void loadPage(id);
+  },
+  { immediate: true, flush: 'sync' }
+);
+
+onBeforeUnmount(() => {
+  active = false;
+  pageGeneration += 1;
 });
 
 async function handleUpdate() {
   if (!record.value) return;
+  const triageId = record.value.id;
+  const generation = pageGeneration;
   updating.value = true;
   try {
-    await updateTriage(record.value.id, { ...editForm.value });
+    const updatedResponse = await updateTriage(triageId, { ...editForm.value });
+    if (!isCurrentLoad(generation, triageId)) return;
+    if (updatedResponse.id !== triageId) {
+      error.value = 'A triagem retornada não corresponde ao registro solicitado.';
+      return;
+    }
     const records = await listTriageRecords();
-    const updated = records.find((r) => r.id === record.value!.id) || null;
+    if (!isCurrentLoad(generation, triageId)) return;
+    const updated = records.find((r) => r.id === triageId) || null;
     record.value = updated;
     if (updated) {
       versions.value = await getTriageHistory(updated.id);
-      await loadEntityContext(updated, versions.value);
+      if (!isCurrentLoad(generation, triageId)) return;
+      await loadEntityContext(updated, versions.value, generation);
     }
     showEdit.value = false;
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Falha ao atualizar triagem';
-    error.value = message;
+    if (isCurrentLoad(generation, triageId)) {
+      const message = err instanceof Error ? err.message : 'Falha ao atualizar triagem';
+      error.value = message;
+    }
   } finally {
-    updating.value = false;
+    if (isCurrentLoad(generation, triageId)) updating.value = false;
   }
 }
 
@@ -374,6 +439,10 @@ function destinationLabel(d: string): string {
 }
 
 .triage-link {
+  display: inline-flex;
+  min-height: var(--touch-min, 44px);
+  align-items: center;
+  padding-inline: 8px;
   color: var(--color-primary-600, #2563eb);
   text-decoration: none;
   font-weight: 500;

@@ -1,43 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
+import PaymentEnablementPage from '../PaymentEnablementPage.vue';
 
 describe('PaymentEnablementPage', () => {
-  it('renders a Vetus-like payment enablement surface', async () => {
-    const PaymentEnablementPage = (await import('../PaymentEnablementPage.vue')).default;
+  it('presents unavailable readiness without inventing merchant or bank approval', () => {
     const wrapper = mount(PaymentEnablementPage);
-
     expect(wrapper.text()).toContain('Habilitar Pagamento');
-    expect(wrapper.text()).toContain('Financeiro');
-    expect(wrapper.text()).toContain('Maquininha de Cartão');
-    expect(wrapper.text()).toContain('Centro Veterinário Guarapiranga');
-    expect(wrapper.text()).toContain('CVG Pay');
-    expect(wrapper.text()).toContain('Stone');
-    expect(wrapper.text()).toContain('Credenciamento');
-    expect(wrapper.text()).toContain('Domicílio bancário');
-    expect(wrapper.text()).toContain('Habilitação bloqueada');
-    expect(wrapper.text()).toContain('Maquininhas');
-    expect(wrapper.text()).toContain('Configuração do Split');
-    expect(wrapper.text()).toContain('Pagamento Dashboard');
+    expect(wrapper.text()).toContain('Status de credenciamento indisponível');
+    expect(wrapper.text()).toContain('Ainda não é possível consultar ou alterar');
+    expect(wrapper.text()).not.toContain('Credenciamento aprovado');
+    expect(wrapper.text()).not.toContain('Domicílio bancário validado');
+    expect(wrapper.text()).not.toContain('MID-CVG-001');
+    expect(wrapper.text()).not.toContain('Habilitada');
+    expect(wrapper.text()).not.toContain('Nenhuma habilitação');
   });
 
-  it('filters enablement rows by provider and status', async () => {
-    const PaymentEnablementPage = (await import('../PaymentEnablementPage.vue')).default;
+  it('retains all related workflow destinations', () => {
     const wrapper = mount(PaymentEnablementPage);
-
-    await wrapper.find('#payment-enablement-provider').setValue('stone');
-    await wrapper.find('#payment-enablement-status').setValue('blocked');
-
-    expect(wrapper.text()).toContain('Stone');
-    expect(wrapper.text()).toContain('Bloqueada');
-    expect(wrapper.text()).not.toContain('CVG-PAY-001');
-  });
-
-  it('shows empty state wording when filters hide all rows', async () => {
-    const PaymentEnablementPage = (await import('../PaymentEnablementPage.vue')).default;
-    const wrapper = mount(PaymentEnablementPage);
-
-    await wrapper.find('#payment-enablement-search').setValue('sem resultado');
-
-    expect(wrapper.text()).toContain('Nenhuma habilitação de pagamento encontrada');
+    const links = wrapper.findAll('a');
+    expect(links.map(link => link.attributes('href'))).toEqual([
+      '/finance/card-machines', '/finance/split', '/finance/payments-dashboard'
+    ]);
+    expect(links.map(link => link.text())).toEqual(['Maquininhas', 'Configuração do Split', 'Pagamento Dashboard']);
   });
 });

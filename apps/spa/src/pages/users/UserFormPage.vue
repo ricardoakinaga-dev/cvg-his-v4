@@ -8,7 +8,7 @@
         <span class="muted">Cadastro de acesso, perfil e credenciais com governança operacional.</span>
       </template>
       <template #actions>
-        <DsButton variant="secondary" tag="a" href="/users">Cancelar</DsButton>
+        <DsButton variant="secondary" tag="a" to="/users">Cancelar</DsButton>
       </template>
     </AppPageHeader>
 
@@ -126,7 +126,7 @@
           <DsButton type="submit" variant="primary" :disabled="submitting">
             {{ submitting ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Salvar Usuário' }}
           </DsButton>
-          <DsButton variant="secondary" tag="a" href="/users">Cancelar</DsButton>
+          <DsButton variant="secondary" tag="a" to="/users">Cancelar</DsButton>
         </div>
       </form>
 

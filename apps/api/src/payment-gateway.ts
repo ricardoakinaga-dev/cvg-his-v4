@@ -4,6 +4,98 @@ import type { AccountId } from '@cvg-his-v2/shared-types';
 import type { PixTransactionRepository } from './pix-transaction-repository.js';
 import type { CardTransactionRepository } from './card-transaction-repository.js';
 
+/** Pagar.me Core v5: a paid charge confirms full card capture only when its
+ * identity, supplied amounts, method and transaction details are consistent.
+ * https://docs.pagar.me/reference/cobran%C3%A7as-1
+ * https://docs.pagar.me/reference/cart%C3%A3o-de-cr%C3%A9dito-1
+ */
+interface CardChargeAuthority {
+  amount: number;
+  accountId: string;
+  chargeId?: string;
+  orderId?: string;
+  orderCode?: string;
+  billingRecordId?: string;
+  order?: Record<string, any>;
+}
+
+/** Both creation and capture use this authoritative classifier. An outer order can establish
+ * authority, but never overrides contradictory charge/transaction evidence. */
+function classifyCardCharge(charge: any, expected: CardChargeAuthority): CardPaymentIntentSummary['status'] {
+  const object = (value: any): value is Record<string, any> => value !== null && typeof value === 'object' && !Array.isArray(value);
+  const nonempty = (value: any) => typeof value === 'string' && value.trim().length > 0;
+  const cents = Math.round(expected.amount * 100);
+  if (!object(charge) || !nonempty(charge.id) || (expected.chargeId && charge.id !== expected.chargeId) ||
+      charge.amount !== cents || charge.payment_method !== 'credit_card' || !object(charge.last_transaction)) return 'pending';
+  const transaction = charge.last_transaction;
+  const captured = charge.status === 'paid' && transaction.status === 'captured' && transaction.success === true;
+  const authorized = ['pending', 'authorized_pending_capture', 'waiting_capture'].includes(charge.status) &&
+    ['authorized_pending_capture', 'waiting_capture'].includes(transaction.status) && transaction.success === true;
+  const declined = ['failed', 'not_authorized'].includes(charge.status) &&
+    ['failed', 'not_authorized'].includes(transaction.status) && transaction.success === false;
+  if (!captured && !authorized && !declined) return 'pending';
+  const result: CardPaymentIntentSummary['status'] = captured ? 'captured' : authorized ? 'authorized_pending_capture'
+    : transaction.status === 'not_authorized' ? 'not_authorized' : 'failed';
+  const moneyMoved = captured ? cents : 0;
+  const chargeStatuses = captured ? ['paid'] : authorized ? ['pending', 'authorized_pending_capture', 'waiting_capture'] : ['failed', 'not_authorized'];
+  const orderStatuses = captured ? ['paid'] : authorized ? ['pending', 'authorized_pending_capture', 'waiting_capture'] : ['pending', 'failed', 'canceled', 'not_authorized'];
+  const orderId = expected.orderId ?? expected.order?.id;
+  const orderCode = expected.orderCode ?? expected.order?.code;
+  let accountConfirmed = false;
+  const metadata = (value: any) => {
+    if (value === undefined) return true;
+    if (!object(value)) return false;
+    if (value.account_id !== undefined) {
+      if (value.account_id !== expected.accountId) return false;
+      accountConfirmed = true;
+    }
+    return value.billing_record_id === undefined || value.billing_record_id === expected.billingRecordId;
+  };
+  const evidence = (value: Record<string, any>) => {
+    if (value.account_id !== undefined) {
+      if (value.account_id !== expected.accountId) return false;
+      accountConfirmed = true;
+    }
+    return metadata(value.metadata) &&
+      (value.amount === undefined || value.amount === cents) &&
+      ['paid_amount', 'captured_amount'].every(key => value[key] === undefined || value[key] === moneyMoved) &&
+      (value.transaction_type === undefined || value.transaction_type === 'credit_card') &&
+      (value.currency === undefined || value.currency === 'BRL') &&
+      (value.payment_method === undefined || value.payment_method === 'credit_card') &&
+      (value.order_id === undefined || (orderId !== undefined && value.order_id === orderId)) &&
+      (value.charge_id === undefined || value.charge_id === charge.id);
+  };
+  const nestedEvidence = (value: any, kind: 'order' | 'charge', depth = 0): boolean => {
+    if (depth > 4 || !object(value) || !evidence(value)) return false;
+    if (kind === 'order' && (!nonempty(value.id) || value.id !== orderId ||
+        (value.code !== undefined && (orderCode === undefined || value.code !== orderCode)))) return false;
+    if (kind === 'charge' && value.id !== charge.id) return false;
+    if (value.status !== undefined && !(kind === 'order' ? orderStatuses : chargeStatuses).includes(value.status)) return false;
+    if (value.charges !== undefined && (!Array.isArray(value.charges) || value.charges.length !== 1 ||
+        !nestedEvidence(value.charges[0], 'charge', depth + 1))) return false;
+    if (value.last_transaction !== undefined && (!object(value.last_transaction) ||
+        value.last_transaction.status !== transaction.status || value.last_transaction.success !== transaction.success ||
+        !evidence(value.last_transaction) ||
+        (value.last_transaction.order !== undefined && !nestedEvidence(value.last_transaction.order, 'order', depth + 1)) ||
+        (value.last_transaction.charge !== undefined && !nestedEvidence(value.last_transaction.charge, 'charge', depth + 1)))) return false;
+    return (value.order === undefined || nestedEvidence(value.order, 'order', depth + 1)) &&
+      (value.charge === undefined || nestedEvidence(value.charge, 'charge', depth + 1));
+  };
+  const orderEvidence = (order: any) => nestedEvidence(order, 'order');
+  if (!evidence(charge) || !evidence(charge.last_transaction) ||
+      (charge.last_transaction.transaction_type !== undefined && charge.last_transaction.transaction_type !== 'credit_card')) return 'pending';
+  for (const value of [charge, charge.last_transaction]) {
+    if (value.order !== undefined && !orderEvidence(value.order)) return 'pending';
+    if (value.charge !== undefined && !nestedEvidence(value.charge, 'charge')) return 'pending';
+  }
+  if (expected.order) {
+    if (!orderEvidence(expected.order) || expected.order.amount !== cents || expected.order.metadata?.account_id !== expected.accountId ||
+        (expected.orderCode !== undefined && expected.order.code !== expected.orderCode) ||
+        (expected.billingRecordId !== undefined && expected.order.metadata?.billing_record_id !== expected.billingRecordId)) return 'pending';
+  } else if (expected.orderId && charge.order_id !== expected.orderId && charge.order?.id !== expected.orderId) return 'pending';
+  return accountConfirmed ? result : 'pending';
+}
+
 export interface PixPaymentIntentInput {
   readonly accountId: string;
   readonly billingRecordId?: string;
@@ -95,7 +187,7 @@ export interface CardPaymentIntentSummary {
 export interface CardPaymentCaptureResult {
   readonly transactionId: string;
   readonly provider: string;
-  readonly status: 'captured' | 'failed';
+  readonly status: 'captured' | 'failed' | 'pending';
   readonly providerOrderId?: string;
   readonly providerChargeId?: string;
   readonly providerAuthorizationCode?: string;
@@ -111,12 +203,12 @@ export interface PaymentGateway {
     readonly cards: string;
   };
   createPixIntent(input: PixPaymentIntentInput): Promise<PixPaymentIntentSummary>;
-  createCardIntent?(input: CardPaymentIntentInput): Promise<CardPaymentIntentSummary>;
+  createCardIntent?(input: CardPaymentIntentInput, options?: { readonly deferPersistence: boolean; readonly creationId?: string; readonly reconcileOnly?: boolean }): Promise<CardPaymentIntentSummary>;
   findCardIntent(
     accountId: string,
     transactionId: string
   ): Promise<CardPaymentIntentSummary | null>;
-  captureCardIntent?(transactionId: string): Promise<CardPaymentCaptureResult>;
+  captureCardIntent?(transactionId: string, options?: { readonly allowProviderCapture?: boolean; readonly claimProviderCapture?: () => Promise<boolean>; readonly beginFinalization?: () => Promise<void> }): Promise<CardPaymentCaptureResult>;
   confirmPayment?(transactionId: string): Promise<PixPaymentConfirmResult | null>;
 }
 
@@ -161,8 +253,9 @@ export class LocalPixPaymentGateway implements PaymentGateway {
     return intent;
   }
 
-  async createCardIntent(input: CardPaymentIntentInput): Promise<CardPaymentIntentSummary> {
-    const id = createCorrelationId('card');
+  async createCardIntent(input: CardPaymentIntentInput, options?: { readonly deferPersistence: boolean; readonly creationId?: string; readonly reconcileOnly?: boolean }): Promise<CardPaymentIntentSummary> {
+    if (options?.reconcileOnly) throw new Error('Local creation outcome unavailable');
+    const id = options?.creationId ?? createCorrelationId('card');
     const createdAt = nowIso();
     const last4 = input.last4.replace(/\D/g, '').slice(-4);
     const intent: CardPaymentIntentSummary = {
@@ -202,7 +295,7 @@ export class LocalPixPaymentGateway implements PaymentGateway {
     return { ...intent, card: { ...intent.card } };
   }
 
-  async captureCardIntent(transactionId: string): Promise<CardPaymentCaptureResult> {
+  async captureCardIntent(transactionId: string, options?: { readonly claimProviderCapture?: () => Promise<boolean>; readonly beginFinalization?: () => Promise<void> }): Promise<CardPaymentCaptureResult> {
     const existing = this.#cardIntents.get(transactionId);
     if (!existing) {
       return {
@@ -213,6 +306,9 @@ export class LocalPixPaymentGateway implements PaymentGateway {
         failureReason: 'Intent not found'
       };
     }
+
+    await options?.claimProviderCapture?.();
+    await options?.beginFinalization?.();
 
     const updated: CardPaymentIntentSummary = {
       ...existing,
@@ -393,7 +489,28 @@ export class PagarMePaymentGatewayAdapter implements PaymentGateway {
     return { ...intent };
   }
 
-  async createCardIntent(input: CardPaymentIntentInput): Promise<CardPaymentIntentSummary> {
+  async createCardIntent(input: CardPaymentIntentInput, options?: { readonly deferPersistence: boolean; readonly creationId?: string; readonly reconcileOnly?: boolean }): Promise<CardPaymentIntentSummary> {
+    // Orders can be read by merchant code. Never re-POST an ambiguous creation:
+    // provider idempotency expires (24h production, 5min sandbox).
+    // https://docs.pagar.me/docs/o-que-%C3%A9
+    // https://docs.pagar.me/reference/listar-pedidos
+    if (options?.reconcileOnly) {
+      if (!options.creationId) throw new Error('Creation identity required');
+      const response = await fetch(`${this.#baseUrl}/core/v5/orders?code=${encodeURIComponent(options.creationId)}&size=30`, {
+        headers: { authorization: `Basic ${Buffer.from(`${this.#apiKey}:`).toString('base64')}` }
+      });
+      if (!response.ok) throw new Error('Card creation reconciliation unavailable');
+      const listing = await response.json() as Record<string, any>;
+      if (!Array.isArray(listing.data) || listing.data.length !== 1 || listing.paging?.next) throw new Error('Card creation reconciliation is ambiguous');
+      const order = listing.data[0];
+      if (order.code !== options.creationId || order.metadata?.account_id !== input.accountId ||
+          (input.billingRecordId !== undefined && order.metadata?.billing_record_id !== input.billingRecordId) ||
+          order.amount !== Math.round(input.amount * 100) || !Array.isArray(order.charges) || order.charges.length !== 1 ||
+          order.charges[0]?.amount !== Math.round(input.amount * 100) || order.charges[0]?.payment_method !== 'credit_card') {
+        throw new Error('Card creation reconciliation identity mismatch');
+      }
+      return this.#readCardCreation(order, input, options);
+    }
     if (!input.cardToken && !input.cardId) {
       throw new Error('PagarMe card payments require cardToken or cardId');
     }
@@ -405,10 +522,11 @@ export class PagarMePaymentGatewayAdapter implements PaymentGateway {
       method: 'POST',
       headers: {
         authorization: `Basic ${Buffer.from(`${this.#apiKey}:`).toString('base64')}`,
-        'content-type': 'application/json'
+        'content-type': 'application/json',
+        ...(options?.creationId ? { 'Idempotency-key': options.creationId } : {})
       },
       body: JSON.stringify({
-        code: input.billingRecordId ?? createCorrelationId('order'),
+        code: options?.creationId ?? input.billingRecordId ?? createCorrelationId('order'),
         closed: true,
         items: [
           {
@@ -431,7 +549,8 @@ export class PagarMePaymentGatewayAdapter implements PaymentGateway {
             credit_card: {
               installments: Math.max(1, input.installments ?? 1),
               statement_descriptor: input.description.slice(0, 22),
-              capture: input.capture === true,
+              // Core v5 defaults to auth_and_capture; send auth_only explicitly.
+              operation_type: input.capture === true ? 'auth_and_capture' : 'auth_only',
               card_id: input.cardId,
               card_token: input.cardToken,
               billing_address: input.billingAddress
@@ -460,22 +579,24 @@ export class PagarMePaymentGatewayAdapter implements PaymentGateway {
     }
 
     const payload = (await response.json()) as Record<string, any>;
-    const charge = Array.isArray(payload.charges) ? payload.charges[0] : undefined;
+    return this.#readCardCreation(payload, input, options);
+  }
+
+  async #readCardCreation(payload: Record<string, any>, input: CardPaymentIntentInput, options?: { readonly deferPersistence: boolean; readonly creationId?: string }): Promise<CardPaymentIntentSummary> {
+    if ((options?.creationId && payload.code !== undefined && payload.code !== options.creationId) ||
+        (payload.metadata?.account_id !== undefined && payload.metadata.account_id !== input.accountId) ||
+        (payload.metadata?.billing_record_id !== undefined && payload.metadata.billing_record_id !== input.billingRecordId)) {
+      throw new Error('Card creation provider identity mismatch');
+    }
+    const charge = Array.isArray(payload?.charges) && payload.charges.length === 1 ? payload.charges[0] : undefined;
     const lastTransaction = charge?.last_transaction ?? {};
-    const rawStatus = String(charge?.status ?? payload.status ?? 'pending');
-    const normalizedStatus =
-      rawStatus === 'authorized_pending_capture' || rawStatus === 'waiting_capture'
-        ? 'authorized_pending_capture'
-        : rawStatus === 'captured' || rawStatus === 'paid'
-          ? 'captured'
-          : rawStatus === 'not_authorized'
-            ? 'not_authorized'
-            : rawStatus === 'failed'
-              ? 'failed'
-              : 'pending';
+    const normalizedStatus = classifyCardCharge(charge, {
+      amount: input.amount, accountId: input.accountId, billingRecordId: input.billingRecordId,
+      orderId: payload.id, orderCode: options?.creationId, order: payload
+    });
 
     const intent: CardPaymentIntentSummary = {
-      id: String(charge?.code ?? payload.code ?? createCorrelationId('card')),
+      id: options?.creationId ?? String(charge?.code ?? payload.code ?? createCorrelationId('card')),
       provider: 'pagarme-card',
       accountId: input.accountId,
       billingRecordId: input.billingRecordId,
@@ -500,7 +621,7 @@ export class PagarMePaymentGatewayAdapter implements PaymentGateway {
         : undefined
     };
     this.#cardIntents.set(intent.id, intent);
-    await this.#cardTransactions?.create({
+    if (!options?.deferPersistence) await this.#cardTransactions?.create({
       transactionId: intent.id,
       provider: 'pagarme-card',
       accountId: intent.accountId,
@@ -544,39 +665,53 @@ export class PagarMePaymentGatewayAdapter implements PaymentGateway {
     return { ...intent, card: { ...intent.card } };
   }
 
-  async captureCardIntent(transactionId: string): Promise<CardPaymentCaptureResult> {
+  async captureCardIntent(transactionId: string, options?: { readonly allowProviderCapture?: boolean; readonly claimProviderCapture?: () => Promise<boolean>; readonly beginFinalization?: () => Promise<void> }): Promise<CardPaymentCaptureResult> {
     const existing = await this.#findCardIntent(transactionId);
-    const providerChargeId = existing?.providerChargeId ?? transactionId;
-    const response = await fetch(
-      `${this.#baseUrl}/core/v5/charges/${encodeURIComponent(providerChargeId)}/capture`,
-      {
-        method: 'POST',
-        headers: {
-          authorization: `Basic ${Buffer.from(`${this.#apiKey}:`).toString('base64')}`,
-          'content-type': 'application/json'
-        }
-      }
-    );
-
-    if (!response.ok) {
-      await this.#cardTransactions?.updateStatus({
-        transactionId,
-        status: 'failed',
-        updatedAt: nowIso(),
-        lastProviderSyncAt: nowIso(),
-        providerChargeId,
-        failureReason: `PagarMe capture failed with status ${response.status}`
-      });
+    if (!existing?.providerChargeId || (existing.status === 'captured' && options?.allowProviderCapture !== false)) {
       return {
         transactionId,
         provider: 'pagarme-card',
         status: 'failed',
         capturedAt: nowIso(),
-        failureReason: `PagarMe capture failed with status ${response.status}`
+        failureReason: existing?.status === 'captured' ? 'Intent already captured' : 'Intent not found'
+      };
+    }
+    const providerChargeId = existing.providerChargeId;
+    // Prepare the URL and credentials before committing dispatch knowledge.
+    const chargeUrl = new URL(`${this.#baseUrl}/core/v5/charges/${encodeURIComponent(providerChargeId)}`).toString();
+    const requestOptions = {
+      headers: { authorization: `Basic ${Buffer.from(`${this.#apiKey}:`).toString('base64')}`, 'content-type': 'application/json' }
+    };
+    const allowProviderCapture = options?.claimProviderCapture
+      ? await options.claimProviderCapture()
+      : options?.allowProviderCapture !== false;
+    const response = await fetch(`${chargeUrl}${allowProviderCapture ? '/capture' : ''}`, {
+      ...requestOptions, signal: AbortSignal.timeout(15_000), method: allowProviderCapture ? 'POST' : 'GET'
+    });
+
+    if (!response.ok) {
+      return {
+        transactionId,
+        provider: 'pagarme-card',
+        status: 'pending',
+        capturedAt: nowIso(),
+        failureReason: 'Capture outcome unknown; reconcile the existing provider charge before further action'
       };
     }
 
     const payload = (await response.json()) as Record<string, any>;
+    if (classifyCardCharge(payload, { amount: existing.amount, accountId: existing.accountId,
+      chargeId: providerChargeId, orderId: existing.providerOrderId, orderCode: existing.id, billingRecordId: existing.billingRecordId }) !== 'captured') {
+      return {
+        transactionId,
+        provider: 'pagarme-card',
+        status: 'pending',
+        providerChargeId,
+        billingRecordId: existing.billingRecordId,
+        capturedAt: nowIso(),
+        failureReason: 'PagarMe capture not confirmed by a consistent paid charge'
+      };
+    }
     const lastTransaction = payload.last_transaction ?? {};
     const result: CardPaymentCaptureResult = {
       transactionId,
@@ -592,6 +727,7 @@ export class PagarMePaymentGatewayAdapter implements PaymentGateway {
       billingRecordId: existing?.billingRecordId,
       capturedAt: String(payload.updated_at ?? nowIso())
     };
+    await options?.beginFinalization?.();
     const captured: CardPaymentIntentSummary | null = existing
       ? {
           ...existing,
@@ -620,7 +756,7 @@ export class PagarMePaymentGatewayAdapter implements PaymentGateway {
 
   async #findCardIntent(transactionId: string): Promise<CardPaymentIntentSummary | null> {
     const inMemory = this.#cardIntents.get(transactionId);
-    if (inMemory) return { ...inMemory, card: { ...inMemory.card } };
+    if (!this.#cardTransactions && inMemory) return { ...inMemory, card: { ...inMemory.card } };
 
     const persisted = await this.#cardTransactions?.findByTransactionId(transactionId);
     if (!persisted) return null;

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
+import { reactive } from 'vue';
 
 const mockOwner = {
   id: 'owner-1',
@@ -40,6 +41,16 @@ const mockPatient = {
   status: 'active' as const,
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-02T00:00:00Z'
+};
+
+const mockPatientLuna = {
+  ...mockPatient,
+  id: 'pat-2',
+  name: 'Luna',
+  species: 'feline' as const,
+  breed: 'Europeu',
+  primaryOwnerId: 'owner-2',
+  baseWeightKg: 4.2
 };
 
 const mockEncounters = [
@@ -474,6 +485,17 @@ const mockAttachmentList = vi.fn().mockImplementation((linkedEntityType: string,
   )
 );
 const mockGetOwnerName = vi.fn().mockResolvedValue('João Silva');
+const mockRoute = reactive({ params: { id: 'pat-1' } });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: Error) => void;
+  const promise = new Promise<T>((yes, no) => {
+    resolve = yes;
+    reject = no;
+  });
+  return { promise, resolve, reject };
+}
 
 vi.mock('@/services/patient', () => ({
   patientService: {
@@ -574,14 +596,13 @@ vi.mock('vue-router', () => ({
     props: ['to'],
     template: '<a :href="to"><slot /></a>'
   },
-  useRoute: () => ({
-    params: { id: 'pat-1' }
-  })
+  useRoute: () => mockRoute
 }));
 
 describe('PatientDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRoute.params.id = 'pat-1';
     mockGetPatientById.mockResolvedValue(mockPatient);
     mockGetPatientSummary.mockResolvedValue({
       patient: mockPatient,
@@ -654,8 +675,17 @@ describe('PatientDetailPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Rex');
-    expect(wrapper.text()).toContain('Detalhes do Animal');
+    expect(wrapper.text()).toContain('Detalhes do Paciente');
     expect(wrapper.text()).toContain('João Silva');
+    expect(wrapper.get('[data-testid="patient-header-context"]').text()).toContain('Rex');
+    expect(wrapper.get('[data-testid="patient-header-context"]').text()).toContain('30.5 kg');
+    expect(wrapper.get('[data-testid="patient-header-context"]').text()).toContain('Dipirona');
+    expect(wrapper.get('[data-testid="patient-header-context"]').text()).toContain('Doenca renal cronica');
+    expect(wrapper.get('[data-testid="patient-package-offer"]').text()).toContain('Oferta de pacote');
+    expect(wrapper.get('[data-testid="patient-package-offer"]').text()).toContain(
+      'Pacote Recuperação Assistida'
+    );
+    expect(wrapper.find('[data-testid="patient-package-quote-cta"]').exists()).toBe(true);
     expect(wrapper.text()).toContain('Abrir comanda do atendimento');
     expect(wrapper.find('a[href="/billing/enc-1"]').exists()).toBe(true);
     expect(wrapper.text()).toContain('Cockpit 360 do paciente');
@@ -682,6 +712,7 @@ describe('PatientDetailPage', () => {
     expect(wrapper.text()).toContain('Laboratório · Radiografia');
     expect(wrapper.text()).toContain('Preventivo · Vacina V10 - reforço anual');
     expect(wrapper.text()).toContain('Mensagem · Lembrete de retorno');
+    expect(wrapper.text()).toContain('Mensagem · Oferta de pacote');
     expect(wrapper.text()).toContain('Ver cadastro do cliente');
     expect(wrapper.text()).toContain('Editar Cadastro');
     expect(wrapper.text()).toContain('Doença Crônica');
@@ -713,6 +744,20 @@ describe('PatientDetailPage', () => {
     expect(wrapper.text()).not.toContain('Tutor relata claudicação após passeio.');
     expect(wrapper.text()).toContain('1 próximo(s) · 1 histórico · 1 cancelado(s)');
     expect(wrapper.text()).toContain('Próximo: Vacina anual');
+
+    await wrapper.get('[data-testid="patient-package-quote-cta"]').trigger('click');
+    await flushPromises();
+    expect(mockQuoteCreate).toHaveBeenCalledWith({
+      ownerId: 'owner-1',
+      notes: expect.stringContaining('Pacote Recuperação Assistida')
+    });
+    expect(mockQuoteCreate.mock.calls[0]?.[0]?.notes).toEqual(
+      expect.stringContaining('patientId=pat-1;')
+    );
+    expect(mockQuoteCreate.mock.calls[0]?.[0]?.notes).toEqual(
+      expect.stringContaining('packageId=recovery-care;')
+    );
+    expect(wrapper.text()).toContain('Orçamento Q-101 criado para Rex.');
 
     const expandCard = async (label: string) => {
       const trigger = wrapper
@@ -818,6 +863,14 @@ describe('PatientDetailPage', () => {
 
     await flushPromises();
     expect(wrapper.text()).toContain('Falha ao carregar paciente');
+    expect(wrapper.text()).toContain('Paciente solicitado: pat-1');
+    expect(wrapper.get('.patient-error-state').attributes('aria-labelledby')).toBe(
+      'patient-error-title'
+    );
+    expect(wrapper.findAll('button').some((button) => button.text().includes('Tentar novamente'))).toBe(
+      true
+    );
+    expect(wrapper.find('a[href="/patients"]').exists()).toBe(true);
   });
 
   it('keeps patient accordions labelled and navigable by keyboard', async () => {
@@ -955,5 +1008,61 @@ describe('PatientDetailPage', () => {
     await expandCard('Imagens');
     expect(wrapper.text()).toContain('Nenhuma imagem anexada ao prontuário de Rex.');
     expect(hasLink('/encounters/new?patientId=pat-1&ownerId=owner-1', 'Abrir atendimento para anexos')).toBe(true);
+  });
+
+  it('ignores a late previous-patient response after the route changes', async () => {
+    const PatientDetailPage = (await import('../PatientDetailPage.vue')).default;
+    const wrapper = mount(PatientDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a :href="to"><slot /></a>',
+            props: ['to']
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+    const pending = deferred<typeof mockPatient>();
+    mockGetPatientById.mockImplementationOnce(() => pending.promise);
+    mockGetPatientById.mockResolvedValue(mockPatientLuna);
+    void (wrapper.vm as unknown as { loadPage: () => Promise<void> }).loadPage();
+    mockRoute.params.id = 'pat-2';
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Luna');
+    pending.resolve(mockPatient);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Luna');
+    expect(wrapper.text()).not.toContain('ID PAT-1');
+    expect(wrapper.text()).not.toContain('Golden Retriever');
+    wrapper.unmount();
+  });
+
+  it('surfaces partial module failures without hiding the known patient', async () => {
+    mockLaboratoryListOrders.mockRejectedValueOnce(new Error('Exames indisponíveis'));
+
+    const PatientDetailPage = (await import('../PatientDetailPage.vue')).default;
+    const wrapper = mount(PatientDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a :href="to"><slot /></a>',
+            props: ['to']
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Rex');
+    expect(wrapper.get('[data-testid="patient-data-warning"]').text()).toContain(
+      'pedidos de exame'
+    );
+    expect(wrapper.text()).toContain('Os dados exibidos podem estar incompletos');
+    wrapper.unmount();
   });
 });

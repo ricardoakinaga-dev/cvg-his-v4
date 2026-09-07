@@ -8,6 +8,8 @@ const rootDir = resolve(import.meta.dirname, '..');
 const resultsPath = resolve(rootDir, 'playwright-report/usability/results.json');
 const auditPath = resolve(rootDir, 'tmp/master-usability-audit.json');
 const discoveryPath = resolve(rootDir, 'tmp/playwright-discovery.txt');
+const inventoryPath = resolve(rootDir, 'tmp/usability-test-inventory.json');
+const discoveryJsonPath = resolve(rootDir, 'tmp/playwright-discovery.json');
 const includeMasterAudit = process.env.E2E_INCLUDE_MASTER_AUDIT !== '0';
 
 function gitOutput(...args) {
@@ -118,8 +120,13 @@ const metadata = {
     : null
 };
 
-await mkdir(destination, { recursive: true });
-for (const source of [resultsPath, ...(includeMasterAudit ? [auditPath] : []), discoveryPath]) {
+await mkdir(resolve(rootDir, 'artifacts/playwright', sha), { recursive: true });
+await mkdir(destination); // A run ID is immutable; never overwrite an existing archive.
+for (const source of [
+  resultsPath,
+  ...(includeMasterAudit ? [auditPath, inventoryPath, discoveryJsonPath] : []),
+  discoveryPath
+]) {
   try {
     await cp(source, resolve(destination, basename(source)));
   } catch {
@@ -137,6 +144,29 @@ for (const [source, name] of [
   }
 }
 
+let validationFailure;
+if (includeMasterAudit) {
+  try {
+    const output = execFileSync(
+      process.execPath,
+      [
+        resolve(rootDir, 'scripts/validate-usability-playwright-evidence.mjs'),
+        resolve(destination, 'results.json'),
+        resolve(destination, 'master-usability-audit.json'),
+        resolve(destination, 'usability-test-inventory.json'),
+        resolve(destination, 'playwright-discovery.json')
+      ],
+      { cwd: rootDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
+    );
+    metadata.inventoryValidation = { valid: true, output: output.trim() };
+  } catch (error) {
+    validationFailure = error.stderr?.toString().trim() || error.message;
+    metadata.inventoryValidation = { valid: false, error: validationFailure };
+  }
+} else {
+  metadata.inventoryValidation = { valid: false, scope: 'targeted-only' };
+}
+
 await Promise.all([
   writeFile(resolve(destination, 'metadata.json'), `${JSON.stringify(metadata, null, 2)}\n`),
   writeFile(
@@ -146,3 +176,8 @@ await Promise.all([
 ]);
 
 console.log(`Playwright evidence archived at ${destination}`);
+
+if (validationFailure) {
+  console.error(validationFailure);
+  process.exitCode = 1;
+}

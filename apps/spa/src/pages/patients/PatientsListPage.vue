@@ -1,28 +1,12 @@
 <template>
   <div class="patients-list-page">
     <AppPageHeader
-      title="Animais"
-      :breadcrumbs="['Atendimento', 'Cadastros', 'Animais']"
+      title="Pacientes"
+      :breadcrumbs="['Atendimento', 'Cadastros', 'Pacientes']"
       subtitle="Recepção: localize o paciente, confirme o tutor e decida entre agenda, esteira ou atendimento."
       :secondary-actions="headerSecondaryActions"
       :primary-action="headerPrimaryAction"
     />
-
-    <section class="summary-grid">
-      <DsCard
-        v-for="card in summaryCards"
-        :key="card.label"
-        variant="elevated"
-        class="summary-card"
-      >
-        <div class="summary-card__icon">{{ card.icon }}</div>
-        <div class="summary-card__body">
-          <span class="summary-card__value">{{ card.value }}</span>
-          <span class="summary-card__label">{{ card.label }}</span>
-          <span class="summary-card__hint">{{ card.hint }}</span>
-        </div>
-      </DsCard>
-    </section>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
@@ -77,23 +61,42 @@
       </div>
     </form>
 
-    <section class="reception-decision-strip" aria-label="Decisão inicial por paciente">
-      <article class="reception-decision-card">
-        <span class="reception-decision-card__eyebrow">1. Paciente</span>
-        <strong>Confirmar cadastro</strong>
-        <p>Valide identificação, tutor e dados básicos antes de encaminhar.</p>
-      </article>
-      <article class="reception-decision-card">
-        <span class="reception-decision-card__eyebrow">2. Agenda</span>
-        <strong>Programar atendimento</strong>
-        <p>Use agendamento quando o fluxo não for imediato.</p>
-      </article>
-      <article class="reception-decision-card">
-        <span class="reception-decision-card__eyebrow">3. Esteira</span>
-        <strong>Acompanhar check-in</strong>
-        <p>Direcione para Queue quando a chegada precisar de ação operacional.</p>
-      </article>
+    <section class="summary-grid">
+      <DsCard
+        v-for="card in summaryCards"
+        :key="card.label"
+        variant="elevated"
+        class="summary-card"
+      >
+        <div class="summary-card__icon">{{ card.icon }}</div>
+        <div class="summary-card__body">
+          <span class="summary-card__value">{{ card.value }}</span>
+          <span class="summary-card__label">{{ card.label }}</span>
+          <span class="summary-card__hint">{{ card.hint }}</span>
+        </div>
+      </DsCard>
     </section>
+
+    <details class="reception-guide">
+      <summary>Orientações de recepção</summary>
+      <section class="reception-decision-strip" aria-label="Decisão inicial por paciente">
+        <article class="reception-decision-card">
+          <span class="reception-decision-card__eyebrow">1. Paciente</span>
+          <strong>Confirmar cadastro</strong>
+          <p>Valide identificação, tutor e dados básicos antes de encaminhar.</p>
+        </article>
+        <article class="reception-decision-card">
+          <span class="reception-decision-card__eyebrow">2. Agenda</span>
+          <strong>Programar atendimento</strong>
+          <p>Use agendamento quando o fluxo não for imediato.</p>
+        </article>
+        <article class="reception-decision-card">
+          <span class="reception-decision-card__eyebrow">3. Esteira</span>
+          <strong>Acompanhar check-in</strong>
+          <p>Direcione para Queue quando a chegada precisar de ação operacional.</p>
+        </article>
+      </section>
+    </details>
 
     <section v-if="highlightedPatient" class="patients-list-page__featured">
       <DsCard title="Paciente em destaque" variant="elevated">
@@ -494,11 +497,24 @@ onMounted(load);
   gap: 12px;
 }
 
-.summary-card {
+.summary-card :deep(.ds-card__body) {
   display: flex;
-  gap: 14px;
+  gap: 12px;
   align-items: center;
-  padding: 18px;
+  padding: 16px;
+}
+
+.reception-guide > summary {
+  min-height: 44px;
+  align-content: center;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.reception-guide > summary:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .summary-card__icon {
@@ -770,6 +786,8 @@ onMounted(load);
 }
 
 @media (max-width: 960px) {
+  .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
   .reception-decision-strip {
     grid-template-columns: 1fr;
   }
@@ -779,7 +797,49 @@ onMounted(load);
   }
 
   .featured-patient__metrics {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+}
+@media (max-width: 720px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .summary-card :deep(.ds-card__body) {
+    padding: 12px;
+    align-items: start;
+    gap: 8px;
+  }
+
+  .summary-card__icon {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    font-size: 9px;
+  }
+
+  .summary-card__value { font-size: 22px; }
+  .summary-card__label { font-size: 12px; }
+  .summary-card__hint { font-size: 11px; line-height: 1.35; }
+  .summary-card__body { min-width: 0; }
+  .search-shell { padding: 8px; }
+  .search-bar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .search-bar > :first-child { grid-column: 1 / -1; }
+  .search-bar :deep(.ds-btn) { width: 100%; }
+  .search-bar :deep(.form-field) { flex-basis: 100%; min-width: 0; }
+  .patients-grid { grid-template-columns: minmax(0, 1fr); }
+  .patient-card__id { overflow-wrap: anywhere; max-width: 40%; }
+  .fact-row > span { min-width: 0; overflow-wrap: anywhere; }
+  .metric-chip { padding: 10px; }
+  .metric-chip strong { font-size: 16px; overflow-wrap: anywhere; }
 }
 </style>

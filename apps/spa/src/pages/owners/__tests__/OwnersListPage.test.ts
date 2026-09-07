@@ -110,7 +110,7 @@ describe('OwnersListPage', () => {
     const wrapper = mount(OwnersListPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Clientes');
+    expect(wrapper.text()).toContain('Tutores');
   });
 
   it('loads owners and linked patients on mount', async () => {
@@ -120,7 +120,7 @@ describe('OwnersListPage', () => {
     await flushPromises();
     expect(mockListFn).toHaveBeenCalled();
     expect(mockPatientListFn).toHaveBeenCalled();
-    expect(wrapper.text()).toContain('Clientes');
+    expect(wrapper.text()).toContain('Tutores');
     expect(wrapper.text()).toContain('Mostrando 1 - 2 de 2 resultados');
   });
 

@@ -3,6 +3,7 @@ import { writeSync } from 'node:fs';
 import { closeDatabaseClient, createDatabaseClient, getPool } from '@cvg-his-v2/shared-database';
 import { DatabaseOutboxRepository } from '@cvg-his-v2/module-event-bus';
 import { runWithTenantContext } from '@cvg-his-v2/tenant-context';
+import { flushProcessCoverageCheckpoint } from '../../../tests/helpers/process-coverage-checkpoint.mjs';
 
 const processFixtureEnabled = process.env.DOMAIN_PROCESS_FIXTURE === '1';
 const databaseUrl = process.env.DATABASE_URL?.trim();
@@ -36,6 +37,7 @@ interface DomainPayload {
 }
 
 function writeEvent(event: string, payload: Record<string, unknown> = {}): void {
+  flushProcessCoverageCheckpoint();
   writeSync(3, `${event} ${JSON.stringify(payload)}\n`);
 }
 

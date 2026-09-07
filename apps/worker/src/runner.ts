@@ -83,9 +83,19 @@ import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { WebhooksService, ProcessWebhookDeliveriesResult } from '@cvg-his-v2/module-webhooks';
 import { runScheduledReportJob } from './jobs/scheduled-report-job.js';
 import { createWorkerReportDeliveryProvider } from './report-delivery-provider.js';
+import {
+  resolveScheduledCancellationHistoryRows,
+  type ScheduledCancellationHistorySource
+} from './cancellation-history-report.js';
+import {
+  parseScheduledReportDate,
+  parseScheduledReportSearch,
+  parseScheduledReportText
+} from './scheduled-report-filters.js';
 
 const MAX_SCHEDULED_FISCAL_REPORT_ROWS = 10_000;
 const MAX_SCHEDULED_DELETED_SALES_REPORT_ROWS = 10_000;
+const MAX_SCHEDULED_CHEQUE_REPORT_ROWS = 10_000;
 
 interface ScheduledDeletedSalesSource {
   readonly persistenceMode: 'database' | 'in-memory';
@@ -141,6 +151,7 @@ export interface AdministrativeExecutiveReportSources {
     }>;
   };
   readonly commercialDeletedSales?: ScheduledDeletedSalesSource;
+  readonly commercialCancellationHistory?: ScheduledCancellationHistorySource;
   readonly financial?: {
     getIncomeStatement(
       accountId: AccountId,
@@ -257,6 +268,21 @@ export async function resolveScheduledReportRows(
       ...(dateTo ? { dateTo } : {})
     });
 
+    if (!Array.isArray(chequePayments)) {
+      throw new Error('Cheque report source returned malformed rows');
+    }
+    if (chequePayments.length > MAX_SCHEDULED_CHEQUE_REPORT_ROWS) {
+      throw new Error(
+        `Cheque report source exceeds the maximum exportable page of ${MAX_SCHEDULED_CHEQUE_REPORT_ROWS} rows`
+      );
+    }
+    if (chequePayments.some((payment) => !payment || typeof payment !== 'object' || Array.isArray(payment))) {
+      throw new Error('Cheque report source returned malformed rows');
+    }
+    if (chequePayments.some((payment) => payment.accountId !== schedule.accountId)) {
+      throw new Error('Cheque report source returned a foreign account row');
+    }
+
     return chequePayments.map((payment) => ({
       paymentId: payment.id,
       counterSaleId: payment.counterSaleId,
@@ -268,6 +294,10 @@ export async function resolveScheduledReportRows(
       recordedAt: payment.createdAt,
       notes: payment.notes
     }));
+  }
+
+  if (schedule.reportId === 'commercial-cancellation-history') {
+    return resolveScheduledCancellationHistoryRows(schedule, sources.commercialCancellationHistory);
   }
 
   if (schedule.reportId === 'commercial-deleted-sales') {
@@ -1014,22 +1044,6 @@ function parseScheduledFiscalNfseStatus(
     throw new Error('status must be one of draft, issued, cancelled, error');
   }
   return value as FiscalNfseDocumentSummary['status'];
-}
-
-function parseScheduledReportSearch(value: unknown): string | undefined {
-  return parseScheduledReportText(value, 'search');
-}
-
-function parseScheduledReportText(value: unknown, field: string): string | undefined {
-  if (value === undefined || value === null || value === '') return undefined;
-  if (typeof value !== 'string') {
-    throw new Error(`${field} must be a string with at most 200 characters`);
-  }
-  const normalized = value.trim().toLowerCase();
-  if (Array.from(normalized).length > 200) {
-    throw new Error(`${field} must be a string with at most 200 characters`);
-  }
-  return normalized || undefined;
 }
 
 function matchesScheduledReportPeriod(
@@ -1946,28 +1960,6 @@ function reportPeriodFromSchedule(schedule: ReportScheduleSummary): {
     dateFrom: typeof schedule.filters.dateFrom === 'string' ? schedule.filters.dateFrom : undefined,
     dateTo: typeof schedule.filters.dateTo === 'string' ? schedule.filters.dateTo : undefined
   };
-}
-
-function parseScheduledReportDate(value: unknown, field: string): string | undefined {
-  if (value === undefined || value === null || value === '') return undefined;
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    throw new Error(`${field} must be an ISO calendar date`);
-  }
-
-  const [year, month, day] = value.split('-').map(Number);
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-  if (
-    year < 1 ||
-    year > 9999 ||
-    Number.isNaN(parsed.getTime()) ||
-    parsed.getUTCFullYear() !== year ||
-    parsed.getUTCMonth() + 1 !== month ||
-    parsed.getUTCDate() !== day
-  ) {
-    throw new Error(`${field} must be an ISO calendar date`);
-  }
-
-  return value;
 }
 
 function sourceUnavailableRow(domain: string, error: unknown): Record<string, unknown> {

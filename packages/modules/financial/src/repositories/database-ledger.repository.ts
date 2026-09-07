@@ -123,7 +123,7 @@ export class DatabaseFinancialLedgerRepository implements FinancialLedgerReposit
         clauses.push(`occurred_at <= $${params.length}`);
       }
       const result = await client.query(
-        `SELECT * FROM financial_journal_entries WHERE ${clauses.join(' AND ')} ORDER BY occurred_at DESC`,
+        `SELECT * FROM financial_journal_entries WHERE ${clauses.join(' AND ')} ORDER BY occurred_at DESC, id DESC`,
         params
       );
       const entries: FinancialJournalEntry[] = [];

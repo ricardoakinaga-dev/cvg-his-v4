@@ -11,11 +11,6 @@
       </template>
     </AppPageHeader>
 
-    <DsAlert variant="info">
-      O motor enterprise usa o catálogo real de relatórios do backend, registra execuções e prepara
-      exportações ou agendamentos sem depender das telas estáticas do workbench legado.
-    </DsAlert>
-
     <DsCard
       v-if="originHref && selectedDeliverySchedule"
       title="Agendamento aberto pela auditoria"

@@ -34,8 +34,8 @@ export async function createUser(options: UserOptions = {}): Promise<UserRecord>
   const isActive = options.isActive !== false;
 
   const row = await insertOne<Record<string, unknown>>(
-    `INSERT INTO users (id, account_id, unit_id, email, password_hash, full_name, is_active)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, account_id, unit_id, email, password_hash, full_name, is_active`,
+    `INSERT INTO users (id, account_id, unit_id, email, password_hash, full_name, is_active, username)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'fixture_' || $1::uuid::text) RETURNING id, account_id, unit_id, email, password_hash, full_name, is_active`,
     [id, accountId, unitId, email, passwordHash, fullName, isActive]
   );
 

@@ -33,6 +33,7 @@ export const cardTransactions = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     capturedAt: timestamp('captured_at', { withTimezone: true }),
+    captureRequestedAt: timestamp('capture_requested_at', { withTimezone: true }),
     lastProviderSyncAt: timestamp('last_provider_sync_at', { withTimezone: true }),
     providerOrderId: varchar('provider_order_id', { length: 255 }),
     providerChargeId: varchar('provider_charge_id', { length: 255 }),

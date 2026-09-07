@@ -1,15 +1,15 @@
 export const speciesMap: Record<string, string> = {
-  not_defined: '❓ Não Definido',
-  avian: '🐦 Avícola',
-  bovine: '🐄 Bovino',
-  canine: '🐕 Canina',
-  rabbit: '🐇 Cunícula',
-  equine: '🐎 Equina',
-  feline: '🐈 Felina',
-  other: '🐾 Outras',
-  primate: '🐒 Primata',
-  rodent: '🐹 Roedor',
-  reptile: '🦎 Réptil'
+  not_defined: 'Não definida',
+  avian: 'Avícola',
+  bovine: 'Bovino',
+  canine: 'Canina',
+  rabbit: 'Cunícula',
+  equine: 'Equina',
+  feline: 'Felina',
+  other: 'Outras',
+  primate: 'Primata',
+  rodent: 'Roedor',
+  reptile: 'Réptil'
 };
 
 export function speciesLabel(s: string): string {
@@ -17,9 +17,9 @@ export function speciesLabel(s: string): string {
 }
 
 export const sexMap: Record<string, string> = {
-  male: '♂ Macho',
-  female: '♀ Fêmea',
-  unknown: '❓ Desconhecido'
+  male: 'Macho',
+  female: 'Fêmea',
+  unknown: 'Desconhecido'
 };
 
 export function sexLabel(s: string): string {
@@ -47,9 +47,9 @@ export function patientSizeLabel(s: string): string {
 }
 
 export const visitTypeMap: Record<string, string> = {
-  walk_in: '🚶 Walk-in',
-  scheduled: '📅 Agendado',
-  return: '🔄 Retorno'
+  walk_in: 'Walk-in',
+  scheduled: 'Agendado',
+  return: 'Retorno'
 };
 
 export function visitTypeLabel(t: string): string {
@@ -57,11 +57,11 @@ export function visitTypeLabel(t: string): string {
 }
 
 export const encounterStatusMap: Record<string, string> = {
-  reception: '📋 Recepção',
-  in_triage: '🏷️ Em triagem',
-  in_care: '🩺 Em atendimento',
-  observation: '👁️ Observação',
-  closed: '✅ Finalizado'
+  reception: 'Recepção',
+  in_triage: 'Em triagem',
+  in_care: 'Em atendimento',
+  observation: 'Observação',
+  closed: 'Finalizado'
 };
 
 export function encounterStatusLabel(s: string): string {
@@ -79,14 +79,14 @@ export function encounterOriginLabel(o: string): string {
 }
 
 export const encounterEventTypeMap: Record<string, string> = {
-  encounter_opened: '🩺 Aberto',
-  status_changed: '🔄 Status',
-  queue_checked_in: '📋 Check-in',
-  queue_called: '📢 Chamado',
-  triage_recorded: '🏷️ Triagem',
-  handoff_sent_to_reception: '📨 Handoff enviado',
-  handoff_acknowledged: '✅ Handoff recebido',
-  encounter_closed: '✅ Fechado'
+  encounter_opened: 'Aberto',
+  status_changed: 'Status',
+  queue_checked_in: 'Check-in',
+  queue_called: 'Chamado',
+  triage_recorded: 'Triagem',
+  handoff_sent_to_reception: 'Handoff enviado',
+  handoff_acknowledged: 'Handoff recebido',
+  encounter_closed: 'Fechado'
 };
 
 export function encounterEventTypeLabel(e: string): string {

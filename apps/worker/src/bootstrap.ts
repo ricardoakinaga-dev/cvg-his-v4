@@ -564,14 +564,13 @@ export async function bootstrapWorkerServices(
     isProductionLikeEnvironment(options.environment) ||
     process.env.DATABASE_REQUIRE_RLS_ROLE === '1' ||
     process.env.DATABASE_REQUIRE_SCHEMA === '1';
+  const databaseRequired = productionLike || process.env.REQUIRE_TEST_DB === '1';
   if (options.allowSyntheticPixProvider === true) {
     assertSyntheticEnvironment(options.environment);
   }
   if (!options.databaseUrl) {
-    if (productionLike) {
-      throw new Error(
-        'Production-like worker runtime requires DATABASE_URL; refusing degraded startup'
-      );
+    if (databaseRequired) {
+      throw new Error('Durable worker runtime requires DATABASE_URL; refusing degraded startup');
     }
     return {
       databaseHealthy: false,
@@ -584,9 +583,9 @@ export async function bootstrapWorkerServices(
     const health = await checkDatabaseHealth();
 
     if (!health.healthy) {
-      if (productionLike) {
+      if (databaseRequired) {
         throw new Error(
-          `Production-like worker database is unavailable; refusing degraded startup (${health.detail})`
+          `Durable worker database is unavailable; refusing degraded startup (${health.detail})`
         );
       }
       return {
@@ -651,10 +650,10 @@ export async function bootstrapWorkerServices(
          ) AS ready`
     );
     const deliveryGuaranteesReady = deliveryGuarantees.rows[0]?.ready === true;
-    if (!deliveryGuaranteesReady && productionLike) {
+    if (!deliveryGuaranteesReady && databaseRequired) {
       throw new Error('Worker delivery guarantee schema is not ready');
     }
-    const accountIds = await loadPersistedAccountIds(productionLike);
+    const accountIds = await loadPersistedAccountIds(databaseRequired);
     const eventConsumerSchema = await getPool().query<{ ready: boolean }>(
       `SELECT
          to_regclass('public.owners') IS NOT NULL
@@ -674,12 +673,12 @@ export async function bootstrapWorkerServices(
          AND to_regclass('public.webhook_deliveries') IS NOT NULL AS ready`
     );
     const eventConsumerSchemaReady = eventConsumerSchema.rows[0]?.ready === true;
-    if (!eventConsumerSchemaReady && productionLike) {
+    if (!eventConsumerSchemaReady && databaseRequired) {
       throw new Error('Worker event consumer schema is not ready');
     }
 
     const advancePaymentsReportSchemaReady = await checkAdvancePaymentsReportSchema();
-    if (!advancePaymentsReportSchemaReady && productionLike) {
+    if (!advancePaymentsReportSchemaReady && databaseRequired) {
       throw new Error('Worker advance-payment report schema is not ready');
     }
 
@@ -725,7 +724,7 @@ export async function bootstrapWorkerServices(
          ) AS ready`
     );
     const webhookDeliverySchemaReady = webhookDeliverySchema.rows[0]?.ready === true;
-    if (!webhookDeliverySchemaReady && productionLike) {
+    if (!webhookDeliverySchemaReady && databaseRequired) {
       throw new Error('Worker webhook delivery executor schema is not ready');
     }
 
@@ -788,7 +787,7 @@ export async function bootstrapWorkerServices(
       databaseHealthy: true,
       databaseDetail: health.detail,
       accountIds,
-      loadAccountIds: () => loadPersistedAccountIds(productionLike),
+      loadAccountIds: () => loadPersistedAccountIds(databaseRequired),
       notificationRepository: new DatabaseNotificationRepository(db),
       outboxRepository: new DatabaseOutboxRepository(),
       unitOfWork: deliveryGuaranteesReady ? createTenantUnitOfWork(getPool()) : undefined,
@@ -815,7 +814,7 @@ export async function bootstrapWorkerServices(
       webhookDeliverySchemaReady
     };
   } catch (error) {
-    if (productionLike) {
+    if (databaseRequired) {
       throw error;
     }
     return {
@@ -839,6 +838,7 @@ function createDatabaseReportSources(
     cheques: counterSales,
     commercial: counterSales,
     commercialDeletedSales: counterSales,
+    commercialCancellationHistory: counterSales,
     financial: new FinancialIncomeStatementService({
       receivables: new DatabaseEncounterFinancialRepository(),
       payables: new DatabaseFinancialPayablesRepository()

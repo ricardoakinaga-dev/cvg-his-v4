@@ -94,6 +94,18 @@ describe('Species pages', () => {
     expect(wrapper.text()).toContain('Espécie salva com sucesso.');
   });
 
+  it('rejects an update response that belongs to another species', async () => {
+    routeParams = { id: 'species-1' };
+    vi.mocked(animalSpeciesService.update).mockResolvedValue({ ...mockSpecies, id: 'species-other' });
+    const wrapper = mount(SpeciesFormPage);
+    await flushPromises();
+
+    await wrapper.find('form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('A espécie retornada não corresponde ao endereço solicitado.');
+  });
+
   it('opens detail with duplicate, delete and operational integrations', async () => {
     routeParams = { id: 'species-1' };
     const wrapper = mount(SpeciesDetailPage);

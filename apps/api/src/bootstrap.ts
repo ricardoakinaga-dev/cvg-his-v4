@@ -89,7 +89,10 @@ import {
   type AdministrationEventRepository
 } from '@cvg-his-v2/module-prescription-executions';
 import { DatabaseBillingRepository } from '@cvg-his-v2/module-billing';
-import { DatabaseCommissionRepository } from '@cvg-his-v2/module-commissions';
+import {
+  DatabaseCommissionCalculationsReportSource,
+  DatabaseCommissionRepository
+} from '@cvg-his-v2/module-commissions';
 import { DatabasePackageRepository } from '@cvg-his-v2/module-packages';
 import { DatabaseReportRepository } from '@cvg-his-v2/module-reports';
 import { DatabaseMarketingRepository } from '@cvg-his-v2/module-marketing';
@@ -538,6 +541,7 @@ export const productionDatabaseRepositoryKeys = [
   'billing',
   'commercial',
   'commissions',
+  'commissionCalculations',
   'packages',
   'reports',
   'advancePayments',
@@ -549,6 +553,7 @@ export const productionDatabaseRepositoryKeys = [
   'accessControl',
   'products',
   'services',
+  'financeCatalog',
   'counterSales',
   'quotes',
   'cash',
@@ -1105,6 +1110,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
       DATABASE_REQUIRE_RLS_ROLE: process.env.DATABASE_REQUIRE_RLS_ROLE,
       DATABASE_REQUIRE_SCHEMA: process.env.DATABASE_REQUIRE_SCHEMA
     });
+  const databaseRequired = productionLike || process.env.REQUIRE_TEST_DB === '1';
   const results: BootstrapResult = {
     databaseHealthy: false,
     databaseDetail: 'Not initialized',
@@ -1136,7 +1142,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
   };
 
   if (options.skipDatabase || !options.databaseUrl) {
-    if (productionLike) {
+    if (databaseRequired) {
       throw new Error(
         'Production-like database runtime requires DATABASE_URL; refusing in-memory fallback'
       );
@@ -1176,7 +1182,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
       });
 
       if (process.env.API_DISABLE_INCOMPATIBLE_DB_REPOS === '1') {
-        if (productionLike) {
+        if (databaseRequired) {
           throw new Error(
             'Database runtime repositories cannot be disabled in a production-like environment'
           );
@@ -1378,7 +1384,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         encounterTimeline: new DatabaseEncounterTimelineRepository(db),
         clinicalHandoff: clinicalHandoffsReady
           ? new DatabaseClinicalHandoffRepository()
-          : productionLike
+          : databaseRequired
             ? undefined
             : new InMemoryClinicalHandoffRepository(),
         medicalRecord: new DatabaseMedicalRecordRepository(db),
@@ -1416,6 +1422,9 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         billing: billingTablesReady ? new DatabaseBillingRepository() : undefined,
         commercial: commercialTablesReady ? new DatabaseCommercialRepository() : undefined,
         commissions: commissionsTablesReady ? new DatabaseCommissionRepository() : undefined,
+        commissionCalculations: commissionsTablesReady
+          ? new DatabaseCommissionCalculationsReportSource()
+          : undefined,
         packages: packagesTablesReady ? new DatabasePackageRepository() : undefined,
         reports: reportsTablesReady ? new DatabaseReportRepository() : undefined,
         advancePayments: advancePaymentsTablesReady
@@ -1478,7 +1487,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
       results.pixProviderSettlementDlqRepository = pixProviderSettlementDlqReady
         ? new DatabasePixProviderSettlementDlqRepository()
         : undefined;
-      if (productionLike) {
+      if (databaseRequired) {
         assertProductionDatabaseReadiness({
           repositories: results.repositories,
           unitOfWork: results.unitOfWork
@@ -1510,7 +1519,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         encounterTimelinePersistence: 'database'
       });
     } else {
-      if (productionLike) {
+      if (databaseRequired) {
         throw new Error(
           `Production-like database runtime is unavailable; refusing in-memory fallback (${health.detail})`
         );
@@ -1520,7 +1529,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
       });
     }
   } catch (error) {
-    if (productionLike) {
+    if (databaseRequired) {
       throw error;
     }
     const message = error instanceof Error ? error.message : 'Unknown error';

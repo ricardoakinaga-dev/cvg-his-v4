@@ -37,7 +37,7 @@ vi.mock('@cvg-his-v2/tenant-context', () => ({
   withTenantQuery: withTenantQueryMock
 }));
 
-import { NotFoundError } from '@cvg-his-v2/shared-errors';
+import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import {
   DatabaseCounterSalesRepository,
   type CounterSaleItemRecord,
@@ -104,36 +104,34 @@ describe('DatabaseCounterSalesRepository item tenant boundaries', () => {
     );
   });
 
-  it('allocates the next number under an account transaction lock and returns the persisted sale', async () => {
-    queryMock
-      .mockResolvedValueOnce({ rows: [{ max_number: '900001' }] })
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: sale.id,
-            account_id: sale.accountId,
-            number: 'CS-900002',
-            owner_id: null,
-            patient_id: null,
-            encounter_id: null,
-            queue_entry_id: null,
-            billing_record_id: null,
-            status: 'cancelled',
-            subtotal: '100.00',
-            discount_amount: '0.00',
-            total: '100.00',
-            paid_amount: '0.00',
-            balance_due: '100.00',
-            notes: null,
-            opened_by_user_id: 'user-1',
-            closed_by_user_id: null,
-            closed_at: null,
-            created_at: sale.createdAt,
-            updated_at: sale.updatedAt
-          }
-        ],
-        rowCount: 1
-      });
+  it('allocates the next number from a durable account sequence and returns the persisted sale', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [{ next_number: '900002' }] }).mockResolvedValueOnce({
+      rows: [
+        {
+          id: sale.id,
+          account_id: sale.accountId,
+          number: 'CS-900002',
+          owner_id: null,
+          patient_id: null,
+          encounter_id: null,
+          queue_entry_id: null,
+          billing_record_id: null,
+          status: 'cancelled',
+          subtotal: '100.00',
+          discount_amount: '0.00',
+          total: '100.00',
+          paid_amount: '0.00',
+          balance_due: '100.00',
+          notes: null,
+          opened_by_user_id: 'user-1',
+          closed_by_user_id: null,
+          closed_at: null,
+          created_at: sale.createdAt,
+          updated_at: sale.updatedAt
+        }
+      ],
+      rowCount: 1
+    });
     const draft: CounterSaleDraft = {
       id: sale.id,
       accountId: sale.accountId,
@@ -165,10 +163,38 @@ describe('DatabaseCounterSalesRepository item tenant boundaries', () => {
       expect.any(Function)
     );
     expect(acquireTenantAuthorizationLockMock).toHaveBeenCalledWith(sale.accountId);
-    expect(queryMock.mock.calls[0]?.[0]).toMatch(/MAX\([\s\S]*account_id = \$1/);
+    expect(queryMock.mock.calls[0]?.[0]).toMatch(
+      /counter_sale_number_sequences[\s\S]*ON CONFLICT \(account_id\)[\s\S]*RETURNING next_number/
+    );
     expect(queryMock.mock.calls[0]?.[1]).toEqual([sale.accountId]);
     expect(queryMock.mock.calls[1]?.[0]).toMatch(/RETURNING \*/);
     expect(queryMock.mock.calls[1]?.[1]).toContain('CS-900002');
+  });
+
+  it('fails closed when the durable account sequence is exhausted', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+    await expect(
+      new DatabaseCounterSalesRepository().createWithNextNumber({
+        ...sale,
+        number: undefined as never
+      })
+    ).rejects.toBeInstanceOf(ConflictError);
+
+    expect(queryMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a malformed sequence value before inserting a sale', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [{ next_number: 'not-a-number' }], rowCount: 1 });
+
+    await expect(
+      new DatabaseCounterSalesRepository().createWithNextNumber({
+        ...sale,
+        number: undefined as never
+      })
+    ).rejects.toBeInstanceOf(ConflictError);
+
+    expect(queryMock).toHaveBeenCalledTimes(1);
   });
 
   it('locks a sale with the explicit account predicate', async () => {

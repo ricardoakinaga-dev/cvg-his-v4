@@ -257,6 +257,9 @@ export const vetusParityContract = Object.freeze([
         'packages/modules/reports/src/reports.test.ts',
         'apps/api/src/routes/reports-routes.test.ts',
         'tests/integration/database/reports-delivery-postgres.test.ts',
+        'tests/integration/database/counter-sale-cancellation-report.test.ts',
+        'packages/modules/counter-sales/src/counter-sale-cancellation-report.test.ts',
+        'apps/worker/src/cancellation-history-report.test.ts',
         'tests/integration/database/counter-sales-payment-authority-postgres.test.ts',
         'tests/integration/process/worker-run-once-reports.test.ts',
         'tests/integration/rls/finance-catalog-isolation.test.ts',
@@ -271,8 +274,8 @@ export const vetusParityContract = Object.freeze([
       ]
     },
     blockers: [
-      'O relatorio de vendas/comandas excluidas agora possui apenas um snapshot bounded de comandas atualmente canceladas, filtrado por data de abertura e exportavel server-side; isso nao fecha o historico de cancelamento nem a paridade Vetus. Relatorios Vetus de cheques, pagamento antecipado e personalizados ainda nao possuem exportacao operacional completa; o cadastro de fornecedores foi fechado apenas como exportacao bounded do catalogo persistido, nao como fornecedor master completo.',
-      'O workbench exporta CSV do recorte carregado para auditoria, financeiro, atendimento e estoque, incluindo contas a pagar, contas pagas, contas a receber e contas recebidas respaldadas pelos subledgers; ainda falta cobertura completa das trilhas Vetus restantes e do worker de entregas agendadas.'
+      'O historico commercial-cancellation-history possui fonte audit_events, autor, motivo, instante de cancelamento, valores imutaveis e limite explicito de 10.000 eventos, com API, CSV e worker; o contrato commercial-deleted-sales por data de abertura permanece separado. Cheques e antecipados possuem fontes e exportacao com limites declarados. Ainda falta reconciliar integralmente as familias historicas/personalizadas Vetus com o negocio; dataset existente nao comprova essa equivalencia. O catalogo de fornecedores tambem nao comprova fornecedor mestre completo.',
+      'O workbench possui exportacao por fontes persistentes e subledgers; o worker de entregas agendadas possui implementacao e testes locais. A cobertura de todas as trilhas Vetus e a homologacao externa de entrega e recuperacao continuam pendentes; existencia de arquivos nao certifica comportamento no candidato atual.'
     ]
   },
   {

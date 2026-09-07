@@ -4,6 +4,18 @@ import { describe, expect, it } from 'vitest';
 import DsModal from '../DsModal.vue';
 
 describe('DsModal.vue', () => {
+  it('focuses the requested field when a dialog opens', async () => {
+    const wrapper = mount(DsModal, {
+      props: { open: false, teleport: false, initialFocus: '#dialog-search' },
+      attachTo: document.body,
+      slots: { default: '<input id="dialog-search" aria-label="Buscar rotina" />' }
+    });
+    await wrapper.setProps({ open: true });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(document.activeElement).toBe(wrapper.get('#dialog-search').element);
+    wrapper.unmount();
+  });
+
   it('names the dialog, traps focus and restores focus to the opener', async () => {
     const opener = document.createElement('button');
     opener.id = 'modal-opener';

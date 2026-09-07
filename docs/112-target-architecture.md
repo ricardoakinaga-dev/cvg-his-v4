@@ -10,7 +10,7 @@
 - `infra/*`
 - `tools/*`
 
-`apps/web` permanece apenas como legado de transicao durante a migracao para `apps/spa`.
+`apps/spa` é o frontend canônico. `apps/web` não existe no worktree verificado em 05/09/2026; suas referências de migração pertencem ao histórico. Os namespaces V2 preservados no runtime seguem o ADR-012 e não indicam outro frontend ativo.
 
 ## Principios arquiteturais
 
@@ -29,4 +29,4 @@
 
 ## Decisao estrutural
 
-O V2 coexistira com o legado durante a reconstrucao, mas a nova arquitetura nao nasce como extensao cosmetica de `apps/his-*` ou `packages/*` antigos.
+O produto é CVG-HIS V4. A estrutura canônica é API/SPA/worker e módulos de domínio; namespaces V2 permanecem por compatibilidade conforme o [ADR-012](adr/ADR-012-release-identity-and-semver-v4.md). A descrição de coexistência durante a reconstrução pertence ao histórico e não indica uma segunda aplicação ativa.

@@ -3,11 +3,12 @@ import { mount } from '@vue/test-utils';
 import EmptyState from '@/components/EmptyState.vue';
 
 describe('EmptyState', () => {
-  it('renders icon, title and description', () => {
+  it('renders a local decorative icon, title and description', () => {
     const wrapper = mount(EmptyState, {
       props: { icon: '📋', title: 'Empty', description: 'Nothing here' }
     });
-    expect(wrapper.text()).toContain('📋');
+    expect(wrapper.find('.empty-state__icon svg').exists()).toBe(true);
+    expect(wrapper.find('.empty-state__icon svg').attributes('aria-hidden')).toBe('true');
     expect(wrapper.text()).toContain('Empty');
     expect(wrapper.text()).toContain('Nothing here');
   });

@@ -10,13 +10,13 @@ Escopo:
 
 Evidências principais:
 
-- [laboratorio-exames.png](../inspection/2026-04-24T00-25-28-013Z-laboratorio/screenshots/laboratorio-exames.png)
-- [laboratorio-exames.json](../inspection/2026-04-24T00-25-28-013Z-laboratorio/laboratorio-exames.json)
-- [laboratorio-laudos.png](../inspection/2026-04-24T00-25-28-013Z-laboratorio/screenshots/laboratorio-laudos.png)
-- [laboratorio-laudos.json](../inspection/2026-04-24T00-25-28-013Z-laboratorio/laboratorio-laudos.json)
-- [laboratorio-tipos-laudo.png](../inspection/2026-04-24T00-25-28-013Z-laboratorio/screenshots/laboratorio-tipos-laudo.png)
-- [laboratorio-tipos-laudo.json](../inspection/2026-04-24T00-25-28-013Z-laboratorio/laboratorio-tipos-laudo.json)
-- [network.json](../inspection/2026-04-24T00-25-28-013Z-laboratorio/network.json)
+- laboratorio-exames.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-25-28-013Z-laboratorio/screenshots/laboratorio-exames.png`)
+- laboratorio-exames.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-25-28-013Z-laboratorio/laboratorio-exames.json`)
+- laboratorio-laudos.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-25-28-013Z-laboratorio/screenshots/laboratorio-laudos.png`)
+- laboratorio-laudos.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-25-28-013Z-laboratorio/laboratorio-laudos.json`)
+- laboratorio-tipos-laudo.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-25-28-013Z-laboratorio/screenshots/laboratorio-tipos-laudo.png`)
+- laboratorio-tipos-laudo.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-25-28-013Z-laboratorio/laboratorio-tipos-laudo.json`)
+- network.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-25-28-013Z-laboratorio/network.json`)
 - [01-PLANEJAMENTO-ERP-ENTERPRISE.md](../guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md)
 - [03-MODELO-DADOS.md](../guides/03-MODELO-DADOS.md)
 - [04-ESPECIFICACAO-APIS.md](../guides/04-ESPECIFICACAO-APIS.md)

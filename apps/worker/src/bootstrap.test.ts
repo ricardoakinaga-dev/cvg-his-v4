@@ -18,18 +18,43 @@ const accountId = '00000000-0000-0000-0000-000000000001';
 const attemptId = '00000000-0000-0000-0000-000000000002';
 const encounterId = '00000000-0000-0000-0000-000000000003';
 
+async function withInMemoryBootstrap<T>(operation: () => Promise<T>): Promise<T> {
+  const previousRequireTestDb = process.env.REQUIRE_TEST_DB;
+  delete process.env.REQUIRE_TEST_DB;
+  try {
+    return await operation();
+  } finally {
+    if (previousRequireTestDb === undefined) delete process.env.REQUIRE_TEST_DB;
+    else process.env.REQUIRE_TEST_DB = previousRequireTestDb;
+  }
+}
+
 test('bootstrapWorkerServices returns unhealthy when no databaseUrl provided', async () => {
-  const result = await bootstrapWorkerServices({});
+  const result = await withInMemoryBootstrap(() => bootstrapWorkerServices({}));
 
   assert.equal(result.databaseHealthy, false);
   assert.equal(result.databaseDetail, 'DATABASE_URL not configured');
 });
 
 test('bootstrapWorkerServices returns unhealthy when databaseUrl is empty string', async () => {
-  const result = await bootstrapWorkerServices({ databaseUrl: '' });
+  const result = await withInMemoryBootstrap(() => bootstrapWorkerServices({ databaseUrl: '' }));
 
   assert.equal(result.databaseHealthy, false);
   assert.equal(result.databaseDetail, 'DATABASE_URL not configured');
+});
+
+test('bootstrapWorkerServices fails closed when REQUIRE_TEST_DB is enabled', async () => {
+  const previousRequireTestDb = process.env.REQUIRE_TEST_DB;
+  process.env.REQUIRE_TEST_DB = '1';
+  try {
+    await assert.rejects(
+      bootstrapWorkerServices({ databaseUrl: '' }),
+      /DATABASE_URL|durable|degraded/i
+    );
+  } finally {
+    if (previousRequireTestDb === undefined) delete process.env.REQUIRE_TEST_DB;
+    else process.env.REQUIRE_TEST_DB = previousRequireTestDb;
+  }
 });
 
 test('bootstrapWorkerServices fails closed without a database in every production-like alias', async () => {
@@ -93,7 +118,7 @@ test('shutdownWorkerServices completes without error', async () => {
 });
 
 test('bootstrapWorkerServices result has correct structure when unhealthy', async () => {
-  const result = await bootstrapWorkerServices({});
+  const result = await withInMemoryBootstrap(() => bootstrapWorkerServices({}));
 
   assert.ok('databaseHealthy' in result);
   assert.ok('databaseDetail' in result);
@@ -101,9 +126,11 @@ test('bootstrapWorkerServices result has correct structure when unhealthy', asyn
 });
 
 test('bootstrapWorkerServices returns unhealthy when connection fails', async () => {
-  const result = await bootstrapWorkerServices({
-    databaseUrl: 'postgresql://invalid:invalid@localhost:9999/nonexistent'
-  });
+  const result = await withInMemoryBootstrap(() =>
+    bootstrapWorkerServices({
+      databaseUrl: 'postgresql://invalid:invalid@localhost:9999/nonexistent'
+    })
+  );
 
   assert.equal(result.databaseHealthy, false);
 });

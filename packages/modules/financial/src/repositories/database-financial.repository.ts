@@ -304,7 +304,7 @@ export class DatabaseEncounterFinancialRepository implements EncounterFinancialR
               WHERE reversal.account_id = encounter_receivable_payments.account_id
                 AND reversal.receivable_payment_id = encounter_receivable_payments.id
            )
-         ORDER BY paid_at ASC`,
+         ORDER BY paid_at ASC, id ASC`,
         [financialAccountId]
       );
       return result.rows.map((row: Record<string, unknown>) => mapPayment(row));
@@ -375,7 +375,7 @@ export class DatabaseEncounterFinancialRepository implements EncounterFinancialR
 
       const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
       const result = await client.query(
-        `SELECT * FROM encounter_receivables ${whereClause} ORDER BY created_at DESC`,
+        `SELECT * FROM encounter_receivables ${whereClause} ORDER BY created_at DESC, id DESC`,
         params
       );
       return result.rows.map((row: Record<string, unknown>) => mapReceivable(row));
@@ -479,7 +479,7 @@ export class DatabaseFinancialPayablesRepository implements FinancialPayablesRep
       }
       const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
       const result = await client.query(
-        `SELECT * FROM financial_payables ${whereClause} ORDER BY due_at ASC, supplier_name ASC`,
+        `SELECT * FROM financial_payables ${whereClause} ORDER BY due_at ASC, supplier_name ASC, id ASC`,
         params
       );
       return result.rows.map((row: Record<string, unknown>) => mapPayable(row));

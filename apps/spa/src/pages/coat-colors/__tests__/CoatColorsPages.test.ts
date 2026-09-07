@@ -99,6 +99,18 @@ describe('Coat colors pages', () => {
     expect(wrapper.text()).toContain('Cor/Pelagem salva com sucesso.');
   });
 
+  it('rejects an update response that belongs to another coat color', async () => {
+    routeParams = { id: 'coat-color-1' };
+    vi.mocked(coatColorService.update).mockResolvedValue({ ...mockCoatColor, id: 'coat-color-other' });
+    const wrapper = mount(CoatColorFormPage);
+    await flushPromises();
+
+    await wrapper.find('form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('A cor/pelagem retornada não corresponde ao endereço solicitado.');
+  });
+
   it('opens detail with duplicate, delete and operational integrations', async () => {
     routeParams = { id: 'coat-color-1' };
     const wrapper = mount(CoatColorDetailPage);

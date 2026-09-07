@@ -1,5 +1,5 @@
 <template>
-  <div class="app-page-header">
+  <header class="app-page-header" :class="{ 'app-page-header--with-aside': hasAside }">
     <div class="app-page-header__content">
       <nav
         v-if="normalizedBreadcrumbs.length > 0 || $slots.breadcrumbs"
@@ -12,11 +12,26 @@
             :key="crumb.key ?? `${crumb.label}-${index}`"
             class="app-page-header__breadcrumb-item"
           >
-            <span v-if="index > 0" class="app-page-header__breadcrumb-separator">/</span>
-            <a
-              v-if="breadcrumbTarget(crumb)"
+            <span
+              v-if="index > 0"
+              class="app-page-header__breadcrumb-separator"
+              aria-hidden="true"
+            >
+              /
+            </span>
+            <AppPageLink
+              v-if="crumb.to"
               class="app-page-header__breadcrumb-link"
-              :href="breadcrumbTarget(crumb)"
+              :to="crumb.to"
+              :aria-label="crumb.ariaLabel"
+              :aria-current="crumb.current ? 'page' : undefined"
+            >
+              {{ crumb.label }}
+            </AppPageLink>
+            <a
+              v-else-if="crumb.href"
+              class="app-page-header__breadcrumb-link"
+              :href="crumb.href"
               :aria-label="crumb.ariaLabel"
               :aria-current="crumb.current ? 'page' : undefined"
             >
@@ -41,7 +56,7 @@
         <slot name="subtitle">{{ subtitle }}</slot>
       </div>
 
-      <dl v-if="contextItems.length > 0 || $slots.context" class="app-page-header__context">
+      <dl v-if="contextItems.length > 0 && !$slots.context" class="app-page-header__context">
         <slot name="context">
           <div
             v-for="item in contextItems"
@@ -54,17 +69,28 @@
           </div>
         </slot>
       </dl>
+      <div v-else-if="$slots.context" class="app-page-header__context">
+        <slot name="context" />
+      </div>
     </div>
 
-    <aside v-if="hasAside" class="app-page-header__side">
+    <div v-if="hasAside" class="app-page-header__side">
       <div v-if="nextSteps.length > 0 || $slots.nextSteps" class="app-page-header__next-steps">
         <span class="app-page-header__next-steps-label">Proximo passo</span>
         <slot name="nextSteps">
           <template v-for="step in nextSteps" :key="step.key">
-            <a
-              v-if="nextStepTarget(step)"
+            <AppPageLink
+              v-if="step.to"
               class="app-page-header__next-step"
-              :href="nextStepTarget(step)"
+              :to="step.to"
+            >
+              <strong>{{ step.label }}</strong>
+              <span v-if="step.description">{{ step.description }}</span>
+            </AppPageLink>
+            <a
+              v-else-if="step.href"
+              class="app-page-header__next-step"
+              :href="step.href"
             >
               <strong>{{ step.label }}</strong>
               <span v-if="step.description">{{ step.description }}</span>
@@ -77,47 +103,97 @@
         </slot>
       </div>
 
-      <div v-if="$slots.actions || hasStandardActions" class="app-page-header__actions">
+      <div
+        v-if="$slots.actions || hasStandardActions"
+        class="app-page-header__actions"
+        role="group"
+        aria-label="Ações da página"
+      >
         <slot name="actions">
           <div class="app-page-header__action-group">
-            <DsButton
-              v-for="action in secondaryActions"
-              :key="action.key ?? action.label"
-              :variant="secondaryActionVariant(action)"
-              :size="action.size ?? 'md'"
-              :type="action.type ?? 'button'"
-              :tag="action.to || action.href ? 'a' : 'button'"
-              :to="action.to"
-              :href="action.href"
-              :disabled="action.disabled"
-              :loading="action.loading"
-              :aria-label="action.ariaLabel"
-              :icon="action.icon"
-              @click="emitAction(action, $event)"
-            >
-              {{ action.label }}
-            </DsButton>
-            <DsButton
-              v-if="primaryAction"
-              :variant="primaryAction.variant ?? 'primary'"
-              :size="primaryAction.size ?? 'md'"
-              :type="primaryAction.type ?? 'button'"
-              :tag="primaryAction.to || primaryAction.href ? 'a' : 'button'"
-              :to="primaryAction.to"
-              :href="primaryAction.href"
-              :disabled="primaryAction.disabled"
-              :loading="primaryAction.loading"
-              :aria-label="primaryAction.ariaLabel"
-              :icon="primaryAction.icon"
-              @click="emitAction(primaryAction, $event)"
-            >
-              {{ primaryAction.label }}
-            </DsButton>
+            <template v-for="action in secondaryActions" :key="action.key ?? action.label">
+              <AppPageLink
+                v-if="action.to"
+                :to="action.to"
+                custom
+                v-slot="{ href, navigate }"
+              >
+                <DsButton
+                  :variant="secondaryActionVariant(action)"
+                  :size="action.size ?? 'md'"
+                  :type="action.type ?? 'button'"
+                  tag="a"
+                  :href="href"
+                  :disabled="action.disabled"
+                  :loading="action.loading"
+                  :aria-label="action.ariaLabel"
+                  :icon="action.icon"
+                  @click="navigateInternalAction(action, $event, navigate)"
+                >
+                  {{ action.label }}
+                </DsButton>
+              </AppPageLink>
+              <DsButton
+                v-else
+                :variant="secondaryActionVariant(action)"
+                :size="action.size ?? 'md'"
+                :type="action.type ?? 'button'"
+                :tag="action.href ? 'a' : 'button'"
+                :href="action.href"
+                :disabled="action.disabled"
+                :loading="action.loading"
+                :aria-label="action.ariaLabel"
+                :icon="action.icon"
+                @click="emitAction(action, $event)"
+              >
+                {{ action.label }}
+              </DsButton>
+            </template>
+            <template v-if="primaryAction">
+              <AppPageLink
+                v-if="primaryAction.to"
+                :to="primaryAction.to"
+                custom
+                v-slot="{ href, navigate }"
+              >
+                <DsButton
+                  class="app-page-header__primary"
+                  :variant="primaryAction.variant ?? 'primary'"
+                  :size="primaryAction.size ?? 'md'"
+                  :type="primaryAction.type ?? 'button'"
+                  tag="a"
+                  :href="href"
+                  :disabled="primaryAction.disabled"
+                  :loading="primaryAction.loading"
+                  :aria-label="primaryAction.ariaLabel"
+                  :icon="primaryAction.icon"
+                  @click="navigateInternalAction(primaryAction, $event, navigate)"
+                >
+                  {{ primaryAction.label }}
+                </DsButton>
+              </AppPageLink>
+              <DsButton
+                class="app-page-header__primary"
+                v-else
+                :variant="primaryAction.variant ?? 'primary'"
+                :size="primaryAction.size ?? 'md'"
+                :type="primaryAction.type ?? 'button'"
+                :tag="primaryAction.href ? 'a' : 'button'"
+                :href="primaryAction.href"
+                :disabled="primaryAction.disabled"
+                :loading="primaryAction.loading"
+                :aria-label="primaryAction.ariaLabel"
+                :icon="primaryAction.icon"
+                @click="emitAction(primaryAction, $event)"
+              >
+                {{ primaryAction.label }}
+              </DsButton>
+            </template>
           </div>
         </slot>
       </div>
-    </aside>
-  </div>
+    </div>
+  </header>
 
   <div v-if="tabs.length > 0" class="app-page-header__tabs">
     <DsTabs :tabs="tabs" v-model="activeTab" />
@@ -127,7 +203,58 @@
 <script setup lang="ts">
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsTabs from '@cvg-his-v2/design-system/vue/DsTabs.vue';
-import { computed, ref, useSlots, watch } from 'vue';
+import {
+  computed,
+  defineComponent,
+  getCurrentInstance,
+  h,
+  ref,
+  useSlots,
+  watch,
+  type Component,
+  type PropType
+} from 'vue';
+
+const AppPageLink = defineComponent({
+  name: 'AppPageLink',
+  inheritAttrs: false,
+  props: {
+    to: {
+      type: [String, Object] as PropType<string | Record<string, unknown>>,
+      required: true
+    },
+    custom: {
+      type: Boolean,
+      default: false
+    }
+  },
+  setup(props, { attrs, slots }) {
+    return () => {
+      const globalComponents = getCurrentInstance()?.appContext.components;
+      const routerLink = globalComponents?.RouterLink as Component | boolean | undefined;
+      const hasRouterLinkImplementation =
+        typeof routerLink === 'function' ||
+        (typeof routerLink === 'object' &&
+          routerLink !== null &&
+          ('props' in routerLink || 'setup' in routerLink || 'render' in routerLink));
+
+      if (hasRouterLinkImplementation) {
+        return h(routerLink as Component, { ...attrs, to: props.to, custom: props.custom }, slots);
+      }
+
+      const href = typeof props.to === 'string' ? props.to : '#';
+      if (props.custom) {
+        return h(
+          'a',
+          { ...attrs, href },
+          slots.default?.({ href, navigate: () => undefined })
+        );
+      }
+
+      return h('a', { ...attrs, href }, slots.default?.());
+    };
+  }
+});
 
 export interface PageTab {
   key: string;
@@ -252,20 +379,23 @@ const hasAside = computed(() =>
   Boolean(hasStandardActions.value || hasNextSteps.value || slots.actions || slots.nextSteps)
 );
 
-function breadcrumbTarget(crumb: PageBreadcrumb): string | undefined {
-  return crumb.to || crumb.href || undefined;
-}
-
-function nextStepTarget(step: PageNextStep): string | undefined {
-  return step.to || step.href || undefined;
-}
-
 function secondaryActionVariant(action: PageAction): PageAction['variant'] {
   return action.variant === 'primary' ? 'secondary' : (action.variant ?? 'secondary');
 }
 
 function emitAction(action: PageAction, event: MouseEvent) {
   action.onClick?.(event);
+}
+
+function navigateInternalAction(
+  action: PageAction,
+  event: MouseEvent,
+  navigate: (event: MouseEvent) => unknown
+) {
+  emitAction(action, event);
+  if (!event.defaultPrevented) {
+    void navigate(event);
+  }
 }
 </script>
 
@@ -309,9 +439,11 @@ function emitAction(action: PageAction, event: MouseEvent) {
 }
 
 .app-page-header__breadcrumb-link {
+  min-width: var(--touch-min, 44px);
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
+  min-height: var(--touch-min, 44px);
+  padding-inline: 2px;
   color: var(--color-primary, #2563eb);
   text-decoration: none;
 }
@@ -448,7 +580,14 @@ function emitAction(action: PageAction, event: MouseEvent) {
 }
 
 .app-page-header__action-group > :deep(.ds-btn) {
-  min-width: 0;
+  min-width: var(--touch-min, 44px);
+}
+
+.app-page-header__action-group :deep(.ds-btn__label) {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
 }
 
 .app-page-header__tabs {
@@ -493,6 +632,14 @@ function emitAction(action: PageAction, event: MouseEvent) {
     min-width: 0;
   }
 
+  .app-page-header__action-group > .app-page-header__primary {
+    grid-column: 1 / -1;
+  }
+
+  .app-page-header__action-group > :deep(.ds-btn) {
+    min-width: var(--touch-min, 44px);
+  }
+
   .app-page-header__title {
     font-size: 20px;
     margin-bottom: 6px;
@@ -520,5 +667,351 @@ function emitAction(action: PageAction, event: MouseEvent) {
     min-width: 0;
     overflow-wrap: anywhere;
   }
+
+  /* CVG Pulse mobile refinements are kept after the compatibility rules so
+     existing page consumers inherit the new treatment without markup changes. */
+}
+
+/* ─── CVG Pulse header surface ─── */
+.app-page-header {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(16px, 2vw, 24px);
+  width: 100%;
+  margin: 0 0 16px;
+  padding: clamp(18px, 2vw, 24px);
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--pulse-line, var(--color-border, #d5e2e6));
+  border-radius: var(--pulse-radius-xl, 20px);
+  background:
+    radial-gradient(circle at 100% 0%, var(--pulse-cyan-wash, rgba(16, 183, 198, 0.12)), transparent 34%),
+    var(--pulse-surface, var(--color-surface, #ffffff));
+  box-shadow: var(--pulse-shadow-card, 0 12px 30px rgba(15, 35, 48, 0.08));
+}
+
+.app-page-header--with-aside {
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 440px);
+}
+
+.app-page-header::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  content: '';
+  background: linear-gradient(
+    180deg,
+    var(--pulse-cyan, var(--color-primary-500, #0fa8b8)),
+    var(--pulse-mint, var(--color-accent-500, #159f83))
+  );
+}
+
+.app-page-header::after {
+  position: absolute;
+  inset: auto 24px 0 auto;
+  width: min(42%, 260px);
+  height: 1px;
+  content: '';
+  background: linear-gradient(90deg, transparent, var(--pulse-cyan, #0fa8b8));
+  opacity: 0.72;
+}
+
+.app-page-header__content,
+.app-page-header__side {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.app-page-header__breadcrumbs {
+  gap: 8px;
+  margin-bottom: 12px;
+  color: var(--pulse-muted, var(--color-text-muted, #55717a));
+  font-size: 11px;
+  letter-spacing: 0.075em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.app-page-header__breadcrumb-item {
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-page-header__breadcrumb-separator {
+  color: var(--pulse-cyan-strong, var(--color-primary-700, #066b80));
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.app-page-header__breadcrumb-link {
+  min-height: var(--touch-min, 44px);
+  max-width: 28ch;
+  overflow: hidden;
+  color: var(--pulse-cyan-strong, var(--color-primary, #066b80));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-page-header__breadcrumb-current {
+  max-width: 32ch;
+  overflow: hidden;
+  color: var(--pulse-muted-strong, var(--color-text-secondary, #3e5c67));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-page-header__title {
+  position: relative;
+  z-index: 1;
+  max-width: 28ch;
+  margin: 0 0 10px;
+  color: var(--pulse-ink, var(--color-text, #112530));
+  font-family: var(--font-family-sans);
+  font-size: clamp(1.4rem, 1vw + 1rem, 1.85rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+
+.app-page-header__subtitle {
+  max-width: 76ch;
+  color: var(--pulse-muted-strong, var(--color-text-muted, #55717a));
+  font-size: 14px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.app-page-header__context {
+  gap: 8px;
+  margin: 16px 0 0;
+  min-width: 0;
+}
+
+.app-page-header__context-item {
+  --context-accent: var(--pulse-cyan, var(--color-primary-500, #0fa8b8));
+  --context-surface: var(--pulse-cyan-soft, var(--color-primary-50, #e8f8fa));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 8px;
+  min-width: min(160px, 100%);
+  min-height: 40px;
+  padding: 7px 10px;
+  border: 1px solid var(--pulse-line, var(--color-border, #d5e2e6));
+  border-inline-start: 3px solid var(--context-accent);
+  border-radius: 11px;
+  background: var(--context-surface);
+  box-shadow: var(--shadow-xs, 0 1px 2px rgba(15, 35, 48, 0.04));
+}
+
+.app-page-header__context-item dt,
+.app-page-header__next-steps-label {
+  color: var(--pulse-muted, var(--color-text-muted, #55717a));
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.app-page-header__context-item dd {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--pulse-ink, var(--color-text, #112530));
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.app-page-header__context-item--info {
+  --context-accent: var(--pulse-cyan, var(--color-info-500, #0fa8b8));
+  --context-surface: var(--pulse-cyan-soft, var(--color-info-50, #e8f8fa));
+}
+
+.app-page-header__context-item--warning {
+  --context-accent: var(--pulse-sand, var(--color-warning-600, #a96508));
+  --context-surface: var(--pulse-sand-soft, var(--color-warning-50, #fff6e4));
+}
+
+.app-page-header__context-item--danger {
+  --context-accent: var(--pulse-coral, var(--color-danger-600, #c64b52));
+  --context-surface: var(--pulse-coral-soft, var(--color-danger-50, #fff0ef));
+}
+
+.app-page-header__context-item--success {
+  --context-accent: var(--pulse-mint, var(--color-success-600, #12836c));
+  --context-surface: var(--pulse-mint-soft, var(--color-success-50, #e8f8f1));
+}
+
+.app-page-header__side {
+  display: flex;
+  flex: 0 0 auto;
+  width: min(440px, 100%);
+  min-width: 240px;
+  max-width: 100%;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  padding-inline-start: clamp(16px, 2vw, 24px);
+  border-inline-start: 1px solid var(--pulse-line, var(--color-border, #d5e2e6));
+}
+
+.app-page-header__next-steps {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: right;
+}
+
+.app-page-header__next-steps-label {
+  align-self: stretch;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.app-page-header__next-step {
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 0;
+  border-radius: 8px;
+  color: var(--pulse-ink, var(--color-text, #112530));
+}
+
+.app-page-header__next-step span {
+  color: var(--pulse-muted, var(--color-text-muted, #55717a));
+  line-height: 1.4;
+}
+
+.app-page-header__next-step[href]:hover {
+  background: var(--pulse-cyan-soft, var(--color-primary-50, #e8f8fa));
+  text-decoration: none;
+}
+
+.app-page-header__actions,
+.app-page-header__action-group {
+  width: 100%;
+}
+
+.app-page-header__actions > :deep(.ds-btn),
+.app-page-header__actions > :deep(.ds-badge) {
+  flex: 0 0 auto;
+}
+
+.app-page-header__action-group > :deep(.ds-btn) {
+  flex: 0 0 auto;
+  min-width: var(--touch-min, 44px);
+  min-height: var(--touch-min, 44px);
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.app-page-header__tabs {
+  width: 100%;
+  margin: -8px 0 20px;
+  padding: 4px 8px 0;
+  overflow-x: auto;
+  border: 1px solid var(--pulse-line, var(--color-border, #d5e2e6));
+  border-radius: 13px;
+  background: var(--pulse-surface, var(--color-surface, #ffffff));
+  box-shadow: var(--shadow-xs, 0 1px 2px rgba(15, 35, 48, 0.04));
+  scrollbar-width: thin;
+}
+
+.app-page-header__tabs :deep(.ds-tabs) {
+  min-width: max-content;
+  border-bottom-color: transparent;
+}
+
+.app-page-header__tabs :deep(.ds-tab) {
+  min-height: var(--touch-min, 44px);
+  padding-inline: 14px;
+  font-weight: 700;
+}
+
+.app-page-header__tabs :deep(.ds-tab--active) {
+  color: var(--pulse-cyan-strong, var(--color-primary-700, #066b80));
+  border-bottom-color: var(--pulse-cyan, var(--color-primary-500, #0fa8b8));
+}
+
+@media (max-width: 1100px) {
+  .app-page-header {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 17px 16px 16px 18px;
+  }
+
+  .app-page-header__side {
+    align-items: stretch;
+    width: 100%;
+    min-width: 0;
+    padding: 12px 0 0;
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--pulse-line, var(--color-border, #d5e2e6));
+  }
+
+  .app-page-header__title {
+    max-width: none;
+    margin-bottom: 8px;
+    font-size: clamp(1.45rem, 6vw, 1.85rem);
+  }
+
+  .app-page-header__next-steps {
+    align-items: flex-start;
+    gap: 4px;
+    text-align: left;
+  }
+
+  .app-page-header__next-steps-label {
+    text-align: left;
+  }
+
+  .app-page-header__action-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  }
+
+  .app-page-header__action-group > .app-page-header__primary { grid-column: 1 / -1; }
+
+  .app-page-header__action-group > * {
+    min-width: 0;
+  }
+
+  .app-page-header__action-group > :deep(.ds-btn) {
+    width: 100%;
+    min-width: var(--touch-min, 44px);
+  }
+
+  .app-page-header__context-item {
+    flex: 1 1 132px;
+    min-width: 0;
+  }
+
+  .app-page-header__tabs {
+    margin-top: -4px;
+    margin-bottom: 16px;
+    padding-inline: 4px;
+  }
+
+  .app-page-header__tabs :deep(.ds-tab) {
+    padding-inline: 12px;
+  }
+}
+/* Keep real breadcrumb links available; static context is already in the shell. */
+.app-page-header__breadcrumbs:not(:has(a, button)) { display: none; }
+@media (max-width: 720px) {
+  .app-page-header__breadcrumbs { flex-wrap: nowrap; overflow-x: auto; margin-bottom: 8px; scrollbar-width: thin; }
+  .app-page-header__breadcrumb-item { flex: 0 0 auto; }
+  .app-page-header__actions > :deep(.ds-btn--primary) { flex: 1 0 100%; width: 100%; }
 }
 </style>

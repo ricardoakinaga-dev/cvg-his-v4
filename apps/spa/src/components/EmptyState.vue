@@ -1,6 +1,6 @@
 <template>
   <div class="empty-state" :class="`empty-state--${size}`">
-    <div class="empty-state__icon">{{ icon }}</div>
+    <div class="empty-state__icon" aria-hidden="true"><DsIcon :name="icon" size="xl" /></div>
     <h3 class="empty-state__title">{{ title }}</h3>
     <p v-if="description" class="empty-state__desc">{{ description }}</p>
     <slot name="action" />
@@ -8,6 +8,8 @@
 </template>
 
 <script setup lang="ts">
+import DsIcon from '@cvg-his-v2/design-system/vue/DsIcon.vue';
+
 interface Props {
   icon: string;
   title: string;

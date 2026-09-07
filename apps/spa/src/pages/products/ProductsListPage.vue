@@ -17,13 +17,6 @@
       {{ error }}
     </DsAlert>
 
-    <section class="hub-kpis" aria-label="Resumo de produtos">
-      <DsStatCard :label="`${products.length} produto(s)`" value="" icon="📦" />
-      <DsStatCard :label="`${activeCount} ativo(s)`" value="" icon="✅" />
-      <DsStatCard :label="`${inactiveCount} inativo(s)`" value="" icon="⏸️" />
-      <DsStatCard :label="`${filteredProducts.length} resultado(s)`" value="" icon="🔎" />
-    </section>
-
     <section class="filter-panel" aria-label="Filtros de produtos">
       <form class="filters" @submit.prevent="applyFilters">
         <label class="field">
@@ -47,14 +40,24 @@
     </section>
 
     <DataTable
+      v-if="loading || summaryAvailable"
+      caption="Produtos cadastrados"
       :columns="columns"
       :rows="filteredProducts"
       :loading="loading"
       empty-icon="📦"
-      empty-title="Nenhum produto encontrado"
-      empty-description="Produtos cadastrados pela API aparecerão aqui."
+      :empty-title="hasAppliedFilters ? 'Nenhum produto corresponde aos filtros' : 'Nenhum produto cadastrado'"
+      :empty-description="hasAppliedFilters
+        ? 'Ajuste código, nome ou situação, ou limpe os filtros para consultar os produtos.'
+        : 'Cadastre o primeiro produto para organizar o catálogo e acompanhar o estoque.'"
       variant="hoverable"
     >
+      <template #emptyAction>
+        <DsButton v-if="hasAppliedFilters" variant="secondary" @click="clearFilters">
+          Limpar filtros
+        </DsButton>
+        <DsButton v-else variant="primary" tag="a" to="/products/new">Incluir produto</DsButton>
+      </template>
       <template #cell-code="{ row }">
         <span class="record-id">{{ (row as ProductSummary).code ?? (row as ProductSummary).id }}</span>
       </template>
@@ -88,6 +91,27 @@
         </div>
       </template>
     </DataTable>
+
+    <EmptyState
+      v-else
+      icon="alert"
+      title="Produtos indisponíveis"
+      description="Não foi possível consultar o catálogo. Tente carregar os produtos novamente."
+    >
+      <template #action>
+        <DsButton variant="secondary" @click="loadData">Tentar novamente</DsButton>
+      </template>
+    </EmptyState>
+
+    <details v-if="summaryAvailable && !loading" class="products-summary">
+      <summary>Resumo de produtos</summary>
+      <section class="hub-kpis" aria-label="Resumo de produtos">
+        <DsStatCard label="Produtos" :value="String(products.length)" icon="📦" />
+        <DsStatCard label="Ativos" :value="String(activeCount)" icon="✅" />
+        <DsStatCard label="Inativos" :value="String(inactiveCount)" icon="⏸️" />
+        <DsStatCard label="Resultados" :value="String(filteredProducts.length)" icon="🔎" />
+      </section>
+    </details>
   </div>
 </template>
 
@@ -95,6 +119,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
@@ -105,12 +130,16 @@ import { productsService, type ProductSummary } from '@/services/products';
 const products = ref<ProductSummary[]>([]);
 const loading = ref(false);
 const error = ref('');
+const summaryAvailable = ref(false);
 const draftFilters = reactive({
   code: '',
   product: '',
   status: ''
 });
 const appliedFilters = reactive({ ...draftFilters });
+const hasAppliedFilters = computed(() =>
+  Boolean(appliedFilters.code.trim() || appliedFilters.product.trim() || appliedFilters.status)
+);
 
 const columns: DataTableColumn[] = [
   { key: 'code', label: 'Código', width: '140px' },
@@ -155,12 +184,19 @@ function applyFilters() {
   void loadData();
 }
 
+function clearFilters() {
+  Object.assign(draftFilters, { code: '', product: '', status: '' });
+  applyFilters();
+}
+
 async function loadData() {
   loading.value = true;
   error.value = '';
+  summaryAvailable.value = false;
   try {
-    const query = draftFilters.product || draftFilters.code || undefined;
+    const query = appliedFilters.product || appliedFilters.code || undefined;
     products.value = await productsService.list(query);
+    summaryAvailable.value = true;
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao carregar produtos';
   } finally {
@@ -199,6 +235,7 @@ onMounted(loadData);
 }
 
 .field {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -209,8 +246,9 @@ onMounted(loadData);
 
 .field input,
 .field select {
+  box-sizing: border-box;
   width: 100%;
-  min-height: 38px;
+  min-height: 44px;
   padding: 8px 10px;
   border: 1px solid var(--color-border, #d7dde8);
   border-radius: 6px;
@@ -230,9 +268,31 @@ onMounted(loadData);
   gap: 8px;
 }
 
+.products-summary > summary {
+  min-height: 44px;
+  align-content: center;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.products-summary > summary:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.products-summary[open] > summary { margin-bottom: 12px; }
+
 @media (max-width: 820px) {
-  .filters {
-    grid-template-columns: 1fr;
+  .filters, .hub-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
   }
+
+  .filter-panel { padding: 12px; }
+
+  .hub-kpis :deep(.ds-stat-card) { padding: 12px; gap: 10px; }
+  .hub-kpis :deep(.ds-stat-card__icon) { width: 32px; height: 32px; border-radius: 10px; }
+  .hub-kpis :deep(.ds-stat-card__value) { font-size: 24px; }
 }
 </style>

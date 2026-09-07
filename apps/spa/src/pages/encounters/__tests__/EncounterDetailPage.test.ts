@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
+import { reactive } from 'vue';
 
 const mockEncounter = {
   id: 'enc-1',
@@ -42,6 +43,17 @@ const mockGetBillingByEncounterFn = vi.fn();
 const mockGetPatientName = vi.fn().mockResolvedValue('Rex');
 const mockGetOwnerName = vi.fn().mockResolvedValue('Joao Silva');
 const mockRouterPush = vi.fn();
+const mockRoute = reactive({ params: { id: 'enc-1' }, path: '/encounters/enc-1' });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+  return { promise, resolve, reject };
+}
 
 vi.mock('@/services/encounter', () => ({
   encounterService: {
@@ -99,10 +111,7 @@ vi.mock('@/composables/useEntityCache', () => ({
 }));
 
 vi.mock('vue-router', () => ({
-  useRoute: () => ({
-    params: { id: 'enc-1' },
-    path: '/encounters/enc-1'
-  }),
+  useRoute: () => mockRoute,
   useRouter: () => ({
     push: mockRouterPush
   })
@@ -111,6 +120,8 @@ vi.mock('vue-router', () => ({
 describe('EncounterDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRoute.params.id = 'enc-1';
+    mockRoute.path = '/encounters/enc-1';
     mockGetByIdFn.mockResolvedValue(mockEncounter);
     mockGetTimelineFn.mockResolvedValue(mockTimeline);
     mockTransitionFn.mockResolvedValue(mockEncounter);
@@ -647,5 +658,49 @@ describe('EncounterDetailPage', () => {
     expect(firstKey).toEqual(expect.any(String));
     expect(retryKey).toBe(firstKey);
     alertMock.mockRestore();
+  });
+
+  it('reloads the current encounter and ignores a late previous response after a route switch', async () => {
+    const first = deferred<typeof mockEncounter>();
+    const secondEncounter = {
+      ...mockEncounter,
+      id: 'enc-2',
+      patientId: 'pat-2',
+      ownerId: 'owner-2',
+      reason: 'Consulta Luna',
+      visitType: 'scheduled' as const,
+      origin: 'schedule' as const
+    };
+    mockGetByIdFn.mockImplementation((id: string) => id === 'enc-1' ? first.promise : Promise.resolve(secondEncounter));
+    mockGetPatientName.mockImplementation((id: string) => Promise.resolve(id === 'pat-2' ? 'Luna' : 'Rex'));
+    mockGetOwnerName.mockImplementation((id: string) => Promise.resolve(id === 'owner-2' ? 'Marina Costa' : 'Joao Silva'));
+
+    const EncounterDetailPage = (await import('../EncounterDetailPage.vue')).default;
+    const wrapper = mount(EncounterDetailPage);
+    expect(wrapper.find('.page-loading').exists()).toBe(true);
+
+    mockRoute.params.id = 'enc-2';
+    mockRoute.path = '/encounters/enc-2';
+    await flushPromises();
+    expect(wrapper.text()).toContain('Consulta Luna');
+    expect(wrapper.text()).toContain('Luna');
+
+    first.resolve(mockEncounter);
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('Consulta Rex');
+    expect(wrapper.text()).not.toContain('Joao Silva');
+  });
+
+  it('rejects a successful encounter response whose identity differs from the route', async () => {
+    mockRoute.params.id = 'enc-expected';
+    mockRoute.path = '/encounters/enc-expected';
+    mockGetByIdFn.mockResolvedValue({ ...mockEncounter, id: 'enc-other' });
+
+    const EncounterDetailPage = (await import('../EncounterDetailPage.vue')).default;
+    const wrapper = mount(EncounterDetailPage);
+    await flushPromises();
+
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('não corresponde ao endereço solicitado');
   });
 });

@@ -1,0 +1,4 @@
+src/pages/owners/__tests__/OwnerFormPage.test.ts(328,23): error TS2339: Property 'dirty' does not exist on type 'ComponentPublicInstance<NonNullable<Partial<{}> & Omit<{} & VNodeProps & AllowedComponentProps & ComponentCustomProps, never>>, { ...; } & ... 5 more ... & Omit<...>>'.
+undefined
+/home/ricardo/cvg-his-v4/apps/spa:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 2: vue-tsc --noEmit

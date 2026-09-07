@@ -81,7 +81,7 @@
               :class="{ 'related-link--active': item.path === route.path }"
               :to="item.path"
             >
-              <span>{{ item.icon }}</span>
+              <DsIcon :name="item.icon ?? 'dot'" size="sm" aria-hidden="true" />
               <span>{{ item.label }}</span>
             </RouterLink>
           </nav>
@@ -99,6 +99,7 @@ import AppPageHeader, { type PageAction } from '@/components/AppPageHeader.vue';
 import DataTable, { type DataTableColumn, type DataTableRow } from '@/components/DataTable.vue';
 import { findMatchingNavLocation } from '@/navigation';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
+import DsIcon from '@cvg-his-v2/design-system/vue/DsIcon.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 
 const route = useRoute();
@@ -107,7 +108,7 @@ const navLocation = computed(() => findMatchingNavLocation(route.path));
 const title = computed(() => navLocation.value?.item.label ?? (route.meta.title as string) ?? 'Operação');
 const groupLabel = computed(() => navLocation.value?.group.label ?? (route.meta.breadcrumbParent as string) ?? 'ERP');
 const sectionLabel = computed(() => navLocation.value?.section.label ?? (route.meta.breadcrumbParent as string) ?? 'Rotina');
-const icon = computed(() => navLocation.value?.item.icon ?? (route.meta.icon as string) ?? '📋');
+const icon = computed(() => navLocation.value?.item.icon ?? (route.meta.icon as string) ?? 'file');
 
 const breadcrumbs = computed(() => ['Início', groupLabel.value, sectionLabel.value, title.value]);
 const subtitle = computed(() => `${groupLabel.value} / ${sectionLabel.value} organizado no padrão operacional do Vetus.`);
@@ -135,8 +136,8 @@ const primaryAction = computed<PageAction>(() => ({
 }));
 
 const secondaryActions = computed<PageAction[]>(() => [
-  { key: 'refresh', label: 'Atualizar', variant: 'secondary', icon: '🔄' },
-  { key: 'export', label: 'Exportar', variant: 'secondary', icon: '📤' }
+  { key: 'refresh', label: 'Atualizar', variant: 'secondary', icon: 'refresh' },
+  { key: 'export', label: 'Exportar', variant: 'secondary', icon: 'upload' }
 ]);
 
 const primaryActionLabel = computed(() => {

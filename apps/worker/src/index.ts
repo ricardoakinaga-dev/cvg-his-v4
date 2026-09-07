@@ -111,7 +111,7 @@ async function main() {
   workerState.persistenceMode = bootstrap.notificationRepository ? 'database' : 'in-memory';
 
   // Feature flags — evaluated once at startup with Prometheus metrics collector (PR-FF-13, GAP-12)
-  const workerFeatureFlags = createWorkerFeatureFlags({
+  const workerFeatureFlags = await createWorkerFeatureFlags({
     environment: config.environment,
     enabledKeys: config.workerFeatureFlags,
     metrics: createWorkerFeatureFlagMetricsCollector()

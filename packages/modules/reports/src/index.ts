@@ -6,6 +6,16 @@ import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { withTenantQuery } from '@cvg-his-v2/tenant-context';
+import { cancellationReportDefinitions } from './cancellation-report-definitions.js';
+
+export {
+  getReportCatalogContract,
+  reportCatalogContractById,
+  reportCatalogContracts,
+  type ReportCatalogContract,
+  type ReportCatalogDateSemantics,
+  type ReportCatalogImplementationStatus
+} from './report-catalog-contract.js';
 
 export type ReportFormat = 'json' | 'csv' | 'xlsx' | 'pdf';
 export type ReportContentEncoding = 'utf8' | 'base64';
@@ -506,32 +516,7 @@ function seedDefinitions(): readonly ReportDefinition[] {
       createdAt,
       updatedAt: createdAt
     },
-    {
-      id: 'commercial-deleted-sales',
-      accountId: null,
-      title: 'Exclusão de Vendas e Comandas',
-      description:
-        'Snapshot de comandas atualmente canceladas, filtrado pela data de abertura (createdAt), com valores e identificadores operacionais.',
-      category: 'commercial',
-      requiredPermission: 'counter_sale.read',
-      supportedFormats: ['json', 'csv', 'xlsx', 'pdf'],
-      filterSchema: { search: 'string', dateFrom: 'date', dateTo: 'date' },
-      columns: [
-        { key: 'number', label: 'Número', type: 'string' },
-        { key: 'status', label: 'Status', type: 'status' },
-        { key: 'ownerId', label: 'Tutor (ID)', type: 'string' },
-        { key: 'openedByUserId', label: 'Usuário de abertura (ID)', type: 'string' },
-        { key: 'createdAt', label: 'Abertura', type: 'datetime' },
-        { key: 'updatedAt', label: 'Última atualização', type: 'datetime' },
-        { key: 'total', label: 'Total', type: 'currency' },
-        { key: 'discountAmount', label: 'Desconto', type: 'currency' },
-        { key: 'paidAmount', label: 'Pago', type: 'currency' },
-        { key: 'balanceDue', label: 'Saldo', type: 'currency' },
-        { key: 'notes', label: 'Observação', type: 'string' }
-      ],
-      createdAt,
-      updatedAt: createdAt
-    },
+    ...cancellationReportDefinitions(createdAt),
     {
       id: 'inventory-products',
       accountId: null,

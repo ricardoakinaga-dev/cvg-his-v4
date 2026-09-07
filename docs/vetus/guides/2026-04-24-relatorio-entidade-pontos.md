@@ -10,13 +10,13 @@ Escopo:
 
 Evidências principais:
 
-- [pontos-lista.png](../inspection/2026-04-24T00-01-06-205Z-pontos/screenshots/pontos-lista.png)
-- [pontos-lista.json](../inspection/2026-04-24T00-01-06-205Z-pontos/pontos-lista.json)
-- [pontos-lista.html](../inspection/2026-04-24T00-01-06-205Z-pontos/pontos-lista.html)
-- [pontos-text-pesquisar-.png](../inspection/2026-04-24T00-01-06-205Z-pontos/screenshots/pontos-text-pesquisar-.png)
-- [pontos-text-cliente-.png](../inspection/2026-04-24T00-01-06-205Z-pontos/screenshots/pontos-text-cliente-.png)
-- [pontos-text-pontos-.png](../inspection/2026-04-24T00-01-06-205Z-pontos/screenshots/pontos-text-pontos-.png)
-- [network.json](../inspection/2026-04-24T00-01-06-205Z-pontos/network.json)
+- pontos-lista.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-01-06-205Z-pontos/screenshots/pontos-lista.png`)
+- pontos-lista.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-01-06-205Z-pontos/pontos-lista.json`)
+- pontos-lista.html (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-01-06-205Z-pontos/pontos-lista.html`)
+- pontos-text-pesquisar-.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-01-06-205Z-pontos/screenshots/pontos-text-pesquisar-.png`)
+- pontos-text-cliente-.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-01-06-205Z-pontos/screenshots/pontos-text-cliente-.png`)
+- pontos-text-pontos-.png (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-01-06-205Z-pontos/screenshots/pontos-text-pontos-.png`)
+- network.json (histórico arquivado: `legado/docs/vetus/inspection/2026-04-24T00-01-06-205Z-pontos/network.json`)
 - [01-PLANEJAMENTO-ERP-ENTERPRISE.md](../guides/01-PLANEJAMENTO-ERP-ENTERPRISE.md)
 - [03-MODELO-DADOS.md](../guides/03-MODELO-DADOS.md)
 - [04-ESPECIFICACAO-APIS.md](../guides/04-ESPECIFICACAO-APIS.md)

@@ -2,16 +2,36 @@
 
 **Ciclo:** mensal  
 **Owner:** PMO CVG-HIS  
-**Última revisão:** 2026-09-03  
-**Próxima revisão:** 2026-10-03
+**Última revisão:** 2026-09-06
+**Próxima revisão:** 2026-09-13
 
 Este painel registra o estado comprovado; presença de código ou documento não
 promove um gate. Datas são alvos de controle e devem ser replanejadas na revisão
 mensal se equipe, sandbox ou ambiente-alvo não estiver disponível.
 
-## Gates e vencimentos
+## Snapshot executivo — 2026-09-06
 
-| Gate/evidência                                         | Estado em 2026-09-02                         | Owner             | Vencimento              | Decisão/exceção                                                             |
+O [programa ERP State of Art / Triplo AAA](../2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md)
+usa este painel como superfície de risco. A nota de maturidade atual é **75/100**;
+ela não autoriza release.
+
+| Indicador | Estado atual | Implicação |
+|---|---|---|
+| Gates AAA globais | `PARTIAL/BLOCKED` | nenhum selo AAA; todos os gates obrigatórios permanecem ativos |
+| Critical bootstrap | `FAIL` | ambiente isolado PostgreSQL/Redis/Docker necessário antes da recertificação |
+| E2E SPA com persistência | `FAIL` nesta tentativa | fallback de memória não pode ser usado como evidência de release |
+| Cobertura executada | 2.433 pass, 1 skip; 82,32% lines/statements | escopo instrumentado reduzido; critical coverage ainda aberto |
+| Paridade comportamental | 4/11 | 7 domínios requerem cenário, persistência e aceite de negócio |
+| Dependências externas | 0/10 prontas; 10 bloqueadas | provider/target/credenciais precisam de decisão humana |
+| Worktree | 676 entradas alteradas/não rastreadas | não existe candidato imutável no estado avaliado |
+| Visual/a11y | evidências scoped positivas | sem aprovação global; dashboard baseline mismatch e revisão assistiva pendentes |
+
+Próxima ação operacional: desbloquear `AAA-002`/`AAA-003`, repetir o critical
+gate em ambiente dedicado e atualizar o [backlog AAA](../2026-09-06-backlog-erp-state-of-art-triplo-aaa.md).
+
+## Gates e vencimentos — compromissos de controle a revalidar
+
+| Gate/evidência                                         | Snapshot de referência                      | Owner             | Vencimento              | Decisão/exceção                                                             |
 | ------------------------------------------------------ | -------------------------------------------- | ----------------- | ----------------------- | --------------------------------------------------------------------------- |
 | R0 roles + matriz PostgreSQL/Redis                     | verificado localmente                        | PLAT/SEC          | concluído em 2026-09-02 | sem exceção; CI remoto ainda é evidência separada                           |
 | cobertura global ≥82%                                  | verificado localmente                        | QA                | concluído em 2026-09-02 | sem redução de threshold ou novas exclusões                                 |

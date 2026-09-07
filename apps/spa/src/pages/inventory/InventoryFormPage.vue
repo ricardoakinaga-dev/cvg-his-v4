@@ -83,7 +83,7 @@
             <DsButton type="submit" variant="primary" :loading="saving" :disabled="saving">
               {{ saving ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Criar Item' }}
             </DsButton>
-            <DsButton variant="secondary" tag="a" href="/inventory">Cancelar</DsButton>
+            <DsButton variant="secondary" tag="a" to="/inventory">Cancelar</DsButton>
           </div>
         </form>
       </DsCard>

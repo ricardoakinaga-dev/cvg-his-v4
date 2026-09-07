@@ -1,7 +1,7 @@
 <template>
   <div class="webhooks-list-page">
     <AppPageHeader
-      :breadcrumbs="['Atendimento', 'Cadastros', 'Webhooks']"
+      :breadcrumbs="['Console Enterprise', 'Integrações', 'Webhooks']"
       title="Webhooks"
       subtitle="Cadastro de endpoints usados para integrar eventos do atendimento, financeiro e notificações.">
       <template #actions>

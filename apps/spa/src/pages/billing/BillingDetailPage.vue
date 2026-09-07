@@ -36,7 +36,7 @@
             <DsButton variant="primary" :loading="creatingEstimate" @click="handleCreateEstimate">
               {{ creatingEstimate ? 'Gerando...' : 'Gerar estimativa' }}
             </DsButton>
-            <DsButton variant="secondary" tag="a" href="/billing">Voltar</DsButton>
+            <DsButton variant="secondary" tag="a" to="/billing">Voltar</DsButton>
           </div>
         </div>
       </DsCard>
@@ -89,8 +89,9 @@
 
         <AppDetailSection :title="'Itens de Cobrança (' + items.length + ')'">
           <div v-if="itemsLoading" class="muted">Carregando itens...</div>
+          <DsAlert v-else-if="itemsWarning" variant="warning">{{ itemsWarning }}</DsAlert>
           <div v-else-if="items.length === 0" class="muted">Nenhum item adicionado ainda.</div>
-          <div v-else class="items-table-wrapper">
+          <div v-else class="items-table-wrapper" tabindex="0" aria-label="Itens de cobrança">
             <table class="data-table">
               <thead>
                 <tr>
@@ -214,7 +215,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onBeforeUnmount, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { billingService, isBillingRecordNotFoundError } from '@/services/billing';
 import type {
@@ -240,12 +241,13 @@ import AppPageHeader, {
 import AppDetailSection from '@/components/AppDetailSection.vue';
 
 const route = useRoute();
-const encounterId = route.params.id as string;
+const encounterId = computed(() => String(route.params.id ?? ''));
 
 const record = ref<BillingRecordSummary | null>(null);
 const items = ref<BillingItemSummary[]>([]);
 const loading = ref(true);
 const itemsLoading = ref(false);
+const itemsWarning = ref('');
 const billingRecordMissing = ref(false);
 const creatingEstimate = ref(false);
 const error = ref('');
@@ -268,6 +270,23 @@ const addItemForm = ref({
   quantity: 1,
   unitPriceAmount: 0
 });
+let active = true;
+let pageGeneration = 0;
+
+function isCurrentLoad(generation: number, id: string) {
+  return active && generation === pageGeneration && encounterId.value === id;
+}
+
+function resetPageState() {
+  record.value = null;
+  items.value = [];
+  billingRecordMissing.value = false;
+  error.value = '';
+  itemsWarning.value = '';
+  patientName.value = '';
+  ownerName.value = '';
+  itemsLoading.value = false;
+}
 
 const isAddItemValid = computed(() => {
   return (
@@ -312,17 +331,17 @@ const summaryCards = computed(() => {
 
 const billingHeaderSubtitle = computed(() => {
   if (billingRecordMissing.value) {
-    return `Atendimento ${encounterId.slice(0, 8)} sem cobrança persistida.`;
+    return `Atendimento ${encounterId.value.slice(0, 8)} sem cobrança persistida.`;
   }
-  if (!record.value) return `Atendimento ${encounterId.slice(0, 8)} em carregamento.`;
-  return `Atendimento ${encounterId.slice(0, 8)} · ${billingStatusLabel(record.value.status)} · ${items.value.length} item(ns)`;
+  if (!record.value) return `Atendimento ${encounterId.value.slice(0, 8)} em carregamento.`;
+  return `Atendimento ${encounterId.value.slice(0, 8)} · ${billingStatusLabel(record.value.status)} · ${items.value.length} item(ns)`;
 });
 
 const headerBreadcrumbItems = computed<PageBreadcrumb[]>(() => [
   { key: 'home', label: 'Início', to: '/' },
   { key: 'finance', label: 'Financeiro', to: '/billing' },
   { key: 'billing', label: 'Faturamento', to: '/billing' },
-  { key: 'encounter-billing', label: `Atendimento ${encounterId.slice(0, 8)}`, current: true }
+  { key: 'encounter-billing', label: `Atendimento ${encounterId.value.slice(0, 8)}`, current: true }
 ]);
 
 const headerContextItems = computed<PageContextItem[]>(() => {
@@ -331,7 +350,7 @@ const headerContextItems = computed<PageContextItem[]>(() => {
       {
         key: 'encounter',
         label: 'Atendimento',
-        value: encounterId.slice(0, 8)
+        value: encounterId.value.slice(0, 8)
       },
       {
         key: 'status',
@@ -413,7 +432,7 @@ const headerNextSteps = computed<PageNextStep[]>(() => {
         key: 'receive',
         label: 'Registrar recebimento',
         description: formatCurrency(record.value.subtotalAmount),
-        to: `/encounters/${encounterId}`
+        to: `/encounters/${encounterId.value}`
       }
     ];
   }
@@ -458,7 +477,7 @@ const headerPrimaryAction = computed<PageAction | null>(() => {
     return {
       key: 'receive',
       label: 'Registrar recebimento',
-      to: `/encounters/${encounterId}`
+      to: `/encounters/${encounterId.value}`
     };
   }
   return {
@@ -512,32 +531,45 @@ function formatDate(d: string) {
   }
 }
 
-async function loadEntityNames(rec: BillingRecordSummary) {
-  patientName.value = await entityCache.getPatientName(rec.patientId);
-  ownerName.value = await entityCache.getOwnerName(rec.ownerId);
+async function loadEntityNames(rec: BillingRecordSummary, generation: number) {
+  const patient = await entityCache.getPatientName(rec.patientId);
+  if (!isCurrentLoad(generation, rec.encounterId)) return;
+  patientName.value = patient;
+  const owner = await entityCache.getOwnerName(rec.ownerId);
+  if (!isCurrentLoad(generation, rec.encounterId)) return;
+  ownerName.value = owner;
 }
 
 async function handleCreateEstimate() {
   if (creatingEstimate.value) return;
+  const id = encounterId.value;
+  const generation = pageGeneration;
   creatingEstimate.value = true;
   try {
     const updated = await billingService.createEstimate({
-      encounterId
+      encounterId: id
     });
+    if (!isCurrentLoad(generation, id)) return;
+    if (updated.encounterId !== id) {
+      error.value = 'A estimativa retornada não corresponde ao atendimento solicitado.';
+      return;
+    }
     record.value = updated;
     billingRecordMissing.value = false;
     error.value = '';
-    await loadEntityNames(updated);
-    await loadItems();
+    await loadEntityNames(updated, generation);
+    await loadItems(id, generation);
   } catch (err: unknown) {
-    alert(err instanceof Error ? err.message : 'Erro ao gerar estimativa');
+    if (isCurrentLoad(generation, id)) alert(err instanceof Error ? err.message : 'Erro ao gerar estimativa');
   } finally {
-    creatingEstimate.value = false;
+    if (isCurrentLoad(generation, id)) creatingEstimate.value = false;
   }
 }
 
 async function handleAddItem() {
   if (!record.value || !isAddItemValid.value) return;
+  const id = record.value.encounterId;
+  const generation = pageGeneration;
   addingItem.value = true;
   addItemError.value = '';
 
@@ -550,6 +582,7 @@ async function handleAddItem() {
       unitPriceAmount: addItemForm.value.unitPriceAmount
     };
     await billingService.addItem(payload);
+    if (!isCurrentLoad(generation, id)) return;
     showAddItemModal.value = false;
     addItemForm.value = {
       itemType: 'service',
@@ -557,43 +590,57 @@ async function handleAddItem() {
       quantity: 1,
       unitPriceAmount: 0
     };
-    await loadItems();
-    await loadRecord();
+    await loadItems(id, generation);
+    await loadRecord(id, generation);
   } catch (err: unknown) {
-    addItemError.value = err instanceof Error ? err.message : 'Erro ao adicionar item';
+    if (isCurrentLoad(generation, id)) addItemError.value = err instanceof Error ? err.message : 'Erro ao adicionar item';
   } finally {
-    addingItem.value = false;
+    if (isCurrentLoad(generation, id)) addingItem.value = false;
   }
 }
 
 async function handleUpdateStatus() {
   if (!record.value || !newStatus.value) return;
+  const id = record.value.encounterId;
+  const generation = pageGeneration;
   updatingStatus.value = true;
 
   try {
-    const updated = await billingService.updateStatus(record.value.encounterId, {
+    const updated = await billingService.updateStatus(id, {
       status: newStatus.value,
       administrativeNotes: adminNotes.value.trim() || undefined
     });
+    if (!isCurrentLoad(generation, id)) return;
+    if (updated.encounterId !== id) {
+      error.value = 'O status retornado não corresponde ao atendimento solicitado.';
+      return;
+    }
     record.value = updated;
     showStatusModal.value = false;
     newStatus.value = 'open';
     adminNotes.value = '';
   } catch (err: unknown) {
-    alert(err instanceof Error ? err.message : 'Erro ao atualizar status');
+    if (isCurrentLoad(generation, id)) alert(err instanceof Error ? err.message : 'Erro ao atualizar status');
   } finally {
-    updatingStatus.value = false;
+    if (isCurrentLoad(generation, id)) updatingStatus.value = false;
   }
 }
 
-async function loadRecord() {
+async function loadRecord(id: string, generation: number) {
+  if (!isCurrentLoad(generation, id)) return;
   error.value = '';
   billingRecordMissing.value = false;
   try {
-    const rec = await billingService.getByEncounter(encounterId);
+    const rec = await billingService.getByEncounter(id);
+    if (!isCurrentLoad(generation, id)) return;
+    if (rec.encounterId !== id) {
+      error.value = 'O faturamento retornado não corresponde ao atendimento solicitado.';
+      return;
+    }
     record.value = rec;
-    await loadEntityNames(rec);
+    await loadEntityNames(rec, generation);
   } catch (err: unknown) {
+    if (!isCurrentLoad(generation, id)) return;
     if (isBillingRecordNotFoundError(err)) {
       record.value = null;
       items.value = [];
@@ -604,24 +651,50 @@ async function loadRecord() {
   }
 }
 
-async function loadItems() {
+async function loadItems(id: string, generation: number) {
+  if (!isCurrentLoad(generation, id)) return;
   itemsLoading.value = true;
+  itemsWarning.value = '';
   try {
-    items.value = await billingService.listItems(encounterId);
+    const nextItems = await billingService.listItems(id);
+    if (!isCurrentLoad(generation, id)) return;
+    items.value = nextItems;
   } catch {
-    // Non-critical
+    if (isCurrentLoad(generation, id)) {
+      items.value = [];
+      itemsWarning.value = 'Não foi possível carregar os itens desta cobrança.';
+    }
   } finally {
-    itemsLoading.value = false;
+    if (isCurrentLoad(generation, id)) itemsLoading.value = false;
   }
 }
 
-onMounted(async () => {
-  try {
-    await loadRecord();
-    await loadItems();
-  } finally {
+async function loadPage(id: string) {
+  const generation = ++pageGeneration;
+  resetPageState();
+  loading.value = true;
+  if (!id) {
     loading.value = false;
+    return;
   }
+  try {
+    await Promise.all([loadRecord(id, generation), loadItems(id, generation)]);
+  } finally {
+    if (isCurrentLoad(generation, id)) loading.value = false;
+  }
+}
+
+watch(
+  () => String(route.params.id ?? ''),
+  (id) => {
+    void loadPage(id);
+  },
+  { immediate: true, flush: 'sync' }
+);
+
+onBeforeUnmount(() => {
+  active = false;
+  pageGeneration += 1;
 });
 </script>
 

@@ -89,6 +89,7 @@ describe('CardTransactionsPage', () => {
     await wrapper.find('#card-transactions-search').setValue('Rex');
     await wrapper.find('#card-transactions-provider').setValue('pagarme-card');
     await wrapper.find('#card-transactions-status').setValue('captured');
+    expect(wrapper.find('.advanced-filters summary').text()).not.toContain('aplicado');
     await wrapper.find('form').trigger('submit');
     await flushPromises();
 
@@ -98,6 +99,7 @@ describe('CardTransactionsPage', () => {
       status: 'captured',
       pageSize: 100
     });
+    expect(wrapper.find('.advanced-filters summary').text()).toContain('2 aplicados');
   });
 
   it('uses the initial search query from linked card account rows', async () => {
@@ -130,6 +132,59 @@ describe('CardTransactionsPage', () => {
     await flushPromises();
     expect(errorWrapper.text()).toContain('Falha ao carregar transações de cartão');
   });
+  it('preserves nullable fee/net and actual currencies without inventing arithmetic', async () => {
+    mockList.mockResolvedValueOnce([
+      { transactionId: 'unknown-money', provider: 'local-card', amount: 100, currency: 'BRL', status: 'captured', description: 'Valor incompleto', installments: 1 },
+      { transactionId: 'zero-money', provider: 'local-card', amount: 0, netAmount: 0, feeAmount: 0, currency: 'USD', status: 'failed', description: 'Valor zero', installments: 1 }
+    ]);
+    const Page = (await import('../CardTransactionsPage.vue')).default;
+    const wrapper = mount(Page);
+    await flushPromises();
+    const missing = wrapper.findAll('tbody tr').find(r => r.text().includes('Valor incompleto'))!;
+    expect(missing.findAll('td')[6].text()).toBe('—');
+    expect(missing.findAll('td')[7].text()).toBe('—');
+    expect(missing.text()).toContain('Não informado');
+    const zero = wrapper.findAll('tbody tr').find(r => r.text().includes('Valor zero'))!;
+    expect(zero.findAll('td')[7].text()).toContain('US$');
+    expect(zero.findAll('td')[7].text()).toContain('0,00');
+    expect(wrapper.findAll('.query-summary dd').slice(0, 3).map(x => x.text())).toEqual(['—', '—', '—']);
+  });
+
+  it('keeps failed state after dismissal and recovers without implying zero totals', async () => {
+    mockList.mockRejectedValueOnce(new Error('Consulta temporariamente indisponível'));
+    const Page = (await import('../CardTransactionsPage.vue')).default;
+    const wrapper = mount(Page, { global: { stubs: { DsAlert: false } } });
+    expect(wrapper.findAll('.query-summary dd').every(x => x.text() === '—')).toBe(true);
+    await flushPromises();
+    await wrapper.get('button[aria-label="Fechar alerta"]').trigger('click');
+    expect(wrapper.text()).toContain('Transações indisponíveis');
+    expect(wrapper.text()).not.toContain('Nenhuma transação de cartão encontrada');
+    expect(wrapper.findAll('.query-summary dd').every(x => x.text() === '—')).toBe(true);
+    await wrapper.findAll('button').find(x => x.text() === 'Tentar novamente')!.trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Consulta cardiologica');
+    expect(wrapper.text()).not.toContain('Transações indisponíveis');
+  });
+
+  it('applies reconciliation only with its query snapshot and ignores obsolete failures', async () => {
+    const Page = (await import('../CardTransactionsPage.vue')).default;
+    const wrapper = mount(Page);
+    await flushPromises();
+    await wrapper.get('#card-transactions-reconciliation').setValue('reconciled');
+    expect(wrapper.find('tbody').text()).toContain('Vacina anual');
+    let rejectOld!: (error: Error) => void;
+    mockList.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectOld = reject; }));
+    await wrapper.find('form').trigger('submit');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(wrapper.find('tbody').text()).toContain('Consulta cardiologica');
+    expect(wrapper.find('tbody').text()).not.toContain('Vacina anual');
+    rejectOld(new Error('Resposta antiga'));
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('Resposta antiga');
+    expect(wrapper.find('tbody').text()).toContain('Consulta cardiologica');
+  });
+
 });
 
 function normalizeCurrencySpaces(value: string): string {

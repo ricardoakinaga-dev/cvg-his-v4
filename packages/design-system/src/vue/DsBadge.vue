@@ -31,57 +31,70 @@ const classes = computed(() => [
 
 <style scoped>
 .ds-badge {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
-  font-weight: 500;
+  gap: var(--space-1, 0.25rem);
+  min-height: 24px;
+  padding: 0.25rem 0.625rem;
+  font-family: var(--font-family-sans, system-ui, sans-serif);
+  font-weight: var(--font-weight-semibold, 600);
+  letter-spacing: 0.01em;
   border-radius: var(--radius-full, 9999px);
   white-space: nowrap;
-  line-height: 1;
+  line-height: 1.25;
+  border: 1px solid transparent;
 }
 
 .ds-badge--sm {
-  padding: 2px 8px;
-  font-size: 11px;
+  min-height: 24px;
+  padding: 0.25rem 0.625rem;
+  font-size: var(--font-size-xs, 0.75rem);
 }
 
 .ds-badge--md {
-  padding: 4px 12px;
-  font-size: 12px;
+  min-height: 28px;
+  padding: 0.3125rem 0.75rem;
+  font-size: var(--font-size-sm, 0.8125rem);
 }
 
 .ds-badge--default {
-  background: var(--color-neutral-700, #334155);
-  color: var(--color-neutral-50, #f8fafc);
+  background: var(--color-neutral-100, #e7eeeb);
+  color: var(--color-neutral-800, #1c3142);
+  border-color: var(--color-neutral-200, #d5e1df);
 }
 
 .ds-badge--success {
-  background: var(--color-success-700, #166534);
-  color: var(--color-success-50, #f0fdf4);
+  background: var(--color-success-bg, #e8f8f0);
+  color: var(--color-success-text, #0e4939);
+  border-color: var(--color-success-border, #98dec0);
 }
 
 .ds-badge--warning {
-  background: var(--color-warning-700, #b45309);
-  color: var(--color-warning-50, #fffbeb);
+  background: var(--color-warning-bg, #fff8e8);
+  color: var(--color-warning-text, #5c361b);
+  border-color: var(--color-warning-border, #fbdc7a);
 }
 
 .ds-badge--danger {
-  background: var(--color-danger-700, #991b1b);
-  color: var(--color-danger-50, #fef2f2);
+  background: var(--color-danger-bg, #fff0ed);
+  color: var(--color-danger-text, #823037);
+  border-color: var(--color-danger-border, #fbb7ae);
 }
 
 .ds-badge--info {
-  background: var(--color-info-700, #1d4ed8);
-  color: var(--color-info-50, #eff6ff);
+  background: var(--color-info-bg, #e9f7fb);
+  color: var(--color-info-text, #0c4155);
+  border-color: var(--color-info-border, #9bd9e5);
 }
 
 .ds-badge--dot::before {
   content: '';
   display: inline-block;
-  width: 6px;
-  height: 6px;
+  width: 0.45rem;
+  height: 0.45rem;
   border-radius: 50%;
   background: currentColor;
+  flex: 0 0 auto;
 }
 </style>

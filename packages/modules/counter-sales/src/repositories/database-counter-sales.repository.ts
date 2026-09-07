@@ -6,7 +6,7 @@ import {
   runInTenantTransaction
 } from '@cvg-his-v2/shared-database';
 import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
-import { withTenantQuery } from '@cvg-his-v2/tenant-context';
+import { getTenantContext, withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 
 export interface CounterSaleRecord {
@@ -117,6 +117,173 @@ export interface CounterSaleCancellationHistoryRecord {
   readonly correlationId: string;
 }
 
+export interface CounterSaleCancellationReportRow extends CounterSaleCancellationHistoryRecord {
+  readonly number: string;
+  readonly ownerId: string | null;
+  readonly total: number;
+  readonly discountAmount: number;
+  readonly paidAmount: number;
+  readonly balanceDue: number;
+}
+
+export interface CounterSaleCancellationReportFilters {
+  readonly search?: string;
+  readonly dateFrom?: string;
+  readonly dateTo?: string;
+  readonly limit?: number;
+}
+
+function isReportIdentity(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.trim().length > 0 &&
+    value.length <= 255 &&
+    value === value.trim() &&
+    !/[\u0000-\u001f\u007f]/.test(value)
+  );
+}
+
+export function normalizeCancellationReportFilters(
+  accountId: AccountId,
+  filters: CounterSaleCancellationReportFilters = {}
+): Required<Pick<CounterSaleCancellationReportFilters, 'limit'>> &
+  CounterSaleCancellationReportFilters {
+  if (!isReportIdentity(accountId)) {
+    throw new ValidationError('Cancellation report account is required');
+  }
+  if (
+    !filters ||
+    typeof filters !== 'object' ||
+    Array.isArray(filters) ||
+    Object.keys(filters).some((key) => !['search', 'dateFrom', 'dateTo', 'limit'].includes(key))
+  ) {
+    throw new ValidationError('Cancellation report filters are invalid');
+  }
+  for (const field of ['dateFrom', 'dateTo'] as const) {
+    const value = filters[field];
+    if (value === undefined) continue;
+    if (
+      typeof value !== 'string' ||
+      !/^(?!0000)\d{4}-\d{2}-\d{2}$/.test(value) ||
+      !Number.isFinite(Date.parse(`${value}T00:00:00.000Z`)) ||
+      new Date(`${value}T00:00:00.000Z`).toISOString().slice(0, 10) !== value
+    ) {
+      throw new ValidationError(`${field} must be an ISO calendar date`);
+    }
+  }
+  if (filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo) {
+    throw new ValidationError('dateFrom must be before or equal to dateTo');
+  }
+  if (
+    filters.search !== undefined &&
+    (typeof filters.search !== 'string' ||
+      filters.search.length > 200 ||
+      /[\u0000-\u001f\u007f]/.test(filters.search))
+  ) {
+    throw new ValidationError('Cancellation report search must contain at most 200 characters');
+  }
+  const limit = filters.limit === undefined ? MAX_COUNTER_SALE_REPORT_ROWS : filters.limit;
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > MAX_COUNTER_SALE_REPORT_ROWS) {
+    throw new ValidationError('Cancellation report limit must be between 1 and 10000');
+  }
+  return {
+    ...(filters.search?.trim() ? { search: filters.search.trim() } : {}),
+    ...(filters.dateFrom ? { dateFrom: filters.dateFrom } : {}),
+    ...(filters.dateTo ? { dateTo: filters.dateTo } : {}),
+    limit
+  };
+}
+
+/** Shared source boundary: malformed rows or filter violations never become partial reports. */
+export function validateCancellationReportRows(
+  accountId: AccountId,
+  filters: CounterSaleCancellationReportFilters,
+  rows: readonly CounterSaleCancellationReportRow[]
+): readonly CounterSaleCancellationReportRow[] {
+  const normalized = normalizeCancellationReportFilters(accountId, filters);
+  if (!Array.isArray(rows))
+    throw new ValidationError('Cancellation report source returned invalid rows');
+  if (rows.length > normalized.limit) {
+    throw new ValidationError('Cancellation report exceeds the maximum supported row count', {
+      maxRows: normalized.limit
+    });
+  }
+  const identifiers = new Set<string>();
+  return rows
+    .map((row) => {
+      if (
+        !row ||
+        typeof row !== 'object' ||
+        row.accountId !== accountId ||
+        !['eventId', 'counterSaleId', 'number', 'cancelledByUserId', 'correlationId'].every((key) =>
+          isReportIdentity(row[key as keyof CounterSaleCancellationReportRow])
+        ) ||
+        !(row.ownerId === null || isReportIdentity(row.ownerId)) ||
+        typeof row.reason !== 'string' ||
+        row.reason.trim().length === 0 ||
+        row.reason.length > 500 ||
+        /[\u0000-\u001f\u007f]/.test(row.reason) ||
+        typeof row.cancelledAt !== 'string' ||
+        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(row.cancelledAt) ||
+        !Number.isFinite(Date.parse(row.cancelledAt)) ||
+        new Date(row.cancelledAt).toISOString() !== row.cancelledAt ||
+        !['total', 'discountAmount', 'paidAmount', 'balanceDue'].every((key) => {
+          const amount = row[key as keyof CounterSaleCancellationReportRow];
+          return (
+            typeof amount === 'number' &&
+            Number.isFinite(amount) &&
+            amount >= 0 &&
+            amount <= Number.MAX_SAFE_INTEGER / 100
+          );
+        }) ||
+        identifiers.has(row.eventId)
+      ) {
+        throw new ValidationError(
+          'Cancellation report source returned an invalid cancellation event'
+        );
+      }
+      const searchText = [
+        row.number,
+        row.counterSaleId,
+        row.cancelledByUserId,
+        row.reason,
+        row.correlationId
+      ]
+        .join(' ')
+        .toLowerCase();
+      if (
+        (normalized.dateFrom && row.cancelledAt.slice(0, 10) < normalized.dateFrom) ||
+        (normalized.dateTo && row.cancelledAt.slice(0, 10) > normalized.dateTo) ||
+        (normalized.search && !searchText.includes(normalized.search.toLowerCase()))
+      ) {
+        throw new ValidationError(
+          'Cancellation report source returned an event outside the requested filters'
+        );
+      }
+      identifiers.add(row.eventId);
+      return {
+        eventId: row.eventId,
+        accountId: row.accountId,
+        counterSaleId: row.counterSaleId,
+        number: row.number,
+        ownerId: row.ownerId,
+        cancelledAt: row.cancelledAt,
+        cancelledByUserId: row.cancelledByUserId,
+        reason: row.reason,
+        correlationId: row.correlationId,
+        total: row.total,
+        discountAmount: row.discountAmount,
+        paidAmount: row.paidAmount,
+        balanceDue: row.balanceDue
+      };
+    })
+    .sort(
+      (left, right) =>
+        right.cancelledAt.localeCompare(left.cancelledAt) ||
+        right.eventId.localeCompare(left.eventId)
+    );
+}
+
 export interface CounterSalesRepository {
   create(sale: CounterSaleRecord): Promise<void>;
   /** Allocates the next account-local number and persists the sale atomically. */
@@ -129,6 +296,10 @@ export interface CounterSalesRepository {
     accountId: AccountId,
     counterSaleId: string
   ): Promise<readonly CounterSaleCancellationHistoryRecord[]>;
+  listCancellationReportRows?(
+    accountId: AccountId,
+    filters?: CounterSaleCancellationReportFilters
+  ): Promise<readonly CounterSaleCancellationReportRow[]>;
   findByAccountId(
     accountId: AccountId,
     filters?: CounterSaleListFilters
@@ -372,30 +543,32 @@ export class DatabaseCounterSalesRepository implements CounterSalesRepository {
   async createWithNextNumber(sale: CounterSaleDraft): Promise<CounterSaleRecord> {
     return runInTenantTransaction(getPool(), sale.accountId, async (client) => {
       await acquireTenantAuthorizationLock(sale.accountId);
-      const latest = await client.query<{ readonly max_number: string | null }>(
-        `SELECT MAX(
-                  CASE
-                    WHEN number ~ '^CS-[0-9]+$' THEN SUBSTRING(number FROM 4)::numeric
-                    ELSE NULL
-                  END
-                ) AS max_number
-           FROM counter_sales
-          WHERE account_id = $1`,
+      const allocated = await client.query<{ readonly next_number: string | number | bigint }>(
+        `INSERT INTO counter_sale_number_sequences (account_id, next_number)
+         VALUES ($1, 1)
+         ON CONFLICT (account_id) DO UPDATE
+           SET next_number = counter_sale_number_sequences.next_number + 1,
+               updated_at = clock_timestamp()
+         WHERE counter_sale_number_sequences.next_number < 9007199254740991
+         RETURNING next_number`,
         [sale.accountId]
       );
-
-      const maxNumberText = latest.rows[0]?.max_number;
-      let currentNumber = 0n;
-      if (maxNumberText !== null && maxNumberText !== undefined) {
-        try {
-          currentNumber = BigInt(String(maxNumberText));
-        } catch {
-          throw new ConflictError('Counter sale number sequence is invalid', {
-            accountId: sale.accountId
-          });
-        }
+      const nextNumberText = allocated.rows[0]?.next_number;
+      if (nextNumberText === undefined || nextNumberText === null) {
+        throw new ConflictError('Counter sale number sequence is exhausted', {
+          accountId: sale.accountId
+        });
       }
-      if (currentNumber < 0n || currentNumber >= MAX_COUNTER_SALE_NUMBER) {
+
+      let nextNumber: bigint;
+      try {
+        nextNumber = BigInt(String(nextNumberText));
+      } catch {
+        throw new ConflictError('Counter sale number sequence is invalid', {
+          accountId: sale.accountId
+        });
+      }
+      if (nextNumber < 1n || nextNumber > MAX_COUNTER_SALE_NUMBER) {
         throw new ConflictError('Counter sale number sequence is exhausted', {
           accountId: sale.accountId
         });
@@ -403,7 +576,7 @@ export class DatabaseCounterSalesRepository implements CounterSalesRepository {
 
       const record: CounterSaleRecord = {
         ...sale,
-        number: `CS-${String(currentNumber + 1n).padStart(6, '0')}`
+        number: `CS-${String(nextNumber).padStart(6, '0')}`
       };
       const inserted = await client.query<Record<string, unknown>>(
         `${COUNTER_SALE_INSERT_SQL} RETURNING *`,
@@ -450,8 +623,11 @@ export class DatabaseCounterSalesRepository implements CounterSalesRepository {
   async findById(id: string): Promise<CounterSaleRecord | null> {
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query('SELECT * FROM counter_sales WHERE id = $1', [id]);
-      if (result.rows.length === 0) return null;
-      return this.mapSale(result.rows[0]);
+      if (result.rows.length === 0) {
+        return null;
+      } else {
+        return this.mapSale(result.rows[0]);
+      }
     });
   }
 
@@ -463,8 +639,11 @@ export class DatabaseCounterSalesRepository implements CounterSalesRepository {
             [id, accountId]
           )
         : await client.query('SELECT * FROM counter_sales WHERE id = $1 FOR UPDATE', [id]);
-      if (result.rows.length === 0) return null;
-      return this.mapSale(result.rows[0]);
+      if (result.rows.length === 0) {
+        return null;
+      } else {
+        return this.mapSale(result.rows[0]);
+      }
     });
   }
 
@@ -514,6 +693,86 @@ export class DatabaseCounterSalesRepository implements CounterSalesRepository {
           }
         ];
       });
+    });
+  }
+
+  async listCancellationReportRows(
+    accountId: AccountId,
+    filters?: CounterSaleCancellationReportFilters
+  ): Promise<readonly CounterSaleCancellationReportRow[]> {
+    const normalized = normalizeCancellationReportFilters(accountId, filters);
+    if (getTenantContext()?.accountId !== accountId) {
+      throw new ValidationError('Cancellation report requires the matching tenant account context');
+    }
+    return withTenantQuery(getPool(), async (client) => {
+      let sql = `SELECT id, account_id, entity_id, actor_user_id, occurred_at, reason,
+                        correlation_id, after_json
+                   FROM audit_events
+                  WHERE account_id = $1
+                    AND entity_type = 'counter-sale' AND action = 'cancelled'`;
+      const params: unknown[] = [accountId];
+      if (normalized.dateFrom) {
+        params.push(normalized.dateFrom);
+        sql += ` AND occurred_at >= ($${params.length}::date::timestamp AT TIME ZONE 'UTC')`;
+      }
+      if (normalized.dateTo) {
+        params.push(normalized.dateTo);
+        sql += ` AND occurred_at < (($${params.length}::date + 1)::timestamp AT TIME ZONE 'UTC')`;
+      }
+      if (normalized.search) {
+        params.push(normalized.search);
+        sql += ` AND strpos(lower(concat_ws(' ', after_json->>'number', entity_id,
+                           actor_user_id::text, reason, correlation_id)), lower($${params.length}::text)) > 0`;
+      }
+      params.push(normalized.limit + 1);
+      sql += ` ORDER BY occurred_at DESC, id DESC LIMIT $${params.length}`;
+      const result = await client.query(sql, params);
+      if (result.rows.length > normalized.limit) {
+        throw new ValidationError('Cancellation report exceeds the maximum supported row count', {
+          maxRows: normalized.limit
+        });
+      }
+      const rows = result.rows.map((event: Record<string, unknown>) => {
+        const snapshot = event.after_json;
+        if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+          throw new ValidationError(
+            'Cancellation report requires a valid cancellation audit snapshot'
+          );
+        }
+        const after = snapshot as Record<string, unknown>;
+        if (
+          after.accountId !== accountId ||
+          after.accountId !== event.account_id ||
+          after.id !== event.entity_id ||
+          after.status !== 'cancelled'
+        ) {
+          throw new ValidationError('Cancellation report audit snapshot identity is invalid');
+        }
+        const occurredAt = event.occurred_at;
+        if (!(occurredAt instanceof Date) && typeof occurredAt !== 'string') {
+          throw new ValidationError('Cancellation report event timestamp is invalid');
+        }
+        const timestamp = new Date(occurredAt);
+        if (!Number.isFinite(timestamp.getTime())) {
+          throw new ValidationError('Cancellation report event timestamp is invalid');
+        }
+        return {
+          eventId: event.id,
+          accountId: event.account_id,
+          counterSaleId: event.entity_id,
+          number: after.number,
+          ownerId: after.ownerId,
+          cancelledAt: timestamp.toISOString(),
+          cancelledByUserId: event.actor_user_id,
+          reason: event.reason,
+          correlationId: event.correlation_id,
+          total: after.total,
+          discountAmount: after.discountAmount,
+          paidAmount: after.paidAmount,
+          balanceDue: after.balanceDue
+        } as CounterSaleCancellationReportRow;
+      });
+      return validateCancellationReportRows(accountId, normalized, rows);
     });
   }
 

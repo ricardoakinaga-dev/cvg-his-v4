@@ -7,9 +7,9 @@ Template: [`templates/usability-certification-manual-evidence.template.json`](./
 ## 1. Pré-condições
 
 - o candidato é um SHA completo de 40 caracteres, publicado em `main` e sem mudanças locais;
-- as três execuções técnicas estão verdes, com 404/404, zero retry oculto, zero flaky e zero skip;
-- cada execução preserva JSON, HTML, traces, screenshots, descoberta e auditoria 286/286;
-- a regressão visual está 28/28 e a matriz crítica passou em Chromium, Firefox e WebKit;
+- as três execuções técnicas estão verdes para todos os casos descobertos no inventário congelado e específico do candidato, sem retry oculto, flaky ou skip;
+- cada execução preserva JSON, HTML, traces, screenshots, descoberta e auditoria de todos os pares rota/viewport do mesmo inventário;
+- todos os testes de regressão visual descobertos no inventário congelado passam; separadamente, os 15 registros de revisão manual dos baselines do contrato estão aprovados, e a matriz crítica passou em Chromium, Firefox e WebKit;
 - o ambiente usa apenas dados sintéticos e o pacote não contém credenciais ou dados pessoais de tutores;
 - cada referência de evidência é estável e acessível aos revisores.
 
@@ -28,15 +28,15 @@ node scripts/validate-usability-manual-evidence.mjs \
 
 ## 3. Revisão visual de Produto e UX
 
-Produto e UX devem abrir a comparação antes/depois, classificar cada arquivo como `defect-corrected` ou `intentional-change` e registrar uma decisão nominal. O contrato exige os 15 baselines alterados:
+Produto e UX devem abrir a comparação antes/depois, classificar cada arquivo como `defect-corrected` ou `intentional-change` e registrar uma decisão nominal. O contrato exige os 15 baselines alterados. O SHA `844596fc55d9e189a2e7be19ecac7b170a6acced` usado em evidências históricas é apenas um exemplo; para a certificação atual, use o mesmo `candidate_sha` das três execuções:
 
 Gere o pacote lado a lado vinculado aos blobs Git antes da sessão de revisão:
 
 ```bash
-pnpm review:usability:visual 844596fc55d9e189a2e7be19ecac7b170a6acced
+pnpm review:usability:visual '<sha-candidato-completo>'
 ```
 
-Abra `artifacts/playwright/844596fc55d9e189a2e7be19ecac7b170a6acced/visual-review/index.html`. O `manifest.json` registra SHA-256 e dimensões de cada imagem antes/depois.
+Abra `artifacts/playwright/<sha-candidato-completo>/visual-review/index.html`. O `manifest.json` registra SHA-256 e dimensões de cada imagem antes/depois.
 
 Para compartilhar o pacote sem depender da máquina local, execute **Actions → Prepare Usability Review**, informe o SHA completo e baixe o artefato `usability-visual-review-<sha>`. Esse workflow não recebe nomes, decisões ou outros dados pessoais.
 
@@ -117,7 +117,7 @@ Na interface do GitHub, selecione **Actions → Usability Certification → Run 
 - `manual_evidence_json`: conteúdo integral do JSON aprovado;
 - `go_no_go_decision`: a mesma decisão presente no JSON.
 
-Os jobs técnicos fazem checkout do SHA informado e confirmam que ele pertence a `origin/main`. O job de governança usa a versão atual do contrato, valida o pacote contra o candidato, e todos os artefatos são nomeados pelo SHA. O workflow executa três baterias completas e Chromium/Firefox/WebKit. Se estiver usando GitHub CLI em um ambiente autorizado, o equivalente é:
+Os jobs técnicos fazem checkout do SHA informado e confirmam que ele pertence a `origin/main`. O job de governança usa a versão atual do contrato, valida o pacote contra o candidato, e todos os artefatos são nomeados pelo SHA. O workflow executa exatamente três baterias completas no mesmo candidato e Chromium/Firefox/WebKit. Se estiver usando GitHub CLI em um ambiente autorizado, o equivalente é:
 
 ```bash
 gh workflow run usability-certification.yml \

@@ -14,7 +14,10 @@ import { BillingService } from '@cvg-his-v2/module-billing';
 import { CommercialService } from '@cvg-his-v2/module-commercial';
 import type { CommercialRepository } from '@cvg-his-v2/module-commercial';
 import { CommissionsService } from '@cvg-his-v2/module-commissions';
-import type { CommissionRepository } from '@cvg-his-v2/module-commissions';
+import type {
+  CommissionCalculationsReportSource,
+  CommissionRepository
+} from '@cvg-his-v2/module-commissions';
 import { PackagesService } from '@cvg-his-v2/module-packages';
 import type { PackageRepository } from '@cvg-his-v2/module-packages';
 import {
@@ -232,6 +235,7 @@ export interface RuntimeRepositories {
   readonly billing?: BillingRepository;
   readonly commercial?: CommercialRepository;
   readonly commissions?: CommissionRepository;
+  readonly commissionCalculations?: CommissionCalculationsReportSource;
   readonly packages?: PackageRepository;
   readonly reports?: ReportRepository;
   readonly inventory?: InventoryRepository;

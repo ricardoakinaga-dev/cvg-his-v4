@@ -1,8 +1,8 @@
 <template>
   <div class="owners-list-page">
     <AppPageHeader
-      title="Clientes"
-      :breadcrumbs="['Atendimento', 'Cadastros', 'Clientes']"
+      title="Tutores"
+      :breadcrumbs="['Atendimento', 'Cadastros', 'Tutores']"
       subtitle="Recepção: identifique o tutor, confirme os animais vinculados e decida o próximo encaminhamento."
       :secondary-actions="headerSecondaryActions"
       :primary-action="headerPrimaryAction"
@@ -546,7 +546,7 @@ onMounted(load);
   padding: 12px 14px;
   font-size: 13px;
   font-weight: 800;
-  color: var(--brand-blue-ink, #1e40af);
+  color: var(--pulse-cyan-strong, var(--color-primary-700, #066b80));
 }
 
 .owner-card__detail-body {

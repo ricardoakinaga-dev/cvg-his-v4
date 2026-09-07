@@ -9,7 +9,7 @@ function isProductionLikeEnvironment(environment: string): boolean {
   );
 }
 
-function isSecureRequest(request: IncomingMessage): boolean {
+export function isSecureRequest(request: IncomingMessage): boolean {
   if ((request.socket as { encrypted?: boolean }).encrypted) {
     return true;
   }

@@ -163,6 +163,11 @@ cleanup() {
   exit "$archive_code"
 }
 
+# Preserve prior raw evidence before setup can fail or discovery overwrites files.
+if [[ ${#PLAYWRIGHT_TARGET_ARGS[@]} -eq 0 ]]; then
+  node "$ROOT_DIR/scripts/prepare-usability-evidence-run.mjs"
+fi
+
 trap cleanup EXIT
 
 echo "🚀 Starting E2E environment..."
@@ -327,6 +332,20 @@ API_URL="http://localhost:${API_E2E_PORT}" \
 SPA_URL="http://localhost:${SPA_E2E_PORT}" \
   npx playwright test --config playwright-spa.config.ts --list "${PLAYWRIGHT_TARGET_ARGS[@]}" \
   | tee tmp/playwright-discovery.txt
+
+# Freeze the complete suite before execution; archive old evidence before starting a new run.
+if [[ ${#PLAYWRIGHT_TARGET_ARGS[@]} -eq 0 ]]; then
+  E2E_DATABASE_MODE="1" \
+  API_DISABLE_INCOMPATIBLE_DB_REPOS="0" \
+  E2E_DATABASE_URL="$DATABASE_URL_E2E" \
+  E2E_REDIS_URL="redis://127.0.0.1:6381" \
+  AUTH_RATE_LIMIT_MAX_REQUESTS="200" \
+  API_URL="http://localhost:${API_E2E_PORT}" \
+  SPA_URL="http://localhost:${SPA_E2E_PORT}" \
+    node scripts/generate-usability-test-inventory.mjs
+  E2E_INVENTORY_DIGEST="$(node -e 'process.stdout.write(require("./tmp/usability-test-inventory.json").digest)')"
+  export E2E_INVENTORY_DIGEST
+fi
 
 E2E_AUTH_TOKEN="" \
 E2E_ADMIN_USERNAME="$E2E_ADMIN_USERNAME" \

@@ -18,13 +18,6 @@
       {{ successMessage }}
     </DsAlert>
 
-    <section class="summary-grid" aria-label="Resumo dos exames">
-      <DsStatCard :label="`${orders.length} exame(s)`" value="" icon="🧪" />
-      <DsStatCard :label="`${requestedCount} aguardando coleta`" value="" icon="📋" />
-      <DsStatCard :label="`${collectedCount} coletado(s)`" value="" icon="🩸" />
-      <DsStatCard :label="`${resultedCount} liberado(s)`" value="" icon="✅" />
-    </section>
-
     <section class="filter-panel" aria-label="Filtros de exames">
       <form class="filters" @submit.prevent="applyFilters">
         <label class="filter-field">
@@ -43,7 +36,14 @@
       </form>
     </section>
 
+    <p v-if="!loading && !loadFailed" class="record-count" role="status">{{ filteredOrders.length }} registro(s) encontrado(s)</p>
+    <section v-if="loadFailed && !loading" class="load-failure" role="status">
+      <strong>Não foi possível carregar os exames</strong>
+      <DsButton variant="secondary" @click="load">Tentar novamente</DsButton>
+    </section>
+
     <DataTable
+      v-else
       :columns="columns"
       :rows="filteredOrders"
       :loading="loading"
@@ -52,7 +52,10 @@
       variant="hoverable"
     >
       <template #cell-id="{ row }">
-        <span class="order-id">{{ shortId((row as LaboratoryOrderRow).id) }}</span>
+        <div class="exam-identity">
+          <strong>{{ (row as LaboratoryOrderRow).examType }}</strong>
+          <span class="order-id" :title="(row as LaboratoryOrderRow).id">{{ shortId((row as LaboratoryOrderRow).id) }}</span>
+        </div>
       </template>
       <template #cell-clientName="{ row }">
         {{ (row as LaboratoryOrderRow).clientName }}
@@ -76,8 +79,8 @@
       </template>
       <template #cell-patientLink="{ row }">
         <div class="exam-links">
-          <a :href="`/patients/${(row as LaboratoryOrderRow).patientId}`">Paciente</a>
-          <a :href="`/medical-records/${(row as LaboratoryOrderRow).encounterId}`">Prontuário</a>
+          <RouterLink :to="`/patients/${(row as LaboratoryOrderRow).patientId}`">Paciente</RouterLink>
+          <RouterLink :to="`/medical-records/${(row as LaboratoryOrderRow).encounterId}`">Prontuário</RouterLink>
         </div>
       </template>
       <template #cell-actions="{ row }">
@@ -148,6 +151,17 @@
       </template>
     </DataTable>
 
+    <details class="summary-disclosure">
+      <summary>Resumo dos exames</summary>
+      <dl class="summary-grid" aria-label="Resumo dos exames">
+        <div><dt>Exames</dt><dd>{{ loading || loadFailed ? '—' : orders.length }}</dd></div>
+        <div><dt>Aguardando coleta</dt><dd>{{ loading || loadFailed ? '—' : requestedCount }}</dd></div>
+        <div><dt>Coletados</dt><dd>{{ loading || loadFailed ? '—' : collectedCount }}</dd></div>
+        <div><dt>Liberados</dt><dd>{{ loading || loadFailed ? '—' : resultedCount }}</dd></div>
+      </dl>
+      <p class="summary-note">Resumo dos exames carregados, antes dos filtros por cliente e animal.</p>
+    </details>
+
     <DsModal
       :open="Boolean(resultOrder)"
       :title="resultOrder?.status === 'in_analysis' ? 'Reportar resultado' : 'Liberar resultado'"
@@ -192,7 +206,6 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
-import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
@@ -241,6 +254,7 @@ const orders = ref<LaboratoryWorkflowOrder[]>([]);
 const patients = ref<PatientSummary[]>([]);
 const owners = ref<OwnerSummary[]>([]);
 const loading = ref(false);
+const loadFailed = ref(false);
 const error = ref('');
 const successMessage = ref('');
 const collectingId = ref<string | null>(null);
@@ -261,7 +275,7 @@ const appliedFilters = reactive({
 });
 
 const columns: DataTableColumn[] = [
-  { key: 'id', label: 'Id', width: '12%' },
+  { key: 'id', label: 'Exame', width: '18%' },
   { key: 'clientName', label: 'Cliente' },
   { key: 'animalName', label: 'Animal' },
   { key: 'createdAt', label: 'Data', width: '12%' },
@@ -543,6 +557,7 @@ async function recollectOrder(order: LaboratoryOrderRow) {
 
 async function load() {
   loading.value = true;
+  loadFailed.value = false;
   error.value = '';
   try {
     const [ordersResult, patientsResult, ownersResult] = await Promise.allSettled([
@@ -561,6 +576,7 @@ async function load() {
     patients.value = patientsResult.status === 'fulfilled' ? patientsResult.value : [];
     owners.value = ownersResult.status === 'fulfilled' ? ownersResult.value : [];
   } catch (err: unknown) {
+    loadFailed.value = true;
     error.value = err instanceof Error ? err.message : 'Erro ao carregar exames';
     orders.value = [];
   } finally {
@@ -578,10 +594,50 @@ onMounted(load);
   gap: 16px;
 }
 
+.summary-disclosure summary {
+  min-height: 44px;
+  padding-block: 12px;
+  box-sizing: border-box;
+  color: var(--color-text-secondary);
+  font-weight: 700;
+  cursor: pointer;
+}
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin: 8px 0;
+}
+.summary-grid > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+.summary-grid dt, .summary-note, .record-count {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+.summary-grid dd {
+  margin: 6px 0 0;
+  color: var(--color-text);
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.record-count { margin: 0; }
+.load-failure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .filter-panel {
@@ -599,6 +655,7 @@ onMounted(load);
 }
 
 .filter-field {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -608,8 +665,10 @@ onMounted(load);
 }
 
 .filter-field input {
+  box-sizing: border-box;
+  min-width: 0;
   width: 100%;
-  min-height: 38px;
+  min-height: 44px;
   padding: 8px 10px;
   border: 1px solid var(--color-border, #d7dde8);
   border-radius: 6px;
@@ -622,6 +681,9 @@ onMounted(load);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   font-size: 12px;
 }
+.exam-identity { display: grid; gap: 6px; min-width: 140px; white-space: normal; overflow-wrap: anywhere; }
+.exam-identity strong { font-size: 13px; color: var(--color-text); }
+.exam-identity .order-id { color: var(--color-text-secondary); }
 
 .exam-status {
   display: inline-flex;
@@ -709,7 +771,7 @@ onMounted(load);
 
 @media (max-width: 780px) {
   .filters {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>

@@ -1,0 +1,216 @@
+{
+  "out": "/home/ricardo/cvg-his-v4/docs/frontend/implementation/evidence/continuity-dnfBo7",
+  "failures": 0,
+  "inputsStable": true,
+  "rows": [
+    {
+      "target": "/owners/new",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "documentWidth": 1440,
+      "documentHeight": 2391,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "dirty-sidebar-continue",
+          "passed": true,
+          "preserved": [
+            "fullName",
+            "phone1"
+          ]
+        },
+        {
+          "test": "dirty-sidebar-discard",
+          "passed": true,
+          "documentRequests": []
+        },
+        {
+          "test": "clean-cancel-client-navigation",
+          "passed": true,
+          "documentRequests": []
+        },
+        {
+          "test": "logout-keeps-session-until-consent",
+          "passed": true,
+          "width": 1440,
+          "theme": "light"
+        }
+      ]
+    },
+    {
+      "target": "/owners/new",
+      "theme": "light",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "documentHeight": 4277,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "logout-keeps-session-until-consent",
+          "passed": true,
+          "width": 390,
+          "theme": "light"
+        }
+      ]
+    },
+    {
+      "target": "/owners/new",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "documentWidth": 1440,
+      "documentHeight": 2391,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "logout-keeps-session-until-consent",
+          "passed": true,
+          "width": 1440,
+          "theme": "dark"
+        }
+      ]
+    },
+    {
+      "target": "/owners/new",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "documentHeight": 4277,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "logout-keeps-session-until-consent",
+          "passed": true,
+          "width": 390,
+          "theme": "dark"
+        }
+      ]
+    },
+    {
+      "target": "/reception",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "documentWidth": 1440,
+      "documentHeight": 1329,
+      "errors": [],
+      "interactions": []
+    },
+    {
+      "target": "/reception",
+      "theme": "light",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "documentHeight": 1436,
+      "errors": [],
+      "interactions": []
+    },
+    {
+      "target": "/reception",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "documentWidth": 1440,
+      "documentHeight": 1329,
+      "errors": [],
+      "interactions": []
+    },
+    {
+      "target": "/reception",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "documentHeight": 1436,
+      "errors": [],
+      "interactions": []
+    },
+    {
+      "target": "/appointments",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "documentWidth": 1440,
+      "documentHeight": 3895,
+      "errors": [],
+      "interactions": []
+    },
+    {
+      "target": "/appointments",
+      "theme": "light",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "documentHeight": 4363,
+      "errors": [],
+      "interactions": []
+    },
+    {
+      "target": "/appointments",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "documentWidth": 1440,
+      "documentHeight": 3895,
+      "errors": [],
+      "interactions": []
+    },
+    {
+      "target": "/appointments",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "documentHeight": 4363,
+      "errors": [],
+      "interactions": []
+    },
+    {
+      "target": "/quotes",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "documentWidth": 1440,
+      "documentHeight": 1998,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "quotes-filter-old-after-current",
+          "passed": true,
+          "current": "CURRENT-RESULT",
+          "discarded": "OLD-RESULT"
+        }
+      ]
+    }
+  ]
+}

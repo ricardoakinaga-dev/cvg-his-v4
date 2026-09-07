@@ -1,4 +1,3 @@
-import { getTestPool } from '../db/db-admin.js';
 import {
   uuid,
   queryOne,
@@ -42,9 +41,15 @@ async function ensureDefaultAccount(): Promise<string> {
   if (existing) return existing.id;
 
   const id = uuid();
+  const tenantId = uuid();
   await insertOne(
-    `INSERT INTO accounts (id, slug, name, is_active) VALUES ($1, 'default', 'Conta padrão', true) RETURNING *`,
-    [id]
+    `INSERT INTO tenants (id, slug, name, status) VALUES ($1, $2, 'Factory Tenant', 'active') RETURNING *`,
+    [tenantId, `factory-${tenantId}`]
+  );
+  cleanupRegistry.register('tenants', tenantId);
+  await insertOne(
+    `INSERT INTO accounts (id, tenant_id, slug, name, is_active) VALUES ($1, $2, 'default', 'Conta padrão', true) RETURNING *`,
+    [id, tenantId]
   );
   cleanupRegistry.register('accounts', id);
   return id;

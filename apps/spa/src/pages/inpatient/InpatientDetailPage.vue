@@ -1,6 +1,6 @@
 <template>
   <div class="inpatient-detail-page">
-      <AppPageHeader :breadcrumbs="['Atendimento', 'Internação', 'Detalhes da Internação', stay ? patientName(stay.patientId) : 'Detalhes']" title="🛏️ Detalhes da Internação">
+      <AppPageHeader :breadcrumbs="['Atendimento', 'Internação', 'Detalhes da Internação', stay ? patientName(stay.patientId) : 'Detalhes']" title="Detalhes da Internação">
       <template #subtitle>
         <span class="muted">Atendimento &gt; Internação</span>
         <span v-if="stay" class="muted">{{ patientName(stay.patientId) }}</span>
@@ -9,7 +9,7 @@
         <DsButton v-if="stay" variant="secondary" tag="a" :to="`/encounters/${stay.encounterId}`">Ver atendimento</DsButton>
         <DsButton v-if="stay" variant="secondary" tag="a" :to="`/medical-records/${stay.encounterId}`">Ver prontuário</DsButton>
         <DsButton v-if="stay" variant="ghost" tag="a" :to="`/patients/${stay.patientId}`">Ver paciente</DsButton>
-        <DsButton variant="secondary" tag="a" href="/inpatient">Lista de Internações</DsButton>
+        <DsButton variant="secondary" tag="a" to="/inpatient">Lista de Internações</DsButton>
       </template>
       </AppPageHeader>
 
@@ -96,6 +96,7 @@
             v-if="canTransitionTo('stable')"
             variant="primary"
             :loading="statusUpdating"
+            :disabled="statusUpdating"
             @click="updateStatus('stable')"
           >
             Marcar Estável
@@ -104,6 +105,7 @@
             v-if="canTransitionTo('discharged')"
             variant="danger"
             :loading="statusUpdating"
+            :disabled="statusUpdating"
             @click="confirmDischarge"
           >
             Dar Alta
@@ -150,6 +152,7 @@
             id="progressNote"
             v-model="newProgressNote"
             type="textarea"
+            :disabled="progressSubmitting"
             label="Nota de Evolução"
             placeholder="Descreva a evolução do paciente..."
             :rows="3"
@@ -162,16 +165,22 @@
               variant="primary"
               size="sm"
               :loading="progressSubmitting"
+              :disabled="progressSubmitting"
               @click="submitProgress"
             >
               {{ progressSubmitting ? 'Salvando...' : 'Salvar' }}
             </DsButton>
-            <DsButton variant="secondary" size="sm" @click="cancelProgress">Cancelar</DsButton>
+            <DsButton variant="secondary" size="sm" :disabled="progressSubmitting" @click="cancelProgress">Cancelar</DsButton>
           </div>
         </div>
 
-        <div v-if="progressLoading" class="progress-loading">
+        <div v-if="progressLoading" class="progress-loading" role="status" aria-live="polite">
           <DsSpinner size="sm" />
+        </div>
+
+        <div v-else-if="progressLoadError" class="collection-error" role="alert">
+          <p>{{ progressLoadError }}</p>
+          <DsButton variant="secondary" size="sm" @click="retryProgress">Recarregar evoluções</DsButton>
         </div>
 
         <div v-else-if="progressNotes.length === 0" class="progress-empty">
@@ -238,6 +247,7 @@
               variant="primary"
               size="sm"
               :loading="occurrenceSubmitting"
+              :disabled="occurrenceSubmitting"
               @click="submitOccurrence"
             >
               Salvar Ocorrência
@@ -246,7 +256,14 @@
           </div>
         </div>
 
-        <div v-if="occurrences.length === 0" class="progress-empty">
+        <div v-if="occurrencesLoading" class="progress-loading" role="status" aria-live="polite">
+          <DsSpinner size="sm" />
+        </div>
+        <div v-else-if="occurrenceLoadError" class="collection-error" role="alert">
+          <p>{{ occurrenceLoadError }}</p>
+          <DsButton variant="secondary" size="sm" @click="retryOccurrences">Recarregar ocorrências</DsButton>
+        </div>
+        <div v-else-if="occurrences.length === 0" class="progress-empty">
           <p>Nenhuma ocorrência registrada para esta internação.</p>
         </div>
         <div v-else class="progress-list">
@@ -289,6 +306,7 @@
               variant="primary"
               size="sm"
               :loading="dailyChargeSubmitting"
+              :disabled="dailyChargeSubmitting"
               @click="submitDailyCharge"
             >
               Lançar Diária
@@ -297,7 +315,14 @@
           </div>
         </div>
 
-        <div v-if="dailyCharges.length === 0" class="progress-empty">
+        <div v-if="dailyChargesLoading" class="progress-loading" role="status" aria-live="polite">
+          <DsSpinner size="sm" />
+        </div>
+        <div v-else-if="dailyChargeLoadError" class="collection-error" role="alert">
+          <p>{{ dailyChargeLoadError }}</p>
+          <DsButton variant="secondary" size="sm" @click="retryDailyCharges">Recarregar diárias</DsButton>
+        </div>
+        <div v-else-if="dailyCharges.length === 0" class="progress-empty">
           <p>Nenhuma diária lançada para esta internação.</p>
         </div>
         <div v-else class="charges-list">
@@ -323,6 +348,8 @@
                 v-if="charge.status === 'pending'"
                 variant="secondary"
                 size="sm"
+                :loading="dailyChargeActionSubmitting === charge.id"
+                :disabled="Boolean(dailyChargeActionSubmitting)"
                 @click="markChargeBilled(charge.id)"
               >
                 Marcar Faturada
@@ -330,13 +357,16 @@
             </div>
           </div>
         </div>
+        <DsAlert v-if="dailyChargeActionError" variant="danger" dismissible @dismiss="dailyChargeActionError = ''">
+          {{ dailyChargeActionError }}
+        </DsAlert>
       </AppDetailSection>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { inpatientService } from '@/services/inpatient';
 import type {
@@ -361,7 +391,7 @@ import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 const route = useRoute();
 const entityCache = useEntityCache();
 
-const stayId = route.params.id as string;
+const stayId = ref(String(route.params.id ?? ''));
 const stay = ref<InpatientStaySummary | null>(null);
 const loading = ref(false);
 const error = ref('');
@@ -376,12 +406,15 @@ const dischargeError = ref('');
 
 const progressNotes = ref<InpatientProgressSummary[]>([]);
 const progressLoading = ref(false);
+const progressLoadError = ref('');
 const showProgressForm = ref(false);
 const newProgressNote = ref('');
 const progressError = ref('');
 const progressSubmitting = ref(false);
 const authorNames = ref<Record<string, string>>({});
 const occurrences = ref<InpatientOccurrenceSummary[]>([]);
+const occurrencesLoading = ref(false);
+const occurrenceLoadError = ref('');
 const showOccurrenceForm = ref(false);
 const occurrenceSubmitting = ref(false);
 const occurrenceError = ref('');
@@ -392,6 +425,10 @@ const occurrenceForm = ref({
   description: ''
 });
 const dailyCharges = ref<InpatientDailyChargeSummary[]>([]);
+const dailyChargesLoading = ref(false);
+const dailyChargeLoadError = ref('');
+const dailyChargeActionSubmitting = ref<string | null>(null);
+const dailyChargeActionError = ref('');
 const showDailyChargeForm = ref(false);
 const dailyChargeSubmitting = ref(false);
 const dailyChargeError = ref('');
@@ -402,14 +439,17 @@ const dailyChargeForm = ref({
   unitAmount: 0
 });
 
+let loadGeneration = 0;
+let mounted = true;
+
 const summaryCards = computed(() => {
   if (!stay.value) return [];
   return [
     { label: 'Paciente', value: patientNameCache.value || '—', hint: 'Animal internado' },
     { label: 'Status', value: statusLabel(stay.value.status), hint: 'Situação operacional' },
     { label: 'Leito', value: `${stay.value.unit} / ${stay.value.ward} / ${stay.value.bed}`, hint: 'Localização atual' },
-    { label: 'Evoluções', value: progressNotes.value.length.toString(), hint: 'Registros clínicos' },
-    { label: 'Diárias', value: formatCurrency(totalPendingDailyCharges.value), hint: 'Pendente faturamento' }
+    { label: 'Evoluções', value: progressLoadError.value ? '—' : progressNotes.value.length.toString(), hint: 'Registros clínicos' },
+    { label: 'Diárias', value: dailyChargeLoadError.value ? '—' : formatCurrency(totalPendingDailyCharges.value), hint: 'Pendente faturamento' }
   ];
 });
 
@@ -452,7 +492,7 @@ function statusVariant(s: InpatientStaySummary['status']) {
 }
 
 function patientName(id: string): string {
-  return patientNameCache.value || `Paciente ${id.slice(0, 8)}...`;
+  return patientNameCache.value || id || 'Paciente não informado';
 }
 
 function authorName(id: string): string {
@@ -480,16 +520,25 @@ function dailyChargeStatusVariant(status: InpatientDailyChargeSummary['status'])
 }
 
 async function updateStatus(newStatus: InpatientStaySummary['status']) {
+  if (statusUpdating.value || !stay.value) return;
+  const requestStayId = stayId.value;
+  const requestGeneration = loadGeneration;
   statusUpdating.value = true;
   formError.value = '';
   successMessage.value = '';
   try {
-    stay.value = await inpatientService.updateStatus(stayId, { status: newStatus });
+    const updated = await inpatientService.updateStatus(requestStayId, { status: newStatus });
+    if (!mounted || requestGeneration !== loadGeneration || stayId.value !== requestStayId) return;
+    if (updated.id !== requestStayId) {
+      formError.value = 'A resposta não corresponde a esta internação. Recarregue o prontuário.';
+      return;
+    }
+    stay.value = updated;
     successMessage.value = `Status atualizado para ${statusLabel(newStatus)}!`;
   } catch (err: unknown) {
     formError.value = err instanceof Error ? err.message : 'Erro ao atualizar status';
   } finally {
-    statusUpdating.value = false;
+    if (requestGeneration === loadGeneration) statusUpdating.value = false;
   }
 }
 
@@ -504,26 +553,48 @@ async function doDischarge() {
     dischargeError.value = 'Motivo da alta é obrigatório';
     return;
   }
+  if (statusUpdating.value || !stay.value) return;
+  const requestStayId = stayId.value;
+  const requestGeneration = loadGeneration;
   statusUpdating.value = true;
   dischargeError.value = '';
   try {
-    stay.value = await inpatientService.updateStatus(stayId, {
+    const updated = await inpatientService.updateStatus(requestStayId, {
       status: 'discharged',
       dischargeReason: dischargeReason.value.trim()
     });
+    if (!mounted || requestGeneration !== loadGeneration || stayId.value !== requestStayId) return;
+    if (updated.id !== requestStayId) {
+      dischargeError.value = 'A resposta não corresponde a esta internação. Recarregue o prontuário.';
+      return;
+    }
+    stay.value = updated;
     showDischargeModal.value = false;
     successMessage.value = 'Alta registrada com sucesso!';
   } catch (err: unknown) {
     dischargeError.value = err instanceof Error ? err.message : 'Erro ao registrar alta';
   } finally {
-    statusUpdating.value = false;
+    if (requestGeneration === loadGeneration) statusUpdating.value = false;
   }
 }
 
-async function loadProgress() {
+function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error && err.message.trim() ? err.message : fallback;
+}
+
+async function loadProgress(requestGeneration = loadGeneration, requestStayId = stayId.value) {
   progressLoading.value = true;
+  progressLoadError.value = '';
   try {
-    progressNotes.value = await inpatientService.listProgress(stayId);
+    const notes = await inpatientService.listProgress(requestStayId);
+    if (!mounted || requestGeneration !== loadGeneration || stayId.value !== requestStayId) return;
+    const foreign = notes.some((note) => note.stayId !== requestStayId);
+    if (foreign) {
+      progressNotes.value = [];
+      progressLoadError.value = 'A resposta de evoluções não corresponde a esta internação.';
+      return;
+    }
+    progressNotes.value = notes;
     const authorIds = [...new Set(progressNotes.value.map((n) => n.authoredByUserId))];
     await entityCache.preloadUserNames(authorIds);
     for (const id of authorIds) {
@@ -531,38 +602,89 @@ async function loadProgress() {
         authorNames.value[id] = await entityCache.getUserName(id);
       }
     }
-  } catch {
-    progressNotes.value = [];
+  } catch (err: unknown) {
+    if (requestGeneration === loadGeneration && stayId.value === requestStayId) {
+      progressNotes.value = [];
+      progressLoadError.value = errorMessage(err, 'Não foi possível carregar as evoluções.');
+    }
   } finally {
-    progressLoading.value = false;
+    if (requestGeneration === loadGeneration && stayId.value === requestStayId) progressLoading.value = false;
   }
 }
 
-async function loadOccurrences() {
+async function loadOccurrences(requestGeneration = loadGeneration, requestStayId = stayId.value) {
+  occurrencesLoading.value = true;
+  occurrenceLoadError.value = '';
   try {
-    occurrences.value = await inpatientService.listOccurrences(stayId);
-  } catch {
-    occurrences.value = [];
+    const items = await inpatientService.listOccurrences(requestStayId);
+    if (!mounted || requestGeneration !== loadGeneration || stayId.value !== requestStayId) return;
+    if (items.some((item) => item.stayId !== requestStayId)) {
+      occurrences.value = [];
+      occurrenceLoadError.value = 'A resposta de ocorrências não corresponde a esta internação.';
+      return;
+    }
+    occurrences.value = items;
+  } catch (err: unknown) {
+    if (requestGeneration === loadGeneration && stayId.value === requestStayId) {
+      occurrences.value = [];
+      occurrenceLoadError.value = errorMessage(err, 'Não foi possível carregar as ocorrências.');
+    }
+  } finally {
+    if (requestGeneration === loadGeneration && stayId.value === requestStayId) occurrencesLoading.value = false;
   }
 }
 
-async function loadDailyCharges() {
+async function loadDailyCharges(requestGeneration = loadGeneration, requestStayId = stayId.value) {
+  dailyChargesLoading.value = true;
+  dailyChargeLoadError.value = '';
   try {
-    dailyCharges.value = await inpatientService.listDailyCharges(stayId);
-  } catch {
-    dailyCharges.value = [];
+    const items = await inpatientService.listDailyCharges(requestStayId);
+    if (!mounted || requestGeneration !== loadGeneration || stayId.value !== requestStayId) return;
+    if (items.some((item) => item.stayId !== requestStayId)) {
+      dailyCharges.value = [];
+      dailyChargeLoadError.value = 'A resposta de diárias não corresponde a esta internação.';
+      return;
+    }
+    dailyCharges.value = items;
+  } catch (err: unknown) {
+    if (requestGeneration === loadGeneration && stayId.value === requestStayId) {
+      dailyCharges.value = [];
+      dailyChargeLoadError.value = errorMessage(err, 'Não foi possível carregar as diárias.');
+    }
+  } finally {
+    if (requestGeneration === loadGeneration && stayId.value === requestStayId) dailyChargesLoading.value = false;
   }
+}
+
+function retryProgress() {
+  if (stay.value) void loadProgress(loadGeneration, stayId.value);
+}
+
+function retryOccurrences() {
+  if (stay.value) void loadOccurrences(loadGeneration, stayId.value);
+}
+
+function retryDailyCharges() {
+  if (stay.value) void loadDailyCharges(loadGeneration, stayId.value);
 }
 
 async function submitProgress() {
+  if (progressSubmitting.value) return;
   if (!newProgressNote.value.trim()) {
     progressError.value = 'Nota é obrigatória';
     return;
   }
+  const requestStayId = stayId.value;
+  const requestGeneration = loadGeneration;
   progressSubmitting.value = true;
   progressError.value = '';
   try {
-    const note = await inpatientService.addProgress(stayId, newProgressNote.value.trim());
+    const note = await inpatientService.addProgress(requestStayId, newProgressNote.value.trim());
+    if (!mounted || requestGeneration !== loadGeneration || stayId.value !== requestStayId) return;
+    if (note.stayId !== requestStayId) {
+      progressError.value = 'A resposta não corresponde a esta internação. O registro não foi adicionado.';
+      return;
+    }
     if (!authorNames.value[note.authoredByUserId]) {
       authorNames.value[note.authoredByUserId] = await entityCache.getUserName(
         note.authoredByUserId
@@ -575,7 +697,7 @@ async function submitProgress() {
   } catch (err: unknown) {
     progressError.value = err instanceof Error ? err.message : 'Erro ao registrar evolução';
   } finally {
-    progressSubmitting.value = false;
+    if (requestGeneration === loadGeneration) progressSubmitting.value = false;
   }
 }
 
@@ -586,26 +708,34 @@ function cancelProgress() {
 }
 
 async function submitOccurrence() {
+  if (occurrenceSubmitting.value) return;
   if (!occurrenceForm.value.title.trim() || !occurrenceForm.value.description.trim()) {
     occurrenceError.value = 'Título e descrição são obrigatórios';
     return;
   }
+  const requestStayId = stayId.value;
+  const requestGeneration = loadGeneration;
   occurrenceSubmitting.value = true;
   occurrenceError.value = '';
   try {
-    const occurrence = await inpatientService.addOccurrence(stayId, {
+    const occurrence = await inpatientService.addOccurrence(requestStayId, {
       type: occurrenceForm.value.type,
       severity: occurrenceForm.value.severity,
       title: occurrenceForm.value.title.trim(),
       description: occurrenceForm.value.description.trim()
     });
+    if (!mounted || requestGeneration !== loadGeneration || stayId.value !== requestStayId) return;
+    if (occurrence.stayId !== requestStayId) {
+      occurrenceError.value = 'A resposta não corresponde a esta internação. O registro não foi adicionado.';
+      return;
+    }
     occurrences.value = [occurrence, ...occurrences.value];
     cancelOccurrence();
     successMessage.value = 'Ocorrência registrada com sucesso!';
   } catch (err: unknown) {
     occurrenceError.value = err instanceof Error ? err.message : 'Erro ao registrar ocorrência';
   } finally {
-    occurrenceSubmitting.value = false;
+    if (requestGeneration === loadGeneration) occurrenceSubmitting.value = false;
   }
 }
 
@@ -621,26 +751,34 @@ function cancelOccurrence() {
 }
 
 async function submitDailyCharge() {
+  if (dailyChargeSubmitting.value) return;
   if (!dailyChargeForm.value.description.trim() || dailyChargeForm.value.unitAmount <= 0) {
     dailyChargeError.value = 'Descrição e valor unitário são obrigatórios';
     return;
   }
+  const requestStayId = stayId.value;
+  const requestGeneration = loadGeneration;
   dailyChargeSubmitting.value = true;
   dailyChargeError.value = '';
   try {
-    const charge = await inpatientService.createDailyCharge(stayId, {
+    const charge = await inpatientService.createDailyCharge(requestStayId, {
       description: dailyChargeForm.value.description.trim(),
       chargeDate: dailyChargeForm.value.chargeDate,
       quantity: Number(dailyChargeForm.value.quantity) || 1,
       unitAmount: Number(dailyChargeForm.value.unitAmount)
     });
+    if (!mounted || requestGeneration !== loadGeneration || stayId.value !== requestStayId) return;
+    if (charge.stayId !== requestStayId) {
+      dailyChargeError.value = 'A resposta não corresponde a esta internação. A diária não foi adicionada.';
+      return;
+    }
     dailyCharges.value = [charge, ...dailyCharges.value];
     cancelDailyCharge();
     successMessage.value = 'Diária lançada com sucesso!';
   } catch (err: unknown) {
     dailyChargeError.value = err instanceof Error ? err.message : 'Erro ao lançar diária';
   } finally {
-    dailyChargeSubmitting.value = false;
+    if (requestGeneration === loadGeneration) dailyChargeSubmitting.value = false;
   }
 }
 
@@ -656,33 +794,93 @@ function cancelDailyCharge() {
 }
 
 async function markChargeBilled(chargeId: string) {
+  if (dailyChargeActionSubmitting.value) return;
+  const requestStayId = stayId.value;
+  const requestGeneration = loadGeneration;
+  dailyChargeActionSubmitting.value = chargeId;
+  dailyChargeActionError.value = '';
   try {
-    const charge = await inpatientService.markDailyChargeBilled(stayId, chargeId);
+    const charge = await inpatientService.markDailyChargeBilled(requestStayId, chargeId);
+    if (!mounted || requestGeneration !== loadGeneration || stayId.value !== requestStayId) return;
+    if (charge.stayId !== requestStayId || charge.id !== chargeId) {
+      dailyChargeActionError.value = 'A resposta não corresponde a esta diária. Recarregue os lançamentos.';
+      return;
+    }
     dailyCharges.value = dailyCharges.value.map((item) => (item.id === charge.id ? charge : item));
     successMessage.value = 'Diária marcada como faturada!';
   } catch (err: unknown) {
-    dailyChargeError.value = err instanceof Error ? err.message : 'Erro ao faturar diária';
+    if (requestGeneration === loadGeneration) dailyChargeActionError.value = errorMessage(err, 'Erro ao faturar diária');
+  } finally {
+    if (requestGeneration === loadGeneration) dailyChargeActionSubmitting.value = null;
   }
 }
 
-onMounted(async () => {
+function resetChartState() {
+  stay.value = null;
+  patientNameCache.value = '';
+  authorNames.value = {};
+  progressNotes.value = [];
+  progressLoadError.value = '';
+  progressLoading.value = false;
+  occurrences.value = [];
+  occurrenceLoadError.value = '';
+  occurrencesLoading.value = false;
+  dailyCharges.value = [];
+  dailyChargeLoadError.value = '';
+  dailyChargesLoading.value = false;
+  dailyChargeActionError.value = '';
+  dailyChargeActionSubmitting.value = null;
+  showProgressForm.value = false;
+  showOccurrenceForm.value = false;
+  showDailyChargeForm.value = false;
+  progressError.value = '';
+  occurrenceError.value = '';
+  dailyChargeError.value = '';
+  successMessage.value = '';
+  formError.value = '';
+}
+
+async function loadStay(requestStayId: string) {
+  const requestGeneration = ++loadGeneration;
+  stayId.value = requestStayId;
+  resetChartState();
   loading.value = true;
   error.value = '';
   try {
-    const stays = await inpatientService.list();
-    const found = stays.find((s) => s.id === stayId);
+    const stays = await inpatientService.list({ includeDischarged: true });
+    if (!mounted || requestGeneration !== loadGeneration || stayId.value !== requestStayId) return;
+    const found = stays.find((s) => s.id === requestStayId);
     if (!found) {
       error.value = 'Internação não encontrada';
       return;
     }
     stay.value = found;
-    patientNameCache.value = await entityCache.getPatientName(found.patientId);
-    await Promise.all([loadProgress(), loadOccurrences(), loadDailyCharges()]);
-  } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar internação';
-  } finally {
     loading.value = false;
+    void entityCache.getPatientName(found.patientId).then((name) => {
+      if (mounted && requestGeneration === loadGeneration && stayId.value === requestStayId) patientNameCache.value = name;
+    }).catch(() => undefined);
+    void loadProgress(requestGeneration, requestStayId);
+    void loadOccurrences(requestGeneration, requestStayId);
+    void loadDailyCharges(requestGeneration, requestStayId);
+  } catch (err: unknown) {
+    if (requestGeneration === loadGeneration && stayId.value === requestStayId) error.value = errorMessage(err, 'Erro ao carregar internação');
+  } finally {
+    if (requestGeneration === loadGeneration && !stay.value) loading.value = false;
   }
+}
+
+onMounted(() => {
+  mounted = true;
+  void loadStay(stayId.value);
+});
+
+watch(() => String(route.params.id ?? ''), (nextId, previousId) => {
+  if (nextId && nextId !== previousId) void loadStay(nextId);
+});
+
+onBeforeUnmount(() => {
+  mounted = false;
+  loadGeneration += 1;
 });
 </script>
 
@@ -805,6 +1003,22 @@ onMounted(async () => {
   color: var(--color-text-muted, #94a3b8);
   font-size: 14px;
 }
+.collection-error {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--color-danger-500, #ef4444) 36%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-danger-500, #ef4444) 9%, var(--color-surface, #fff));
+  color: var(--color-text, #0f172a);
+}
+.collection-error p {
+  margin: 0;
+  color: var(--color-text, #0f172a);
+  font-size: 14px;
+  line-height: 1.45;
+}
 .progress-list {
   display: flex;
   flex-direction: column;
@@ -875,5 +1089,22 @@ onMounted(async () => {
 }
 .mb-4 {
   margin-bottom: 1rem;
+}
+@media (max-width: 640px) {
+  .detail-actions,
+  .progress-form__actions {
+    flex-wrap: wrap;
+  }
+  .detail-actions :deep(.ds-btn),
+  .progress-form__actions :deep(.ds-btn) {
+    flex: 1 1 180px;
+  }
+  .charge-row {
+    flex-direction: column;
+  }
+  .charge-row__aside {
+    justify-content: flex-start;
+    min-width: 0;
+  }
 }
 </style>

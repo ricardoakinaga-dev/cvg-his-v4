@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MfaRecord, MfaRepository } from './repositories/mfa-repository.interface.js';
 import { MfaService, CRITICAL_ROLES } from './service.js';
 import {
@@ -133,13 +133,19 @@ describe('MfaService', () => {
   const ENCRYPTION_KEY = 'test-mfa-encryption-key-for-unit-tests';
 
   beforeEach(() => {
-    nowMs = Date.now();
+    nowMs = Date.UTC(2026, 0, 1, 0, 0, 29, 999);
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(nowMs);
     repo = new InMemoryMfaRepository();
     service = new MfaService({
       repository: repo,
       encryptionKey: ENCRYPTION_KEY,
       clock: () => nowMs
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('isMfaRequired', () => {
@@ -389,9 +395,10 @@ describe('MfaService', () => {
       await expect(service.isMfaActive(ACCOUNT_ID, 'user_123')).resolves.toBe(true);
     });
 
-    it('accepts a TOTP counter exactly once across concurrent service instances', async () => {
+    it('accepts a TOTP counter exactly once even if wall time crosses a window', async () => {
       const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
-      const token = generateCurrentTOTP(setup.secret);
+      vi.setSystemTime(nowMs + 1);
+      const token = generateCurrentTOTP(setup.secret, nowMs);
       await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
       nowMs += 30_000;
       const nextToken = generateCurrentTOTP(setup.secret, nowMs);
@@ -407,6 +414,30 @@ describe('MfaService', () => {
       ]);
 
       expect(results.filter(Boolean)).toHaveLength(1);
+    });
+
+    it('rejects reuse of a future-window token consumed during activation', async () => {
+      nowMs = 59_999;
+      const secret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
+      await repo.beginSetup({
+        credentialId: 'clock-boundary-credential',
+        accountId: ACCOUNT_ID,
+        userId: 'boundary',
+        secret: encrypt(secret, ENCRYPTION_KEY),
+        recoveryCodes: [],
+        isActive: false,
+        createdAt: new Date(nowMs).toISOString(),
+        setupExpiresAt: new Date(nowMs + 600_000).toISOString()
+      });
+      await service.confirmSetup(ACCOUNT_ID, 'boundary', generateCurrentTOTP(secret, 60_000));
+      nowMs += 30_000;
+      expect(
+        await service.verifyLogin(ACCOUNT_ID, 'boundary', generateCurrentTOTP(secret, nowMs))
+      ).toBe(false);
+      nowMs += 30_000;
+      expect(
+        await service.verifyLogin(ACCOUNT_ID, 'boundary', generateCurrentTOTP(secret, nowMs))
+      ).toBe(true);
     });
 
     it('does not consume a token validated against a credential replaced before CAS', async () => {
@@ -597,6 +628,18 @@ describe('MfaService', () => {
   });
 
   describe('MfaService without repository', () => {
+    it('uses the injected clock for confirmation and its timestamp', async () => {
+      const noRepo = new MfaService({ clock: () => nowMs });
+      const setup = await noRepo.initiateSetup(ACCOUNT_ID, 'clock_user', 'test@example.com');
+      vi.setSystemTime(nowMs + 300_000);
+      const record = await noRepo.confirmSetup(
+        ACCOUNT_ID,
+        'clock_user',
+        generateCurrentTOTP(setup.secret, nowMs)
+      );
+      expect(record.activatedAt).toBe(new Date(nowMs).toISOString());
+    });
+
     it('initiateSetup works without repository', async () => {
       const noRepo = new MfaService();
       const result = await noRepo.initiateSetup(ACCOUNT_ID, 'user_no_repo', 'test@example.com');

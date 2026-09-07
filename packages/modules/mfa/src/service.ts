@@ -4,8 +4,7 @@ import {
   generateProvisioningUri,
   generateRecoveryCodes,
   generateSecret,
-  findMatchingTotpCounter,
-  verifyTOTP
+  findMatchingTotpCounter
 } from './totp.js';
 import type { MfaRecord, MfaRepository } from './repositories/mfa-repository.interface.js';
 
@@ -92,9 +91,7 @@ export class MfaService {
 
     if (this.#repository) {
       const createdAt = new Date(this.#clock()).toISOString();
-      const secretToPersist = this.#encryptionKey
-        ? encrypt(secret, this.#encryptionKey)
-        : secret;
+      const secretToPersist = this.#encryptionKey ? encrypt(secret, this.#encryptionKey) : secret;
       const pendingPersisted = await this.#repository.beginSetup(
         {
           credentialId: randomUUID(),
@@ -134,11 +131,12 @@ export class MfaService {
       throw new Error('No pending MFA setup found. Please initiate setup first.');
     }
 
-    if (!verifyTOTP(pending.secret, token)) {
+    const nowMs = this.#clock();
+    if (findMatchingTotpCounter(pending.secret, token, undefined, nowMs) === undefined) {
       throw new Error('Invalid TOTP code. Please check your authenticator app.');
     }
 
-    const now = new Date(this.#clock()).toISOString();
+    const now = new Date(nowMs).toISOString();
     const credentialId = randomUUID();
 
     this.#pendingSetups.delete(recordKey);
@@ -374,11 +372,7 @@ export class MfaService {
     let currentKey = configuredCurrentKey;
     if (currentVersion) {
       const keyringCurrentKey = keyring.get(currentVersion);
-      if (
-        configuredCurrentKey &&
-        keyringCurrentKey &&
-        configuredCurrentKey !== keyringCurrentKey
-      ) {
+      if (configuredCurrentKey && keyringCurrentKey && configuredCurrentKey !== keyringCurrentKey) {
         throw new Error('MFA current encryption key conflicts with its keyring entry.');
       }
       currentKey = configuredCurrentKey ?? keyringCurrentKey;

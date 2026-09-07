@@ -3,9 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createDatabaseClient } from '../../../packages/shared/database/src/index.js';
-import {
-  CounterSalesService
-} from '../../../packages/modules/counter-sales/src/index.js';
+import { CounterSalesService } from '../../../packages/modules/counter-sales/src/index.js';
 import { DatabaseCounterSalesRepository } from '../../../packages/modules/counter-sales/src/repositories/database-counter-sales.repository.js';
 import { runWithTenantContext } from '../../../packages/tenant-context/src/index.js';
 import type { AccountId, UserId } from '../../../packages/shared/types/src/index.js';
@@ -118,5 +116,22 @@ describe('counter-sale number allocation on PostgreSQL', () => {
         : left.account_id.localeCompare(right.account_id)
     );
     expect(persisted.rows).toEqual(expectedRows);
+
+    const sequences = await pool.query<{
+      readonly account_id: string;
+      readonly next_number: string;
+    }>(
+      `SELECT account_id, next_number::text
+         FROM counter_sale_number_sequences
+        WHERE account_id IN ($1, $2)
+        ORDER BY account_id`,
+      [ACCOUNT_A, ACCOUNT_B]
+    );
+    expect(sequences.rows).toEqual(
+      [
+        { account_id: ACCOUNT_A, next_number: '2' },
+        { account_id: ACCOUNT_B, next_number: '1' }
+      ].sort((left, right) => left.account_id.localeCompare(right.account_id))
+    );
   });
 });

@@ -3,12 +3,11 @@
     <AppPageHeader
       :breadcrumbs="['Estoque', 'Controles', 'Transferência entre Estoques']"
       title="Transferência entre Estoques"
-      subtitle="Conferência operacional de origem, destino, lote e saldo para remanejamento interno"
+      subtitle="Consulte lotes e prepare remanejamentos entre locais."
     >
       <template #actions>
-        <DsButton variant="secondary" :loading="loading" @click="load">Atualizar</DsButton>
-        <DsButton variant="secondary" tag="a" to="/inventory/movements" icon="📥">Transação</DsButton>
-        <DsButton variant="primary" tag="a" to="/warehouses" icon="🏬">Estoques</DsButton>
+        <DsButton variant="secondary" :loading="loading" :disabled="loading" @click="load">Atualizar</DsButton>
+        <DsButton variant="primary" icon="plus" @click="openPreparation">Novo rascunho</DsButton>
       </template>
     </AppPageHeader>
 
@@ -20,16 +19,14 @@
       {{ successMessage }}
     </DsAlert>
 
-    <section class="hub-kpis" aria-label="Resumo da transferência entre estoques">
-      <DsStatCard :label="`${items.length} item(ns)`" value="" icon="📦" />
-      <DsStatCard :label="`${locationCount} local(is)`" value="" icon="🏬" />
-      <DsStatCard :label="`${lowStockCount} abaixo do ponto`" value="" icon="⚠️" />
-      <DsStatCard :label="`${preparedRows.length} preparada(s)`" value="" icon="🔄" />
-    </section>
-
-    <section class="transfer-layout">
+    <div class="transfer-layout">
+      <details ref="preparationPanel" class="preparation-panel">
+        <summary>Preparar transferência</summary>
       <form class="transfer-panel" aria-label="Preparar transferência entre estoques" @submit.prevent="submitTransfer">
         <h2>Transferência</h2>
+        <p class="draft-notice">Rascunho temporário: fica apenas nesta página e será perdido ao sair ou recarregar. O estoque não é alterado.</p>
+        <p class="draft-notice">Origem e destino incluem sugestões de locais e localizações dos lotes; confirme os locais antes de planejar.</p>
+        <fieldset :disabled="loading || failed">
         <div class="transfer-grid">
           <label class="field">
             <span>Origem</span>
@@ -92,16 +89,19 @@
 
         <div class="transfer-preview">
           <span>Saldo origem: {{ originBalanceLabel }}</span>
-          <strong>Após separar: {{ previewBalanceLabel }}</strong>
+          <strong>Saldo simulado: {{ previewBalanceLabel }}</strong>
         </div>
 
         <div class="transfer-actions">
-          <DsButton type="submit" variant="primary" :loading="saving">Preparar</DsButton>
+          <DsButton type="submit" variant="primary" :loading="saving" :disabled="loading || failed">Preparar rascunho</DsButton>
           <DsButton type="button" variant="secondary" @click="resetTransfer">Limpar</DsButton>
         </div>
+        </fieldset>
       </form>
+      </details>
 
-      <section class="filter-panel" aria-label="Filtros de transferência entre estoques">
+      <details class="filter-panel" aria-label="Filtros de transferência entre estoques">
+        <summary>Filtrar itens e rascunhos</summary>
         <form class="filters" @submit.prevent="applyFilters">
           <label class="field">
             <span>Código</span>
@@ -136,21 +136,29 @@
               <option value="ready">Disponível</option>
               <option value="attention">Atenção</option>
               <option value="blocked">Bloqueada</option>
-              <option value="prepared">Preparada</option>
+              <option value="prepared">Rascunho temporário</option>
             </select>
           </label>
-          <DsButton type="submit" variant="primary">Pesquisar</DsButton>
+          <DsButton type="submit" variant="primary" :disabled="loading">Pesquisar</DsButton>
         </form>
-      </section>
-    </section>
+      </details>
+    </div>
+    <div v-if="!loading && !failed" class="query-status" role="status">
+      <span>{{ filteredRows.length }} {{ filteredRows.length === 1 ? 'registro encontrado' : 'registros encontrados' }}</span>
+      <DsButton v-if="hasFilters" variant="ghost" @click="clearFilters">Limpar filtros</DsButton>
+    </div>
+    <p v-if="loading" class="query-status" role="status">Carregando itens e lotes…</p>
+    <EmptyState v-if="failed && !loading" icon="package" title="Dados de estoque indisponíveis" description="Tente novamente para consultar itens e lotes. Rascunhos já preparados permanecem disponíveis nesta página." size="sm">
+      <template #action><DsButton variant="secondary" @click="load">Tentar novamente</DsButton></template>
+    </EmptyState>
+    <DataTable v-if="!failed || preparedRows.length"
 
-    <DataTable
       :columns="columns"
-      :rows="filteredRows"
-      :loading="loading"
+      :rows="loading || failed ? preparedRows : filteredRows"
+      :loading="loading && !preparedRows.length"
       empty-icon="🔄"
-      empty-title="Nenhuma transferência encontrada"
-      empty-description="Itens, lotes e transferências preparadas aparecerão aqui."
+      empty-title="Nenhum registro encontrado"
+      :empty-description="hasFilters ? 'Tente outros filtros para localizar itens ou rascunhos.' : 'Itens, lotes e rascunhos temporários aparecerão aqui.'"
       variant="hoverable"
     >
       <template #cell-code="{ row }">
@@ -158,6 +166,11 @@
       </template>
       <template #cell-product="{ row }">
         <strong>{{ (row as TransferRow).product }}</strong>
+        <details v-if="(row as TransferRow).temporary" class="draft-detail" data-testid="temporary-draft-detail">
+          <summary>Rascunho temporário · Revisar</summary>
+          <p>Será perdido ao sair ou recarregar. Estoque não alterado.</p>
+          <p>Observação: {{ (row as TransferRow).notes || 'Sem observação' }}</p>
+        </details>
       </template>
       <template #cell-lot="{ row }">
         {{ (row as TransferRow).lot }}
@@ -166,7 +179,8 @@
         {{ formatQuantity((row as TransferRow).quantity, (row as TransferRow).unit) }}
       </template>
       <template #cell-balance="{ row }">
-        {{ (row as TransferRow).balanceLabel }}
+        {{ loading || failed ? '—' : (row as TransferRow).balanceLabel }}
+        <span v-if="(row as TransferRow).temporary && !loading && !failed" class="draft-notice"><br />Na preparação</span>
       </template>
       <template #cell-status="{ row }">
         <StatusBadge
@@ -189,18 +203,32 @@
         </DsButton>
       </template>
     </DataTable>
+    <details class="routine-summary">
+      <summary>Resumo de estoque e rascunhos</summary>
+      <dl>
+        <div><dt>Itens consultados</dt><dd>{{ !loading && !failed ? items.length : '—' }}</dd></div>
+        <div><dt>Opções de local</dt><dd>{{ !loading && !failed ? locationCount : '—' }}</dd></div>
+        <div><dt>No ponto de reposição ou abaixo</dt><dd>{{ !loading && !failed ? lowStockCount : '—' }}</dd></div>
+        <div><dt>Rascunhos temporários</dt><dd>{{ preparedRows.length }}</dd></div>
+      </dl>
+      <p>Os locais incluem sugestões. Os totais de itens referem-se à última consulta carregada.</p>
+    </details>
+    <nav class="related-actions" aria-label="Áreas relacionadas">
+      <DsButton variant="secondary" tag="a" to="/inventory/movements">Transação</DsButton>
+      <DsButton variant="secondary" tag="a" to="/warehouses">Estoques</DsButton>
+    </nav>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
-import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import { inventoryService } from '@/services/inventory';
 import type { InventoryItemSummary, InventoryLotSummary } from '@/types/inventory';
 
@@ -223,6 +251,8 @@ interface TransferRow {
   responsible: string;
   date: string;
   detailPath: string;
+  notes?: string;
+  temporary?: boolean;
 }
 
 const defaultLocations = [
@@ -237,7 +267,17 @@ const defaultLocations = [
 const items = ref<InventoryItemSummary[]>([]);
 const lots = ref<InventoryLotSummary[]>([]);
 const preparedRows = ref<TransferRow[]>([]);
-const loading = ref(false);
+const loading = ref(true);
+const failed = ref(false);
+let requestVersion = 0;
+const preparationPanel = ref<HTMLDetailsElement | null>(null);
+async function openPreparation() {
+  if (!preparationPanel.value) return;
+  preparationPanel.value.open = true;
+  await nextTick();
+  const field = preparationPanel.value.querySelector<HTMLElement>('input:not(:disabled), select:not(:disabled)');
+  (field ?? preparationPanel.value.querySelector<HTMLElement>('summary'))?.focus();
+}
 const saving = ref(false);
 const error = ref('');
 const successMessage = ref('');
@@ -261,10 +301,11 @@ const draftFilters = reactive({
   status: ''
 });
 const appliedFilters = reactive({ ...draftFilters });
+const hasFilters = computed(() => Object.values(appliedFilters).some(Boolean));
 
 const columns: DataTableColumn[] = [
   { key: 'code', label: 'Código', width: '130px' },
-  { key: 'product', label: 'Produto' },
+  { key: 'product', label: 'Produto', class: 'draft-product-column' },
   { key: 'origin', label: 'Origem', width: '150px' },
   { key: 'destination', label: 'Destino', width: '150px' },
   { key: 'lot', label: 'Lote', width: '160px' },
@@ -308,6 +349,7 @@ const originBalance = computed(() => {
   return selectedItem.value?.onHandQuantity ?? null;
 });
 const originBalanceLabel = computed(() => {
+  if (loading.value || failed.value) return 'Saldo indisponível';
   if (!selectedItem.value || originBalance.value === null) return 'Selecione um produto';
   return formatQuantity(originBalance.value, selectedItem.value.unit);
 });
@@ -318,6 +360,7 @@ const previewBalance = computed(() => {
   return Number((originBalance.value - quantity).toFixed(2));
 });
 const previewBalanceLabel = computed(() => {
+  if (loading.value || failed.value) return 'Saldo indisponível';
   if (!selectedItem.value || previewBalance.value === null) return 'Selecione produto e quantidade';
   return formatQuantity(previewBalance.value, selectedItem.value.unit);
 });
@@ -423,7 +466,7 @@ function lotStatus(lot: InventoryLotSummary): TransferStatus {
 }
 
 function statusLabel(status: TransferStatus): string {
-  if (status === 'prepared') return 'Preparada';
+  if (status === 'prepared') return 'Rascunho temporário';
   if (status === 'blocked') return 'Bloqueada';
   if (status === 'attention') return 'Atenção';
   return 'Disponível';
@@ -470,8 +513,9 @@ function formatDate(value: string): string {
   return new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' }).format(new Date(value));
 }
 
-function applyFilters() {
-  Object.assign(appliedFilters, draftFilters);
+function applyFilters() { void load(); }
+function clearFilters() {
+  Object.assign(draftFilters, { code: '', product: '', origin: '', destination: '', status: '' });
   void load();
 }
 
@@ -487,6 +531,7 @@ function resetTransfer() {
 }
 
 async function submitTransfer() {
+  if (loading.value || failed.value) return;
   error.value = '';
   successMessage.value = '';
   const item = selectedItem.value;
@@ -524,14 +569,16 @@ async function submitTransfer() {
       unit: item.unit,
       balanceLabel: formatQuantity(item.onHandQuantity, item.unit),
       status: 'prepared',
-      statusLabel: 'Preparada',
+      statusLabel: 'Rascunho temporário',
       statusVariant: 'info',
+      temporary: true,
+      notes: transfer.notes,
       responsible: transfer.responsible.trim() || 'Estoque',
       date: new Date().toISOString(),
       detailPath: `/inventory/${item.id}`
     };
     preparedRows.value = [row, ...preparedRows.value];
-    successMessage.value = `${item.name} preparado para transferência de ${transfer.origin} para ${transfer.destination}`;
+    successMessage.value = `Rascunho temporário de transferência: ${item.name} de ${transfer.origin} para ${transfer.destination}. Será perdido ao sair ou recarregar. Estoque não alterado.`;
     resetTransfer();
   } finally {
     saving.value = false;
@@ -539,22 +586,29 @@ async function submitTransfer() {
 }
 
 async function load() {
+  const version = ++requestVersion;
+  const filters = { ...draftFilters };
   loading.value = true;
+  failed.value = false;
   error.value = '';
   try {
-    const query = draftFilters.product || draftFilters.code || undefined;
+    const query = filters.product.trim() || filters.code.trim() || undefined;
     const [loadedItems, loadedLots] = await Promise.all([
       inventoryService.list(query),
       inventoryService.listLots()
     ]);
+    if (version !== requestVersion) return;
     items.value = loadedItems;
     lots.value = loadedLots;
+    Object.assign(appliedFilters, filters);
   } catch (err: unknown) {
+    if (version !== requestVersion) return;
+    failed.value = true;
     error.value = err instanceof Error ? err.message : 'Erro ao carregar transferências entre estoques';
     items.value = [];
     lots.value = [];
   } finally {
-    loading.value = false;
+    if (version === requestVersion) loading.value = false;
   }
 }
 
@@ -562,32 +616,30 @@ onMounted(load);
 </script>
 
 <style scoped>
+:deep(.draft-product-column) { min-width: 260px; }
 .inventory-transfers-page {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.hub-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+.transfer-layout { display: grid; gap: 12px; }
+.preparation-panel, .filter-panel, .routine-summary {
+  padding: 0 16px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface);
 }
-
-.transfer-layout {
-  display: grid;
-  grid-template-columns: minmax(340px, 1.25fr) minmax(280px, 0.75fr);
-  gap: 16px;
-  align-items: start;
+.preparation-panel > summary, .filter-panel > summary, .routine-summary > summary {
+  min-height: 44px; padding: 12px 0; cursor: pointer; box-sizing: border-box; font-weight: 600;
 }
-
-.transfer-panel,
-.filter-panel {
-  padding: 16px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 8px;
-  background: var(--color-surface, #ffffff);
-}
+.preparation-panel > summary:focus-visible, .filter-panel > summary:focus-visible, .routine-summary > summary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.transfer-panel, .filters { padding: 12px 0 16px; }
+fieldset { min-width: 0; padding: 0; margin: 0; border: 0; }
+fieldset:disabled { opacity: .65; }
+.query-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--color-text-secondary); }
+.routine-summary dl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.routine-summary dt, .routine-summary p { color: var(--color-text-secondary); font-size: 13px; }
+.routine-summary dd { font-size: 24px; margin: 4px 0 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.routine-summary p { margin-bottom: 16px; }
+.related-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .transfer-panel h2 {
   margin: 0 0 12px;
@@ -604,9 +656,7 @@ onMounted(load);
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.filters {
-  grid-template-columns: 1fr;
-}
+.filters { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; }
 
 .field {
   display: flex;
@@ -624,7 +674,7 @@ onMounted(load);
 .field input,
 .field select {
   width: 100%;
-  min-height: 38px;
+  min-height: 44px;
   padding: 8px 10px;
   border: 1px solid var(--color-border, #d7dde8);
   border-radius: 6px;
@@ -650,6 +700,25 @@ onMounted(load);
   margin-top: 14px;
 }
 
+.draft-notice,
+.draft-detail {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-secondary, #475569);
+}
+
+.draft-detail summary {
+  min-height: 44px;
+  padding: 12px 0;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.draft-detail p {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .record-id {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   font-size: 12px;
@@ -662,8 +731,7 @@ onMounted(load);
 }
 
 @media (max-width: 620px) {
-  .transfer-grid {
-    grid-template-columns: 1fr;
-  }
+  .transfer-grid, .filters, .routine-summary dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .field { min-width: 0; }
 }
 </style>

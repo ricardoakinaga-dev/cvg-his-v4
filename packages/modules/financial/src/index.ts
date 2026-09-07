@@ -298,11 +298,21 @@ function normalizePayablePaymentMethod(
 
 function normalizeDate(value: string | undefined, field: string): string {
   const source = value ?? nowIso();
-  const date = new Date(`${source.slice(0, 10)}T12:00:00.000Z`);
-  if (Number.isNaN(date.getTime())) {
+  // Payables expose civil dates, while the API/worker may still send an ISO
+  // timestamp. Validate the date portion before normalizing so JavaScript's
+  // Date parser cannot silently turn values such as 2026-02-30 into March.
+  const datePart = /^(\d{4}-\d{2}-\d{2})(?:$|T)/.exec(source)?.[1];
+  const date = datePart ? new Date(`${datePart}T12:00:00.000Z`) : null;
+  const hasValidDatePart =
+    date !== null &&
+    !Number.isNaN(date.getTime()) &&
+    date.toISOString().slice(0, 10) === datePart;
+  const hasValidIsoTimestamp =
+    source.length === 10 || !Number.isNaN(new Date(source).getTime());
+  if (!datePart || !hasValidDatePart || !hasValidIsoTimestamp) {
     throw new ValidationError(`${field} must be a valid ISO date`, { field, value });
   }
-  return date.toISOString().slice(0, 10);
+  return datePart;
 }
 
 function normalizePeriodDate(
@@ -384,6 +394,9 @@ function attachPayments(
           payment.encounterId === receivable.encounterId &&
           payment.financialAccountId === receivable.financialAccountId
       )
+      .sort(
+        (left, right) => left.paidAt.localeCompare(right.paidAt) || left.id.localeCompare(right.id)
+      )
       .map((payment) => ({
         id: payment.id,
         receivableId: payment.receivableId,
@@ -454,7 +467,9 @@ export class InMemoryEncounterFinancialRepository implements EncounterFinancialR
   ): Promise<readonly EncounterReceivablePaymentRecord[]> {
     return Array.from(this.#paymentsById.values())
       .filter((payment) => payment.financialAccountId === financialAccountId)
-      .sort((left, right) => left.paidAt.localeCompare(right.paidAt));
+      .sort(
+        (left, right) => left.paidAt.localeCompare(right.paidAt) || left.id.localeCompare(right.id)
+      );
   }
 
   async createPayment(payment: EncounterReceivablePaymentRecord): Promise<void> {
@@ -474,7 +489,10 @@ export class InMemoryEncounterFinancialRepository implements EncounterFinancialR
     if (filters?.encounterId) {
       items = items.filter((item) => item.encounterId === filters.encounterId);
     }
-    return items.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    return items.sort(
+      (left, right) =>
+        right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id)
+    );
   }
 }
 
@@ -505,7 +523,9 @@ export class InMemoryFinancialPayablesRepository implements FinancialPayablesRep
     }
     return items.sort(
       (left, right) =>
-        left.dueAt.localeCompare(right.dueAt) || left.supplierName.localeCompare(right.supplierName)
+        left.dueAt.localeCompare(right.dueAt) ||
+        left.supplierName.localeCompare(right.supplierName) ||
+        left.id.localeCompare(right.id)
     );
   }
 }
