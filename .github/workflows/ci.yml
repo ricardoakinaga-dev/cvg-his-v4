@@ -295,7 +295,16 @@ jobs:
           pnpm ops:backup:check
 
       - name: Run install and upgrade drill
-        run: INSTALL_UPGRADE_REPORT_DIR=artifacts/operations/install-upgrade pnpm ops:install-upgrade:drill
+        shell: bash
+        run: |
+          set +e
+          INSTALL_UPGRADE_REPORT_DIR=artifacts/operations/install-upgrade pnpm ops:install-upgrade:drill 2>&1 | tee /tmp/install-upgrade-drill.log
+          drill_status=${PIPESTATUS[0]}
+          if [ "${drill_status}" -ne 0 ] && [ -f artifacts/operations/install-upgrade/install-upgrade-report.json ]; then
+            drill_error="$(node -e "const fs=require('fs'); const report=JSON.parse(fs.readFileSync('artifacts/operations/install-upgrade/install-upgrade-report.json','utf8')); process.stdout.write(String(report.error ?? 'unknown drill failure').replace(/\\s+/g, ' '));")"
+            echo "::error title=Install and upgrade drill::${drill_error}"
+          fi
+          exit "${drill_status}"
 
       - name: Validate static and process contracts
         run: |
