@@ -246,18 +246,27 @@ jobs:
         env:
           CVG_HELM_VERSION: v3.15.4
           CVG_HELM_SHA256: 11400fecfc07fd6f034863e4e0c4c4445594673fd2a129e701fe41f31170cfa9
+          CVG_HELM_IMAGE: alpine/helm@sha256:105741fa6621ed9a3ea944066de78bb27d4b9bb93a56ce8e7cb4d621e1e4bbf2
+          CVG_HELM_BINARY_SHA256: f07f23e8048f704294a670378d5bd36e9f84c1552eb844af82dcd82a17883647
         run: |
           set -euo pipefail
           helm_archive="helm-${CVG_HELM_VERSION#v}-linux-amd64.tar.gz"
           helm_url="https://get.helm.sh/${helm_archive}"
           helm_fallback_url="https://get-helm-front-door-cdn-c9drhfggd8ewfzck.z03.azurefd.net/${helm_archive}"
-          if ! curl --fail --silent --show-error --location --retry 5 --retry-delay 2 --retry-all-errors "${helm_url}" --output "/tmp/${helm_archive}"; then
-            echo "Primary Helm download endpoint failed; retrying the official Azure Front Door endpoint."
-            curl --fail --silent --show-error --location --retry 5 --retry-delay 2 --retry-all-errors "${helm_fallback_url}" --output "/tmp/${helm_archive}"
+          if curl --fail --silent --show-error --location --retry 5 --retry-delay 2 --retry-all-errors "${helm_url}" --output "/tmp/${helm_archive}" || \
+            curl --fail --silent --show-error --location --retry 5 --retry-delay 2 --retry-all-errors "${helm_fallback_url}" --output "/tmp/${helm_archive}"; then
+            echo "${CVG_HELM_SHA256}  /tmp/${helm_archive}" | sha256sum --check -
+            tar -xzf "/tmp/${helm_archive}" -C /tmp
+            sudo install "/tmp/linux-amd64/helm" /usr/local/bin/helm
+          else
+            echo "Helm archive endpoints unavailable; using the immutable official Helm image fallback."
+            docker pull --quiet "${CVG_HELM_IMAGE}"
+            helm_container="$(docker create "${CVG_HELM_IMAGE}")"
+            trap 'docker rm --force "${helm_container}" >/dev/null' EXIT
+            docker cp "${helm_container}:/usr/bin/helm" /tmp/helm
+            echo "${CVG_HELM_BINARY_SHA256}  /tmp/helm" | sha256sum --check -
+            sudo install /tmp/helm /usr/local/bin/helm
           fi
-          echo "${CVG_HELM_SHA256}  /tmp/${helm_archive}" | sha256sum --check -
-          tar -xzf "/tmp/${helm_archive}" -C /tmp
-          sudo install "/tmp/linux-amd64/helm" /usr/local/bin/helm
           test -x /usr/local/bin/helm
           test "$(command -v helm)" = "/usr/local/bin/helm"
           helm version --short
