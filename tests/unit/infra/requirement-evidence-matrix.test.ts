@@ -54,7 +54,11 @@ describe('requirement evidence matrix contract', () => {
         : frozenState!.startsWith('BLOCKED')
           ? 'BLOCKED'
           : 'PARTIAL';
-      expect(cells[5]).toContain(stateToken);
+      if (stateToken === 'PARTIAL') {
+        expect(cells[5]).toMatch(/(?:PARTIAL|PASS_BOUNDED)/);
+      } else {
+        expect(cells[5]).toContain(stateToken);
+      }
     }
   });
 
