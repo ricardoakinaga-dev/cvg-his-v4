@@ -281,6 +281,8 @@ describe('production-like bootstrap uses a real restricted role and fails closed
     await scratchAdmin.query(
       'ALTER TABLE public.report_schedule_deliveries RENAME TO bootstrap_report_schedule_deliveries_missing'
     );
+    const previousWorkerAccounts = process.env.WORKER_ACCOUNT_IDS;
+    process.env.WORKER_ACCOUNT_IDS = 'bootstrap-report-test-account';
     try {
       await expect(
         bootstrapWorkerServices({
@@ -289,6 +291,8 @@ describe('production-like bootstrap uses a real restricted role and fails closed
         })
       ).rejects.toThrow(/report.*schema|delivery.*schema|not ready/i);
     } finally {
+      if (previousWorkerAccounts === undefined) delete process.env.WORKER_ACCOUNT_IDS;
+      else process.env.WORKER_ACCOUNT_IDS = previousWorkerAccounts;
       await shutdownWorkerServices();
       await scratchAdmin.query(
         'ALTER TABLE public.bootstrap_report_schedule_deliveries_missing RENAME TO report_schedule_deliveries'
