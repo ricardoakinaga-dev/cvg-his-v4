@@ -52,7 +52,7 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     needs: [typecheck]
     steps:
       - name: Checkout
@@ -81,6 +81,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build workspace dependencies
+        run: pnpm build
 
       - name: Lint
         run: pnpm lint
@@ -246,8 +249,8 @@ jobs:
         run: |
           set -euo pipefail
           helm_archive="helm-${CVG_HELM_VERSION#v}-linux-amd64.tar.gz"
-          helm_url="https://get.helm.sh/${helm_archive}"
-          curl --fail --silent --show-error --location "${helm_url}" --output "/tmp/${helm_archive}"
+          helm_url="https://get.helm.sh/${helm_archive}?download=1"
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 2 --retry-all-errors "${helm_url}" --output "/tmp/${helm_archive}"
           echo "${CVG_HELM_SHA256}  /tmp/${helm_archive}" | sha256sum --check -
           tar -xzf "/tmp/${helm_archive}" -C /tmp
           sudo install "/tmp/linux-amd64/helm" /usr/local/bin/helm
