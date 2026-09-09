@@ -58,10 +58,12 @@ test('backup/restore gate fails when the current roadmap loses a required exit c
 
   try {
     const fixtureRoadmap = join(fixtureRoot, roadmapPath);
-    const withoutRestoreProof = readFileSync(fixtureRoadmap, 'utf8').replace(
-      'restore/RTO-RPO',
-      'restore ainda não comprovado'
+    const roadmap = readFileSync(fixtureRoadmap, 'utf8');
+    const withoutRestoreProof = roadmap.replace(
+      /\| M4 — Operação no target[^\n]*\n/,
+      (line) => line.replace('restore/RTO-RPO', 'restore ainda não comprovado')
     );
+    assert.notEqual(withoutRestoreProof, roadmap);
     writeFileSync(fixtureRoadmap, withoutRestoreProof);
 
     const result = runChecker(fixtureRoot);
