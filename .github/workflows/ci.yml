@@ -27,7 +27,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
-          version: 10
           run_install: false
 
       - name: Get pnpm store path
@@ -64,7 +63,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
-          version: 10
           run_install: false
 
       - name: Get pnpm store path
@@ -140,7 +138,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
-          version: 10
           run_install: false
 
       - name: Get pnpm store path
@@ -183,7 +180,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
-          version: 10
           run_install: false
 
       - name: Get pnpm store path
@@ -223,7 +219,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
-          version: 10
           run_install: false
 
       - name: Get pnpm store path
@@ -342,7 +337,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
-          version: 10
           run_install: false
 
       - name: Get pnpm store path
@@ -424,7 +418,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
-          version: 10
           run_install: false
 
       - name: Get pnpm store path
@@ -461,7 +454,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
-          version: 10
           run_install: false
 
       - name: Get pnpm store path
@@ -525,7 +517,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
-          version: 10
           run_install: false
 
       - name: Get pnpm store path
@@ -596,7 +587,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
-          version: 10
           run_install: false
 
       - name: Get pnpm store path
@@ -659,7 +649,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
-          version: 10
           run_install: false
 
       - name: Get pnpm store path
@@ -747,7 +736,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
-          version: 10
           run_install: false
 
       - name: Get pnpm store path
@@ -878,7 +866,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
-          version: 10
           run_install: false
 
       - name: Get pnpm store path
@@ -1102,7 +1089,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
-          version: 10
           run_install: false
 
       - name: Get pnpm store path
@@ -1268,7 +1254,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
-          version: 10
           run_install: false
 
       - name: Install dependencies
