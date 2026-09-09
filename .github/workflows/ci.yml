@@ -121,9 +121,8 @@ jobs:
         run: |
           if [ -f semgrep.json ]; then
             echo "### SAST (Semgrep) Results" >> $GITHUB_STEP_SUMMARY
-            read -r TOTAL ERRORS WARNINGS <<< "$(python3 -c 'import json; r=json.load(open("semgrep.json", encoding="utf-8")); x=r.get("results", []); print(len(x), sum(i.get("extra", {}).get("severity") == "ERROR" for i in x), sum(i.get("extra", {}).get("severity") == "WARNING" for i in x))')"
-            echo "Total findings: $TOTAL" >> $GITHUB_STEP_SUMMARY
-            echo "Errors: $ERRORS | Warnings: $WARNINGS" >> $GITHUB_STEP_SUMMARY
+            jq -r '"Total findings: \(.results | length)"' semgrep.json >> $GITHUB_STEP_SUMMARY
+            jq -r '"Errors: \([.results[] | select(.extra.severity == "ERROR")] | length) | Warnings: \([.results[] | select(.extra.severity == "WARNING")] | length)"' semgrep.json >> $GITHUB_STEP_SUMMARY
             echo "Full report: https://github.com/$GITHUB_REPOSITORY/security/code-scanning" >> $GITHUB_STEP_SUMMARY
           fi
 
