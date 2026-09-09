@@ -30,7 +30,7 @@ jobs:
       matrix:
         run: [1, 2, 3]
     env:
-      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.tool_cache }}/ms-playwright
+      PLAYWRIGHT_BROWSERS_PATH: .cache/ms-playwright
       E2E_ENVIRONMENT: certification-postgresql-run-${{ matrix.run }}
       E2E_EVIDENCE_RUN_ID: certification-${{ matrix.run }}
       E2E_AUDIT_COMMAND: bash infra/scripts/run-e2e-spa.sh
@@ -75,7 +75,7 @@ jobs:
       - name: Cache Chromium 1.58.2
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
-          path: ${{ runner.tool_cache }}/ms-playwright
+          path: .cache/ms-playwright
           key: ${{ runner.os }}-playwright-1.58.2-chromium
 
       - run: npx playwright install --with-deps chromium
@@ -127,7 +127,7 @@ jobs:
       matrix:
         browser: [chromium, firefox, webkit]
     env:
-      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.tool_cache }}/ms-playwright
+      PLAYWRIGHT_BROWSERS_PATH: .cache/ms-playwright
       E2E_BROWSER: ${{ matrix.browser }}
       CANDIDATE_SHA: ${{ inputs.candidate_sha }}
       E2E_PLAYWRIGHT_TARGET: >-

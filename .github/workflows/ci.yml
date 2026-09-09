@@ -512,7 +512,7 @@ jobs:
     timeout-minutes: 15
     needs: [build]
     env:
-      CRITICAL_PROCESS_ARTIFACT_DIR: ${{ runner.temp }}/critical-process-artifacts
+      CRITICAL_PROCESS_ARTIFACT_DIR: critical-process-artifacts
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -557,7 +557,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: critical-process-windows-diagnostics
-          path: ${{ runner.temp }}/critical-process-artifacts/**
+          path: critical-process-artifacts/**
           if-no-files-found: ignore
           retention-days: 30
 
@@ -838,7 +838,7 @@ jobs:
     timeout-minutes: 120
     needs: [build]
     env:
-      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.tool_cache }}/ms-playwright
+      PLAYWRIGHT_BROWSERS_PATH: .cache/ms-playwright
     services:
       postgres:
         image: postgres:16-alpine
@@ -898,7 +898,7 @@ jobs:
       - name: Cache Playwright Chromium
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
-          path: ${{ runner.tool_cache }}/ms-playwright
+          path: .cache/ms-playwright
           key: ${{ runner.os }}-playwright-1.58.2-chromium
 
       - name: Install Playwright browsers
@@ -1062,7 +1062,7 @@ jobs:
     timeout-minutes: 20
     needs: [build]
     env:
-      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.tool_cache }}/ms-playwright
+      PLAYWRIGHT_BROWSERS_PATH: .cache/ms-playwright
     services:
       postgres:
         image: postgres:16-alpine
@@ -1122,7 +1122,7 @@ jobs:
       - name: Cache Playwright Chromium
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
-          path: ${{ runner.tool_cache }}/ms-playwright
+          path: .cache/ms-playwright
           key: ${{ runner.os }}-playwright-1.58.2-chromium
 
       - name: Install Playwright browsers
