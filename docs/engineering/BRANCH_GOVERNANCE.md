@@ -22,10 +22,17 @@ The owner must configure the `main` branch so that:
 
 The repository's workflow job names are the source for required-check selection;
 the visible workflow names are not sufficient. At minimum the owner must review
-the `CI`, `Typecheck`, `Lint`, `Build`, `Unit Tests`, `Integration Tests`,
-`E2E Tests (SPA)`, `Visual Regression`, `Critical Process Runner (Windows
-contract)`, `Performance (k6)`, `Coverage`, `Dependency Audit`, and validator
-jobs as they appear in the completed run for the candidate.
+these exact check names in the completed run for the candidate:
+
+`Typecheck`, `Lint`, `SAST (Semgrep)`, `Secret Scan`, `Validate OpenAPI`,
+`Repository Guards`, `API Contract Tests`, `Build`, `Unit Tests`,
+`Critical Process Runner (Windows contract)`, `Integration Tests`, `Coverage`,
+`Performance (k6 SLOs)`, `E2E Tests (SPA)`, `Visual Regression`, and
+`Dependency Audit (CVE Scan)`.
+
+The list is intentionally tied to the current workflow job display names. If a
+job is renamed, added or removed, the branch rules and this document must be
+updated together; a similar-looking workflow name is not an equivalent check.
 
 ## Evidence contract
 
@@ -40,7 +47,24 @@ An acceptable governance artifact must contain:
   "status": "PASS",
   "source": "authenticated GitHub API",
   "observed_at": "<ISO-8601 timestamp>",
-  "required_status_checks": ["<exact completed job/check names>"],
+  "required_status_checks": [
+    "Typecheck",
+    "Lint",
+    "SAST (Semgrep)",
+    "Secret Scan",
+    "Validate OpenAPI",
+    "Repository Guards",
+    "API Contract Tests",
+    "Build",
+    "Unit Tests",
+    "Critical Process Runner (Windows contract)",
+    "Integration Tests",
+    "Coverage",
+    "Performance (k6 SLOs)",
+    "E2E Tests (SPA)",
+    "Visual Regression",
+    "Dependency Audit (CVE Scan)"
+  ],
   "enforce_admins": true,
   "required_pull_request_reviews": true,
   "required_linear_history": true,

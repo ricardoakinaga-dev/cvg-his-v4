@@ -38,7 +38,8 @@
     "tests/integration/process/inpatient-cash-receipt-concurrency.test.ts",
     "tests/integration/process/pix-provider-settlement-sigkill.test.ts",
     "tests/integration/process/worker-runtime-entrypoint.test.ts",
-    "tests/integration/process/webhook-delivery-sigkill.test.ts"
+    "tests/integration/process/webhook-delivery-sigkill.test.ts",
+    "tests/integration/process/workflow-task-sigkill.test.ts"
   ],
   "nativeTests": {
     "native-api": [
@@ -6771,6 +6772,7 @@
     "apps/worker/test-fixtures/pix-provider-settlement-process.ts",
     "apps/worker/test-fixtures/runtime-entrypoint-process.ts",
     "apps/worker/test-fixtures/webhook-delivery-process.ts",
+    "apps/worker/test-fixtures/workflow-task-process.ts",
     "apps/worker/tsconfig.json",
     "benchmarks/grafana/cvg-his-v2-api-dashboard.json",
     "benchmarks/k6/api-benchmark.js",
@@ -7958,6 +7960,7 @@
     "tests/integration/process/runtime-lifecycle.test.ts",
     "tests/integration/process/setup-installation-to-session.test.ts",
     "tests/integration/process/webhook-delivery-sigkill.test.ts",
+    "tests/integration/process/workflow-task-sigkill.test.ts",
     "tests/integration/process/worker-run-once-reports.test.ts",
     "tests/integration/process/worker-runtime-entrypoint.test.ts",
     "tests/integration/rate-limiting.test.ts",

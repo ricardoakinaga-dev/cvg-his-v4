@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "evidenceType": "cvg-his-hospital-uat",
+  "candidateSha": "<40-character-candidate-sha>",
+  "status": "NOT_PROVEN",
+  "decision": "no-go",
+  "profiles": [
+    {
+      "id": "reception",
+      "label": "Recepção",
+      "status": "NOT_PROVEN",
+      "scenarios": [
+        { "id": "check-in", "result": "NOT_PROVEN", "evidenceReference": null }
+      ],
+      "approver": null,
+      "evidenceReference": null
+    },
+    {
+      "id": "veterinarian",
+      "label": "Veterinário",
+      "status": "NOT_PROVEN",
+      "scenarios": [
+        { "id": "atendimento", "result": "NOT_PROVEN", "evidenceReference": null },
+        { "id": "medicacao", "result": "NOT_PROVEN", "evidenceReference": null },
+        { "id": "exames", "result": "NOT_PROVEN", "evidenceReference": null },
+        { "id": "alta", "result": "NOT_PROVEN", "evidenceReference": null },
+        { "id": "workflow", "result": "NOT_PROVEN", "evidenceReference": null },
+        { "id": "handover", "result": "NOT_PROVEN", "evidenceReference": null }
+      ],
+      "approver": null,
+      "evidenceReference": null
+    },
+    {
+      "id": "inpatient",
+      "label": "Internação",
+      "status": "NOT_PROVEN",
+      "scenarios": [
+        { "id": "internacao", "result": "NOT_PROVEN", "evidenceReference": null },
+        { "id": "medicacao", "result": "NOT_PROVEN", "evidenceReference": null },
+        { "id": "exames", "result": "NOT_PROVEN", "evidenceReference": null },
+        { "id": "alta", "result": "NOT_PROVEN", "evidenceReference": null },
+        { "id": "workflow", "result": "NOT_PROVEN", "evidenceReference": null },
+        { "id": "handover", "result": "NOT_PROVEN", "evidenceReference": null }
+      ],
+      "approver": null,
+      "evidenceReference": null
+    },
+    {
+      "id": "admin",
+      "label": "Admin",
+      "status": "NOT_PROVEN",
+      "scenarios": [
+        { "id": "workflow", "result": "NOT_PROVEN", "evidenceReference": null },
+        { "id": "handover", "result": "NOT_PROVEN", "evidenceReference": null }
+      ],
+      "approver": null,
+      "evidenceReference": null
+    }
+  ],
+  "goNoGo": {
+    "decision": "no-go",
+    "decidedAt": null,
+    "evidenceReference": null,
+    "approvers": {
+      "clinical": null,
+      "qa": null,
+      "engineering": null
+    }
+  },
+  "limitations": [
+    "Nenhuma pessoa real executou ou aprovou UAT nesta geração.",
+    "Este arquivo é um esqueleto de preparação e não fecha o gate."
+  ]
+}

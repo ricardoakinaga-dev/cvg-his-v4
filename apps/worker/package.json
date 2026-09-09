@@ -47,6 +47,6 @@
     "build": "tsc -b tsconfig.json --force",
     "typecheck": "pnpm --filter @cvg-his-v2/worker^... build && tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.json && node --test dist/runner.test.js && node --test dist/bootstrap.test.js && node --test dist/account-discovery.test.js && node --test dist/consumer-composition.test.js && node --test dist/worker-report-identity.test.js && node --test dist/jobs/scheduled-report-job.test.js && node --test dist/jobs/pix-provider-settlement-consumer.test.js && node --test dist/cancellation-history-report.test.js && node --test dist/feature-flags.test.js && node --test dist/report-delivery-provider.test.js && node --test dist/scheduled-report-filters.test.js"
+    "test": "tsc -p tsconfig.json && node --test dist/runner.test.js && node --test dist/bootstrap.test.js && node --test dist/account-discovery.test.js && node --test dist/consumer-composition.test.js && node --test dist/worker-report-identity.test.js && node --test dist/workflow-task-runner.test.js && node --test dist/jobs/scheduled-report-job.test.js && node --test dist/jobs/pix-provider-settlement-consumer.test.js && node --test dist/cancellation-history-report.test.js && node --test dist/feature-flags.test.js && node --test dist/report-delivery-provider.test.js && node --test dist/scheduled-report-filters.test.js"
   }
 }

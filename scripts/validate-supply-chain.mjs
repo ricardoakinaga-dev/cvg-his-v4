@@ -41,6 +41,13 @@ for (const path of workflowFiles(workflowsDir)) {
       findings.push(`${relativePath}: ${reference} is not pinned to a full commit SHA`);
     }
   }
+
+  for (const match of content.matchAll(/^\s*container:\s*\n\s+image:\s*([^\s#]+)(?:\s+#.*)?$/gm)) {
+    const image = match[1];
+    if (!image.includes('@') || !digestRef.test(image.slice(image.lastIndexOf('@') + 1))) {
+      findings.push(`${relativePath}: workflow container ${image} is not pinned to a sha256 image digest`);
+    }
+  }
 }
 
 const count = workflowFiles(workflowsDir)

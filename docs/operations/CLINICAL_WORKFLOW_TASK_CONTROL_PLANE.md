@@ -129,6 +129,12 @@ Fontes executáveis:
   — claim, handler, retry e DLQ;
 - [`0166_clinical_workflow_tasks.sql`](../../packages/db/migrations/0166_clinical_workflow_tasks.sql)
   — schema, constraints e RLS.
+- [`0168_clinical_workflow_event_governance.sql`](../../packages/db/migrations/0168_clinical_workflow_event_governance.sql)
+  — versão e origem obrigatórias para eventos, com constraints append-only.
+- [`tests/integration/database/clinical-workflow-postgres.test.ts`](../../tests/integration/database/clinical-workflow-postgres.test.ts)
+  — concorrência, RLS, fencing, retry/DLQ/replay e histórico em PostgreSQL.
+- [`tests/integration/process/workflow-task-sigkill.test.ts`](../../tests/integration/process/workflow-task-sigkill.test.ts)
+  — takeover após SIGKILL e rejeição de fencing stale em processos independentes.
 
 Verificações locais atuais: 8 testes unitários do módulo (incluindo
 concorrência, idempotência, backoff, DLQ e fencing), 6 testes HTTP de

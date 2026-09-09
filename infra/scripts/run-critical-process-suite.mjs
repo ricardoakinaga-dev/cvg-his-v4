@@ -63,6 +63,10 @@ const PROCESS_TESTS = [
   {
     id: 'webhook-delivery-sigkill',
     file: 'tests/integration/process/webhook-delivery-sigkill.test.ts'
+  },
+  {
+    id: 'workflow-task-sigkill',
+    file: 'tests/integration/process/workflow-task-sigkill.test.ts'
   }
 ];
 

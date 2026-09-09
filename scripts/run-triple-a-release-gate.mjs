@@ -19,6 +19,14 @@ const REQUIRED_POLICY_FILES = [
   'docs/engineering/DEPENDENCY_POLICY.md',
   'docs/security/SECURITY_TEST_MATRIX.md',
   'docs/operations/CLINICAL_WORKFLOW_TASK_CONTROL_PLANE.md',
+  'docs/triple-a/14-external-evidence-baseline.md',
+  'docs/engineering/BRANCH_GOVERNANCE.md',
+  'docs/security/DATABASE_ROLE_MATRIX.md',
+  'docs/operations/HOSPITAL_UAT_PROTOCOL.md',
+  'docs/triple-a/security-final-critic.md',
+  'docs/triple-a/clinical-final-critic.md',
+  'docs/triple-a/operations-final-critic.md',
+  'docs/triple-a/ux-final-critic.md',
 ];
 
 const EXECUTABLE_CHECKS = [
@@ -586,6 +594,12 @@ export function buildReleaseEvidence({
     ['CI-REMOTE', 'CI', 'P0', 'CI remoto verde do commit candidato', 'TRIPLE_A_CI_URL'],
     ['CRITICAL-TESTS', 'Critical tests', 'P0', 'Testes críticos de banco/processo atuais', 'TRIPLE_A_CRITICAL_EVIDENCE'],
     ['E2E', 'E2E', 'P0', 'E2E/accessibility/visual atuais', 'TRIPLE_A_E2E_EVIDENCE'],
+    ['WORKFLOW-POSTGRES', 'Clinical workflow', 'P0', 'Integração PostgreSQL do workflow clínico atual', 'TRIPLE_A_WORKFLOW_POSTGRES_EVIDENCE'],
+    ['RLS-RUNTIME', 'Security', 'P0', 'RLS e isolamento por tenant em roles de runtime', 'TRIPLE_A_RLS_RUNTIME_EVIDENCE'],
+    ['WORKER-CRASH', 'Worker reliability', 'P0', 'Crash recovery, lease takeover e fencing do worker', 'TRIPLE_A_WORKER_CRASH_EVIDENCE'],
+    ['CLINICAL-E2E', 'Clinical safety', 'P0', 'E2E clínico crítico ponta a ponta e invariantes negativas', 'TRIPLE_A_CLINICAL_E2E_EVIDENCE'],
+    ['AUDIT-INTEGRITY', 'Clinical safety', 'P0', 'Integridade de auditoria e eventos append-only', 'TRIPLE_A_AUDIT_EVIDENCE'],
+    ['HOSPITAL-UAT', 'Usability/UAT', 'P0', 'UAT hospitalar humana, sem autoaprovação', 'TRIPLE_A_UAT_EVIDENCE'],
     ['DEPLOY-TARGET', 'Deploy', 'P1', 'Deploy/rollback no ambiente alvo', 'TRIPLE_A_DEPLOY_EVIDENCE'],
     ['IMAGE-ATTESTATIONS', 'Supply chain', 'P0', 'Attestation, assinatura e verificação das imagens publicadas', 'TRIPLE_A_IMAGE_ATTESTATION_EVIDENCE'],
     ['HELM-TARGET', 'Deploy', 'P1', 'Helm lint/template e identidade por digest no alvo', 'TRIPLE_A_HELM_EVIDENCE'],
@@ -603,9 +617,19 @@ export function buildReleaseEvidence({
   }
 
   const qualityBarHash = qualityBarExists ? sha256(qualityBarPath) : null;
+  const externalPromptPath = resolve(rootDir, 'docs/triple-a/MASTER_PROMPT_EXTERNAL_CLOSURE.md');
+  const externalPromptSha = existsSync(externalPromptPath) ? sha256(externalPromptPath) : null;
   const criteria = [
     criterion('QUALITY-BAR', 'Baseline', 'P0', 'Quality bar existe no repositório.', qualityBarExists ? 'PASS' : 'FAIL', qualityBarExists ? ['docs/triple-a/QUALITY_BAR_V1.json'] : []),
     criterion('PROMPT-HASH', 'Baseline', 'P0', 'Prompt fonte permanece byte-a-byte preservado.', qualityBarHash && readJson(qualityBarPath).source_prompt_sha256 === sha256(resolve(rootDir, 'docs/triple-a/MASTER_PROMPT.md')) ? 'PASS' : 'FAIL', ['docs/triple-a/MASTER_PROMPT.md']),
+    criterion(
+      'EXTERNAL-PROMPT-HASH',
+      'Baseline',
+      'P0',
+      'Prompt de fechamento externo está preservado byte-a-byte.',
+      externalPromptSha === 'd89a249f9b0b13e0da6fb9e4ee3c0e4728c11760fd435d325d48a9b8d1b5ed59' ? 'PASS' : 'FAIL',
+      existsSync(externalPromptPath) ? ['docs/triple-a/MASTER_PROMPT_EXTERNAL_CLOSURE.md'] : []
+    ),
     ...commandCriteria,
     ...policyCriteria,
     ...artifactCriteria,

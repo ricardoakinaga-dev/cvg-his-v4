@@ -107,6 +107,7 @@
     "security:enterprise": "node scripts/run-security-audit.mjs",
     "security:evidence": "node scripts/generate-security-evidence.mjs",
     "security:operations:index": "node scripts/generate-security-operations-index.mjs",
+    "evidence:uat:skeleton": "node scripts/generate-hospital-uat-evidence.mjs",
     "release:manifest": "node scripts/generate-release-manifest.mjs",
     "release:attestation-evidence": "node scripts/generate-image-attestation-evidence.mjs",
     "release:triple-a": "node scripts/run-triple-a-release-gate.mjs",

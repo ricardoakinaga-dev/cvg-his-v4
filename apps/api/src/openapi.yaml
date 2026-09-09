@@ -17149,7 +17149,7 @@ components:
 
     ClinicalWorkflowTaskEvent:
       type: object
-      required: [id, accountId, taskId, eventType, correlationId, payload, occurredAt]
+      required: [id, accountId, taskId, eventType, schemaVersion, source, correlationId, payload, occurredAt]
       properties:
         id:
           type: string
@@ -17163,6 +17163,12 @@ components:
         eventType:
           type: string
           enum: [created, claimed, acknowledged, completed, cancelled, retry_scheduled, dead_lettered, replayed, escalated]
+        schemaVersion:
+          type: integer
+          enum: [1]
+        source:
+          type: string
+          enum: [clinical-workflow]
         actorUserId:
           type: string
           format: uuid

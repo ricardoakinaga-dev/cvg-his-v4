@@ -121,6 +121,8 @@ export const clinicalWorkflowTaskEvents = pgTable(
       .notNull()
       .references(() => clinicalWorkflowTasks.id, { onDelete: 'cascade' }),
     eventType: varchar('event_type', { length: 48 }).notNull(),
+    schemaVersion: integer('schema_version').notNull().default(1),
+    source: varchar('source', { length: 80 }).notNull().default('clinical-workflow'),
     actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
     correlationId: varchar('correlation_id', { length: 255 }).notNull(),
     causationId: varchar('causation_id', { length: 255 }),

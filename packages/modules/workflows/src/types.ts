@@ -34,6 +34,12 @@ export type WorkflowTaskEventType =
   | 'rescheduled'
   | 'escalated';
 
+/** Version and producer identity are part of the durable event contract. */
+export const WORKFLOW_TASK_EVENT_SCHEMA_VERSION = 1 as const;
+export const WORKFLOW_TASK_EVENT_SOURCE = 'clinical-workflow' as const;
+export type WorkflowTaskEventSchemaVersion = typeof WORKFLOW_TASK_EVENT_SCHEMA_VERSION;
+export type WorkflowTaskEventSource = typeof WORKFLOW_TASK_EVENT_SOURCE;
+
 export interface WorkflowTaskSummary {
   readonly id: WorkflowTaskId;
   readonly accountId: AccountId;
@@ -110,6 +116,8 @@ export interface WorkflowTaskEventSummary {
   readonly accountId: AccountId;
   readonly taskId: WorkflowTaskId;
   readonly eventType: WorkflowTaskEventType;
+  readonly schemaVersion: WorkflowTaskEventSchemaVersion;
+  readonly source: WorkflowTaskEventSource;
   readonly actorUserId?: UserId;
   readonly correlationId: CorrelationId;
   readonly causationId?: string;
@@ -127,6 +135,8 @@ export interface WorkflowTaskClaim {
 
 export interface WorkflowTaskTransitionEvent {
   readonly eventType: WorkflowTaskEventType;
+  readonly schemaVersion: WorkflowTaskEventSchemaVersion;
+  readonly source: WorkflowTaskEventSource;
   readonly actorUserId?: UserId;
   readonly correlationId: CorrelationId;
   readonly causationId?: string;

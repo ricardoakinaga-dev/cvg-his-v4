@@ -11,6 +11,11 @@ import type {
 } from '@cvg-his-v2/shared-types';
 import { withTenantQueryExplicit } from '@cvg-his-v2/tenant-context';
 
+import {
+  WORKFLOW_TASK_EVENT_SCHEMA_VERSION,
+  WORKFLOW_TASK_EVENT_SOURCE
+} from './types.js';
+
 import type {
   WorkflowTaskClaim,
   WorkflowTaskEventSummary,
@@ -72,6 +77,16 @@ export async function checkWorkflowTaskSchemaReadiness(): Promise<boolean> {
               'next_attempt_at', 'lease_owner', 'lease_token', 'lease_version', 'revision',
               'lease_expires_at', 'correlation_id', 'created_at', 'updated_at',
               'patient_id', 'encounter_id'
+            ])
+       )
+       AND (
+         SELECT COUNT(*) = 11
+           FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'clinical_workflow_task_events'
+            AND column_name = ANY(ARRAY[
+              'id', 'account_id', 'task_id', 'event_type', 'actor_user_id', 'correlation_id',
+              'causation_id', 'payload', 'occurred_at', 'schema_version', 'source'
             ])
        )
        AND (
@@ -168,6 +183,8 @@ function toEvent(
     accountId: task.accountId,
     taskId: task.id,
     eventType: input.eventType,
+    schemaVersion: input.schemaVersion,
+    source: input.source,
     actorUserId: input.actorUserId,
     correlationId: input.correlationId,
     causationId: input.causationId,
@@ -304,6 +321,8 @@ export class InMemoryWorkflowTaskRepository implements WorkflowTaskRepository {
         this.#tasks.set(task.id, deadLettered);
         this.#events.get(task.id)?.push(toEvent(deadLettered, {
           eventType: 'dead_lettered',
+          schemaVersion: WORKFLOW_TASK_EVENT_SCHEMA_VERSION,
+          source: WORKFLOW_TASK_EVENT_SOURCE,
           actorUserId: input.actorUserId,
           correlationId: input.correlationId,
           occurredAt: input.now,
@@ -333,6 +352,8 @@ export class InMemoryWorkflowTaskRepository implements WorkflowTaskRepository {
       this.#tasks.set(task.id, claimed);
       this.#events.get(task.id)?.push(toEvent(claimed, {
         eventType: 'claimed',
+        schemaVersion: WORKFLOW_TASK_EVENT_SCHEMA_VERSION,
+        source: WORKFLOW_TASK_EVENT_SOURCE,
         actorUserId: input.actorUserId,
         correlationId: input.correlationId,
         occurredAt: input.now,
@@ -475,7 +496,7 @@ function eventValues(task: WorkflowTaskSummary, event: WorkflowTaskTransitionEve
   return [
     randomUUID(), task.accountId, task.id, event.eventType, event.actorUserId ?? null,
     event.correlationId, event.causationId ?? null, JSON.stringify(event.payload ?? {}),
-    new Date(event.occurredAt)
+    new Date(event.occurredAt), event.schemaVersion, event.source
   ];
 }
 
@@ -509,7 +530,7 @@ export class DatabaseWorkflowTaskRepository implements WorkflowTaskRepository {
       );
       if (inserted.rows.length > 0) {
         await client.query(
-          `INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+          `INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at, schema_version, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
           eventValues(task, event)
         );
         return { task: mapRow(inserted.rows[0]), created: true };
@@ -558,7 +579,10 @@ export class DatabaseWorkflowTaskRepository implements WorkflowTaskRepository {
       const result = await client.query('SELECT * FROM clinical_workflow_task_events WHERE account_id = $1 AND task_id = $2 ORDER BY occurred_at ASC, id ASC LIMIT $3', [accountId, taskId, boundedEventLimit(limit)]);
       return result.rows.map((row: DbRow) => ({
         id: row.id as WorkflowTaskEventSummary['id'], accountId: row.account_id as AccountId, taskId: row.task_id as WorkflowTaskId,
-        eventType: row.event_type as WorkflowTaskEventType, actorUserId: (row.actor_user_id as UserId | null) ?? undefined,
+        eventType: row.event_type as WorkflowTaskEventType,
+        schemaVersion: Number(row.schema_version ?? WORKFLOW_TASK_EVENT_SCHEMA_VERSION) as WorkflowTaskEventSummary['schemaVersion'],
+        source: (row.source as WorkflowTaskEventSummary['source'] | null) ?? WORKFLOW_TASK_EVENT_SOURCE,
+        actorUserId: (row.actor_user_id as UserId | null) ?? undefined,
         correlationId: row.correlation_id as CorrelationId, causationId: (row.causation_id as string | null) ?? undefined,
         payload: (row.payload as Record<string, unknown>) ?? {}, occurredAt: new Date(row.occurred_at as string | Date).toISOString()
       }));
@@ -572,7 +596,7 @@ export class DatabaseWorkflowTaskRepository implements WorkflowTaskRepository {
         [task.accountId, task.id, task.status, task.executionMode, task.priority, task.title, task.description ?? null, task.ownerType ?? null, task.ownerId ?? null, new Date(task.dueAt), JSON.stringify(task.metadata), task.attempts, task.maxAttempts, new Date(task.nextAttemptAt), task.leaseOwner ?? null, task.leaseToken ?? null, task.leaseVersion, task.revision, task.leaseExpiresAt ? new Date(task.leaseExpiresAt) : null, task.lastAttemptAt ? new Date(task.lastAttemptAt) : null, task.lastError ?? null, task.acknowledgedByUserId ?? null, task.acknowledgedAt ? new Date(task.acknowledgedAt) : null, task.completedByUserId ?? null, task.completedAt ? new Date(task.completedAt) : null, task.cancelledByUserId ?? null, task.cancelledAt ? new Date(task.cancelledAt) : null, task.cancellationReason ?? null, task.escalationLevel, task.lastEscalatedAt ? new Date(task.lastEscalatedAt) : null, new Date(task.updatedAt), task.revision - 1, task.fingerprint]
       );
       if (result.rowCount !== 1) throw new ConflictError('Workflow task revision mismatch', { taskId: task.id });
-      await client.query('INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', eventValues(task, event));
+      await client.query('INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at, schema_version, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)', eventValues(task, event));
     });
   }
 
@@ -599,12 +623,14 @@ export class DatabaseWorkflowTaskRepository implements WorkflowTaskRepository {
         const task = mapRow(row);
         const event: WorkflowTaskTransitionEvent = {
           eventType: 'dead_lettered',
+          schemaVersion: WORKFLOW_TASK_EVENT_SCHEMA_VERSION,
+          source: WORKFLOW_TASK_EVENT_SOURCE,
           actorUserId: input.actorUserId,
           correlationId: input.correlationId,
           occurredAt: input.now,
           payload: { reason: 'lease_expired', attempt: task.attempts }
         };
-        await client.query('INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', eventValues(task, event));
+        await client.query('INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at, schema_version, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)', eventValues(task, event));
       }
       const result = await client.query(
         `WITH candidates AS (
@@ -622,8 +648,8 @@ export class DatabaseWorkflowTaskRepository implements WorkflowTaskRepository {
       const claims: WorkflowTaskClaim[] = [];
       for (const row of result.rows as DbRow[]) {
         const task = mapRow(row);
-        const event: WorkflowTaskTransitionEvent = { eventType: 'claimed', actorUserId: input.actorUserId, correlationId: input.correlationId, occurredAt: input.now, payload: { workerId: input.workerId, attempt: task.attempts } };
-        await client.query('INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', eventValues(task, event));
+        const event: WorkflowTaskTransitionEvent = { eventType: 'claimed', schemaVersion: WORKFLOW_TASK_EVENT_SCHEMA_VERSION, source: WORKFLOW_TASK_EVENT_SOURCE, actorUserId: input.actorUserId, correlationId: input.correlationId, occurredAt: input.now, payload: { workerId: input.workerId, attempt: task.attempts } };
+        await client.query('INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at, schema_version, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)', eventValues(task, event));
         claims.push({ task, leaseOwner: input.workerId, leaseToken: task.leaseToken!, leaseVersion: task.leaseVersion, leaseExpiresAt: task.leaseExpiresAt! });
       }
       return claims;
@@ -667,7 +693,7 @@ export class DatabaseWorkflowTaskRepository implements WorkflowTaskRepository {
       );
       if (result.rowCount !== 1) return false;
       const updated = await client.query('SELECT * FROM clinical_workflow_tasks WHERE account_id=$1 AND id=$2', [claim.task.accountId, claim.task.id]);
-      await client.query('INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', eventValues(mapRow(updated.rows[0]), event));
+      await client.query('INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at, schema_version, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)', eventValues(mapRow(updated.rows[0]), event));
       return true;
     });
   }
@@ -687,7 +713,7 @@ export class DatabaseWorkflowTaskRepository implements WorkflowTaskRepository {
       const result = await client.query(`UPDATE clinical_workflow_tasks SET status='pending', attempts=0, next_attempt_at=$3, last_error=NULL, lease_owner=NULL, lease_token=NULL, lease_expires_at=NULL, revision=revision+1, updated_at=$3 WHERE account_id=$1 AND id=$2 AND status='dlq' RETURNING *`, [accountId, taskId, new Date(event.occurredAt)]);
       if (result.rows.length === 0) throw new ConflictError('Only dead-lettered workflow tasks can be replayed');
       const task = mapRow(result.rows[0]);
-      await client.query('INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', eventValues(task, event));
+      await client.query('INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at, schema_version, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)', eventValues(task, event));
       return task;
     });
   }

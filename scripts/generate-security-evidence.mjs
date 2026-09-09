@@ -125,11 +125,11 @@ function validateSemgrepCi() {
   const sastJob = ci.match(/  sast:\n[\s\S]*?(?=\n  [a-zA-Z0-9_-]+:|\n$)/)?.[0] ?? '';
   const checks = [
     ['job sast existe', Boolean(sastJob)],
-    ['usa semgrep action pinned by SHA', /returntocorp\/semgrep-action@[0-9a-f]{40}(?:\s|#|$)/.test(sastJob)],
-    ['usa security-extended', /p\/security-extended/.test(sastJob)],
-    ['usa nodejs/typescript rules', /p\/nodejs/.test(sastJob) && /p\/typescript/.test(sastJob)],
-    ['gera JSON', /output:\s*semgrep\.json/.test(sastJob)],
-    ['gera SARIF', /sarif:\s*semgrep\.sarif/.test(sastJob)],
+    ['usa semgrep container pinned by digest', /container:\s*\n\s+image:\s*semgrep\/semgrep@sha256:[0-9a-f]{64}(?:\s|$)/.test(sastJob)],
+    ['executa semgrep scan', /semgrep\s+scan/.test(sastJob)],
+    ['usa regras locais e oficiais', /--config\s+\.semgrep\.yml/.test(sastJob) && /p\/security-extended/.test(sastJob) && /p\/nodejs/.test(sastJob) && /p\/typescript/.test(sastJob)],
+    ['gera JSON', /--json-output\s+semgrep\.json/.test(sastJob)],
+    ['gera SARIF', /--sarif-output\s+semgrep\.sarif/.test(sastJob)],
     ['faz upload SARIF pinned by SHA', /upload-sarif@[0-9a-f]{40}(?:\s|#|$)/.test(sastJob)],
     ['nao usa continue-on-error no SAST', !/continue-on-error:\s*true/.test(sastJob)]
   ];

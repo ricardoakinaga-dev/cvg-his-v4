@@ -6,6 +6,11 @@ import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 import {
+  WORKFLOW_TASK_EVENT_SCHEMA_VERSION,
+  WORKFLOW_TASK_EVENT_SOURCE
+} from './types.js';
+
+import {
   DatabaseWorkflowTaskRepository,
   InMemoryWorkflowTaskRepository,
   checkWorkflowTaskSchemaReadiness,
@@ -91,7 +96,16 @@ function fingerprintForTask(task: WorkflowTaskSummary, dueAt = task.dueAt): stri
 }
 
 function transitionEvent(task: WorkflowTaskSummary, eventType: WorkflowTaskTransitionEvent['eventType'], actorUserId: UserId | undefined, occurredAt: string, payload?: Record<string, unknown>): WorkflowTaskTransitionEvent {
-  return { eventType, actorUserId, correlationId: task.correlationId, causationId: task.causationId, occurredAt, payload };
+  return {
+    eventType,
+    schemaVersion: WORKFLOW_TASK_EVENT_SCHEMA_VERSION,
+    source: WORKFLOW_TASK_EVENT_SOURCE,
+    actorUserId,
+    correlationId: task.correlationId,
+    causationId: task.causationId,
+    occurredAt,
+    payload
+  };
 }
 
 function validatePriority(value: WorkflowTaskPriority | undefined): WorkflowTaskPriority {

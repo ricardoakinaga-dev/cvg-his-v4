@@ -8,7 +8,9 @@ const root = resolve(import.meta.dirname, '..');
 const REQUIRED_FILES = [
   'packages/db/migrations/0166_clinical_workflow_tasks.sql',
   'packages/db/migrations/0167_clinical_workflow_permissions.sql',
+  'packages/db/migrations/0168_clinical_workflow_event_governance.sql',
   'packages/db/src/schema/clinical_workflow_tasks.ts',
+  'packages/modules/workflows/src/types.ts',
   'packages/modules/workflows/src/index.ts',
   'packages/modules/workflows/src/repository.ts',
   'apps/api/src/routes/workflow-task-routes.ts',
@@ -32,6 +34,13 @@ const REQUIRED_SQL_MARKERS = [
   'app.current_account_id()'
 ];
 
+const EVENT_GOVERNANCE_MARKERS = [
+  'schema_version INTEGER NOT NULL DEFAULT 1',
+  "source VARCHAR(80) NOT NULL DEFAULT 'clinical-workflow'",
+  'clinical_workflow_task_events_schema_version_chk',
+  'clinical_workflow_task_events_source_chk'
+];
+
 export function inspectClinicalWorkflowSchema(rootDirectory = root) {
   const failures = [];
   for (const relativePath of REQUIRED_FILES) {
@@ -45,6 +54,31 @@ export function inspectClinicalWorkflowSchema(rootDirectory = root) {
       if (!source.includes(marker)) failures.push(`0166 migration is missing marker: ${marker}`);
     }
     if (/\bDROP\s+TABLE\b/i.test(source)) failures.push('0166 migration must be append-only; DROP TABLE is forbidden');
+  }
+
+  const eventGovernancePath = resolve(rootDirectory, 'packages/db/migrations/0168_clinical_workflow_event_governance.sql');
+  if (existsSync(eventGovernancePath)) {
+    const source = readFileSync(eventGovernancePath, 'utf8');
+    for (const marker of EVENT_GOVERNANCE_MARKERS) {
+      if (!source.includes(marker)) failures.push(`0168 migration is missing marker: ${marker}`);
+    }
+    if (/\bDROP\s+TABLE\b/i.test(source)) failures.push('0168 migration must be append-only; DROP TABLE is forbidden');
+  }
+
+  const schemaPath = resolve(rootDirectory, 'packages/db/src/schema/clinical_workflow_tasks.ts');
+  if (existsSync(schemaPath)) {
+    const source = readFileSync(schemaPath, 'utf8');
+    for (const marker of ["schemaVersion: integer('schema_version')", "source: varchar('source'"]) {
+      if (!source.includes(marker)) failures.push(`Drizzle schema is missing event governance marker: ${marker}`);
+    }
+  }
+
+  const workflowTypesPath = resolve(rootDirectory, 'packages/modules/workflows/src/types.ts');
+  if (existsSync(workflowTypesPath)) {
+    const source = readFileSync(workflowTypesPath, 'utf8');
+    for (const marker of ['WORKFLOW_TASK_EVENT_SCHEMA_VERSION', 'WORKFLOW_TASK_EVENT_SOURCE', 'schemaVersion:', 'source:']) {
+      if (!source.includes(marker)) failures.push(`Workflow event types are missing marker: ${marker}`);
+    }
   }
 
   return { failures };
