@@ -101,6 +101,8 @@ tags:
     description: Counter sale/comanda operations, payments and commercial dashboard
   - name: Notifications
     description: Notification management
+  - name: Clinical Workflows
+    description: Durable clinical tasks, reminders, acknowledgement, escalation and DLQ replay
   - name: Webhooks
     description: Webhook subscription management for external integrations
   - name: API Keys
@@ -6780,6 +6782,216 @@ paths:
       responses:
         '200':
           description: Notifications processed
+
+  /workflow-tasks:
+    get:
+      operationId: listClinicalWorkflowTasks
+      summary: List clinical workflow tasks
+      description: Returns a bounded, tenant-scoped operational worklist. Lease tokens are never exposed.
+      tags: [Clinical Workflows]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, processing, retrying, acknowledged, completed, cancelled, dlq]
+        - name: taskType
+          in: query
+          schema:
+            type: string
+            maxLength: 80
+        - name: patientId
+          in: query
+          schema:
+            type: string
+        - name: encounterId
+          in: query
+          schema:
+            type: string
+        - name: dueBefore
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 100
+      responses:
+        '200':
+          description: Tenant-scoped task list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalWorkflowTaskListResponse'
+        '401':
+          description: Authentication required
+        '403':
+          description: Workflow task read permission required
+    post:
+      operationId: createClinicalWorkflowTask
+      summary: Create an idempotent clinical workflow task
+      description: Idempotency-Key is bound to the account and authenticated actor by the tenant command boundary.
+      tags: [Clinical Workflows]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClinicalWorkflowTaskRequest'
+      responses:
+        '201':
+          description: Task created or idempotently recovered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalWorkflowTask'
+        '400':
+          description: Invalid task payload
+        '409':
+          description: Idempotency or lifecycle conflict
+
+  /workflow-tasks/{taskId}:
+    get:
+      operationId: getClinicalWorkflowTask
+      summary: Get a clinical workflow task
+      tags: [Clinical Workflows]
+      parameters:
+        - $ref: '#/components/parameters/ClinicalWorkflowTaskId'
+      responses:
+        '200':
+          description: Tenant-scoped task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalWorkflowTask'
+        '404':
+          description: Task not found
+
+  /workflow-tasks/{taskId}/events:
+    get:
+      operationId: listClinicalWorkflowTaskEvents
+      summary: List the append-only task lifecycle events
+      tags: [Clinical Workflows]
+      parameters:
+        - $ref: '#/components/parameters/ClinicalWorkflowTaskId'
+      responses:
+        '200':
+          description: Task lifecycle events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalWorkflowTaskEventListResponse'
+        '404':
+          description: Task not found
+
+  /workflow-tasks/{taskId}/acknowledge:
+    post:
+      operationId: acknowledgeClinicalWorkflowTask
+      summary: Acknowledge a clinical workflow task
+      tags: [Clinical Workflows]
+      parameters:
+        - $ref: '#/components/parameters/ClinicalWorkflowTaskId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                note:
+                  type: string
+                  maxLength: 1000
+      responses:
+        '200':
+          description: Acknowledged task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalWorkflowTask'
+        '409':
+          description: Task cannot be acknowledged from its current state
+
+  /workflow-tasks/{taskId}/complete:
+    post:
+      operationId: completeClinicalWorkflowTask
+      summary: Complete a clinical workflow task
+      tags: [Clinical Workflows]
+      parameters:
+        - $ref: '#/components/parameters/ClinicalWorkflowTaskId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Completed task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalWorkflowTask'
+        '409':
+          description: Task cannot be completed from its current state
+
+  /workflow-tasks/{taskId}/cancel:
+    post:
+      operationId: cancelClinicalWorkflowTask
+      summary: Cancel a clinical workflow task
+      tags: [Clinical Workflows]
+      parameters:
+        - $ref: '#/components/parameters/ClinicalWorkflowTaskId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                  minLength: 1
+                  maxLength: 1000
+      responses:
+        '200':
+          description: Cancelled task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalWorkflowTask'
+        '409':
+          description: Task cannot be cancelled from its current state
+
+  /workflow-tasks/{taskId}/replay:
+    post:
+      operationId: replayClinicalWorkflowTask
+      summary: Replay a dead-lettered clinical workflow task
+      description: Requires the dedicated replay permission and an operator idempotency key.
+      tags: [Clinical Workflows]
+      parameters:
+        - $ref: '#/components/parameters/ClinicalWorkflowTaskId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Task returned to pending execution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalWorkflowTask'
+        '409':
+          description: Task is not dead-lettered
 
   /webhooks:
     get:
@@ -16678,6 +16890,23 @@ components:
         type: string
         enum: [banks, payment-methods, card-machines, split-rules]
       description: Closed set of persistent operational finance catalogs.
+    ClinicalWorkflowTaskId:
+      in: path
+      name: taskId
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Tenant-scoped clinical workflow task identifier.
+    IdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+      description: Request identity bound to the authenticated actor and account.
 
   schemas:
     PixSettlementDlqDelivery:
@@ -16764,6 +16993,260 @@ components:
         status:
           type: string
           enum: [redrive_scheduled]
+
+    ClinicalWorkflowTask:
+      type: object
+      required:
+        - id
+        - accountId
+        - taskType
+        - status
+        - executionMode
+        - priority
+        - title
+        - dueAt
+        - idempotencyKey
+        - metadata
+        - revision
+        - attempts
+        - maxAttempts
+        - nextAttemptAt
+        - escalationLevel
+        - correlationId
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        taskType:
+          type: string
+          maxLength: 80
+        status:
+          type: string
+          enum: [pending, processing, retrying, acknowledged, completed, cancelled, dlq]
+        executionMode:
+          type: string
+          enum: [manual, worker]
+        revision:
+          type: integer
+          minimum: 0
+          description: Monotonic optimistic-concurrency version.
+        priority:
+          type: string
+          enum: [low, normal, high, critical]
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+        patientId:
+          type: string
+          format: uuid
+          nullable: true
+        encounterId:
+          type: string
+          format: uuid
+          nullable: true
+        ownerType:
+          type: string
+          enum: [sector, team, person, system]
+          nullable: true
+        ownerId:
+          type: string
+          nullable: true
+        dueAt:
+          type: string
+          format: date-time
+        idempotencyKey:
+          type: string
+          maxLength: 255
+        metadata:
+          type: object
+          additionalProperties: true
+        attempts:
+          type: integer
+          minimum: 0
+        maxAttempts:
+          type: integer
+          minimum: 1
+          maximum: 50
+        nextAttemptAt:
+          type: string
+          format: date-time
+        lastAttemptAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastError:
+          type: string
+          nullable: true
+        acknowledgedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        acknowledgedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelledByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancellationReason:
+          type: string
+          nullable: true
+        escalationLevel:
+          type: integer
+          minimum: 0
+        lastEscalatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        correlationId:
+          type: string
+        causationId:
+          type: string
+          nullable: true
+        createdByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ClinicalWorkflowTaskListResponse:
+      type: object
+      required: [items, count]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClinicalWorkflowTask'
+        count:
+          type: integer
+          minimum: 0
+
+    ClinicalWorkflowTaskEvent:
+      type: object
+      required: [id, accountId, taskId, eventType, correlationId, payload, occurredAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          enum: [created, claimed, acknowledged, completed, cancelled, retry_scheduled, dead_lettered, replayed, escalated]
+        actorUserId:
+          type: string
+          format: uuid
+          nullable: true
+        correlationId:
+          type: string
+        causationId:
+          type: string
+          nullable: true
+        payload:
+          type: object
+          additionalProperties: true
+        occurredAt:
+          type: string
+          format: date-time
+
+    ClinicalWorkflowTaskEventListResponse:
+      type: object
+      required: [items, count]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClinicalWorkflowTaskEvent'
+        count:
+          type: integer
+          minimum: 0
+
+    CreateClinicalWorkflowTaskRequest:
+      type: object
+      additionalProperties: false
+      required: [taskType, title, dueAt]
+      properties:
+        taskType:
+          type: string
+          minLength: 1
+          maxLength: 80
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 4000
+        priority:
+          type: string
+          enum: [low, normal, high, critical]
+          default: normal
+        executionMode:
+          type: string
+          enum: [manual, worker]
+          default: manual
+        patientId:
+          type: string
+          format: uuid
+        encounterId:
+          type: string
+          format: uuid
+        ownerType:
+          type: string
+          enum: [sector, team, person, system]
+        ownerId:
+          type: string
+          maxLength: 160
+        dueAt:
+          type: string
+          format: date-time
+        idempotencyKey:
+          type: string
+          maxLength: 255
+          description: Fallback for clients that cannot send the Idempotency-Key header.
+        metadata:
+          type: object
+          additionalProperties: true
+        maxAttempts:
+          type: integer
+          minimum: 1
+          maximum: 50
+        correlationId:
+          type: string
+          maxLength: 255
+        causationId:
+          type: string
+          maxLength: 255
 
     ErrorResponse:
       type: object

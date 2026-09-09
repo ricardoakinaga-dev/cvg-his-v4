@@ -197,6 +197,12 @@ export const navGroups: AppNavGroup[] = [
         label: 'Fluxo Assistencial CVG',
         items: [
           {
+            label: 'Pendências clínicas',
+            path: '/workflow-tasks',
+            icon: 'clipboard',
+            keywords: ['pendencias', 'tarefas', 'lembretes', 'workflow', 'retornos']
+          },
+          {
             label: 'Atendimentos',
             path: '/encounters',
             icon: 'hospital',

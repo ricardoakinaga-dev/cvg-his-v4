@@ -12,6 +12,7 @@ export * from './billing_records.js';
 export * from './breeds.js';
 export * from './clinical_notes.js';
 export * from './clinical_handoffs.js';
+export * from './clinical_workflow_tasks.js';
 export * from './clinical_note_versions.js';
 export * from './coat_colors.js';
 export * from './customer_groups.js';

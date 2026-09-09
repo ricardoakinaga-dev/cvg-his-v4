@@ -317,6 +317,24 @@ export const V2_ACCESS_CONTROL_PERMISSION_SEEDS = [
     description: 'Create and process operational notification jobs.'
   },
   {
+    id: 'perm_workflow_tasks_read',
+    key: 'workflow-tasks.read',
+    module: 'clinical-workflows',
+    description: 'Read tenant-scoped clinical workflow tasks and lifecycle events.'
+  },
+  {
+    id: 'perm_workflow_tasks_manage',
+    key: 'workflow-tasks.manage',
+    module: 'clinical-workflows',
+    description: 'Create, acknowledge, complete and cancel clinical workflow tasks.'
+  },
+  {
+    id: 'perm_workflow_tasks_replay',
+    key: 'workflow-tasks.replay',
+    module: 'clinical-workflows',
+    description: 'Replay dead-lettered clinical workflow tasks after operator review.'
+  },
+  {
     id: 'perm_product_read',
     key: 'product.read',
     module: 'products',
@@ -448,6 +466,7 @@ export const V2_ACCESS_CONTROL_ROLE_SEEDS = [
       'inventory.read',
       'notifications.read',
       'notifications.manage',
+      'workflow-tasks.read',
       'webhooks.read',
       'webhooks.manage',
       'product.read',
@@ -486,7 +505,9 @@ export const V2_ACCESS_CONTROL_ROLE_SEEDS = [
       'inventory.read',
       'inventory.manage',
       'notifications.read',
-      'notifications.manage'
+      'notifications.manage',
+      'workflow-tasks.read',
+      'workflow-tasks.manage'
     ] as const
   },
   {
@@ -522,7 +543,10 @@ export const V2_ACCESS_CONTROL_ROLE_SEEDS = [
       'inventory.read',
       'inventory.manage',
       'notifications.read',
-      'notifications.manage'
+      'notifications.manage',
+      'workflow-tasks.read',
+      'workflow-tasks.manage',
+      'workflow-tasks.replay'
     ] as const
   },
   {
@@ -598,7 +622,8 @@ export const V2_ACCESS_CONTROL_ROLE_SEEDS = [
       'diagnostics.read',
       'billing.read',
       'inventory.read',
-      'notifications.read'
+      'notifications.read',
+      'workflow-tasks.read'
     ] as const
   }
 ] as const satisfies readonly V2AccessControlRoleSeed[];

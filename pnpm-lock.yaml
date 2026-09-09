@@ -250,6 +250,9 @@ importers:
       '@cvg-his-v2/module-webhooks':
         specifier: workspace:*
         version: link:../../packages/modules/webhooks
+      '@cvg-his-v2/module-workflows':
+        specifier: workspace:*
+        version: link:../../packages/modules/workflows
       '@cvg-his-v2/secrets':
         specifier: workspace:*
         version: link:../../packages/secrets
@@ -455,6 +458,9 @@ importers:
       '@cvg-his-v2/module-webhooks':
         specifier: workspace:*
         version: link:../../packages/modules/webhooks
+      '@cvg-his-v2/module-workflows':
+        specifier: workspace:*
+        version: link:../../packages/modules/workflows
       '@cvg-his-v2/shared-config':
         specifier: workspace:*
         version: link:../../packages/shared/config
@@ -1662,6 +1668,27 @@ importers:
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.16.0)(gel@2.2.0)(pg@8.18.0)
+
+  packages/modules/workflows:
+    dependencies:
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/shared-validation':
+        specifier: workspace:*
+        version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
 
   packages/rbac: {}
 

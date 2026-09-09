@@ -7,6 +7,7 @@ import test from 'node:test';
 
 import { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 import { ChaosEngine } from '@cvg-his-v2/chaos';
+import { WorkflowTaskService } from '@cvg-his-v2/module-workflows';
 import type { PersistedSessionRecord, SessionRepository } from '@cvg-his-v2/module-auth';
 import {
   DatabaseEncounterRepository,
@@ -185,6 +186,7 @@ function createServerUnderTest(overrides: Partial<Parameters<typeof createApiSer
     authSecret: 'test-secret',
     accessTokenTtlSeconds: 900,
     refreshTokenTtlSeconds: 604800,
+    workflowTaskService: new WorkflowTaskService(),
     whatsappWebhookSecret: 'test-webhook-secret',
     featureFlags: {
       providerName: 'test',

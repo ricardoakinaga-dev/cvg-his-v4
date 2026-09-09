@@ -1,0 +1,44 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["pnpm", "github-actions", "dockerfile"],
+  "rangeStrategy": "replace",
+  "dependencyDashboard": true,
+  "prConcurrentLimit": 6,
+  "prHourlyLimit": 2,
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions",
+      "pinDigests": true,
+      "automerge": false,
+      "prPriority": 50
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "groupName": "container bases",
+      "pinDigests": true,
+      "automerge": false,
+      "prPriority": 50
+    },
+    {
+      "matchManagers": ["pnpm"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "pnpm patch and minor updates",
+      "automerge": false
+    },
+    {
+      "matchManagers": ["pnpm"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true,
+      "automerge": false,
+      "prPriority": 10
+    },
+    {
+      "matchCategories": ["security"],
+      "prPriority": 100,
+      "automerge": false
+    }
+  ]
+}

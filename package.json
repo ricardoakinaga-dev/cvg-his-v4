@@ -121,6 +121,8 @@
     "validate:helm": "node infra/scripts/validate-helm.mjs",
     "validate:deploy-surface": "node scripts/check-deploy-surface-of-truth.mjs",
     "validate:supply-chain": "node scripts/validate-supply-chain.mjs",
+    "validate:dependencies": "node scripts/validate-dependency-policy.mjs",
+    "validate:clinical-workflow": "node scripts/validate-clinical-workflow-schema.mjs",
     "docs:validate": "node scripts/validate-documentation.mjs",
     "external:check": "node scripts/check-external-dependencies.mjs",
     "evidence:check": "node scripts/check-evidence-cadence.mjs",

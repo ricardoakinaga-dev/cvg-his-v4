@@ -33,6 +33,8 @@ import {
   resolveWorkerReportServicePrincipal,
   resolveWorkerReportsUserId
 } from './worker-report-identity.js';
+import { WorkflowTaskService } from '@cvg-his-v2/module-workflows';
+import { runWorkflowTaskTick, type WorkflowTaskHandler } from './workflow-task-runner.js';
 
 const config = loadWorkerConfig(process.env);
 const logger = createLogger(config.appName);
@@ -44,6 +46,7 @@ const configuredWorkerAccountId = process.env.WORKER_ACCOUNT_ID?.trim();
 const ACCOUNT_REFRESH_INTERVAL_MS = 60_000;
 const PIX_SETTLEMENT_DLQ_REFRESH_INTERVAL_MS = 15_000;
 const webhookWorkerId = process.env.WORKER_INSTANCE_ID?.trim() || `webhook-worker-${process.pid}`;
+const workflowWorkerId = process.env.WORKER_INSTANCE_ID?.trim() || `workflow-worker-${process.pid}`;
 
 const workerState = {
   startedAt: new Date().toISOString(),
@@ -140,6 +143,12 @@ async function main() {
   const notifications = createWorkerNotifications({
     notificationRepository: bootstrap.notificationRepository
   });
+  const workflowTasks = new WorkflowTaskService({ repository: bootstrap.workflowTaskRepository });
+  // Task handlers are intentionally explicit. A persisted task without a
+  // registered handler is retried and then DLQ'd, never silently acknowledged.
+  // Downstream handlers must provide their own idempotency contract before
+  // they are registered here.
+  const workflowTaskHandlers = new Map<string, WorkflowTaskHandler>();
 
   const eventBus = createWorkerEventBus({
     eventBusRepository: bootstrap.outboxRepository,
@@ -488,6 +497,36 @@ async function main() {
                         notifications
                       )
                     )
+                )
+            },
+            {
+              name: 'clinical_workflow_tasks',
+              run: () =>
+                withWorkerSpan(
+                  'worker.clinical_workflow_tasks.tick',
+                  {
+                    'worker.correlation_id': correlationId,
+                    'worker.account_id': accountId,
+                    'worker.persistence_mode': workerState.persistenceMode,
+                    'worker.database_healthy': workerState.databaseHealthy
+                  },
+                  () =>
+                    runWithTenantContext(tenantContext, async () => {
+                      const result = await runWorkflowTaskTick({
+                        service: workflowTasks,
+                        accountId: accountId as never,
+                        workerId: workflowWorkerId,
+                        correlationId: correlationId as never,
+                        handlers: workflowTaskHandlers,
+                        logger
+                      });
+                      if (result.claimed > 0) {
+                        logger.info('worker clinical workflow task tick complete', {
+                          accountId,
+                          ...result
+                        });
+                      }
+                    })
                 )
             },
             {

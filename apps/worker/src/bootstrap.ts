@@ -78,6 +78,11 @@ import { DatabasePixPaymentDispatchRepository } from './pix-payment-dispatch-rep
 import { LocalPixPaymentDispatchProvider } from './jobs/local-pix-payment-dispatch-provider.js';
 import { PixProviderSettlementConsumer } from './jobs/pix-provider-settlement-consumer.js';
 import { DatabasePixProviderEventDeliveryRepository } from './jobs/pix-provider-event-delivery-repository.js';
+import {
+  DatabaseWorkflowTaskRepository,
+  checkWorkflowTaskSchemaReadiness,
+  type WorkflowTaskRepository
+} from '@cvg-his-v2/module-workflows';
 
 const logger = createLogger('worker-bootstrap');
 
@@ -135,6 +140,7 @@ export interface WorkerBootstrapResult {
   readonly accountIds?: readonly string[];
   readonly loadAccountIds?: () => Promise<readonly string[]>;
   readonly notificationRepository?: NotificationRepository;
+  readonly workflowTaskRepository?: WorkflowTaskRepository;
   readonly outboxRepository?: OutboxRepository;
   readonly unitOfWork?: TenantUnitOfWork;
   readonly reportRepository?: ReportRepository;
@@ -790,6 +796,11 @@ export async function bootstrapWorkerServices(
       throw new Error('Worker report runtime schema is not ready');
     }
 
+    const workflowTaskSchemaReady = await checkWorkflowTaskSchemaReadiness();
+    if (!workflowTaskSchemaReady && databaseRequired) {
+      throw new Error('Worker clinical workflow task schema is not ready');
+    }
+
     const advancePaymentsReportSchemaReady = await checkAdvancePaymentsReportSchema();
     if (!advancePaymentsReportSchemaReady && databaseRequired) {
       throw new Error('Worker advance-payment report schema is not ready');
@@ -902,6 +913,9 @@ export async function bootstrapWorkerServices(
       accountIds,
       loadAccountIds: () => loadPersistedAccountIds(databaseRequired),
       notificationRepository: new DatabaseNotificationRepository(db),
+      workflowTaskRepository: workflowTaskSchemaReady
+        ? new DatabaseWorkflowTaskRepository(getPool())
+        : undefined,
       outboxRepository: new DatabaseOutboxRepository(),
       unitOfWork: deliveryGuaranteesReady ? createTenantUnitOfWork(getPool()) : undefined,
       reportRepository: reportSchemaReady ? new DatabaseReportRepository() : undefined,

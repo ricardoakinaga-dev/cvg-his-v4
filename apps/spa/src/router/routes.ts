@@ -1205,6 +1205,17 @@ export const privateRoutes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'workflow-tasks',
+        name: 'WorkflowTasks',
+        component: () => import('@/pages/clinical/WorkflowTasksPage.vue'),
+        meta: {
+          title: 'Pendências clínicas',
+          breadcrumb: 'Pendências clínicas',
+          breadcrumbParent: 'Fluxo Assistencial CVG',
+          icon: 'clipboard'
+        }
+      },
+      {
         path: 'discharges',
         name: 'Discharges',
         component: () => import('@/pages/clinical/DischargesPage.vue'),

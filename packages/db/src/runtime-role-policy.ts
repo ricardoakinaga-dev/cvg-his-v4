@@ -20,6 +20,9 @@ export { DATABASE_RUNTIME_API_FUNCTIONS };
 /** Runtime roles may ingest and review provider rows, but never remove them. */
 export const RUNTIME_APPEND_ONLY_TABLES = ['laboratory_result_imports'] as const;
 
+/** Lifecycle evidence is immutable; corrections must be represented as new events. */
+export const RUNTIME_IMMUTABLE_TABLES = ['clinical_workflow_task_events'] as const;
+
 /** Direct DML required by API-owned authentication and user repositories. */
 export const API_SENSITIVE_TABLE_PRIVILEGES = [
   { tableName: 'users', privileges: 'SELECT, INSERT, UPDATE' },

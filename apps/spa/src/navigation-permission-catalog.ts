@@ -34,6 +34,7 @@ export const navigationPermissionCodes: Readonly<Record<string, readonly string[
   '/beds': ['inpatient.read'],
   '/encounters': ['encounters.read'],
   '/medical-records': ['medical-records.read'],
+  '/workflow-tasks': ['workflow-tasks.read'],
   '/triage': ['triage.read'],
   '/prescriptions': ['prescriptions.read'],
   '/prescription-executions': ['prescription-executions.read'],

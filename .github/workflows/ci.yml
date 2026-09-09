@@ -266,6 +266,7 @@ jobs:
           pnpm validate:migration-source
           pnpm validate:rls
           pnpm validate:deploy-surface
+          pnpm validate:dependencies
           pnpm docs:validate
           pnpm complexity:check
           HELM_BIN=/usr/local/bin/helm REQUIRE_HELM=1 pnpm validate:helm

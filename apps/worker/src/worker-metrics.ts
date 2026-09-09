@@ -122,6 +122,30 @@ export const pixProviderSettlementReconciliationRequired = new Gauge({
   registers: [registry]
 });
 
+export type WorkflowTaskMetricOutcome =
+  | 'claimed'
+  | 'completed'
+  | 'retried'
+  | 'dead_lettered'
+  | 'lease_lost';
+
+export const workflowTasksTotal = new Counter({
+  name: 'worker_clinical_workflow_tasks_total',
+  help: 'Clinical workflow task worker outcomes without tenant or task-id labels',
+  labelNames: ['outcome'] as const,
+  registers: [registry]
+});
+
+export function recordWorkflowTaskMetric(
+  outcome: WorkflowTaskMetricOutcome,
+  count = 1
+): void {
+  if (!Number.isSafeInteger(count) || count < 1) {
+    throw new Error('Workflow task metric count must be a positive safe integer');
+  }
+  workflowTasksTotal.inc({ outcome }, count);
+}
+
 export function setPixProviderSettlementReconciliationRequired(count: number): void {
   if (!Number.isSafeInteger(count) || count < 0) {
     throw new Error(

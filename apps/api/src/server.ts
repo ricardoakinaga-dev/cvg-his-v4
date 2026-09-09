@@ -290,6 +290,12 @@ import {
   InMemoryVetusImportLogRepository,
   type VetusImportLogRepository
 } from './repositories/vetus-import-log-repository.js';
+import type { WorkflowTaskService } from '@cvg-his-v2/module-workflows';
+import { handleWorkflowTaskRoutes } from './routes/workflow-task-routes.js';
+import {
+  createApiWorkflowTaskService,
+  createWorkflowTaskSchemaReadinessGuard
+} from './helpers/workflow-task-runtime.js';
 
 export function buildAuthenticatedActorAttributes(
   principal: AuthenticatedPrincipal,
@@ -332,6 +338,8 @@ export interface ApiServerOptions {
   readonly mfaEncryptionKeyVersion?: string;
   readonly mfaEncryptionKeyring?: Readonly<Record<string, string>>;
   readonly repositories?: RuntimeRepositories;
+  /** Durable clinical workflow/reminder control plane. Tests may inject an in-memory service. */
+  readonly workflowTaskService?: WorkflowTaskService;
   readonly fileStorage?: FileStorage;
   readonly attachmentScanner?: AttachmentSecurityScanner;
   readonly sectorBedOptions?: SectorBedServiceOptions;
@@ -3788,6 +3796,9 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           ): Promise<T> => withTenantTransaction(accountId, async () => command(), metadata)
         : undefined)
   });
+  const workflowTasks =
+    options.workflowTaskService ?? createApiWorkflowTaskService(options.environment);
+  const ensureWorkflowTaskSchemaReady = createWorkflowTaskSchemaReadinessGuard(options.environment);
   const refreshAccessControlCaches = async (accountId: AccountId): Promise<void> => {
     try {
       await Promise.all([
@@ -4753,6 +4764,19 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               })
             ) {
               return;
+            }
+
+            if (pathname === '/workflow-tasks' || pathname.startsWith('/workflow-tasks/')) {
+              await ensureWorkflowTaskSchemaReady();
+              if (
+                await handleWorkflowTaskRoutes(pathname, request, response, correlationId, {
+                  workflowTasks,
+                  audit,
+                  requirePrincipal
+                })
+              ) {
+                return;
+              }
             }
 
             if (pathname === '/medical-records' && request.method === 'GET') {
@@ -7693,6 +7717,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 encounters,
                 inpatient,
                 audit,
+                workflowTasks,
+                ensureWorkflowTaskSchemaReady,
                 requirePrincipal,
                 runCommand: runTenantCommand
               })

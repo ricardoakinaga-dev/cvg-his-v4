@@ -13,6 +13,15 @@
 - `pnpm test`: PASS com exit 0 no workspace 67/68; SPA 211 arquivos/1862 testes, API 576 testes e worker/módulos concluídos; avisos jsdom de navegação/scrollTo não causaram falha.
 - Scout independente de CI/supply-chain/operações: `NOT PROVEN`; release gate, DR, supply chain, imagem/deploy, chaos, performance e observabilidade têm gaps conforme baseline.
 
+## 2026-09-09 — Fase 9 / control plane clínico e fila operacional
+
+- Criado `packages/modules/workflows` com tarefa tenant-scoped, fingerprint de idempotência, estados manual/worker, eventos append-only, leases, fencing, backoff, DLQ, replay e escalonamento limitado.
+- Adicionadas migrations `0166`/`0167`, schema Drizzle, RLS/foreign keys compostas, permissões RBAC e verificação estática `pnpm validate:clinical-workflow`.
+- A API ganhou `/workflow-tasks` com projeção sem segredos de lease, autorização separada para replay e auditoria aguardada; a alta cria uma tarefa manual de retorno com chave determinística.
+- A SPA ganhou a fila `Pendências clínicas`, com filtros, estados de erro/carregamento, contexto de paciente/atendimento e comandos de reconhecimento/conclusão/cancelamento/replay.
+- Verificações direcionadas passaram: workflow (7), worker runner (3), API/discharges/workflow (5), SPA/nav/page (34), builds de API/SPA/worker/db e validadores de schema/RLS/OpenAPI/dependências/supply-chain/docs. PostgreSQL real, E2E, UAT, restore, performance e deploy continuam `NOT PROVEN`.
+- O control plane passou a exigir revisão otimista monotônica, recuperação de tentativa final abandonada para DLQ, foreign key composta por tenant e trigger PostgreSQL append-only para eventos de ciclo de vida.
+
 ## 2026-09-09 — Fase 1 / implementação e revisão adversarial
 
 - Prompt, quality bar e políticas permaneceram preservados; o gate agregador foi implementado com decisão fail-closed, thresholds, identidade de release, SBOM/security evidence e evidências externas vinculadas ao SHA.

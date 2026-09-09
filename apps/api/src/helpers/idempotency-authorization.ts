@@ -59,6 +59,15 @@ export function idempotencyAuthorizationPermissions(
   method: string | undefined
 ): readonly string[] | undefined {
   if (!method || ['GET', 'HEAD', 'OPTIONS'].includes(method)) return undefined;
+  if (method === 'POST' && pathname === '/workflow-tasks') {
+    return ['workflow-tasks.manage'];
+  }
+  if (method === 'POST' && /^\/workflow-tasks\/[^/]+\/replay$/.test(pathname)) {
+    return ['workflow-tasks.replay'];
+  }
+  if (method === 'POST' && /^\/workflow-tasks\/[^/]+\/(?:acknowledge|complete|cancel)$/.test(pathname)) {
+    return ['workflow-tasks.manage'];
+  }
   if (isPixPaymentAttemptCreate(pathname, method)) return ['billing.manage'];
   if (isPrescriptionExecutionMutationPath(pathname, method)) {
     return ['prescription-executions.manage'];

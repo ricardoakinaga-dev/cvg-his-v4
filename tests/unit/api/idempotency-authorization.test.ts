@@ -27,6 +27,15 @@ describe('idempotency authorization contract', () => {
     expect(idempotencyAuthorizationPermissions('/access-control/teams', 'POST')).toEqual([
       'users.manage'
     ]);
+    expect(idempotencyAuthorizationPermissions('/workflow-tasks', 'POST')).toEqual([
+      'workflow-tasks.manage'
+    ]);
+    expect(idempotencyAuthorizationPermissions('/workflow-tasks/task-1/replay', 'POST')).toEqual([
+      'workflow-tasks.replay'
+    ]);
+    expect(idempotencyAuthorizationPermissions('/workflow-tasks/task-1/complete', 'POST')).toEqual([
+      'workflow-tasks.manage'
+    ]);
   });
 
   it('does not add replay authorization to read-only routes and preserves existing mutation scope', () => {

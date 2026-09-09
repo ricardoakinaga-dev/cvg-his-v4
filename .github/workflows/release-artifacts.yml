@@ -59,12 +59,20 @@ jobs:
           pnpm complexity:check
           pnpm validate:namespaces
           pnpm validate:deploy-surface
+          pnpm validate:dependencies
 
       - name: Generate source bundle and repository SBOM
         run: |
           mkdir -p artifacts/release
           git archive --format=tar.gz --prefix="cvg-his-v4-${RELEASE_SHA}/" --output="artifacts/release/source-${RELEASE_SHA}.tar.gz" "${RELEASE_SHA}"
           SECURITY_EVIDENCE_DIR=artifacts/release pnpm security:evidence
+
+      - name: Run pre-publication candidate assurance
+        env:
+          TRIPLE_A_RELEASE_OUTPUT_DIR: artifacts/release
+          TRIPLE_A_PREPUBLICATION: '1'
+          TRIPLE_A_RUN_TESTS: '1'
+        run: pnpm release:triple-a
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
@@ -141,6 +149,20 @@ jobs:
           subject-digest: ${{ steps.spa.outputs.digest }}
           push-to-registry: true
 
+      - name: Verify image attestations
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          WORKER_DIGEST: ${{ steps.worker.outputs.digest }}
+          SPA_DIGEST: ${{ steps.spa.outputs.digest }}
+          RELEASE_SHA: ${{ env.RELEASE_SHA }}
+        run: |
+          set -euo pipefail
+          SIGNER_WORKFLOW="${GITHUB_REPOSITORY}/.github/workflows/release-artifacts.yml"
+          gh attestation verify "oci://ghcr.io/${{ github.repository_owner }}/cvg-his-v4-api@${API_DIGEST}" --repo "${GITHUB_REPOSITORY}" --signer-workflow "${SIGNER_WORKFLOW}" --source-ref main --source-digest "${RELEASE_SHA}" --format json > artifacts/release/api-attestation-verification.json
+          gh attestation verify "oci://ghcr.io/${{ github.repository_owner }}/cvg-his-v4-worker@${WORKER_DIGEST}" --repo "${GITHUB_REPOSITORY}" --signer-workflow "${SIGNER_WORKFLOW}" --source-ref main --source-digest "${RELEASE_SHA}" --format json > artifacts/release/worker-attestation-verification.json
+          gh attestation verify "oci://ghcr.io/${{ github.repository_owner }}/cvg-his-v4-spa@${SPA_DIGEST}" --repo "${GITHUB_REPOSITORY}" --signer-workflow "${SIGNER_WORKFLOW}" --source-ref main --source-digest "${RELEASE_SHA}" --format json > artifacts/release/spa-attestation-verification.json
+
       - name: Record image attestation evidence
         env:
           RELEASE_OUTPUT_DIR: artifacts/release
@@ -162,9 +184,11 @@ jobs:
           TRIPLE_A_CRITICAL_EVIDENCE: ${{ env.RELEASE_PIPELINE_URL }}
           TRIPLE_A_E2E_EVIDENCE: ${{ env.RELEASE_PIPELINE_URL }}
           TRIPLE_A_IMAGE_ATTESTATION_EVIDENCE: artifacts/release/image-attestation-evidence.json
+          TRIPLE_A_VERIFY_ATTESTATIONS: '1'
         run: pnpm release:triple-a
 
       - name: Upload release evidence
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-${{ env.RELEASE_SHA }}

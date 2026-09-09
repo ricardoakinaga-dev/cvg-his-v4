@@ -8,14 +8,19 @@ import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { DischargesService } from '@cvg-his-v2/module-discharges';
 import type { EncountersService } from '@cvg-his-v2/module-encounters';
 import type { InpatientService } from '@cvg-his-v2/module-inpatient';
+import type { WorkflowTaskService } from '@cvg-his-v2/module-workflows';
 import type { CreateDischargeRequest, UpdateDischargeRequest } from '@cvg-his-v2/shared-contracts';
-import type { AuthenticatedPrincipal, InpatientStaySummary } from '@cvg-his-v2/shared-types';
+import type {
+  AuthenticatedPrincipal,
+  DischargeSummary,
+  InpatientStaySummary
+} from '@cvg-his-v2/shared-types';
 import {
   getDatabaseTransactionScope,
   runWithoutDatabaseTransactionScope,
   type JsonValue
 } from '@cvg-his-v2/shared-database';
-import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
+import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 import { appendAudit } from '../helpers/audit-helper.js';
@@ -47,11 +52,98 @@ export interface DischargesHandlers {
   encounters: EncountersService;
   inpatient: InpatientService;
   audit: AuditService;
+  /** Optional in focused route tests; production composition always supplies the durable service. */
+  workflowTasks?: WorkflowTaskService;
+  /** Production composition uses the same schema gate before the follow-up producer runs. */
+  ensureWorkflowTaskSchemaReady?: () => Promise<void>;
   requirePrincipal: (
     request: IncomingMessage,
     permissionCode: string
   ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   runCommand?: TenantCommandRunner;
+}
+
+function followUpDueAt(value: string): string {
+  // The UI sends a date-only value. Keep the task due time deterministic and
+  // avoid interpreting it in the browser/operator's local timezone.
+  const dateOnly = /^(\d{4}-\d{2}-\d{2})(?:$|T)/.exec(value)?.[1];
+  const parsed = dateOnly
+    ? new Date(`${dateOnly}T09:00:00.000Z`)
+    : new Date(value);
+  if (!Number.isFinite(parsed.getTime())) {
+    throw new ValidationError('Follow-up date is invalid', { followUpDate: value });
+  }
+  return parsed.toISOString();
+}
+
+async function synchronizeDischargeFollowUpTask(input: {
+  readonly workflowTasks?: WorkflowTaskService;
+  readonly encounters: EncountersService;
+  readonly discharge: DischargeSummary;
+  readonly accountId: string;
+  readonly actorUserId: string;
+  readonly correlationId: string;
+}): Promise<void> {
+  if (!input.workflowTasks) return;
+
+  const idempotencyKey = `discharge-follow-up:${input.discharge.id}`;
+  const existing = await input.workflowTasks.findByIdempotencyKey(
+    input.accountId as never,
+    idempotencyKey
+  );
+
+  if (!input.discharge.followUpDate) {
+    if (existing && !['completed', 'cancelled', 'dlq'].includes(existing.status)) {
+      await input.workflowTasks.cancel(
+        input.accountId as never,
+        input.actorUserId as never,
+        existing.id,
+        'Retorno clínico removido da alta'
+      );
+    }
+    return;
+  }
+
+  const dueAt = followUpDueAt(input.discharge.followUpDate);
+  if (!existing) {
+    const encounter = input.encounters.getOrThrow(
+      input.accountId as never,
+      input.discharge.encounterId
+    );
+    await input.workflowTasks.create(
+      input.accountId as never,
+      input.actorUserId as never,
+      {
+        taskType: 'clinical.follow_up',
+        title: 'Retorno clínico registrado na alta',
+        description: 'Revisar o retorno clínico previsto na alta.',
+        executionMode: 'manual',
+        priority: 'high',
+        patientId: encounter.patientId,
+        encounterId: encounter.id,
+        dueAt,
+        idempotencyKey,
+        metadata: {
+          sourceModule: 'discharges',
+          sourceEntityType: 'discharge',
+          sourceEntityId: input.discharge.id
+        },
+        correlationId: input.correlationId as never,
+        causationId: input.discharge.id
+      }
+    );
+    return;
+  }
+
+  if (existing.status === 'cancelled' || existing.dueAt !== dueAt) {
+    await input.workflowTasks.reschedule(
+      input.accountId as never,
+      input.actorUserId as never,
+      existing.id,
+      dueAt,
+      `Alta ${input.discharge.id} atualizada`
+    );
+  }
 }
 
 /**
@@ -65,7 +157,7 @@ export async function handleDischargesRoutes(
   correlationId: string,
   handlers: DischargesHandlers
 ): Promise<boolean> {
-  const { discharges, encounters, inpatient, audit, requirePrincipal } = handlers;
+  const { discharges, encounters, inpatient, audit, requirePrincipal, workflowTasks } = handlers;
   const runCommand =
     handlers.runCommand ?? (async <T>(input: TenantCommandInput<T>) => input.command());
 
@@ -95,6 +187,7 @@ export async function handleDischargesRoutes(
 
   // POST /discharges — create a new discharge
   if (pathname === '/discharges' && request.method === 'POST') {
+    await handlers.ensureWorkflowTaskSchemaReady?.();
     const principal = await requirePrincipal(request, 'discharges.manage');
     const payload = (await readJsonBody(request)) as CreateDischargeRequest;
     validateRequestBody(
@@ -122,7 +215,7 @@ export async function handleDischargesRoutes(
         operation: 'discharges.create',
         payload: payload as unknown as JsonValue,
         command: async () => {
-          const encounter = encounters.getOrThrow(
+          encounters.getOrThrow(
             principal.user.accountId,
             payload.encounterId as never
           );
@@ -165,6 +258,14 @@ export async function handleDischargesRoutes(
           }
 
           await Promise.all([discharges.waitForPersistence(), inpatient.waitForPersistence()]);
+          await synchronizeDischargeFollowUpTask({
+            workflowTasks,
+            encounters,
+            discharge: created,
+            accountId: principal.user.accountId,
+            actorUserId: principal.user.id,
+            correlationId
+          });
           const auditEvent = audit.write({
             actorId: principal.user.id,
             accountId: principal.user.accountId,
@@ -244,6 +345,7 @@ export async function handleDischargesRoutes(
 
   // PATCH /discharges/:dischargeId — update a discharge
   if (pathname.startsWith('/discharges/') && request.method === 'PATCH') {
+    await handlers.ensureWorkflowTaskSchemaReady?.();
     const principal = await requirePrincipal(request, 'discharges.manage');
     const dischargeId = requireNonEmptyString(pathname.split('/')[2], 'dischargeId');
     const body = await readJsonBody(request);
@@ -262,6 +364,14 @@ export async function handleDischargesRoutes(
       throw new Error('Discharge account context changed unexpectedly');
     }
     await discharges.waitForPersistence();
+    await synchronizeDischargeFollowUpTask({
+      workflowTasks,
+      encounters,
+      discharge,
+      accountId: principal.user.accountId,
+      actorUserId: principal.user.id,
+      correlationId
+    });
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,

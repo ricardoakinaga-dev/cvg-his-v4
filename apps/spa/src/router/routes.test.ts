@@ -58,6 +58,7 @@ describe('router convergence', () => {
     expect(findChildRoute('quotes')?.meta?.breadcrumbParent).toBe('Atendimento');
     expect(findChildRoute('triage')?.meta?.breadcrumbParent).toBe('Atendimento');
     expect(findChildRoute('prescriptions')?.meta?.breadcrumbParent).toBe('Atendimento');
+    expect(findChildRoute('workflow-tasks')?.meta?.breadcrumbParent).toBe('Fluxo Assistencial CVG');
     expect(findChildRoute('appointments/availability')?.meta?.breadcrumbParent).toBe('Agenda');
     expect(findChildRoute('appointments/types')?.meta?.title).toBe('Tipos de Agendamento');
   });

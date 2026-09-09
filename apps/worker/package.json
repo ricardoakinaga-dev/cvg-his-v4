@@ -24,6 +24,7 @@
     "@cvg-his-v2/module-pix": "workspace:*",
     "@cvg-his-v2/module-reports": "workspace:*",
     "@cvg-his-v2/module-webhooks": "workspace:*",
+    "@cvg-his-v2/module-workflows": "workspace:*",
     "@cvg-his-v2/module-staff": "workspace:*",
     "@cvg-his-v2/module-services": "workspace:*",
     "@cvg-his-v2/shared-config": "workspace:*",

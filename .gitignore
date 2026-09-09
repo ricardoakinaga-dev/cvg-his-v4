@@ -27,3 +27,11 @@ pnpm-lock.yaml
 ../../rag/
 .tmp
 tmp/playwright-discovery.txt
+
+# Local-only generated evidence. These outputs are preserved on disk for
+# inspection but are not release source and must never become a candidate
+# artifact by accident.
+docs/frontend/implementation/evidence/
+docs/auditorias/evidencias-*/secrets.log
+.cvg-*.png
+tmp/

@@ -124,6 +124,7 @@ describe('navigation groups', () => {
     expect(findMatchingNavItem('/encounters')?.label).toBe('Atendimentos');
     expect(findMatchingNavItem('/triage')?.label).toBe('Triagem');
     expect(findMatchingNavItem('/prescriptions')?.label).toBe('Prescrições');
+    expect(findMatchingNavItem('/workflow-tasks')?.label).toBe('Pendências clínicas');
     expect(findMatchingNavItem('/exam-orders')?.label).toBe('Esteira de Exames');
     expect(findMatchingNavItem('/exam-results')?.label).toBe('Resultados API');
     expect(findMatchingNavItem('/sales/beta')?.label).toBe('Vendas (beta)');
@@ -156,6 +157,7 @@ describe('navigation groups', () => {
         '/inpatient',
         '/encounters',
         '/medical-records',
+        '/workflow-tasks',
         '/triage',
         '/prescriptions',
         '/prescription-executions',

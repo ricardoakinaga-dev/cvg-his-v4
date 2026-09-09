@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { relative, resolve } from 'node:path';
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { relative, resolve, sep } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const DEFAULT_OUTPUT_DIR = 'artifacts/release';
@@ -16,7 +16,9 @@ const REQUIRED_POLICY_FILES = [
   'docs/operations/FMEA.md',
   'docs/architecture/EVENT_GOVERNANCE.md',
   'docs/architecture/IDEMPOTENCY_MATRIX.md',
+  'docs/engineering/DEPENDENCY_POLICY.md',
   'docs/security/SECURITY_TEST_MATRIX.md',
+  'docs/operations/CLINICAL_WORKFLOW_TASK_CONTROL_PLANE.md',
 ];
 
 const EXECUTABLE_CHECKS = [
@@ -26,7 +28,10 @@ const EXECUTABLE_CHECKS = [
   ['OpenAPI', 'pnpm', ['validate:openapi']],
   ['RLS static coverage', 'pnpm', ['validate:rls']],
   ['Deploy surface', 'pnpm', ['validate:deploy-surface']],
+  ['Helm', 'pnpm', ['validate:helm']],
   ['Supply-chain pins', 'pnpm', ['validate:supply-chain']],
+  ['Dependency policy', 'pnpm', ['validate:dependencies']],
+  ['Clinical workflow schema', 'pnpm', ['validate:clinical-workflow']],
   ['Secret scan', 'pnpm', ['security:secrets']],
   ['Complexity budget', 'pnpm', ['complexity:check']],
 ];
@@ -43,6 +48,76 @@ function readJson(path) {
 
 function sha256(path) {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
+}
+
+function isIsoTimestamp(value) {
+  return typeof value === 'string'
+    && /T[^\s]*?(?:Z|[+-]\d{2}:?\d{2})$/.test(value)
+    && Number.isFinite(Date.parse(value));
+}
+
+function isSafeEvidencePath(rootDir, candidate) {
+  if (typeof candidate !== 'string' || candidate.length === 0) return false;
+  try {
+    const realRoot = realpathSync(rootDir);
+    const resolved = resolve(realRoot, candidate);
+    const relativePath = relative(realRoot, resolved);
+    if (relativePath === '' || relativePath.startsWith('..') || relativePath.includes('..' + sep)) return false;
+    const stat = lstatSync(resolved);
+    return stat.isFile() && !stat.isSymbolicLink() && realpathSync(resolved) === resolved;
+  } catch {
+    return false;
+  }
+}
+
+export function validateExternalEvidenceEnvelope({ rootDir, value, artifact, commitSha }) {
+  const producer = artifact?.producer;
+  const verification = artifact?.verification;
+  const artifactRefs = artifact?.artifacts;
+  const validShape = artifact?.schema_version === 1
+    && artifact?.evidence_type === 'cvg-his-external-evidence'
+    && artifact?.commit_sha === commitSha
+    && artifact?.status === 'PASS'
+    && isIsoTimestamp(artifact?.observed_at)
+    && producer && typeof producer.kind === 'string' && producer.kind.length > 0
+    && typeof producer.run_id === 'string' && producer.run_id.length > 0
+    && verification && verification.verified === true
+    && typeof verification.method === 'string' && verification.method.length > 0
+    && typeof verification.verifier_id === 'string' && verification.verifier_id.length > 0
+    && isIsoTimestamp(verification.verified_at)
+    && Array.isArray(artifactRefs) && artifactRefs.length > 0;
+  if (!validShape) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: 'Envelope externo inválido: exige schema, SHA, status PASS, produtor, verificador, timestamps e artefatos.'
+    };
+  }
+
+  for (const reference of artifactRefs) {
+    if (!isSafeEvidencePath(rootDir, reference?.path)
+      || !/^sha256:[0-9a-f]{64}$/i.test(reference?.sha256 ?? '')) {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: 'Envelope externo contém referência de artefato insegura ou sem SHA-256.'
+      };
+    }
+    const artifactPath = resolve(rootDir, reference.path);
+    if (!existsSync(artifactPath) || sha256(artifactPath) !== reference.sha256.slice('sha256:'.length)) {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: `Digest do artefato externo não confere: ${reference.path}.`
+      };
+    }
+  }
+
+  return {
+    status: 'PASS',
+    path: value,
+    reason: 'Envelope externo validado por SHA do candidato, produtor/verificador e artefatos referenciados.'
+  };
 }
 
 function currentCommit(rootDir) {
@@ -67,16 +142,23 @@ function compactOutput(output) {
     .slice(0, 1200);
 }
 
-function verifyCleanWorktree(rootDir) {
-  const result = spawnSync('git', ['status', '--porcelain', '--untracked-files=all'], {
+export function verifyCleanWorktree(rootDir) {
+  // `--untracked-files=all` can expand a local evidence archive into hundreds
+  // of thousands of paths and make Git's stdout exceed child_process' default
+  // buffer before we can report the actual first dirty path. `normal` still
+  // rejects tracked changes and untracked files while collapsing untracked
+  // directories to one diagnostic line.
+  const command = 'git status --porcelain=v1 --untracked-files=normal';
+  const result = spawnSync('git', ['status', '--porcelain=v1', '--untracked-files=normal'], {
     cwd: rootDir,
     encoding: 'utf8',
     shell: false,
+    maxBuffer: 16 * 1024 * 1024,
   });
   if (result.status !== 0) {
     return {
       area: 'Candidate integrity',
-      command: 'git status --porcelain --untracked-files=all',
+      command,
       status: 'FAIL',
       exit_code: result.status,
       evidence: result.stderr?.trim() || 'Não foi possível verificar o worktree.',
@@ -86,7 +168,7 @@ function verifyCleanWorktree(rootDir) {
   const dirty = result.stdout.trim();
   return {
     area: 'Candidate integrity',
-    command: 'git status --porcelain --untracked-files=all',
+    command,
     status: dirty ? 'FAIL' : 'PASS',
     exit_code: dirty ? 1 : 0,
     evidence: dirty ? `Worktree sujo; primeira linha: ${dirty.split('\n')[0]}` : 'Worktree limpo.',
@@ -132,7 +214,173 @@ function skippedCheck(area, command, reason) {
   };
 }
 
-function envEvidence(rootDir, name, commitSha) {
+const RELEASE_IMAGE_COMPONENTS = ['api', 'worker', 'spa'];
+
+function imageManifestByComponent(manifest) {
+  return new Map(
+    (Array.isArray(manifest?.images) ? manifest.images : [])
+      .filter((image) => image !== null && typeof image === 'object')
+      .map((image) => [image.component, image])
+  );
+}
+
+function readReleaseManifest(outputDir) {
+  const manifestPath = resolve(outputDir, 'release-manifest.json');
+  if (!existsSync(manifestPath)) return null;
+  try {
+    return readJson(manifestPath);
+  } catch {
+    return null;
+  }
+}
+
+function isAttestationJson(value) {
+  return (Array.isArray(value) && value.length > 0)
+    || (value !== null && typeof value === 'object' && Object.keys(value).length > 0);
+}
+
+/**
+ * Re-runs the trust-bearing verifier instead of trusting a self-authored
+ * evidence envelope. The release workflow sets TRIPLE_A_VERIFY_ATTESTATIONS
+ * only after publishing and recording the exact image digests.
+ */
+export function verifyPublishedImageAttestations({ rootDir, outputDir, commitSha }) {
+  if (process.env.TRIPLE_A_VERIFY_ATTESTATIONS !== '1') {
+    return {
+      status: 'PARTIAL',
+      path: 'gh attestation verify',
+      reason: 'O gate recebeu um envelope de attestation, mas o verificador gh não foi executado neste ambiente.'
+    };
+  }
+
+  const manifest = readReleaseManifest(outputDir);
+  if (!manifest || manifest.commit_sha !== commitSha) {
+    return {
+      status: 'FAIL',
+      path: 'release-manifest.json',
+      reason: 'Manifest ausente ou desvinculado do SHA antes da verificação criptográfica das imagens.'
+    };
+  }
+
+  const repository = process.env.GITHUB_REPOSITORY;
+  const ghToken = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
+  if (!repository || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || !ghToken) {
+    return {
+      status: 'FAIL',
+      path: 'gh attestation verify',
+      reason: 'GITHUB_REPOSITORY e GH_TOKEN são obrigatórios para verificar attestations publicadas.'
+    };
+  }
+
+  const images = imageManifestByComponent(manifest);
+  const signerWorkflow = `${repository}/.github/workflows/release-artifacts.yml`;
+  for (const component of RELEASE_IMAGE_COMPONENTS) {
+    const image = images.get(component);
+    const expectedReference = new RegExp(
+      `^ghcr\\.io\\/[^\\s/]+\\/cvg-his-v4-${component}@sha256:[0-9a-f]{64}$`
+    );
+    if (!image || !expectedReference.test(image.immutable_reference ?? '') || image.immutable_reference !== `${image.immutable_reference?.split('@')[0]}@${image.digest}`) {
+      return {
+        status: 'FAIL',
+        path: 'release-manifest.json',
+        reason: `Manifest não contém uma referência OCI imutável válida para a imagem ${component}.`
+      };
+    }
+
+    const args = [
+      'attestation',
+      'verify',
+      `oci://${image.immutable_reference}`,
+      '--repo',
+      repository,
+      '--signer-workflow',
+      signerWorkflow,
+      '--source-ref',
+      'main',
+      '--source-digest',
+      commitSha,
+      '--format',
+      'json'
+    ];
+    const result = spawnSync('gh', args, {
+      cwd: rootDir,
+      encoding: 'utf8',
+      shell: false,
+      env: { ...process.env, GH_TOKEN: ghToken },
+      maxBuffer: 16 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    if (result.status !== 0) {
+      return {
+        status: 'FAIL',
+        path: `oci://${image.immutable_reference}`,
+        reason: `gh attestation verify falhou para ${component}: ${compactOutput(`${result.stdout ?? ''}\n${result.stderr ?? ''}\n${result.error?.message ?? ''}`)}`
+      };
+    }
+    try {
+      const verification = JSON.parse(result.stdout ?? '');
+      if (!isAttestationJson(verification)) throw new Error('resposta JSON vazia');
+    } catch (error) {
+      return {
+        status: 'FAIL',
+        path: `oci://${image.immutable_reference}`,
+        reason: `gh attestation verify retornou JSON inválido para ${component}: ${error.message}`
+      };
+    }
+  }
+
+  return {
+    status: 'PASS',
+    path: 'gh attestation verify',
+    reason: 'As três imagens foram verificadas pelo GitHub CLI contra o repositório, workflow, branch e SHA do candidato.'
+  };
+}
+
+function validateImageAttestationEnvelope({ rootDir, outputDir, value, artifact, commitSha }) {
+  const base = validateExternalEvidenceEnvelope({ rootDir, value, artifact, commitSha });
+  if (base.status !== 'PASS') return base;
+
+  if (artifact.verification?.method !== 'github-cli-gh-attestation-verify'
+    || artifact.verification?.verifier_id !== 'gh-attestation-verify') {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: 'Envelope de imagem não declara o verificador GitHub CLI obrigatório.'
+    };
+  }
+
+  const manifest = readReleaseManifest(outputDir);
+  const images = imageManifestByComponent(manifest);
+  const attestations = artifact.attestations;
+  const attestationShapeIsValid = Array.isArray(attestations)
+    && attestations.length === RELEASE_IMAGE_COMPONENTS.length
+    && RELEASE_IMAGE_COMPONENTS.every((component) => {
+      const image = images.get(component);
+      const attestation = attestations.find((item) => item?.component === component);
+      return image
+        && attestation?.subject_reference === image.reference
+        && attestation?.subject_digest === image.digest
+        && attestation?.subject_name === image.reference?.split(':')[0]
+        && attestation?.attestation === 'actions/attest-build-provenance';
+    });
+  if (!manifest || manifest.commit_sha !== commitSha || !attestationShapeIsValid) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: 'Envelope de imagem não corresponde exatamente ao manifest e aos três subjects por digest.'
+    };
+  }
+
+  const verification = verifyPublishedImageAttestations({ rootDir, outputDir, commitSha });
+  if (verification.status !== 'PASS') return verification;
+  return {
+    ...base,
+    status: 'PASS',
+    reason: verification.reason
+  };
+}
+
+function envEvidence(rootDir, name, commitSha, outputDir) {
   const value = process.env[name];
   if (!value) return null;
   const declaredCommit = process.env[`${name}_COMMIT_SHA`] ?? process.env.TRIPLE_A_EVIDENCE_COMMIT_SHA;
@@ -149,19 +397,17 @@ function envEvidence(rootDir, name, commitSha) {
   if (!existsSync(path)) return { status: 'FAIL', path: value, reason: 'Caminho informado não existe.' };
   try {
     const artifact = readJson(path);
-    const artifactCommit = artifact.commit_sha ?? artifact.commitSha ?? artifact.sha;
-    const artifactStatus = artifact.status;
-    const statusIsAcceptable = artifactStatus === undefined
-      || ['PASS', 'PASSED', 'GREEN', 'SUCCESS'].includes(String(artifactStatus).toUpperCase());
-    return artifactCommit === commitSha && statusIsAcceptable
-      ? { status: 'PASS', path: value, reason: 'Artefato JSON vinculado ao SHA do candidato.' }
-      : {
-          status: 'FAIL',
-          path: value,
-          reason: artifactCommit !== commitSha
-            ? 'Artefato JSON não contém commit_sha/commitSha/sha igual ao candidato.'
-            : `Artefato JSON tem status ${String(artifactStatus)} e não pode virar PASS.`,
-        };
+    if (name === 'TRIPLE_A_IMAGE_ATTESTATION_EVIDENCE') {
+      return validateImageAttestationEnvelope({ rootDir, outputDir, value, artifact, commitSha });
+    }
+    const envelope = validateExternalEvidenceEnvelope({ rootDir, value, artifact, commitSha });
+    return envelope.status === 'PASS'
+      ? {
+          ...envelope,
+          status: 'PARTIAL',
+          reason: 'Envelope e hashes locais conferem, mas este artefato externo ainda precisa de verificação independente no ambiente alvo.'
+        }
+      : envelope;
   } catch {
     return declaredCommit === commitSha
       ? { status: 'PARTIAL', path: value, reason: 'Artefato não-JSON tem vínculo explícito ao SHA, mas seu conteúdo não foi interpretado pelo gate.' }
@@ -282,6 +528,7 @@ export function buildReleaseEvidence({
   commitSha = currentCommit(rootDir),
 } = {}) {
   mkdirSync(outputDir, { recursive: true });
+  const prepublication = process.env.TRIPLE_A_PREPUBLICATION === '1';
 
   const checks = [verifyCleanWorktree(rootDir)];
   for (const [area, command, args] of EXECUTABLE_CHECKS) {
@@ -294,7 +541,7 @@ export function buildReleaseEvidence({
       ? runCheck({ rootDir, area, command, args, timeoutMs: 30 * 60 * 1000 })
       : skippedCheck(area, `${command} ${args.join(' ')}`, 'Build checks não executados nesta coleta.'));
   }
-  const testEvidence = envEvidence(rootDir, 'TRIPLE_A_TEST_EVIDENCE', commitSha);
+  const testEvidence = envEvidence(rootDir, 'TRIPLE_A_TEST_EVIDENCE', commitSha, outputDir);
   checks.push(testEvidence
     ? { area: 'Unit tests', command: 'TRIPLE_A_TEST_EVIDENCE', status: testEvidence.status, exit_code: null, evidence: testEvidence.reason, limitation: null }
     : executeTests
@@ -306,17 +553,6 @@ export function buildReleaseEvidence({
   const qualityBarPath = resolve(rootDir, 'docs/triple-a/QUALITY_BAR_V1.json');
   const qualityBarExists = existsSync(qualityBarPath);
   const qualityBar = qualityBarExists ? readJson(qualityBarPath) : null;
-  const qualityBarCriteria = Array.isArray(qualityBar?.criteria)
-    ? qualityBar.criteria.map((item) => criterion(
-        `BAR-${item.id}`,
-        `Quality bar: ${item.area}`,
-        item.priority,
-        item.description,
-        item.status,
-        ['docs/triple-a/QUALITY_BAR_V1.json'],
-        item.status === 'PASS' ? [] : [`Quality bar status atual: ${item.status}.`],
-      ))
-    : [];
   const policyCriteria = REQUIRED_POLICY_FILES.map((path) => criterion(
     `POLICY-${path.replaceAll('/', '-').replaceAll('.', '-')}`,
     'Policy',
@@ -338,7 +574,9 @@ export function buildReleaseEvidence({
   ));
 
   const artifactCriteria = [
-    criterion('RELEASE-MANIFEST', 'Release', 'P0', 'Manifesto de release vinculado ao commit e a imagens por digest.', manifest.status, manifest.artifacts),
+    ...(prepublication ? [] : [
+      criterion('RELEASE-MANIFEST', 'Release', 'P0', 'Manifesto de release vinculado ao commit e a imagens por digest.', manifest.status, manifest.artifacts),
+    ]),
     criterion('SECURITY-EVIDENCE', 'Security', 'P0', 'Security evidence PASS e vinculado ao commit atual.', security.status, security.artifacts),
   ];
 
@@ -354,12 +592,14 @@ export function buildReleaseEvidence({
     ['BRANCH-PROTECTION', 'Governance', 'P0', 'Branch protection e required checks remotos confirmados', 'TRIPLE_A_BRANCH_PROTECTION_EVIDENCE'],
     ['RELEASE-AUTHORITY', 'Governance', 'P0', 'Aprovação humana/authority record do release candidato', 'TRIPLE_A_AUTHORITY_EVIDENCE'],
   ]) {
-    const evidence = envEvidence(rootDir, envName, commitSha);
+    const evidence = envEvidence(rootDir, envName, commitSha, outputDir);
     checks.push(evidence
       ? { area, command: envName, status: evidence.status, exit_code: null, evidence: evidence.reason, limitation: null }
       : skippedCheck(area, envName, `Evidência externa ausente; informe ${envName}.`));
-    const status = evidence?.status ?? 'NOT_RUN';
-    artifactCriteria.push(criterion(id, area, priority, name, status, evidence ? [evidence.path] : [], evidence ? [] : [`Informe ${envName} com artefato/link do candidato.`]));
+    if (!prepublication) {
+      const status = evidence?.status ?? 'NOT_RUN';
+      artifactCriteria.push(criterion(id, area, priority, name, status, evidence ? [evidence.path] : [], evidence ? [] : [`Informe ${envName} com artefato/link do candidato.`]));
+    }
   }
 
   const qualityBarHash = qualityBarExists ? sha256(qualityBarPath) : null;
@@ -369,7 +609,6 @@ export function buildReleaseEvidence({
     ...commandCriteria,
     ...policyCriteria,
     ...artifactCriteria,
-    ...qualityBarCriteria,
   ];
   const score = scoreCriteria(criteria);
   const failed = criteria.filter((item) => item.status === 'FAIL');
@@ -392,18 +631,30 @@ export function buildReleaseEvidence({
     generated_at: new Date().toISOString(),
     repository: 'cvg-his-v4',
     commit_sha: commitSha,
-    mode: strict ? 'strict' : 'advisory',
+    mode: prepublication ? 'prepublication' : strict ? 'strict' : 'advisory',
+    gate_stage: prepublication ? 'prepublication' : 'postpublication',
     decision,
-    claim: decision === 'PASS' ? 'TRIPLE-A VERIFIED' : 'NOT PROVEN',
+    publication_allowed: prepublication && decision === 'PASS',
+    claim: decision === 'PASS' && !prepublication ? 'TRIPLE-A VERIFIED' : 'NOT PROVEN',
     score: score.score,
     critical_score: score.critical_score,
     open_p0: score.open_p0,
     thresholds,
+    quality_bar: qualityBar
+      ? {
+          id: qualityBar.quality_bar_id,
+          frozen_at: qualityBar.frozen_at,
+          sha256: qualityBarHash,
+          source_prompt_sha256: qualityBar.source_prompt_sha256,
+          criteria: qualityBar.criteria,
+        }
+      : null,
     checks,
     criteria,
     limitations: [
       'Evidência externa só é aceita quando informada pelo ambiente do candidato e vinculada por caminho/link.',
       'A decisão PASS exige todos os critérios atuais e não substitui autoridade humana para produção.',
+      ...(prepublication ? ['Esta é uma garantia bloqueante pré-publicação; não certifica imagens, deploy, recuperação, E2E ou autoridade humana.'] : []),
     ],
   };
   const outputPath = resolve(outputDir, 'TRIPLE_A_RELEASE_EVIDENCE.json');

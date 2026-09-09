@@ -40,4 +40,25 @@ describe('immutable release workflow contract', () => {
     expect(workflow).toContain('TRIPLE_A_IMAGE_ATTESTATION_EVIDENCE: artifacts/release/image-attestation-evidence.json');
     expect(gateIndex).toBeGreaterThan(attestationIndex);
   });
+
+  it('cryptographically verifies each published OCI image before the blocking gate', () => {
+    expect(workflow.match(/gh attestation verify "oci:\/\/ghcr\.io\//g)).toHaveLength(3);
+    expect(workflow.match(/--format json > artifacts\/release\/[a-z]+-attestation-verification\.json/g)).toHaveLength(3);
+    expect(workflow.match(/--signer-workflow "\$\{SIGNER_WORKFLOW\}"/g)).toHaveLength(3);
+    expect(workflow.match(/--source-ref main --source-digest "\$\{RELEASE_SHA\}"/g)).toHaveLength(3);
+    expect(workflow).toContain('GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}');
+  });
+
+  it('runs a blocking candidate assurance before publishing any image', () => {
+    const preflightIndex = workflow.indexOf('name: Run pre-publication candidate assurance');
+    const firstPublishIndex = workflow.indexOf('name: Build and publish API image');
+    const firstPushIndex = workflow.indexOf('push: true');
+
+    expect(preflightIndex).toBeGreaterThan(-1);
+    expect(workflow).toContain('TRIPLE_A_PREPUBLICATION: \'1\'');
+    expect(workflow).not.toContain('TRIPLE_A_ADVISORY: \'1\'');
+    expect(workflow).toContain('run: pnpm release:triple-a');
+    expect(firstPublishIndex).toBeGreaterThan(preflightIndex);
+    expect(firstPushIndex).toBeGreaterThan(preflightIndex);
+  });
 });

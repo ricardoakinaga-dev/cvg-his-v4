@@ -7,6 +7,7 @@ import {
   DATABASE_RUNTIME_API_FUNCTIONS,
   RUNTIME_SENSITIVE_TABLES,
   RUNTIME_APPEND_ONLY_TABLES,
+  RUNTIME_IMMUTABLE_TABLES,
   RUNTIME_INSTALLER_MUTATIONS,
   RUNTIME_SETTLEMENT_FUNCTIONS,
   WORKER_USER_READ_COLUMNS
@@ -264,6 +265,15 @@ export async function reconcileRuntimeRoles(
       await executeGeneratedStatements(
         client,
         `SELECT format('REVOKE DELETE, TRUNCATE ON TABLE public.%I FROM %I', $1::text, role_name) AS statement
+         FROM unnest($2::text[]) AS role_name
+         WHERE to_regclass(format('public.%I', $1::text)) IS NOT NULL`,
+        [tableName, [apiRole, workerRole]]
+      );
+    }
+    for (const tableName of RUNTIME_IMMUTABLE_TABLES) {
+      await executeGeneratedStatements(
+        client,
+        `SELECT format('REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I', $1::text, role_name) AS statement
          FROM unnest($2::text[]) AS role_name
          WHERE to_regclass(format('public.%I', $1::text)) IS NOT NULL`,
         [tableName, [apiRole, workerRole]]

@@ -280,11 +280,11 @@ async function submitDischarge() {
     const payload = {
       encounterId: selectedEncounter.value.id,
       dischargeType: form.value.dischargeType,
-      outcome: form.value.outcome.trim() || undefined,
-      clinicalSummary: form.value.clinicalSummary.trim() || undefined,
-      continuityInstructions: form.value.continuityInstructions.trim() || undefined,
-      followUpDate: form.value.followUpDate || undefined,
-      followUpNotes: form.value.followUpNotes.trim() || undefined
+      outcome: form.value.outcome.trim(),
+      clinicalSummary: form.value.clinicalSummary.trim(),
+      continuityInstructions: form.value.continuityInstructions.trim(),
+      followUpDate: form.value.followUpDate,
+      followUpNotes: form.value.followUpNotes.trim()
     };
 
     if (editingDischargeId.value) {
