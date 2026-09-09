@@ -24,3 +24,13 @@ strict `score=43`, `critical_score=23`, `open_p0=27`. A execução CI pública
 `34404434195` estava pendente no momento da atualização. O incremento do score
 reflete contratos/documentação e não substitui execução de PostgreSQL, browser,
 UAT humano, recovery, performance, deploy, branch governance ou autoridade.
+
+## Candidato corrente — `dcb731a196b499db246c5c53884c40547ec9e028`
+
+O candidato corrente está publicado em `main`, com worktree limpo e baseline
+externo atualizado. O gate local permanece `BLOCKED / NOT PROVEN` (`score=43`,
+`critical=23`, `open_p0=27`). O CI `34418126020` / run 38 estava em execução
+no momento da observação; nenhum job pendente foi contado como PASS. Os P0 de
+PostgreSQL/RLS runtime, crash recovery, E2E/UAT, auditoria externa, imagens,
+branch protection e autoridade continuam abertos até haver envelopes atuais,
+verificáveis e vinculados ao SHA.

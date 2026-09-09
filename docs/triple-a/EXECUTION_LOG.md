@@ -58,3 +58,24 @@ Cada nova rodada deve registrar commit, comando ou observação, resultado, limi
 - O reparo foi publicado em `b429e1bb410bb8d374f4b8a043308461497b7bca`. O gate strict regenerado nesse SHA é `BLOCKED`, score `43`, critical `23`, `open_p0=27`, claim `NOT PROVEN`; o esqueleto UAT está vinculado ao mesmo SHA com `NOT_PROVEN/no-go`.
 - A nova execução pública `34404434195` foi disparada para `b429e1bb` e estava em andamento no momento do registro. Nenhum resultado remoto posterior foi inferido como PASS.
 - Limitações mantidas: PostgreSQL/RLS/roles em runtime, processo após `SIGKILL`, E2E clínico/negativo, browser/UAT humano, backup/restore, performance/soak, deploy/rollback, attestations, branch protection autenticada e autoridade de release continuam `NOT PROVEN`.
+
+## 2026-09-09 — Fase 1 / candidato corrente e baseline reconciliado
+
+- O commit `dcb731a196b499db246c5c53884c40547ec9e028` foi publicado em
+  `main`; `git ls-remote origin refs/heads/main` confirmou o mesmo SHA e o
+  worktree permaneceu limpo.
+- O fixture
+  `tests/integration/setup/production-like-runtime-bootstrap.test.ts` passou a
+  definir temporariamente `WORKER_ACCOUNT_IDS` no caso que verifica ausência
+  do delivery schema, restaurando o ambiente no `finally`; isso remove a falha
+  de configuração que impedia o teste de alcançar sua asserção.
+- O baseline `docs/triple-a/14-external-evidence-baseline.md` foi atualizado
+  para o SHA corrente, com CI `34418126020` / run 38 registrado como em
+  execução. SAST, Secret Scan e Dependency Audit foram observados sem falha;
+  Typecheck estava em execução e os demais jobs aguardavam dependências.
+- `TRIPLE_A_SKIP_EXECUTION=1 pnpm release:triple-a` foi executado no candidato:
+  `BLOCKED`, score `43`, critical `23`, `open_p0=27`, claim `NOT PROVEN`.
+- O resultado mantém a classificação fail-closed: execução PostgreSQL/RLS,
+  crash recovery, E2E/UAT, DR, performance/soak, deploy/rollback, attestations,
+  branch protection autenticada e autoridade de release não foram inferidos
+  como PASS.

@@ -53,3 +53,21 @@ o SHA publicado e todos os envelopes externos independentes.
   fechamento deste relatório. Runtime PostgreSQL, E2E/UAT humano, DR,
   performance, deploy/rollback, branch protection e autoridade humana não são
   inferidos a partir dos artefatos locais.
+
+## Atualização do candidato corrente — `dcb731a196b499db246c5c53884c40547ec9e028`
+
+- O candidato corrente está publicado em `main` e o worktree local está limpo.
+- O commit corrige o escopo de `WORKER_ACCOUNT_IDS` no fixture de bootstrap
+  production-like, permitindo que o teste alcance a validação específica do
+  schema de entrega do worker.
+- O gate strict local permanece `BLOCKED`, score `43`, critical `23`,
+  `open_p0=27`, claim `NOT PROVEN`.
+- O CI público `34418126020` / run 38 foi observado no SHA corrente: Secret
+  Scan e Dependency Audit passaram, SAST passou durante a observação,
+  Typecheck estava em execução e os demais jobs aguardavam dependências. O
+  resultado final ainda não foi inferido.
+- O baseline corrente em
+  [`14-external-evidence-baseline.md`](./14-external-evidence-baseline.md)
+  foi atualizado para esse SHA. PostgreSQL/RLS runtime, browser/E2E/UAT,
+  recovery, performance/soak, deploy/rollback, attestations, governança de
+  branch e autoridade humana continuam sem evidência externa suficiente.
