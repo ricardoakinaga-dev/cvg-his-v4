@@ -9,7 +9,7 @@ import {
   DatabaseWorkflowTaskRepository,
   WorkflowTaskService
 } from './index.js';
-import type { WorkflowTaskTransitionEvent } from './types.js';
+import type { WorkflowTaskSummary, WorkflowTaskTransitionEvent } from './types.js';
 
 const ACCOUNT_A = '11111111-1111-4111-8111-111111111111' as AccountId;
 const ACCOUNT_B = '22222222-2222-4222-8222-222222222222' as AccountId;
@@ -37,6 +37,101 @@ function input(idempotencyKey: string, dueAt = '2026-09-09T09:00:00.000Z') {
     metadata: { source: 'test', tags: ['clinical'] },
     maxAttempts: 2
   } as const;
+}
+
+function databaseRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    account_id: ACCOUNT_A,
+    task_type: 'clinical.follow_up',
+    status: 'pending',
+    execution_mode: 'worker',
+    priority: 'high',
+    title: 'Tarefa persistida',
+    description: 'Persistida no double transacional',
+    patient_id: '44444444-4444-4444-8444-444444444444',
+    encounter_id: '55555555-5555-4555-8555-555555555555',
+    owner_type: 'sector',
+    owner_id: 'plantao-clinico',
+    due_at: '2026-09-09T09:00:00.000Z',
+    idempotency_key: 'database-task',
+    fingerprint: 'database-fingerprint',
+    metadata: { source: 'database-test' },
+    attempts: 0,
+    max_attempts: 3,
+    next_attempt_at: '2026-09-09T09:00:00.000Z',
+    lease_owner: 'worker-db',
+    lease_token: 'lease-db',
+    lease_version: 1,
+    revision: 1,
+    lease_expires_at: '2026-09-09T10:00:00.000Z',
+    last_attempt_at: '2026-09-09T09:00:00.000Z',
+    last_error: 'previous transient error',
+    acknowledged_by_user_id: USER,
+    acknowledged_at: '2026-09-09T09:01:00.000Z',
+    completed_by_user_id: null,
+    completed_at: null,
+    cancelled_by_user_id: null,
+    cancelled_at: null,
+    cancellation_reason: null,
+    escalation_level: 1,
+    last_escalated_at: '2026-09-09T09:02:00.000Z',
+    correlation_id: 'corr-database',
+    causation_id: 'cause-database',
+    created_by_user_id: USER,
+    created_at: '2026-09-09T08:00:00.000Z',
+    updated_at: '2026-09-09T09:02:00.000Z',
+    ...overrides
+  };
+}
+
+function databaseRowForTask(
+  task: WorkflowTaskSummary,
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return databaseRow({
+    id: task.id,
+    account_id: task.accountId,
+    task_type: task.taskType,
+    status: task.status,
+    execution_mode: task.executionMode,
+    priority: task.priority,
+    title: task.title,
+    description: task.description ?? null,
+    patient_id: task.patientId ?? null,
+    encounter_id: task.encounterId ?? null,
+    owner_type: task.ownerType ?? null,
+    owner_id: task.ownerId ?? null,
+    due_at: task.dueAt,
+    idempotency_key: task.idempotencyKey,
+    fingerprint: task.fingerprint,
+    metadata: task.metadata,
+    attempts: task.attempts,
+    max_attempts: task.maxAttempts,
+    next_attempt_at: task.nextAttemptAt,
+    lease_owner: task.leaseOwner ?? null,
+    lease_token: task.leaseToken ?? null,
+    lease_version: task.leaseVersion,
+    revision: task.revision,
+    lease_expires_at: task.leaseExpiresAt ?? null,
+    last_attempt_at: task.lastAttemptAt ?? null,
+    last_error: task.lastError ?? null,
+    acknowledged_by_user_id: task.acknowledgedByUserId ?? null,
+    acknowledged_at: task.acknowledgedAt ?? null,
+    completed_by_user_id: task.completedByUserId ?? null,
+    completed_at: task.completedAt ?? null,
+    cancelled_by_user_id: task.cancelledByUserId ?? null,
+    cancelled_at: task.cancelledAt ?? null,
+    cancellation_reason: task.cancellationReason ?? null,
+    escalation_level: task.escalationLevel,
+    last_escalated_at: task.lastEscalatedAt ?? null,
+    correlation_id: task.correlationId,
+    causation_id: task.causationId ?? null,
+    created_by_user_id: task.createdByUserId ?? null,
+    created_at: task.createdAt,
+    updated_at: task.updatedAt,
+    ...overrides
+  });
 }
 
 test('creates an account-scoped task idempotently and rejects payload drift', async () => {
@@ -406,4 +501,138 @@ test('keeps database workflow reads tenant-scoped and fail-closed on absent rows
   assert.deepEqual(queries.slice(0, 2), ['BEGIN', "SELECT set_config('app.current_account_id', $1, true)"]);
   assert.equal(queries.filter((query) => query === 'COMMIT').length, 2);
   assert.equal(releases, 2);
+});
+
+test('covers the durable workflow repository contract through a transactional client double', async () => {
+  const { service } = createService();
+  const task = await service.create(ACCOUNT_A, USER, input('database-contract-1'));
+  const row = databaseRowForTask(task);
+  const processingRow = databaseRowForTask(task, {
+    status: 'processing',
+    attempts: 1,
+    lease_owner: 'worker-db',
+    lease_token: 'lease-db',
+    lease_version: 1,
+    revision: 1,
+    lease_expires_at: '2026-09-09T10:00:00.000Z',
+    last_attempt_at: '2026-09-09T09:00:00.000Z'
+  });
+  const pendingRow = databaseRowForTask(task, {
+    status: 'pending',
+    attempts: 0,
+    next_attempt_at: '2026-09-09T10:05:00.000Z',
+    lease_owner: null,
+    lease_token: null,
+    lease_expires_at: null,
+    revision: 2
+  });
+  const eventRow = {
+    id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    account_id: ACCOUNT_A,
+    task_id: task.id,
+    event_type: 'claimed',
+    schema_version: 1,
+    source: 'clinical-workflow',
+    actor_user_id: USER,
+    correlation_id: task.correlationId,
+    causation_id: null,
+    payload: { workerId: 'worker-db' },
+    occurred_at: '2026-09-09T09:00:00.000Z'
+  };
+  const event: WorkflowTaskTransitionEvent = {
+    eventType: 'claimed',
+    schemaVersion: 1,
+    source: 'clinical-workflow',
+    actorUserId: USER,
+    correlationId: task.correlationId,
+    occurredAt: '2026-09-09T09:00:00.000Z',
+    payload: { workerId: 'worker-db' }
+  };
+  const queries: string[] = [];
+  let taskInsertCount = 0;
+  let releases = 0;
+  const client = {
+    query: async (sql: string) => {
+      queries.push(sql);
+      if (sql === 'BEGIN' || sql.startsWith("SELECT set_config('app.current_account_id'") || sql === 'COMMIT') {
+        return { rows: [], rowCount: 0 };
+      }
+      if (sql.startsWith('INSERT INTO clinical_workflow_tasks')) {
+        taskInsertCount += 1;
+        return { rows: taskInsertCount === 1 ? [row] : [], rowCount: taskInsertCount === 1 ? 1 : 0 };
+      }
+      if (sql.startsWith('INSERT INTO clinical_workflow_task_events')) {
+        return { rows: [], rowCount: 1 };
+      }
+      if (sql.startsWith('SELECT * FROM clinical_workflow_task_events')) {
+        return { rows: [eventRow], rowCount: 1 };
+      }
+      if (sql.startsWith('SELECT * FROM clinical_workflow_tasks WHERE account_id = $1 AND idempotency_key')) {
+        return { rows: [row], rowCount: 1 };
+      }
+      if (sql.startsWith('SELECT * FROM clinical_workflow_tasks WHERE account_id=$1')) {
+        return { rows: [row], rowCount: 1 };
+      }
+      if (sql.startsWith('SELECT * FROM clinical_workflow_tasks WHERE account_id = $1')) {
+        return { rows: [row], rowCount: 1 };
+      }
+      if (sql.includes("SET status='dlq'")) {
+        return { rows: [], rowCount: 0 };
+      }
+      if (sql.startsWith('WITH candidates')) {
+        return { rows: [processingRow], rowCount: 1 };
+      }
+      if (sql.includes('SET lease_expires_at=$4')) {
+        return { rows: [processingRow], rowCount: 1 };
+      }
+      if (sql.includes("SET status='pending'")) {
+        return { rows: [pendingRow], rowCount: 1 };
+      }
+      if (sql.includes('SET status=$3') || sql.includes('SET status=$4')) {
+        return { rows: [], rowCount: 1 };
+      }
+      throw new Error(`Unexpected workflow repository query: ${sql}`);
+    },
+    release: () => {
+      releases += 1;
+    }
+  };
+  const pool = { connect: async () => client } as never;
+  const repository = new DatabaseWorkflowTaskRepository(pool);
+
+  const inserted = await repository.createOrGet(task, event);
+  assert.equal(inserted.created, true);
+  assert.equal(inserted.task.id, task.id);
+  const recovered = await repository.createOrGet(task, event);
+  assert.equal(recovered.created, false);
+  assert.equal(recovered.task.fingerprint, task.fingerprint);
+  assert.equal((await repository.findById(ACCOUNT_A, task.id))?.id, task.id);
+  assert.equal((await repository.findByIdempotencyKey(ACCOUNT_A, task.idempotencyKey))?.id, task.id);
+  assert.equal((await repository.list(ACCOUNT_A, {
+    status: 'pending',
+    taskType: task.taskType,
+    patientId: task.patientId,
+    encounterId: task.encounterId,
+    dueBefore: '2026-09-09T10:00:00.000Z',
+    limit: 1
+  })).length, 1);
+  assert.equal((await repository.listEvents(ACCOUNT_A, task.id, 1))[0]?.source, 'clinical-workflow');
+
+  await repository.save({ ...task, revision: 1 }, event);
+  const claims = await repository.claimDue({
+    accountId: ACCOUNT_A,
+    workerId: 'worker-db',
+    correlationId: task.correlationId,
+    now: '2026-09-09T09:00:00.000Z',
+    limit: 1,
+    leaseMs: 60_000
+  });
+  assert.equal(claims.length, 1);
+  const renewed = await repository.renewClaim(claims[0]!, '2026-09-09T09:00:01.000Z', 60_000);
+  assert.equal(renewed?.leaseToken, 'lease-db');
+  assert.equal(await repository.completeClaim(claims[0]!, event), true);
+  assert.equal(await repository.retryClaim(claims[0]!, '2026-09-09T09:05:00.000Z', 'retry', event), true);
+  assert.equal(await repository.moveToDeadLetter(claims[0]!, 'fatal', event), true);
+  assert.equal((await repository.replay(ACCOUNT_A, task.id, { ...event, eventType: 'replayed' })).status, 'pending');
+  assert.equal(queries.filter((query) => query === 'COMMIT').length, releases);
 });
