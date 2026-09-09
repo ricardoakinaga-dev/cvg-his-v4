@@ -236,7 +236,7 @@
     },
     {
       "path": "apps/api/src/encounter-cash-receipt-repository.ts",
-      "sha256": "cd9cab1476eb2785c8578b78ad1e8950046b51b0da455ef63ff1bc61ab6bcb2e",
+      "sha256": "af3e81cfe393136f9657564b62822228ef9a23cfe0f2dd1f594fe6b5baf0c1d6",
       "components": [
         "billing-cash",
         "records",
@@ -260,7 +260,7 @@
     },
     {
       "path": "apps/api/src/encounter-pix-payment-attempt-repository.ts",
-      "sha256": "af7dcd72bef901d6296144fccff34e43ffc817a3afde35a381583a9a78d83eb0",
+      "sha256": "2d699713ea8a0376c74fdc1ee9eb67ed1abeb8bd58def60d6fcba02d27c79feb",
       "components": [
         "records",
         "pix",
@@ -441,7 +441,7 @@
     },
     {
       "path": "apps/api/src/repositories/database-advance-payments-report.repository.ts",
-      "sha256": "7ee767aefae4a43ca701fbdd0009909c6984c07a6460d1f773187858d7fce7ff",
+      "sha256": "e405ac69361c4a14f24184c44b0e9d1f996127756f0a441da01de1d4c743bcf6",
       "components": [
         "billing-cash",
         "repositories"
@@ -503,7 +503,7 @@
     },
     {
       "path": "apps/api/src/routes/access-control-routes.ts",
-      "sha256": "13b8511b3727246bebebe8d095e03dfeead5293d154c0bd6b5d3000ae657d8f3",
+      "sha256": "912c49241ff616e2212091cc0c222041eba878a639a68159d033bc9a2d037524",
       "components": [
         "roles-rls",
         "http-routes"
@@ -577,7 +577,7 @@
     },
     {
       "path": "apps/api/src/routes/cash-routes.ts",
-      "sha256": "813b072516723c5871112e9ab95167b405ca498e6bc558d5023a14dad8381d0a",
+      "sha256": "d140434356f2b86ef2d49007634ce31b763aef1956e435fa43c1ca36ea15acf7",
       "components": [
         "billing-cash",
         "http-routes"
@@ -630,7 +630,7 @@
     },
     {
       "path": "apps/api/src/routes/discharges-routes.ts",
-      "sha256": "5a65ef1da338e03254e54780a20afc69e0302c81b496af12a16e7fa52160646d",
+      "sha256": "d37863b4c522f3b6b69095cc46044bf77b60dab101c953e5fd4fcde653522030",
       "components": [
         "inpatient",
         "http-routes"
@@ -651,7 +651,7 @@
     },
     {
       "path": "apps/api/src/routes/encounter-cash-receipt-routes.ts",
-      "sha256": "606c92cbcabc20a2c929e5977ee51f3b5e96d390321b6fac748ff0b24e0a1c8c",
+      "sha256": "192f77120af891140ec80a65fdc450352cd1be089ce197d2a2048dc9ac5b383c",
       "components": [
         "billing-cash",
         "records",
@@ -805,7 +805,7 @@
     },
     {
       "path": "apps/api/src/routes/laboratory-routes.ts",
-      "sha256": "033365c9faa33f11f6e3c482f87fda6780d3443e23e70d40d1b78c1a107a61e3",
+      "sha256": "cc2dfcb96b0786773f57a1bfacabad32aaf1e62496a7e4790d98547bf2ad4b63",
       "components": [
         "http-routes"
       ],
@@ -896,7 +896,7 @@
     },
     {
       "path": "apps/api/src/routes/pix-payment-attempt-routes.ts",
-      "sha256": "c971922c7b0e175eb46a6d9639eec37bf01df6aa1c9316e3ad3510f44e3ba425",
+      "sha256": "fdd959e3a42f9360b6157a634d8cb4f10d8d52be05ff9970a3360fdd3b0d5239",
       "components": [
         "pix",
         "http-routes"
@@ -952,7 +952,7 @@
     },
     {
       "path": "apps/api/src/routes/reports-routes.ts",
-      "sha256": "f987253b838956078b88b223fc9250428bbc05d38caae98170551168aaf66d3a",
+      "sha256": "e04a1be566270ceec735b1bddd57f8d8469c69d13cd682838a996cd20435e7b3",
       "components": [
         "http-routes"
       ],
@@ -1063,7 +1063,7 @@
     },
     {
       "path": "apps/api/src/server.ts",
-      "sha256": "715ab297dd7d4ee10de748ebe12b00d7a426b8ca1e467386614ff41965164518",
+      "sha256": "a930e29b3c19bbff0f70bd34756b8953955b214f53cc20fc4b386099118a5f19",
       "components": [
         "http-routes"
       ],
@@ -1093,7 +1093,7 @@
     },
     {
       "path": "apps/spa/src/pages/access-control/AccessControlPage.vue",
-      "sha256": "cd8650ba01351b2c0fe53af5090da710632da7c0ff4a126f9ef9d81ca9094fcc",
+      "sha256": "c36bd9bd9ce4c2f2a0d9f6258fd49e29a851c8402619ebdbcd768761165c7eec",
       "components": [
         "roles-rls"
       ],
@@ -1143,7 +1143,7 @@
     },
     {
       "path": "apps/spa/src/pages/encounters/EncounterDetailPage.vue",
-      "sha256": "28d0ecff0a68317bbd741db2a39a89a66753ff4f5c3b9edba72c44791f555dd5",
+      "sha256": "e3e3d847e924a4db4f9037c3fbee0631b2b3e3ebabd40b9cef3c0fe43c49ca72",
       "components": [
         "records"
       ],
@@ -1153,7 +1153,7 @@
     },
     {
       "path": "apps/spa/src/pages/encounters/EncounterFormPage.vue",
-      "sha256": "a7dd5e72370e3805799be29c416a8eaada9d951ea5e8ddccb609cc44cc6ec118",
+      "sha256": "ada98bd4e4396f590e86d6134dc57ebd90beb24be73075801008e1ddd6e8155b",
       "components": [
         "records"
       ],
@@ -1173,7 +1173,7 @@
     },
     {
       "path": "apps/spa/src/pages/inpatient/BedBoardPage.vue",
-      "sha256": "341629e91395ba52a71764d3141785ad69efa1eb7bf607b79d295cf4d5a990be",
+      "sha256": "134e5a53420f62830a2f465188f380b1f583e72652448f698ea97c58c6786c2e",
       "components": [
         "inpatient"
       ],
@@ -1183,7 +1183,7 @@
     },
     {
       "path": "apps/spa/src/pages/inpatient/BedDetailPage.vue",
-      "sha256": "eadd1cc415076205a6aec5a978eaeb6b9cf08add3593dcd1df8a129c8bd2b2d8",
+      "sha256": "7f46c5cccdb58b100c4907ef885c8be9423211fbafa266541ce9e8e34baac77e",
       "components": [
         "inpatient"
       ],
@@ -1203,7 +1203,7 @@
     },
     {
       "path": "apps/spa/src/pages/inpatient/BedsPage.vue",
-      "sha256": "f029aa265d3668c79b3f7b2493b0a79f91c74eb296179fdcd3afa0ebfc84775c",
+      "sha256": "ba78b5756ff649b9ae61d219d3f0dee0d98b5610d860a96f991ad07572e59e53",
       "components": [
         "inpatient"
       ],
@@ -1233,7 +1233,7 @@
     },
     {
       "path": "apps/spa/src/pages/inpatient/InpatientDetailPage.vue",
-      "sha256": "57199b863eeb8f71b68e0db6bb2842fcfee4ec44ebae2ce910a9debe38e46640",
+      "sha256": "6edaee075d4767c963ee3bb5e2de2a190594ec8d02559add83b829f56322134e",
       "components": [
         "inpatient"
       ],
@@ -1243,7 +1243,7 @@
     },
     {
       "path": "apps/spa/src/pages/inpatient/InpatientListPage.vue",
-      "sha256": "a65a3d7a3f282c52fcaeb5592cb7d442a46f6a12a11cfb68c2bcc7a42cc2938f",
+      "sha256": "9fa67bec892a9784d60aceafb053c7fd22d7d8190fa0afa5e8c0bb5f8a6aed2b",
       "components": [
         "inpatient"
       ],
@@ -1263,7 +1263,7 @@
     },
     {
       "path": "apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue",
-      "sha256": "ff03eb49c71dae3291fd0be813b46d9f080a391e3b4b471111010e4d094c4552",
+      "sha256": "8039f1ebf96457ec86fbce7976ff399984b27b5c7e2bffa155e7635446750f0a",
       "components": [
         "records"
       ],
@@ -1323,7 +1323,7 @@
     },
     {
       "path": "apps/spa/src/pages/webhooks/WebhookFormPage.vue",
-      "sha256": "eb90bbec37fe42c382c06b0d2377b6ae62e5f1b209c1e6c6ba457c72c8cfb90b",
+      "sha256": "8d3e3ca8d0c62f32570b05d058259e5fe229e6c8317ad17a395eb72075a503ed",
       "components": [
         "webhooks"
       ],
@@ -1403,7 +1403,7 @@
     },
     {
       "path": "apps/spa/src/services/encounter.ts",
-      "sha256": "9dd07c4767cbc1132080b6b44b03758c30dc6a25c5400c873b203bba840d6b08",
+      "sha256": "98f6c1c26091a07a6dc8c3b7c000be491ae40dc7d8318b2087cbcdd5c96fce5f",
       "components": [
         "records"
       ],
@@ -1463,7 +1463,7 @@
     },
     {
       "path": "apps/spa/src/services/pix.ts",
-      "sha256": "8a8a6a5b297118961a3a4a63581b2a541506b37be54eb654f9939101f9addc53",
+      "sha256": "f77ec2b3c9809b73f740ea017241ccdb2d5c0fb0341d46c70d218ae67e05c491",
       "components": [
         "pix"
       ],
@@ -3380,7 +3380,7 @@
     },
     {
       "path": "packages/db/migrations/0162_counter_sale_number_sequences.sql",
-      "sha256": "8e51a3784e7504b5aa15f22f7dbb1e0047ac2f7dadd4b5b172832c00c41b0fea",
+      "sha256": "2c016c1beacd0a89f492b955ab591f6b1b93e6e95a9aa22f707754d63ed0384c",
       "components": [
         "roles-rls"
       ],
@@ -3430,7 +3430,7 @@
     },
     {
       "path": "packages/db/src/reconcile-runtime-roles.ts",
-      "sha256": "0e2bd03e98ae38f00c57bf37f1040ee59c17dbf9c3deed5f65b462ce0eab425f",
+      "sha256": "d0b6ac499e9c9257ac86494ab83b60e95583ca4d972c98077860dc3084950c2f",
       "components": [
         "roles-rls"
       ],
@@ -3440,7 +3440,7 @@
     },
     {
       "path": "packages/db/src/runtime-role-policy.ts",
-      "sha256": "7b04b59a12c6bb4b85501450d49a9aee40e5a3fecb40ce8f4387e0678e629f13",
+      "sha256": "b285b4fcad8688c9a657476558a5e2696de72a1752684e1bc2d8010d09e4cfaa",
       "components": [
         "roles-rls"
       ],
@@ -3723,7 +3723,7 @@
     },
     {
       "path": "packages/db/src/schema/delivery_guarantees.ts",
-      "sha256": "3d70bdaf33cd42aef9879eb1a5a423b7f0628a73a9786df664735b21112808b3",
+      "sha256": "7f09daf8f97704aef6c74eb6f95ee716db4a377a01dbfa5f3d73185f77eb1d1e",
       "components": [
         "roles-rls"
       ],
@@ -3924,7 +3924,7 @@
     },
     {
       "path": "packages/db/src/schema/index.ts",
-      "sha256": "00b811c9564c69fd5d0d3e240e1bc5a46aff0b792a3457119be2ef7bfb13c3a7",
+      "sha256": "f50e64f96cadfada488e365c30d45f46068d9d0013c0c2e8c2666e0659a927c8",
       "components": [
         "roles-rls"
       ],
@@ -4501,7 +4501,7 @@
     },
     {
       "path": "packages/modules/audit/src/repositories/database-audit.repository.ts",
-      "sha256": "43f3d59b42dd0b58bb15eaf30df3869b17adff5e33c919a5f62f172912655a89",
+      "sha256": "b9bae5fdfa0df14d5a59c87c50b85f273a625cfd661ef0806cdcdc8c63bf70d2",
       "components": [
         "repositories"
       ],
@@ -4844,7 +4844,7 @@
     },
     {
       "path": "packages/modules/financial/src/advance-payments-report.ts",
-      "sha256": "23041310a285326344435d6594f4999f7ad3718933fb9455ac99813c9b28967f",
+      "sha256": "86d4930280169f5c2d221812ae943b26e99138f435dac084ebde2336925597f7",
       "components": [
         "billing-cash"
       ],
@@ -5512,7 +5512,7 @@
     },
     {
       "path": "packages/rbac/src/access-control-catalog.ts",
-      "sha256": "bf9113fc312de89eedc4e416f4da657ff78c80963d14c91e0dc13d00f8360be6",
+      "sha256": "402a72437aac1fef8f427b6a5031fb26a4658b7a1e422f501b3b891caf1ef061",
       "components": [
         "roles-rls"
       ],
@@ -5542,7 +5542,7 @@
     },
     {
       "path": "packages/rbac/src/permissions.ts",
-      "sha256": "9b12068cbe34d811139d205c69fe94a4ba1800c2e765ceb04dd78136eb08b6ef",
+      "sha256": "1d41f18a5387b02b5214333cd76f8d312cff007a17019a379f2922b95dd12045",
       "components": [
         "roles-rls"
       ],
