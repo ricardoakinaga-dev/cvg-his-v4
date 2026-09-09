@@ -5,16 +5,16 @@
   "project_profile": "BROWNFIELD",
   "work_mode": "NORMAL",
   "work_mode_overlays": ["FEATURE", "REFACTOR", "MIGRATION"],
-  "lifecycle_stage": "BUILD",
-  "active_activity": "VERIFY",
+  "lifecycle_stage": "HANDOFF",
+  "active_activity": "HANDOFF",
   "engineering_tier": "T4_CRITICAL",
   "risk_level": "CRITICAL",
   "blast_radius": "CROSS_SYSTEM",
-  "status": "IN_PROGRESS",
+  "status": "COMPLETE_WITH_EXTERNAL_PROOF_OPEN",
   "active_execplan": ".agent/plans/triple-a-execplan.md",
   "active_task": "TRIPLE-A-RELEASE-CONTROL",
-  "verification_state": "PARTIAL",
-  "repository_state": "main@696d7dd5; release candidate prepared pending final commit; untracked legacy/generated evidence preserved",
+  "verification_state": "BLOCKED_EXTERNAL_EVIDENCE",
+  "repository_state": "main@e793345ab71441298bdb2cb2de2755dc5921b115; implementation candidate committed; generated evidence preserved outside git",
   "instruction_scope_refs": [
     ".agent/plans/triple-a-execplan.md",
     "docs/triple-a/MASTER_PROMPT.md",
@@ -23,11 +23,11 @@
     "/home/ricardo/.agents/skills/engineering-framework/SKILL.md",
     "/home/ricardo/.codex/skills/design-director/SKILL.md"
   ],
-  "last_gate_record": {"decision": "FAIL", "mode": "advisory", "score": 28, "critical_score": 18, "open_p0": 30, "reason": "Worktree and required external evidence are not release-ready."},
+  "last_gate_record": {"decision": "BLOCKED", "mode": "strict", "gate_stage": "postpublication", "commit_sha": "e793345ab71441298bdb2cb2de2755dc5921b115", "score": 38, "critical_score": 25, "open_p0": 21, "claim": "NOT PROVEN", "publication_allowed": false, "reason": "Local candidate controls pass, but required external release evidence is absent."},
   "last_event_id": "EVT-TRIPLE-A-RELEASE-CONTROL-VERIFY",
   "state_revision": 3,
-  "next_gate": "CANDIDATE_VERIFY_AND_COMMIT",
-  "active_action_id": "TRIPLE-A-RELEASE-CONTROL-VERIFY",
+  "next_gate": "RERUN_STRICT_WITH_EXTERNAL_EVIDENCE",
+  "active_action_id": "TRIPLE-A-RELEASE-CONTROL-HANDOFF",
   "blocked_by": [],
   "human_approval_required": [
     "production deployment or rollback",
@@ -36,5 +36,5 @@
     "destructive backup/restore/chaos drills on shared infrastructure",
     "final release authority and Triple-A certification"
   ],
-  "updated_at": "2026-09-09T09:21:00-03:00"
+  "updated_at": "2026-09-09T11:30:00-03:00"
 }

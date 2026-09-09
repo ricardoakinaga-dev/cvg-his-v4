@@ -18,4 +18,10 @@ The candidate may be labeled `TRIPLE-A VERIFIED` only when `TRIPLE_A_RELEASE_EVI
 
 ## Current decision
 
-As of 2026-09-09, this repository is `NOT PROVEN`. The release gate is implemented and deliberately blocks on missing operational evidence, incomplete policy/clinical proof and the current complexity failure.
+As of 2026-09-09, candidate
+`e793345ab71441298bdb2cb2de2755dc5921b115` is `BLOCKED / NOT PROVEN`. The
+release gate is implemented and local code, build, test, policy, supply-chain
+and complexity checks pass. The strict gate recorded score `38`, critical score
+`25` and `21` open P0 criteria because remote CI/branch governance, published
+image attestations, runtime PostgreSQL/RLS, critical/E2E/UAT, recovery,
+performance, deploy/rollback and release authority evidence are still absent.

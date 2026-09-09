@@ -33,3 +33,11 @@
 ## Regra de atualização
 
 Cada nova rodada deve registrar commit, comando ou observação, resultado, limitações e artefato. Um resultado posterior não pode ser inferido a partir desta entrada; ele deve ser append-only no ledger e refletir o candidato real.
+
+## 2026-09-09 — Fase 1 / fechamento local do candidato
+
+- `e793345ab71441298bdb2cb2de2755dc5921b115` consolidou o control plane de workflows clínicos, a fila SPA, o produtor de follow-up da alta, heartbeat/fencing do worker, readiness compartilhado API/worker e os controles de release.
+- A auditoria adversarial em contexto fresco encontrou e fechou cinco riscos P1 de UX/API e os riscos de publicação pré-gate, envelope de attestation, heartbeat/lease e divergência de schema. O gate pré-publicação agora é bloqueante e a attestation só recebe PASS após `gh attestation verify` real.
+- Validação integral: `pnpm test` PASS (68 projetos; SPA 1.867 testes; API 580), `pnpm build` PASS, `pnpm lint` PASS, `pnpm typecheck` PASS; schema clínico, migration source, RLS, OpenAPI, dependências, supply chain, documentação e complexidade PASS.
+- Gate strict em `e793345a`: `BLOCKED`, score `38`, critical score `25`, `open_p0=21`, claim `NOT PROVEN`, `publication_allowed=false`. Artefato: `artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json` (gerado/ignorado).
+- Limitações não inferidas como PASS: CI remoto, branch protection, PostgreSQL/RLS runtime, E2E/UAT, browser visual, performance/soak, backup/restore/RPO-RTO, deploy/rollback, attestations publicadas e autoridade humana.
