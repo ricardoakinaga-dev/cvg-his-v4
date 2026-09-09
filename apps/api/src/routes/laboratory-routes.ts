@@ -825,7 +825,11 @@ export async function handleLaboratoryRoutes(
       url.searchParams.get('enteredAt') ?? url.searchParams.get('dataEntrada') ?? undefined;
     const includeClosed = url.searchParams.get('closed') ?? url.searchParams.get('fechados');
     const items = (
-      await laboratory.listResults(principal.user.accountId as never, examType)
+      await laboratory.listResults(
+        principal.user.accountId as never,
+        examType,
+        { includePending: includeClosed === 'false' }
+      )
     ).filter((order) => {
       if (codeFilter && !order.id.toLowerCase().includes(codeFilter)) return false;
       if (patientFilter && !order.patientId.toLowerCase().includes(patientFilter)) return false;

@@ -100,10 +100,10 @@ async function browserLogin(page: Page, username: string, password: string): Pro
 async function createOwnerViaUi(page: Page, name: string, run: string): Promise<string> {
   await page.goto(`${SPA_URL}/owners/new`, { waitUntil: 'networkidle' });
   await page.locator('#fullName').fill(name);
+  await page.getByText('Documentação do Tutor', { exact: true }).click();
   await page.locator('#documentId').fill(`DOC-${run}`);
   await page.locator('#phone1').fill('11987654321');
-  await page.getByRole('button', { name: /cadastrar cliente/i }).click();
-  await expect(page.getByText('Cliente cadastrado com sucesso')).toBeVisible();
+  await page.getByRole('button', { name: /cadastrar tutor/i }).click();
   await page.waitForURL(/\/owners\/(?!new$)[^/]+$/);
   return page.url().split('/').pop() || '';
 }
@@ -113,9 +113,16 @@ async function createPatientViaUi(page: Page, name: string, ownerName: string): 
   await page.locator('#name').fill(name);
   await page.locator('#species').selectOption('canine');
   await page.locator('#sex').selectOption('female');
-  const ownerSearch = page.getByPlaceholder(/buscar.*(tutor|cliente)|selecione.*(tutor|cliente)/i);
+  const ownerSearch = page.locator('#ownerSearch');
   await ownerSearch.fill(ownerName);
-  await page.getByRole('option', { name: ownerName }).click();
+  await page.getByRole('button', { name: 'Buscar tutor', exact: true }).click();
+  await expect(page.locator('.client-options')).toBeVisible();
+  const ownerOption = page.locator('button.client-option').filter({ hasText: ownerName }).first();
+  await expect(ownerOption).toBeVisible();
+  await ownerOption.click();
+  await expect(ownerOption).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Vincular tutor', exact: true }).click();
+  await expect(page.getByRole('heading', { name: ownerName, exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Salvar Animal' }).click();
   await expect(page.getByText('Animal cadastrado com sucesso')).toBeVisible();
   await page.waitForURL(/\/patients\/(?!new$)[^/]+$/);
@@ -259,7 +266,7 @@ test.describe('Rotinas hospitalares completas por persona', () => {
 
     await page.goto(`${SPA_URL}/reception`, { waitUntil: 'networkidle' });
     const receptionSearch = page.getByRole('search');
-    await receptionSearch.getByPlaceholder(/buscar tutor ou paciente/i).fill(patientName);
+    await receptionSearch.getByLabel('Busca da recepção').fill(patientName);
     await receptionSearch.getByRole('button', { name: 'Buscar', exact: true }).click();
     await page.getByRole('link', { name: 'Preparar check-in' }).first().click();
     await page.getByRole('button', { name: 'Iniciar check-in' }).click();
@@ -657,7 +664,7 @@ test.describe('Rotinas hospitalares completas por persona', () => {
     await page.getByRole('button', { name: 'Pesquisar' }).click();
     const reportRow = page.locator('tbody tr').filter({ hasText: context.patient.name }).first();
     await expect(reportRow).toBeVisible();
-    await reportRow.getByRole('button', { name: 'Laudo' }).click();
+    await reportRow.getByRole('button', { name: 'Laudo', exact: true }).click();
     await expect(page.getByRole('dialog', { name: 'Laudo imprimível' })).toBeVisible();
     await expect(page.getByTitle('Pré-visualização do laudo')).toBeVisible();
 
@@ -719,7 +726,7 @@ test.describe('Rotinas hospitalares completas por persona', () => {
     const teamName = `Parceiros de Diagnóstico ${run}`;
     const sectorName = `Diagnóstico Terceirizado ${run}`;
     await page.goto(`${SPA_URL}/access-control`, { waitUntil: 'networkidle' });
-    await page.getByRole('button', { name: 'Grupos', exact: true }).click();
+    await page.getByRole('tab', { name: 'Grupos', exact: true }).click();
     await page.getByLabel('Código').fill(`parceiros_${run}`.replace(/[^a-zA-Z0-9_]/g, '_'));
     await page.getByLabel('Nome').fill(teamName);
     await page
@@ -728,7 +735,7 @@ test.describe('Rotinas hospitalares completas por persona', () => {
     await page.getByRole('button', { name: 'Criar grupo' }).click();
     await expect(page.getByText('Equipe criada com sucesso')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Setores', exact: true }).click();
+    await page.getByRole('tab', { name: 'Setores', exact: true }).click();
     await page.getByLabel('Código').fill(`diag_terceiro_${run}`.replace(/[^a-zA-Z0-9_]/g, '_'));
     await page.getByLabel('Nome').fill(sectorName);
     await page.getByLabel('Descrição').fill('Setor externo controlado pelo hospital.');
@@ -742,9 +749,9 @@ test.describe('Rotinas hospitalares completas por persona', () => {
     expect(team).toBeTruthy();
     expect(sector).toBeTruthy();
 
-    await page.getByRole('button', { name: 'Matriz', exact: true }).click();
+    await page.getByRole('tab', { name: 'Matriz', exact: true }).click();
     await page.getByRole('main').getByLabel('Tipo').selectOption('team');
-    await page.getByLabel('Alvo').selectOption(team.id);
+    await page.locator('#access-matrix-subject-id').selectOption(team.id);
     await page.getByPlaceholder('Filtrar permissões da matriz').fill('diagnostics.read');
     const permissionRow = page
       .locator('tbody tr')
@@ -754,8 +761,8 @@ test.describe('Rotinas hospitalares completas por persona', () => {
     await permissionRow.locator('select').selectOption('allow');
     await expect(page.getByText('Permissão atualizada com sucesso')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Usuários', exact: true }).click();
-    await page.getByRole('main').getByLabel('Usuário').selectOption(partner.id);
+    await page.getByRole('tab', { name: 'Usuários', exact: true }).click();
+    await page.locator('#access-user-select').selectOption(partner.id);
     await page.getByLabel(teamName, { exact: true }).check();
     await page.getByLabel(sectorName, { exact: true }).check();
     await page.getByRole('button', { name: 'Salvar vínculos' }).click();

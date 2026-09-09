@@ -15,14 +15,28 @@ CREATE TABLE IF NOT EXISTS counter_sale_number_sequences (
 -- Seed existing accounts from the authoritative sale ledger before the new
 -- allocator is used. Invalid/oversized legacy numbers fail the migration
 -- closed instead of silently reusing an identifier.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+      FROM counter_sales
+     WHERE number IS NULL
+        OR CASE
+             WHEN number ~ '^CS-[0-9]+$'
+               THEN SUBSTRING(number FROM 4)::numeric > 9007199254740991
+             ELSE true
+           END
+  ) THEN
+    RAISE EXCEPTION
+      'counter_sales contains a malformed or oversized legacy number; refusing to initialize durable sequence';
+  END IF;
+END $$;
+
 INSERT INTO counter_sale_number_sequences (account_id, next_number)
 SELECT account_id,
        COALESCE(
          MAX(
-           CASE
-             WHEN number ~ '^CS-[0-9]+$' THEN SUBSTRING(number FROM 4)::numeric
-             ELSE 0
-           END
+           SUBSTRING(number FROM 4)::numeric
          ),
          0
        )

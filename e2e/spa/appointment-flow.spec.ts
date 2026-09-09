@@ -113,18 +113,22 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
       timeout: 15000
     });
 
+    await page.getByRole('button', { name: 'Filtrar agenda', exact: true }).click();
     await page.getByRole('button', { name: `Selecionar ${referenceDate}`, exact: true }).click();
     // The cockpit intentionally collapses busy hourly cells after two cards.
     // Narrow by the just-created patient so this assertion stays valid on a
     // database that already contains appointments from restart/retry runs.
-    await page.getByPlaceholder('Pesquisar Cliente').fill(patientName);
+    await page.locator('#clientFilter').fill(patientName);
     await page.getByRole('button', { name: 'Aplicar' }).click();
     await page.waitForLoadState('networkidle');
 
     await expect(page.getByText(patientName)).toBeVisible({ timeout: 15000 });
     console.log(`   ✅ Patient "${patientName}" visible in operational cockpit`);
 
-    const appointmentCard = page.locator('.timeline-item').filter({ hasText: patientName }).first();
+    const appointmentCard = page
+      .locator('.agenda-appointment-row')
+      .filter({ hasText: patientName })
+      .first();
     await expect(appointmentCard).toContainText('Agendado', { timeout: 10000 });
     console.log('   ✅ Appointment visible with scheduled operational state');
 
@@ -164,15 +168,16 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     await page.goto(`${SPA_URL}/appointments`);
     await page.waitForLoadState('networkidle');
 
+    await page.getByRole('button', { name: 'Filtrar agenda', exact: true }).click();
     await page.getByRole('button', { name: `Selecionar ${referenceDate}`, exact: true }).click();
-    await page.getByPlaceholder('Pesquisar Cliente').fill(patientName);
+    await page.locator('#clientFilter').fill(patientName);
     await page.getByRole('button', { name: 'Cancelado', exact: true }).click();
     await page.getByRole('button', { name: 'Aplicar' }).click();
     await page.waitForLoadState('networkidle');
 
     await expect(page.getByText(patientName)).toBeVisible({ timeout: 10000 });
     await expect(
-      page.locator('.timeline-item').filter({ hasText: patientName }).first()
+      page.locator('.agenda-appointment-row').filter({ hasText: patientName }).first()
     ).toContainText('Cancelado', { timeout: 10000 });
     console.log('   ✅ Cancelled appointment visible in cockpit');
 
@@ -201,9 +206,15 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
       timeout: 10000
     });
 
-    await expect(page.getByText(/Coluna temporal por data/)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('button', { name: 'Atualizar' })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByLabel('Ações da página').getByRole('link', { name: 'Esteira', exact: true })).toBeVisible({
+    await expect(page.getByRole('group', { name: /Modo da agenda/ })).toBeVisible({
+      timeout: 10000
+    });
+    await expect(page.getByRole('button', { name: 'Lista', exact: true })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: 'Hoje', exact: true })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: 'Atualizar', exact: true })).toBeVisible({ timeout: 10000 });
+    await expect(
+      page.getByLabel('Conteúdo principal').getByRole('link', { name: 'Esteira', exact: true })
+    ).toBeVisible({
       timeout: 10000
     });
     await expect(
@@ -211,6 +222,7 @@ test.describe('Fluxo de Agendamento (Appointment)', () => {
     ).toBeVisible({
       timeout: 10000
     });
+    await page.getByRole('button', { name: 'Filtrar agenda', exact: true }).click();
     await expect(page.getByText('Filtrar por...')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('.mini-calendar__day--selected')).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole('group', { name: /Modo da agenda/ })).toBeVisible({

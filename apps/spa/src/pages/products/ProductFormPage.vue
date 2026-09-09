@@ -47,7 +47,7 @@
             </label>
           </div>
           <div class="form-actions">
-            <DsButton variant="primary" :loading="submitting" type="submit">
+            <DsButton variant="primary" :loading="submitting" :disabled="successPending" type="submit">
               {{ isEditing ? 'Atualizar' : 'Cadastrar' }}
             </DsButton>
             <DsButton variant="secondary" type="button" @click="router.push('/products')">
@@ -89,6 +89,7 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import { productsService, type ProductSummary } from '@/services/products';
+import { useSuccessRedirect } from '@/composables/successRedirect';
 
 const router = useRouter();
 const route = useRoute();
@@ -103,6 +104,8 @@ const form = ref({
   active: true
 });
 const submitting = ref(false);
+const successRedirect = useSuccessRedirect();
+const successPending = successRedirect.successPending;
 const error = ref('');
 const successMessage = ref('');
 
@@ -138,6 +141,7 @@ async function loadProduct() {
 }
 
 async function submitForm() {
+  if (submitting.value || !successRedirect.begin()) return;
   if (!form.value.name.trim()) {
     error.value = 'Nome é obrigatório';
     return;
@@ -170,7 +174,7 @@ async function submitForm() {
       });
       successMessage.value = 'Produto cadastrado com sucesso.';
     }
-    setTimeout(() => router.push('/products'), 1500);
+    successRedirect.schedule(() => router.push('/products'), successMessage.value);
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao salvar produto';
   } finally {

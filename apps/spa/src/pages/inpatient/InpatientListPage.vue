@@ -44,20 +44,34 @@
       </div>
     </section>
 
-    <DsAlert v-if="error" variant="danger">
-      {{ error }}
+    <p v-if="loading && items.length" class="inpatient-refresh-status" role="status" aria-live="polite">
+      Atualizando a lista sem remover o contexto confirmado em tela…
+    </p>
+
+    <DsAlert v-if="error && items.length" variant="danger" dismissible @dismiss="error = ''">
+      <div class="inpatient-refresh-feedback">
+        <span>{{ error }}. Os dados anteriores permanecem visíveis.</span>
+        <DsButton variant="secondary" size="sm" :loading="loading" :disabled="loading" @click="reload">
+          Tentar novamente
+        </DsButton>
+      </div>
     </DsAlert>
 
     <DataTable
-      v-if="!error"
       :columns="columns"
       :rows="items"
-      :loading="loading"
+      :loading="tableLoading"
+      :feedback="tableFeedback"
       empty-icon="🛏️"
       empty-title="Nenhuma internação ativa"
       empty-description="As internações aparecem quando um atendimento evolui para admissão ou observação prolongada."
       variant="hoverable"
     >
+      <template v-if="tableFeedback" #feedbackAction>
+        <DsButton variant="secondary" :loading="loading" :disabled="loading" @click="reload">
+          Tentar novamente
+        </DsButton>
+      </template>
       <template #emptyAction>
         <DsButton tag="a" to="/encounters" variant="primary">+ Abrir Atendimento</DsButton>
       </template>
@@ -86,6 +100,7 @@
           :to="`/inpatient/${(row as InpatientStaySummary).id}`"
           size="sm"
           variant="secondary"
+          :aria-label="`Ver internação de ${patientName((row as InpatientStaySummary).patientId)}, leito ${(row as InpatientStaySummary).bed}`"
           >Ver</DsButton
         >
       </template>
@@ -105,7 +120,7 @@ import DsIcon from '@cvg-his-v2/design-system/vue/DsIcon.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DataTable from '@/components/DataTable.vue';
-import type { DataTableColumn } from '@/components/DataTable.vue';
+import type { DataTableColumn, DataTableFeedback } from '@/components/DataTable.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 
 const entityCache = useEntityCache();
@@ -116,8 +131,19 @@ const occupiedCount = ref(0);
 const items = ref<InpatientStaySummary[]>([]);
 const loading = ref(true);
 const error = ref('');
-const hasData = computed(() => !loading.value && !error.value);
+const hasData = computed(() => items.value.length > 0 || (!loading.value && !error.value));
+const tableLoading = computed(() => loading.value && items.value.length === 0);
 let loadGeneration = 0;
+
+const tableFeedback = computed<DataTableFeedback | null>(() => {
+  if (!error.value || items.value.length > 0) return null;
+  return {
+    kind: 'error',
+    icon: '⚠️',
+    title: 'Não foi possível carregar as internações',
+    description: `${error.value}. Tente novamente para atualizar a lista.`
+  };
+});
 
 const columns: DataTableColumn[] = [
   { key: 'patient', label: 'Paciente' },
@@ -172,10 +198,6 @@ async function load() {
   const generation = ++loadGeneration;
   loading.value = true;
   error.value = '';
-  items.value = [];
-  activeBedCount.value = 0;
-  occupiedCount.value = 0;
-  patientNames.value = {};
   try {
     const patientIdFilter = typeof route.query.patientId === 'string' ? route.query.patientId : undefined;
     const [stays, beds] = await Promise.all([
@@ -184,6 +206,7 @@ async function load() {
     ]);
     if (generation !== loadGeneration) return;
     items.value = stays;
+    patientNames.value = {};
     const activeBeds = beds.filter((bed) => bed.active);
     activeBedCount.value = activeBeds.length;
     occupiedCount.value = activeBeds.filter((bed) => bed.status === 'occupied').length;
@@ -195,6 +218,14 @@ async function load() {
     );
   } catch (err: unknown) {
     if (generation === loadGeneration) {
+      const accessDenied = typeof err === 'object' && err !== null && 'status' in err && err.status === 403;
+      if (accessDenied) {
+        // Do not keep an authorized snapshot visible after the server revokes access.
+        items.value = [];
+        patientNames.value = {};
+        activeBedCount.value = 0;
+        occupiedCount.value = 0;
+      }
       error.value = err instanceof Error ? err.message : 'Erro ao carregar internações';
     }
   } finally {
@@ -244,9 +275,107 @@ watch(() => route.query.patientId, reload);
   color: var(--color-text-muted, #64748b);
 }
 
+.inpatient-refresh-status {
+  margin: -4px 0 12px;
+  color: var(--color-text-secondary, #55717a);
+  font-size: 13px;
+}
+
+.inpatient-refresh-feedback {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+
+.inpatient-refresh-feedback > span {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
 @media (max-width: 640px) {
   .inpatient-list-page__overview {
     grid-template-columns: 1fr;
+  }
+
+  .inpatient-list-page :deep(.table-wrapper) {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .inpatient-list-page :deep(.data-table) {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    border-collapse: separate;
+  }
+
+  .inpatient-list-page :deep(.data-table thead) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .inpatient-list-page :deep(.data-table tbody) {
+    display: grid;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .inpatient-list-page :deep(.data-table tbody tr) {
+    display: grid;
+    width: 100%;
+    box-sizing: border-box;
+    gap: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--pulse-line, var(--color-border, #d5e2e6));
+    border-radius: 16px;
+    background: var(--pulse-surface, var(--color-surface, #ffffff));
+    box-shadow: var(--pulse-shadow-card, 0 12px 30px rgba(15, 35, 48, 0.08));
+  }
+
+  .inpatient-list-page :deep(.data-table tbody td) {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    padding: 7px 0;
+    border: 0;
+    text-align: right;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .inpatient-list-page :deep(.data-table tbody td::before) {
+    flex: 0 0 auto;
+    margin-right: auto;
+    color: var(--pulse-muted, var(--color-text-muted, #55717a));
+    content: attr(data-label);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .inpatient-list-page :deep(.data-table tbody td:last-child) {
+    align-items: center;
+    padding-top: 12px;
+    margin-top: 4px;
+    border-top: 1px solid var(--pulse-line-soft, var(--color-border, #d5e2e6));
+  }
+
+  .inpatient-list-page :deep(.data-table tbody td:last-child .ds-btn) {
+    min-width: 96px;
   }
 }
 </style>

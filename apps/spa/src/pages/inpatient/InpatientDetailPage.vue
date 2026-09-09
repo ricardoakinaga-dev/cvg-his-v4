@@ -9,19 +9,53 @@
         <DsButton v-if="stay" variant="secondary" tag="a" :to="`/encounters/${stay.encounterId}`">Ver atendimento</DsButton>
         <DsButton v-if="stay" variant="secondary" tag="a" :to="`/medical-records/${stay.encounterId}`">Ver prontuário</DsButton>
         <DsButton v-if="stay" variant="ghost" tag="a" :to="`/patients/${stay.patientId}`">Ver paciente</DsButton>
+        <DsButton
+          v-if="stay"
+          variant="secondary"
+          :loading="loading"
+          :disabled="loading || statusUpdating"
+          aria-label="Atualizar dados da internação"
+          @click="refreshStay"
+        >
+          Atualizar dados
+        </DsButton>
         <DsButton variant="secondary" tag="a" to="/inpatient">Lista de Internações</DsButton>
       </template>
-      </AppPageHeader>
+    </AppPageHeader>
 
-      <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
-        {{ error }}
-      </DsAlert>
+    <DsAlert
+      v-if="error"
+      variant="danger"
+      :dismissible="Boolean(stay)"
+      @dismiss="error = ''"
+    >
+      <div class="feedback-content">
+        <div class="feedback-message">
+          <strong>{{ stay ? 'Atualização da internação interrompida' : 'Internação indisponível' }}</strong>
+          <span>{{ error }}</span>
+        </div>
+        <DsButton
+          variant="secondary"
+          size="sm"
+          :loading="loading"
+          :disabled="loading"
+          @click="retryLoad"
+        >
+          Tentar novamente
+        </DsButton>
+      </div>
+    </DsAlert>
 
-    <div v-if="loading" class="page-loading">
+    <div v-if="loading && !stay" class="page-loading" role="status" aria-live="polite">
       <SkeletonLoader variant="card" width="100%" height="200px" />
     </div>
 
     <template v-else-if="stay">
+      <div class="detail-content" :aria-busy="loading">
+        <p v-if="loading" class="refresh-status" role="status" aria-live="polite">
+          Atualizando os dados de {{ patientName(stay.patientId) }} em {{ stay.unit }} · {{ stay.ward }} · leito {{ stay.bed }}. O alvo desta internação permanece em tela.
+        </p>
+
       <DsCard title="Ficha resumida">
         <div class="summary-grid">
           <div v-for="card in summaryCards" :key="card.label" class="summary-card">
@@ -33,61 +67,44 @@
       </DsCard>
 
       <AppDetailSection title="Informações da Internação">
-        <div class="detail-grid">
+        <dl class="detail-grid">
           <div class="detail-item">
-            <span class="detail-item__label">Paciente</span>
-            <span class="detail-item__value">{{ patientName(stay.patientId) }}</span>
+            <dt class="detail-item__label">Paciente</dt>
+            <dd class="detail-item__value">{{ patientName(stay.patientId) }}</dd>
           </div>
           <div class="detail-item">
-            <span class="detail-item__label">Atendimento</span>
-            <span class="detail-item__value">
+            <dt class="detail-item__label">Atendimento</dt>
+            <dd class="detail-item__value">
               <router-link :to="`/encounters/${stay.encounterId}`" class="encounter-link">
                 {{ stay.encounterId.slice(0, 8) }}...
               </router-link>
-            </span>
+            </dd>
           </div>
           <div class="detail-item">
-            <span class="detail-item__label">Prontuário</span>
-            <span class="detail-item__value">
+            <dt class="detail-item__label">Prontuário</dt>
+            <dd class="detail-item__value">
               <router-link :to="`/medical-records/${stay.encounterId}`" class="encounter-link">
                 Abrir prontuário do atendimento
               </router-link>
-            </span>
+            </dd>
           </div>
           <div class="detail-item">
-            <span class="detail-item__label">Status</span>
-            <span class="detail-item__value">
-              <StatusBadge
-                :label="statusLabel(stay.status)"
-                :variant="statusVariant(stay.status)"
-              />
-            </span>
+            <dt class="detail-item__label">Admissão</dt>
+            <dd class="detail-item__value">{{ formatDateTime(stay.admittedAt) }}</dd>
           </div>
           <div class="detail-item">
-            <span class="detail-item__label">Unidade</span>
-            <span class="detail-item__value">{{ stay.unit }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-item__label">Enfermaria</span>
-            <span class="detail-item__value">{{ stay.ward }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-item__label">Leito</span>
-            <span class="detail-item__value">{{ stay.bed }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-item__label">Admissão</span>
-            <span class="detail-item__value">{{ formatDateTime(stay.admittedAt) }}</span>
+            <dt class="detail-item__label">Última atualização</dt>
+            <dd class="detail-item__value">{{ formatDateTime(stay.updatedAt) }}</dd>
           </div>
           <div v-if="stay.dischargedAt" class="detail-item">
-            <span class="detail-item__label">Alta</span>
-            <span class="detail-item__value">{{ formatDateTime(stay.dischargedAt) }}</span>
+            <dt class="detail-item__label">Alta</dt>
+            <dd class="detail-item__value">{{ formatDateTime(stay.dischargedAt) }}</dd>
           </div>
           <div v-if="stay.dischargeReason" class="detail-item detail-item--full">
-            <span class="detail-item__label">Motivo da Alta</span>
-            <span class="detail-item__value">{{ stay.dischargeReason }}</span>
+            <dt class="detail-item__label">Motivo da Alta</dt>
+            <dd class="detail-item__value">{{ stay.dischargeReason }}</dd>
           </div>
-        </div>
+        </dl>
       </AppDetailSection>
 
       <AppDetailSection v-if="stay.status !== 'discharged'" title="Ações">
@@ -137,7 +154,23 @@
         </template>
       </DsModal>
 
-      <DsAlert v-if="formError" variant="danger">{{ formError }}</DsAlert>
+      <DsAlert v-if="formError" variant="danger" dismissible @dismiss="formError = ''">
+        <div class="feedback-content">
+          <div class="feedback-message">
+            <strong>Ação não concluída</strong>
+            <span>{{ formError }}</span>
+          </div>
+          <DsButton
+            variant="secondary"
+            size="sm"
+            :loading="loading"
+            :disabled="loading || statusUpdating"
+            @click="refreshStay"
+          >
+            Atualizar dados
+          </DsButton>
+        </div>
+      </DsAlert>
       <DsAlert v-if="successMessage" variant="success">{{ successMessage }}</DsAlert>
 
       <AppDetailSection title="Evolução Clínica">
@@ -361,6 +394,7 @@
           {{ dailyChargeActionError }}
         </DsAlert>
       </AppDetailSection>
+      </div>
     </template>
   </div>
 </template>
@@ -442,14 +476,17 @@ const dailyChargeForm = ref({
 let loadGeneration = 0;
 let mounted = true;
 
+type LoadStayOptions = {
+  preserveCurrent?: boolean;
+};
+
 const summaryCards = computed(() => {
   if (!stay.value) return [];
   return [
-    { label: 'Paciente', value: patientNameCache.value || '—', hint: 'Animal internado' },
     { label: 'Status', value: statusLabel(stay.value.status), hint: 'Situação operacional' },
-    { label: 'Leito', value: `${stay.value.unit} / ${stay.value.ward} / ${stay.value.bed}`, hint: 'Localização atual' },
-    { label: 'Evoluções', value: progressLoadError.value ? '—' : progressNotes.value.length.toString(), hint: 'Registros clínicos' },
-    { label: 'Diárias', value: dailyChargeLoadError.value ? '—' : formatCurrency(totalPendingDailyCharges.value), hint: 'Pendente faturamento' }
+    { label: 'Localização', value: `${stay.value.unit} / ${stay.value.ward} / ${stay.value.bed}`, hint: 'Leito atual' },
+    { label: 'Evoluções', value: progressLoading.value ? '…' : progressLoadError.value ? '—' : progressNotes.value.length.toString(), hint: 'Registros clínicos' },
+    { label: 'Diárias', value: dailyChargesLoading.value ? '…' : dailyChargeLoadError.value ? '—' : formatCurrency(totalPendingDailyCharges.value), hint: 'Pendente faturamento' }
   ];
 });
 
@@ -536,7 +573,7 @@ async function updateStatus(newStatus: InpatientStaySummary['status']) {
     stay.value = updated;
     successMessage.value = `Status atualizado para ${statusLabel(newStatus)}!`;
   } catch (err: unknown) {
-    formError.value = err instanceof Error ? err.message : 'Erro ao atualizar status';
+    formError.value = `Não foi possível atualizar o status de ${patientName(stay.value.patientId)} nesta internação: ${errorMessage(err, 'erro desconhecido')}`;
   } finally {
     if (requestGeneration === loadGeneration) statusUpdating.value = false;
   }
@@ -572,13 +609,16 @@ async function doDischarge() {
     showDischargeModal.value = false;
     successMessage.value = 'Alta registrada com sucesso!';
   } catch (err: unknown) {
-    dischargeError.value = err instanceof Error ? err.message : 'Erro ao registrar alta';
+    dischargeError.value = `Não foi possível registrar a alta de ${patientName(stay.value.patientId)}: ${errorMessage(err, 'erro desconhecido')}`;
   } finally {
     if (requestGeneration === loadGeneration) statusUpdating.value = false;
   }
 }
 
 function errorMessage(err: unknown, fallback: string): string {
+  if (typeof err === 'object' && err !== null && 'status' in err && (err as { status?: unknown }).status === 403) {
+    return 'Você não tem permissão para consultar ou atualizar esta internação.';
+  }
   return err instanceof Error && err.message.trim() ? err.message : fallback;
 }
 
@@ -597,9 +637,12 @@ async function loadProgress(requestGeneration = loadGeneration, requestStayId = 
     progressNotes.value = notes;
     const authorIds = [...new Set(progressNotes.value.map((n) => n.authoredByUserId))];
     await entityCache.preloadUserNames(authorIds);
+    if (!mounted || requestGeneration !== loadGeneration || stayId.value !== requestStayId) return;
     for (const id of authorIds) {
       if (!authorNames.value[id]) {
-        authorNames.value[id] = await entityCache.getUserName(id);
+        const name = await entityCache.getUserName(id);
+        if (!mounted || requestGeneration !== loadGeneration || stayId.value !== requestStayId) return;
+        authorNames.value[id] = name;
       }
     }
   } catch (err: unknown) {
@@ -818,6 +861,13 @@ async function markChargeBilled(chargeId: string) {
 function resetChartState() {
   stay.value = null;
   patientNameCache.value = '';
+  statusUpdating.value = false;
+  showDischargeModal.value = false;
+  dischargeReason.value = '';
+  dischargeError.value = '';
+  progressSubmitting.value = false;
+  occurrenceSubmitting.value = false;
+  dailyChargeSubmitting.value = false;
   authorNames.value = {};
   progressNotes.value = [];
   progressLoadError.value = '';
@@ -840,10 +890,11 @@ function resetChartState() {
   formError.value = '';
 }
 
-async function loadStay(requestStayId: string) {
+async function loadStay(requestStayId: string, options: LoadStayOptions = {}) {
   const requestGeneration = ++loadGeneration;
   stayId.value = requestStayId;
-  resetChartState();
+  const preserveCurrent = options.preserveCurrent === true && stay.value?.id === requestStayId;
+  if (!preserveCurrent) resetChartState();
   loading.value = true;
   error.value = '';
   try {
@@ -851,7 +902,9 @@ async function loadStay(requestStayId: string) {
     if (!mounted || requestGeneration !== loadGeneration || stayId.value !== requestStayId) return;
     const found = stays.find((s) => s.id === requestStayId);
     if (!found) {
-      error.value = 'Internação não encontrada';
+      error.value = preserveCurrent
+        ? `A internação de ${patientName(stay.value?.patientId ?? '')} não foi encontrada na atualização. Os dados anteriores permanecem visíveis.`
+        : 'Internação não encontrada';
       return;
     }
     stay.value = found;
@@ -859,14 +912,31 @@ async function loadStay(requestStayId: string) {
     void entityCache.getPatientName(found.patientId).then((name) => {
       if (mounted && requestGeneration === loadGeneration && stayId.value === requestStayId) patientNameCache.value = name;
     }).catch(() => undefined);
-    void loadProgress(requestGeneration, requestStayId);
-    void loadOccurrences(requestGeneration, requestStayId);
-    void loadDailyCharges(requestGeneration, requestStayId);
+    if (!preserveCurrent) {
+      void loadProgress(requestGeneration, requestStayId);
+      void loadOccurrences(requestGeneration, requestStayId);
+      void loadDailyCharges(requestGeneration, requestStayId);
+    }
   } catch (err: unknown) {
-    if (requestGeneration === loadGeneration && stayId.value === requestStayId) error.value = errorMessage(err, 'Erro ao carregar internação');
+    if (requestGeneration === loadGeneration && stayId.value === requestStayId) {
+      const detail = errorMessage(err, 'erro desconhecido');
+      error.value = preserveCurrent
+        ? `Não foi possível atualizar esta internação sem perder o contexto atual: ${detail}`
+        : `Não foi possível carregar esta internação: ${detail}`;
+    }
   } finally {
-    if (requestGeneration === loadGeneration && !stay.value) loading.value = false;
+    if (requestGeneration === loadGeneration) loading.value = false;
   }
+}
+
+function refreshStay() {
+  if (!stay.value || loading.value || statusUpdating.value) return;
+  void loadStay(stay.value.id, { preserveCurrent: true });
+}
+
+function retryLoad() {
+  if (loading.value) return;
+  void loadStay(stayId.value, { preserveCurrent: Boolean(stay.value) });
 }
 
 onMounted(() => {
@@ -889,6 +959,7 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+  margin: 0;
 }
 
 .summary-grid {
@@ -932,6 +1003,10 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 4px;
 }
+.detail-item dt,
+.detail-item dd {
+  margin: 0;
+}
 .detail-item--full {
   grid-column: 1 / -1;
 }
@@ -943,8 +1018,10 @@ onBeforeUnmount(() => {
   color: var(--color-text-muted, #94a3b8);
 }
 .detail-item__value {
+  min-width: 0;
   font-size: 15px;
   color: var(--color-text, #0f172a);
+  overflow-wrap: anywhere;
 }
 .detail-actions {
   display: flex;
@@ -960,6 +1037,46 @@ onBeforeUnmount(() => {
 }
 .page-loading {
   padding: 24px 0;
+}
+.detail-content {
+  position: relative;
+}
+
+@media (max-width: 640px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+.refresh-status {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--color-primary-500, #3b82f6);
+  border-radius: 8px;
+  background: var(--color-primary-subtle, #e0f7f7);
+  color: var(--color-text, #0f172a);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.feedback-content {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+.feedback-content > span {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.feedback-message {
+  display: grid;
+  flex: 1 1 240px;
+  min-width: 0;
+  gap: 2px;
+}
+.feedback-message strong {
+  font-weight: 700;
 }
 .progress-form {
   margin-bottom: 16px;
@@ -1091,6 +1208,9 @@ onBeforeUnmount(() => {
   margin-bottom: 1rem;
 }
 @media (max-width: 640px) {
+  .feedback-content {
+    align-items: stretch;
+  }
   .detail-actions,
   .progress-form__actions {
     flex-wrap: wrap;

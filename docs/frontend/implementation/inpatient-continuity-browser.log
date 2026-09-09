@@ -1,0 +1,331 @@
+{
+  "out": "/home/ricardo/cvg-his-v4/docs/frontend/implementation/evidence/continuity-w0mbgq",
+  "failures": 0,
+  "inputsStable": true,
+  "rows": [
+    {
+      "target": "/inpatient",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "documentWidth": 1440,
+      "documentHeight": 900,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "inpatient-list-status-refresh-and-forbidden",
+          "passed": true,
+          "initialStatus": "Internado",
+          "refreshedStatus": "Estável",
+          "forbiddenFeedback": true,
+          "noStaleRows": true
+        }
+      ]
+    },
+    {
+      "target": "/inpatient",
+      "theme": "light",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "documentHeight": 958,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "inpatient-list-status-refresh-and-forbidden",
+          "passed": true,
+          "initialStatus": "Internado",
+          "refreshedStatus": "Estável",
+          "forbiddenFeedback": true,
+          "noStaleRows": true
+        }
+      ]
+    },
+    {
+      "target": "/inpatient",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "documentWidth": 1440,
+      "documentHeight": 900,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "inpatient-list-status-refresh-and-forbidden",
+          "passed": true,
+          "initialStatus": "Internado",
+          "refreshedStatus": "Estável",
+          "forbiddenFeedback": true,
+          "noStaleRows": true
+        }
+      ]
+    },
+    {
+      "target": "/inpatient",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "documentHeight": 958,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "inpatient-list-status-refresh-and-forbidden",
+          "passed": true,
+          "initialStatus": "Internado",
+          "refreshedStatus": "Estável",
+          "forbiddenFeedback": true,
+          "noStaleRows": true
+        }
+      ]
+    },
+    {
+      "target": "/inpatient/board",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "documentWidth": 1440,
+      "documentHeight": 900,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "bed-board-status-refresh-and-forbidden",
+          "passed": true,
+          "statusLabels": [
+            "Ocupado",
+            "Disponível",
+            "Manutenção",
+            "Bloqueado"
+          ],
+          "preservesCardsWhileRefreshing": true,
+          "preservesCardsAfterTransientFailure": true,
+          "forbiddenFeedback": true
+        }
+      ]
+    },
+    {
+      "target": "/inpatient/board",
+      "theme": "light",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "documentHeight": 1092,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "bed-board-status-refresh-and-forbidden",
+          "passed": true,
+          "statusLabels": [
+            "Ocupado",
+            "Disponível",
+            "Manutenção",
+            "Bloqueado"
+          ],
+          "preservesCardsWhileRefreshing": true,
+          "preservesCardsAfterTransientFailure": true,
+          "forbiddenFeedback": true
+        }
+      ]
+    },
+    {
+      "target": "/inpatient/board",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "documentWidth": 1440,
+      "documentHeight": 900,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "bed-board-status-refresh-and-forbidden",
+          "passed": true,
+          "statusLabels": [
+            "Ocupado",
+            "Disponível",
+            "Manutenção",
+            "Bloqueado"
+          ],
+          "preservesCardsWhileRefreshing": true,
+          "preservesCardsAfterTransientFailure": true,
+          "forbiddenFeedback": true
+        }
+      ]
+    },
+    {
+      "target": "/inpatient/board",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "documentHeight": 1092,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "bed-board-status-refresh-and-forbidden",
+          "passed": true,
+          "statusLabels": [
+            "Ocupado",
+            "Disponível",
+            "Manutenção",
+            "Bloqueado"
+          ],
+          "preservesCardsWhileRefreshing": true,
+          "preservesCardsAfterTransientFailure": true,
+          "forbiddenFeedback": true
+        }
+      ]
+    },
+    {
+      "target": "/inpatient/synthetic-inpatient-stay",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "documentWidth": 1440,
+      "documentHeight": 1856,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "inpatient-detail-route-change-invalidates-previous-request",
+          "passed": true,
+          "routeFrom": "http://127.0.0.1:36731/inpatient/synthetic-inpatient-stay",
+          "routeTo": "http://127.0.0.1:36731/inpatient/synthetic-inpatient-stay-2",
+          "newBed": "B-01",
+          "previousContextDiscarded": true,
+          "refreshActionAvailable": true
+        },
+        {
+          "test": "inpatient-detail-context-refresh-and-forbidden",
+          "passed": true,
+          "initialBed": "A-01",
+          "refreshedBed": "A-02",
+          "routeChangedTo": "B-01",
+          "routeRefreshedBed": "B-02",
+          "refreshedStatus": "Estável",
+          "preservesContextAfterTransientFailure": true,
+          "preservesContextOnForbidden": true,
+          "retryAvailable": true
+        }
+      ]
+    },
+    {
+      "target": "/inpatient/synthetic-inpatient-stay",
+      "theme": "light",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "documentHeight": 2544,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "inpatient-detail-route-change-invalidates-previous-request",
+          "passed": true,
+          "routeFrom": "http://127.0.0.1:36731/inpatient/synthetic-inpatient-stay",
+          "routeTo": "http://127.0.0.1:36731/inpatient/synthetic-inpatient-stay-2",
+          "newBed": "B-01",
+          "previousContextDiscarded": true,
+          "refreshActionAvailable": true
+        },
+        {
+          "test": "inpatient-detail-context-refresh-and-forbidden",
+          "passed": true,
+          "initialBed": "A-01",
+          "refreshedBed": "A-02",
+          "routeChangedTo": "B-01",
+          "routeRefreshedBed": "B-02",
+          "refreshedStatus": "Estável",
+          "preservesContextAfterTransientFailure": true,
+          "preservesContextOnForbidden": true,
+          "retryAvailable": true
+        }
+      ]
+    },
+    {
+      "target": "/inpatient/synthetic-inpatient-stay",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "documentWidth": 1440,
+      "documentHeight": 1856,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "inpatient-detail-route-change-invalidates-previous-request",
+          "passed": true,
+          "routeFrom": "http://127.0.0.1:36731/inpatient/synthetic-inpatient-stay",
+          "routeTo": "http://127.0.0.1:36731/inpatient/synthetic-inpatient-stay-2",
+          "newBed": "B-01",
+          "previousContextDiscarded": true,
+          "refreshActionAvailable": true
+        },
+        {
+          "test": "inpatient-detail-context-refresh-and-forbidden",
+          "passed": true,
+          "initialBed": "A-01",
+          "refreshedBed": "A-02",
+          "routeChangedTo": "B-01",
+          "routeRefreshedBed": "B-02",
+          "refreshedStatus": "Estável",
+          "preservesContextAfterTransientFailure": true,
+          "preservesContextOnForbidden": true,
+          "retryAvailable": true
+        }
+      ]
+    },
+    {
+      "target": "/inpatient/synthetic-inpatient-stay",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "documentHeight": 2544,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "inpatient-detail-route-change-invalidates-previous-request",
+          "passed": true,
+          "routeFrom": "http://127.0.0.1:36731/inpatient/synthetic-inpatient-stay",
+          "routeTo": "http://127.0.0.1:36731/inpatient/synthetic-inpatient-stay-2",
+          "newBed": "B-01",
+          "previousContextDiscarded": true,
+          "refreshActionAvailable": true
+        },
+        {
+          "test": "inpatient-detail-context-refresh-and-forbidden",
+          "passed": true,
+          "initialBed": "A-01",
+          "refreshedBed": "A-02",
+          "routeChangedTo": "B-01",
+          "routeRefreshedBed": "B-02",
+          "refreshedStatus": "Estável",
+          "preservesContextAfterTransientFailure": true,
+          "preservesContextOnForbidden": true,
+          "retryAvailable": true
+        }
+      ]
+    }
+  ]
+}

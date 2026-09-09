@@ -1,4 +1,5 @@
 import { test as base, expect, type Page } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
 
 /**
  * Reusable fixtures for SPA E2E tests.
@@ -111,10 +112,16 @@ export class ApiCall {
   }
 
   private async request(path: string, init: RequestInit): Promise<Response> {
+    const method = (init.method ?? 'GET').toUpperCase();
+    const headers = new Headers(init.headers);
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && !headers.has('Idempotency-Key')) {
+      headers.set('Idempotency-Key', `e2e-${randomUUID()}`);
+    }
+
     let response = await fetch(`${API_URL}${path}`, {
       ...init,
       headers: {
-        ...(init.headers ?? {}),
+        ...Object.fromEntries(headers.entries()),
         Authorization: `Bearer ${this.token}`
       }
     });
@@ -128,7 +135,7 @@ export class ApiCall {
       response = await fetch(`${API_URL}${path}`, {
         ...init,
         headers: {
-          ...(init.headers ?? {}),
+          ...Object.fromEntries(headers.entries()),
           Authorization: `Bearer ${this.token}`
         }
       });
@@ -353,7 +360,10 @@ async function createOwnerViaUI(page: Page, data: OwnerFormData): Promise<string
   );
 
   await page.fill('#fullName', data.fullName);
-  if (data.documentId) await page.fill('#documentId', data.documentId);
+  if (data.documentId) {
+    await page.getByText('Documentação do Tutor', { exact: true }).click();
+    await page.fill('#documentId', data.documentId);
+  }
 
   // The current client form exposes dedicated contact fields instead of the
   // legacy dynamic contact-value control.
@@ -361,8 +371,8 @@ async function createOwnerViaUI(page: Page, data: OwnerFormData): Promise<string
 
   await page.click('button[type="submit"]');
 
-  // Wait for success message (deterministic)
-  await expect(page.getByText('Cliente cadastrado com sucesso')).toBeVisible({ timeout: 15000 });
+  // The current detail page redirects immediately after persistence; the URL
+  // is the stable success contract and avoids racing a transient toast.
   await page.waitForURL(/\/owners\/(?!new$)[^/]+$/, { timeout: 15000 });
 
   // Extract owner ID from URL after redirect
@@ -376,7 +386,7 @@ async function createPatientViaUI(page: Page, data: PatientFormData): Promise<st
   await page.waitForLoadState('networkidle');
 
   await expect(page.getByRole('main').locator('.app-page-header__title')).toHaveText(
-    'Cadastrar Novo Paciente',
+    'Novo paciente',
     { timeout: 10000 }
   );
 
@@ -391,25 +401,14 @@ async function createPatientViaUI(page: Page, data: PatientFormData): Promise<st
     }
   }
 
-  // Select owner via SearchSelect (uses deterministic wait)
-  const searchInput = page.getByPlaceholder(/buscar.*(tutor|cliente)|selecione.*(tutor|cliente)/i);
-  if (await searchInput.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await searchInput.click();
-    await searchInput.fill(data.ownerName);
-    const option = page.getByRole('option', { name: data.ownerName });
-    await option.waitFor({ timeout: 10000 });
-    await option.click();
-    await page.waitForSelector('.search-select__dropdown', { state: 'detached', timeout: 5000 });
-  } else {
-    // Fallback: use the generic search-select input
-    const genericInput = page.getByPlaceholder(/buscar/i).first();
-    await genericInput.click();
-    await genericInput.fill(data.ownerName);
-    const option = page.getByRole('option', { name: data.ownerName });
-    await option.waitFor({ timeout: 10000 });
-    await option.click();
-    await page.waitForSelector('.search-select__dropdown', { state: 'detached', timeout: 5000 });
-  }
+  // Select owner through the current explicit search-and-link contract.
+  const ownerSearch = page.locator('#ownerSearch');
+  await ownerSearch.fill(data.ownerName);
+  await page.getByRole('button', { name: 'Buscar tutor', exact: true }).click();
+  const ownerOption = page.locator('.client-option').filter({ hasText: data.ownerName }).first();
+  await ownerOption.waitFor({ timeout: 10000 });
+  await ownerOption.click();
+  await page.getByRole('button', { name: 'Vincular tutor', exact: true }).click();
 
   await page.click('button[type="submit"]');
 

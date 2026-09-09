@@ -3,14 +3,47 @@
     <AppPageHeader :title="isEdit ? 'Editar paciente' : 'Novo paciente'" subtitle="Identificação, tutor responsável e dados do animal.">
       <template #actions><DsButton variant="secondary" tag="a" to="/patients">Voltar aos pacientes</DsButton></template>
     </AppPageHeader>
-    <DsAlert v-if="formError" variant="danger">{{ formError }}</DsAlert>
+    <div v-if="formError" ref="formErrorRegion" class="form-feedback-region" tabindex="-1">
+      <DsAlert variant="danger">{{ formError }}</DsAlert>
+    </div>
+    <div v-if="duplicatePatientId" ref="duplicateFeedbackRegion" class="duplicate-feedback-region" tabindex="-1">
+      <DsAlert variant="warning" icon="alert" title="Cadastro possivelmente duplicado">
+        <p>Já existe um animal com o mesmo nome vinculado a este tutor. Nada novo foi criado e seu rascunho continua preservado.</p>
+        <div class="duplicate-feedback__actions">
+          <DsButton type="button" variant="secondary" @click="openDuplicatePatient">Abrir animal existente</DsButton>
+          <DsButton type="button" variant="ghost" @click="dismissDuplicateWarning">Manter este rascunho</DsButton>
+        </div>
+      </DsAlert>
+    </div>
     <DsAlert v-if="successMessage" variant="success">{{ successMessage }}</DsAlert>
     <p v-if="initialLoading" class="state-message" role="status">Carregando ficha e cadastros…</p>
     <section v-else-if="patientFailed" class="form-section" aria-label="Ficha indisponível">
       <h2>Não foi possível carregar o paciente</h2><p class="state-message">A ficha precisa ser carregada antes de qualquer alteração.</p>
       <DsButton variant="secondary" @click="loadPage">Tentar novamente</DsButton>
     </section>
-    <form v-else class="patient-form" @submit.prevent="onSubmit">
+    <form
+      v-else
+      class="patient-form"
+      novalidate
+      :aria-describedby="validationErrorFields.length ? 'patient-form-error-summary' : undefined"
+      @submit.prevent="onSubmit"
+    >
+      <div
+        v-if="validationErrorFields.length"
+        id="patient-form-error-summary"
+        class="form-error-summary"
+        aria-labelledby="patient-form-error-summary-title"
+      >
+        <h2 id="patient-form-error-summary-title">Revise os campos obrigatórios</h2>
+        <p>Confira os campos destacados antes de salvar o paciente.</p>
+        <ul>
+          <li v-for="field in validationErrorFields" :key="field.key">
+            <a :href="`#${field.targetId}`" @click.prevent="focusValidationField(field.key)">
+              {{ field.label }}: {{ errors[field.key] }}
+            </a>
+          </li>
+        </ul>
+      </div>
       <fieldset class="form-body" :disabled="submitting || saveCompleted">
         <section class="form-section owner-section" aria-labelledby="owner-title">
           <div class="section-heading"><h2 id="owner-title"><span class="section-number" aria-hidden="true">01</span>Tutor responsável <span class="required-mark" aria-hidden="true">*</span></h2><DsButton type="button" size="sm" variant="secondary" tag="a" to="/owners/new">Novo tutor</DsButton></div>
@@ -20,7 +53,7 @@
           </div>
           <DsAlert v-if="ownerIdentityError" variant="warning">{{ ownerIdentityError }} <DsButton type="button" variant="secondary" size="sm" :disabled="ownersLoading || submitting" @click="resolveRequestedOwner">Recarregar identificação</DsButton></DsAlert>
           <template v-if="pickerOpen || !linkedOwner">
-            <div class="owner-search"><DsInput id="ownerSearch" v-model="ownerSearch" type="search" label="Buscar tutor" placeholder="Nome, documento ou contato" :disabled="ownersLoading" @keydown.enter.prevent="searchOwners" /><DsButton type="button" variant="secondary" :disabled="ownersLoading || submitting" @click="searchOwners">Buscar tutor</DsButton></div>
+            <div class="owner-search"><DsInput id="ownerSearch" v-model="ownerSearch" type="search" label="Tutor responsável" placeholder="Nome, documento ou contato" hint="Busque por nome, documento ou contato." :error="errors.primaryOwnerId" :disabled="ownersLoading" required @keydown.enter.prevent="searchOwners" /><DsButton type="button" variant="secondary" :disabled="ownersLoading || submitting" @click="searchOwners">Buscar tutor</DsButton></div>
             <p v-if="ownerSearch !== ownerAppliedSearch" class="state-message">Busca alterada. Clique em Buscar tutor para atualizar a lista.</p>
             <p v-if="ownersLoading" class="state-message" role="status">Carregando tutores…</p>
             <DsAlert v-else-if="ownersError" variant="danger">{{ ownersError }} <DsButton type="button" size="sm" variant="secondary" @click="loadOwners(ownerPage, ownerAppliedSearch)">Recarregar tutores</DsButton></DsAlert>
@@ -35,7 +68,6 @@
             </div>
             <div class="owner-confirm"><DsButton type="button" :disabled="!stagedOwner || ownersLoading || submitting" @click="linkSelectedOwner">Vincular tutor</DsButton><DsButton v-if="linkedOwner" type="button" variant="secondary" @click="pickerOpen = false; stagedOwner = null">Manter tutor atual</DsButton></div>
           </template>
-          <p v-if="errors.primaryOwnerId" id="owner-error" class="field-error" role="alert">{{ errors.primaryOwnerId }}</p>
         </section>
         <section class="form-section identity-section" aria-labelledby="identity-title">
           <h2 id="identity-title"><span class="section-number" aria-hidden="true">02</span>Identificação</h2>
@@ -165,10 +197,17 @@
 
           </div>
         </details>
-        <div class="form-actions"><DsButton type="submit" variant="primary" :loading="submitting" :disabled="!canSave">{{ submitting ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Salvar animal' }}</DsButton><DsButton type="button" variant="secondary" tag="a" to="/patients">Cancelar</DsButton></div>
+        <div class="form-actions"><DsButton type="submit" variant="primary" :loading="submitting" :disabled="!canSave || successPending">{{ submitting ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Salvar animal' }}</DsButton><DsButton type="button" variant="secondary" tag="a" to="/patients">Cancelar</DsButton></div>
       </fieldset>
       <p class="form-footnote">Os campos com * são obrigatórios.</p>
     </form>
+    <DsModal :open="leaveRequested" title="Alterações não salvas" size="sm" initial-focus="#patient-continue-editing" @close="resolveLeave(false)">
+      <p>Você alterou os dados deste paciente. Continue editando para salvar ou descarte as alterações para sair.</p>
+      <template #footer>
+        <DsButton variant="secondary" @click="resolveLeave(true)">Descartar e sair</DsButton>
+        <DsButton id="patient-continue-editing" variant="primary" @click="resolveLeave(false)">Continuar editando</DsButton>
+      </template>
+    </DsModal>
   </div>
 </template>
 
@@ -181,7 +220,11 @@ import { breedsService, type BreedSummary } from '@/services/breeds';
 import { animalSpeciesService, type AnimalSpeciesSummary } from '@/services/species';
 import type { CreatePatientRequest, UpdatePatientRequest, PatientSummary } from '@/types/patient';
 import type { OwnerSummary } from '@/types/owner';
+import { useUnsavedChanges } from '@/composables/useUnsavedChanges';
+import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import { useFormValidation } from '@/composables/useFormValidation';
+import { duplicateEntityId } from '@/utils/duplicateConflict';
+import { useSuccessRedirect } from '@/composables/successRedirect';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
@@ -212,15 +255,19 @@ const emptyForm = () => ({
   status: 'active' as 'active' | 'inactive' | 'deceased'
 });
 const form = reactive(emptyForm());
+const { leaveRequested, resolveLeave, markClean } = useUnsavedChanges(() => JSON.stringify(form), {
+  resetsForm: (to, from) => to.query.ownerId !== from.query.ownerId
+});
 const owners = ref<OwnerSummary[]>([]), linkedOwner = ref<OwnerSummary | null>(null), stagedOwner = ref<OwnerSummary | null>(null);
 const breeds = ref<BreedSummary[]>([]), speciesCatalog = ref<AnimalSpeciesSummary[]>([]);
 const saveCompleted = ref(false);
+const duplicatePatientId = ref('');
 const initialLoading = ref(true), patientFailed = ref(false), ownersLoading = ref(false), breedsLoading = ref(false), speciesLoading = ref(false);
 const ownersError = ref(''), ownerIdentityError = ref(''), speciesError = ref(''), breedsError = ref('');
 const ownerSearch = ref(''), ownerAppliedSearch = ref(''), pickerOpen = ref(true), requestedOwnerId = ref('');
 const ownerPage = ref(1), ownerPages = ref(1), ownerRemotePaging = ref(false);
 let pageGeneration = 0, ownerGeneration = 0, speciesGeneration = 0, breedGeneration = 0, identityGeneration = 0;
-let active = true, redirectTimer: ReturnType<typeof setTimeout> | undefined;
+let active = true;
 const current = (version: number) => active && version === pageGeneration;
 const visibleOwners = computed(() => ownerRemotePaging.value ? owners.value : owners.value.slice((ownerPage.value - 1) * 12, ownerPage.value * 12));
 const speciesOptions = computed(() => speciesCatalog.value);
@@ -229,6 +276,12 @@ const breedOptionsForSpecies = computed(() => breeds.value.filter(item => !form.
 const selectedBreedOutsideCatalog = computed(() => Boolean(form.breed) && !breedOptionsForSpecies.value.some(item => item.name === form.breed));
 const speciesSelectHint = computed(() => speciesLoading.value ? 'Carregando espécies…' : selectedSpeciesOutsideCatalog.value ? 'Espécie registrada na ficha, fora do catálogo atual.' : undefined);
 const breedSelectHint = computed(() => breedsLoading.value ? 'Carregando raças…' : selectedBreedOutsideCatalog.value ? 'Raça registrada na ficha, fora do catálogo atual.' : undefined);
+const validationFields = [
+  { key: 'name', label: 'Nome do animal', targetId: 'name' },
+  { key: 'species', label: 'Espécie', targetId: 'species' },
+  { key: 'sex', label: 'Sexo', targetId: 'sex' },
+  { key: 'primaryOwnerId', label: 'Tutor responsável', targetId: 'ownerSearch' }
+] as const;
 const validation = useFormValidation({ rules: {
   name: [(v: unknown) => (!(v as string)?.trim() ? 'Nome é obrigatório' : null)],
   species: [(v: unknown) => (!v ? 'Espécie é obrigatória' : null)],
@@ -236,7 +289,41 @@ const validation = useFormValidation({ rules: {
   primaryOwnerId: [(v: unknown) => (!v ? 'Selecione um tutor responsável' : null)]
 } });
 const { errors, formError, successMessage, submitting, validate } = validation;
+const successRedirect = useSuccessRedirect();
+const successPending = successRedirect.successPending;
+const formErrorRegion = ref<HTMLElement | null>(null);
+const duplicateFeedbackRegion = ref<HTMLElement | null>(null);
+const validationErrorFields = computed(() => validationFields.filter(field => Boolean(errors[field.key])));
 const canSave = computed(() => !submitting.value && !saveCompleted.value && !initialLoading.value && !patientFailed.value && linkedOwner.value?.id === form.primaryOwnerId && Boolean(form.primaryOwnerId) && (isEdit.value || (!speciesLoading.value && !speciesError.value && speciesOptions.value.length > 0)));
+function focusValidationField(key: typeof validationFields[number]['key']) {
+  const field = validationFields.find(item => item.key === key);
+  if (!field) return;
+  document.getElementById(field.targetId)?.focus();
+}
+async function focusDuplicateFeedback() {
+  await nextTick();
+  const region = duplicateFeedbackRegion.value;
+  if (!region) return;
+  const behavior = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+  region.scrollIntoView?.({ block: 'center', behavior });
+  region.focus({ preventScroll: true });
+}
+function openDuplicatePatient() {
+  const id = duplicatePatientId.value;
+  if (id) void router.push(`/patients/${id}`);
+}
+function dismissDuplicateWarning() {
+  duplicatePatientId.value = '';
+  document.getElementById('name')?.focus({ preventScroll: true });
+}
+async function focusFormError() {
+  await nextTick();
+  const region = formErrorRegion.value;
+  if (!region) return;
+  const behavior = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+  region.scrollIntoView?.({ block: 'center', behavior });
+  region.focus({ preventScroll: true });
+}
 function ownerContact(owner: OwnerSummary) { return (owner.contacts?.find(contact => contact.primary) || owner.contacts?.[0])?.value || ''; }
 function ownerStatus(owner: OwnerSummary) { return owner.status === 'active' ? 'Ativo' : owner.status === 'inactive' ? 'Inativo' : 'Não informado'; }
 async function loadOwners(page = 1, search = ownerSearch.value.trim()) {
@@ -272,6 +359,7 @@ async function resolveRequestedOwner() {
     if (!current(version) || request !== identityGeneration) return;
     if (owner.id !== id) throw new Error('Identity mismatch');
     linkedOwner.value = owner; form.primaryOwnerId = id; pickerOpen.value = false;
+    if (initialLoading.value) markClean();
   } catch { if (current(version) && request === identityGeneration) ownerIdentityError.value = `Não foi possível confirmar o tutor ${id}. Recarregue a identificação ou selecione um tutor.`; }
 }
 async function loadSpecies() {
@@ -288,8 +376,9 @@ async function loadBreeds() {
 }
 async function loadPage() {
   const version = ++pageGeneration, edit = isEdit.value, id = patientId.value;
-  clearTimeout(redirectTimer); ownerGeneration++; speciesGeneration++; breedGeneration++; identityGeneration++;
-  initialLoading.value = true; patientFailed.value = false; saveCompleted.value = false; Object.assign(form, emptyForm()); validation.clearErrors(); formError.value = ''; successMessage.value = '';
+  successRedirect.invalidate(); ownerGeneration++; speciesGeneration++; breedGeneration++; identityGeneration++;
+  initialLoading.value = true; patientFailed.value = false; saveCompleted.value = false; duplicatePatientId.value = ''; Object.assign(form, emptyForm()); validation.clearErrors(); formError.value = ''; successMessage.value = '';
+  markClean();
   linkedOwner.value = null; stagedOwner.value = null; owners.value = []; breeds.value = []; speciesCatalog.value = []; pickerOpen.value = true;
   ownerSearch.value = ''; ownerIdentityError.value = ''; requestedOwnerId.value = '';
   const [patientResult] = await Promise.allSettled([edit ? patientService.getById(id) : Promise.resolve(null), loadOwners(1, ''), loadSpecies(), loadBreeds()]);
@@ -319,15 +408,23 @@ async function loadPage() {
       form.status = patient.status;
     requestedOwnerId.value = patient.primaryOwnerId;
   } else requestedOwnerId.value = typeof route.query?.ownerId === 'string' ? route.query.ownerId.trim() : '';
+  markClean();
   if (requestedOwnerId.value) await resolveRequestedOwner();
   if (current(version)) initialLoading.value = false;
 }
 async function onSubmit() {
   if (submitting.value || saveCompleted.value || initialLoading.value || patientFailed.value) return;
-  if (!validate({ name: form.name, species: form.species, sex: form.sex, primaryOwnerId: form.primaryOwnerId })) return;
+  if (!validate({ name: form.name, species: form.species, sex: form.sex, primaryOwnerId: form.primaryOwnerId })) {
+    await nextTick();
+    const firstInvalidField = validationErrorFields.value[0];
+    if (firstInvalidField) focusValidationField(firstInvalidField.key);
+    return;
+  }
   if (!canSave.value) { formError.value = 'Confirme o tutor e os cadastros necessários antes de salvar.'; return; }
   const version = pageGeneration, edit = isEdit.value, id = patientId.value;
-  submitting.value = true; formError.value = ''; successMessage.value = '';
+  const submittedSnapshot = JSON.stringify(form);
+  if (!successRedirect.begin()) return;
+  submitting.value = true; duplicatePatientId.value = ''; formError.value = ''; successMessage.value = '';
   try {
     const payload: CreatePatientRequest | UpdatePatientRequest = {
       name: form.name.trim(),
@@ -353,21 +450,41 @@ async function onSubmit() {
 
     const saved = edit ? await patientService.update(id, payload as UpdatePatientRequest) : await patientService.create(payload as CreatePatientRequest);
     if (!current(version)) return;
+    if (!saved?.id || (edit && saved.id !== id)) throw new Error('A resposta do paciente não corresponde ao cadastro solicitado.');
+    markClean(submittedSnapshot);
     saveCompleted.value = true;
     successMessage.value = edit ? 'Animal atualizado com sucesso!' : 'Animal cadastrado com sucesso!';
     const destination = edit ? id : saved.id;
-    redirectTimer = setTimeout(() => { if (current(version)) void router.push(`/patients/${destination}`); }, 1000);
-  } catch (err: unknown) { if (current(version)) formError.value = err instanceof Error ? err.message : 'Erro ao salvar animal'; }
+    successRedirect.schedule(() => { if (current(version)) return router.push(`/patients/${destination}`); }, successMessage.value);
+  } catch (err: unknown) {
+    if (current(version)) {
+      const conflictingPatientId = duplicateEntityId(err, 'patientId');
+      if (conflictingPatientId) {
+        duplicatePatientId.value = conflictingPatientId;
+        formError.value = '';
+      } else {
+        formError.value = err instanceof Error ? err.message : 'Erro ao salvar animal';
+      }
+    }
+  }
   finally { if (active) submitting.value = false; }
 }
 onMounted(loadPage);
 watch(() => [route.params.id, route.path, route.query?.ownerId], () => { void loadPage(); }, { flush: 'sync' });
-onBeforeUnmount(() => { active = false; pageGeneration++; clearTimeout(redirectTimer); });
+watch(formError, (message) => { if (message) void focusFormError(); });
+watch(duplicatePatientId, (id) => { if (id) void focusDuplicateFeedback(); });
+onBeforeUnmount(() => { active = false; pageGeneration++; successRedirect.invalidate(); });
 </script>
 
 <style scoped>
 .patient-form-page { display: grid; gap: 20px; min-width: 0; }
 .patient-form, .form-body { display: grid; gap: 20px; min-width: 0; }
+.patient-form { scroll-padding-bottom: 104px; }
+.form-feedback-region { scroll-margin-top: 120px; }
+.form-feedback-region:focus { outline: 3px solid var(--color-focus-ring); outline-offset: 4px; border-radius: 8px; }
+.duplicate-feedback-region { scroll-margin-top: 120px; }
+.duplicate-feedback-region:focus { outline: 3px solid var(--color-focus-ring); outline-offset: 4px; border-radius: 8px; }
+.duplicate-feedback__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .form-body { border: 0; margin: 0; padding: 0; }
 .form-section { padding: 24px; border: 1px solid var(--color-border); border-radius: 18px; background: var(--color-surface); min-width: 0; scroll-margin-top: 150px; }
 .section-heading { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 20px; }
@@ -396,8 +513,8 @@ h3 { margin: 6px 0; font-size: 22px; overflow-wrap: anywhere; }
 .form-row:last-child { margin-bottom: 0; }
 .extra-section { padding-block: 0; }summary { display: flex; align-items: center; gap: 10px; min-height: 70px; cursor: pointer; font-weight: 600; }summary::after { content: '+'; margin-left: auto; font-size: 22px; color: var(--color-text-secondary); }details[open] summary::after { content: '−'; }
 .optional-note { font-weight: 400; }.extra-fields { padding: 6px 0 24px; }
-.field-error { color: var(--color-danger-600); font-size: 13px; }
-.form-actions { margin-top: 0; }.form-actions > :first-child { min-width: 180px; }
+.form-actions { position: sticky; top: calc(100vh - 80px); top: calc(100dvh - 80px); z-index: 2; margin-top: 0; padding: 12px 0 max(12px, env(safe-area-inset-bottom)); border-top: 1px solid var(--color-border); background: var(--color-surface); box-shadow: 0 -8px 20px rgb(10 35 42 / 10%); }
+.form-actions > :first-child { min-width: 180px; }
 @media (max-width: 900px) { .client-options { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 520px) {
  .patient-form-page,.patient-form,.form-body { gap: 16px; }.form-section { padding: 16px; scroll-margin-top: 190px; }

@@ -7,83 +7,130 @@
     >
       <template #actions>
         <DsBadge variant="info" size="md"
-          >{{ catalog?.permissions.length ?? 0 }} permissões</DsBadge
+          >{{ displayAccessCount(catalog?.permissions.length) }} permissões</DsBadge
         >
-        <DsBadge variant="info" size="md">{{ catalog?.users.length ?? 0 }} usuários</DsBadge>
-        <DsButton variant="secondary" :loading="loading" @click="reload">Atualizar</DsButton>
+        <DsBadge variant="info" size="md">{{ displayAccessCount(catalog?.users.length) }} usuários</DsBadge>
+        <DsButton
+          type="button"
+          variant="secondary"
+          :loading="loading"
+          aria-label="Atualizar catálogo de governança de acesso"
+          @click="reload"
+        >
+          Atualizar
+        </DsButton>
       </template>
     </AppPageHeader>
 
-    <DsAlert variant="info">
-      Superfície Vetus-like para a rota legada Usuarios/GruposDeAcesso.htm. A integração observada
-      GET /users/{id}/access-groups permanece como evidência de que grupo de acesso, usuário
-      individual e matriz de permissões efetivas precisam ficar auditáveis.
+    <DsAlert variant="info" title="Escopo desta tela">
+      Aqui você consulta o catálogo atual e altera somente grupos, setores, vínculos de usuários e
+      grants expostos pela API de controle de acesso. MFA, sessões, chaves de API e auditoria são
+      apenas referências de governança; não são editáveis nesta tela.
     </DsAlert>
 
     <section class="access-control-page__overview">
       <div class="overview-grid">
         <div class="overview-card">
-          <span class="overview-card__value">{{ catalog?.roles.length ?? 0 }}</span>
+          <span class="overview-card__value">{{ displayAccessCount(catalog?.roles.length) }}</span>
           <span class="overview-card__label">Roles legadas</span>
         </div>
         <div class="overview-card">
-          <span class="overview-card__value">{{ catalog?.permissions.length ?? 0 }}</span>
+          <span class="overview-card__value">{{ displayAccessCount(catalog?.permissions.length) }}</span>
           <span class="overview-card__label">Permissões ativas</span>
         </div>
         <div class="overview-card">
-          <span class="overview-card__value">{{ routineRows.length }}</span>
+          <span class="overview-card__value">{{ displayAccessCount(routineRows.length) }}</span>
           <span class="overview-card__label">Rotinas mapeadas</span>
         </div>
         <div class="overview-card">
-          <span class="overview-card__value">{{ catalog?.teams.length ?? 0 }}</span>
+          <span class="overview-card__value">{{ displayAccessCount(catalog?.teams.length) }}</span>
           <span class="overview-card__label">Grupos de Acesso</span>
         </div>
         <div class="overview-card">
-          <span class="overview-card__value">{{ catalog?.sectors.length ?? 0 }}</span>
+          <span class="overview-card__value">{{ displayAccessCount(catalog?.sectors.length) }}</span>
           <span class="overview-card__label">Setores</span>
         </div>
         <div class="overview-card">
-          <span class="overview-card__value">{{ catalog?.users.length ?? 0 }}</span>
+          <span class="overview-card__value">{{ displayAccessCount(catalog?.users.length) }}</span>
           <span class="overview-card__label">Usuários</span>
         </div>
         <div class="overview-card">
-          <span class="overview-card__value">{{ assignmentCount }}</span>
+          <span class="overview-card__value">{{ displayAccessCount(assignmentCount) }}</span>
           <span class="overview-card__label">Grants diretos</span>
         </div>
         <div class="overview-card">
           <span class="overview-card__value"
-            >{{ enterpriseMatrixCompleteCount }}/{{ enterpriseMatrixRows.length }}</span
+            >{{ accessDenied ? '—' : `${enterpriseMatrixCompleteCount}/${enterpriseMatrixRows.length}` }}</span
           >
           <span class="overview-card__label">Módulos RBAC completos</span>
         </div>
       </div>
     </section>
 
-    <div class="access-control-page__segments" role="group" aria-label="Seções de governança">
+    <div
+      v-if="catalog && !accessDenied"
+      class="access-control-page__segments"
+      role="tablist"
+      aria-label="Seções de governança"
+    >
       <DsButton
         v-for="tab in tabs"
         :key="tab.value"
+        :id="`access-tab-${tab.value}`"
+        type="button"
         :variant="activeTab === tab.value ? 'primary' : 'secondary'"
-        :aria-pressed="activeTab === tab.value"
+        role="tab"
+        :aria-selected="activeTab === tab.value"
+        :aria-controls="`access-panel-${tab.value}`"
+        :tabindex="activeTab === tab.value ? 0 : -1"
         size="sm"
+        @keydown="handleTabKey($event, tab.value)"
         @click="activeTab = tab.value"
       >
         {{ tab.label }}
       </DsButton>
     </div>
 
-    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
+    <DsAlert
+      v-if="error"
+      ref="errorAlert"
+      variant="danger"
+      title="Não foi possível concluir esta operação"
+      :dismissible="!accessDenied"
+      tabindex="-1"
+      @dismiss="clearError"
+    >
+      <strong v-if="accessDenied">Sem permissão para governança de acesso.</strong>
       {{ error }}
+      <DsButton
+        v-if="accessDenied"
+        type="button"
+        variant="secondary"
+        size="sm"
+        aria-label="Tentar novamente o carregamento de governança de acesso"
+        @click="reload"
+      >
+        Tentar novamente
+      </DsButton>
     </DsAlert>
-    <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
+    <DsAlert
+      v-if="successMessage"
+      variant="success"
+      title="Alteração concluída"
+      dismissible
+      @dismiss="successMessage = ''"
+    >
       {{ successMessage }}
     </DsAlert>
 
     <section
       v-if="!loading && catalog && activeTab === 'summary'"
+      id="access-panel-summary"
+      role="tabpanel"
+      aria-labelledby="access-tab-summary"
       class="access-control-page__section"
     >
-      <DsCard title="Mapa Vetus IAM" class="panel">
+      <DsCard title="Mapa Vetus IAM" title-tag="h2" class="panel">
         <div class="governance-grid">
           <article v-for="layer in governanceLayers" :key="layer.title" class="governance-card">
             <span class="governance-card__eyebrow">{{ layer.scope }}</span>
@@ -93,7 +140,7 @@
         </div>
       </DsCard>
 
-      <DsCard title="Permissão por rotina" class="panel">
+      <DsCard title="Permissão por rotina" title-tag="h2" class="panel">
         <div class="routine-grid">
           <article v-for="control in securityControls" :key="control.title" class="routine-card">
             <strong>{{ control.title }}</strong>
@@ -102,7 +149,7 @@
         </div>
       </DsCard>
 
-      <DsCard title="Matriz enterprise por módulo, perfil e unidade" class="panel">
+      <DsCard title="Matriz enterprise por módulo, perfil e unidade" title-tag="h2" class="panel">
         <p class="section-hint">
           Evidência F3-01: cobertura de ações por módulo, perfis que concedem acesso e overrides por
           equipe/setor/usuário.
@@ -135,8 +182,10 @@
                 v-for="action in enterpriseActions"
                 :key="`${entry.module}:${action.key}`"
                 :class="['action-chip', { 'action-chip--on': entry.actions[action.key] }]"
+                :aria-label="`${action.label}: ${entry.actions[action.key] ? 'Sim' : 'Não'}`"
               >
-                {{ action.label }}
+                <span>{{ action.label }}</span>
+                <strong>{{ entry.actions[action.key] ? 'Sim' : 'Não' }}</strong>
               </span>
             </div>
             <p class="muted">
@@ -147,10 +196,13 @@
         </div>
       </DsCard>
 
-      <DsCard title="Catálogo de permissões" class="panel">
+      <DsCard title="Catálogo de permissões" title-tag="h2" class="panel">
         <div class="panel__toolbar">
           <DsInput
             v-model="permissionQuery"
+            id="access-permission-filter"
+            label="Filtrar catálogo de permissões"
+            hint="Busca por código, módulo ou descrição. Não altera permissões."
             placeholder="Filtrar permissões por código, módulo ou descrição"
           />
         </div>
@@ -177,7 +229,7 @@
         </div>
       </DsCard>
 
-      <DsCard title="Roles legadas" class="panel">
+      <DsCard title="Roles legadas" title-tag="h2" class="panel">
         <div class="role-grid">
           <article v-for="role in catalog.roles" :key="role.id" class="role-card">
             <div class="role-card__header">
@@ -190,7 +242,7 @@
             <p class="role-card__description">{{ role.description }}</p>
           </article>
         </div>
-        <div class="matrix-wrapper">
+        <div class="matrix-wrapper" tabindex="0" role="region" aria-label="Matriz de roles legadas">
           <table class="matrix-table">
             <thead>
               <tr>
@@ -217,7 +269,7 @@
         </div>
       </DsCard>
 
-      <DsCard title="Governança avançada" class="panel">
+      <DsCard title="Governança avançada" title-tag="h2" class="panel">
         <div class="enterprise-grid">
           <div>
             <strong>RH operacional</strong>
@@ -243,24 +295,44 @@
 
     <section
       v-else-if="!loading && catalog && activeTab === 'users'"
+      id="access-panel-users"
+      role="tabpanel"
+      aria-labelledby="access-tab-users"
       class="access-control-page__section"
     >
+      <DsAlert variant="info" title="O que pode ser alterado">
+        Selecione um usuário para consultar suas permissões efetivas e salvar vínculos de roles,
+        equipes e setores. A lista de permissões efetivas é calculada pela API e não é editada
+        diretamente aqui.
+      </DsAlert>
       <div class="subject-toolbar">
         <label class="field">
           <span>Usuário</span>
-          <select v-model="selectedUserId">
+          <select
+            id="access-user-select"
+            v-model="selectedUserId"
+            aria-describedby="access-user-select-hint"
+          >
             <option v-for="user in catalog.users" :key="user.id" :value="user.id">
               {{ user.displayName }} - {{ user.roleCode }}
             </option>
           </select>
+          <small id="access-user-select-hint"
+            >Trocar o usuário recarrega o efetivo e seus vínculos.</small
+          >
         </label>
-        <DsButton variant="secondary" :loading="userSaving" @click="reloadUserEffective"
+        <DsButton
+          type="button"
+          variant="secondary"
+          :loading="userSaving"
+          aria-label="Atualizar permissões efetivas do usuário selecionado"
+          @click="reloadUserEffective"
           >Atualizar efetivo</DsButton
         >
       </div>
 
       <div v-if="selectedUser" class="user-layout">
-        <DsCard title="Perfil e herança" class="panel">
+        <DsCard title="Perfil e herança" title-tag="h2" class="panel">
           <div class="profile-card">
             <strong>{{ selectedUser.displayName }}</strong>
             <p>{{ selectedUser.email }}</p>
@@ -284,45 +356,62 @@
             </div>
           </div>
 
-          <div class="membership-grid">
-            <label class="membership-panel">
-              <strong>Roles legadas</strong>
-              <div class="checklist">
-                <label v-for="role in catalog.roles" :key="role.id" class="checklist__item">
-                  <input v-model="draftRoleCodes" type="checkbox" :value="role.code" />
-                  <span>{{ role.name }}</span>
-                </label>
-              </div>
-            </label>
+          <form class="membership-form" @submit.prevent="saveUserMemberships">
+            <div class="membership-grid">
+              <fieldset class="membership-panel">
+                <legend>Roles legadas</legend>
+                <div class="checklist">
+                  <div v-for="role in catalog.roles" :key="role.id" class="checklist__item">
+                    <input
+                      :id="`access-user-role-${role.id}`"
+                      v-model="draftRoleCodes"
+                      type="checkbox"
+                      :value="role.code"
+                    />
+                    <label :for="`access-user-role-${role.id}`">{{ role.name }}</label>
+                  </div>
+                </div>
+              </fieldset>
 
-            <label class="membership-panel">
-              <strong>Equipes</strong>
-              <div class="checklist">
-                <label v-for="team in catalog.teams" :key="team.id" class="checklist__item">
-                  <input v-model="draftTeamIds" type="checkbox" :value="team.id" />
-                  <span>{{ team.name }}</span>
-                </label>
-              </div>
-            </label>
+              <fieldset class="membership-panel">
+                <legend>Equipes</legend>
+                <div class="checklist">
+                  <div v-for="team in catalog.teams" :key="team.id" class="checklist__item">
+                    <input
+                      :id="`access-user-team-${team.id}`"
+                      v-model="draftTeamIds"
+                      type="checkbox"
+                      :value="team.id"
+                    />
+                    <label :for="`access-user-team-${team.id}`">{{ team.name }}</label>
+                  </div>
+                </div>
+              </fieldset>
 
-            <label class="membership-panel">
-              <strong>Setores</strong>
-              <div class="checklist">
-                <label v-for="sector in catalog.sectors" :key="sector.id" class="checklist__item">
-                  <input v-model="draftSectorIds" type="checkbox" :value="sector.id" />
-                  <span>{{ sector.name }}</span>
-                </label>
-              </div>
-            </label>
-          </div>
+              <fieldset class="membership-panel">
+                <legend>Setores</legend>
+                <div class="checklist">
+                  <div v-for="sector in catalog.sectors" :key="sector.id" class="checklist__item">
+                    <input
+                      :id="`access-user-sector-${sector.id}`"
+                      v-model="draftSectorIds"
+                      type="checkbox"
+                      :value="sector.id"
+                    />
+                    <label :for="`access-user-sector-${sector.id}`">{{ sector.name }}</label>
+                  </div>
+                </div>
+              </fieldset>
+            </div>
 
-          <div class="actions-row">
-            <DsButton :loading="userSaving" @click="saveUserMemberships">Salvar vínculos</DsButton>
-          </div>
+            <div class="actions-row">
+              <DsButton type="submit" :loading="userSaving">Salvar vínculos do usuário</DsButton>
+            </div>
+          </form>
         </DsCard>
 
-        <DsCard title="Permissões efetivas" class="panel">
-          <div class="matrix-wrapper">
+        <DsCard title="Permissões efetivas" title-tag="h2" class="panel">
+          <div class="matrix-wrapper" tabindex="0" role="region" aria-label="Tabela de permissões efetivas">
             <table class="matrix-table">
               <thead>
                 <tr>
@@ -365,38 +454,73 @@
 
     <section
       v-else-if="!loading && catalog && activeTab === 'teams'"
+      id="access-panel-teams"
+      role="tabpanel"
+      aria-labelledby="access-tab-teams"
       class="access-control-page__section"
     >
       <div class="creation-grid">
         <DsCard
           :title="editingTeamId ? 'Editar grupo de acesso' : 'Novo grupo de acesso'"
+          title-tag="h2"
           class="panel"
         >
-          <div class="form-grid">
-            <DsInput v-model="teamForm.code" label="Código" placeholder="grupo_cirurgico" />
-            <DsInput v-model="teamForm.name" label="Nome" placeholder="Grupo Cirúrgico" />
-            <DsInput
-              v-model="teamForm.description"
-              label="Descrição"
-              placeholder="Política coletiva de acesso"
-            />
-          </div>
-          <div class="actions-row">
-            <DsButton :loading="teamSaving" @click="saveTeam">
-              {{ editingTeamId ? 'Salvar grupo' : 'Criar grupo' }}
-            </DsButton>
-            <DsButton
-              v-if="editingTeamId"
-              variant="secondary"
-              :disabled="teamSaving"
-              @click="resetTeamForm"
-            >
-              Cancelar
-            </DsButton>
-          </div>
+          <form class="entity-form" @submit.prevent="saveTeam">
+            <p class="section-hint">
+              {{
+                editingTeamId
+                  ? 'Edite o grupo selecionado e confirme para persistir.'
+                  : 'Crie um grupo reutilizável para vincular usuários.'
+              }}
+              Alterações afetam apenas este grupo de acesso.
+            </p>
+            <div class="form-grid">
+              <DsInput
+                id="access-team-code"
+                v-model="teamForm.code"
+                label="Código do grupo de acesso"
+                hint="Identificador técnico; não concede acesso sozinho."
+                placeholder="grupo_cirurgico"
+                required
+                :disabled="teamSaving"
+              />
+              <DsInput
+                id="access-team-name"
+                v-model="teamForm.name"
+                label="Nome do grupo de acesso"
+                hint="Nome exibido para quem administra vínculos."
+                placeholder="Grupo Cirúrgico"
+                required
+                :disabled="teamSaving"
+              />
+              <DsInput
+                id="access-team-description"
+                v-model="teamForm.description"
+                label="Descrição do alcance"
+                hint="Explique a finalidade; permissões são atribuídas separadamente na matriz."
+                placeholder="Política coletiva de acesso"
+                :disabled="teamSaving"
+              />
+            </div>
+            <div class="actions-row">
+              <DsButton type="submit" :loading="teamSaving">
+                {{ editingTeamId ? 'Salvar alterações do grupo' : 'Criar grupo de acesso' }}
+              </DsButton>
+              <DsButton
+                v-if="editingTeamId"
+                type="button"
+                variant="secondary"
+                :disabled="teamSaving"
+                aria-label="Cancelar edição do grupo de acesso"
+                @click="resetTeamForm"
+              >
+                Cancelar edição
+              </DsButton>
+            </div>
+          </form>
         </DsCard>
 
-        <DsCard title="Grupos de acesso cadastrados" class="panel">
+        <DsCard title="Grupos de acesso cadastrados" title-tag="h2" class="panel">
           <div class="entity-list">
             <article v-for="team in catalog.teams" :key="team.id" class="entity-card">
               <div class="entity-card__header">
@@ -411,6 +535,7 @@
               <p>{{ team.description || 'Sem descrição' }}</p>
               <div class="actions-row entity-card__actions">
                 <DsButton
+                  type="button"
                   variant="secondary"
                   size="sm"
                   :aria-label="`Editar ${team.name}`"
@@ -419,6 +544,7 @@
                   Editar
                 </DsButton>
                 <DsButton
+                  type="button"
                   variant="secondary"
                   size="sm"
                   :aria-label="`${team.status === 'active' ? 'Desativar' : 'Ativar'} ${team.name}`"
@@ -435,35 +561,69 @@
 
     <section
       v-else-if="!loading && catalog && activeTab === 'sectors'"
+      id="access-panel-sectors"
+      role="tabpanel"
+      aria-labelledby="access-tab-sectors"
       class="access-control-page__section"
     >
       <div class="creation-grid">
-        <DsCard :title="editingSectorId ? 'Editar setor' : 'Novo setor'" class="panel">
-          <div class="form-grid">
-            <DsInput v-model="sectorForm.code" label="Código" placeholder="administrativo" />
-            <DsInput v-model="sectorForm.name" label="Nome" placeholder="Administrativo" />
-            <DsInput
-              v-model="sectorForm.description"
-              label="Descrição"
-              placeholder="Área organizacional"
-            />
-          </div>
-          <div class="actions-row">
-            <DsButton :loading="sectorSaving" @click="saveSector">
-              {{ editingSectorId ? 'Salvar setor' : 'Criar setor' }}
-            </DsButton>
-            <DsButton
-              v-if="editingSectorId"
-              variant="secondary"
-              :disabled="sectorSaving"
-              @click="resetSectorForm"
-            >
-              Cancelar
-            </DsButton>
-          </div>
+        <DsCard :title="editingSectorId ? 'Editar setor' : 'Novo setor'" title-tag="h2" class="panel">
+          <form class="entity-form" @submit.prevent="saveSector">
+            <p class="section-hint">
+              {{
+                editingSectorId
+                  ? 'Edite o setor selecionado e confirme para persistir.'
+                  : 'Cadastre um setor organizacional para vínculos de usuários.'
+              }}
+              Alterações afetam apenas este setor.
+            </p>
+            <div class="form-grid">
+              <DsInput
+                id="access-sector-code"
+                v-model="sectorForm.code"
+                label="Código do setor"
+                hint="Identificador técnico; não concede acesso sozinho."
+                placeholder="administrativo"
+                required
+                :disabled="sectorSaving"
+              />
+              <DsInput
+                id="access-sector-name"
+                v-model="sectorForm.name"
+                label="Nome do setor"
+                hint="Nome usado nos vínculos e na auditoria operacional."
+                placeholder="Administrativo"
+                required
+                :disabled="sectorSaving"
+              />
+              <DsInput
+                id="access-sector-description"
+                v-model="sectorForm.description"
+                label="Descrição do alcance"
+                hint="Explique a finalidade; permissões são atribuídas separadamente na matriz."
+                placeholder="Área organizacional"
+                :disabled="sectorSaving"
+              />
+            </div>
+            <div class="actions-row">
+              <DsButton type="submit" :loading="sectorSaving">
+                {{ editingSectorId ? 'Salvar alterações do setor' : 'Criar setor' }}
+              </DsButton>
+              <DsButton
+                v-if="editingSectorId"
+                type="button"
+                variant="secondary"
+                :disabled="sectorSaving"
+                aria-label="Cancelar edição do setor"
+                @click="resetSectorForm"
+              >
+                Cancelar edição
+              </DsButton>
+            </div>
+          </form>
         </DsCard>
 
-        <DsCard title="Setores cadastrados" class="panel">
+      <DsCard title="Setores cadastrados" title-tag="h2" class="panel">
           <div class="entity-list">
             <article v-for="sector in catalog.sectors" :key="sector.id" class="entity-card">
               <div class="entity-card__header">
@@ -478,6 +638,7 @@
               <p>{{ sector.description || 'Sem descrição' }}</p>
               <div class="actions-row entity-card__actions">
                 <DsButton
+                  type="button"
                   variant="secondary"
                   size="sm"
                   :aria-label="`Editar ${sector.name}`"
@@ -486,6 +647,7 @@
                   Editar
                 </DsButton>
                 <DsButton
+                  type="button"
                   variant="secondary"
                   size="sm"
                   :aria-label="`${sector.status === 'active' ? 'Desativar' : 'Ativar'} ${sector.name}`"
@@ -502,14 +664,17 @@
 
     <section
       v-else-if="!loading && catalog && activeTab === 'matrix'"
+      id="access-panel-matrix"
+      role="tabpanel"
+      aria-labelledby="access-tab-matrix"
       class="access-control-page__section"
     >
-      <DsCard title="Cobertura CRUD por rotina" class="panel">
+      <DsCard title="Cobertura CRUD por rotina" title-tag="h2" class="panel">
         <p class="section-hint">
           Leitura operacional Vetus: o poder efetivo deve ser auditável por rotina e por ação
           clássica Consultar, Inserir, Alterar e Excluir.
         </p>
-        <div class="matrix-wrapper">
+        <div class="matrix-wrapper" tabindex="0" role="region" aria-label="Matriz CRUD por rotina">
           <table class="matrix-table">
             <thead>
               <tr>
@@ -546,11 +711,11 @@
         </div>
       </DsCard>
 
-      <DsCard title="Matriz de permissões" class="panel">
+      <DsCard title="Matriz de permissões" title-tag="h2" class="panel">
         <div class="subject-toolbar">
           <label class="field">
             <span>Tipo</span>
-            <select v-model="matrixSubjectType">
+            <select id="access-matrix-subject-type" v-model="matrixSubjectType" :disabled="loading || grantSaving">
               <option value="user">Usuário</option>
               <option value="team">Equipe</option>
               <option value="sector">Setor</option>
@@ -558,15 +723,29 @@
           </label>
           <label class="field">
             <span>Alvo</span>
-            <select v-model="matrixSubjectId">
+            <select
+              id="access-matrix-subject-id"
+              v-model="matrixSubjectId"
+              :disabled="loading || grantSaving"
+              aria-describedby="access-matrix-scope-hint"
+            >
               <option v-for="subject in matrixSubjects" :key="subject.id" :value="subject.id">
                 {{ subject.name }}
               </option>
             </select>
           </label>
-          <DsInput v-model="permissionQuery" placeholder="Filtrar permissões da matriz" />
+          <DsInput
+            v-model="permissionQuery"
+            id="access-matrix-filter"
+            label="Filtrar permissões da matriz"
+            placeholder="Filtrar permissões da matriz"
+          />
         </div>
-        <div class="matrix-wrapper">
+        <p id="access-matrix-scope-hint" class="section-hint">
+          A escolha de estado salva imediatamente o grant do alvo selecionado. “Herdar” remove o
+          override direto; a permissão efetiva continua sendo calculada pela API.
+        </p>
+        <div class="matrix-wrapper" tabindex="0" role="region" aria-label="Matriz de permissões do alvo">
           <table class="matrix-table">
             <thead>
               <tr>
@@ -583,6 +762,8 @@
                 <td>
                   <select
                     :value="getAssignment(matrixSubjectType, matrixSubjectId, permission.code)"
+                    :aria-label="`Estado de ${permission.code} para ${matrixSubjectName}`"
+                    :disabled="loading || grantSaving"
                     @change="
                       updateGrant(permission.code, ($event.target as HTMLSelectElement).value)
                     "
@@ -599,7 +780,7 @@
       </DsCard>
     </section>
 
-    <DsCard v-else-if="!loading" title="Governança de acesso" class="panel">
+    <DsCard v-else-if="!loading && !accessDenied" title="Governança de acesso" title-tag="h2" class="panel">
       <div class="empty-state">
         <div class="empty-state__title">Nenhum dado disponível.</div>
         <div class="empty-state__description">
@@ -619,7 +800,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsBadge from '@cvg-his-v2/design-system/vue/DsBadge.vue';
@@ -666,8 +847,13 @@ const effectivePermissions = ref<EffectivePermissionSummary[]>([]);
 const userSaving = ref(false);
 const teamSaving = ref(false);
 const sectorSaving = ref(false);
+const grantSaving = ref(false);
 const editingTeamId = ref<string | null>(null);
 const editingSectorId = ref<string | null>(null);
+const accessDenied = ref(false);
+const errorAlert = ref<{ $el?: Element } | null>(null);
+let catalogRequestGeneration = 0;
+let effectiveRequestGeneration = 0;
 
 const teamForm = reactive({ code: '', name: '', description: '' });
 const sectorForm = reactive({ code: '', name: '', description: '' });
@@ -858,6 +1044,13 @@ const matrixSubjects = computed(() => {
   return catalog.value.sectors.map((sector) => ({ id: sector.id, name: sector.name }));
 });
 
+const matrixSubjectName = computed(() => {
+  return (
+    matrixSubjects.value.find((subject) => subject.id === matrixSubjectId.value)?.name ??
+    'alvo selecionado'
+  );
+});
+
 const assignmentCount = computed(() => {
   const assignments = catalog.value?.assignments;
   return (
@@ -867,11 +1060,70 @@ const assignmentCount = computed(() => {
   );
 });
 
-function showError(message: string) {
+function isForbiddenError(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'status' in err &&
+    (err as { status?: unknown }).status === 403
+  );
+}
+
+function displayAccessCount(value: number | undefined): string | number {
+  return accessDenied.value ? '—' : (value ?? 0);
+}
+
+function showError(message: string, forbidden = false) {
   error.value = message;
+  accessDenied.value = forbidden;
+  void nextTick(() => {
+    const element = errorAlert.value?.$el;
+    if (element instanceof HTMLElement) {
+      element.focus({ preventScroll: true });
+    }
+  });
   setTimeout(() => {
-    if (error.value === message) error.value = '';
+    if (error.value === message && !accessDenied.value) error.value = '';
   }, 7000);
+}
+
+function clearError() {
+  error.value = '';
+  accessDenied.value = false;
+}
+
+function reportError(err: unknown, fallback: string) {
+  if (isForbiddenError(err)) {
+    showError(
+      'Seu perfil não pode consultar ou alterar este catálogo. Solicite a um administrador a permissão de governança de acesso.',
+      true
+    );
+    return;
+  }
+  showError(err instanceof Error ? err.message : fallback);
+}
+
+function handleTabKey(event: KeyboardEvent, tab: TabKey) {
+  const index = tabs.findIndex((item) => item.value === tab);
+  if (
+    index < 0 ||
+    !['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(event.key)
+  ) {
+    return;
+  }
+  event.preventDefault();
+  const nextIndex =
+    event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? tabs.length - 1
+        : (index +
+            (event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1) +
+            tabs.length) %
+          tabs.length;
+  const nextTab = tabs[nextIndex].value;
+  activeTab.value = nextTab;
+  void nextTick(() => document.getElementById(`access-tab-${nextTab}`)?.focus());
 }
 
 function showSuccess(message: string) {
@@ -936,32 +1188,37 @@ function defaultUserDrafts() {
 }
 
 async function loadCatalog() {
+  const generation = ++catalogRequestGeneration;
   loading.value = true;
   error.value = '';
+  accessDenied.value = false;
   try {
     const [catalogPayload, matrixPayload] = await Promise.all([
       accessControlService.getCatalog(),
       accessControlService.getModulePermissionMatrix()
     ]);
+    if (generation !== catalogRequestGeneration) return;
     catalog.value = catalogPayload;
     modulePermissionMatrix.value = matrixPayload;
-    if (!selectedUserId.value) {
-      selectedUserId.value = catalog.value.users[0]?.id ?? '';
-    }
-    if (!matrixSubjectId.value) {
-      matrixSubjectId.value =
-        matrixSubjects.value[0]?.id ??
-        catalog.value.users[0]?.id ??
-        catalog.value.teams[0]?.id ??
-        catalog.value.sectors[0]?.id ??
-        '';
-    }
+    const nextUserId = catalog.value.users.some((user) => user.id === selectedUserId.value)
+      ? selectedUserId.value
+      : (catalog.value.users[0]?.id ?? '');
+    const selectedUserChanged = nextUserId !== selectedUserId.value;
+    selectedUserId.value = nextUserId;
+    matrixSubjectId.value = matrixSubjects.value.some(
+      (subject) => subject.id === matrixSubjectId.value
+    )
+      ? matrixSubjectId.value
+      : (matrixSubjects.value[0]?.id ?? '');
     defaultUserDrafts();
-    await reloadUserEffective();
+    // The watcher performs the request when the selected user changes. This
+    // avoids two effective-permission requests during the initial load.
+    if (!selectedUserChanged) await reloadUserEffective();
   } catch (err: unknown) {
-    showError(err instanceof Error ? err.message : 'Falha ao carregar governança de acesso');
+    if (generation !== catalogRequestGeneration) return;
+    reportError(err, 'Falha ao carregar governança de acesso');
   } finally {
-    loading.value = false;
+    if (generation === catalogRequestGeneration) loading.value = false;
   }
 }
 
@@ -976,17 +1233,21 @@ async function reload() {
 }
 
 async function reloadUserEffective() {
-  if (!selectedUserId.value) {
+  const userId = selectedUserId.value;
+  const generation = ++effectiveRequestGeneration;
+  if (!userId) {
     effectivePermissions.value = [];
+    userSaving.value = false;
     return;
   }
 
   userSaving.value = true;
   try {
-    const response = await accessControlService.getEffectivePermissions(selectedUserId.value);
+    const response = await accessControlService.getEffectivePermissions(userId);
+    if (generation !== effectiveRequestGeneration || selectedUserId.value !== userId) return;
     effectivePermissions.value = [...response.effectivePermissions];
     if (catalog.value) {
-      const user = catalog.value.users.find((item) => item.id === selectedUserId.value);
+      const user = catalog.value.users.find((item) => item.id === userId);
       if (user) {
         draftRoleCodes.value =
           catalog.value.legacyRoles.find((entry) => entry.userId === user.id)?.roleCodes?.slice() ??
@@ -1002,9 +1263,12 @@ async function reloadUserEffective() {
       }
     }
   } catch (err: unknown) {
-    showError(err instanceof Error ? err.message : 'Falha ao carregar permissões efetivas');
+    if (generation !== effectiveRequestGeneration || selectedUserId.value !== userId) return;
+    reportError(err, 'Falha ao carregar permissões efetivas');
   } finally {
-    userSaving.value = false;
+    if (generation === effectiveRequestGeneration && selectedUserId.value === userId) {
+      userSaving.value = false;
+    }
   }
 }
 
@@ -1023,7 +1287,9 @@ function getAssignment(subjectType: MatrixSubjectType, subjectId: string, permis
 }
 
 async function updateGrant(permissionCode: string, effect: string) {
-  if (!matrixSubjectId.value) return;
+  if (!matrixSubjectId.value || grantSaving.value || loading.value) return;
+  const catalogGenerationAtStart = catalogRequestGeneration;
+  grantSaving.value = true;
   try {
     await accessControlService.setGrant({
       subjectType: matrixSubjectType.value,
@@ -1031,10 +1297,13 @@ async function updateGrant(permissionCode: string, effect: string) {
       permissionCode,
       effect: effect === 'inherit' ? 'inherit' : effect === 'allow' ? 'allow' : 'deny'
     });
+    if (catalogGenerationAtStart !== catalogRequestGeneration) return;
     showSuccess('Permissão atualizada com sucesso');
     await loadCatalog();
   } catch (err: unknown) {
-    showError(err instanceof Error ? err.message : 'Falha ao salvar grant');
+    reportError(err, 'Falha ao salvar grant');
+  } finally {
+    grantSaving.value = false;
   }
 }
 
@@ -1042,16 +1311,15 @@ async function saveUserMemberships() {
   if (!selectedUserId.value) return;
   userSaving.value = true;
   try {
-    // Access-control mutations intentionally fail closed while the account
-    // cache is being refreshed. Serialize the three replacements so the UI
-    // never races its own privileged requests.
-    await accessControlService.replaceUserRoles(selectedUserId.value, draftRoleCodes.value);
-    await accessControlService.replaceUserTeams(selectedUserId.value, draftTeamIds.value);
-    await accessControlService.replaceUserSectors(selectedUserId.value, draftSectorIds.value);
+    await accessControlService.replaceUserMemberships(selectedUserId.value, {
+      roleCodes: [...draftRoleCodes.value],
+      teamIds: [...draftTeamIds.value],
+      sectorIds: [...draftSectorIds.value]
+    });
     showSuccess('Vínculos do usuário atualizados');
     await loadCatalog();
   } catch (err: unknown) {
-    showError(err instanceof Error ? err.message : 'Falha ao salvar vínculos do usuário');
+    reportError(err, 'Falha ao salvar vínculos do usuário');
   } finally {
     userSaving.value = false;
   }
@@ -1069,6 +1337,7 @@ function beginEditTeam(team: AccessTeam) {
   teamForm.code = team.code;
   teamForm.name = team.name;
   teamForm.description = team.description ?? '';
+  void nextTick(() => document.getElementById('access-team-name')?.focus());
 }
 
 function beginEditSector(sector: AccessSector) {
@@ -1076,6 +1345,7 @@ function beginEditSector(sector: AccessSector) {
   sectorForm.code = sector.code;
   sectorForm.name = sector.name;
   sectorForm.description = sector.description ?? '';
+  void nextTick(() => document.getElementById('access-sector-name')?.focus());
 }
 
 function validateEntityForm(code: string, name: string, label: string): boolean {
@@ -1123,7 +1393,7 @@ async function saveTeam() {
     }
     await loadCatalog();
   } catch (err: unknown) {
-    showError(err instanceof Error ? err.message : 'Falha ao salvar grupo');
+    reportError(err, 'Falha ao salvar grupo');
   } finally {
     teamSaving.value = false;
   }
@@ -1138,7 +1408,7 @@ async function toggleTeam(team: AccessTeam) {
     );
     await loadCatalog();
   } catch (err: unknown) {
-    showError(err instanceof Error ? err.message : 'Falha ao alterar estado do grupo');
+    reportError(err, 'Falha ao alterar estado do grupo');
   } finally {
     teamSaving.value = false;
   }
@@ -1184,7 +1454,7 @@ async function saveSector() {
     }
     await loadCatalog();
   } catch (err: unknown) {
-    showError(err instanceof Error ? err.message : 'Falha ao salvar setor');
+    reportError(err, 'Falha ao salvar setor');
   } finally {
     sectorSaving.value = false;
   }
@@ -1197,7 +1467,7 @@ async function toggleSector(sector: AccessSector) {
     showSuccess(sector.status === 'active' ? 'Setor desativado' : 'Setor ativado');
     await loadCatalog();
   } catch (err: unknown) {
-    showError(err instanceof Error ? err.message : 'Falha ao alterar estado do setor');
+    reportError(err, 'Falha ao alterar estado do setor');
   } finally {
     sectorSaving.value = false;
   }
@@ -1259,6 +1529,16 @@ onMounted(loadCatalog);
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
+}
+
+.access-control-page__segments [role='tab'] {
+  flex: 0 0 auto;
+}
+
+.entity-form,
+.membership-form {
+  display: grid;
+  gap: 14px;
 }
 
 .access-control-page__section {
@@ -1448,6 +1728,11 @@ onMounted(loadCatalog);
   background: var(--color-bg-subtle, #f8fafc);
 }
 
+.membership-panel legend {
+  padding: 0 4px;
+  font-weight: 700;
+}
+
 .checklist {
   display: grid;
   gap: 8px;
@@ -1463,6 +1748,12 @@ onMounted(loadCatalog);
 
 .matrix-wrapper {
   overflow-x: auto;
+  border-radius: 12px;
+}
+
+.matrix-wrapper:focus-visible {
+  outline: 3px solid var(--color-focus, #2563eb);
+  outline-offset: 3px;
 }
 
 .matrix-table {
@@ -1539,6 +1830,12 @@ onMounted(loadCatalog);
   color: var(--color-text-secondary, #475569);
 }
 
+.field small {
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .field select {
   min-width: 220px;
   min-height: 42px;
@@ -1552,6 +1849,12 @@ onMounted(loadCatalog);
 @media (max-width: 960px) {
   .user-layout {
     grid-template-columns: 1fr;
+  }
+
+  .access-control-page__segments {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
   }
 }
 </style>

@@ -51,6 +51,10 @@ export interface EncounterCashReceiptRepository {
     accountId: string,
     encounterId: string
   ): Promise<EncounterCashReceiptRecord | null>;
+  findLatestByEncounter(
+    accountId: string,
+    encounterId: string
+  ): Promise<EncounterCashReceiptRecord | null>;
 }
 
 interface BillingRow {
@@ -439,6 +443,32 @@ export class DatabaseEncounterCashReceiptRepository implements EncounterCashRece
                WHERE reversal.account_id = receipt.account_id
                  AND reversal.receipt_id = receipt.id
             )
+          LIMIT 1`,
+        [accountId, encounterId]
+      );
+      return result.rows[0] ? mapReceipt(result.rows[0]) : null;
+    });
+  }
+
+  async findLatestByEncounter(
+    accountId: string,
+    encounterId: string
+  ): Promise<EncounterCashReceiptRecord | null> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query<ReceiptRow>(
+        `SELECT receipt.*,
+                reversal.id AS reversal_id,
+                reversal.reversal_cash_movement_id,
+                reversal.reversal_journal_entry_id,
+                reversal.reason AS reversal_reason,
+                reversal.reversed_by_user_id,
+                reversal.reversed_at
+           FROM encounter_cash_receipts AS receipt
+           LEFT JOIN encounter_cash_receipt_reversals AS reversal
+             ON reversal.account_id = receipt.account_id
+            AND reversal.receipt_id = receipt.id
+          WHERE receipt.account_id = $1 AND receipt.encounter_id = $2
+          ORDER BY receipt.received_at DESC, receipt.id DESC
           LIMIT 1`,
         [accountId, encounterId]
       );

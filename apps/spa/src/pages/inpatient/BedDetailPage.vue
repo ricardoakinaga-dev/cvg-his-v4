@@ -29,7 +29,7 @@
         </header>
         <dl class="detail-list">
           <div class="full-field"><dt>Setor</dt><dd>{{ sectorLabel }}</dd><dd class="metadata-id">{{ bed.sectorId }}</dd></div>
-          <div><dt>Status</dt><dd><StatusBadge :label="uncertain ? 'A confirmar' : statusLabel(bed.status)" :variant="!uncertain && bed.active && bed.status === 'available' ? 'success' : 'neutral'" /></dd></div>
+          <div><dt>Status</dt><dd><StatusBadge :label="uncertain ? 'A confirmar' : statusLabel(bed.status)" :variant="uncertain ? 'neutral' : statusVariant(bed.status)" /></dd></div>
           <div><dt>Box ativo</dt><dd>{{ uncertain ? 'A confirmar' : bed.active ? 'Sim' : 'Não' }}</dd></div>
           <div class="full-field"><dt>Espécie suportada</dt><dd>{{ bed.supportsSpecies?.trim() || 'Não informada' }}</dd></div>
         </dl>
@@ -138,6 +138,15 @@ async function archiveBed() {
   finally { await reconcileReturningRecord(version, snapshot.id); if (active) submitting.value = false; }
 }
 function statusLabel(status: BedSummary['status']) { return { available: 'Disponível', occupied: 'Ocupado', maintenance: 'Manutenção', blocked: 'Bloqueado' }[status] || 'Não informado'; }
+function statusVariant(status: BedSummary['status']): 'success' | 'warning' | 'danger' | 'neutral' {
+  return status === 'available'
+    ? 'success'
+    : status === 'occupied'
+      ? 'danger'
+      : status === 'maintenance'
+        ? 'warning'
+        : 'danger';
+}
 onMounted(() => { void loadRecord(); void loadSectors(); });
 watch(bedId, () => { void loadRecord(); }, { flush: 'sync' });
 onBeforeUnmount(() => { active = false; generation++; sectorGeneration++; });

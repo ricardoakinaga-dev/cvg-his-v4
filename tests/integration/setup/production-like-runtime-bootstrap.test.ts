@@ -255,6 +255,46 @@ describe('production-like bootstrap uses a real restricted role and fails closed
       );
     }
   }, 60_000);
+
+  it('rejects a counter-sales schema without the durable number allocator', async () => {
+    await scratchAdmin.query(
+      'ALTER TABLE public.counter_sale_number_sequences RENAME TO bootstrap_counter_sale_number_sequences_missing'
+    );
+    try {
+      await expect(
+        bootstrapServices({
+          environment: 'staging',
+          databaseUrl: apiUrl,
+          maxRetries: 1,
+          retryDelayMs: 0
+        })
+      ).rejects.toThrow(/Production database runtime is not ready|counterSales|fallback/i);
+    } finally {
+      await shutdownServices();
+      await scratchAdmin.query(
+        'ALTER TABLE public.bootstrap_counter_sale_number_sequences_missing RENAME TO counter_sale_number_sequences'
+      );
+    }
+  }, 60_000);
+
+  it('rejects a worker report runtime without its delivery schema', async () => {
+    await scratchAdmin.query(
+      'ALTER TABLE public.report_schedule_deliveries RENAME TO bootstrap_report_schedule_deliveries_missing'
+    );
+    try {
+      await expect(
+        bootstrapWorkerServices({
+          environment: 'staging',
+          databaseUrl: workerUrl
+        })
+      ).rejects.toThrow(/report.*schema|delivery.*schema|not ready/i);
+    } finally {
+      await shutdownWorkerServices();
+      await scratchAdmin.query(
+        'ALTER TABLE public.bootstrap_report_schedule_deliveries_missing RENAME TO report_schedule_deliveries'
+      );
+    }
+  }, 60_000);
 });
 
 describe('production-like entrypoints do not listen or loop after bootstrap failure', () => {

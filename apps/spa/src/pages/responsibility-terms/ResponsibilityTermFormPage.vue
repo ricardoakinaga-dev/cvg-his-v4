@@ -57,7 +57,7 @@
             </label>
           </div>
           <div class="form-actions">
-            <DsButton variant="primary" type="submit" :loading="submitting">Salvar</DsButton>
+            <DsButton variant="primary" type="submit" :loading="submitting" :disabled="successPending">Salvar</DsButton>
             <DsButton variant="secondary" type="button" @click="router.push('/responsibility-terms')">Cancelar</DsButton>
           </div>
         </form>
@@ -96,6 +96,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import AppPageHeader from '@/components/AppPageHeader.vue';
+import { useSuccessRedirect } from '@/composables/successRedirect';
 import {
   responsibilityTermsService,
   responsibilityTermUsageLabel,
@@ -111,6 +112,8 @@ const route = useRoute();
 const termId = computed(() => route.params.id as string | undefined);
 const isEditing = computed(() => Boolean(termId.value));
 const submitting = ref(false);
+const successRedirect = useSuccessRedirect();
+const successPending = successRedirect.successPending;
 const error = ref('');
 const successMessage = ref('');
 const form = ref({
@@ -142,6 +145,7 @@ async function loadTerm() {
 }
 
 async function submitForm() {
+  if (submitting.value || !successRedirect.begin()) return;
   if (!form.value.title.trim()) {
     error.value = 'Descrição é obrigatória';
     return;
@@ -171,7 +175,7 @@ async function submitForm() {
       await responsibilityTermsService.create(payload);
     }
     successMessage.value = 'Termo salvo com sucesso.';
-    setTimeout(() => router.push('/responsibility-terms'), 1200);
+    successRedirect.schedule(() => router.push('/responsibility-terms'), successMessage.value);
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao salvar termo de responsabilidade';
   } finally {

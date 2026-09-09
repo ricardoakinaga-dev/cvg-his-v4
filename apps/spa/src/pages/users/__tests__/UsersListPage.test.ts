@@ -47,6 +47,16 @@ const mockUsers: UserSummary[] = [
   }
 ];
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
 function createRouterInstance() {
   return createRouter({
     history: createMemoryHistory(),
@@ -103,18 +113,49 @@ describe('UsersListPage', () => {
     expect(wrapper.text()).toContain('Contexto organizacional');
   });
 
-  it('shows loading state', async () => {
-    vi.mocked(userService.list).mockReturnValue(new Promise(() => {}));
+  it('keeps the DataTable in loading state while the list request is pending', async () => {
+    const request = deferred<UserSummary[]>();
+    vi.mocked(userService.list).mockReturnValue(request.promise);
     const { wrapper } = mountComponent();
-    await flushPromises();
+    await wrapper.vm.$nextTick();
+
     expect(wrapper.find('.data-table-loading').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="data-table-feedback"]').exists()).toBe(false);
+    expect(wrapper.find('table').exists()).toBe(false);
+    expect(userService.list).toHaveBeenCalledTimes(1);
+
+    request.resolve([]);
+    await flushPromises();
   });
 
-  it('shows empty state when no users', async () => {
+  it('represents an intrinsically empty user list with empty feedback', async () => {
     vi.mocked(userService.list).mockResolvedValue([]);
     const { wrapper } = mountComponent();
     await flushPromises();
-    expect(wrapper.text()).toContain('Nenhum registro encontrado');
+
+    const feedback = wrapper.get('[data-testid="data-table-feedback"]');
+    expect(feedback.classes()).toContain('data-table-feedback--empty');
+    expect(feedback.get('.empty-state__title').text()).toBe('Nenhum usuário cadastrado');
+    expect(feedback.text()).toContain('Ainda não há usuários cadastrados para exibir.');
+    expect(feedback.find('button').exists()).toBe(false);
+    expect(wrapper.find('table').exists()).toBe(false);
+  });
+
+  it('distinguishes no-results after a filter from an intrinsically empty list', async () => {
+    vi.mocked(userService.list).mockResolvedValue(mockUsers);
+    const { wrapper } = mountComponent();
+    await flushPromises();
+
+    const searchInput = wrapper.find('input[placeholder="Buscar por nome, usuário ou e-mail"]');
+    await searchInput.setValue('não-existe');
+    await wrapper.vm.$nextTick();
+
+    const feedback = wrapper.get('[data-testid="data-table-feedback"]');
+    expect(feedback.classes()).toContain('data-table-feedback--no-results');
+    expect(feedback.classes()).not.toContain('data-table-feedback--empty');
+    expect(feedback.get('.empty-state__title').text()).toBe('Nenhum usuário corresponde aos filtros');
+    expect(feedback.text()).toContain('Revise os filtros e tente novamente.');
+    expect(wrapper.find('table').exists()).toBe(false);
   });
 
   it('renders user data', async () => {
@@ -198,13 +239,111 @@ describe('UsersListPage', () => {
     const editLinks = links.filter((l) => l.text().trim() === 'Editar');
     expect(detailLinks.length).toBeGreaterThanOrEqual(1);
     expect(editLinks.length).toBeGreaterThanOrEqual(1);
+    expect(detailLinks.map((link) => link.attributes('href'))).toContain('/users/user-1');
+    expect(editLinks.map((link) => link.attributes('href'))).toContain('/users/user-1/edit');
   });
 
-  it('shows error when API fails', async () => {
-    vi.mocked(userService.list).mockRejectedValue(new Error('Network error'));
+  it('shows one DataTable error surface with named retry and renders confirmed rows after retry', async () => {
+    const retryRequest = deferred<UserSummary[]>();
+    vi.mocked(userService.list)
+      .mockRejectedValueOnce(new Error('Network error'))
+      .mockReturnValueOnce(retryRequest.promise);
+
     const { wrapper } = mountComponent();
     await flushPromises();
-    expect(wrapper.find('[role="alert"]').exists()).toBe(true);
-    expect(wrapper.text()).toContain('Network error');
+
+    const feedback = wrapper.get('[data-testid="data-table-feedback"]');
+    expect(feedback.classes()).toContain('data-table-feedback--error');
+    expect(feedback.attributes('role')).toBe('alert');
+    expect(feedback.attributes('aria-live')).toBe('assertive');
+    expect(feedback.text()).not.toContain('Network error');
+    expect(wrapper.findAll('.ds-alert-stub')).toHaveLength(0);
+    expect(wrapper.findAll('[role="alert"]')).toHaveLength(1);
+    expect(wrapper.find('table').exists()).toBe(false);
+
+    const retryButton = feedback.get('button');
+    expect(retryButton.text()).toBe('Tentar novamente');
+    expect(retryButton.attributes('type')).toBe('button');
+
+    await retryButton.trigger('click');
+    await wrapper.vm.$nextTick();
+    expect(userService.list).toHaveBeenCalledTimes(2);
+    expect(wrapper.find('.data-table-loading').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="data-table-feedback"]').exists()).toBe(false);
+    expect(wrapper.find('table').exists()).toBe(false);
+
+    retryRequest.resolve(mockUsers);
+    await flushPromises();
+
+    expect(wrapper.find('.data-table-loading').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="data-table-feedback"]').exists()).toBe(false);
+    expect(wrapper.findAll('tbody tr')).toHaveLength(mockUsers.length);
+    expect(wrapper.text()).toContain('Dr. Veterinário');
+    expect(wrapper.text()).toContain('Administrador');
+  });
+
+  it('maps forbidden access without exposing the server error or offering a misleading retry', async () => {
+    vi.mocked(userService.list).mockRejectedValue(
+      Object.assign(new Error('internal permission details'), { status: 403 })
+    );
+    const { wrapper } = mountComponent();
+    await flushPromises();
+
+    const feedback = wrapper.get('[data-testid="data-table-feedback"]');
+    expect(feedback.classes()).toContain('data-table-feedback--forbidden');
+    expect(feedback.text()).toContain('Acesso aos usuários negado');
+    expect(feedback.text()).not.toContain('internal permission details');
+    expect(feedback.find('a').text()).toBe('Voltar ao painel');
+    expect(feedback.find('a').attributes('href')).toBe('/');
+    expect(wrapper.find('table').exists()).toBe(false);
+  });
+
+  it('maps a fetch network failure to a recoverable unavailable state', async () => {
+    vi.mocked(userService.list).mockRejectedValue(new TypeError('Failed to fetch'));
+    const { wrapper } = mountComponent();
+    await flushPromises();
+
+    const feedback = wrapper.get('[data-testid="data-table-feedback"]');
+    expect(feedback.classes()).toContain('data-table-feedback--unavailable');
+    expect(feedback.text()).toContain('Serviço de usuários indisponível');
+    expect(feedback.find('button').text()).toBe('Tentar novamente');
+  });
+
+  it('maps a service outage safely and keeps confirmed rows visible during refresh failure', async () => {
+    vi.mocked(userService.list)
+      .mockResolvedValueOnce(mockUsers)
+      .mockRejectedValueOnce(Object.assign(new Error('database host and query details'), { status: 503 }));
+    const { wrapper } = mountComponent();
+    await flushPromises();
+
+    const refresh = wrapper.findAll('button').find((button) => button.text().trim() === 'Atualizar');
+    expect(refresh).toBeDefined();
+    await refresh!.trigger('click');
+    await flushPromises();
+
+    const feedback = wrapper.get('[data-testid="data-table-feedback"]');
+    expect(feedback.classes()).toContain('data-table-feedback--unavailable');
+    expect(feedback.text()).toContain('Serviço de usuários indisponível');
+    expect(feedback.text()).not.toContain('database host');
+    expect(wrapper.findAll('tbody tr')).toHaveLength(mockUsers.length);
+    expect(wrapper.findAll('[role="alert"]')).toHaveLength(1);
+  });
+
+  it('removes stale user metadata when a loaded refresh loses authorization', async () => {
+    vi.mocked(userService.list)
+      .mockResolvedValueOnce(mockUsers)
+      .mockRejectedValueOnce(Object.assign(new Error('permission changed upstream'), { status: 403 }));
+    const { wrapper } = mountComponent();
+    await flushPromises();
+
+    const refresh = wrapper.findAll('button').find((button) => button.text().trim() === 'Atualizar');
+    await refresh!.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.get('[data-testid="data-table-feedback"]').classes()).toContain('data-table-feedback--forbidden');
+    expect(wrapper.findAll('tbody tr')).toHaveLength(0);
+    expect(wrapper.findAll('.overview-metric__value').map((node) => node.text())).toEqual(['0', '0', '0', '0', '0']);
+    expect(wrapper.text()).not.toContain('Dr. Veterinário');
+    expect(wrapper.text()).not.toContain('permission changed upstream');
   });
 });

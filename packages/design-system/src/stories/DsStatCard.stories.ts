@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/vue';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import DsStatCard from '../vue/DsStatCard.vue';
 
 const meta = {

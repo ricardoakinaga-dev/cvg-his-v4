@@ -1,0 +1,9 @@
+
+ RUN  v4.1.2 /home/ricardo/cvg-his-v4/apps/spa
+
+
+ Test Files  1 passed (1)
+      Tests  28 passed (28)
+   Start at  00:32:41
+   Duration  1.90s (transform 75ms, setup 104ms, import 70ms, tests 973ms, environment 588ms)
+

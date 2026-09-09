@@ -23,6 +23,10 @@ async function fixture() {
     resolve(root, 'apps/spa/src/navigation.ts'),
     "export function flattenAllNavItems() { return [{path: '/webhooks', label: 'Webhooks'}]; }\n"
   );
+  await writeFile(
+    resolve(root, 'apps/spa/src/navigation-permission-catalog.ts'),
+    'export const permissionCatalog = {};\n'
+  );
   execFileSync('git', ['init', '-q'], { cwd: root });
   execFileSync(
     'git',

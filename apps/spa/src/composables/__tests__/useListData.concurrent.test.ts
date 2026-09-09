@@ -203,4 +203,38 @@ describe('useListData request ownership', () => {
     expect(onLoaded).toHaveBeenCalledExactlyOnceWith(['current']);
     stop();
   });
+
+  it('exposes transport metadata without changing the existing error message contract', async () => {
+    const failure = Object.assign(new Error('private upstream details'), {
+      status: 503,
+      code: 'UPSTREAM_UNAVAILABLE'
+    });
+    const list = useListData({
+      fetchFn: vi.fn().mockRejectedValue(failure),
+      entityLabel: 'items'
+    });
+
+    await list.load();
+
+    expect(list.error.value).toBe('private upstream details');
+    expect(list.errorStatus.value).toBe(503);
+    expect(list.errorCode.value).toBe('UPSTREAM_UNAVAILABLE');
+  });
+
+  it('clears rows when a configured authorization status invalidates visibility', async () => {
+    const list = useListData({
+      fetchFn: vi.fn()
+        .mockResolvedValueOnce(['visible'])
+        .mockRejectedValueOnce(Object.assign(new Error('forbidden'), { status: 403 })),
+      entityLabel: 'items',
+      clearItemsOnErrorStatuses: [403]
+    });
+
+    await list.load();
+    expect(list.items.value).toEqual(['visible']);
+    await list.load();
+
+    expect(list.items.value).toEqual([]);
+    expect(list.errorStatus.value).toBe(403);
+  });
 });

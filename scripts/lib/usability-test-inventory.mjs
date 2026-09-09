@@ -60,7 +60,16 @@ export function configFingerprint(config) {
   return hash(normalize(config));
 }
 export async function sourceState(root) {
-  const generatedPrefixes = ['tmp/', 'artifacts/', 'playwright-report/', 'test-results/', 'coverage/', 'coverage-boundary/', 'legado/'];
+  const generatedPrefixes = [
+    'tmp/',
+    'artifacts/',
+    'playwright-report/',
+    'test-results/',
+    'coverage/',
+    'coverage-boundary/',
+    'legado/',
+    'docs/frontend/implementation/evidence/'
+  ];
   const paths = execFileSync(
     'git',
     [
@@ -126,10 +135,27 @@ export async function sourceState(root) {
   };
 }
 export async function navigation(root) {
-  const source = await readFile(resolve(root, 'apps/spa/src/navigation.ts'), 'utf8');
-  const js = ts.transpileModule(source, {
-    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 }
-  }).outputText;
+  const sourcePath = resolve(root, 'apps/spa/src/navigation.ts');
+  const permissionCatalogPath = resolve(
+    root,
+    'apps/spa/src/navigation-permission-catalog.ts'
+  );
+  const source = await readFile(sourcePath, 'utf8');
+  const permissionCatalog = await readFile(permissionCatalogPath, 'utf8');
+  const compilerOptions = {
+    module: ts.ModuleKind.ESNext,
+    target: ts.ScriptTarget.ES2022
+  };
+  const transpile = (value, fileName) =>
+    ts.transpileModule(value, { fileName, compilerOptions }).outputText;
+  const permissionCatalogUrl = `data:text/javascript;base64,${Buffer.from(
+    transpile(permissionCatalog, permissionCatalogPath)
+  ).toString('base64')}`;
+  const bundledSource = source.replace(
+    /(["'])\.\/navigation-permission-catalog\1/g,
+    () => JSON.stringify(permissionCatalogUrl)
+  );
+  const js = transpile(bundledSource, sourcePath);
   const module = await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
   const routes = [
     ...new Map(

@@ -381,7 +381,7 @@ function seedDefinitions(): readonly ReportDefinition[] {
         { key: 'dueAt', label: 'Vencimento', type: 'date' },
         { key: 'totalAmount', label: 'Total', type: 'currency' },
         { key: 'paidAmount', label: 'Pago', type: 'currency' },
-        { key: 'outstandingAmount', label: 'A pagar', type: 'currency' },
+        { key: 'outstandingAmount', label: 'A Pagar', type: 'currency' },
         { key: 'status', label: 'Status', type: 'status' },
         { key: 'paymentMethod', label: 'Método', type: 'string' },
         { key: 'reconciliationStatus', label: 'Reconciliação', type: 'status' }
@@ -503,9 +503,9 @@ function seedDefinitions(): readonly ReportDefinition[] {
       filterSchema: { search: 'string', status: 'string', dateFrom: 'date', dateTo: 'date' },
       columns: [
         { key: 'paymentId', label: 'Pagamento', type: 'string' },
-        { key: 'ownerName', label: 'Cliente', type: 'string' },
+        { key: 'ownerName', label: 'Tutor', type: 'string' },
         { key: 'documentId', label: 'Documento', type: 'string' },
-        { key: 'issuedAt', label: 'Emissão', type: 'datetime' },
+        { key: 'issuedAt', label: 'Emitido em', type: 'datetime' },
         { key: 'originalAmount', label: 'Original', type: 'currency' },
         { key: 'compensatedAmount', label: 'Compensado', type: 'currency' },
         { key: 'balance', label: 'Saldo', type: 'currency' },
@@ -939,11 +939,17 @@ export class ReportsService {
         format
       });
     }
+    const exportId = stableReportId('rep_exp', accountId, executionId, format);
+    // Interactive retries reuse the persisted artifact. Scheduled takeover is
+    // different: its fenced claim explicitly refreshes the deterministic
+    // artifact after a new execution snapshot has been committed.
+    const existing = this.#exports.get(exportId);
+    if (!scheduleClaim && existing && existing.accountId === accountId) return existing;
     const exportedAt = nowIso();
     const filename = `${definition.id}-${execution.id}.${format}`;
     const artifact = renderExport(execution, format);
     const result: ReportExportSummary = {
-      id: stableReportId('rep_exp', accountId, executionId, format),
+      id: exportId,
       accountId,
       executionId,
       format,
@@ -990,6 +996,15 @@ export class ReportsService {
       throw new NotFoundError('Report export not found', { exportId });
     }
     return exported;
+  }
+
+  public getExportForExecution(
+    accountId: AccountId,
+    executionId: string,
+    format: ReportFormat
+  ): ReportExportSummary {
+    this.getExecution(accountId, executionId);
+    return this.getExport(accountId, stableReportId('rep_exp', accountId, executionId, format));
   }
 
   public async createSchedule(

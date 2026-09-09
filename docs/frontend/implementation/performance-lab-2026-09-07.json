@@ -1,0 +1,2459 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-08T21:41:26.268Z",
+  "harnessPath": "scripts/measure-spa-performance.mjs",
+  "harnessSha256": "5a52ef1647141a36cfae8a746855816a96115aed39aed364823d1586040c29dc",
+  "build": {
+    "directory": "apps/spa/dist",
+    "command": "pnpm --filter @cvg-his-v2/spa run build",
+    "artifactInventory": {
+      "distFiles": 494,
+      "distBytes": 3882719,
+      "artifactFingerprintSha256": "27554f339943a519eaee331155a3669d491100cfc3f41320e9ca17f2065f42b8",
+      "initialHtmlAssets": [
+        {
+          "path": "assets/index-FPLFIYQA.js",
+          "bytes": 94275,
+          "sha256": "2e06557513734366b9aae07eb2fed5a9eecd09d2e4892be88c9a50e9121a5f5d",
+          "gzipBytes": 24689
+        },
+        {
+          "path": "assets/vue-vendor-bll2kPb3.js",
+          "bytes": 110721,
+          "sha256": "5095f370ceef4bd8e8974f80c81e7203ce1dcd4fc0844819b7d5c9064a459b0c",
+          "gzipBytes": 43118
+        },
+        {
+          "path": "assets/index-CzpPXHtF.css",
+          "bytes": 48364,
+          "sha256": "64424d7bd4200d3d55f8f6ab8cba8fdaff163408e21a9d37b74f61ecca10e8c2",
+          "gzipBytes": 9103
+        }
+      ],
+      "initialHtmlAssetsBytes": 253360,
+      "initialHtmlAssetsGzipBytes": 76910,
+      "largestJavaScript": [
+        {
+          "path": "assets/vue-vendor-bll2kPb3.js",
+          "bytes": 110721,
+          "sha256": "5095f370ceef4bd8e8974f80c81e7203ce1dcd4fc0844819b7d5c9064a459b0c",
+          "gzipBytes": 43118
+        },
+        {
+          "path": "assets/routes-DV2MdD6l.js",
+          "bytes": 96083,
+          "sha256": "a7c5815546ba8d317f4b2eb7e690b3a519e223343c39ca6a60e45c0005340cfe",
+          "gzipBytes": 19501
+        },
+        {
+          "path": "assets/index-FPLFIYQA.js",
+          "bytes": 94275,
+          "sha256": "2e06557513734366b9aae07eb2fed5a9eecd09d2e4892be88c9a50e9121a5f5d",
+          "gzipBytes": 24689
+        },
+        {
+          "path": "assets/ReportWorkbenchPage-CjESTcds.js",
+          "bytes": 90430,
+          "sha256": "25b54fdea55912694faae53b4ccf5bd3e0aa99bebf81b19a65c7c865813222a6",
+          "gzipBytes": 21901
+        },
+        {
+          "path": "assets/PatientDetailPage-TJw_gDSx.js",
+          "bytes": 69692,
+          "sha256": "ad4f41620fb39a85545e11ac4b81c003e9d478f8fb93b734a7d88011a6d75484",
+          "gzipBytes": 18505
+        },
+        {
+          "path": "assets/CounterSalesPage-Dk0riKXy.js",
+          "bytes": 63933,
+          "sha256": "ae3b5d9c5ff0986e0d5c5aba186ef95b41abc7cc9e7de5378c1827131912a251",
+          "gzipBytes": 16593
+        },
+        {
+          "path": "assets/AppLayout-vu98YKWL.js",
+          "bytes": 63066,
+          "sha256": "cc20401d39382e56b8a42fd8f873b640b022a9d9a647b6c454cd519769e5da51",
+          "gzipBytes": 20059
+        },
+        {
+          "path": "assets/MedicalRecordsDetailPage-CFZSKQED.js",
+          "bytes": 55402,
+          "sha256": "305e796857a4837eb116796c471259bb088403e1640d1bf0d0b364c275bbda1f",
+          "gzipBytes": 15381
+        },
+        {
+          "path": "assets/AppointmentsListPage-BgbmL5fs.js",
+          "bytes": 54877,
+          "sha256": "4951f62f7963107abcff45faa96df6def764f84c28073f91398a731d51694df2",
+          "gzipBytes": 15836
+        },
+        {
+          "path": "assets/EncounterDetailPage-9uL3PhCi.js",
+          "bytes": 46211,
+          "sha256": "da0f9e7683b2ffae49c090e76c99c26d71585072b1fb2469c6f3a78fd782e5e6",
+          "gzipBytes": 12801
+        },
+        {
+          "path": "assets/OwnerDetailPage-CmSD5j9H.js",
+          "bytes": 40710,
+          "sha256": "c4a25b87524e5b6035884804c07580d839079f836217d035b71eb92c52672146",
+          "gzipBytes": 10794
+        },
+        {
+          "path": "assets/AccessControlPage-DQ6_FGt-.js",
+          "bytes": 35460,
+          "sha256": "8d1589d8bc087f883f1d2f26e592d608dcdde03a38a1898982c3ec6c74d7e7a4",
+          "gzipBytes": 9853
+        },
+        {
+          "path": "assets/DashboardPage-x6RVmd5S.js",
+          "bytes": 35108,
+          "sha256": "670eb71547afd95f795fb350beb156aeab7b3c5706e5e07f32153d9dd2b97904",
+          "gzipBytes": 10514
+        },
+        {
+          "path": "sw.js",
+          "bytes": 30375,
+          "sha256": "cf9c6263b120089c100101479250a8fa79dc808b8e7ab50326d001b5f5e2aa9a",
+          "gzipBytes": 7071
+        },
+        {
+          "path": "assets/InpatientDetailPage-gpMsb5NA.js",
+          "bytes": 24744,
+          "sha256": "48dd7b5e8ce2966b17112658a9f3558e3a1c4d367ada2508b6e6c6c68728b3ca",
+          "gzipBytes": 6860
+        }
+      ],
+      "largestStylesheets": [
+        {
+          "path": "assets/index-CzpPXHtF.css",
+          "bytes": 48364,
+          "sha256": "64424d7bd4200d3d55f8f6ab8cba8fdaff163408e21a9d37b74f61ecca10e8c2",
+          "gzipBytes": 9103
+        },
+        {
+          "path": "assets/AppointmentsListPage-8E4jHGRb.css",
+          "bytes": 36714,
+          "sha256": "3ceda5b47b20e450f987a71647fe5fd8efb640c82bd575c4a9bda73b511f8890",
+          "gzipBytes": 5882
+        },
+        {
+          "path": "assets/AppLayout-nk_LkvGk.css",
+          "bytes": 27212,
+          "sha256": "d3b08f309772dbb5d65821f894cf8def6aca148bbba719467867e43083eaebfa",
+          "gzipBytes": 4773
+        },
+        {
+          "path": "assets/DashboardPage-C74Ioy_g.css",
+          "bytes": 23584,
+          "sha256": "936c31428e6118d956719711205faad2ceb1282fa4830c3883e10efb84707085",
+          "gzipBytes": 4090
+        },
+        {
+          "path": "assets/PatientDetailPage-BLyiVHUE.css",
+          "bytes": 22518,
+          "sha256": "46210a90cac48a07cc86756670bb839122c2db85fcca7ee73afede89ce1e2d45",
+          "gzipBytes": 3850
+        },
+        {
+          "path": "assets/CounterSalesPage-BPgm4nvt.css",
+          "bytes": 17086,
+          "sha256": "ba6f99c1006eeaae0d8defb047f025bdde70143d2529a00ff7ff6900ffc84302",
+          "gzipBytes": 2755
+        },
+        {
+          "path": "assets/AppPageHeader-nW52u_38.css",
+          "bytes": 16382,
+          "sha256": "aaf1dd3eb6a94be22708d82264e4b5571bbe08e611e18237944ce69586f82fa9",
+          "gzipBytes": 3031
+        },
+        {
+          "path": "assets/EncounterDetailPage-JbJ5P2k5.css",
+          "bytes": 14063,
+          "sha256": "f9cad8e593ed852043f01944cdd065ec6cc00a8ffdedf0c63986947000d42a69",
+          "gzipBytes": 2781
+        },
+        {
+          "path": "assets/MedicalRecordsDetailPage-CbT68iG-.css",
+          "bytes": 13736,
+          "sha256": "f59a33e011b061ff800c81ee483c2f73872bfbd4b36d9d5a8710f1424b6ce459",
+          "gzipBytes": 2366
+        },
+        {
+          "path": "assets/ReceptionGatewayPage-2rHft-OP.css",
+          "bytes": 12233,
+          "sha256": "e87d09971e49dc8a8a6acab1e7dd8cea6a6316bdc0594874c48a1470627b21a1",
+          "gzipBytes": 1910
+        }
+      ]
+    }
+  },
+  "laboratory": {
+    "browser": "Chromium headless via @playwright/test",
+    "browserVersion": "145.0.7632.6",
+    "host": {
+      "platform": "linux",
+      "arch": "x64",
+      "node": "v24.20.0",
+      "os": "7.0.0-31-generic"
+    },
+    "viewport": {
+      "width": 1440,
+      "height": 900,
+      "deviceScaleFactor": 1
+    },
+    "runs": 3,
+    "cache": "new context per route; serviceWorkers:'block'; no HTTP cache reuse between measurements",
+    "routes": [
+      {
+        "path": "/",
+        "authenticated": false
+      },
+      {
+        "path": "/login",
+        "authenticated": false
+      },
+      {
+        "path": "/appointments?agendaDate=2026-09-07&agendaView=week",
+        "authenticated": true
+      }
+    ],
+    "authenticatedFixture": {
+      "enabled": true,
+      "route": "/appointments?agendaDate=2026-09-07&agendaView=week",
+      "api": "Playwright-intercepted synthetic auth/session, scheduling overview, services, owners and patients responses; controlled data only"
+    },
+    "measurements": [
+      {
+        "route": "/",
+        "run": 1,
+        "authenticated": false,
+        "apiRequests": [],
+        "elapsedMs": 1721.7524560000002,
+        "consoleErrors": [],
+        "navigation": {
+          "redirectCount": 0,
+          "responseStart": 5.600000023841858,
+          "domContentLoaded": 36.10000002384186,
+          "loadEventEnd": 37,
+          "transferSize": 1222,
+          "encodedBodySize": 922,
+          "decodedBodySize": 2117
+        },
+        "fcp": 220,
+        "lcp": 220,
+        "longTasks": [],
+        "resources": [
+          {
+            "name": "/assets/index-FPLFIYQA.js",
+            "duration": 5.9000000059604645,
+            "transferSize": 24989,
+            "encodedBodySize": 24689,
+            "decodedBodySize": 94275
+          },
+          {
+            "name": "/assets/index-CzpPXHtF.css",
+            "duration": 7.200000017881393,
+            "transferSize": 9403,
+            "encodedBodySize": 9103,
+            "decodedBodySize": 48364
+          },
+          {
+            "name": "/assets/vue-vendor-bll2kPb3.js",
+            "duration": 11.300000011920929,
+            "transferSize": 43418,
+            "encodedBodySize": 43118,
+            "decodedBodySize": 110721
+          },
+          {
+            "name": "/assets/api-BzKfoTM7.js",
+            "duration": 2.5,
+            "transferSize": 2176,
+            "encodedBodySize": 1876,
+            "decodedBodySize": 3843
+          },
+          {
+            "name": "/assets/routes-DV2MdD6l.js",
+            "duration": 3.5999999940395355,
+            "transferSize": 19801,
+            "encodedBodySize": 19501,
+            "decodedBodySize": 96083
+          },
+          {
+            "name": "/assets/setup-BPQB0To6.js",
+            "duration": 1.699999988079071,
+            "transferSize": 774,
+            "encodedBodySize": 474,
+            "decodedBodySize": 837
+          },
+          {
+            "name": "/assets/LoginPage-qYUOz72N.js",
+            "duration": 3.699999988079071,
+            "transferSize": 3499,
+            "encodedBodySize": 3199,
+            "decodedBodySize": 7375
+          },
+          {
+            "name": "/assets/hospital-guarapiranga-logo-D8wB4tTv.js",
+            "duration": 3.800000011920929,
+            "transferSize": 383,
+            "encodedBodySize": 83,
+            "decodedBodySize": 63
+          },
+          {
+            "name": "/assets/DsCard-B_fkchvL.js",
+            "duration": 3.800000011920929,
+            "transferSize": 1113,
+            "encodedBodySize": 813,
+            "decodedBodySize": 1698
+          },
+          {
+            "name": "/assets/DsCard-C5CKJO9E.css",
+            "duration": 4.799999982118607,
+            "transferSize": 1096,
+            "encodedBodySize": 796,
+            "decodedBodySize": 2334
+          },
+          {
+            "name": "/assets/DsButton-C9sE2M2u.js",
+            "duration": 6.300000011920929,
+            "transferSize": 1619,
+            "encodedBodySize": 1319,
+            "decodedBodySize": 2878
+          },
+          {
+            "name": "/assets/DsIcon-Ds-wgse3.js",
+            "duration": 10.700000017881393,
+            "transferSize": 3922,
+            "encodedBodySize": 3622,
+            "decodedBodySize": 7810
+          },
+          {
+            "name": "/assets/DsIcon-DVKUDbap.css",
+            "duration": 5.0999999940395355,
+            "transferSize": 465,
+            "encodedBodySize": 165,
+            "decodedBodySize": 349
+          },
+          {
+            "name": "/assets/DsButton-Cc6V760C.css",
+            "duration": 7.699999988079071,
+            "transferSize": 1618,
+            "encodedBodySize": 1318,
+            "decodedBodySize": 4852
+          },
+          {
+            "name": "/assets/DsInput-D1txTE4L.js",
+            "duration": 9.599999994039536,
+            "transferSize": 1639,
+            "encodedBodySize": 1339,
+            "decodedBodySize": 3946
+          },
+          {
+            "name": "/assets/DsInput-CbKcKGOK.css",
+            "duration": 6,
+            "transferSize": 1404,
+            "encodedBodySize": 1104,
+            "decodedBodySize": 3344
+          },
+          {
+            "name": "/assets/DsAlert-DPXtosMY.js",
+            "duration": 9.800000011920929,
+            "transferSize": 948,
+            "encodedBodySize": 648,
+            "decodedBodySize": 1188
+          },
+          {
+            "name": "/assets/DsAlert-D1CdAUSR.css",
+            "duration": 6.399999976158142,
+            "transferSize": 1071,
+            "encodedBodySize": 771,
+            "decodedBodySize": 3029
+          },
+          {
+            "name": "/assets/LoginPage-Dm8danq7.css",
+            "duration": 6.699999988079071,
+            "transferSize": 2365,
+            "encodedBodySize": 2065,
+            "decodedBodySize": 7087
+          }
+        ],
+        "assetNetwork": {
+          "requests": 19,
+          "transferSize": 121703,
+          "encodedBodySize": 116003,
+          "decodedBodySize": 400076,
+          "compressionObserved": true
+        },
+        "finalPath": "/login?next=/",
+        "title": "Login · CVG HIS SPA"
+      },
+      {
+        "route": "/login",
+        "run": 1,
+        "authenticated": false,
+        "apiRequests": [],
+        "elapsedMs": 1578.5760949999994,
+        "consoleErrors": [],
+        "navigation": {
+          "redirectCount": 0,
+          "responseStart": 1.300000011920929,
+          "domContentLoaded": 23.30000001192093,
+          "loadEventEnd": 23.30000001192093,
+          "transferSize": 1222,
+          "encodedBodySize": 922,
+          "decodedBodySize": 2117
+        },
+        "fcp": 116,
+        "lcp": 116,
+        "longTasks": [],
+        "resources": [
+          {
+            "name": "/assets/index-FPLFIYQA.js",
+            "duration": 3.100000023841858,
+            "transferSize": 24989,
+            "encodedBodySize": 24689,
+            "decodedBodySize": 94275
+          },
+          {
+            "name": "/assets/index-CzpPXHtF.css",
+            "duration": 2.399999976158142,
+            "transferSize": 9403,
+            "encodedBodySize": 9103,
+            "decodedBodySize": 48364
+          },
+          {
+            "name": "/assets/vue-vendor-bll2kPb3.js",
+            "duration": 3.2999999821186066,
+            "transferSize": 43418,
+            "encodedBodySize": 43118,
+            "decodedBodySize": 110721
+          },
+          {
+            "name": "/assets/api-BzKfoTM7.js",
+            "duration": 1.5,
+            "transferSize": 2176,
+            "encodedBodySize": 1876,
+            "decodedBodySize": 3843
+          },
+          {
+            "name": "/assets/setup-BPQB0To6.js",
+            "duration": 2.399999976158142,
+            "transferSize": 774,
+            "encodedBodySize": 474,
+            "decodedBodySize": 837
+          },
+          {
+            "name": "/assets/LoginPage-qYUOz72N.js",
+            "duration": 2.699999988079071,
+            "transferSize": 3499,
+            "encodedBodySize": 3199,
+            "decodedBodySize": 7375
+          },
+          {
+            "name": "/assets/hospital-guarapiranga-logo-D8wB4tTv.js",
+            "duration": 2.800000011920929,
+            "transferSize": 383,
+            "encodedBodySize": 83,
+            "decodedBodySize": 63
+          },
+          {
+            "name": "/assets/DsCard-B_fkchvL.js",
+            "duration": 3.5,
+            "transferSize": 1113,
+            "encodedBodySize": 813,
+            "decodedBodySize": 1698
+          },
+          {
+            "name": "/assets/DsCard-C5CKJO9E.css",
+            "duration": 3.7000000178813934,
+            "transferSize": 1096,
+            "encodedBodySize": 796,
+            "decodedBodySize": 2334
+          },
+          {
+            "name": "/assets/DsButton-C9sE2M2u.js",
+            "duration": 7,
+            "transferSize": 1619,
+            "encodedBodySize": 1319,
+            "decodedBodySize": 2878
+          },
+          {
+            "name": "/assets/DsIcon-Ds-wgse3.js",
+            "duration": 7.199999988079071,
+            "transferSize": 3922,
+            "encodedBodySize": 3622,
+            "decodedBodySize": 7810
+          },
+          {
+            "name": "/assets/DsIcon-DVKUDbap.css",
+            "duration": 3.7000000178813934,
+            "transferSize": 465,
+            "encodedBodySize": 165,
+            "decodedBodySize": 349
+          },
+          {
+            "name": "/assets/DsButton-Cc6V760C.css",
+            "duration": 3.7999999821186066,
+            "transferSize": 1618,
+            "encodedBodySize": 1318,
+            "decodedBodySize": 4852
+          },
+          {
+            "name": "/assets/DsInput-CbKcKGOK.css",
+            "duration": 4,
+            "transferSize": 1404,
+            "encodedBodySize": 1104,
+            "decodedBodySize": 3344
+          },
+          {
+            "name": "/assets/DsInput-D1txTE4L.js",
+            "duration": 6.9000000059604645,
+            "transferSize": 1639,
+            "encodedBodySize": 1339,
+            "decodedBodySize": 3946
+          },
+          {
+            "name": "/assets/DsAlert-DPXtosMY.js",
+            "duration": 5.0999999940395355,
+            "transferSize": 948,
+            "encodedBodySize": 648,
+            "decodedBodySize": 1188
+          },
+          {
+            "name": "/assets/DsAlert-D1CdAUSR.css",
+            "duration": 4,
+            "transferSize": 1071,
+            "encodedBodySize": 771,
+            "decodedBodySize": 3029
+          },
+          {
+            "name": "/assets/LoginPage-Dm8danq7.css",
+            "duration": 5.199999988079071,
+            "transferSize": 2365,
+            "encodedBodySize": 2065,
+            "decodedBodySize": 7087
+          }
+        ],
+        "assetNetwork": {
+          "requests": 18,
+          "transferSize": 101902,
+          "encodedBodySize": 96502,
+          "decodedBodySize": 303993,
+          "compressionObserved": true
+        },
+        "finalPath": "/login",
+        "title": "Login · CVG HIS SPA"
+      },
+      {
+        "route": "/appointments?agendaDate=2026-09-07&agendaView=week",
+        "run": 1,
+        "authenticated": true,
+        "apiRequests": [
+          {
+            "method": "POST",
+            "path": "/api/auth/refresh"
+          },
+          {
+            "method": "GET",
+            "path": "/api/auth/session"
+          },
+          {
+            "method": "GET",
+            "path": "/api/auth/session"
+          },
+          {
+            "method": "GET",
+            "path": "/api/auth/session"
+          },
+          {
+            "method": "GET",
+            "path": "/api/services"
+          },
+          {
+            "method": "GET",
+            "path": "/api/scheduling/overview"
+          },
+          {
+            "method": "GET",
+            "path": "/api/owners/77777777-7777-4777-8777-777777777777"
+          },
+          {
+            "method": "GET",
+            "path": "/api/owners/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+          },
+          {
+            "method": "GET",
+            "path": "/api/patients/66666666-6666-4666-8666-666666666666"
+          },
+          {
+            "method": "GET",
+            "path": "/api/patients/99999999-9999-4999-8999-999999999999"
+          }
+        ],
+        "elapsedMs": 1804.6781870000004,
+        "consoleErrors": [],
+        "navigation": {
+          "redirectCount": 0,
+          "responseStart": 3.7000000178813934,
+          "domContentLoaded": 28.5,
+          "loadEventEnd": 28.600000023841858,
+          "transferSize": 1222,
+          "encodedBodySize": 922,
+          "decodedBodySize": 2117
+        },
+        "fcp": 196,
+        "lcp": 196,
+        "longTasks": [],
+        "resources": [
+          {
+            "name": "/assets/index-FPLFIYQA.js",
+            "duration": 5,
+            "transferSize": 24989,
+            "encodedBodySize": 24689,
+            "decodedBodySize": 94275
+          },
+          {
+            "name": "/assets/vue-vendor-bll2kPb3.js",
+            "duration": 6.300000011920929,
+            "transferSize": 43418,
+            "encodedBodySize": 43118,
+            "decodedBodySize": 110721
+          },
+          {
+            "name": "/assets/index-CzpPXHtF.css",
+            "duration": 5.5999999940395355,
+            "transferSize": 9403,
+            "encodedBodySize": 9103,
+            "decodedBodySize": 48364
+          },
+          {
+            "name": "/assets/api-BzKfoTM7.js",
+            "duration": 2.300000011920929,
+            "transferSize": 2176,
+            "encodedBodySize": 1876,
+            "decodedBodySize": 3843
+          },
+          {
+            "name": "/assets/routes-DV2MdD6l.js",
+            "duration": 2.5,
+            "transferSize": 19801,
+            "encodedBodySize": 19501,
+            "decodedBodySize": 96083
+          },
+          {
+            "name": "/assets/AppLayout-vu98YKWL.js",
+            "duration": 20.200000017881393,
+            "transferSize": 20359,
+            "encodedBodySize": 20059,
+            "decodedBodySize": 63066
+          },
+          {
+            "name": "/assets/hospital-guarapiranga-logo-D8wB4tTv.js",
+            "duration": 19.5,
+            "transferSize": 383,
+            "encodedBodySize": 83,
+            "decodedBodySize": 63
+          },
+          {
+            "name": "/assets/unsavedChangesCoordinator-Bm6-JQj7.js",
+            "duration": 19.5,
+            "transferSize": 588,
+            "encodedBodySize": 288,
+            "decodedBodySize": 460
+          },
+          {
+            "name": "/assets/agendaContext-Bdze2Olg.js",
+            "duration": 19.5,
+            "transferSize": 1112,
+            "encodedBodySize": 812,
+            "decodedBodySize": 1739
+          },
+          {
+            "name": "/assets/successRedirect-BD_fI2zc.js",
+            "duration": 37.20000001788139,
+            "transferSize": 1542,
+            "encodedBodySize": 1242,
+            "decodedBodySize": 3430
+          },
+          {
+            "name": "/assets/DsAlert-DPXtosMY.js",
+            "duration": 37.19999998807907,
+            "transferSize": 948,
+            "encodedBodySize": 648,
+            "decodedBodySize": 1188
+          },
+          {
+            "name": "/assets/DsIcon-Ds-wgse3.js",
+            "duration": 37.19999998807907,
+            "transferSize": 3922,
+            "encodedBodySize": 3622,
+            "decodedBodySize": 7810
+          },
+          {
+            "name": "/assets/DsIcon-DVKUDbap.css",
+            "duration": 18.5,
+            "transferSize": 465,
+            "encodedBodySize": 165,
+            "decodedBodySize": 349
+          },
+          {
+            "name": "/assets/DsAlert-D1CdAUSR.css",
+            "duration": 23.799999982118607,
+            "transferSize": 1071,
+            "encodedBodySize": 771,
+            "decodedBodySize": 3029
+          },
+          {
+            "name": "/assets/DsModal-DolbpGRA.js",
+            "duration": 36.900000005960464,
+            "transferSize": 1729,
+            "encodedBodySize": 1429,
+            "decodedBodySize": 3153
+          },
+          {
+            "name": "/assets/DsModal-KIW9FMHE.css",
+            "duration": 24.099999994039536,
+            "transferSize": 1154,
+            "encodedBodySize": 854,
+            "decodedBodySize": 2355
+          },
+          {
+            "name": "/assets/AppLayout-nk_LkvGk.css",
+            "duration": 24.900000005960464,
+            "transferSize": 5073,
+            "encodedBodySize": 4773,
+            "decodedBodySize": 27212
+          },
+          {
+            "name": "/assets/AppointmentsListPage-BgbmL5fs.js",
+            "duration": 38.39999997615814,
+            "transferSize": 16136,
+            "encodedBodySize": 15836,
+            "decodedBodySize": 54877
+          },
+          {
+            "name": "/assets/DsButton-C9sE2M2u.js",
+            "duration": 38.80000001192093,
+            "transferSize": 1619,
+            "encodedBodySize": 1319,
+            "decodedBodySize": 2878
+          },
+          {
+            "name": "/assets/DsButton-Cc6V760C.css",
+            "duration": 23.900000005960464,
+            "transferSize": 1618,
+            "encodedBodySize": 1318,
+            "decodedBodySize": 4852
+          },
+          {
+            "name": "/assets/DsCard-B_fkchvL.js",
+            "duration": 39.29999998211861,
+            "transferSize": 1113,
+            "encodedBodySize": 813,
+            "decodedBodySize": 1698
+          },
+          {
+            "name": "/assets/DsCard-C5CKJO9E.css",
+            "duration": 24.69999998807907,
+            "transferSize": 1096,
+            "encodedBodySize": 796,
+            "decodedBodySize": 2334
+          },
+          {
+            "name": "/assets/DsInput-D1txTE4L.js",
+            "duration": 40.19999998807907,
+            "transferSize": 1639,
+            "encodedBodySize": 1339,
+            "decodedBodySize": 3946
+          },
+          {
+            "name": "/assets/DsInput-CbKcKGOK.css",
+            "duration": 27,
+            "transferSize": 1404,
+            "encodedBodySize": 1104,
+            "decodedBodySize": 3344
+          },
+          {
+            "name": "/assets/DsSpinner-Caszvh2q.js",
+            "duration": 39.89999997615814,
+            "transferSize": 833,
+            "encodedBodySize": 533,
+            "decodedBodySize": 903
+          },
+          {
+            "name": "/assets/DsSpinner-D9wFYuwT.css",
+            "duration": 27.099999994039536,
+            "transferSize": 683,
+            "encodedBodySize": 383,
+            "decodedBodySize": 852
+          },
+          {
+            "name": "/assets/EmptyState-B59i91RA.js",
+            "duration": 41.5,
+            "transferSize": 804,
+            "encodedBodySize": 504,
+            "decodedBodySize": 821
+          },
+          {
+            "name": "/assets/EmptyState-C_1Z2cwR.css",
+            "duration": 27.200000017881393,
+            "transferSize": 587,
+            "encodedBodySize": 287,
+            "decodedBodySize": 567
+          },
+          {
+            "name": "/assets/AppPageHeader-Cd9Iq3Jk.js",
+            "duration": 42.10000002384186,
+            "transferSize": 3486,
+            "encodedBodySize": 3186,
+            "decodedBodySize": 10229
+          },
+          {
+            "name": "/assets/AppPageHeader-nW52u_38.css",
+            "duration": 28.299999982118607,
+            "transferSize": 3331,
+            "encodedBodySize": 3031,
+            "decodedBodySize": 16382
+          },
+          {
+            "name": "/assets/owner-BQX643bv.js",
+            "duration": 42,
+            "transferSize": 786,
+            "encodedBodySize": 486,
+            "decodedBodySize": 926
+          },
+          {
+            "name": "/assets/patient-BUxHdwkZ.js",
+            "duration": 42.30000001192093,
+            "transferSize": 758,
+            "encodedBodySize": 458,
+            "decodedBodySize": 906
+          },
+          {
+            "name": "/assets/labels-BnwurrtU.js",
+            "duration": 43.400000005960464,
+            "transferSize": 1447,
+            "encodedBodySize": 1147,
+            "decodedBodySize": 2773
+          },
+          {
+            "name": "/assets/AppointmentQuickCreateForm-BMhkaidT.js",
+            "duration": 43.79999998211861,
+            "transferSize": 6389,
+            "encodedBodySize": 6089,
+            "decodedBodySize": 20591
+          },
+          {
+            "name": "/assets/SearchSelect-CW_TLR9k.css",
+            "duration": 27.80000001192093,
+            "transferSize": 978,
+            "encodedBodySize": 678,
+            "decodedBodySize": 2231
+          },
+          {
+            "name": "/assets/SearchSelect-j0Pnl25P.js",
+            "duration": 44.30000001192093,
+            "transferSize": 1575,
+            "encodedBodySize": 1275,
+            "decodedBodySize": 2809
+          },
+          {
+            "name": "/assets/appointment-D8mZVXbl.js",
+            "duration": 44.80000001192093,
+            "transferSize": 830,
+            "encodedBodySize": 530,
+            "decodedBodySize": 1334
+          },
+          {
+            "name": "/assets/scheduling-CzHoT4Op.js",
+            "duration": 45.19999998807907,
+            "transferSize": 808,
+            "encodedBodySize": 508,
+            "decodedBodySize": 1143
+          },
+          {
+            "name": "/assets/services-DjVq3CGd.js",
+            "duration": 45.5,
+            "transferSize": 663,
+            "encodedBodySize": 363,
+            "decodedBodySize": 567
+          },
+          {
+            "name": "/assets/AppointmentQuickCreateForm-DjJ4Y-9K.css",
+            "duration": 28.599999994039536,
+            "transferSize": 928,
+            "encodedBodySize": 628,
+            "decodedBodySize": 1962
+          },
+          {
+            "name": "/assets/AppointmentsListPage-8E4jHGRb.css",
+            "duration": 33.099999994039536,
+            "transferSize": 6182,
+            "encodedBodySize": 5882,
+            "decodedBodySize": 36714
+          }
+        ],
+        "assetNetwork": {
+          "requests": 41,
+          "transferSize": 193826,
+          "encodedBodySize": 181526,
+          "decodedBodySize": 642779,
+          "compressionObserved": true
+        },
+        "finalPath": "/appointments?agendaDate=2026-09-07&agendaView=week",
+        "title": "Agenda · CVG HIS SPA"
+      },
+      {
+        "route": "/",
+        "run": 2,
+        "authenticated": false,
+        "apiRequests": [],
+        "elapsedMs": 1621.0089930000004,
+        "consoleErrors": [],
+        "navigation": {
+          "redirectCount": 0,
+          "responseStart": 1.2000000178813934,
+          "domContentLoaded": 30.900000005960464,
+          "loadEventEnd": 31,
+          "transferSize": 1222,
+          "encodedBodySize": 922,
+          "decodedBodySize": 2117
+        },
+        "fcp": 164,
+        "lcp": 164,
+        "longTasks": [],
+        "resources": [
+          {
+            "name": "/assets/index-FPLFIYQA.js",
+            "duration": 6,
+            "transferSize": 24989,
+            "encodedBodySize": 24689,
+            "decodedBodySize": 94275
+          },
+          {
+            "name": "/assets/vue-vendor-bll2kPb3.js",
+            "duration": 6.100000023841858,
+            "transferSize": 43418,
+            "encodedBodySize": 43118,
+            "decodedBodySize": 110721
+          },
+          {
+            "name": "/assets/index-CzpPXHtF.css",
+            "duration": 4.5999999940395355,
+            "transferSize": 9403,
+            "encodedBodySize": 9103,
+            "decodedBodySize": 48364
+          },
+          {
+            "name": "/assets/api-BzKfoTM7.js",
+            "duration": 1.5999999940395355,
+            "transferSize": 2176,
+            "encodedBodySize": 1876,
+            "decodedBodySize": 3843
+          },
+          {
+            "name": "/assets/routes-DV2MdD6l.js",
+            "duration": 1.699999988079071,
+            "transferSize": 19801,
+            "encodedBodySize": 19501,
+            "decodedBodySize": 96083
+          },
+          {
+            "name": "/assets/setup-BPQB0To6.js",
+            "duration": 1.7000000178813934,
+            "transferSize": 774,
+            "encodedBodySize": 474,
+            "decodedBodySize": 837
+          },
+          {
+            "name": "/assets/LoginPage-qYUOz72N.js",
+            "duration": 4.5999999940395355,
+            "transferSize": 3499,
+            "encodedBodySize": 3199,
+            "decodedBodySize": 7375
+          },
+          {
+            "name": "/assets/hospital-guarapiranga-logo-D8wB4tTv.js",
+            "duration": 4.800000011920929,
+            "transferSize": 383,
+            "encodedBodySize": 83,
+            "decodedBodySize": 63
+          },
+          {
+            "name": "/assets/DsCard-B_fkchvL.js",
+            "duration": 6,
+            "transferSize": 1113,
+            "encodedBodySize": 813,
+            "decodedBodySize": 1698
+          },
+          {
+            "name": "/assets/DsCard-C5CKJO9E.css",
+            "duration": 4.9000000059604645,
+            "transferSize": 1096,
+            "encodedBodySize": 796,
+            "decodedBodySize": 2334
+          },
+          {
+            "name": "/assets/DsButton-C9sE2M2u.js",
+            "duration": 9.400000005960464,
+            "transferSize": 1619,
+            "encodedBodySize": 1319,
+            "decodedBodySize": 2878
+          },
+          {
+            "name": "/assets/DsIcon-Ds-wgse3.js",
+            "duration": 9.700000017881393,
+            "transferSize": 3922,
+            "encodedBodySize": 3622,
+            "decodedBodySize": 7810
+          },
+          {
+            "name": "/assets/DsIcon-DVKUDbap.css",
+            "duration": 4.899999976158142,
+            "transferSize": 465,
+            "encodedBodySize": 165,
+            "decodedBodySize": 349
+          },
+          {
+            "name": "/assets/DsButton-Cc6V760C.css",
+            "duration": 5.0999999940395355,
+            "transferSize": 1618,
+            "encodedBodySize": 1318,
+            "decodedBodySize": 4852
+          },
+          {
+            "name": "/assets/DsInput-CbKcKGOK.css",
+            "duration": 6.700000017881393,
+            "transferSize": 1404,
+            "encodedBodySize": 1104,
+            "decodedBodySize": 3344
+          },
+          {
+            "name": "/assets/DsInput-D1txTE4L.js",
+            "duration": 10,
+            "transferSize": 1639,
+            "encodedBodySize": 1339,
+            "decodedBodySize": 3946
+          },
+          {
+            "name": "/assets/DsAlert-DPXtosMY.js",
+            "duration": 10.699999988079071,
+            "transferSize": 948,
+            "encodedBodySize": 648,
+            "decodedBodySize": 1188
+          },
+          {
+            "name": "/assets/DsAlert-D1CdAUSR.css",
+            "duration": 7.199999988079071,
+            "transferSize": 1071,
+            "encodedBodySize": 771,
+            "decodedBodySize": 3029
+          },
+          {
+            "name": "/assets/LoginPage-Dm8danq7.css",
+            "duration": 7.300000011920929,
+            "transferSize": 2365,
+            "encodedBodySize": 2065,
+            "decodedBodySize": 7087
+          }
+        ],
+        "assetNetwork": {
+          "requests": 19,
+          "transferSize": 121703,
+          "encodedBodySize": 116003,
+          "decodedBodySize": 400076,
+          "compressionObserved": true
+        },
+        "finalPath": "/login?next=/",
+        "title": "Login · CVG HIS SPA"
+      },
+      {
+        "route": "/login",
+        "run": 2,
+        "authenticated": false,
+        "apiRequests": [],
+        "elapsedMs": 1585.1401969999997,
+        "consoleErrors": [],
+        "navigation": {
+          "redirectCount": 0,
+          "responseStart": 1.5999999940395355,
+          "domContentLoaded": 25.299999982118607,
+          "loadEventEnd": 26.099999994039536,
+          "transferSize": 1222,
+          "encodedBodySize": 922,
+          "decodedBodySize": 2117
+        },
+        "fcp": 120,
+        "lcp": 120,
+        "longTasks": [],
+        "resources": [
+          {
+            "name": "/assets/index-FPLFIYQA.js",
+            "duration": 3,
+            "transferSize": 24989,
+            "encodedBodySize": 24689,
+            "decodedBodySize": 94275
+          },
+          {
+            "name": "/assets/index-CzpPXHtF.css",
+            "duration": 2.4000000059604645,
+            "transferSize": 9403,
+            "encodedBodySize": 9103,
+            "decodedBodySize": 48364
+          },
+          {
+            "name": "/assets/vue-vendor-bll2kPb3.js",
+            "duration": 3,
+            "transferSize": 43418,
+            "encodedBodySize": 43118,
+            "decodedBodySize": 110721
+          },
+          {
+            "name": "/assets/api-BzKfoTM7.js",
+            "duration": 1.7000000178813934,
+            "transferSize": 2176,
+            "encodedBodySize": 1876,
+            "decodedBodySize": 3843
+          },
+          {
+            "name": "/assets/setup-BPQB0To6.js",
+            "duration": 1.5999999940395355,
+            "transferSize": 774,
+            "encodedBodySize": 474,
+            "decodedBodySize": 837
+          },
+          {
+            "name": "/assets/LoginPage-qYUOz72N.js",
+            "duration": 2.9000000059604645,
+            "transferSize": 3499,
+            "encodedBodySize": 3199,
+            "decodedBodySize": 7375
+          },
+          {
+            "name": "/assets/hospital-guarapiranga-logo-D8wB4tTv.js",
+            "duration": 3.0999999940395355,
+            "transferSize": 383,
+            "encodedBodySize": 83,
+            "decodedBodySize": 63
+          },
+          {
+            "name": "/assets/DsCard-B_fkchvL.js",
+            "duration": 4.399999976158142,
+            "transferSize": 1113,
+            "encodedBodySize": 813,
+            "decodedBodySize": 1698
+          },
+          {
+            "name": "/assets/DsCard-C5CKJO9E.css",
+            "duration": 3.5,
+            "transferSize": 1096,
+            "encodedBodySize": 796,
+            "decodedBodySize": 2334
+          },
+          {
+            "name": "/assets/DsButton-C9sE2M2u.js",
+            "duration": 7.800000011920929,
+            "transferSize": 1619,
+            "encodedBodySize": 1319,
+            "decodedBodySize": 2878
+          },
+          {
+            "name": "/assets/DsIcon-Ds-wgse3.js",
+            "duration": 7.9000000059604645,
+            "transferSize": 3922,
+            "encodedBodySize": 3622,
+            "decodedBodySize": 7810
+          },
+          {
+            "name": "/assets/DsIcon-DVKUDbap.css",
+            "duration": 3.5,
+            "transferSize": 465,
+            "encodedBodySize": 165,
+            "decodedBodySize": 349
+          },
+          {
+            "name": "/assets/DsButton-Cc6V760C.css",
+            "duration": 3.9000000059604645,
+            "transferSize": 1618,
+            "encodedBodySize": 1318,
+            "decodedBodySize": 4852
+          },
+          {
+            "name": "/assets/DsInput-CbKcKGOK.css",
+            "duration": 5.4000000059604645,
+            "transferSize": 1404,
+            "encodedBodySize": 1104,
+            "decodedBodySize": 3344
+          },
+          {
+            "name": "/assets/DsInput-D1txTE4L.js",
+            "duration": 7.699999988079071,
+            "transferSize": 1639,
+            "encodedBodySize": 1339,
+            "decodedBodySize": 3946
+          },
+          {
+            "name": "/assets/DsAlert-DPXtosMY.js",
+            "duration": 8.599999994039536,
+            "transferSize": 948,
+            "encodedBodySize": 648,
+            "decodedBodySize": 1188
+          },
+          {
+            "name": "/assets/DsAlert-D1CdAUSR.css",
+            "duration": 6,
+            "transferSize": 1071,
+            "encodedBodySize": 771,
+            "decodedBodySize": 3029
+          },
+          {
+            "name": "/assets/LoginPage-Dm8danq7.css",
+            "duration": 7.0999999940395355,
+            "transferSize": 2365,
+            "encodedBodySize": 2065,
+            "decodedBodySize": 7087
+          }
+        ],
+        "assetNetwork": {
+          "requests": 18,
+          "transferSize": 101902,
+          "encodedBodySize": 96502,
+          "decodedBodySize": 303993,
+          "compressionObserved": true
+        },
+        "finalPath": "/login",
+        "title": "Login · CVG HIS SPA"
+      },
+      {
+        "route": "/appointments?agendaDate=2026-09-07&agendaView=week",
+        "run": 2,
+        "authenticated": true,
+        "apiRequests": [
+          {
+            "method": "POST",
+            "path": "/api/auth/refresh"
+          },
+          {
+            "method": "GET",
+            "path": "/api/auth/session"
+          },
+          {
+            "method": "GET",
+            "path": "/api/auth/session"
+          },
+          {
+            "method": "GET",
+            "path": "/api/auth/session"
+          },
+          {
+            "method": "GET",
+            "path": "/api/services"
+          },
+          {
+            "method": "GET",
+            "path": "/api/scheduling/overview"
+          },
+          {
+            "method": "GET",
+            "path": "/api/owners/77777777-7777-4777-8777-777777777777"
+          },
+          {
+            "method": "GET",
+            "path": "/api/owners/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+          },
+          {
+            "method": "GET",
+            "path": "/api/patients/66666666-6666-4666-8666-666666666666"
+          },
+          {
+            "method": "GET",
+            "path": "/api/patients/99999999-9999-4999-8999-999999999999"
+          }
+        ],
+        "elapsedMs": 1765.2675830000007,
+        "consoleErrors": [],
+        "navigation": {
+          "redirectCount": 0,
+          "responseStart": 2,
+          "domContentLoaded": 31.200000017881393,
+          "loadEventEnd": 31.30000001192093,
+          "transferSize": 1222,
+          "encodedBodySize": 922,
+          "decodedBodySize": 2117
+        },
+        "fcp": 156,
+        "lcp": 156,
+        "longTasks": [],
+        "resources": [
+          {
+            "name": "/assets/index-FPLFIYQA.js",
+            "duration": 6.5999999940395355,
+            "transferSize": 24989,
+            "encodedBodySize": 24689,
+            "decodedBodySize": 94275
+          },
+          {
+            "name": "/assets/vue-vendor-bll2kPb3.js",
+            "duration": 7.100000023841858,
+            "transferSize": 43418,
+            "encodedBodySize": 43118,
+            "decodedBodySize": 110721
+          },
+          {
+            "name": "/assets/index-CzpPXHtF.css",
+            "duration": 6.199999988079071,
+            "transferSize": 9403,
+            "encodedBodySize": 9103,
+            "decodedBodySize": 48364
+          },
+          {
+            "name": "/assets/api-BzKfoTM7.js",
+            "duration": 2.4000000059604645,
+            "transferSize": 2176,
+            "encodedBodySize": 1876,
+            "decodedBodySize": 3843
+          },
+          {
+            "name": "/assets/routes-DV2MdD6l.js",
+            "duration": 3.300000011920929,
+            "transferSize": 19801,
+            "encodedBodySize": 19501,
+            "decodedBodySize": 96083
+          },
+          {
+            "name": "/assets/AppLayout-vu98YKWL.js",
+            "duration": 12.800000011920929,
+            "transferSize": 20359,
+            "encodedBodySize": 20059,
+            "decodedBodySize": 63066
+          },
+          {
+            "name": "/assets/hospital-guarapiranga-logo-D8wB4tTv.js",
+            "duration": 11.200000017881393,
+            "transferSize": 383,
+            "encodedBodySize": 83,
+            "decodedBodySize": 63
+          },
+          {
+            "name": "/assets/unsavedChangesCoordinator-Bm6-JQj7.js",
+            "duration": 11.699999988079071,
+            "transferSize": 588,
+            "encodedBodySize": 288,
+            "decodedBodySize": 460
+          },
+          {
+            "name": "/assets/agendaContext-Bdze2Olg.js",
+            "duration": 12.299999982118607,
+            "transferSize": 1112,
+            "encodedBodySize": 812,
+            "decodedBodySize": 1739
+          },
+          {
+            "name": "/assets/successRedirect-BD_fI2zc.js",
+            "duration": 12.699999988079071,
+            "transferSize": 1542,
+            "encodedBodySize": 1242,
+            "decodedBodySize": 3430
+          },
+          {
+            "name": "/assets/DsAlert-DPXtosMY.js",
+            "duration": 12.800000011920929,
+            "transferSize": 948,
+            "encodedBodySize": 648,
+            "decodedBodySize": 1188
+          },
+          {
+            "name": "/assets/DsIcon-DVKUDbap.css",
+            "duration": 14.299999982118607,
+            "transferSize": 465,
+            "encodedBodySize": 165,
+            "decodedBodySize": 349
+          },
+          {
+            "name": "/assets/DsIcon-Ds-wgse3.js",
+            "duration": 21.799999982118607,
+            "transferSize": 3922,
+            "encodedBodySize": 3622,
+            "decodedBodySize": 7810
+          },
+          {
+            "name": "/assets/DsAlert-D1CdAUSR.css",
+            "duration": 14.699999988079071,
+            "transferSize": 1071,
+            "encodedBodySize": 771,
+            "decodedBodySize": 3029
+          },
+          {
+            "name": "/assets/DsModal-DolbpGRA.js",
+            "duration": 22.5,
+            "transferSize": 1729,
+            "encodedBodySize": 1429,
+            "decodedBodySize": 3153
+          },
+          {
+            "name": "/assets/DsModal-KIW9FMHE.css",
+            "duration": 14.800000011920929,
+            "transferSize": 1154,
+            "encodedBodySize": 854,
+            "decodedBodySize": 2355
+          },
+          {
+            "name": "/assets/AppLayout-nk_LkvGk.css",
+            "duration": 16.299999982118607,
+            "transferSize": 5073,
+            "encodedBodySize": 4773,
+            "decodedBodySize": 27212
+          },
+          {
+            "name": "/assets/AppointmentsListPage-BgbmL5fs.js",
+            "duration": 24,
+            "transferSize": 16136,
+            "encodedBodySize": 15836,
+            "decodedBodySize": 54877
+          },
+          {
+            "name": "/assets/DsButton-C9sE2M2u.js",
+            "duration": 23,
+            "transferSize": 1619,
+            "encodedBodySize": 1319,
+            "decodedBodySize": 2878
+          },
+          {
+            "name": "/assets/DsButton-Cc6V760C.css",
+            "duration": 15.600000023841858,
+            "transferSize": 1618,
+            "encodedBodySize": 1318,
+            "decodedBodySize": 4852
+          },
+          {
+            "name": "/assets/DsCard-B_fkchvL.js",
+            "duration": 23.899999976158142,
+            "transferSize": 1113,
+            "encodedBodySize": 813,
+            "decodedBodySize": 1698
+          },
+          {
+            "name": "/assets/DsCard-C5CKJO9E.css",
+            "duration": 15.599999994039536,
+            "transferSize": 1096,
+            "encodedBodySize": 796,
+            "decodedBodySize": 2334
+          },
+          {
+            "name": "/assets/DsInput-CbKcKGOK.css",
+            "duration": 16.099999994039536,
+            "transferSize": 1404,
+            "encodedBodySize": 1104,
+            "decodedBodySize": 3344
+          },
+          {
+            "name": "/assets/DsInput-D1txTE4L.js",
+            "duration": 23.900000005960464,
+            "transferSize": 1639,
+            "encodedBodySize": 1339,
+            "decodedBodySize": 3946
+          },
+          {
+            "name": "/assets/DsSpinner-D9wFYuwT.css",
+            "duration": 17.200000017881393,
+            "transferSize": 683,
+            "encodedBodySize": 383,
+            "decodedBodySize": 852
+          },
+          {
+            "name": "/assets/DsSpinner-Caszvh2q.js",
+            "duration": 24.200000017881393,
+            "transferSize": 833,
+            "encodedBodySize": 533,
+            "decodedBodySize": 903
+          },
+          {
+            "name": "/assets/EmptyState-B59i91RA.js",
+            "duration": 24.399999976158142,
+            "transferSize": 804,
+            "encodedBodySize": 504,
+            "decodedBodySize": 821
+          },
+          {
+            "name": "/assets/EmptyState-C_1Z2cwR.css",
+            "duration": 18,
+            "transferSize": 587,
+            "encodedBodySize": 287,
+            "decodedBodySize": 567
+          },
+          {
+            "name": "/assets/AppPageHeader-Cd9Iq3Jk.js",
+            "duration": 24.900000005960464,
+            "transferSize": 3486,
+            "encodedBodySize": 3186,
+            "decodedBodySize": 10229
+          },
+          {
+            "name": "/assets/AppPageHeader-nW52u_38.css",
+            "duration": 17.700000017881393,
+            "transferSize": 3331,
+            "encodedBodySize": 3031,
+            "decodedBodySize": 16382
+          },
+          {
+            "name": "/assets/owner-BQX643bv.js",
+            "duration": 25.5,
+            "transferSize": 786,
+            "encodedBodySize": 486,
+            "decodedBodySize": 926
+          },
+          {
+            "name": "/assets/patient-BUxHdwkZ.js",
+            "duration": 25.80000001192093,
+            "transferSize": 758,
+            "encodedBodySize": 458,
+            "decodedBodySize": 906
+          },
+          {
+            "name": "/assets/labels-BnwurrtU.js",
+            "duration": 26.700000017881393,
+            "transferSize": 1447,
+            "encodedBodySize": 1147,
+            "decodedBodySize": 2773
+          },
+          {
+            "name": "/assets/AppointmentQuickCreateForm-BMhkaidT.js",
+            "duration": 28.100000023841858,
+            "transferSize": 6389,
+            "encodedBodySize": 6089,
+            "decodedBodySize": 20591
+          },
+          {
+            "name": "/assets/SearchSelect-j0Pnl25P.js",
+            "duration": 27.099999994039536,
+            "transferSize": 1575,
+            "encodedBodySize": 1275,
+            "decodedBodySize": 2809
+          },
+          {
+            "name": "/assets/SearchSelect-CW_TLR9k.css",
+            "duration": 18.19999998807907,
+            "transferSize": 978,
+            "encodedBodySize": 678,
+            "decodedBodySize": 2231
+          },
+          {
+            "name": "/assets/appointment-D8mZVXbl.js",
+            "duration": 27.599999994039536,
+            "transferSize": 830,
+            "encodedBodySize": 530,
+            "decodedBodySize": 1334
+          },
+          {
+            "name": "/assets/scheduling-CzHoT4Op.js",
+            "duration": 28.30000001192093,
+            "transferSize": 808,
+            "encodedBodySize": 508,
+            "decodedBodySize": 1143
+          },
+          {
+            "name": "/assets/services-DjVq3CGd.js",
+            "duration": 28.5,
+            "transferSize": 663,
+            "encodedBodySize": 363,
+            "decodedBodySize": 567
+          },
+          {
+            "name": "/assets/AppointmentQuickCreateForm-DjJ4Y-9K.css",
+            "duration": 17.900000005960464,
+            "transferSize": 928,
+            "encodedBodySize": 628,
+            "decodedBodySize": 1962
+          },
+          {
+            "name": "/assets/AppointmentsListPage-8E4jHGRb.css",
+            "duration": 18.19999998807907,
+            "transferSize": 6182,
+            "encodedBodySize": 5882,
+            "decodedBodySize": 36714
+          }
+        ],
+        "assetNetwork": {
+          "requests": 41,
+          "transferSize": 193826,
+          "encodedBodySize": 181526,
+          "decodedBodySize": 642779,
+          "compressionObserved": true
+        },
+        "finalPath": "/appointments?agendaDate=2026-09-07&agendaView=week",
+        "title": "Agenda · CVG HIS SPA"
+      },
+      {
+        "route": "/",
+        "run": 3,
+        "authenticated": false,
+        "apiRequests": [],
+        "elapsedMs": 1594.1749330000002,
+        "consoleErrors": [],
+        "navigation": {
+          "redirectCount": 0,
+          "responseStart": 1.300000011920929,
+          "domContentLoaded": 23.900000005960464,
+          "loadEventEnd": 24.80000001192093,
+          "transferSize": 1222,
+          "encodedBodySize": 922,
+          "decodedBodySize": 2117
+        },
+        "fcp": 136,
+        "lcp": 136,
+        "longTasks": [],
+        "resources": [
+          {
+            "name": "/assets/index-FPLFIYQA.js",
+            "duration": 3.5,
+            "transferSize": 24989,
+            "encodedBodySize": 24689,
+            "decodedBodySize": 94275
+          },
+          {
+            "name": "/assets/vue-vendor-bll2kPb3.js",
+            "duration": 3.5999999940395355,
+            "transferSize": 43418,
+            "encodedBodySize": 43118,
+            "decodedBodySize": 110721
+          },
+          {
+            "name": "/assets/index-CzpPXHtF.css",
+            "duration": 2.5999999940395355,
+            "transferSize": 9403,
+            "encodedBodySize": 9103,
+            "decodedBodySize": 48364
+          },
+          {
+            "name": "/assets/api-BzKfoTM7.js",
+            "duration": 1.7999999821186066,
+            "transferSize": 2176,
+            "encodedBodySize": 1876,
+            "decodedBodySize": 3843
+          },
+          {
+            "name": "/assets/routes-DV2MdD6l.js",
+            "duration": 1.7000000178813934,
+            "transferSize": 19801,
+            "encodedBodySize": 19501,
+            "decodedBodySize": 96083
+          },
+          {
+            "name": "/assets/setup-BPQB0To6.js",
+            "duration": 1.4000000059604645,
+            "transferSize": 774,
+            "encodedBodySize": 474,
+            "decodedBodySize": 837
+          },
+          {
+            "name": "/assets/LoginPage-qYUOz72N.js",
+            "duration": 3.0999999940395355,
+            "transferSize": 3499,
+            "encodedBodySize": 3199,
+            "decodedBodySize": 7375
+          },
+          {
+            "name": "/assets/hospital-guarapiranga-logo-D8wB4tTv.js",
+            "duration": 4,
+            "transferSize": 383,
+            "encodedBodySize": 83,
+            "decodedBodySize": 63
+          },
+          {
+            "name": "/assets/DsCard-C5CKJO9E.css",
+            "duration": 3.5,
+            "transferSize": 1096,
+            "encodedBodySize": 796,
+            "decodedBodySize": 2334
+          },
+          {
+            "name": "/assets/DsCard-B_fkchvL.js",
+            "duration": 5.299999982118607,
+            "transferSize": 1113,
+            "encodedBodySize": 813,
+            "decodedBodySize": 1698
+          },
+          {
+            "name": "/assets/DsButton-C9sE2M2u.js",
+            "duration": 6.9000000059604645,
+            "transferSize": 1619,
+            "encodedBodySize": 1319,
+            "decodedBodySize": 2878
+          },
+          {
+            "name": "/assets/DsIcon-Ds-wgse3.js",
+            "duration": 6.9000000059604645,
+            "transferSize": 3922,
+            "encodedBodySize": 3622,
+            "decodedBodySize": 7810
+          },
+          {
+            "name": "/assets/DsIcon-DVKUDbap.css",
+            "duration": 4,
+            "transferSize": 465,
+            "encodedBodySize": 165,
+            "decodedBodySize": 349
+          },
+          {
+            "name": "/assets/DsButton-Cc6V760C.css",
+            "duration": 4.199999988079071,
+            "transferSize": 1618,
+            "encodedBodySize": 1318,
+            "decodedBodySize": 4852
+          },
+          {
+            "name": "/assets/DsInput-D1txTE4L.js",
+            "duration": 6.9000000059604645,
+            "transferSize": 1639,
+            "encodedBodySize": 1339,
+            "decodedBodySize": 3946
+          },
+          {
+            "name": "/assets/DsInput-CbKcKGOK.css",
+            "duration": 4.300000011920929,
+            "transferSize": 1404,
+            "encodedBodySize": 1104,
+            "decodedBodySize": 3344
+          },
+          {
+            "name": "/assets/DsAlert-D1CdAUSR.css",
+            "duration": 5,
+            "transferSize": 1071,
+            "encodedBodySize": 771,
+            "decodedBodySize": 3029
+          },
+          {
+            "name": "/assets/DsAlert-DPXtosMY.js",
+            "duration": 7.0999999940395355,
+            "transferSize": 948,
+            "encodedBodySize": 648,
+            "decodedBodySize": 1188
+          },
+          {
+            "name": "/assets/LoginPage-Dm8danq7.css",
+            "duration": 5.5,
+            "transferSize": 2365,
+            "encodedBodySize": 2065,
+            "decodedBodySize": 7087
+          }
+        ],
+        "assetNetwork": {
+          "requests": 19,
+          "transferSize": 121703,
+          "encodedBodySize": 116003,
+          "decodedBodySize": 400076,
+          "compressionObserved": true
+        },
+        "finalPath": "/login?next=/",
+        "title": "Login · CVG HIS SPA"
+      },
+      {
+        "route": "/login",
+        "run": 3,
+        "authenticated": false,
+        "apiRequests": [],
+        "elapsedMs": 1589.8287209999999,
+        "consoleErrors": [],
+        "navigation": {
+          "redirectCount": 0,
+          "responseStart": 1.0999999940395355,
+          "domContentLoaded": 23.30000001192093,
+          "loadEventEnd": 24,
+          "transferSize": 1222,
+          "encodedBodySize": 922,
+          "decodedBodySize": 2117
+        },
+        "fcp": 128,
+        "lcp": 128,
+        "longTasks": [],
+        "resources": [
+          {
+            "name": "/assets/index-FPLFIYQA.js",
+            "duration": 3.5,
+            "transferSize": 24989,
+            "encodedBodySize": 24689,
+            "decodedBodySize": 94275
+          },
+          {
+            "name": "/assets/vue-vendor-bll2kPb3.js",
+            "duration": 3.5999999940395355,
+            "transferSize": 43418,
+            "encodedBodySize": 43118,
+            "decodedBodySize": 110721
+          },
+          {
+            "name": "/assets/index-CzpPXHtF.css",
+            "duration": 2.800000011920929,
+            "transferSize": 9403,
+            "encodedBodySize": 9103,
+            "decodedBodySize": 48364
+          },
+          {
+            "name": "/assets/api-BzKfoTM7.js",
+            "duration": 1.5999999940395355,
+            "transferSize": 2176,
+            "encodedBodySize": 1876,
+            "decodedBodySize": 3843
+          },
+          {
+            "name": "/assets/setup-BPQB0To6.js",
+            "duration": 1.9000000059604645,
+            "transferSize": 774,
+            "encodedBodySize": 474,
+            "decodedBodySize": 837
+          },
+          {
+            "name": "/assets/LoginPage-qYUOz72N.js",
+            "duration": 3.899999976158142,
+            "transferSize": 3499,
+            "encodedBodySize": 3199,
+            "decodedBodySize": 7375
+          },
+          {
+            "name": "/assets/hospital-guarapiranga-logo-D8wB4tTv.js",
+            "duration": 4.199999988079071,
+            "transferSize": 383,
+            "encodedBodySize": 83,
+            "decodedBodySize": 63
+          },
+          {
+            "name": "/assets/DsCard-B_fkchvL.js",
+            "duration": 4.700000017881393,
+            "transferSize": 1113,
+            "encodedBodySize": 813,
+            "decodedBodySize": 1698
+          },
+          {
+            "name": "/assets/DsCard-C5CKJO9E.css",
+            "duration": 5.100000023841858,
+            "transferSize": 1096,
+            "encodedBodySize": 796,
+            "decodedBodySize": 2334
+          },
+          {
+            "name": "/assets/DsButton-C9sE2M2u.js",
+            "duration": 9.900000005960464,
+            "transferSize": 1619,
+            "encodedBodySize": 1319,
+            "decodedBodySize": 2878
+          },
+          {
+            "name": "/assets/DsIcon-Ds-wgse3.js",
+            "duration": 10.300000011920929,
+            "transferSize": 3922,
+            "encodedBodySize": 3622,
+            "decodedBodySize": 7810
+          },
+          {
+            "name": "/assets/DsIcon-DVKUDbap.css",
+            "duration": 5.800000011920929,
+            "transferSize": 465,
+            "encodedBodySize": 165,
+            "decodedBodySize": 349
+          },
+          {
+            "name": "/assets/DsButton-Cc6V760C.css",
+            "duration": 6.600000023841858,
+            "transferSize": 1618,
+            "encodedBodySize": 1318,
+            "decodedBodySize": 4852
+          },
+          {
+            "name": "/assets/DsInput-D1txTE4L.js",
+            "duration": 10.099999994039536,
+            "transferSize": 1639,
+            "encodedBodySize": 1339,
+            "decodedBodySize": 3946
+          },
+          {
+            "name": "/assets/DsInput-CbKcKGOK.css",
+            "duration": 6.5,
+            "transferSize": 1404,
+            "encodedBodySize": 1104,
+            "decodedBodySize": 3344
+          },
+          {
+            "name": "/assets/DsAlert-D1CdAUSR.css",
+            "duration": 6.4000000059604645,
+            "transferSize": 1071,
+            "encodedBodySize": 771,
+            "decodedBodySize": 3029
+          },
+          {
+            "name": "/assets/DsAlert-DPXtosMY.js",
+            "duration": 11.900000005960464,
+            "transferSize": 948,
+            "encodedBodySize": 648,
+            "decodedBodySize": 1188
+          },
+          {
+            "name": "/assets/LoginPage-Dm8danq7.css",
+            "duration": 7.299999982118607,
+            "transferSize": 2365,
+            "encodedBodySize": 2065,
+            "decodedBodySize": 7087
+          }
+        ],
+        "assetNetwork": {
+          "requests": 18,
+          "transferSize": 101902,
+          "encodedBodySize": 96502,
+          "decodedBodySize": 303993,
+          "compressionObserved": true
+        },
+        "finalPath": "/login",
+        "title": "Login · CVG HIS SPA"
+      },
+      {
+        "route": "/appointments?agendaDate=2026-09-07&agendaView=week",
+        "run": 3,
+        "authenticated": true,
+        "apiRequests": [
+          {
+            "method": "POST",
+            "path": "/api/auth/refresh"
+          },
+          {
+            "method": "GET",
+            "path": "/api/auth/session"
+          },
+          {
+            "method": "GET",
+            "path": "/api/auth/session"
+          },
+          {
+            "method": "GET",
+            "path": "/api/auth/session"
+          },
+          {
+            "method": "GET",
+            "path": "/api/services"
+          },
+          {
+            "method": "GET",
+            "path": "/api/scheduling/overview"
+          },
+          {
+            "method": "GET",
+            "path": "/api/owners/77777777-7777-4777-8777-777777777777"
+          },
+          {
+            "method": "GET",
+            "path": "/api/owners/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+          },
+          {
+            "method": "GET",
+            "path": "/api/patients/66666666-6666-4666-8666-666666666666"
+          },
+          {
+            "method": "GET",
+            "path": "/api/patients/99999999-9999-4999-8999-999999999999"
+          }
+        ],
+        "elapsedMs": 1787.5992879999994,
+        "consoleErrors": [],
+        "navigation": {
+          "redirectCount": 0,
+          "responseStart": 2.5999999940395355,
+          "domContentLoaded": 33.79999998211861,
+          "loadEventEnd": 33.79999998211861,
+          "transferSize": 1222,
+          "encodedBodySize": 922,
+          "decodedBodySize": 2117
+        },
+        "fcp": 164,
+        "lcp": 164,
+        "longTasks": [
+          {
+            "startTime": 165.19999998807907,
+            "duration": 54
+          }
+        ],
+        "resources": [
+          {
+            "name": "/assets/index-FPLFIYQA.js",
+            "duration": 6.300000011920929,
+            "transferSize": 24989,
+            "encodedBodySize": 24689,
+            "decodedBodySize": 94275
+          },
+          {
+            "name": "/assets/vue-vendor-bll2kPb3.js",
+            "duration": 7.5,
+            "transferSize": 43418,
+            "encodedBodySize": 43118,
+            "decodedBodySize": 110721
+          },
+          {
+            "name": "/assets/index-CzpPXHtF.css",
+            "duration": 5.800000011920929,
+            "transferSize": 9403,
+            "encodedBodySize": 9103,
+            "decodedBodySize": 48364
+          },
+          {
+            "name": "/assets/api-BzKfoTM7.js",
+            "duration": 2.5,
+            "transferSize": 2176,
+            "encodedBodySize": 1876,
+            "decodedBodySize": 3843
+          },
+          {
+            "name": "/assets/routes-DV2MdD6l.js",
+            "duration": 2.899999976158142,
+            "transferSize": 19801,
+            "encodedBodySize": 19501,
+            "decodedBodySize": 96083
+          },
+          {
+            "name": "/assets/AppLayout-vu98YKWL.js",
+            "duration": 13.199999988079071,
+            "transferSize": 20359,
+            "encodedBodySize": 20059,
+            "decodedBodySize": 63066
+          },
+          {
+            "name": "/assets/hospital-guarapiranga-logo-D8wB4tTv.js",
+            "duration": 12.299999982118607,
+            "transferSize": 383,
+            "encodedBodySize": 83,
+            "decodedBodySize": 63
+          },
+          {
+            "name": "/assets/unsavedChangesCoordinator-Bm6-JQj7.js",
+            "duration": 12.300000011920929,
+            "transferSize": 588,
+            "encodedBodySize": 288,
+            "decodedBodySize": 460
+          },
+          {
+            "name": "/assets/agendaContext-Bdze2Olg.js",
+            "duration": 12.199999988079071,
+            "transferSize": 1112,
+            "encodedBodySize": 812,
+            "decodedBodySize": 1739
+          },
+          {
+            "name": "/assets/successRedirect-BD_fI2zc.js",
+            "duration": 12.299999982118607,
+            "transferSize": 1542,
+            "encodedBodySize": 1242,
+            "decodedBodySize": 3430
+          },
+          {
+            "name": "/assets/DsAlert-DPXtosMY.js",
+            "duration": 12.400000005960464,
+            "transferSize": 948,
+            "encodedBodySize": 648,
+            "decodedBodySize": 1188
+          },
+          {
+            "name": "/assets/DsIcon-Ds-wgse3.js",
+            "duration": 22.200000017881393,
+            "transferSize": 3922,
+            "encodedBodySize": 3622,
+            "decodedBodySize": 7810
+          },
+          {
+            "name": "/assets/DsIcon-DVKUDbap.css",
+            "duration": 13.199999988079071,
+            "transferSize": 465,
+            "encodedBodySize": 165,
+            "decodedBodySize": 349
+          },
+          {
+            "name": "/assets/DsAlert-D1CdAUSR.css",
+            "duration": 13.699999988079071,
+            "transferSize": 1071,
+            "encodedBodySize": 771,
+            "decodedBodySize": 3029
+          },
+          {
+            "name": "/assets/DsModal-DolbpGRA.js",
+            "duration": 22.099999994039536,
+            "transferSize": 1729,
+            "encodedBodySize": 1429,
+            "decodedBodySize": 3153
+          },
+          {
+            "name": "/assets/DsModal-KIW9FMHE.css",
+            "duration": 14.800000011920929,
+            "transferSize": 1154,
+            "encodedBodySize": 854,
+            "decodedBodySize": 2355
+          },
+          {
+            "name": "/assets/AppLayout-nk_LkvGk.css",
+            "duration": 16,
+            "transferSize": 5073,
+            "encodedBodySize": 4773,
+            "decodedBodySize": 27212
+          },
+          {
+            "name": "/assets/AppointmentsListPage-BgbmL5fs.js",
+            "duration": 24.599999994039536,
+            "transferSize": 16136,
+            "encodedBodySize": 15836,
+            "decodedBodySize": 54877
+          },
+          {
+            "name": "/assets/DsButton-C9sE2M2u.js",
+            "duration": 23.5,
+            "transferSize": 1619,
+            "encodedBodySize": 1319,
+            "decodedBodySize": 2878
+          },
+          {
+            "name": "/assets/DsButton-Cc6V760C.css",
+            "duration": 14.900000005960464,
+            "transferSize": 1618,
+            "encodedBodySize": 1318,
+            "decodedBodySize": 4852
+          },
+          {
+            "name": "/assets/DsCard-B_fkchvL.js",
+            "duration": 24.100000023841858,
+            "transferSize": 1113,
+            "encodedBodySize": 813,
+            "decodedBodySize": 1698
+          },
+          {
+            "name": "/assets/DsCard-C5CKJO9E.css",
+            "duration": 15.799999982118607,
+            "transferSize": 1096,
+            "encodedBodySize": 796,
+            "decodedBodySize": 2334
+          },
+          {
+            "name": "/assets/DsInput-CbKcKGOK.css",
+            "duration": 15.699999988079071,
+            "transferSize": 1404,
+            "encodedBodySize": 1104,
+            "decodedBodySize": 3344
+          },
+          {
+            "name": "/assets/DsInput-D1txTE4L.js",
+            "duration": 24.69999998807907,
+            "transferSize": 1639,
+            "encodedBodySize": 1339,
+            "decodedBodySize": 3946
+          },
+          {
+            "name": "/assets/DsSpinner-Caszvh2q.js",
+            "duration": 24.700000017881393,
+            "transferSize": 833,
+            "encodedBodySize": 533,
+            "decodedBodySize": 903
+          },
+          {
+            "name": "/assets/DsSpinner-D9wFYuwT.css",
+            "duration": 15.799999982118607,
+            "transferSize": 683,
+            "encodedBodySize": 383,
+            "decodedBodySize": 852
+          },
+          {
+            "name": "/assets/EmptyState-C_1Z2cwR.css",
+            "duration": 16.799999982118607,
+            "transferSize": 587,
+            "encodedBodySize": 287,
+            "decodedBodySize": 567
+          },
+          {
+            "name": "/assets/EmptyState-B59i91RA.js",
+            "duration": 24.69999998807907,
+            "transferSize": 804,
+            "encodedBodySize": 504,
+            "decodedBodySize": 821
+          },
+          {
+            "name": "/assets/AppPageHeader-Cd9Iq3Jk.js",
+            "duration": 25.400000005960464,
+            "transferSize": 3486,
+            "encodedBodySize": 3186,
+            "decodedBodySize": 10229
+          },
+          {
+            "name": "/assets/AppPageHeader-nW52u_38.css",
+            "duration": 17.400000005960464,
+            "transferSize": 3331,
+            "encodedBodySize": 3031,
+            "decodedBodySize": 16382
+          },
+          {
+            "name": "/assets/owner-BQX643bv.js",
+            "duration": 25.69999998807907,
+            "transferSize": 786,
+            "encodedBodySize": 486,
+            "decodedBodySize": 926
+          },
+          {
+            "name": "/assets/patient-BUxHdwkZ.js",
+            "duration": 26.5,
+            "transferSize": 758,
+            "encodedBodySize": 458,
+            "decodedBodySize": 906
+          },
+          {
+            "name": "/assets/labels-BnwurrtU.js",
+            "duration": 27.19999998807907,
+            "transferSize": 1447,
+            "encodedBodySize": 1147,
+            "decodedBodySize": 2773
+          },
+          {
+            "name": "/assets/AppointmentQuickCreateForm-BMhkaidT.js",
+            "duration": 28.700000017881393,
+            "transferSize": 6389,
+            "encodedBodySize": 6089,
+            "decodedBodySize": 20591
+          },
+          {
+            "name": "/assets/SearchSelect-j0Pnl25P.js",
+            "duration": 28,
+            "transferSize": 1575,
+            "encodedBodySize": 1275,
+            "decodedBodySize": 2809
+          },
+          {
+            "name": "/assets/SearchSelect-CW_TLR9k.css",
+            "duration": 17.099999994039536,
+            "transferSize": 978,
+            "encodedBodySize": 678,
+            "decodedBodySize": 2231
+          },
+          {
+            "name": "/assets/appointment-D8mZVXbl.js",
+            "duration": 28,
+            "transferSize": 830,
+            "encodedBodySize": 530,
+            "decodedBodySize": 1334
+          },
+          {
+            "name": "/assets/scheduling-CzHoT4Op.js",
+            "duration": 28.5,
+            "transferSize": 808,
+            "encodedBodySize": 508,
+            "decodedBodySize": 1143
+          },
+          {
+            "name": "/assets/services-DjVq3CGd.js",
+            "duration": 29,
+            "transferSize": 663,
+            "encodedBodySize": 363,
+            "decodedBodySize": 567
+          },
+          {
+            "name": "/assets/AppointmentQuickCreateForm-DjJ4Y-9K.css",
+            "duration": 18.100000023841858,
+            "transferSize": 928,
+            "encodedBodySize": 628,
+            "decodedBodySize": 1962
+          },
+          {
+            "name": "/assets/AppointmentsListPage-8E4jHGRb.css",
+            "duration": 18.299999982118607,
+            "transferSize": 6182,
+            "encodedBodySize": 5882,
+            "decodedBodySize": 36714
+          }
+        ],
+        "assetNetwork": {
+          "requests": 41,
+          "transferSize": 193826,
+          "encodedBodySize": 181526,
+          "decodedBodySize": 642779,
+          "compressionObserved": true
+        },
+        "finalPath": "/appointments?agendaDate=2026-09-07&agendaView=week",
+        "title": "Agenda · CVG HIS SPA"
+      }
+    ],
+    "routeSummary": [
+      {
+        "route": "/",
+        "finalPaths": [
+          "/login?next=/"
+        ],
+        "medianElapsedMs": 1621.0089930000004,
+        "medianFcpMs": 164,
+        "medianLcpMs": 164,
+        "maxFcpMs": 220,
+        "maxLcpMs": 220,
+        "maxLongTaskMs": 0,
+        "assetNetwork": {
+          "requests": 57,
+          "transferSize": 365109,
+          "encodedBodySize": 348009,
+          "decodedBodySize": 1200228,
+          "compressionObserved": true
+        },
+        "errors": []
+      },
+      {
+        "route": "/login",
+        "finalPaths": [
+          "/login"
+        ],
+        "medianElapsedMs": 1585.1401969999997,
+        "medianFcpMs": 120,
+        "medianLcpMs": 120,
+        "maxFcpMs": 128,
+        "maxLcpMs": 128,
+        "maxLongTaskMs": 0,
+        "assetNetwork": {
+          "requests": 54,
+          "transferSize": 305706,
+          "encodedBodySize": 289506,
+          "decodedBodySize": 911979,
+          "compressionObserved": true
+        },
+        "errors": []
+      },
+      {
+        "route": "/appointments?agendaDate=2026-09-07&agendaView=week",
+        "finalPaths": [
+          "/appointments?agendaDate=2026-09-07&agendaView=week"
+        ],
+        "medianElapsedMs": 1787.5992879999994,
+        "medianFcpMs": 164,
+        "medianLcpMs": 164,
+        "maxFcpMs": 196,
+        "maxLcpMs": 196,
+        "maxLongTaskMs": 54,
+        "assetNetwork": {
+          "requests": 123,
+          "transferSize": 581478,
+          "encodedBodySize": 544578,
+          "decodedBodySize": 1928337,
+          "compressionObserved": true
+        },
+        "errors": []
+      }
+    ],
+    "transport": {
+      "server": "local static server with Content-Encoding: gzip for text assets when advertised by Chromium",
+      "compressionObservedPerRoute": {
+        "/": true,
+        "/login": true,
+        "/appointments?agendaDate=2026-09-07&agendaView=week": true
+      }
+    }
+  },
+  "interpretation": {
+    "fieldMetrics": false,
+    "conclusion": "Laboratory-only repeatable artifact and navigation timing baseline. It is not RUM, field INP, user study, real API latency, or UAT.",
+    "limitations": [
+      "The static server serves the production dist. The authenticated agenda route uses a Playwright-intercepted synthetic API/session fixture; it does not measure real API, database, authentication-provider, RLS, or network latency.",
+      "LCP and long-task observations are Chromium lab signals only. INP requires real interaction distributions and is not inferred here.",
+      "No participant task baseline was performed; FEA-002/033 remain open.",
+      "Budget comparison must use the same build command, host, viewport, browser family, route set, auth fixture, and run count."
+    ]
+  },
+  "performanceBudget": {
+    "policy": "Proposta laboratorial; requer decisão técnica antes de promoção",
+    "initialHtmlAssetsGzipBytes": {
+      "baselineBytes": 92406,
+      "targetBytes": 92406,
+      "observedBytes": 76910,
+      "deltaBytes": -15496,
+      "deltaPercent": -16.77,
+      "withinBudget": true,
+      "decision": "HOLD_FOR_OWNER_APPROVAL"
+    },
+    "routes": [
+      {
+        "route": "/",
+        "finalPaths": [
+          "/login?next=/"
+        ],
+        "medianElapsedMs": 1621.0089930000004,
+        "medianFcpMs": 164,
+        "medianLcpMs": 164,
+        "maxFcpMs": 220,
+        "maxLcpMs": 220,
+        "maxLongTaskMs": 0,
+        "assetNetwork": {
+          "requests": 57,
+          "transferSize": 365109,
+          "encodedBodySize": 348009,
+          "decodedBodySize": 1200228,
+          "compressionObserved": true
+        },
+        "errors": [],
+        "target": {
+          "maxFcpMs": 1000,
+          "maxLcpMs": 1500,
+          "maxLongTaskMs": 200
+        },
+        "withinBudget": true
+      },
+      {
+        "route": "/login",
+        "finalPaths": [
+          "/login"
+        ],
+        "medianElapsedMs": 1585.1401969999997,
+        "medianFcpMs": 120,
+        "medianLcpMs": 120,
+        "maxFcpMs": 128,
+        "maxLcpMs": 128,
+        "maxLongTaskMs": 0,
+        "assetNetwork": {
+          "requests": 54,
+          "transferSize": 305706,
+          "encodedBodySize": 289506,
+          "decodedBodySize": 911979,
+          "compressionObserved": true
+        },
+        "errors": [],
+        "target": {
+          "maxFcpMs": 1000,
+          "maxLcpMs": 1500,
+          "maxLongTaskMs": 200
+        },
+        "withinBudget": true
+      },
+      {
+        "route": "/appointments?agendaDate=2026-09-07&agendaView=week",
+        "finalPaths": [
+          "/appointments?agendaDate=2026-09-07&agendaView=week"
+        ],
+        "medianElapsedMs": 1787.5992879999994,
+        "medianFcpMs": 164,
+        "medianLcpMs": 164,
+        "maxFcpMs": 196,
+        "maxLcpMs": 196,
+        "maxLongTaskMs": 54,
+        "assetNetwork": {
+          "requests": 123,
+          "transferSize": 581478,
+          "encodedBodySize": 544578,
+          "decodedBodySize": 1928337,
+          "compressionObserved": true
+        },
+        "errors": [],
+        "target": {
+          "maxFcpMs": 1000,
+          "maxLcpMs": 1500,
+          "maxLongTaskMs": 200
+        },
+        "withinBudget": true
+      }
+    ],
+    "collectionDesign": {
+      "repeatsPerRoute": 3,
+      "browser": "Chromium headless",
+      "viewport": "1440x900",
+      "deviceScaleFactor": 1,
+      "cache": "new context per route; serviceWorkers blocked",
+      "authenticatedAgendaMass": "2 synthetic appointments, 1 professional, 1 operational block, owner/patient references",
+      "fieldFollowUp": "RUM/INP and participant/UAT collection remain required"
+    },
+    "transportCompression": {
+      "observed": true,
+      "note": "Encoded and decoded asset body sizes were collected from Chromium Resource Timing against the gzip-enabled local server."
+    }
+  }
+}

@@ -293,11 +293,13 @@ export class DatabaseAdvancePaymentsReportRepository implements AdvancePaymentsR
     }
     if (filters.dateFrom) {
       params.push(filters.dateFrom);
-      clauses.push(`issued_at >= $${params.length}::date`);
+      clauses.push(`issued_at >= ($${params.length}::date AT TIME ZONE 'UTC')`);
     }
     if (filters.dateTo) {
       params.push(filters.dateTo);
-      clauses.push(`issued_at < ($${params.length}::date + INTERVAL '1 day')`);
+      clauses.push(
+        `issued_at < (($${params.length}::date + INTERVAL '1 day') AT TIME ZONE 'UTC')`
+      );
     }
     if (filters.status) {
       params.push(filters.status);

@@ -1,4 +1,5 @@
-import type { Meta, StoryObj } from '@storybook/vue';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
+// CSF module: the Storybook indexer resolves this file as TypeScript.
 import DsInput from '../src/vue/DsInput.vue';
 
 const meta: Meta<typeof DsInput> = {

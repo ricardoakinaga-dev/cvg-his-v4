@@ -233,7 +233,7 @@
 
           <div class="vetus-owner-strip">
             <div>
-              <span>Cliente</span>
+              <span>{{ clinicalLabels.tutor.singular }}</span>
               <strong>{{ ownerSnapshot?.fullName || ownerName }}</strong>
             </div>
             <DsButton
@@ -242,7 +242,7 @@
               variant="secondary"
               size="sm"
             >
-              Ver cadastro do cliente
+              Ver cadastro do {{ clinicalLabels.tutor.singularLower }}
             </DsButton>
           </div>
 
@@ -1242,17 +1242,20 @@
                 v-model="clinicalHistoryDraft"
                 class="clinical-history-field"
                 placeholder="Escreva aqui o histórico clínico do animal"
-                :disabled="!focalEncounter"
+                :disabled="!canWriteClinicalHistory"
               />
               <p v-if="!focalEncounter" class="muted">
                 Abra um atendimento para registrar o histórico clínico longitudinal.
+              </p>
+              <p v-else-if="!canWriteClinicalHistory" class="muted">
+                O atendimento está encerrado; o histórico clínico permanece disponível somente para leitura.
               </p>
               <div class="quick-actions">
                 <DsButton
                   variant="secondary"
                   size="sm"
                   :loading="savingClinicalHistory"
-                  :disabled="!focalEncounter"
+                  :disabled="!canWriteClinicalHistory"
                   @click="saveClinicalHistory"
                 >
                   Salvar Histórico Clínico
@@ -1303,37 +1306,47 @@ import { prescriptionsService } from '@/services/prescriptions';
 import { quoteService, type QuoteSummary } from '@/services/quotes';
 import { listTriageRecords } from '@/services/triage';
 import {
-  preventiveItemTypeLabel,
   vaccinesDewormersService,
-  type PreventiveEventStatus,
   type PreventiveEventSummary
 } from '@/services/vaccinesDewormers';
+import {
+  billingItemTypeLabel,
+  billingStatusLabel,
+  clinicalEntryTypeLabel,
+  clinicalEventLabel,
+  diagnosticStatusLabel,
+  encounterStatusVariant,
+  formatCurrency,
+  inpatientStatusLabel,
+  medicalRecordStatusLabel,
+  patientStatusVariant,
+  preventiveEventMeta as buildPreventiveEventMeta,
+  triagePriorityLabel,
+  truncateText,
+  uniqueById
+} from './patientDetailPresentation';
 import { useEntityCache } from '@/composables/useEntityCache';
 import type { AttachmentSummary, DiagnosticOrderSummary } from '@cvg-his-v2/shared-types';
 import type { AppointmentSummary } from '@/types/appointment';
-import type {
-  BillingItemSummary,
-  BillingRecordSummary,
-  BillingStatus,
-  BillingItemType
-} from '@/types/billing';
+import type { BillingItemSummary, BillingRecordSummary } from '@/types/billing';
 import type {
   EncounterSummary,
-  EncounterTimelineEventSummary,
-  EncounterStatus
+  EncounterTimelineEventSummary
 } from '@/types/encounter';
-import type { InpatientStaySummary, InpatientStatus } from '@/types/inpatient';
+import type { InpatientStaySummary } from '@/types/inpatient';
 import type {
+  CreateClinicalEntryRequest,
   ClinicalEntrySummary,
   ClinicalTimelineEventSummary,
   MedicalRecordListSummary,
-  MedicalRecordStatus
+  UpdateClinicalEntryRequest
 } from '@/types/medicalRecords';
 import type { OwnerSummary } from '@/types/owner';
-import type { PatientSummary, PatientStatus, PatientSummaryResponse } from '@/types/patient';
-import type { TriagePriority, TriageSummary } from '@/types/triage';
+import type { PatientSummary, PatientSummaryResponse } from '@/types/patient';
+import type { TriageSummary } from '@/types/triage';
 import {
   appointmentStatusLabel,
+  clinicalLabels,
   encounterStatusLabel,
   formatDate,
   formatDateTime,
@@ -1410,6 +1423,12 @@ const creatingPackageQuote = ref(false);
 const savingClinicalHistory = ref(false);
 const clinicalHistoryDraft = ref('');
 const patientId = computed(() => String(route.params.id ?? ''));
+interface StableClinicalHistoryMutationAttempt {
+  readonly payloadSignature: string;
+  readonly idempotencyKey: string;
+}
+
+let clinicalHistoryMutationAttempt: StableClinicalHistoryMutationAttempt | null = null;
 let active = true;
 let pageGeneration = 0;
 
@@ -1419,6 +1438,13 @@ function isCurrentLoad(requestPatientId: string, requestGeneration: number): boo
     pageGeneration === requestGeneration &&
     patientId.value === requestPatientId
   );
+}
+
+function requireClinicalHistoryResponse(value: ClinicalEntrySummary): ClinicalEntrySummary {
+  if (!value || typeof value.id !== 'string' || !value.id.trim()) {
+    throw new Error('O histórico clínico não retornou um identificador confirmável');
+  }
+  return value;
 }
 const {
   expandedPatientCards,
@@ -1625,6 +1651,10 @@ const currentMedicalRecord = computed<MedicalRecordListSummary | null>(() => {
     null
   );
 });
+
+const canWriteClinicalHistory = computed(
+  () => Boolean(focalEncounter.value && focalEncounter.value.status !== 'closed')
+);
 
 const sortedPatientClinicalEntries = computed(() =>
   [...patientClinicalEntries.value].sort(
@@ -2255,42 +2285,12 @@ function resetRelatedState() {
   actionError.value = '';
   actionMessage.value = '';
   clinicalHistoryDraft.value = '';
+  clinicalHistoryMutationAttempt = null;
+  savingClinicalHistory.value = false;
 }
 
-function patientStatusVariant(status: PatientStatus): 'success' | 'warning' | 'danger' {
-  if (status === 'active') {
-    return 'success';
-  }
-  return status === 'deceased' ? 'danger' : 'warning';
-}
-
-function encounterStatusVariant(status: EncounterStatus): 'info' | 'warning' | 'success' {
-  if (status === 'closed') {
-    return 'success';
-  }
-  return status === 'reception' || status === 'observation' ? 'warning' : 'info';
-}
-
-function triagePriorityLabel(priority: TriagePriority): string {
-  return {
-    low: 'Baixa',
-    medium: 'Média',
-    high: 'Alta',
-    critical: 'Crítica'
-  }[priority];
-}
-
-function medicalRecordStatusLabel(status: MedicalRecordStatus): string {
-  return status === 'open' ? 'Aberto' : 'Concluído';
-}
-
-function billingStatusLabel(status: BillingStatus): string {
-  return {
-    draft: 'Rascunho',
-    estimated: 'Estimado',
-    open: 'Aberto',
-    settled: 'Liquidado'
-  }[status];
+function preventiveEventMeta(event: PreventiveEventSummary): string {
+  return buildPreventiveEventMeta(event, ownerName.value);
 }
 
 function resolvePatient360NextAction(): { label: string; path: string } {
@@ -2320,103 +2320,6 @@ function resolvePatient360NextAction(): { label: string; path: string } {
   }
 
   return { label: 'Agendar próximo contato', path: appointmentCreatePath.value };
-}
-
-function billingItemTypeLabel(type: BillingItemType): string {
-  return {
-    service: 'Serviço',
-    supply: 'Material',
-    procedure: 'Procedimento',
-    exam: 'Exame',
-    daily_rate: 'Diária',
-    other: 'Outro'
-  }[type];
-}
-
-function preventiveStatusLabel(status: PreventiveEventStatus): string {
-  return status === 'executed' ? 'Executada' : 'Agendada';
-}
-
-function preventiveEventMeta(event: PreventiveEventSummary): string {
-  return [
-    preventiveItemTypeLabel(event.itemType),
-    preventiveStatusLabel(event.status),
-    event.clientName || ownerName.value
-  ].join(' · ');
-}
-
-function inpatientStatusLabel(status: InpatientStatus): string {
-  return {
-    admitted: 'Admitido',
-    stable: 'Estável',
-    transferred: 'Transferido',
-    discharged: 'Alta'
-  }[status];
-}
-
-function diagnosticStatusLabel(status: DiagnosticOrderSummary['status']): string {
-  return {
-    requested: 'Solicitado',
-    collected: 'Coletado',
-    resulted: 'Resultado',
-    cancelled: 'Cancelado'
-  }[status];
-}
-
-function clinicalEntryTypeLabel(entryType: ClinicalEntrySummary['entryType']): string {
-  return {
-    anamnesis: 'Anamnese',
-    physical_exam: 'Exame físico',
-    progress_note: 'Evolução',
-    assessment: 'Avaliação',
-    plan: 'Plano',
-    prescription: 'Prescrição',
-    conduct: 'Conduta'
-  }[entryType];
-}
-
-function clinicalEventLabel(eventType: ClinicalTimelineEventSummary['eventType']): string {
-  return {
-    record_created: 'Prontuário criado',
-    entry_added: 'Entrada adicionada',
-    entry_updated: 'Entrada atualizada',
-    entry_archived: 'Entrada arquivada',
-    attachment_added: 'Anexo adicionado',
-    inpatient_admitted: 'Internação iniciada',
-    inpatient_progressed: 'Evolução hospitalar',
-    surgery_requested: 'Cirurgia solicitada',
-    surgery_status_changed: 'Status cirúrgico alterado',
-    diagnostic_requested: 'Diagnóstico solicitado',
-    diagnostic_collected: 'Coleta realizada',
-    diagnostic_resulted: 'Resultado liberado',
-    inpatient_transferred: 'Transferência hospitalar',
-    inpatient_discharged: 'Alta da internação',
-    surgery_pre_op: 'Pré-operatório',
-    surgery_in_progress: 'Cirurgia em andamento'
-  }[eventType];
-}
-
-function formatCurrency(amount: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency
-    }).format(amount);
-  } catch {
-    return `${amount.toFixed(2)} ${currency}`;
-  }
-}
-
-function truncateText(value: string, maxLength: number): string {
-  const normalized = value.trim().replace(/\s+/g, ' ');
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-  return `${normalized.slice(0, maxLength - 3)}...`;
-}
-
-function uniqueById<T extends { id: string }>(items: readonly T[]): T[] {
-  return [...new Map(items.map((item) => [item.id, item])).values()];
 }
 
 function prescriptionDocumentContext() {
@@ -2497,10 +2400,14 @@ async function archivePrescriptionDocument(prescription: PatientPrescription) {
 }
 
 async function saveClinicalHistory() {
-  if (!focalEncounter.value || !patient.value) {
+  if (!canWriteClinicalHistory.value || !focalEncounter.value || !patient.value) {
     return;
   }
 
+  const requestPatientId = patientId.value;
+  const requestGeneration = pageGeneration;
+  const currentEncounter = focalEncounter.value;
+  const currentPatient = patient.value;
   savingClinicalHistory.value = true;
   actionError.value = '';
   actionMessage.value = '';
@@ -2508,29 +2415,73 @@ async function saveClinicalHistory() {
   try {
     const content = clinicalHistoryDraft.value.trim();
     const existing = clinicalHistoryEntry.value;
-    const saved = existing
-      ? await medicalRecordsService.updateEntry(existing.id, {
-          content,
-          reason: 'Atualização do histórico clínico longitudinal',
-          expectedVersion: existing.version
-        })
-      : await medicalRecordsService.createEntry({
-          encounterId: focalEncounter.value.id,
-          patientId: patient.value.id,
-          entryType: 'progress_note',
-          title: 'Histórico clínico longitudinal',
-          content
-        });
+    const updatePayload: UpdateClinicalEntryRequest = {
+      content,
+      reason: 'Atualização do histórico clínico longitudinal',
+      expectedVersion: existing?.version
+    };
+    const createPayload: CreateClinicalEntryRequest = {
+      encounterId: currentEncounter.id,
+      patientId: currentPatient.id,
+      entryType: 'progress_note',
+      title: 'Histórico clínico longitudinal',
+      content
+    };
+    const mutationPayload = existing ? updatePayload : createPayload;
+    const payloadSignature = JSON.stringify(mutationPayload);
+    if (clinicalHistoryMutationAttempt?.payloadSignature !== payloadSignature) {
+      const uuid = globalThis.crypto?.randomUUID?.();
+      clinicalHistoryMutationAttempt = {
+        payloadSignature,
+        idempotencyKey: uuid
+          ? `patient-clinical-history-${uuid}`
+          : `patient-clinical-history-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+      };
+    }
+    const idempotencyKey = clinicalHistoryMutationAttempt.idempotencyKey;
+    const saved = requireClinicalHistoryResponse(existing
+      ? await medicalRecordsService.updateEntry(existing.id, updatePayload, { idempotencyKey })
+      : await medicalRecordsService.createEntry(createPayload, { idempotencyKey }));
 
-    patientClinicalEntries.value = uniqueById([saved, ...patientClinicalEntries.value]);
-    focalRecordEntries.value = uniqueById([saved, ...focalRecordEntries.value]);
-    clinicalHistoryDraft.value = saved.content;
+    if (!isCurrentLoad(requestPatientId, requestGeneration)) return;
+
+    const confirmationEncounterId = existing?.encounterId ?? currentEncounter.id;
+    const rereadEntries = await medicalRecordsService.listEntries(confirmationEncounterId);
+    if (!isCurrentLoad(requestPatientId, requestGeneration)) return;
+    const confirmed = rereadEntries.find(
+      (entry) =>
+        entry.id === saved.id &&
+        entry.patientId === currentPatient.id &&
+        entry.encounterId === confirmationEncounterId &&
+        entry.medicalRecordId === (existing?.medicalRecordId ?? currentMedicalRecord.value?.record.id) &&
+        entry.entryType === 'progress_note' &&
+        entry.title === (existing?.title ?? createPayload.title) &&
+        entry.content === content &&
+        !entry.deletedAt &&
+        (!existing || entry.version > existing.version)
+    );
+    if (!confirmed) {
+      throw new Error(
+        'Histórico clínico enviado, mas não foi confirmado na releitura do prontuário. O rascunho foi preservado.'
+      );
+    }
+
+    patientClinicalEntries.value = uniqueById([confirmed, ...patientClinicalEntries.value]);
+    if (confirmed.encounterId === currentEncounter.id) {
+      focalRecordEntries.value = uniqueById([confirmed, ...focalRecordEntries.value]);
+    }
+    clinicalHistoryDraft.value = confirmed.content;
+    clinicalHistoryMutationAttempt = null;
     actionMessage.value = 'Histórico clínico atualizado.';
   } catch (caughtError) {
-    actionError.value =
-      caughtError instanceof Error ? caughtError.message : 'Erro ao salvar histórico clínico';
+    if (isCurrentLoad(requestPatientId, requestGeneration)) {
+      actionError.value =
+        caughtError instanceof Error ? caughtError.message : 'Erro ao salvar histórico clínico';
+    }
   } finally {
-    savingClinicalHistory.value = false;
+    if (isCurrentLoad(requestPatientId, requestGeneration)) {
+      savingClinicalHistory.value = false;
+    }
   }
 }
 

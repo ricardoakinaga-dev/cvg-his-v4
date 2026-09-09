@@ -1,0 +1,58 @@
+{
+  "status": "PARTIAL; entire 34-ticket objective remains active",
+  "sources": {
+    "apps/spa/src/pages/appointments/AppointmentsListPage.vue": "2a0e0bd8cd2a624caa3fd736a1314e1e3fb5920c0739124e04b06f9b5495f1b8",
+    "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts": "bf5030fcb27c54f89d07149b1149b732fc77d1e4f35e3cabb60209321617ca62",
+    "apps/spa/src/components/appointments/AppointmentDetailsDrawer.vue": "f091bb0d4697038f518f8fc16e32cf691a7fdb279d62447fe12643bf01b59674",
+    "apps/spa/tests/unit/AppointmentDetailsDrawer.test.ts": "e155711e0d9a53ce20c45226992cb26683605c6b377e202379cb943e8be38909",
+    "apps/spa/src/composables/useRouteFocus.ts": "0cdd033a1b8f72a83e042e73f6e16e0cc9b704f5deee715f0fa71cf78b2edf33",
+    "apps/spa/src/composables/__tests__/useRouteFocus.test.ts": "2ba2eccf2c9810071cf0a474dfbc6f2fb64902936f9e821dbdc0046191972535"
+  },
+  "browser": {
+    "agenda": "evidence/continuity-cD1EER/report.json",
+    "navigation": "evidence/continuity-oLC0j2/report.json",
+    "agenda_cases": 4,
+    "failures": 0,
+    "stable_inputs": true,
+    "first_appointment_y": {
+      "desktop": 390.75,
+      "mobile": 523
+    },
+    "checks": [
+      "all fixture appointments listed",
+      "Enter opens drawer",
+      "Escape closes drawer",
+      "focus returns to trigger",
+      "client filter empty/recovery",
+      "day grid and list switch"
+    ]
+  },
+  "tests": {
+    "passed": 55,
+    "log": "agenda-focus-integrated-r2.log",
+    "note": "Functional integration before final CSS token-name correction; final browser captures cover that CSS change."
+  },
+  "typecheck": {
+    "exit_code": 0,
+    "log": "agenda-focus-typecheck-final.log"
+  },
+  "reviews": {
+    "agenda_visual_a": "I1 fresh blind comparison and rework; preferred new layout, legend and desktop alert improved",
+    "agenda_visual_b": "I1 fresh reversed-label comparison and rework; preferred new layout, desktop alert and legend improved; mobile alert below viewport not reviewed",
+    "drawer_keyboard_critic": "I1 fresh read-only; bounded keyboard lifecycle accepted",
+    "focus_ownership_critic": "I1 fresh read-only with rework; invalid claim fallback corrected;28tests",
+    "root_mobile_full": "I0 full mobile capture inspected: alert visible and wraps within card; not independent approval"
+  },
+  "media": {
+    "comfyui": "completed; assets/images/0836ac61_000.png, conceptual preview only",
+    "open_design": "get_active_context and list_agents returned Transport closed; no generated output"
+  },
+  "remaining": [
+    "Duplicate shell/page heading",
+    "Real integrated rescheduling and conflicts",
+    "Module query/filter persistence and context",
+    "Remaining button/form/data-state variants",
+    "Full accessibility browsers UAT and production performance",
+    "All other required backlog criteria without current proof"
+  ]
+}

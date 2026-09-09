@@ -50,7 +50,7 @@
             </label>
           </div>
           <div class="form-actions">
-            <DsButton variant="primary" :loading="submitting" type="submit">
+            <DsButton variant="primary" :loading="submitting" :disabled="successPending" type="submit">
               Salvar
             </DsButton>
             <DsButton variant="secondary" type="button" @click="router.push('/services')">
@@ -107,6 +107,7 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import { servicesService, type ServiceSummary } from '@/services/services';
+import { useSuccessRedirect } from '@/composables/successRedirect';
 
 const router = useRouter();
 const route = useRoute();
@@ -121,6 +122,8 @@ const form = ref({
   active: true
 });
 const submitting = ref(false);
+const successRedirect = useSuccessRedirect();
+const successPending = successRedirect.successPending;
 const error = ref('');
 const successMessage = ref('');
 
@@ -156,6 +159,7 @@ async function loadService() {
 }
 
 async function submitForm() {
+  if (submitting.value || !successRedirect.begin()) return;
   if (!form.value.name.trim()) {
     error.value = 'Nome é obrigatório';
     return;
@@ -188,7 +192,7 @@ async function submitForm() {
       });
       successMessage.value = 'Serviço salvo com sucesso.';
     }
-    setTimeout(() => router.push('/services'), 1500);
+    successRedirect.schedule(() => router.push('/services'), successMessage.value);
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao salvar serviço';
   } finally {

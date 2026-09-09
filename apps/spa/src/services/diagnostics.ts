@@ -1,5 +1,5 @@
-import { attachmentService } from './attachments';
-import { medicalRecordsService } from './medicalRecords';
+import { attachmentService, type AttachmentMutationOptions } from './attachments';
+import { medicalRecordsService, type MedicalRecordsMutationOptions } from './medicalRecords';
 import type { CreateClinicalEntryRequest, ClinicalEntrySummary } from '@/types/medicalRecords';
 import type { AttachmentSummary } from '@cvg-his-v2/shared-types';
 
@@ -9,11 +9,14 @@ export const diagnosticsService = {
     return entries.filter((entry) => entry.entryType === 'assessment' || entry.entryType === 'plan');
   },
 
-  async createRequest(payload: Omit<CreateClinicalEntryRequest, 'entryType'>): Promise<ClinicalEntrySummary> {
+  async createRequest(
+    payload: Omit<CreateClinicalEntryRequest, 'entryType'>,
+    options?: MedicalRecordsMutationOptions
+  ): Promise<ClinicalEntrySummary> {
     return medicalRecordsService.createEntry({
       ...payload,
       entryType: 'assessment'
-    });
+    }, options);
   },
 
   async listAttachments(encounterId: string): Promise<AttachmentSummary[]> {
@@ -23,13 +26,14 @@ export const diagnosticsService = {
 
   async uploadAttachment(
     encounterId: string,
-    payload: Omit<Parameters<typeof attachmentService.upload>[0], 'linkedEntityType' | 'linkedEntityId'>
+    payload: Omit<Parameters<typeof attachmentService.upload>[0], 'linkedEntityType' | 'linkedEntityId'>,
+    options?: AttachmentMutationOptions
   ): Promise<AttachmentSummary> {
     const record = await medicalRecordsService.getByEncounter(encounterId);
     return attachmentService.upload({
       linkedEntityType: 'medical_record',
       linkedEntityId: record.record.id,
       ...payload
-    });
+    }, options);
   }
 };

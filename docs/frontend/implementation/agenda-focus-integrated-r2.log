@@ -1,0 +1,11 @@
+
+ RUN  v4.1.2 /home/ricardo/cvg-his-v4/apps/spa
+
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+
+ Test Files  4 passed (4)
+      Tests  55 passed (55)
+   Start at  00:38:56
+   Duration  5.03s (transform 603ms, setup 191ms, import 171ms, tests 2.15s, environment 2.07s)
+

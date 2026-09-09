@@ -1,11 +1,10 @@
 {
   "prompt_id": "0836ac61-05c9-443d-9853-d044ac6fac39",
-  "status": "pending",
-  "workflow_size": 10,
-  "outputs": [],
-  "outputs_by_node": {},
-  "outputs_by_item": {},
-  "text_outputs": {},
-  "host": "127.0.0.1",
-  "port": 8188
+  "status": "completed",
+  "checked_at_utc": "2026-09-07T03:36:46.208148+00:00",
+  "source": "mcp__comfyui__job + fetch_outputs",
+  "files": [
+    "images/0836ac61_000.png"
+  ],
+  "inspection": "Observed conceptual preview; production review required"
 }

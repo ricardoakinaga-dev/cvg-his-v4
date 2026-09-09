@@ -117,6 +117,8 @@ describe('InpatientListPage', () => {
 
     await flushPromises();
     expect(wrapper.text()).toContain('Failed to load stays');
+    expect(wrapper.findAll('[role="alert"]')).toHaveLength(1);
+    expect(wrapper.text()).toContain('Tentar novamente');
   });
 
   it('shows empty state when no stays exist', async () => {
@@ -182,6 +184,8 @@ describe('InpatientListPage', () => {
     expect(detailLinks).toHaveLength(2);
     expect(detailLinks[0].attributes('href')).toBe('/inpatient/stay-1');
     expect(detailLinks[1].attributes('href')).toBe('/inpatient/stay-2');
+    expect(detailLinks[0].attributes('aria-label')).toBe('Ver internação de Rex, leito 01');
+    expect(detailLinks[1].attributes('aria-label')).toBe('Ver internação de Mimi, leito 03');
   });
 
   it('shows link to bed board page', async () => {
@@ -253,7 +257,7 @@ describe('InpatientListPage', () => {
     wrapper.unmount();
   });
 
-  it('does not show stale occupancy or an empty-success message after refresh fails', async () => {
+  it('keeps confirmed rows and occupancy visible when refresh fails', async () => {
     const Page = (await import('../InpatientListPage.vue')).default;
     const wrapper = mount(Page);
     await flushPromises();
@@ -262,9 +266,44 @@ describe('InpatientListPage', () => {
     await wrapper.findAll('button').find(button => button.text().includes('Atualizar'))!.trigger('click');
     await flushPromises();
     expect(wrapper.text()).toContain('Stays unavailable');
-    expect(wrapper.find('.inpatient-list-page__overview').text()).not.toContain('50%');
+    expect(wrapper.find('.inpatient-list-page__overview').text()).toContain('50%');
     expect(wrapper.text()).not.toContain('Nenhuma internação ativa');
+    expect(wrapper.text()).toContain('Rex');
+    expect(wrapper.text()).toContain('Os dados anteriores permanecem visíveis');
+    wrapper.unmount();
+  });
+
+  it('keeps the current list visible while a refresh is pending', async () => {
+    const Page = (await import('../InpatientListPage.vue')).default;
+    const wrapper = mount(Page);
+    await flushPromises();
+
+    let resolveRefresh!: (value: typeof mockStays) => void;
+    mockListFn.mockReturnValueOnce(new Promise((resolve) => { resolveRefresh = resolve; }));
+    await wrapper.findAll('button').find(button => button.text().includes('Atualizar'))!.trigger('click');
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('.data-table-loading').exists()).toBe(false);
+    expect(wrapper.text()).toContain('Atualizando a lista sem remover o contexto confirmado');
+    expect(wrapper.text()).toContain('Rex');
+    expect(wrapper.text()).toContain('50%');
+
+    resolveRefresh(mockStays);
+    await flushPromises();
+    wrapper.unmount();
+  });
+
+  it('clears the confirmed list when access is revoked', async () => {
+    const Page = (await import('../InpatientListPage.vue')).default;
+    const wrapper = mount(Page);
+    await flushPromises();
+    mockListFn.mockRejectedValueOnce({ status: 403 });
+    await wrapper.findAll('button').find(button => button.text().includes('Atualizar'))!.trigger('click');
+    await flushPromises();
+
     expect(wrapper.text()).not.toContain('Rex');
+    expect(wrapper.find('.inpatient-list-page__overview').text()).toContain('—');
+    expect(wrapper.text()).toContain('Tente novamente');
     wrapper.unmount();
   });
 

@@ -161,6 +161,7 @@ import { handleAccessControlRoutes } from './routes/access-control-routes.js';
 import { handleInpatientRoutes } from './routes/inpatient-routes.js';
 import { handleApiKeysRoutes } from './routes/api-keys-routes.js';
 import { handleInternalEventsRoutes } from './routes/internal-events-routes.js';
+import { isCashDrawerMutationPath, parseIncludeArchived } from './request-boundaries.js';
 import {
   handlePixProviderSettlementRoutes,
   type PixProviderSettlementDlqRepository
@@ -3613,6 +3614,7 @@ function shouldUseTenantCommand(pathname: string, method: string | undefined): b
   ) {
     return false;
   }
+  if (isCashDrawerMutationPath(pathname, method)) return false;
   // Chaos experiments intentionally alter process-wide state and are not
   // tenant data commands. Their own authorization and audit remain separate.
   if (pathname.startsWith('/chaos/')) return false;
@@ -4837,6 +4839,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 url.searchParams.get('encounterId'),
                 'encounterId'
               );
+              const includeArchived = parseIncludeArchived(url.searchParams.get('includeArchived'));
               requireEncounterForAccount(encounterId, principal.user.accountId);
               appendAudit(
                 principal.user.id,
@@ -4854,7 +4857,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 JSON.stringify({
                   items: await medicalRecords.listEntriesByEncounterAsync(
                     principal.user.accountId as never,
-                    encounterId as never
+                    encounterId as never,
+                    { includeArchived }
                   )
                 })
               );
@@ -6085,7 +6089,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               await handleCashRoutes(pathname, request, response, correlationId, {
                 cash,
                 audit,
-                requirePrincipal
+                requirePrincipal,
+                runCommand: runTenantCommand
               })
             ) {
               return;
@@ -6140,7 +6145,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 financeCatalog: options.repositories?.financeCatalog,
                 advancePayments: options.repositories?.advancePayments,
                 audit,
-                requirePrincipal
+                requirePrincipal,
+                runCommand: runTenantCommand
               })
             ) {
               return;

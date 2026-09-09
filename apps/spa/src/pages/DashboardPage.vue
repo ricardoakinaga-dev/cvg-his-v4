@@ -2,7 +2,10 @@
   <div class="dashboard-page">
     <DsCard class="dashboard-hero">
       <div class="dashboard-hero__meta" aria-label="Status da operação">
-        <span class="dashboard-hero__signal" :class="`dashboard-hero__signal--${operationStatus.tone}`">
+        <span
+          class="dashboard-hero__signal"
+          :class="`dashboard-hero__signal--${operationStatus.tone}`"
+        >
           <span class="dashboard-hero__signal-dot" aria-hidden="true" />
           {{ operationStatus.label }}
         </span>
@@ -11,13 +14,57 @@
       <AppPageHeader
         title="Início"
         :breadcrumbs="['Início']"
-        :subtitle="`Olá. Acompanhe a operação de hoje de ${companyName}: agenda, comandas, aniversariantes e pendências do plantão.`"
+        :subtitle="`Olá. Acompanhe as prioridades e os indicadores disponíveis para a sessão atual de ${companyName}.`"
         :secondary-actions="headerSecondaryActions"
         :primary-action="headerPrimaryAction"
       />
     </DsCard>
 
-    <section v-if="visibleHomeTiles.length > 0" class="home-shortcuts" aria-label="Acesso rápido">
+    <section
+      v-if="sessionPriority"
+      class="session-priority"
+      aria-label="Prioridade da função atual"
+      data-testid="session-priority"
+    >
+      <DsCard class="panel-card session-priority__card">
+        <div class="session-priority__head">
+          <div>
+            <p class="session-priority__eyebrow">Prioridade da função</p>
+            <h2 class="session-priority__title">O que fazer agora</h2>
+          </div>
+          <span class="session-priority__function">{{ sessionPriority.label }}</span>
+        </div>
+        <div class="session-priority__content">
+          <div>
+            <strong>{{ sessionPriority.title }}</strong>
+            <p>{{ sessionPriority.detail }}</p>
+          </div>
+          <router-link
+            class="session-priority__action"
+            :to="sessionPriority.to"
+            data-testid="session-priority-action"
+          >
+            {{ sessionPriority.actionLabel }}
+          </router-link>
+        </div>
+      </DsCard>
+    </section>
+    <div
+      v-else-if="permissionCodes === null"
+      class="panel-loading session-priority-loading"
+      aria-live="polite"
+    >
+      Carregando permissões da sessão...
+    </div>
+
+    <section v-if="permissionCodes === null" class="panel-loading" aria-live="polite">
+      Carregando atalhos permitidos...
+    </section>
+    <section
+      v-else-if="visibleHomeTiles.length > 0"
+      class="home-shortcuts"
+      aria-label="Acesso rápido"
+    >
       <router-link
         v-for="tile in visibleHomeTiles"
         :key="tile.key"
@@ -79,7 +126,9 @@
             <h2 class="panel-card__title">Central executiva Premium</h2>
             <p class="panel-card__subtitle">SLO, auditoria operacional e próximos focos</p>
           </div>
-          <router-link class="panel-card__action" to="/api-client">Operação</router-link>
+          <router-link v-if="canUseApiClient" class="panel-card__action" to="/api-client">
+            Operação
+          </router-link>
         </div>
 
         <div v-if="enterpriseOverview.loading" class="panel-loading">
@@ -94,11 +143,16 @@
         />
         <div v-else class="enterprise-command-center__content">
           <div class="enterprise-kpis">
-            <router-link to="/api-client" class="enterprise-kpi">
+            <router-link v-if="canUseApiClient" to="/api-client" class="enterprise-kpi">
               <span>Status SLO</span>
               <strong>{{ enterpriseSloStatusLabel }}</strong>
               <small>{{ enterpriseSloHint }}</small>
             </router-link>
+            <div v-else class="enterprise-kpi">
+              <span>Status SLO</span>
+              <strong>{{ enterpriseSloStatusLabel }}</strong>
+              <small>{{ enterpriseSloHint }}</small>
+            </div>
             <router-link to="/audit" class="enterprise-kpi">
               <span>Auditoria</span>
               <strong>{{ enterpriseAuditCoverageLabel }}</strong>
@@ -170,19 +224,36 @@
       </DsCard>
     </section>
 
-    <section class="premium-operation-guide" aria-label="Roteiro operacional Premium">
+    <section
+      v-if="visiblePremiumOperationalGuide.length > 0"
+      class="premium-operation-guide"
+      aria-label="Roteiro operacional Premium"
+    >
       <DsCard class="panel-card panel-card--wide">
         <div class="panel-card__head panel-card__head--with-action">
           <div>
             <h2 class="panel-card__title">Roteiro operacional Premium</h2>
             <p class="panel-card__subtitle">Demo, piloto e suporte com rotas reais</p>
           </div>
-          <router-link class="panel-card__action" to="/master-search">Busca Mestre</router-link>
+          <router-link
+            v-if="
+              hasAnyPermission([
+                'owners.read',
+                'patients.read',
+                'product.read',
+                'counter_sale.read'
+              ])
+            "
+            class="panel-card__action"
+            to="/master-search"
+          >
+            Busca Mestre
+          </router-link>
         </div>
 
         <div class="premium-operation-guide__grid">
           <router-link
-            v-for="step in premiumOperationalGuide"
+            v-for="step in visiblePremiumOperationalGuide"
             :key="step.key"
             :to="step.to"
             class="premium-operation-step"
@@ -197,14 +268,18 @@
       </DsCard>
     </section>
 
-    <section class="home-panels">
-      <DsCard class="panel-card panel-card--wide">
+    <section v-if="canViewAnyHomePanel" class="home-panels">
+      <DsCard v-if="canViewOpenCounterSalesPanel" class="panel-card panel-card--wide">
         <div class="panel-card__head panel-card__head--with-action">
           <div>
             <h2 class="panel-card__title">Comandas abertas</h2>
             <p class="panel-card__subtitle">Últimos 30 dias</p>
           </div>
-          <button class="panel-card__action" type="button" @click="loadOpenCounterSales">
+          <button
+            class="panel-card__action"
+            type="button"
+            @click="() => void loadOpenCounterSales()"
+          >
             Atualizar
           </button>
         </div>
@@ -240,7 +315,7 @@
         </div>
       </DsCard>
 
-      <DsCard class="panel-card">
+      <DsCard v-if="canViewOperationalReminders" class="panel-card">
         <div class="panel-card__head">
           <h2 class="panel-card__title">Agenda e lembretes</h2>
           <p class="panel-card__subtitle">Pendências do início · {{ todayLabel }}</p>
@@ -268,7 +343,7 @@
         </div>
       </DsCard>
 
-      <DsCard class="panel-card">
+      <DsCard v-if="canViewBirthdaysPanel" class="panel-card">
         <div class="panel-card__head">
           <h2 class="panel-card__title">Aniversariantes do dia</h2>
           <p class="panel-card__subtitle">{{ birthdayDateLabel }}</p>
@@ -320,7 +395,7 @@
           v-if="recentRoutes.length === 0"
           icon="compass"
           title="Ainda sem histórico recente"
-          description="Abra Agenda, Fila, Triagem, Atendimentos ou Prontuário para construir o histórico operacional do plantão."
+          description="As rotas permitidas pela sessão aparecem aqui conforme você navega."
           size="sm"
         />
         <div v-else class="link-list">
@@ -345,7 +420,7 @@
           v-if="favoriteRoutes.length === 0"
           icon="star"
           title="Nenhum favorito fixado"
-          description="Fixe rotas críticas como Agenda, Fila, Triagem e Internação para iniciar a operação com menos cliques."
+          description="Fixe rotas permitidas pela sessão para iniciar a operação com menos cliques."
           size="sm"
         />
         <div v-else class="link-list">
@@ -366,7 +441,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsDomainCard from '@cvg-his-v2/design-system/vue/DsDomainCard.vue';
 import DsIcon from '@cvg-his-v2/design-system/vue/DsIcon.vue';
@@ -381,6 +456,7 @@ import { healthService, type SloReportResponse } from '@/services/health';
 import { inpatientService } from '@/services/inpatient';
 import { inventoryService } from '@/services/inventory';
 import { laboratoryService } from '@/services/laboratory';
+import { canAccessNavigationPath } from '@/navigation-permissions';
 import type { InpatientDailyChargeWorklistResponse, InpatientStaySummary } from '@/types/inpatient';
 import type { InventoryItemSummary } from '@/types/inventory';
 import type { AuditEventSummary, DiagnosticOrderSummary } from '@cvg-his-v2/shared-types';
@@ -393,9 +469,16 @@ interface DomainShortcut {
   permissionCode?: string;
 }
 
+interface RecentRoute {
+  path: string;
+  label: string;
+  icon?: string;
+}
+
 interface SessionAccessResponse {
   access?: {
     permissionCodes?: string[];
+    roleCodes?: string[];
   };
 }
 
@@ -489,6 +572,16 @@ interface PremiumOperationalGuideStep {
   label: string;
   detail: string;
   to: string;
+  permissionCodes: string[];
+}
+
+interface SessionPriority {
+  key: 'reception' | 'nurse' | 'veterinarian' | 'finance' | 'admin';
+  label: string;
+  title: string;
+  detail: string;
+  actionLabel: string;
+  to: string;
 }
 
 const appStore = useAppStore();
@@ -496,6 +589,8 @@ const widgetStore = useWidgetStore();
 
 const companyName = 'Centro Veterinário Guarapiranga';
 const permissionCodes = ref<string[] | null>(null);
+const roleCodes = ref<string[] | null>(null);
+let dashboardLoadGeneration = 0;
 const birthdays = ref<BirthdayEntry[]>([]);
 const homeSummary = reactive<Record<HomeTileKey, number>>({
   'counter-sales': 0,
@@ -577,18 +672,42 @@ const premiumBusinessOverview = reactive<{
   laboratoryOrders: []
 });
 
-const recentRoutes = computed(() => appStore.recentRoutes);
+const recentRoutes = computed(() => {
+  if (permissionCodes.value === null) return [];
+
+  return appStore.recentRoutes
+    .map(normalizePersistedRecentRoute)
+    .filter(
+      (route): route is RecentRoute =>
+        route !== null && canAccessNavigationPath(route.path, permissionCodes.value)
+    );
+});
 const canViewEnterpriseOverview = computed(
   () => permissionCodes.value?.includes('audit.read') === true
 );
-const favoriteRoutes = computed(() =>
-  appStore.favoriteRoutes
-    .map((path) => {
-      const recent = appStore.recentRoutes.find((route) => route.path === path);
-      return recent ?? { path, label: path, icon: 'star' };
-    })
-    .filter((item) => Boolean(item.path))
+const canUseApiClient = computed(
+  () => permissionCodes.value?.includes('integrations.read') === true
 );
+const canViewOpenCounterSalesPanel = computed(() => hasPermission('counter_sale.read'));
+const canViewOperationalReminders = computed(() => hasPermission('scheduling.read'));
+const canViewBirthdaysPanel = computed(() => hasAnyPermission(['owners.read', 'patients.read']));
+const canViewAnyHomePanel = computed(
+  () =>
+    canViewOpenCounterSalesPanel.value ||
+    canViewOperationalReminders.value ||
+    canViewBirthdaysPanel.value
+);
+const favoriteRoutes = computed<RecentRoute[]>(() => {
+  if (permissionCodes.value === null) return [];
+
+  const recentByPath = new Map(recentRoutes.value.map((route) => [route.path, route]));
+  return appStore.favoriteRoutes
+    .filter(
+      (path): path is string =>
+        typeof path === 'string' && canAccessNavigationPath(path, permissionCodes.value)
+    )
+    .map((path) => recentByPath.get(path) ?? { path, label: path, icon: 'star' });
+});
 
 const homeTiles = ref<HomeTile[]>([
   {
@@ -666,11 +785,13 @@ const homeTiles = ref<HomeTile[]>([
 ]);
 
 const visibleHomeTiles = computed(() => {
-  if (permissionCodes.value === null) {
-    return homeTiles.value;
-  }
+  if (permissionCodes.value === null) return [];
 
-  return homeTiles.value.filter((tile) => permissionCodes.value?.includes(tile.permissionCode));
+  return homeTiles.value.filter(
+    (tile) =>
+      permissionCodes.value?.includes(tile.permissionCode) === true &&
+      canAccessNavigationPath(tile.to, permissionCodes.value)
+  );
 });
 
 // Domain shortcuts organized by Vetus-aligned taxonomy:
@@ -684,7 +805,12 @@ const domainShortcuts: DomainShortcut[] = [
   { label: 'Agenda', to: '/appointments', icon: 'calendar', permissionCode: 'scheduling.read' },
   { label: 'Comandas', to: '/counter-sales', icon: 'receipt', permissionCode: 'counter_sale.read' },
   { label: 'Fila', to: '/queue', icon: 'hospital', permissionCode: 'scheduling.read' },
-  { label: 'Atendimentos', to: '/encounters', icon: 'stethoscope', permissionCode: 'encounters.read' },
+  {
+    label: 'Atendimentos',
+    to: '/encounters',
+    icon: 'stethoscope',
+    permissionCode: 'encounters.read'
+  },
   { label: 'Triagem', to: '/triage', icon: 'compass', permissionCode: 'triage.read' },
   // === Atendimento > Prontuário ===
   {
@@ -704,59 +830,96 @@ const premiumOperationalGuide: PremiumOperationalGuideStep[] = [
     order: '01',
     label: 'Entrada pela recepção',
     detail: 'Localize tutor/paciente e use ações rápidas contextuais.',
-    to: '/reception'
+    to: '/reception',
+    permissionCodes: ['owners.read', 'patients.read']
   },
   {
     key: 'search',
     order: '02',
     label: 'Busca federada',
     detail: 'Valide tutor, paciente, produto e comanda na Busca Mestre.',
-    to: '/master-search'
+    to: '/master-search',
+    permissionCodes: ['owners.read', 'patients.read', 'product.read', 'counter_sale.read']
   },
   {
     key: 'cockpit',
     order: '03',
     label: 'Cockpit 360',
     detail: 'Abra o contexto do tutor e siga para a ficha do paciente.',
-    to: '/owners'
+    to: '/owners',
+    permissionCodes: ['owners.read']
   },
   {
     key: 'audit',
     order: '04',
     label: 'Auditoria e evidências',
     detail: 'Confira eventos, cobertura operacional e riscos pendentes.',
-    to: '/audit'
+    to: '/audit',
+    permissionCodes: ['audit.read']
   },
   {
     key: 'operation',
     order: '05',
     label: 'SLO e suporte',
     detail: 'Verifique health, SLO e sinais de falha parcial.',
-    to: '/api-client'
+    to: '/api-client',
+    permissionCodes: ['integrations.read']
   }
 ];
 
-const headerSecondaryActions = computed(() => [
-  {
-    key: 'refresh-dashboard',
-    label: 'Atualizar',
-    variant: 'secondary' as const,
-    onClick: () => void loadDashboard()
-  },
-  {
-    key: 'view-queue',
-    label: 'Ver fila',
-    variant: 'ghost' as const,
-    to: '/queue'
-  }
-]);
+const visiblePremiumOperationalGuide = computed(() =>
+  premiumOperationalGuide.filter(
+    (step) =>
+      hasAnyPermission(step.permissionCodes) &&
+      canAccessNavigationPath(step.to, permissionCodes.value)
+  )
+);
 
-const headerPrimaryAction = computed(() => ({
-  key: 'new-appointment',
-  label: '+ Novo agendamento',
-  variant: 'primary' as const,
-  to: '/appointments/new'
-}));
+const sessionPriority = computed<SessionPriority | null>(() => {
+  if (permissionCodes.value === null) return null;
+
+  const recognizedRole = resolveSessionRole(roleCodes.value ?? []);
+  return (recognizedRole ? priorityForRole(recognizedRole) : null) ?? priorityFromPermissions();
+});
+
+const headerSecondaryActions = computed(() => {
+  const actions: Array<{
+    key: string;
+    label: string;
+    variant: 'secondary' | 'ghost';
+    onClick?: () => void;
+    to?: string;
+  }> = [
+    {
+      key: 'refresh-dashboard',
+      label: 'Atualizar',
+      variant: 'secondary' as const,
+      onClick: () => void loadDashboard()
+    }
+  ];
+
+  if (hasPermission('scheduling.read') && canNavigateTo('/queue')) {
+    actions.push({
+      key: 'view-queue',
+      label: 'Ver fila',
+      variant: 'ghost' as const,
+      to: '/queue'
+    });
+  }
+
+  return actions;
+});
+
+const headerPrimaryAction = computed(() =>
+  hasPermission('scheduling.manage') && canNavigateTo('/appointments/new')
+    ? {
+        key: 'new-appointment',
+        label: '+ Novo agendamento',
+        variant: 'primary' as const,
+        to: '/appointments/new'
+      }
+    : null
+);
 
 const today = computed(() => new Date());
 const todayLabel = computed(() => formatDate(today.value.toISOString()));
@@ -780,9 +943,7 @@ const homeMetrics = computed<HomeMetric[]>(() =>
     {
       key: 'counter-sales',
       label: 'Comandas abertas',
-      value: homeSummaryLoaded['counter-sales']
-        ? formatNumber(homeSummary['counter-sales'])
-        : '—',
+      value: homeSummaryLoaded['counter-sales'] ? formatNumber(homeSummary['counter-sales']) : '—',
       hint: homeSummaryLoaded['counter-sales'] ? 'pendentes de fechamento' : 'Leitura indisponível',
       to: '/counter-sales',
       permissionCodes: ['counter_sale.read']
@@ -806,7 +967,7 @@ const homeMetrics = computed<HomeMetric[]>(() =>
       label: 'Aniversariantes',
       value: formatNumber(birthdays.value.length),
       hint: 'clientes e animais hoje',
-      to: '/owners',
+      to: hasPermission('owners.read') ? '/owners' : '/patients',
       permissionCodes: ['owners.read', 'patients.read']
     },
     {
@@ -817,13 +978,17 @@ const homeMetrics = computed<HomeMetric[]>(() =>
       to: '/sales',
       permissionCodes: ['counter_sale.read']
     }
-  ].filter((metric) => hasAnyPermission(metric.permissionCodes))
+  ].filter((metric) => hasAnyPermission(metric.permissionCodes) && canNavigateTo(metric.to))
 );
 
 const operationalReminders = computed<OperationalReminder[]>(() => {
   const reminders: OperationalReminder[] = [];
 
-  if (hasPermission('scheduling.read') && homeSummary.appointments > 0) {
+  if (
+    hasPermission('scheduling.read') &&
+    canNavigateTo('/appointments') &&
+    homeSummary.appointments > 0
+  ) {
     reminders.push({
       key: 'appointments',
       label: 'Agenda com registros para revisar',
@@ -833,7 +998,11 @@ const operationalReminders = computed<OperationalReminder[]>(() => {
     });
   }
 
-  if (hasPermission('counter_sale.read') && openCounterSales.items.length > 0) {
+  if (
+    hasPermission('counter_sale.read') &&
+    canNavigateTo('/counter-sales') &&
+    openCounterSales.items.length > 0
+  ) {
     reminders.push({
       key: 'counter-sales',
       label: 'Comandas abertas aguardando cobrança',
@@ -845,13 +1014,17 @@ const operationalReminders = computed<OperationalReminder[]>(() => {
     });
   }
 
-  if (hasAnyPermission(['owners.read', 'patients.read']) && birthdays.value.length > 0) {
+  if (
+    hasAnyPermission(['owners.read', 'patients.read']) &&
+    canNavigateTo(hasPermission('owners.read') ? '/owners' : '/patients') &&
+    birthdays.value.length > 0
+  ) {
     reminders.push({
       key: 'birthdays',
       label: 'Aniversariantes do dia',
       detail: `${formatNumber(birthdays.value.length)} contatos para relacionamento`,
       tone: 'success',
-      to: '/owners'
+      to: hasPermission('owners.read') ? '/owners' : '/patients'
     });
   }
 
@@ -904,7 +1077,7 @@ const enterpriseFocusItems = computed<EnterpriseFocusItem[]>(() => {
       label: 'SLO crítico precisa de ação',
       detail: 'Verifique runbooks, métricas e orçamento de erro no console operacional.',
       tone: 'danger',
-      to: '/api-client'
+      to: canUseApiClient.value ? '/api-client' : '/audit'
     });
   } else if (slo?.report.overallStatus === 'degraded') {
     items.push({
@@ -912,7 +1085,7 @@ const enterpriseFocusItems = computed<EnterpriseFocusItem[]>(() => {
       label: 'SLO degradado em observação',
       detail: 'Acompanhe latência, disponibilidade e taxa de erro antes do pico operacional.',
       tone: 'warning',
-      to: '/api-client'
+      to: canUseApiClient.value ? '/api-client' : '/audit'
     });
   } else if (slo) {
     items.push({
@@ -920,7 +1093,7 @@ const enterpriseFocusItems = computed<EnterpriseFocusItem[]>(() => {
       label: 'SLO operacional saudável',
       detail: 'Disponibilidade e orçamento de erro dentro da leitura atual.',
       tone: 'success',
-      to: '/api-client'
+      to: canUseApiClient.value ? '/api-client' : '/audit'
     });
   }
 
@@ -951,7 +1124,7 @@ const enterpriseFocusItems = computed<EnterpriseFocusItem[]>(() => {
       label: 'Indicadores executivos em preparação',
       detail: 'A central consolida SLO e auditoria quando os serviços respondem.',
       tone: 'info',
-      to: '/api-client'
+      to: canUseApiClient.value ? '/api-client' : '/audit'
     });
   }
 
@@ -992,7 +1165,12 @@ const premiumBusinessLenses = computed<PremiumBusinessLens[]>(() => {
           : premiumBusinessOverview.inpatientStays.length > 0
             ? 'info'
             : 'success',
-      to: pendingLaboratoryOrders > 0 ? '/laboratory/orders' : '/inpatient'
+      to:
+        pendingLaboratoryOrders > 0 && hasPermission('diagnostics.read')
+          ? '/laboratory/orders'
+          : hasPermission('inpatient.read')
+            ? '/inpatient'
+            : '/laboratory/orders'
     });
   }
   if (hasPermission('counter_sale.read')) {
@@ -1004,7 +1182,7 @@ const premiumBusinessLenses = computed<PremiumBusinessLens[]>(() => {
         ? `${formatNumber(commercial.closedToday)} comandas fechadas`
         : 'Leitura comercial indisponível',
       tone: commercialAvailable && commercial.netRevenueToday > 0 ? 'success' : 'info',
-      to: '/dashboards/financial'
+      to: hasPermission('billing.read') ? '/dashboards/financial' : '/counter-sales'
     });
     lenses.push({
       key: 'operation',
@@ -1031,42 +1209,57 @@ const premiumBusinessLenses = computed<PremiumBusinessLens[]>(() => {
       to: '/inventory/movements'
     });
   }
-  return lenses;
+  return lenses.filter((lens) => canNavigateTo(lens.to));
 });
 
 const visibleDomainShortcuts = computed(() => {
-  if (permissionCodes.value === null) {
-    return domainShortcuts;
-  }
+  if (permissionCodes.value === null) return [];
 
   return domainShortcuts.filter(
     (shortcut) =>
-      !shortcut.permissionCode || permissionCodes.value?.includes(shortcut.permissionCode)
+      (!shortcut.permissionCode || permissionCodes.value?.includes(shortcut.permissionCode)) &&
+      canNavigateTo(shortcut.to)
   );
 });
 
 async function loadDashboard() {
+  const generation = ++dashboardLoadGeneration;
+  permissionCodes.value = null;
+  roleCodes.value = null;
+  resetDashboardState();
+
   let grantedPermissions: string[] = [];
+  let grantedRoleCodes: string[] = [];
 
   try {
     const session = await apiRequest<SessionAccessResponse>('/auth/session');
     grantedPermissions = session.access?.permissionCodes ?? [];
+    grantedRoleCodes = session.access?.roleCodes ?? [];
   } catch {
     grantedPermissions = [];
+    grantedRoleCodes = [];
   }
 
+  if (!isCurrentDashboardLoad(generation)) return;
+
   permissionCodes.value = grantedPermissions;
-  const tileData = await loadHomeTiles();
+  roleCodes.value = grantedRoleCodes;
+  const tileData = await loadHomeTiles(generation);
+  if (!isCurrentDashboardLoad(generation)) return;
+
   await Promise.all([
-    loadOpenCounterSales(),
-    loadBirthdays(tileData),
-    loadEnterpriseOverview(),
-    loadPremiumBusinessOverview()
+    loadOpenCounterSales(generation),
+    loadBirthdays(generation, tileData),
+    loadEnterpriseOverview(generation),
+    loadPremiumBusinessOverview(generation)
   ]);
 }
 
-async function loadEnterpriseOverview() {
+async function loadEnterpriseOverview(generation: number) {
+  if (!isCurrentDashboardLoad(generation)) return;
+
   if (!canViewEnterpriseOverview.value) {
+    if (!isCurrentDashboardLoad(generation)) return;
     enterpriseOverview.loading = false;
     enterpriseOverview.error = '';
     enterpriseOverview.slo = null;
@@ -1083,27 +1276,36 @@ async function loadEnterpriseOverview() {
       healthService.getSloReport(),
       auditService.getOperationalCoverage()
     ]);
-    enterpriseOverview.slo = slo;
-    enterpriseOverview.audit = audit;
-    enterpriseOverview.reportDeliveryAuditEvents = await auditService
+    if (!isCurrentDashboardLoad(generation)) return;
+
+    const reportDeliveryAuditEvents = await auditService
       .listEvents({
         module: 'reports',
         entityTypes: ['report-schedule-delivery'],
         limit: 200
       })
       .catch(() => []);
+    if (!isCurrentDashboardLoad(generation)) return;
+
+    enterpriseOverview.slo = slo;
+    enterpriseOverview.audit = audit;
+    enterpriseOverview.reportDeliveryAuditEvents = reportDeliveryAuditEvents;
   } catch {
+    if (!isCurrentDashboardLoad(generation)) return;
     enterpriseOverview.slo = null;
     enterpriseOverview.audit = null;
     enterpriseOverview.reportDeliveryAuditEvents = [];
     enterpriseOverview.error =
       'Confira a disponibilidade de SLO e auditoria operacional para carregar o resumo executivo.';
   } finally {
+    if (!isCurrentDashboardLoad(generation)) return;
     enterpriseOverview.loading = false;
   }
 }
 
-async function loadPremiumBusinessOverview() {
+async function loadPremiumBusinessOverview(generation: number) {
+  if (!isCurrentDashboardLoad(generation)) return;
+
   premiumBusinessOverview.loading = true;
   premiumBusinessOverview.error = '';
   premiumBusinessOverview.commercial = null;
@@ -1117,11 +1319,14 @@ async function loadPremiumBusinessOverview() {
     operation: () => Promise<T>,
     assign: (value: T) => void
   ) => {
-    if (!permissionCodes.value?.includes(permissionCode)) return;
+    if (!isCurrentDashboardLoad(generation) || !permissionCodes.value?.includes(permissionCode)) {
+      return;
+    }
     try {
-      assign(await operation());
+      const value = await operation();
+      if (isCurrentDashboardLoad(generation)) assign(value);
     } catch {
-      failedLoads += 1;
+      if (isCurrentDashboardLoad(generation)) failedLoads += 1;
     }
   };
 
@@ -1166,6 +1371,8 @@ async function loadPremiumBusinessOverview() {
     )
   ]);
 
+  if (!isCurrentDashboardLoad(generation)) return;
+
   if (failedLoads > 0) {
     premiumBusinessOverview.error = `${formatNumber(
       failedLoads
@@ -1175,7 +1382,9 @@ async function loadPremiumBusinessOverview() {
   premiumBusinessOverview.loading = false;
 }
 
-async function loadHomeTiles(): Promise<Map<string, ListResponse<unknown>>> {
+async function loadHomeTiles(generation: number): Promise<Map<string, ListResponse<unknown>>> {
+  if (!isCurrentDashboardLoad(generation)) return new Map();
+
   const tiles = visibleHomeTiles.value;
   const responses = new Map<string, ListResponse<unknown>>();
   resetHomeSummary();
@@ -1188,6 +1397,7 @@ async function loadHomeTiles(): Promise<Map<string, ListResponse<unknown>>> {
   const results = await Promise.allSettled(
     tiles.map((tile) => apiRequest<ListResponse<unknown>>(tile.endpoint))
   );
+  if (!isCurrentDashboardLoad(generation)) return new Map();
 
   results.forEach((result, i) => {
     const tile = tiles[i];
@@ -1211,7 +1421,9 @@ async function loadHomeTiles(): Promise<Map<string, ListResponse<unknown>>> {
   return responses;
 }
 
-async function loadOpenCounterSales() {
+async function loadOpenCounterSales(generation = dashboardLoadGeneration) {
+  if (!isCurrentDashboardLoad(generation)) return;
+
   if (!permissionCodes.value?.includes('counter_sale.read')) {
     openCounterSales.items = [];
     openCounterSales.loading = false;
@@ -1227,21 +1439,29 @@ async function loadOpenCounterSales() {
     const response = await apiRequest<ListResponse<CounterSaleSummary>>(
       `/counter-sales?status=open&dateFrom=${lastThirtyDaysDate()}`
     );
+    if (!isCurrentDashboardLoad(generation)) return;
     openCounterSales.items = (response.items ?? [])
       .slice()
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, 7);
     openCounterSales.loaded = true;
   } catch {
+    if (!isCurrentDashboardLoad(generation)) return;
     openCounterSales.items = [];
     openCounterSales.loaded = true;
     openCounterSales.error = 'Confira sua permissão de leitura de comandas ou tente novamente.';
   } finally {
+    if (!isCurrentDashboardLoad(generation)) return;
     openCounterSales.loading = false;
   }
 }
 
-async function loadBirthdays(seedResponses = new Map<string, ListResponse<unknown>>()) {
+async function loadBirthdays(
+  generation: number,
+  seedResponses = new Map<string, ListResponse<unknown>>()
+) {
+  if (!isCurrentDashboardLoad(generation)) return;
+
   const requests: Array<Promise<ListResponse<OwnerSummary | PatientSummary>>> = [];
   const seededResults: Array<ListResponse<OwnerSummary | PatientSummary>> = [];
 
@@ -1264,6 +1484,7 @@ async function loadBirthdays(seedResponses = new Map<string, ListResponse<unknow
   }
 
   const results = await Promise.allSettled(requests);
+  if (!isCurrentDashboardLoad(generation)) return;
   const todayMonthDay = monthDay(today.value.toISOString());
   const entries: BirthdayEntry[] = [];
 
@@ -1306,15 +1527,238 @@ function resetHomeSummary() {
   }
 }
 
-function hasPermission(permissionCode: string): boolean {
-  return permissionCodes.value === null || permissionCodes.value.includes(permissionCode);
+function isCurrentDashboardLoad(generation: number): boolean {
+  return generation === dashboardLoadGeneration;
 }
 
-function hasAnyPermission(requiredPermissions: string[]): boolean {
-  return (
-    permissionCodes.value === null ||
-    requiredPermissions.some((permissionCode) => permissionCodes.value?.includes(permissionCode))
-  );
+function resetDashboardState() {
+  resetHomeSummary();
+  birthdays.value = [];
+
+  for (const tile of homeTiles.value) {
+    tile.value = '—';
+    tile.loading = false;
+    tile.error = false;
+  }
+
+  openCounterSales.loading = false;
+  openCounterSales.loaded = false;
+  openCounterSales.error = '';
+  openCounterSales.items = [];
+
+  enterpriseOverview.loading = false;
+  enterpriseOverview.error = '';
+  enterpriseOverview.slo = null;
+  enterpriseOverview.audit = null;
+  enterpriseOverview.reportDeliveryAuditEvents = [];
+
+  premiumBusinessOverview.loading = false;
+  premiumBusinessOverview.error = '';
+  premiumBusinessOverview.commercial = null;
+  premiumBusinessOverview.inpatientStays = [];
+  premiumBusinessOverview.dailyCharges = null;
+  premiumBusinessOverview.inventoryItems = [];
+  premiumBusinessOverview.laboratoryOrders = [];
+}
+
+function normalizePersistedRecentRoute(value: unknown): RecentRoute | null {
+  if (!value || typeof value !== 'object') return null;
+
+  const candidate = value as Record<string, unknown>;
+  const path = typeof candidate.path === 'string' ? candidate.path.trim() : '';
+  if (!path) return null;
+
+  const label =
+    typeof candidate.label === 'string' && candidate.label.trim() ? candidate.label : path;
+  const icon =
+    typeof candidate.icon === 'string' && candidate.icon.trim() ? candidate.icon : undefined;
+
+  return { path, label, icon };
+}
+
+type SessionRole = SessionPriority['key'];
+
+function resolveSessionRole(codes: string[]): SessionRole | null {
+  const normalized = new Set(codes.map((code) => code.trim().toLowerCase()));
+  if (normalized.has('admin')) return 'admin';
+  if (normalized.has('finance')) return 'finance';
+  if (normalized.has('veterinarian') || normalized.has('doctor')) return 'veterinarian';
+  if (normalized.has('nurse')) return 'nurse';
+  if (normalized.has('reception')) return 'reception';
+  return null;
+}
+
+function priorityForRole(role: SessionRole): SessionPriority | null {
+  if (role === 'admin') {
+    if (!hasAnyPermission(['audit.read', 'access.read'])) {
+      return null;
+    }
+
+    const canAudit = hasPermission('audit.read');
+    return {
+      key: 'admin',
+      label: 'Administração',
+      title: canAudit
+        ? 'Verifique os sinais que pedem decisão'
+        : 'Revise as permissões da operação',
+      detail: canAudit
+        ? 'Comece pela auditoria e acompanhe evidências, riscos e pendências operacionais.'
+        : 'Abra o controle de acesso para conferir a cobertura disponível para a sessão.',
+      actionLabel: canAudit ? 'Abrir auditoria' : 'Abrir controle de acesso',
+      to: canAudit ? '/audit' : '/access-control'
+    };
+  }
+
+  if (role === 'finance') {
+    if (
+      hasPermission('billing.read') &&
+      hasAnyPermission(['billing.manage', 'fiscal.read', 'fiscal.manage'])
+    ) {
+      return {
+        key: 'finance',
+        label: 'Financeiro',
+        title: 'Revise recebíveis, caixa e resultado',
+        detail:
+          'Abra o dashboard financeiro para trabalhar com os indicadores disponíveis para sua sessão.',
+        actionLabel: 'Abrir dashboard financeiro',
+        to: '/dashboards/financial'
+      };
+    }
+
+    if (hasPermission('counter_sale.read')) {
+      return {
+        key: 'finance',
+        label: 'Financeiro',
+        title: 'Acompanhe a operação comercial',
+        detail: 'Abra as comandas para revisar a movimentação disponível para sua sessão.',
+        actionLabel: 'Abrir comandas',
+        to: '/counter-sales'
+      };
+    }
+    return null;
+  }
+
+  if (role === 'reception') return receptionPriority();
+  if (role === 'nurse') return clinicalPriority('nurse');
+  return clinicalPriority('veterinarian');
+}
+
+function priorityFromPermissions(): SessionPriority | null {
+  if (hasAnyPermission(['audit.read', 'access.read', 'users.manage', 'flags.admin'])) {
+    return priorityForRole('admin');
+  }
+
+  if (
+    hasPermission('billing.read') &&
+    hasAnyPermission(['billing.manage', 'fiscal.read', 'fiscal.manage'])
+  ) {
+    return priorityForRole('finance');
+  }
+
+  const hasReceptionSignals = hasAnyPermission(['owners.read', 'patients.read', 'scheduling.read']);
+  const hasClinicalSignals =
+    hasAnyPermission(['triage.read', 'inpatient.read', 'diagnostics.read', 'surgery.read']) ||
+    (hasPermission('medical-records.read') && !hasReceptionSignals);
+  if (hasClinicalSignals) {
+    return clinicalPriority(hasPermission('triage.read') ? 'nurse' : 'veterinarian');
+  }
+
+  return receptionPriority();
+}
+
+function receptionPriority(): SessionPriority | null {
+  if (!hasAnyPermission(['owners.read', 'patients.read', 'scheduling.read'])) return null;
+
+  const appointmentCount = homeSummaryLoaded.appointments ? homeSummary.appointments : 0;
+  const canOpenReception = hasAnyPermission(['owners.read', 'patients.read']);
+  const shouldOpenAgenda =
+    hasPermission('scheduling.read') && (appointmentCount > 0 || !canOpenReception);
+  return {
+    key: 'reception',
+    label: 'Recepção',
+    title: shouldOpenAgenda ? 'Confira a agenda do plantão' : 'Prepare a próxima chegada',
+    detail:
+      shouldOpenAgenda && appointmentCount > 0
+        ? `${formatNumber(appointmentCount)} registro(s) aguardam acompanhamento na agenda.`
+        : shouldOpenAgenda
+          ? 'Abra a agenda para acompanhar os compromissos disponíveis para sua sessão.'
+          : 'Localize tutor e paciente na recepção antes de iniciar o atendimento.',
+    actionLabel: shouldOpenAgenda ? 'Abrir agenda' : 'Abrir recepção',
+    to: shouldOpenAgenda ? '/appointments' : '/reception'
+  };
+}
+
+function clinicalPriority(role: 'nurse' | 'veterinarian'): SessionPriority | null {
+  const nurse = role === 'nurse';
+  if (nurse && hasPermission('triage.read')) {
+    return {
+      key: role,
+      label: 'Enfermagem',
+      title: 'Comece pela triagem do plantão',
+      detail:
+        'Revise a classificação e encaminhe o fluxo assistencial conforme a rotina disponível.',
+      actionLabel: 'Abrir triagem',
+      to: '/triage'
+    };
+  }
+
+  if (!nurse && hasPermission('medical-records.read')) {
+    return {
+      key: role,
+      label: 'Médico-veterinário',
+      title: 'Revise o próximo atendimento clínico',
+      detail: 'Abra os prontuários disponíveis e continue o próximo trabalho clínico da sessão.',
+      actionLabel: 'Abrir prontuários',
+      to: '/medical-records'
+    };
+  }
+
+  if (hasPermission('inpatient.read')) {
+    return {
+      key: role,
+      label: nurse ? 'Enfermagem' : 'Médico-veterinário',
+      title: nurse ? 'Acompanhe o plantão clínico' : 'Acompanhe as internações em andamento',
+      detail: 'Abra a internação para revisar pacientes, leitos e próximos cuidados do plantão.',
+      actionLabel: 'Abrir internação',
+      to: '/inpatient'
+    };
+  }
+
+  if (hasPermission('diagnostics.read')) {
+    return {
+      key: role,
+      label: nurse ? 'Enfermagem' : 'Médico-veterinário',
+      title: nurse ? 'Acompanhe o fluxo clínico' : 'Revise os exames do atendimento',
+      detail: 'Abra os exames disponíveis para sua sessão e continue o próximo trabalho clínico.',
+      actionLabel: 'Abrir exames',
+      to: '/laboratory/orders'
+    };
+  }
+
+  if (hasPermission('encounters.read')) {
+    return {
+      key: role,
+      label: nurse ? 'Enfermagem' : 'Médico-veterinário',
+      title: nurse ? 'Acompanhe o fluxo clínico' : 'Revise o próximo atendimento clínico',
+      detail: 'Abra os atendimentos disponíveis para sua sessão e continue o próximo trabalho.',
+      actionLabel: 'Abrir atendimentos',
+      to: '/encounters'
+    };
+  }
+
+  return null;
+}
+
+function hasPermission(permissionCode: string): boolean {
+  return permissionCodes.value?.includes(permissionCode) === true;
+}
+
+function canNavigateTo(path: string): boolean {
+  return canAccessNavigationPath(path, permissionCodes.value);
+}
+
+function hasAnyPermission(requiredPermissions: readonly string[]): boolean {
+  return requiredPermissions.some((permissionCode) => hasPermission(permissionCode));
 }
 
 function lastThirtyDaysDate(): string {
@@ -1375,6 +1819,10 @@ function isPatientSummary(value: OwnerSummary | PatientSummary): value is Patien
 onMounted(() => {
   void loadDashboard();
   widgetStore.initWidgets();
+});
+
+onBeforeUnmount(() => {
+  dashboardLoadGeneration += 1;
 });
 </script>
 
@@ -1454,6 +1902,112 @@ onMounted(() => {
 
 .home-operational-summary {
   display: grid;
+}
+
+.session-priority {
+  display: grid;
+}
+
+.session-priority__card {
+  display: grid;
+  gap: 18px;
+  border-color: color-mix(
+    in srgb,
+    var(--color-accent-400, #2dd4bf) 42%,
+    var(--color-border, #e2e8f0)
+  );
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-accent-50, #f0fdfa) 74%, transparent),
+      transparent 62%
+    ),
+    var(--color-surface, #ffffff);
+}
+
+.session-priority__head,
+.session-priority__content {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.session-priority__eyebrow {
+  margin: 0 0 5px;
+  color: var(--color-accent-700, #0f766e);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.session-priority__title {
+  margin: 0;
+  color: var(--color-text, #0f172a);
+  font-size: 22px;
+  letter-spacing: -0.035em;
+}
+
+.session-priority__function {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border: 1px solid var(--color-accent-300, #5eead4);
+  border-radius: 999px;
+  background: var(--color-accent-50, #f0fdfa);
+  color: var(--color-accent-800, #115e59);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.session-priority__content > div {
+  min-width: 0;
+}
+
+.session-priority__content strong {
+  display: block;
+  color: var(--color-text, #0f172a);
+  font-size: clamp(1rem, 1.8vw, 1.3rem);
+  line-height: 1.25;
+}
+
+.session-priority__content p {
+  max-width: 68ch;
+  margin: 5px 0 0;
+  color: var(--color-text-muted, #64748b);
+  line-height: 1.5;
+}
+
+.session-priority__action {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--color-primary, #0f766e);
+  color: var(--color-on-primary, #ffffff);
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.session-priority__action:hover {
+  background: var(--color-primary-hover, #115e59);
+  text-decoration: none;
+}
+
+.session-priority__action:focus-visible {
+  outline: 3px solid var(--color-focus-ring, rgba(78, 205, 255, 0.42));
+  outline-offset: 3px;
+}
+
+.session-priority-loading {
+  min-height: 44px;
+  padding: 14px 18px;
+  border: 1px dashed var(--color-border, #cbd5e1);
+  border-radius: 14px;
 }
 
 .enterprise-command-center {
@@ -1895,6 +2449,15 @@ onMounted(() => {
 }
 
 @media (max-width: 720px) {
+  .session-priority__head,
+  .session-priority__content {
+    display: grid;
+  }
+
+  .session-priority__action {
+    width: 100%;
+  }
+
   .home-shortcuts,
   .domain-shortcuts,
   .enterprise-kpis,
@@ -2059,7 +2622,9 @@ onMounted(() => {
   border: 1px solid rgba(78, 205, 255, 0.22);
   border-radius: 50%;
   content: '';
-  box-shadow: 0 0 0 28px rgba(78, 205, 255, 0.035), 0 0 0 58px rgba(78, 205, 255, 0.025);
+  box-shadow:
+    0 0 0 28px rgba(78, 205, 255, 0.035),
+    0 0 0 58px rgba(78, 205, 255, 0.025);
   pointer-events: none;
 }
 

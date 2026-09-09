@@ -6,9 +6,13 @@ import type {
   UpdateUserRequest
 } from '@/types/user';
 
+const USER_LIST_TIMEOUT_MS = 10_000;
+
 export const userService = {
   async list(): Promise<UserSummary[]> {
-    const response = await apiRequest<UsersListResponse>('/users');
+    const response = await apiRequest<UsersListResponse>('/users', {
+      timeoutMs: USER_LIST_TIMEOUT_MS
+    });
     return response.items ?? [];
   },
 

@@ -408,6 +408,9 @@ test('ReportsService exports execution as CSV, JSON, XLSX and PDF', async () => 
   assert.equal(csv.contentEncoding, 'utf8');
   assert.match(csv.content, /Número,Período,Status,Base,Comissão,Linhas/);
   assert.match(csv.content, /COM-000001/);
+  const repeatedCsv = await service.exportExecution(ACCOUNT, USER, execution.id, 'csv');
+  assert.equal(repeatedCsv.id, csv.id);
+  assert.equal(repeatedCsv.content, csv.content);
 
   const json = await service.exportExecution(ACCOUNT, USER, execution.id, 'json');
   assert.equal(json.contentType, 'application/json; charset=utf-8');
@@ -428,6 +431,71 @@ test('ReportsService exports execution as CSV, JSON, XLSX and PDF', async () => 
   assert.match(Buffer.from(pdf.content, 'base64').toString('utf8', 0, 8), /%PDF-1\.4/);
   assert.equal(service.getExport(ACCOUNT, xlsx.id).content, xlsx.content);
   assert.throws(() => service.getExport(OTHER_ACCOUNT, xlsx.id), Error);
+});
+
+test('ReportsService keeps every financial CSV byte-compatible with its catalog', async () => {
+  const service = new ReportsService();
+  const samples: Record<string, Record<string, unknown>> = {
+    'financial-payables': {
+      supplierName: 'Fornecedor',
+      description: 'Nota fiscal',
+      category: 'Compras',
+      issuedAt: '2026-05-01',
+      dueAt: '2026-05-10',
+      totalAmount: 100,
+      paidAmount: 0,
+      outstandingAmount: 100,
+      status: 'open',
+      paymentMethod: null,
+      reconciliationStatus: 'not_required'
+    },
+    'financial-receivables': {
+      patientName: 'Paciente',
+      ownerName: 'Tutor',
+      patientSpecies: 'Canino',
+      encounterId: 'encounter-1',
+      installmentNumber: 1,
+      installmentLabel: 'Parcela 1/1',
+      issuedAt: '2026-05-01',
+      dueAt: '2026-05-10',
+      settledAt: null,
+      amountOriginal: 100,
+      amountPaid: 0,
+      amountOutstanding: 100,
+      status: 'open',
+      financialStatus: 'pending',
+      encounterStatus: 'open',
+      paymentCount: 0
+    },
+    'financial-advance-payments': {
+      paymentId: 'advance-1',
+      ownerName: 'Tutor',
+      documentId: 'document-1',
+      issuedAt: '2026-05-01T12:00:00.000Z',
+      originalAmount: 100,
+      compensatedAmount: 0,
+      balance: 100,
+      origin: 'cash_receipt',
+      status: 'available',
+      notes: 'Crédito disponível'
+    }
+  };
+
+  for (const [reportId, row] of Object.entries(samples)) {
+    const definition = service.getDefinition(ACCOUNT, reportId);
+    const execution = await service.execute(ACCOUNT, USER, {
+      reportId,
+      rows: [row]
+    });
+    const exported = await service.exportExecution(ACCOUNT, USER, execution.id, 'csv');
+
+    assert.equal(
+      exported.content.split('\n')[0],
+      `\uFEFF${definition.columns.map((column) => column.label).join(',')}`
+    );
+    assert.doesNotMatch(exported.content, /\r/);
+    assert.equal(exported.content.endsWith('\n'), false);
+  }
 });
 
 test('ReportsService neutralizes spreadsheet formulas in server-side CSV exports', async () => {

@@ -40,10 +40,12 @@ Uma execução integral exige exatamente 404 testes e falha se houver caso ausen
 Variáveis principais:
 
 - `E2E_DATABASE_URL`: PostgreSQL externo de teste; se omitida, ativa o Compose isolado;
+- `E2E_REDIS_URL`: Redis externo de teste; se omitida, usa a porta publicada pelo Compose (`6381`);
 - `E2E_EVIDENCE_RUN_ID`: identificador imutável da rodada;
 - `E2E_ENVIRONMENT`: nome do ambiente gravado na evidência;
 - `E2E_BROWSER`: `chromium`, `firefox` ou `webkit`;
 - `E2E_PLAYWRIGHT_TARGET`: lista opcional de specs para diagnóstico;
+- `E2E_PLAYWRIGHT_EXTRA_ARGS`: argumentos adicionais do Playwright, por exemplo `--update-snapshots` ou `-g Visual` (os argumentos são separados por espaços);
 - `E2E_LOCK_WAIT_SECONDS`: espera máxima pelo lock que impede duas execuções destrutivas concorrentes.
 
 O setup consulta `/health` e exige `persistence.mode=database` quando `E2E_DATABASE_MODE=1`; não existe promoção automática para runtime em memória. A atualização de snapshots continua sendo um comando separado e requer triagem visual documentada.

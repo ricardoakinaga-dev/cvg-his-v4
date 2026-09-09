@@ -42,7 +42,7 @@ import type {
   AuthenticatedPrincipal,
   SchedulingAppointmentSummary
 } from '@cvg-his-v2/shared-types';
-import { getPool } from '@cvg-his-v2/shared-database';
+import { getPool, type JsonValue } from '@cvg-his-v2/shared-database';
 
 import { appendAudit, appendAuditAndWait } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
@@ -51,6 +51,7 @@ import type {
   AdvancePaymentsReportSource
 } from '../repositories/advance-payments-report-source.js';
 import type { FinanceCatalogReportSource } from '../repositories/finance-catalog-report-source.js';
+import type { TenantCommandRunner } from '../helpers/tenant-command.js';
 
 export interface ReportsRoutesHandlers {
   reports: ReportsService;
@@ -72,6 +73,7 @@ export interface ReportsRoutesHandlers {
   financeCatalog?: FinanceCatalogReportSource;
   advancePayments?: AdvancePaymentsReportSource;
   audit: AuditService;
+  runCommand?: TenantCommandRunner;
   requirePrincipal: (
     request: IncomingMessage,
     permissionCode: string
@@ -291,15 +293,16 @@ export async function handleReportsRoutes(
   }
 
   const exportExecutionId = parseExecutionId(pathname, '/export');
-  if (exportExecutionId && request.method === 'POST') {
+  if (exportExecutionId && request.method === 'GET') {
     const principal = await requirePrincipal(request, 'billing.read');
     const execution = reports.getExecution(principal.user.accountId, exportExecutionId);
     const definition = reports.getDefinition(principal.user.accountId, execution.reportId);
     await requirePrincipal(request, definition.requiredPermission);
-    const format = parseReportExportPayload(await readJsonBody(request));
-    const exported = await reports.exportExecution(
+    const format = parseFormat(
+      new URL(request.url ?? pathname, 'http://localhost').searchParams.get('format') ?? 'csv'
+    );
+    const exported = reports.getExportForExecution(
       principal.user.accountId,
-      principal.user.id,
       exportExecutionId,
       format
     );
@@ -307,13 +310,53 @@ export async function handleReportsRoutes(
       actorId: principal.user.id,
       accountId: principal.user.accountId,
       module: 'reports',
-      action: 'export_report',
+      action: 'read_report_export',
       entityType: 'report-export',
       entityId: exported.id,
-      payloadSummary: `Report execution ${exported.executionId} exported as ${exported.format}`,
-      riskLevel: 'medium',
+      payloadSummary: `Report export ${exported.executionId} checked as ${exported.format}`,
+      riskLevel: 'low',
       correlationId
     });
+    return json(response, 200, exported);
+  }
+
+  if (exportExecutionId && request.method === 'POST') {
+    const principal = await requirePrincipal(request, 'billing.read');
+    const execution = reports.getExecution(principal.user.accountId, exportExecutionId);
+    const definition = reports.getDefinition(principal.user.accountId, execution.reportId);
+    await requirePrincipal(request, definition.requiredPermission);
+    const format = parseReportExportPayload(await readJsonBody(request));
+    const exportCommand = async () => {
+      const exported = await reports.exportExecution(
+        principal.user.accountId,
+        principal.user.id,
+        exportExecutionId,
+        format
+      );
+      await appendAuditAndWait(audit, {
+        actorId: principal.user.id,
+        accountId: principal.user.accountId,
+        module: 'reports',
+        action: 'export_report',
+        entityType: 'report-export',
+        entityId: exported.id,
+        payloadSummary: `Report execution ${exported.executionId} exported as ${exported.format}`,
+        riskLevel: 'medium',
+        correlationId
+      });
+      return exported;
+    };
+    const exported = handlers.runCommand
+      ? await handlers.runCommand({
+          request,
+          accountId: principal.user.accountId,
+          actorUserId: principal.user.id,
+          correlationId,
+          operation: 'reports.export-execution',
+          payload: { executionId: exportExecutionId, format } as unknown as JsonValue,
+          command: exportCommand
+        })
+      : await exportCommand();
     return json(response, 200, exported);
   }
 

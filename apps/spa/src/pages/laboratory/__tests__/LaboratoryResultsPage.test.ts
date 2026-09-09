@@ -2,7 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import LaboratoryResultsPage from '../LaboratoryResultsPage.vue';
-import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
+import { attachmentService } from '@/services/attachments';
 import { laboratoryService } from '@/services/laboratory';
 import { mlService } from '@/services/ml';
 import { ownerService } from '@/services/owner';
@@ -16,6 +16,12 @@ vi.mock('@/services/laboratory', () => ({
   laboratoryService: {
     listResults: vi.fn(),
     printReport: vi.fn()
+  }
+}));
+
+vi.mock('@/services/attachments', () => ({
+  attachmentService: {
+    getDownloadUrl: vi.fn()
   }
 }));
 
@@ -37,6 +43,16 @@ vi.mock('@/services/owner', () => ({
   }
 }));
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
 describe('LaboratoryResultsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -51,7 +67,22 @@ describe('LaboratoryResultsPage', () => {
         reason: 'Check-up',
         status: 'resulted',
         resultSummary: 'Hemograma dentro da normalidade',
-        resultValues: [{ parameter: 'pH urinário', value: '6.0' }],
+        resultValues: [
+          {
+            parameter: 'pH urinário',
+            value: '6.0',
+            unit: 'escala',
+            reference: '5.5–7.0'
+          },
+          {
+            parameter: 'Hemoglobina',
+            value: '7.2',
+            unit: 'g/dL',
+            reference: '12–18 g/dL',
+            outOfRange: true
+          }
+        ],
+        resultAttachmentId: 'att_lab_1',
         resultedAt: '2026-04-25T10:00:00.000Z',
         releasedByUserId: 'user-1',
         signedByUserId: 'rt-lab',
@@ -94,6 +125,10 @@ describe('LaboratoryResultsPage', () => {
     vi.mocked(laboratoryService.printReport).mockResolvedValue(
       '<!doctype html><html><body><h1>Laudo Laboratorial</h1><p>hash-assinado</p></body></html>'
     );
+    vi.mocked(attachmentService.getDownloadUrl).mockResolvedValue({
+      url: '/attachments/att_lab_1/content?token=synthetic-token',
+      expiresAt: new Date(Date.now() + 60_000).toISOString()
+    });
   });
 
   it('renders Vetus-like reports filters and table columns', async () => {
@@ -119,6 +154,11 @@ describe('LaboratoryResultsPage', () => {
     expect(wrapper.findAll('.summary-grid dd').map((item) => item.text())).toEqual(['1', '1', '0']);
     expect(wrapper.get('.advanced-filters').attributes('open')).toBeUndefined();
     expect(wrapper.text()).toContain('Laudo');
+    expect(wrapper.text()).toContain('pH urinário: 6.0 escala · ref. 5.5–7.0');
+    expect(wrapper.text()).toContain('Hemoglobina: 7.2 g/dL · ref. 12–18 g/dL');
+    expect(wrapper.text()).toContain('Situação');
+    expect(wrapper.text()).toContain('Concluído');
+    expect(wrapper.get('button[aria-label^="Abrir anexo"]').text()).toBe('Abrir anexo');
   });
 
   it('loads printable signed report preview', async () => {
@@ -143,6 +183,23 @@ describe('LaboratoryResultsPage', () => {
     expect(wrapper.find('iframe[title="Pré-visualização do laudo"]').exists()).toBe(true);
     expect(wrapper.find('iframe').attributes('srcdoc')).toContain('Laudo Laboratorial');
     expect(wrapper.find('iframe').attributes('srcdoc')).toContain('hash-assinado');
+  });
+
+  it('opens a protected laboratory attachment through its short-lived URL', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue({} as Window);
+    const wrapper = mount(LaboratoryResultsPage);
+    await flushPromises();
+
+    await wrapper.get('button[aria-label^="Abrir anexo"]').trigger('click');
+    await flushPromises();
+
+    expect(attachmentService.getDownloadUrl).toHaveBeenCalledWith('att_lab_1');
+    expect(openSpy).toHaveBeenCalledWith(
+      expect.stringContaining('/api/attachments/att_lab_1/content?token=synthetic-token'),
+      '_blank',
+      'noopener,noreferrer'
+    );
+    openSpy.mockRestore();
   });
 
   it('sends report filters to the laboratory API when searching', async () => {
@@ -194,18 +251,111 @@ describe('LaboratoryResultsPage', () => {
 
     expect(wrapper.text()).toContain('Laudos');
     expect(wrapper.text()).toContain('Não foi possível carregar os laudos');
-    expect(wrapper.text()).not.toContain('Nenhum registro encontrado');
+    expect(wrapper.get('[data-testid="data-table-feedback"]').text()).toContain('Tente novamente');
+    expect(wrapper.findAll('[role="alert"]')).toHaveLength(1);
     expect(wrapper.findAll('.summary-grid dd').map((item) => item.text())).toEqual(['—', '—', '—']);
-    await wrapper.findComponent(DsAlert).vm.$emit('dismiss');
-    await flushPromises();
-    expect(wrapper.text()).not.toContain('Unexpected error');
-    expect(wrapper.find('.load-failure').exists()).toBe(true);
     vi.mocked(laboratoryService.listResults).mockResolvedValueOnce([]);
-    await wrapper.get('.load-failure button').trigger('click');
+    await wrapper.get('[data-testid="data-table-feedback"] button').trigger('click');
     await flushPromises();
-    expect(wrapper.find('.load-failure').exists()).toBe(false);
-    expect(wrapper.text()).toContain('Nenhum registro encontrado');
+    expect(wrapper.get('[data-testid="data-table-feedback"] .empty-state__title').text())
+      .toBe('Nenhum laudo encontrado');
+    expect(wrapper.findAll('[role="alert"]')).toHaveLength(0);
 
+  });
+
+  it('ignores a stale response after a newer report search completes', async () => {
+    const first = deferred<never[]>();
+    const second = deferred<never[]>();
+    vi.mocked(laboratoryService.listResults)
+      .mockImplementationOnce(() => first.promise)
+      .mockImplementationOnce(() => second.promise);
+
+    const wrapper = mount(LaboratoryResultsPage);
+    await flushPromises();
+    await wrapper.get('input[name="code"]').setValue('novo');
+    await wrapper.find('form').trigger('submit');
+    expect(laboratoryService.listResults).toHaveBeenCalledTimes(2);
+
+    second.resolve([
+      {
+        id: 'novo-report',
+        accountId: 'acc_1',
+        encounterId: 'enc_1',
+        patientId: 'paciente_1',
+        examType: 'Hemograma',
+        reason: 'Novo relatório',
+        status: 'resulted',
+        resultSummary: 'Novo relatório',
+        createdAt: '2026-04-25T08:30:00.000Z',
+        updatedAt: '2026-04-25T10:00:00.000Z'
+      } as never
+    ]);
+    await flushPromises();
+    expect(wrapper.text()).toContain('Novo relatório');
+
+    first.resolve([
+      {
+        id: 'antigo-report',
+        accountId: 'acc_1',
+        encounterId: 'enc_1',
+        patientId: 'paciente_1',
+        examType: 'Hemograma',
+        reason: 'Relatório antigo',
+        status: 'resulted',
+        resultSummary: 'Relatório antigo',
+        createdAt: '2026-04-24T08:30:00.000Z',
+        updatedAt: '2026-04-24T10:00:00.000Z'
+      } as never
+    ]);
+    await flushPromises();
+    expect(wrapper.text()).toContain('Novo relatório');
+    expect(wrapper.text()).not.toContain('Relatório antigo');
+  });
+
+  it('distinguishes no-results from an intrinsic empty report list', async () => {
+    const wrapper = mount(LaboratoryResultsPage);
+    await flushPromises();
+    await wrapper.get('input[name="code"]').setValue('laudo-ausente');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.get('[data-testid="data-table-feedback"] .empty-state__title').text())
+      .toBe('Nenhum laudo corresponde aos filtros');
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+  });
+
+  it('distinguishes forbidden access from a temporary unavailable report service', async () => {
+    vi.mocked(laboratoryService.listResults).mockRejectedValue({ status: 403 });
+    const wrapper = mount(LaboratoryResultsPage);
+    await flushPromises();
+
+    expect(wrapper.get('[data-testid="data-table-feedback"] .empty-state__title').text())
+      .toBe('Acesso aos laudos negado');
+    expect(wrapper.text()).not.toContain('Não foi possível carregar os laudos');
+    expect(wrapper.get('[data-testid="data-table-feedback"]').text()).not.toContain('Tente novamente');
+    expect(wrapper.findAll('.summary-grid dd').map((item) => item.text())).toEqual(['—', '—', '—']);
+  });
+
+  it('labels a pending report with an explicit no-result state', async () => {
+    vi.mocked(laboratoryService.listResults).mockResolvedValueOnce([
+      {
+        id: 'diag_pending' as never,
+        accountId: 'acc_1' as never,
+        encounterId: 'enc_1' as never,
+        patientId: 'paciente_1' as never,
+        examType: 'Hemograma',
+        reason: 'Coleta',
+        status: 'collected',
+        createdAt: '2026-04-24T08:30:00.000Z',
+        updatedAt: '2026-04-24T09:00:00.000Z'
+      }
+    ]);
+    const wrapper = mount(LaboratoryResultsPage);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Coletado · aguardando resultado');
+    expect(wrapper.text()).toContain('Coletado · aguardando resultado');
+    expect(wrapper.text()).not.toContain('Valor não informado');
   });
   it('keeps summary values unknown until the records request resolves', async () => {
     let resolveRecords!: (value: never[]) => void;

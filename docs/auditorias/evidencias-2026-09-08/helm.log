@@ -1,0 +1,5 @@
+
+> cvg-his-v2@0.1.0 validate:helm /home/ricardo/cvg-his-v4
+> node infra/scripts/validate-helm.mjs
+
+Helm binary not found; static Helm chart validation passed for dev, staging, and prod.

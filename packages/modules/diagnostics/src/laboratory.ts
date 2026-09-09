@@ -77,6 +77,11 @@ interface DiagnosticsOrdersGateway {
   ) => Promise<LaboratoryOrderSummary>;
 }
 
+export interface LaboratoryResultListOptions {
+  /** Include orders that are still in the collection/analysis workflow. */
+  readonly includePending?: boolean;
+}
+
 export interface LaboratoryCatalogRepository {
   ensureSeedData(accountId: AccountId): Promise<void>;
   listEquipment(accountId: AccountId): Promise<readonly LaboratoryEquipmentSummary[]>;
@@ -428,12 +433,18 @@ export class LaboratoryService {
 
   public async listResults(
     accountId: AccountId,
-    filterExam?: string
+    filterExam?: string,
+    options?: LaboratoryResultListOptions
   ): Promise<readonly DiagnosticOrderSummary[]> {
     const normalizedFilter = normalizeText(filterExam);
     const items = await this.listOrders(accountId);
     return items.filter((order) => {
-      if (order.status !== 'resulted' && !order.resultSummary && !order.resultAttachmentId) {
+      if (
+        !options?.includePending &&
+        order.status !== 'resulted' &&
+        !order.resultSummary &&
+        !order.resultAttachmentId
+      ) {
         return false;
       }
 

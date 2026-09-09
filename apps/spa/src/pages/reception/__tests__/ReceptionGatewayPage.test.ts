@@ -251,6 +251,23 @@ vi.mock('@/services/billing', () => ({
   }
 }));
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: Error) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+async function mountSearchPage() {
+  const ReceptionGatewayPage = (await import('../ReceptionGatewayPage.vue')).default;
+  return mount(ReceptionGatewayPage, {
+    global: { stubs: { RouterLink: { template: '<a :href="to"><slot /></a>', props: ['to'] } } }
+  });
+}
+
 describe('ReceptionGatewayPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -331,6 +348,122 @@ describe('ReceptionGatewayPage', () => {
     expect(mockBillingList).toHaveBeenCalledWith({ ownerId: 'owner-1' });
     expect(wrapper.text()).toContain('Joao Silva');
     expect(wrapper.text()).toContain('Rex');
+  });
+
+  it('keeps the latest results when an older search resolves last', async () => {
+    const oldOwners = deferred<typeof mockOwners>();
+    mockOwnerList.mockReturnValueOnce(oldOwners.promise);
+    const wrapper = await mountSearchPage();
+    await wrapper.get('input[type="search"]').setValue('old');
+    await wrapper.get('form').trigger('submit');
+    mockOwnerList.mockResolvedValueOnce([{ ...mockOwners[0]!, fullName: 'Maria Atual' }]);
+    mockPatientList.mockResolvedValueOnce([]);
+    await wrapper.get('input[type="search"]').setValue('Maria');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+
+    oldOwners.resolve(mockOwners);
+    await flushPromises();
+    expect(wrapper.get('.reception-results').text()).toContain('Maria Atual');
+    expect(wrapper.get('.reception-results').text()).not.toContain('Joao Silva');
+    expect(mockLaboratoryListOrders).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('ignores an older rejection without releasing the current loading state', async () => {
+    const oldOwners = deferred<typeof mockOwners>();
+    const currentOwners = deferred<typeof mockOwners>();
+    mockOwnerList.mockReturnValueOnce(oldOwners.promise).mockReturnValueOnce(currentOwners.promise);
+    const wrapper = await mountSearchPage();
+    await wrapper.get('input[type="search"]').setValue('old');
+    await wrapper.get('form').trigger('submit');
+    await wrapper.get('input[type="search"]').setValue('current');
+    await wrapper.get('form').trigger('submit');
+    oldOwners.reject(new Error('Falha antiga'));
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('Falha antiga');
+    expect(wrapper.get('button[type="submit"]').attributes('aria-busy')).toBe('true');
+
+    currentOwners.resolve(mockOwners);
+    await flushPromises();
+    expect(wrapper.get('.reception-results').text()).toContain('Joao Silva');
+    expect(wrapper.get('button[type="submit"]').attributes('aria-busy')).toBe('false');
+    wrapper.unmount();
+  });
+
+  it('preserves the latest error when an older successful search finishes later', async () => {
+    const oldOwners = deferred<typeof mockOwners>();
+    mockOwnerList.mockReturnValueOnce(oldOwners.promise).mockRejectedValueOnce(new Error('Falha atual'));
+    const wrapper = await mountSearchPage();
+    await wrapper.get('input[type="search"]').setValue('old');
+    await wrapper.get('form').trigger('submit');
+    await wrapper.get('input[type="search"]').setValue('current');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+    oldOwners.resolve(mockOwners);
+    await flushPromises();
+    expect(wrapper.text()).toContain('Falha atual');
+    expect(wrapper.get('.reception-results').text()).not.toContain('Joao Silva');
+    expect(wrapper.get('button[type="submit"]').attributes('aria-busy')).toBe('false');
+    wrapper.unmount();
+  });
+
+  it('does not let old patient context replace the current priority', async () => {
+    const oldContext = deferred<typeof mockLaboratoryOrders>();
+    const currentOwners = deferred<typeof mockOwners>();
+    mockLaboratoryListOrders.mockReturnValueOnce(oldContext.promise);
+    const wrapper = await mountSearchPage();
+    await wrapper.get('input[type="search"]').setValue('Rex');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+    mockOwnerList.mockReturnValueOnce(currentOwners.promise);
+    mockLaboratoryListOrders.mockResolvedValueOnce([]);
+    mockVaccinesDewormersList.mockResolvedValueOnce([]);
+    mockBillingList.mockResolvedValueOnce([]);
+    await wrapper.get('input[type="search"]').setValue('new');
+    await wrapper.get('form').trigger('submit');
+    currentOwners.resolve(mockOwners);
+    await flushPromises();
+    oldContext.resolve(mockLaboratoryOrders);
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('Exames pendentes');
+    expect(wrapper.get('button[type="submit"]').attributes('aria-busy')).toBe('false');
+    wrapper.unmount();
+  });
+
+  it.each(['clear button', 'empty input', 'short input', 'empty submit'])(
+    'invalidates a pending search after %s', async (action) => {
+      const pendingOwners = deferred<typeof mockOwners>();
+      mockOwnerList.mockReturnValueOnce(pendingOwners.promise);
+      const wrapper = await mountSearchPage();
+      await wrapper.get('input[type="search"]').setValue('Rex');
+      await wrapper.get('form').trigger('submit');
+      if (action === 'clear button') {
+        await wrapper.get('form button[type="button"]').trigger('click');
+      } else {
+        await wrapper.get('input[type="search"]').setValue(action === 'short input' ? 'R' : '');
+        if (action === 'empty submit') await wrapper.get('form').trigger('submit');
+      }
+      expect(wrapper.get('button[type="submit"]').attributes('aria-busy')).toBe('false');
+      pendingOwners.resolve(mockOwners);
+      await flushPromises();
+      expect(wrapper.find('.contextual-quick-actions').exists()).toBe(false);
+      expect(wrapper.text()).not.toContain('Joao Silva');
+      expect(mockLaboratoryListOrders).not.toHaveBeenCalled();
+      wrapper.unmount();
+    }
+  );
+
+  it('does not start patient context requests after unmount', async () => {
+    const pendingOwners = deferred<typeof mockOwners>();
+    mockOwnerList.mockReturnValueOnce(pendingOwners.promise);
+    const wrapper = await mountSearchPage();
+    await wrapper.get('input[type="search"]').setValue('Rex');
+    await wrapper.get('form').trigger('submit');
+    wrapper.unmount();
+    pendingOwners.resolve(mockOwners);
+    await flushPromises();
+    expect(mockLaboratoryListOrders).not.toHaveBeenCalled();
   });
 
   it('exposes safe next steps without creating an encounter automatically', async () => {

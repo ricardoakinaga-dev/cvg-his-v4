@@ -15,7 +15,7 @@ import {
   type AuditService
 } from '@cvg-his-v2/module-audit';
 import type { UsersService } from '@cvg-his-v2/module-users';
-import type { JsonValue } from '@cvg-his-v2/shared-database';
+import { getDatabaseTransactionScope, type JsonValue } from '@cvg-his-v2/shared-database';
 import type { AccountId, AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import { AppError, AuthenticationError, ValidationError } from '@cvg-his-v2/shared-errors';
 import {
@@ -527,6 +527,90 @@ export async function handleAccessControlRoutes(
     });
     response.statusCode = 200;
     response.end(JSON.stringify(sector));
+    return true;
+  }
+
+  // POST /access-control/users/:userId/teams
+  if (
+    pathname.startsWith('/access-control/users/') &&
+    pathname.endsWith('/memberships') &&
+    request.method === 'POST'
+  ) {
+    const principal = await rp(request, 'users.manage');
+    const userId = requireNonEmptyString(pathname.split('/')[3], 'userId');
+    getUserForCurrentAccount(users, userId, principal);
+    const body = requireObjectPayload(await readJsonBody(request));
+    const roleCodes =
+      body.roleCodes === undefined ? [] : requireBoundedStringArray(body.roleCodes, 'roleCodes');
+    const teamIds =
+      body.teamIds === undefined ? [] : requireBoundedStringArray(body.teamIds, 'teamIds');
+    const sectorIds =
+      body.sectorIds === undefined ? [] : requireBoundedStringArray(body.sectorIds, 'sectorIds');
+    const knownRoleCodes = new Set(accessControl.listRoles().map((role) => role.code));
+    for (const roleCode of roleCodes) {
+      if (!knownRoleCodes.has(roleCode)) {
+        throw new ValidationError(`Unknown role code: ${roleCode}`);
+      }
+    }
+    for (const teamId of teamIds) {
+      assertTeamForCurrentAccount(accessControl, teamId, principal);
+    }
+    for (const sectorId of sectorIds) {
+      assertSectorForCurrentAccount(accessControl, sectorId, principal);
+    }
+
+    const previousRoleCodes = [...accessControl.getLegacyRoleCodes(userId as never)];
+    const previousMemberships = accessControl.listMemberships(userId as never);
+    await runAccessMutation({
+      request,
+      accountId: principal.user.accountId,
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'access-control.user-memberships-replace',
+      payload: { userId, roleCodes, teamIds, sectorIds } as unknown as JsonValue,
+      command: async () => {
+        try {
+          await accessControl.replaceLegacyRoles(userId as never, roleCodes);
+          await accessControl.replaceUserTeams(userId as never, teamIds as never);
+          await accessControl.replaceUserSectors(userId as never, sectorIds as never);
+          await appendAccessMutationAudit(
+            audit,
+            principal,
+            'user_memberships_replaced',
+            'user-access-membership',
+            userId,
+            `User memberships replaced roles=${roleCodes.length} teams=${teamIds.length} sectors=${sectorIds.length}`,
+            correlationId
+          );
+        } catch (error) {
+          // The HTTP dispatcher owns a tenant transaction in production. The
+          // compensating path keeps direct/in-memory route execution atomic
+          // too; a failed compensation is itself an explicit recovery fault.
+          if (!getDatabaseTransactionScope()) {
+            try {
+              await accessControl.replaceLegacyRoles(userId as never, previousRoleCodes);
+              await accessControl.replaceUserTeams(
+                userId as never,
+                previousMemberships.teams.map((team) => team.id) as never
+              );
+              await accessControl.replaceUserSectors(
+                userId as never,
+                previousMemberships.sectors.map((sector) => sector.id) as never
+              );
+            } catch {
+              throw new AppError(
+                'ACCESS_CONTROL_ROLLBACK_FAILED',
+                'Access control membership rollback failed; privileged access is temporarily unavailable',
+                503
+              );
+            }
+          }
+          throw error;
+        }
+      }
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify({ ok: true }));
     return true;
   }
 

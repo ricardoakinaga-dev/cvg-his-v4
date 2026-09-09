@@ -1,4 +1,4 @@
-import type { Preview } from '@storybook/vue';
+import type { Preview } from '@storybook/vue3-vite';
 import '../src/tokens/variables.css';
 
 const preview: Preview = {

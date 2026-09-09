@@ -38,8 +38,11 @@ const mockGetSummaryFn = vi.fn().mockRejectedValue(new Error('summary unavailabl
 const mockGetFinancialSummaryFn = vi.fn().mockRejectedValue(new Error('financial unavailable'));
 const mockCloseFinancialFn = vi.fn();
 const mockCreateCashReceiptFn = vi.fn();
+const mockGetCashReceiptFn = vi.fn();
+const mockReverseCashReceiptFn = vi.fn();
 const mockGetCashDashboardFn = vi.fn();
 const mockGetBillingByEncounterFn = vi.fn();
+const mockListBillingItemsFn = vi.fn();
 const mockGetPatientName = vi.fn().mockResolvedValue('Rex');
 const mockGetOwnerName = vi.fn().mockResolvedValue('Joao Silva');
 const mockRouterPush = vi.fn();
@@ -80,6 +83,12 @@ vi.mock('@/services/encounter', () => ({
     },
     get createCashReceipt() {
       return mockCreateCashReceiptFn;
+    },
+    get getCashReceiptForEncounter() {
+      return mockGetCashReceiptFn;
+    },
+    get reverseCashReceipt() {
+      return mockReverseCashReceiptFn;
     }
   }
 }));
@@ -96,6 +105,9 @@ vi.mock('@/services/billing', () => ({
   billingService: {
     get getByEncounter() {
       return mockGetBillingByEncounterFn;
+    },
+    get listItems() {
+      return mockListBillingItemsFn;
     }
   }
 }));
@@ -130,10 +142,35 @@ describe('EncounterDetailPage', () => {
     mockGetFinancialSummaryFn.mockRejectedValue(new Error('financial unavailable'));
     mockCloseFinancialFn.mockResolvedValue({ balanceDue: 125.5 });
     mockCreateCashReceiptFn.mockResolvedValue({ id: 'receipt-1' });
+    mockGetCashReceiptFn.mockRejectedValue(
+      Object.assign(new Error('Cash receipt not found'), { status: 404 })
+    );
+    mockReverseCashReceiptFn.mockResolvedValue({
+      id: 'reversal-1',
+      accountId: 'acc-1',
+      receiptId: 'receipt-1',
+      encounterId: 'enc-1',
+      billingRecordId: 'billing-1',
+      financialAccountId: 'financial-1',
+      receivableId: 'receivable-1',
+      receivablePaymentId: 'payment-1',
+      originalCashRegisterId: 'register-1',
+      reversalCashRegisterId: 'register-1',
+      originalCashMovementId: 'movement-1',
+      reversalCashMovementId: 'movement-2',
+      originalJournalEntryId: 'journal-1',
+      reversalJournalEntryId: 'journal-2',
+      amount: 125.5,
+      currency: 'BRL',
+      reason: 'Correção operacional',
+      reversedByUserId: 'user-1',
+      reversedAt: '2024-01-15T11:00:00Z'
+    });
     mockGetCashDashboardFn.mockResolvedValue({
       openRegister: { id: 'register-1' }
     });
     mockGetBillingByEncounterFn.mockResolvedValue({ status: 'open' });
+    mockListBillingItemsFn.mockResolvedValue([]);
     mockGetPatientName.mockResolvedValue('Rex');
     mockGetOwnerName.mockResolvedValue('Joao Silva');
     mockRouterPush.mockResolvedValue(undefined);
@@ -582,6 +619,173 @@ describe('EncounterDetailPage', () => {
     expect(mockGetSummaryFn).toHaveBeenCalledTimes(2);
     expect(mockGetBillingByEncounterFn).toHaveBeenCalledTimes(2);
     expect(wrapper.text()).toMatch(/R\$\s*0,00/u);
+  });
+
+  it('loads a cash receipt and requires an explicit idempotent reversal', async () => {
+    const closedEncounter = { ...mockEncounter, status: 'closed' as const };
+    const financial = {
+      encounterId: 'enc-1',
+      total: 125.5,
+      paidAmount: 125.5,
+      balanceDue: 0,
+      financialStatus: 'paid'
+    };
+    mockGetByIdFn.mockResolvedValue(closedEncounter);
+    mockGetSummaryFn.mockResolvedValue({
+      financial,
+      diagnostics: { totalOrders: 0, pendingOrders: 0, releasedResults: 0 }
+    });
+    mockGetBillingByEncounterFn.mockResolvedValue({ status: 'settled' });
+    mockGetCashReceiptFn.mockResolvedValue({
+      id: 'receipt-1',
+      accountId: 'acc-1',
+      encounterId: 'enc-1',
+      billingRecordId: 'billing-1',
+      financialAccountId: 'financial-1',
+      receivableId: 'receivable-1',
+      receivablePaymentId: 'payment-1',
+      cashRegisterId: 'register-1',
+      cashMovementId: 'movement-1',
+      journalEntryId: 'journal-1',
+      amount: 125.5,
+      currency: 'BRL',
+      receivedAt: '2024-01-15T10:30:00Z',
+      receivedByUserId: 'user-1'
+    });
+
+    const EncounterDetailPage = (await import('../EncounterDetailPage.vue')).default;
+    const wrapper = mount(EncounterDetailPage);
+    await flushPromises();
+
+    await wrapper
+      .findAll('.workflow-tab')
+      .find((button) => button.text().includes('Fechamento'))!
+      .trigger('click');
+    await flushPromises();
+
+    expect(mockGetCashReceiptFn).toHaveBeenCalledWith('enc-1', { includeReversed: true });
+    expect(wrapper.text()).toContain('Recebimento confirmado');
+    expect(wrapper.text()).toContain('receipt-1');
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Solicitar estorno'))!
+      .trigger('click');
+    await wrapper.find('#cashReversalReason').setValue('Correção operacional');
+    await wrapper
+      .findAll('.ds-modal__footer .ds-btn')
+      .find((button) => button.text().includes('Confirmar estorno'))!
+      .trigger('click');
+    await flushPromises();
+
+    expect(mockReverseCashReceiptFn).toHaveBeenCalledWith(
+      'enc-1',
+      'receipt-1',
+      'Correção operacional',
+      expect.any(String)
+    );
+    expect(wrapper.text()).toContain('Estorno confirmado');
+    expect(wrapper.text()).toContain('Nenhum novo recebimento foi criado');
+
+    mockGetCashReceiptFn.mockRejectedValueOnce(
+      Object.assign(new Error('Active cash receipt not found'), { status: 404 })
+    );
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Atualizar recebimento'))!
+      .trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Estorno confirmado');
+    expect(wrapper.text()).toContain('Não foi possível reler o recebimento agora');
+  });
+
+  it('reuses the reversal idempotency key after a transient failure', async () => {
+    const closedEncounter = { ...mockEncounter, status: 'closed' as const };
+    mockGetByIdFn.mockResolvedValue(closedEncounter);
+    mockGetSummaryFn.mockResolvedValue({
+      financial: {
+        encounterId: 'enc-1',
+        total: 125.5,
+        paidAmount: 125.5,
+        balanceDue: 0,
+        financialStatus: 'paid'
+      },
+      diagnostics: { totalOrders: 0, pendingOrders: 0, releasedResults: 0 }
+    });
+    mockGetBillingByEncounterFn.mockResolvedValue({ status: 'settled' });
+    mockGetCashReceiptFn.mockResolvedValue({
+      id: 'receipt-1',
+      accountId: 'acc-1',
+      encounterId: 'enc-1',
+      billingRecordId: 'billing-1',
+      financialAccountId: 'financial-1',
+      receivableId: 'receivable-1',
+      receivablePaymentId: 'payment-1',
+      cashRegisterId: 'register-1',
+      cashMovementId: 'movement-1',
+      journalEntryId: 'journal-1',
+      amount: 125.5,
+      currency: 'BRL',
+      receivedAt: '2024-01-15T10:30:00Z',
+      receivedByUserId: 'user-1'
+    });
+    mockReverseCashReceiptFn
+      .mockRejectedValueOnce(new Error('Falha transitória no livro financeiro'))
+      .mockResolvedValueOnce({
+        id: 'reversal-1',
+        accountId: 'acc-1',
+        receiptId: 'receipt-1',
+        encounterId: 'enc-1',
+        billingRecordId: 'billing-1',
+        financialAccountId: 'financial-1',
+        receivableId: 'receivable-1',
+        receivablePaymentId: 'payment-1',
+        originalCashRegisterId: 'register-1',
+        reversalCashRegisterId: 'register-1',
+        originalCashMovementId: 'movement-1',
+        reversalCashMovementId: 'movement-2',
+        originalJournalEntryId: 'journal-1',
+        reversalJournalEntryId: 'journal-2',
+        amount: 125.5,
+        currency: 'BRL',
+        reason: 'Correção operacional',
+        reversedByUserId: 'user-1',
+        reversedAt: '2024-01-15T11:00:00Z'
+      });
+
+    const EncounterDetailPage = (await import('../EncounterDetailPage.vue')).default;
+    const wrapper = mount(EncounterDetailPage);
+    await flushPromises();
+    await wrapper
+      .findAll('.workflow-tab')
+      .find((button) => button.text().includes('Fechamento'))!
+      .trigger('click');
+    await flushPromises();
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Solicitar estorno'))!
+      .trigger('click');
+    await wrapper.find('#cashReversalReason').setValue('Correção operacional');
+
+    await wrapper
+      .findAll('.ds-modal__footer .ds-btn')
+      .find((button) => button.text().includes('Confirmar estorno'))!
+      .trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('A mesma chave será reaproveitada');
+    const firstKey = mockReverseCashReceiptFn.mock.calls[0]?.[3];
+    expect(firstKey).toEqual(expect.any(String));
+
+    await wrapper
+      .findAll('.ds-modal__footer .ds-btn')
+      .find((button) => button.text().includes('Confirmar estorno'))!
+      .trigger('click');
+    await flushPromises();
+
+    expect(mockReverseCashReceiptFn).toHaveBeenCalledTimes(2);
+    expect(mockReverseCashReceiptFn.mock.calls[1]?.[3]).toBe(firstKey);
+    expect(wrapper.text()).toContain('Estorno confirmado');
   });
 
   it('directs an estimated billing record to opening before offering cash receipt', async () => {

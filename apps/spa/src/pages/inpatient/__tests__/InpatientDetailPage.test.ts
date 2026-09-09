@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
+import type { InpatientStaySummary } from '@/types/inpatient';
 
-const mockStay = {
+const mockStay: InpatientStaySummary = {
   id: 'stay-1',
   accountId: 'acc-1',
   encounterId: 'enc-1',
   patientId: 'pat-1',
+  ownerId: 'owner-1',
+  admittedByUserId: 'user-1',
   unit: 'Clinica',
   ward: 'A',
   bed: '01',
@@ -220,6 +223,37 @@ describe('InpatientDetailPage', () => {
 
     await flushPromises();
     expect(wrapper.text()).toContain('Internação não encontrada');
+    expect(wrapper.text()).toContain('Tentar novamente');
+    expect(wrapper.find('.ds-alert__dismiss').exists()).toBe(false);
+  });
+
+  it('does not present zero-valued collection summaries while collections are loading', async () => {
+    let resolveProgress!: (value: typeof mockProgressNotes) => void;
+    let resolveDailyCharges!: (value: typeof mockDailyCharges) => void;
+    mockProgressFn.mockReturnValueOnce(new Promise((resolve) => { resolveProgress = resolve; }));
+    mockListDailyChargesFn.mockReturnValueOnce(new Promise((resolve) => { resolveDailyCharges = resolve; }));
+    const InpatientDetailPage = (await import('../InpatientDetailPage.vue')).default;
+    const wrapper = mount(InpatientDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    const evolutionCard = wrapper.findAll('.summary-card').find((card) => card.text().includes('Evoluções'));
+    const dailyCard = wrapper.findAll('.summary-card').find((card) => card.text().includes('Diárias'));
+    expect(evolutionCard?.find('.summary-card__value').text()).toBe('…');
+    expect(dailyCard?.find('.summary-card__value').text()).toBe('…');
+
+    resolveProgress([]);
+    resolveDailyCharges([]);
+    await flushPromises();
+
+    expect(evolutionCard?.find('.summary-card__value').text()).toBe('0');
+    expect(dailyCard?.find('.summary-card__value').text()).toContain('R$');
   });
 
   it('displays progress notes section', async () => {
@@ -739,5 +773,109 @@ describe('InpatientDetailPage', () => {
 
     await flushPromises();
     expect(wrapper.text()).toContain('Network timeout');
+  });
+
+  it('exposes patient, location, bed and textual status as a semantic detail hierarchy', async () => {
+    const InpatientDetailPage = (await import('../InpatientDetailPage.vue')).default;
+    const wrapper = mount(InpatientDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    const detail = wrapper.find('dl.detail-grid');
+    expect(detail.exists()).toBe(true);
+    expect(wrapper.findAll('h2').map((heading) => heading.text())).toContain('Informações da Internação');
+    expect(detail.find('dt').text()).toContain('Paciente');
+    expect(detail.text()).toContain('Rex');
+    const summary = wrapper.find('.summary-grid');
+    expect(summary.text()).toContain('Clinica / A / 01');
+    expect(summary.text()).toContain('Internado');
+    expect(detail.text()).not.toContain('Clinica / A / 01');
+    expect(detail.text()).toContain('Última atualização');
+  });
+
+  it('keeps the selected patient and bed visible while refreshing the same target', async () => {
+    const InpatientDetailPage = (await import('../InpatientDetailPage.vue')).default;
+    const wrapper = mount(InpatientDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    });
+
+    await flushPromises();
+    let resolvePending!: (value: typeof mockStay[]) => void;
+    const pending = new Promise<typeof mockStay[]>((resolve) => {
+      resolvePending = resolve;
+    });
+    mockListFn.mockReturnValueOnce(pending);
+    const refreshButton = wrapper.find('button[aria-label="Atualizar dados da internação"]');
+    expect(refreshButton.exists()).toBe(true);
+
+    await refreshButton.trigger('click');
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('.detail-content').attributes('aria-busy')).toBe('true');
+    expect(wrapper.find('.refresh-status').text()).toContain('Rex');
+    expect(wrapper.find('.refresh-status').text()).toContain('leito 01');
+
+    resolvePending([
+      { ...mockStay, bed: '02', status: 'stable', updatedAt: '2024-01-15T16:00:00Z' }
+    ]);
+    await flushPromises();
+
+    expect(wrapper.find('.summary-grid').text()).toContain('Clinica / A / 02');
+    expect(wrapper.find('.summary-grid').text()).toContain('Estável');
+    expect(wrapper.find('.refresh-status').exists()).toBe(false);
+    expect(mockListFn).toHaveBeenCalledTimes(2);
+    expect(mockProgressFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the last readable context and offers a safe read retry when refresh fails', async () => {
+    const InpatientDetailPage = (await import('../InpatientDetailPage.vue')).default;
+    const wrapper = mount(InpatientDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    });
+
+    await flushPromises();
+    mockListFn.mockRejectedValueOnce(new Error('Network timeout'));
+    await wrapper.find('button[aria-label="Atualizar dados da internação"]').trigger('click');
+    await flushPromises();
+
+    const alert = wrapper.find('[role="alert"]');
+    expect(alert.text()).toContain('Atualização da internação interrompida');
+    expect(alert.text()).toContain('Não foi possível atualizar esta internação sem perder o contexto atual');
+    expect(alert.text()).toContain('Network timeout');
+    expect(wrapper.find('.detail-grid').text()).toContain('Rex');
+    expect(wrapper.find('.detail-grid').text()).toContain('01');
+    expect(alert.find('button').text()).toContain('Tentar novamente');
+  });
+
+  it('explains forbidden detail access without exposing a color-only state', async () => {
+    mockListFn.mockRejectedValueOnce(Object.assign(new Error('Forbidden'), { status: 403 }));
+    const InpatientDetailPage = (await import('../InpatientDetailPage.vue')).default;
+    const wrapper = mount(InpatientDetailPage, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    expect(wrapper.find('[role="alert"]').text()).toContain('Internação indisponível');
+    expect(wrapper.text()).toContain('Você não tem permissão para consultar ou atualizar esta internação.');
+    expect(wrapper.find('button').text()).toContain('Tentar novamente');
   });
 });

@@ -7,8 +7,7 @@
       </template>
     </AppPageHeader>
 
-    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">{{ error }}</DsAlert>
-    <DsAlert v-if="lookupWarnings.length && !loadFailed" variant="warning">
+    <DsAlert v-if="lookupWarnings.length && !loadFailed && !accessDenied" variant="warning">
       <span v-for="warning in lookupWarnings" :key="warning" class="lookup-warning">{{ warning }}</span>
     </DsAlert>
 
@@ -34,12 +33,15 @@
     </details>
     <p v-if="filtersChanged" class="lab-query-note">Filtros alterados. Pesquise para atualizar os exames.</p>
 
-    <section aria-label="Exames encontrados" class="lab-records">
-      <div class="lab-section-heading"><h2>Exames encontrados</h2><span v-if="!loading && !loadFailed">{{ rows.length }}</span></div>
+    <section aria-label="Lista de exames laboratoriais" class="lab-records">
+      <div class="lab-section-heading"><h2>Exames encontrados</h2><span v-if="!loading && !loadFailed && !accessDenied">{{ rows.length }}</span></div>
       <DataTable :columns="recordColumns" :rows="rows" :loading="loading" caption="Exames encontrados"
-        :empty-title="loadFailed ? 'Não foi possível carregar os exames' : 'Nenhum exame encontrado'"
-        :empty-description="loadFailed ? 'Tente novamente para consultar os resultados.' : 'Revise os filtros ou atualize a consulta.'">
-        <template #emptyAction><DsButton v-if="loadFailed" variant="secondary" @click="load">Tentar novamente</DsButton></template>
+        :feedback="recordFeedback"
+        empty-title="Nenhum exame encontrado"
+        empty-description="Revise os filtros ou atualize a consulta.">
+        <template v-if="loadFailed" #feedbackAction>
+          <DsButton variant="secondary" :loading="loading" :disabled="loading" @click="load">Tentar novamente</DsButton>
+        </template>
         <template #cell-id="{ row }"><span class="lab-code">{{ row.id }}</span></template>
         <template #cell-animalName="{ row }"><button type="button" class="lab-patient-link" :aria-label="`Ver resultado de ${row.animalName}`" :aria-pressed="selectedId === row.id" @click="selectResult(row.id)">{{ row.animalName }}</button></template>
         <template #cell-updatedAt="{ row }">{{ formatDate(row.updatedAt) }}</template>
@@ -73,12 +75,15 @@
       <div class="lab-original"><h3>Texto original</h3><p>{{ selected.resultSummary || 'Resumo não informado.' }}</p></div>
     </section>
 
-    <details v-if="!loading && !loadFailed" class="lab-references">
+    <details v-if="!loading && !loadFailed && !accessDenied" class="lab-references">
       <summary>Referências cadastradas</summary>
       <p class="lab-help">Catálogo de consulta. As referências do resultado são as registradas no próprio exame.</p>
-      <p v-if="referencesFailed" class="lab-unavailable">Referências indisponíveis. Atualize a consulta para tentar novamente.</p>
-      <DataTable v-else :columns="referenceColumns" :rows="referenceRows" caption="Catálogo de referências"
-        empty-title="Nenhuma referência cadastrada" empty-description="O catálogo não retornou referências para este tipo de exame." />
+      <DataTable :columns="referenceColumns" :rows="referenceRows" :feedback="referenceFeedback" caption="Catálogo de referências"
+        empty-title="Nenhuma referência cadastrada" empty-description="O catálogo não retornou referências para este tipo de exame.">
+        <template v-if="referencesFailed" #feedbackAction>
+          <DsButton variant="secondary" :loading="referenceLoading" :disabled="referenceLoading" @click="retryReferences">Tentar novamente</DsButton>
+        </template>
+      </DataTable>
     </details>
   </div>
 </template>
@@ -86,7 +91,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
-import DataTable, { type DataTableColumn } from '@/components/DataTable.vue';
+import DataTable, { type DataTableColumn, type DataTableFeedback } from '@/components/DataTable.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
@@ -117,10 +122,13 @@ const selectedId = ref('');
 const selectedRegion = ref<HTMLElement | null>(null);
 const loading = ref(true);
 const loadFailed = ref(false);
+const accessDenied = ref(false);
 const referencesFailed = ref(false);
+const referenceLoading = ref(false);
 const lookupWarnings = ref<string[]>([]);
 const error = ref('');
 let requestId = 0;
+let referenceRequestId = 0;
 
 const recordColumns: DataTableColumn[] = [
   { key: 'animalName', label: 'Paciente' }, { key: 'updatedAt', label: 'Atualizado em' },
@@ -137,7 +145,7 @@ const referenceColumns: DataTableColumn[] = [
   { key: 'maximum', label: 'Máximo' }, { key: 'unit', label: 'Unidade' }
 ];
 const rows = computed(() => {
-  if (loading.value || loadFailed.value) return [];
+  if (loading.value || loadFailed.value || accessDenied.value) return [];
   const patientMap = new Map(patients.value.map(patient => [patient.id, patient]));
   const ownerMap = new Map(owners.value.map(owner => [owner.id, owner]));
   return records.value.map(record => {
@@ -156,6 +164,37 @@ const rows = computed(() => {
       && (appliedFilters.closed ? record.status === 'resulted' : record.status !== 'resulted');
   });
 });
+const hasActiveFilters = computed(() => Boolean(
+  appliedFilters.code || appliedFilters.tutor || appliedFilters.animal || appliedFilters.finalizedAt
+  || appliedFilters.enteredAt || appliedFilters.body || !appliedFilters.closed
+));
+const recordFeedback = computed<DataTableFeedback | null>(() => {
+  if (accessDenied.value) {
+    return {
+      kind: 'forbidden',
+      icon: '🔒',
+      title: 'Acesso aos exames negado',
+      description: 'Seu perfil não tem a permissão diagnostics.read para consultar resultados laboratoriais.'
+    };
+  }
+  if (loadFailed.value) {
+    return {
+      kind: 'error',
+      icon: '⚠️',
+      title: 'Não foi possível carregar os exames',
+      description: error.value || 'A consulta falhou. Tente novamente para atualizar os resultados.'
+    };
+  }
+  if (hasActiveFilters.value && rows.value.length === 0) {
+    return {
+      kind: 'no-results',
+      icon: '🔎',
+      title: 'Nenhum exame corresponde aos filtros',
+      description: 'Revise os filtros e tente novamente.'
+    };
+  }
+  return null;
+});
 const selected = computed(() => rows.value.find(record => record.id === selectedId.value) ?? null);
 const parameterRows = computed(() => (selected.value?.resultValues ?? []).map((value, index) => ({
   id: `${selected.value!.id}-${index}`, parameter: displayParameter(value.parameter), value: value.value || '—',
@@ -165,6 +204,12 @@ const parameterRows = computed(() => (selected.value?.resultValues ?? []).map((v
 })));
 const referenceRows = computed(() => references.value.map(value => ({ ...value, parameter: displayParameter(value.parameter),
   minimum: formatNumber(value.minValue), maximum: formatNumber(value.maxValue) })));
+const referenceFeedback = computed<DataTableFeedback | null>(() => referencesFailed.value ? {
+  kind: 'unavailable',
+  icon: 'clock',
+  title: 'Referências indisponíveis',
+  description: 'O catálogo não respondeu. Tente novamente; os resultados registrados continuam disponíveis.'
+} : null);
 
 function normalize(value: string | undefined) { return (value ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim(); }
 function displayParameter(value: string) {
@@ -177,6 +222,10 @@ function formatDate(value: string, time = false) {
   return Number.isNaN(parsed.getTime()) ? '—' : new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', ...(time ? { timeStyle: 'short' as const } : {}), timeZone: 'UTC' }).format(parsed);
 }
 function statusLabel(value: DiagnosticOrderSummary['status']) { return ({ requested: 'Solicitado', collected: 'Coletado', resulted: 'Concluído', cancelled: 'Cancelado' })[value]; }
+function isForbiddenError(cause: unknown): boolean {
+  return typeof cause === 'object' && cause !== null && 'status' in cause
+    && (cause as { status?: unknown }).status === 403;
+}
 async function selectResult(id: string) {
   if (!rows.value.some(record => record.id === id)) return;
   selectedId.value = id;
@@ -187,6 +236,24 @@ async function selectResult(id: string) {
 }
 function applyFilters() { Object.assign(appliedFilters, draftFilters); void load(); }
 function clearFilters() { Object.assign(draftFilters, emptyFilters()); applyFilters(); }
+
+async function retryReferences() {
+  if (loading.value || referenceLoading.value || !referencesFailed.value) return;
+  const generation = requestId;
+  const retry = ++referenceRequestId;
+  const examType = props.examType;
+  referenceLoading.value = true;
+  try {
+    const result = await laboratoryService.listReferenceValues(examType);
+    if (generation !== requestId || retry !== referenceRequestId) return;
+    references.value = result;
+    referencesFailed.value = false;
+  } catch {
+    if (generation === requestId && retry === referenceRequestId) referencesFailed.value = true;
+  } finally {
+    if (generation === requestId && retry === referenceRequestId) referenceLoading.value = false;
+  }
+}
 
 async function resolveIdentities<T extends { id: string }>(ids: string[], get: (id: string) => Promise<T>, generation: number) {
   const items: T[] = [];
@@ -204,13 +271,14 @@ async function resolveIdentities<T extends { id: string }>(ids: string[], get: (
 
 async function load() {
   const generation = ++requestId;
+  referenceRequestId += 1;
   const previousId = selectedId.value;
   const query = { ...appliedFilters };
   const examType = props.examType;
   const method = configurations[examType].method;
-  loading.value = true; loadFailed.value = false; error.value = ''; lookupWarnings.value = [];
+  loading.value = true; loadFailed.value = false; accessDenied.value = false; error.value = ''; lookupWarnings.value = [];
   selectedId.value = ''; records.value = []; references.value = []; patients.value = []; owners.value = [];
-  referencesFailed.value = false;
+  referencesFailed.value = false; referenceLoading.value = false;
   try {
     const [result, referenceResult, patientResult, ownerResult] = await Promise.allSettled([
       laboratoryService[method]({ code: query.code || undefined, finalizedAt: query.finalizedAt || undefined,
@@ -218,7 +286,7 @@ async function load() {
       laboratoryService.listReferenceValues(examType), patientService.list({ pageSize: 500 }), ownerService.list({ pageSize: 500 })
     ]);
     if (generation !== requestId) return;
-    if (result.status === 'rejected') throw new Error('Não foi possível carregar os exames. Tente novamente.');
+    if (result.status === 'rejected') throw result.reason;
     const knownPatients = patientResult.status === 'fulfilled' ? [...patientResult.value] : [];
     const knownOwners = ownerResult.status === 'fulfilled' ? [...ownerResult.value] : [];
     let patientsUnavailable = patientResult.status === 'rejected';
@@ -243,7 +311,6 @@ async function load() {
     records.value = result.value;
     referencesFailed.value = referenceResult.status === 'rejected';
     if (referenceResult.status === 'fulfilled') references.value = referenceResult.value;
-    else lookupWarnings.value.push('Referências indisponíveis. Os resultados registrados continuam disponíveis.');
     patients.value = knownPatients;
     owners.value = knownOwners;
     if (patientsUnavailable) lookupWarnings.value.push('Identificação dos pacientes indisponível para parte ou todos os exames. Confira os códigos dos pacientes.');
@@ -252,7 +319,8 @@ async function load() {
     selectedId.value = rows.value.some(record => record.id === previousId) ? previousId : rows.value[0]?.id ?? '';
   } catch (cause) {
     if (generation !== requestId) return;
-    loadFailed.value = true;
+    accessDenied.value = isForbiddenError(cause);
+    loadFailed.value = !accessDenied.value;
     error.value = cause instanceof Error ? cause.message : 'Não foi possível carregar os exames. Tente novamente.';
   } finally {
     if (generation === requestId) loading.value = false;

@@ -21,6 +21,21 @@ describe('bounded browser download contract', () => {
     expect((error as Error).message).toContain('tente novamente');
   });
 
+  it('aborts the consumer signal when the timeout expires', async () => {
+    vi.useFakeTimers();
+    let capturedSignal: AbortSignal | undefined;
+    const result = withDownloadTimeout((signal) => {
+      capturedSignal = signal;
+      return new Promise<never>(() => undefined);
+    }, 2_000);
+    const capturedResult = result.catch((reason: unknown) => reason);
+
+    await vi.advanceTimersByTimeAsync(2_000);
+
+    expect(capturedSignal?.aborted).toBe(true);
+    expect(await capturedResult).toBeInstanceOf(DownloadTimeoutError);
+  });
+
   it('saves UTF-8 content with the server filename and MIME type', () => {
     const createObjectURL = vi.fn(() => 'blob:bounded-download');
     const revokeObjectURL = vi.fn();

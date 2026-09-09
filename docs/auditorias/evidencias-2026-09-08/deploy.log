@@ -1,0 +1,17 @@
+
+> cvg-his-v2@0.1.0 deploy:check /home/ricardo/cvg-his-v4
+> node infra/scripts/check-cutover-readiness.mjs
+
+[deploy-check] PASS README raiz aponta apps/spa como frontend canonico
+[deploy-check] PASS guia de instalacao nao manda buildar ou subir o web legado
+[deploy-check] PASS diretrizes OpenClaw apontam apenas api, worker e spa como runtime oficial
+[deploy-check] PASS checklist de cutover usa portas e servicos atuais
+[deploy-check] PASS politica de migracao aponta packages/db como unica trilha canônica
+[deploy-check] PASS compose canonico nao inclui mais o frontend legado
+[deploy-check] PASS compose canonico nasce com NODE_ENV production-like por default
+[deploy-check] PASS proxy publico aponta o dominio principal para a SPA e a API para 3003
+[deploy-check] PASS env example de publicacao nasce em production
+[deploy-check] PASS compose e env example exigem estado distribuido explicito em production-like
+[deploy-check] PASS manifesto de migracao existe, e explicita plano e fonte de verdade
+[deploy-check] PASS doc vivo de deploy referencia o guardrail de deploy
+[deploy-check] deploy documentation and runtime alignment are consistent

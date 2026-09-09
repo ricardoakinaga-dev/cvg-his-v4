@@ -1,7 +1,7 @@
 ---
 document_status: current
 document_kind: plan
-effective_date: 2026-09-06
+effective_date: 2026-09-07
 owner: Comitê executivo CVG-HIS
 review_cycle: weekly
 ---
@@ -14,6 +14,15 @@ review_cycle: weekly
 **Execução:** [roadmap](./2026-09-06-roadmap-erp-state-of-art-triplo-aaa.md)  
 **Controle:** [backlog AAA](./2026-09-06-backlog-erp-state-of-art-triplo-aaa.md)  
 **Régua:** [Quality Bar](./engineering/QUALITY_BAR.md)
+
+**Checkpoint técnico:** 07/09/2026 — suítes locais, `pnpm test:critical`,
+typecheck, lint, build e validadores técnicos canônicos verdes; o critical gate
+agregado passou com 65/65 arquivos, 594/594 testes e 10/10 processos em runtime
+efêmero local. O recorte E2E SPA também passou 9/9 contra PostgreSQL/Redis reais,
+com cleanup sem erro. `readiness:enterprise` permanece em 92/100 (exit 1) por
+paridade Vetus; promoção continua `NO-GO` por providers homologados, paridade
+11/11, target operacional, CI remoto, a11y global e aceite independente.
+O checkpoint não altera a nota baseline de 75/100.
 
 ## 1. Decisão executiva
 

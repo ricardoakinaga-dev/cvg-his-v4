@@ -22,6 +22,19 @@ Os resultados e limitações da execução ficam em `evidence/` e no manifesto f
 - [Caderno interativo](../caderno-visual.html): botões, estados simulados, tema, abas por teclado, contexto modal e vídeo iniciado por comando.
 - [QA do caderno](evidence/concept-qa.json): Chromium em 390/1440 px, claro/escuro, sem overflow global ou erro JS; retorno de foco, teclado, vídeo e redução de movimento verificados. Não equivale à certificação da SPA.
 
+## Integração na SPA — correção de identidade em 08/09/2026
+
+Após a revisão visual, o estudo de órbitas foi retirado do palco de identidade
+da tela de login: ele não representa o hospital e permanece apenas como material
+conceitual deste caderno. A SPA voltou a usar o logo institucional existente,
+com `apps/spa/public/art/hospital-logo-poster.webp` como poster e
+`apps/spa/public/art/hospital-logo-loop.mp4` como loop opcional. O cabeçalho
+continua usando `hospital-guarapiranga-logo.jpeg`.
+
+A matriz browser [login-assets-20260908](../implementation/evidence/login-assets-20260908.json)
+passa oito combinações de largura, tema e movimento reduzido; ela não é
+aprovação visual, de rede, de performance ou de produção.
+
 Inspeção autoral do render: material e luz coerentes com a proposta; órbitas geométricas deliberadamente abstratas. A exploração ainda é simples, sem identidade aprovada e sem resolução de campanha. Movimento de flutuação sutil, com trajetória periódica; o ruído do render precisa de revisão perceptiva antes de produção. Não foi realizada aprovação independente.
 
 ## Registro da execução ComfyUI
@@ -30,6 +43,6 @@ A sessão disponível passou a operar em CPU. As duas primeiras submissões fora
 
 A terceira submissão usa arquivo efetivamente gravado e conferido: `0836ac61-05c9-443d-9853-d044ac6fac39`, workflow `workflows/cvg-pulse-material-preview.json`, prefixo `cvg-pulse-frontend-20260906-preview-003`, seed 609202601, 384×224, quatro passos. O workflow de 1024×576 foi corrigido e preservado para geração posterior; não é descrito como render final entregue. Apenas jobs desta tarefa receberam cancelamento.
 
-**Estado na entrega:** ComfyUI pendente na fila compartilhada atrás de outra sessão, sem imagem coletada. [Snapshot do job](evidence/comfyui-job-status.json). O vídeo e o poster Blender estão prontos. A geração de imagem ComfyUI permanece como pendência explícita; não substituir sua evidência por uma imagem de outro job.
+**Estado revalidado em 07/09/2026:** job ComfyUI concluído, saída coletada e inspecionada em [imagem de estudo](images/0836ac61_000.png). Prévia 384×224, 84.640 bytes: arco em metal azul sobre material mineral com contorno champagne, sem texto. Resultado coerente com o brief de material, mas pequeno e simples; não aprovado como asset final de produção nem aplicado à SPA. O vídeo e poster Blender continuam disponíveis. [Snapshot do job](evidence/comfyui-job-status.json).
 
-Para retomar, consultar pelo MCP `job(action="status", prompt_id="0836ac61-05c9-443d-9853-d044ac6fac39")`; quando completo, usar `fetch_outputs` para `docs/frontend/assets/images`, inspecionar a imagem e atualizar manifesto/estado. Não submeter novamente sem reconciliar o job atual. Se falhar, preservar erro e decidir novo orçamento. O workflow final de 1024×576 é uma proposta de render posterior, condicionado à capacidade disponível.
+O job concluído foi coletado pelo MCP `fetch_outputs`; não há nova submissão necessária para esta prévia. O workflow final de 1024×576 é uma proposta de render posterior, condicionado à capacidade disponível.

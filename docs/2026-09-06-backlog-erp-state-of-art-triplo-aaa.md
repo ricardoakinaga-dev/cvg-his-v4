@@ -1,12 +1,49 @@
 ---
 document_status: current
 document_kind: backlog
-effective_date: 2026-09-06
+effective_date: 2026-09-07
 owner: PMO, Produto e Liderança técnica CVG-HIS
 review_cycle: weekly
 ---
 
 # Backlog executivo — ERP State of Art / Triplo AAA
+
+## Registro de execução — 07/09/2026
+
+O backlog continua sendo a superfície de execução e não deve converter
+`PASS_BOUNDED` em `DONE`. Nesta rodada foram implementados ou fortalecidos:
+
+- modo estrito de banco (`REQUIRE_TEST_DB`) e guards de schema/policies/RLS
+  forçado antes de expor repositórios persistentes da API e do worker;
+- migration 0163 incremental para `FORCE RLS` no runtime persistente de
+  relatórios, preservando a migration histórica 0048;
+- migration 0164 para permitir a cascata legítima de itens de billing após a
+  remoção do pai, preservando o bloqueio de mutações reservadas;
+- migration 0162 e alocador transacional de numeração durável de vendas;
+- regressão PostgreSQL para a cascata de encounter/billing e E2E SPA 9/9 contra
+  PostgreSQL/Redis reais, com cleanup sem erro;
+- regressões de bootstrap para schema incompleto e suíte completa local verde;
+- navegação, scroll/foco e componentes compartilhados do frontend, com testes
+  SPA/design system verdes.
+- matriz visual SPA estabilizada e reproduzível em **29/29** casos; snapshots
+  antigos foram substituídos somente após inspeção das diferenças e o vídeo
+  decorativo do login foi tornado determinístico para a evidência;
+- auditoria master de usabilidade em **299/299** casos, cobrindo 149 rotas em
+  desktop e mobile mais o gate agregado, usando página nova por rota.
+- lote crítico de jornadas, acessibilidade e superfícies enterprise em
+  **40/40** casos, incluindo RBAC, internação, agenda, billing, axe,
+  responsividade, relatórios e finanças.
+- lote D de integração e UX em **40/40**, cobrindo NFS-e, setup, isolamento
+  tenant, Vetus, webhooks e os 29 snapshots visuais reproduzíveis.
+
+Esses resultados suportam parcialmente `AAA-002`, `AAA-005`, `AAA-011`,
+`AAA-012`, `AAA-013`, `AAA-021`, `AAA-025`, `AAA-035` e `AAA-044`, mas não
+fecham nenhum ticket de certificação. A atualização foi validada no mesmo
+estado observado com `pnpm test`, `pnpm test:critical`, E2E scoped,
+`pnpm typecheck`, `pnpm lint`, `pnpm build` e os validadores técnicos. O
+`readiness:enterprise` permanece em 92/100 (exit 1) por paridade Vetus; banco
+dedicado de target, providers, CI remoto, aceite humano e revisão independente
+continuam bloqueadores.
 
 **Programa:** [plano executivo](./2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md)  
 **Roadmap:** [roadmap AAA](./2026-09-06-roadmap-erp-state-of-art-triplo-aaa.md)  
@@ -31,24 +68,24 @@ Antes de `READY`: owner nominal, revisor, escopo, dependências, ambiente, dados
 
 ## 2. F0/F1 — mobilização, evidência e fundação
 
-| ID      | Ref.    | Pri. | Estado  | Owner          | Esforço | Dependências              | Entrega e critério de aceite                                                                                                                                                                                                    |
-| ------- | ------- | ---- | ------- | -------------- | ------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| AAA-001 | R05-001 | P0   | REVIEW  | QA/LT          | S       | —                         | Congelar snapshot de partida: HEAD, worktree, versões, escopo e inventário de evidências. O relatório deve identificar o que é atual, supporting, histórico e inválido para promoção.                                           |
-| AAA-002 | R05-002 | P0   | BLOCKED | OPS/DB         | L       | AAA-001                   | Prover PostgreSQL e Redis dedicados, Docker ou equivalente. Critical/E2E devem iniciar sem fallback, registrar logs e cleanup, com health/readiness e credenciais sanitizadas.                                                  |
-| AAA-003 | R05-003 | P0   | BLOCKED | Comitê/Produto | M       | AAA-001                   | Registrar escopo de release, providers, município fiscal, target, RPO/RTO, SLO, owners, aprovadores e janelas de homologação. Sem decisão, manter dependências bloqueadas.                                                      |
-| AAA-004 | R05-004 | P0   | REVIEW  | FIN/BE         | M       | AAA-003                   | Consolidar captura de cartão: payload inconsistente, pending/failed, timeout, replay, idempotência, auditoria e reconciliação não podem virar sucesso. O adapter atual corrigido deve passar sandbox real antes de promoção.    |
-| AAA-005 | R05-005 | P0   | REVIEW  | QA/PLAT        | M       | AAA-001                   | Reconciliar contrato de CI, coverage, critical gate e workflow. A mesma regra deve falhar em caso negativo, executar sem skip oculto e produzir artefatos ligados ao SHA.                                                       |
-| AAA-006 | R05-006 | P1   | READY   | LT/BE          | L       | AAA-001                   | Decompor `apps/api/src/server.ts` e composition roots por fronteira estável, preservando contratos e regressões. Reduzir concentração sem elevar o limite de complexidade para ficar verde.                                     |
-| AAA-007 | R05-007 | P1   | READY   | LT/FE          | L       | AAA-001                   | Decompor páginas SPA críticas, começando por PatientDetail e Agenda. Extrair estados/fluxos testáveis, manter acessibilidade e provar antes/depois sem regressão visual.                                                        |
-| AAA-008 | R05-008 | P1   | REVIEW  | SEC/QA         | M       | AAA-001                   | Classificar a superfície SOC2: separar controles executados de resultados demonstrativos. Nenhum `passed` sintético de DR/scanner pode aparecer como certificação; cada controle deve apontar para evidência real ou `NOT_RUN`. |
-| AAA-009 | R05-009 | P0   | DOING   | QA/LT          | M       | AAA-001                   | Publicar mapa de cobertura por componente, risco e métrica, incluindo as 575 fontes ativas e cinco shards. Registrar exclusões, motivo e lacuna; preservar meta mínima de 85% no escopo crítico.                                |
-| AAA-010 | R05-010 | P0   | BLOCKED | QA/BE          | L       | AAA-009                   | Integrar instrumentação semântica reproduzível para statement/function/branch, incluindo Euler/source maps, hashes, reinício, SIGKILL e budgets. Rejeitar fixtures adulteradas; não instrumentar produção.                      |
-| AAA-011 | R05-011 | P0   | REVIEW  | DB/SEC         | L       | AAA-002                   | Fechar roles e RLS no banco dedicado: `safe=true`, `NOBYPASSRLS`, grants mínimos, tenant A/B negativo, owner e `FORCE RLS`. O modo estrito deve permanecer obrigatório em promoção.                                             |
-| AAA-012 | R05-012 | P0   | BLOCKED | QA/DB          | L       | AAA-002, AAA-011          | Executar critical database suite em schema limpo e caminhos arbitrários. Zero falha, erro ou skip não justificado em repetição; validar migração, cleanup, cursor, datas, estoque, prescrições e worker.                        |
-| AAA-013 | R05-013 | P0   | BLOCKED | QA/FE          | L       | AAA-002, AAA-011          | Executar jornadas browser críticas contra API, PostgreSQL e Redis reais: login/setup, atendimento, internação/alta, financeiro e recuperação. Cobrir sucesso, loading, empty, error, retry, teclado e tenant A/B.               |
-| AAA-014 | R05-014 | P0   | READY   | QA/LT          | M       | AAA-005, AAA-012, AAA-013 | Produzir checkpoint técnico com SHA limpo, testes, artefatos, limitações e decisão `PASS_BOUNDED` ou `FAIL`. Não chamar checkpoint de release candidate.                                                                        |
-| AAA-015 | R05-015 | P0   | BLOCKED | PLAT/OPS       | M       | AAA-014                   | Provar CI remoto, proteção de `main`, artefato SHA/digest/SBOM, Helm executável e retenção. O mesmo SHA deve passar novamente após a verificação do manifest de release.                                                        |
-| AAA-016 | R05-016 | P1   | DOING   | PMO/LT         | M       | AAA-001                   | Manter índice canônico, precedência, status, owners e links. Rotular 02/09 e 05/09 como histórico/supporting sem apagar evidência; cada nota deve apontar para procedimento atual.                                              |
+| ID      | Ref.    | Pri. | Estado  | Owner          | Esforço | Dependências              | Entrega e critério de aceite                                                                                                                                                                                                                       |
+| ------- | ------- | ---- | ------- | -------------- | ------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AAA-001 | R05-001 | P0   | REVIEW  | QA/LT          | S       | —                         | Congelar snapshot de partida: HEAD, worktree, versões, escopo e inventário de evidências. O relatório deve identificar o que é atual, supporting, histórico e inválido para promoção.                                                              |
+| AAA-002 | R05-002 | P0   | REVIEW  | OPS/DB         | L       | AAA-001                   | Prover PostgreSQL e Redis dedicados, Docker ou equivalente. O equivalente local já passou no critical gate sem fallback, com logs e cleanup; target, capacidade e evidência remota ainda faltam.                                                   |
+| AAA-003 | R05-003 | P0   | BLOCKED | Comitê/Produto | M       | AAA-001                   | Registrar escopo de release, providers, município fiscal, target, RPO/RTO, SLO, owners, aprovadores e janelas de homologação. Sem decisão, manter dependências bloqueadas.                                                                         |
+| AAA-004 | R05-004 | P0   | REVIEW  | FIN/BE         | M       | AAA-003                   | Consolidar captura de cartão: payload inconsistente, pending/failed, timeout, replay, idempotência, auditoria e reconciliação não podem virar sucesso. O adapter atual corrigido deve passar sandbox real antes de promoção.                       |
+| AAA-005 | R05-005 | P0   | REVIEW  | QA/PLAT        | M       | AAA-001                   | Reconciliar contrato de CI, coverage, critical gate e workflow. A mesma regra deve falhar em caso negativo, executar sem skip oculto e produzir artefatos ligados ao SHA.                                                                          |
+| AAA-006 | R05-006 | P1   | READY   | LT/BE          | L       | AAA-001                   | Decompor `apps/api/src/server.ts` e composition roots por fronteira estável, preservando contratos e regressões. Reduzir concentração sem elevar o limite de complexidade para ficar verde.                                                        |
+| AAA-007 | R05-007 | P1   | READY   | LT/FE          | L       | AAA-001                   | Decompor páginas SPA críticas, começando por PatientDetail e Agenda. Extrair estados/fluxos testáveis, manter acessibilidade e provar antes/depois sem regressão visual.                                                                           |
+| AAA-008 | R05-008 | P1   | REVIEW  | SEC/QA         | M       | AAA-001                   | Classificar a superfície SOC2: separar controles executados de resultados demonstrativos. Nenhum `passed` sintético de DR/scanner pode aparecer como certificação; cada controle deve apontar para evidência real ou `NOT_RUN`.                    |
+| AAA-009 | R05-009 | P0   | DOING   | QA/LT          | M       | AAA-001                   | Publicar mapa de cobertura por componente, risco e métrica, incluindo as 575 fontes ativas e cinco shards. Registrar exclusões, motivo e lacuna; preservar meta mínima de 85% no escopo crítico.                                                   |
+| AAA-010 | R05-010 | P0   | BLOCKED | QA/BE          | L       | AAA-009                   | Integrar instrumentação semântica reproduzível para statement/function/branch, incluindo Euler/source maps, hashes, reinício, SIGKILL e budgets. Rejeitar fixtures adulteradas; não instrumentar produção.                                         |
+| AAA-011 | R05-011 | P0   | REVIEW  | DB/SEC         | L       | AAA-002                   | Fechar roles e RLS no banco dedicado: `safe=true`, `NOBYPASSRLS`, grants mínimos, tenant A/B negativo, owner e `FORCE RLS`. O modo estrito deve permanecer obrigatório em promoção.                                                                |
+| AAA-012 | R05-012 | P0   | REVIEW  | QA/DB          | L       | AAA-002, AAA-011          | Critical database/process gate local passou em schema limpo: 65 arquivos/594 testes e 10/10 processos, com cleanup. Repetição, SHA limpo, CI remoto e target ainda impedem `DONE`.                                                                 |
+| AAA-013 | R05-013 | P0   | REVIEW  | QA/FE          | L       | AAA-002, AAA-011          | E2E scoped passou 9/9 contra API, PostgreSQL e Redis reais — personas hospitalares e Busca Mestre 360 — com cleanup sem erro. Completar internação/alta, financeiro amplo, estados, a11y, tenant A/B, target, CI e recertificação antes de `DONE`. |
+| AAA-014 | R05-014 | P0   | READY   | QA/LT          | M       | AAA-005, AAA-012, AAA-013 | Produzir checkpoint técnico com SHA limpo, testes, artefatos, limitações e decisão `PASS_BOUNDED` ou `FAIL`. Não chamar checkpoint de release candidate.                                                                                           |
+| AAA-015 | R05-015 | P0   | BLOCKED | PLAT/OPS       | M       | AAA-014                   | Provar CI remoto, proteção de `main`, artefato SHA/digest/SBOM, Helm executável e retenção. O mesmo SHA deve passar novamente após a verificação do manifest de release.                                                                           |
+| AAA-016 | R05-016 | P1   | DOING   | PMO/LT         | M       | AAA-001                   | Manter índice canônico, precedência, status, owners e links. Rotular 02/09 e 05/09 como histórico/supporting sem apagar evidência; cada nota deve apontar para procedimento atual.                                                                 |
 
 ## 3. F2/F3 — produto, finanças, relatórios e paridade
 
@@ -111,15 +148,27 @@ Antes de `READY`: owner nominal, revisor, escopo, dependências, ambiente, dados
 
 ## 8. Dependências, bloqueios e regra de fechamento
 
-| Bloqueio                                  | Tickets afetados           | Ação para desbloquear                                                               |
-| ----------------------------------------- | -------------------------- | ----------------------------------------------------------------------------------- |
-| PostgreSQL/Redis/Docker e target ausentes | AAA-002, 012, 013, 035–040 | OPS/DB fornecer ambiente dedicado e registrar versões, acesso, cleanup e autoridade |
-| Providers, certificados e credenciais     | AAA-003, 022–024, 029–034  | Comitê decidir escopo e owners; provider entregar sandbox e janela de homologação   |
-| Worktree misto e SHA não congelado        | AAA-001, 014, 015, 044–047 | congelar candidato, gerar manifest e renovar evidências afetadas                    |
-| Cobertura crítica não integrada           | AAA-009, 010, 012, 045     | aprovar instrumentação, manter 575 fontes/5 shards/85% e conectar ao gate           |
-| Aceite humano e DPO                       | AAA-042, 044, 047          | nomear revisores e executar roteiros, não substituir por contrato de pacote         |
+| Bloqueio                                                | Tickets afetados           | Ação para desbloquear                                                                             |
+| ------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------- |
+| Runtime local disponível; target/CI/capacidade ausentes | AAA-013, 035–040           | OPS/DB registrar o equivalente local e prover target/CI com versões, acesso, cleanup e autoridade |
+| Providers, certificados e credenciais                   | AAA-003, 022–024, 029–034  | Comitê decidir escopo e owners; provider entregar sandbox e janela de homologação                 |
+| Worktree misto e SHA não congelado                      | AAA-001, 014, 015, 044–047 | congelar candidato, gerar manifest e renovar evidências afetadas                                  |
+| Cobertura crítica não integrada                         | AAA-009, 010, 012, 045     | aprovar instrumentação, manter 575 fontes/5 shards/85% e conectar ao gate                         |
+| Aceite humano e DPO                                     | AAA-042, 044, 047          | nomear revisores e executar roteiros, não substituir por contrato de pacote                       |
 
 Os tickets grandes devem ser decompostos em subtarefas sem reduzir seu critério pai. A transição para `DONE` exige evidência atual, review independente quando aplicável, limitações e links para [matriz de requisitos](./engineering/REQUIREMENT_EVIDENCE_MATRIX.md) e [dashboard](./engineering/EVIDENCE_RISK_DASHBOARD.md). Uma alteração material após a evidência reabre o ticket afetado.
+
+## 8.1 Revalidação executiva — 2026-09-07
+
+O [registro do critical gate](engineering/CRITICAL_GATE_2026-09-07.md) fecha
+`pnpm test:critical` com exit 0 em runtime local efêmero: 65/65 arquivos e
+594/594 testes na perna de banco/setup, além de 10/10 cenários de processo.
+O [E2E SPA](engineering/E2E_SPA_2026-09-07.md) passou 9/9 contra
+API/PostgreSQL/Redis reais e limpou os dados sem erro; a matriz visual passou
+29/29 e a auditoria master 299/299. Por isso `AAA-002`, `AAA-012` e `AAA-013`
+ficam em `REVIEW`, não `DONE`: ainda dependem de target, CI/SHA de release,
+matriz completa de jornadas, roles/grants finais, providers, a11y independente
+e repetição de recertificação.
 
 ## 9. Próxima fila recomendada
 

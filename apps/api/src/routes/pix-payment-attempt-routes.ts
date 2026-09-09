@@ -18,7 +18,12 @@ const GET_PATH = /^\/payments\/pix-attempts\/([^/]+)$/;
 
 export interface PixPaymentAttemptRouteHandlers {
   readonly command: Pick<RequestEncounterPixPaymentCommand, 'execute'>;
-  readonly repository: Pick<EncounterPixPaymentAttemptRepository, 'findById'>;
+  readonly repository: Pick<EncounterPixPaymentAttemptRepository, 'findById'> & {
+    readonly findLatestByEncounter?: (
+      accountId: string,
+      encounterId: string
+    ) => Promise<EncounterPixPaymentAttemptRecord | null>;
+  };
   readonly providerKey: EncounterPixPaymentProviderKey;
   readonly rateLimiter?: PixPaymentAttemptRateLimiter;
   readonly requirePrincipal: (
@@ -160,6 +165,33 @@ export async function handlePixPaymentAttemptRoutes(
     );
     response.setHeader('location', `/payments/pix-attempts/${attempt.id}`);
     return json(response, 202, publicAttempt(attempt));
+  }
+
+  if (createMatch && request.method === 'GET') {
+    const principal = await handlers.requirePrincipal(request, 'billing.read');
+    if (
+      await applyPixPaymentAttemptRateLimit(
+        response,
+        handlers.rateLimiter,
+        principal,
+        'GET /encounters/:id/payments/pix-attempts'
+      )
+    ) {
+      return true;
+    }
+    const encounterId = requireUuid(createMatch[1] ?? '', 'encounterId');
+    if (!handlers.repository.findLatestByEncounter) {
+      throw new AppError(
+        'PIX_PAYMENT_ATTEMPT_LOOKUP_UNAVAILABLE',
+        'PIX payment attempt lookup by encounter is unavailable',
+        503
+      );
+    }
+    const attempt = await handlers.repository.findLatestByEncounter(
+      principal.user.accountId,
+      encounterId
+    );
+    return json(response, 200, { attempt: attempt ? publicAttempt(attempt) : null });
   }
 
   const getMatch = GET_PATH.exec(pathname);

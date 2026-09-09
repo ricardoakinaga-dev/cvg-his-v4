@@ -47,7 +47,13 @@ test.describe('Visual Regression — List Pages', () => {
       timeout: 10000
     });
 
-    await stabilizeVisual(page, pageProfiles.login);
+    // The login composition contains a decorative video. The product keeps it
+    // interactive for users, but visual evidence must capture the deterministic
+    // poster frame rather than whichever video frame happened to be sampled.
+    await stabilizeVisual(page, {
+      ...pageProfiles.login,
+      extraCss: '.login-stage__video { visibility: hidden !important; }'
+    });
 
     await expect(page).toHaveScreenshot('login-page.png', {
       maxDiffPixels: 50,
@@ -121,11 +127,14 @@ test.describe('Visual Regression — List Pages', () => {
 
     try {
       await stubVisualSchedulingOverview(page, appointment.id);
-      await navigateTo(page, '/appointments');
-
-      await page
-        .getByRole('button', { name: `Selecionar ${appointment.referenceDate}`, exact: true })
-        .click();
+      // The agenda defaults to the list view and keeps the filter drawer
+      // collapsed. Select the deterministic day view through the public URL
+      // contract so this scenario exercises the timeline surface without
+      // depending on a hidden mini-calendar control.
+      await navigateTo(
+        page,
+        `/appointments?agendaDate=${appointment.referenceDate}&agendaView=day`
+      );
 
       const canonicalCard = page.locator('.timeline-item', { hasText: 'Luna' }).first();
       await expect(canonicalCard, 'Visual appointment must be created through the API').toBeVisible(
@@ -913,10 +922,9 @@ async function captureAppointmentsVisual(
 
   try {
     await stubVisualSchedulingOverview(page, appointment.id);
-    await navigateTo(page, '/appointments');
-    await page
-      .getByRole('button', { name: `Selecionar ${appointment.referenceDate}`, exact: true })
-      .click();
+    // Keep the visual contract explicit: the current public URL supports a
+    // deterministic day view while the filter drawer is collapsed by default.
+    await navigateTo(page, `/appointments?agendaDate=${appointment.referenceDate}&agendaView=day`);
 
     const canonicalCard = page.locator('.timeline-item', { hasText: VISUAL_PATIENT_NAME }).first();
     await expect(canonicalCard, 'Visual appointment must be created through the API').toBeVisible({

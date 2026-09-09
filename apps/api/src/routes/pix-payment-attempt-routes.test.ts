@@ -397,6 +397,67 @@ test('PIX attempt GET maps a cross-tenant miss to the same opaque 404', async ()
   assert.deepEqual(repositoryCalls, [[accountId, attemptId]]);
 });
 
+test('PIX attempt lookup by encounter restores the latest public resource without leaking internal fields', async () => {
+  let permissions: readonly string[] = Object.freeze([]);
+  let repositoryCalls: readonly (readonly [string, string])[] = Object.freeze([]);
+  const response = new MockResponse();
+
+  const handled = await handlePixPaymentAttemptRoutes(
+    `/encounters/${encounterId}/payments/pix-attempts`,
+    getRequest(),
+    response as never,
+    {
+      command: {},
+      repository: {
+        async findLatestByEncounter(...args: readonly [string, string]) {
+          repositoryCalls = Object.freeze([...repositoryCalls, Object.freeze(args)]);
+          return retryingAttempt;
+        }
+      },
+      audit: { write: () => {} },
+      correlationId: 'corr-pix-encounter-read',
+      providerKey: 'local-pix',
+      requirePrincipal(_request: unknown, permissionCode: string) {
+        permissions = Object.freeze([...permissions, permissionCode]);
+        return principal();
+      }
+    } as never
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(permissions, ['billing.read']);
+  assert.deepEqual(repositoryCalls, [[accountId, encounterId]]);
+  const payload = response.bodyJson<{ attempt: Readonly<Record<string, unknown>> }>();
+  assert.deepEqual(payload.attempt, retryingPublicDto);
+  assertNoInternalFields(payload.attempt);
+});
+
+test('PIX attempt lookup by encounter returns an explicit empty resource when no attempt exists', async () => {
+  const response = new MockResponse();
+  const handled = await handlePixPaymentAttemptRoutes(
+    `/encounters/${encounterId}/payments/pix-attempts`,
+    getRequest(),
+    response as never,
+    {
+      command: {},
+      repository: {
+        async findLatestByEncounter() {
+          return null;
+        }
+      },
+      audit: { write: () => {} },
+      correlationId: 'corr-pix-encounter-empty',
+      providerKey: 'local-pix',
+      requirePrincipal: () => principal()
+    } as never
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.bodyJson(), { attempt: null });
+});
+
 test('PIX attempt polling is rate limited per authenticated tenant principal before database access', async () => {
   let repositoryCalls = 0;
   const response = new MockResponse();

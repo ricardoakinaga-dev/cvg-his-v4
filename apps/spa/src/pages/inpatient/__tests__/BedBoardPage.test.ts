@@ -135,14 +135,27 @@ describe('BedBoardPage', () => {
     expect(wrapper.text()).toContain('Network error');
   });
 
-  it('does not show an empty map or zero occupancy after dismissing a load failure', async () => {
+  it('explains forbidden access without offering a misleading retry', async () => {
+    mockGetBedMapFn.mockRejectedValue({ status: 403 });
+    const BedBoardPage = (await import('../BedBoardPage.vue')).default;
+    const wrapper = mount(BedBoardPage);
+
+    await flushPromises();
+    expect(wrapper.text()).toContain('Acesso restrito');
+    expect(wrapper.text()).toContain('não tem permissão');
+    expect(wrapper.text()).not.toContain('Tentar novamente');
+    expect(wrapper.text()).not.toContain('Nenhum setor configurado');
+    expect(wrapper.findAll('a[href="/inpatient"]').some((link) => link.text().includes('Voltar à internação'))).toBe(true);
+  });
+
+  it('keeps the initial load failure recoverable without a dismiss control', async () => {
     mockGetBedMapFn.mockRejectedValue(new Error('Mapa temporariamente indisponível'));
     const BedBoardPage = (await import('../BedBoardPage.vue')).default;
     const wrapper = mount(BedBoardPage, { global: { stubs: { DsAlert: false } } });
     await flushPromises();
-    await wrapper.get('button[aria-label="Fechar alerta"]').trigger('click');
     expect(wrapper.text()).toContain('Mapa indisponível');
     expect(wrapper.text()).not.toContain('Nenhum setor configurado');
+    expect(wrapper.find('button[aria-label="Fechar alerta"]').exists()).toBe(false);
     expect(wrapper.findAll('.board-stats dd').map((value) => value.text())).toEqual([
       '—',
       '—',
@@ -188,7 +201,16 @@ describe('BedBoardPage', () => {
 
   it('renders beds with correct status classes', async () => {
     const BedBoardPage = (await import('../BedBoardPage.vue')).default;
-    const wrapper = mount(BedBoardPage);
+    const wrapper = mount(BedBoardPage, {
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a :href="to" :aria-label="ariaLabel"><slot /></a>',
+            props: ['to', 'ariaLabel']
+          }
+        }
+      }
+    });
 
     await flushPromises();
     const bedCards = wrapper.findAll('.bed-card');
@@ -197,6 +219,8 @@ describe('BedBoardPage', () => {
     expect(bedCards[0].classes()).toContain('bed-card--occupied');
     expect(bedCards[1].classes()).toContain('bed-card--available');
     expect(bedCards[2].classes()).toContain('bed-card--maintenance');
+    expect(bedCards[0].find('a[href="/beds/bed-1"]').attributes('aria-label')).toBe('Ver detalhes do 01');
+    expect(bedCards[1].find('a[href="/beds/bed-2"]').text()).toBe('Ver detalhes');
   });
 
   it('shows bed status labels in Portuguese', async () => {
@@ -288,7 +312,27 @@ describe('BedBoardPage', () => {
     wrapper.unmount();
   });
 
-  it('does not present the previous occupancy as current after a failed refresh', async () => {
+  it('keeps the current board and occupancy visible while refreshing', async () => {
+    const pending = new Promise<typeof mockBedMap>(() => {});
+    const BedBoardPage = (await import('../BedBoardPage.vue')).default;
+    const wrapper = mount(BedBoardPage);
+    await flushPromises();
+    mockGetBedMapFn.mockReturnValueOnce(pending);
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Atualizar')!
+      .trigger('click');
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.findAll('.bed-card')).toHaveLength(3);
+    expect(wrapper.find('.board').attributes('aria-busy')).toBe('true');
+    expect(wrapper.text()).toContain('Atualizando mapa sem remover os leitos exibidos');
+    expect(wrapper.findAll('.board-stats dd').map((value) => value.text())).toEqual(['3', '1', '1']);
+    wrapper.unmount();
+  });
+
+  it('keeps the last confirmed map visible after a failed refresh', async () => {
     const BedBoardPage = (await import('../BedBoardPage.vue')).default;
     const wrapper = mount(BedBoardPage);
     await flushPromises();
@@ -299,13 +343,14 @@ describe('BedBoardPage', () => {
       .find((button) => button.text() === 'Atualizar')!
       .trigger('click');
     await flushPromises();
-    expect(wrapper.findAll('.bed-card')).toHaveLength(0);
+    expect(wrapper.findAll('.bed-card')).toHaveLength(3);
     expect(wrapper.findAll('.board-stats dd').map((value) => value.text())).toEqual([
-      '—',
-      '—',
-      '—'
+      '3',
+      '1',
+      '1'
     ]);
-    expect(wrapper.text()).toContain('Mapa indisponível');
+    expect(wrapper.text()).toContain('último mapa confirmado permanece em tela');
+    expect(wrapper.find('.board').attributes('aria-busy')).toBe('false');
     wrapper.unmount();
   });
 

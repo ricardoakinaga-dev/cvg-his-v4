@@ -26,6 +26,34 @@ export interface EncounterCashReceipt {
   readonly receivedAt: string;
   readonly receivedByUserId: string;
   readonly notes?: string;
+  readonly reversalId?: string;
+  readonly reversalCashMovementId?: string;
+  readonly reversalJournalEntryId?: string;
+  readonly reversalReason?: string;
+  readonly reversedByUserId?: string;
+  readonly reversedAt?: string;
+}
+
+export interface EncounterCashReceiptReversal {
+  readonly id: string;
+  readonly accountId: string;
+  readonly receiptId: string;
+  readonly encounterId: string;
+  readonly billingRecordId: string;
+  readonly financialAccountId: string;
+  readonly receivableId: string;
+  readonly receivablePaymentId: string;
+  readonly originalCashRegisterId: string;
+  readonly reversalCashRegisterId: string;
+  readonly originalCashMovementId: string;
+  readonly reversalCashMovementId: string;
+  readonly originalJournalEntryId: string;
+  readonly reversalJournalEntryId: string;
+  readonly amount: number;
+  readonly currency: 'BRL';
+  readonly reason: string;
+  readonly reversedByUserId: string;
+  readonly reversedAt: string;
 }
 
 export interface CreateEncounterCashReceiptRequest {
@@ -103,7 +131,27 @@ export const encounterService = {
     });
   },
 
-  async getCashReceiptForEncounter(id: string): Promise<EncounterCashReceipt> {
-    return apiRequest<EncounterCashReceipt>(`/encounters/${id}/cash-receipts`);
+  async getCashReceiptForEncounter(
+    id: string,
+    options: { readonly includeReversed?: boolean } = {}
+  ): Promise<EncounterCashReceipt> {
+    const query = options.includeReversed ? '?includeReversed=true' : '';
+    return apiRequest<EncounterCashReceipt>(`/encounters/${id}/cash-receipts${query}`);
+  },
+
+  async reverseCashReceipt(
+    encounterId: string,
+    receiptId: string,
+    reason: string,
+    idempotencyKey: string
+  ): Promise<EncounterCashReceiptReversal> {
+    return apiRequest<EncounterCashReceiptReversal>(
+      `/encounters/${encounterId}/cash-receipts/${receiptId}/reverse`,
+      {
+        method: 'POST',
+        headers: { 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify({ reason })
+      }
+    );
   }
 };

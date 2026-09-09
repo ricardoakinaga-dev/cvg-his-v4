@@ -12,7 +12,7 @@
       {{ error }}
     </DsAlert>
 
-    <form class="search-shell" @submit.prevent="load">
+    <form class="search-shell" @submit.prevent="submitSearch">
       <div class="search-bar">
         <DsInput
           v-model="filters.search"
@@ -203,10 +203,10 @@
         </div>
 
         <details class="patient-card__owner">
-          <summary>Informações do cliente</summary>
+          <summary>Informações do {{ clinicalLabels.tutor.singularLower }}</summary>
           <div class="owner-snapshot">
             <div class="fact-row">
-              <span class="fact-row__label">Cliente</span>
+              <span class="fact-row__label">{{ clinicalLabels.tutor.singular }}</span>
               <span>{{ ownerName(patient.primaryOwnerId) }}</span>
             </div>
             <div class="fact-row">
@@ -260,7 +260,7 @@
       </p>
       <div class="empty-state__actions">
         <DsButton tag="a" to="/patients/new" variant="primary">+ Cadastrar paciente</DsButton>
-        <DsButton tag="a" to="/owners" variant="secondary">Ver Clientes</DsButton>
+        <DsButton tag="a" to="/owners" variant="secondary">Ver {{ clinicalLabels.tutor.plural }}</DsButton>
       </div>
     </DsCard>
   </div>
@@ -268,11 +268,18 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
 import type { OwnerContact, OwnerSummary } from '@/types/owner';
 import type { PatientSex, PatientSummary } from '@/types/patient';
-import { speciesLabel, sexLabel, patientStatusLabel, patientSizeLabel } from '@/utils/labels';
+import {
+  clinicalLabels,
+  speciesLabel,
+  sexLabel,
+  patientStatusLabel,
+  patientSizeLabel
+} from '@/utils/labels';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
@@ -287,21 +294,47 @@ const error = ref('');
 const showAdvanced = ref(false);
 const patients = ref<PatientSummary[]>([]);
 const owners = ref<OwnerSummary[]>([]);
+const route = useRoute();
+const router = useRouter();
+
+function queryValue(key: string): string {
+  const value = route.query[key];
+  const first = Array.isArray(value) ? value[0] : value;
+  return typeof first === 'string' ? first.trim() : '';
+}
+
+function validStatus(value: string): 'active' | 'inactive' | 'deceased' | 'all' {
+  return value === 'active' || value === 'inactive' || value === 'deceased' ? value : 'all';
+}
+
+function validSex(value: string): PatientSex | 'all' {
+  return value === 'male' || value === 'female' || value === 'unknown' ? value : 'all';
+}
+
+function validSort(value: string): SortMode {
+  return value === 'name' || value === 'weight' ? value : 'recent';
+}
 
 const filters = reactive({
-  search: '',
-  species: '',
-  status: 'all' as 'active' | 'inactive' | 'deceased' | 'all',
-  sex: 'all' as PatientSex | 'all',
-  sort: 'recent' as SortMode
+  search: queryValue('search'),
+  species: queryValue('species'),
+  status: validStatus(queryValue('status')),
+  sex: validSex(queryValue('sex')),
+  sort: validSort(queryValue('sort'))
 });
-const ownerIdFilter = readOwnerIdFilter();
+showAdvanced.value = Boolean(
+  filters.species ||
+    filters.status !== 'all' ||
+    filters.sex !== 'all' ||
+    filters.sort !== 'recent'
+);
+const ownerIdFilter = computed(() => queryValue('ownerId'));
 
 const displayedPatients = computed(() => {
   let items = [...patients.value];
 
-  if (ownerIdFilter) {
-    items = items.filter((patient) => patient.primaryOwnerId === ownerIdFilter);
+  if (ownerIdFilter.value) {
+    items = items.filter((patient) => patient.primaryOwnerId === ownerIdFilter.value);
   }
 
   if (filters.sex !== 'all') {
@@ -353,7 +386,7 @@ const summaryCards = computed(() => {
 const headerSecondaryActions = computed(() => [
   {
     key: 'view-owners',
-    label: 'Ver clientes',
+    label: `Ver ${clinicalLabels.tutor.pluralLower}`,
     variant: 'secondary' as const,
     to: '/owners'
   },
@@ -374,7 +407,7 @@ const headerSecondaryActions = computed(() => [
     label: 'Atualizar',
     variant: 'ghost' as const,
     loading: loading.value,
-    onClick: () => load()
+    onClick: () => submitSearch()
   }
 ]);
 
@@ -382,12 +415,22 @@ const headerPrimaryAction = computed(() => ({
   key: 'new-patient',
   label: '+ Cadastrar paciente',
   variant: 'primary' as const,
-  to: ownerIdFilter ? `/patients/new?ownerId=${encodeURIComponent(ownerIdFilter)}` : '/patients/new'
+  to: ownerIdFilter.value
+    ? `/patients/new?ownerId=${encodeURIComponent(ownerIdFilter.value)}`
+    : '/patients/new'
 }));
 
-function readOwnerIdFilter(): string {
-  if (typeof window === 'undefined') return '';
-  return new URLSearchParams(window.location.search).get('ownerId')?.trim() || '';
+async function submitSearch() {
+  const query = {
+    ...route.query,
+    search: filters.search || undefined,
+    species: filters.species || undefined,
+    status: filters.status !== 'all' ? filters.status : undefined,
+    sex: filters.sex !== 'all' ? filters.sex : undefined,
+    sort: filters.sort !== 'recent' ? filters.sort : undefined
+  };
+  await router.replace({ query });
+  await load();
 }
 
 function statusVariant(status: string) {
@@ -397,7 +440,10 @@ function statusVariant(status: string) {
 }
 
 function ownerName(ownerId: string): string {
-  return ownerMap.value.get(ownerId)?.fullName || `Cliente ${ownerId.slice(0, 8)}...`;
+  return (
+    ownerMap.value.get(ownerId)?.fullName ||
+    `${clinicalLabels.tutor.singular} ${ownerId.slice(0, 8)}...`
+  );
 }
 
 function ownerDocument(ownerId: string): string {
@@ -465,7 +511,7 @@ async function load() {
     const [patientItems, ownerItems] = await Promise.all([
       patientService.list({
         search: filters.search || undefined,
-        ownerId: ownerIdFilter || undefined,
+        ownerId: ownerIdFilter.value || undefined,
         species: filters.species || undefined,
         status: filters.status
       }),

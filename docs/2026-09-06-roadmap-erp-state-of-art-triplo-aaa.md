@@ -1,7 +1,7 @@
 ---
 document_status: current
 document_kind: roadmap
-effective_date: 2026-09-06
+effective_date: 2026-09-07
 owner: PMO e Liderança técnica CVG-HIS
 review_cycle: weekly
 ---
@@ -11,6 +11,23 @@ review_cycle: weekly
 **Baseline:** [relatório atual](./2026-09-06-relatorio-estado-atual-erp-cvg-his-v4.md) — 75/100  
 **Plano executivo:** [plano State of Art / AAA](./2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md)  
 **Execução detalhada:** [backlog AAA](./2026-09-06-backlog-erp-state-of-art-triplo-aaa.md)
+
+## 0. Checkpoint de execução — 07/09/2026
+
+O caminho técnico local avançou: `pnpm test`, `pnpm test:critical`,
+`pnpm typecheck`, `pnpm lint`, `pnpm build`, contratos
+OpenAPI/namespaces/migration/RLS/deploy/security e as suítes API, SPA e worker
+estão verdes no estado observado. O critical agregado passou com 65/65 arquivos,
+594/594 testes e 10/10 processos usando runtime efêmero local. O recorte E2E
+SPA passou 9/9 contra PostgreSQL/Redis reais, com cleanup sem erro. O
+`readiness:enterprise` permanece em 92/100 (exit 1) por paridade Vetus. Foram incorporados
+guardas fail-closed para banco/schema de produção, numeração durável de vendas
+e runtime de relatórios.
+
+O roadmap permanece em `NO-GO`: E2E browser-to-database completo, providers e
+target, CI remoto, artefato imutável, paridade comportamental 11/11,
+restore/RTO-RPO/carga, UAT e revisão independente ainda são dependências do
+caminho crítico. Nenhum marco é promovido por causa de testes unitários locais.
 
 ## 1. Premissas
 

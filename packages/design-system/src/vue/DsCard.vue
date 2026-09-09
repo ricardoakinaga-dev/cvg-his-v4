@@ -13,7 +13,7 @@
     <div v-if="$slots.header || $slots.title || title" class="ds-card__header">
       <slot name="header">
         <slot name="title">
-          <h3 v-if="title" class="ds-card__title">{{ title }}</h3>
+          <component v-if="title" :is="titleTag" class="ds-card__title">{{ title }}</component>
         </slot>
       </slot>
     </div>
@@ -34,6 +34,7 @@ export interface DsCardProps {
   interactive?: boolean;
   tag?: 'div' | 'article' | 'section' | 'a';
   title?: string;
+  titleTag?: 'h2' | 'h3' | 'h4';
   ariaLabel?: string;
   href?: string;
 }
@@ -43,6 +44,7 @@ const props = withDefaults(defineProps<DsCardProps>(), {
   interactive: false,
   tag: 'div',
   title: undefined,
+  titleTag: 'h3',
   ariaLabel: undefined,
   href: undefined
 });

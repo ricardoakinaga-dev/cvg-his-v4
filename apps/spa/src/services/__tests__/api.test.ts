@@ -214,4 +214,30 @@ describe('apiRequest', () => {
       cleanup();
     }
   });
+
+  it('aborts a request at the configured deadline and exposes an uncertain 408 outcome', async () => {
+    const mockFetch = vi.fn((_url: string, init: RequestInit) =>
+      new Promise((_resolve, reject) => {
+        init.signal?.addEventListener('abort', () => {
+          const error = new Error('aborted');
+          error.name = 'AbortError';
+          reject(error);
+        });
+      })
+    );
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { apiRequest, cleanup } = await importApiModule();
+
+    try {
+      await expect(apiRequest('/cash-register/movements', { method: 'POST', timeoutMs: 5 })).rejects.toMatchObject({
+        name: 'ApiError',
+        status: 408,
+        statusText: 'Request Timeout'
+      });
+      expect((mockFetch.mock.calls[0]?.[1] as RequestInit).signal?.aborted).toBe(true);
+    } finally {
+      cleanup();
+    }
+  });
 });

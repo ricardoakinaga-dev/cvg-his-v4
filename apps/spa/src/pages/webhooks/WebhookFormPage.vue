@@ -61,7 +61,7 @@
         </DsCard>
 
         <div class="form-actions">
-          <DsButton type="submit" variant="primary" :loading="submitting">
+          <DsButton type="submit" variant="primary" :loading="submitting" :disabled="successPending">
             {{ submitting ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Salvar' }}
           </DsButton>
           <DsButton variant="secondary" @click="router.push('/webhooks')">Cancelar</DsButton>
@@ -86,6 +86,7 @@ import { webhookService } from '@/services/webhook';
 import type { WebhookSummary, CreateWebhookRequest, UpdateWebhookRequest } from '@/types/webhook';
 import { AVAILABLE_EVENTS } from '@/types/webhook';
 import { useFormValidation } from '@/composables/useFormValidation';
+import { useSuccessRedirect } from '@/composables/successRedirect';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
@@ -131,8 +132,11 @@ const validation = useFormValidation({
 });
 
 const { errors, formError, successMessage, submitting, validate } = validation;
+const successRedirect = useSuccessRedirect();
+const successPending = successRedirect.successPending;
 
 async function onSubmit() {
+  if (submitting.value || !successRedirect.begin()) return;
   if (!validate(form)) return;
 
   submitting.value = true;
@@ -148,7 +152,7 @@ async function onSubmit() {
       };
       await webhookService.update(webhookId.value, payload);
       successMessage.value = 'Webhook atualizado com sucesso!';
-      setTimeout(() => router.push(`/webhooks/${webhookId.value}`), 1000);
+      successRedirect.schedule(() => router.push(`/webhooks/${webhookId.value}`), successMessage.value);
     } else {
       const payload: CreateWebhookRequest = {
         url: form.url.trim(),
@@ -157,7 +161,7 @@ async function onSubmit() {
       };
       const created: WebhookSummary = await webhookService.create(payload);
       successMessage.value = 'Webhook cadastrado com sucesso!';
-      setTimeout(() => router.push(`/webhooks/${created.id}`), 1000);
+      successRedirect.schedule(() => router.push(`/webhooks/${created.id}`), successMessage.value);
     }
   } catch (err: unknown) {
     formError.value = err instanceof Error ? err.message : 'Erro ao salvar webhook';

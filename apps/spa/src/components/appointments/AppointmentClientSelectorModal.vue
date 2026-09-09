@@ -84,7 +84,7 @@
                 <span class="client-card__detail-label">Contatos</span>
                 <div class="client-card__detail-values">
                   <span v-for="contact in owner.contacts" :key="`${owner.id}-${contact.type}-${contact.value}`">
-                    {{ contact.label }}: {{ contact.value }}
+                    {{ formatOwnerContact(contact) }}
                   </span>
                 </div>
               </div>
@@ -164,6 +164,7 @@ import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
 import type { OwnerSummary } from '@/types/owner';
 import type { PatientSummary } from '@/types/patient';
+import { formatOwnerContact } from '@/utils/labels';
 
 const props = defineProps<{
   open: boolean;
@@ -228,7 +229,7 @@ watch(activeTab, async (tab) => {
 
 function primaryContactLabel(owner: OwnerSummary) {
   const primary = owner.contacts.find((contact) => contact.primary) ?? owner.contacts[0];
-  return primary ? `${primary.label}: ${primary.value}` : 'Sem contato principal';
+  return primary ? formatOwnerContact(primary, 'Sem contato principal') : 'Sem contato principal';
 }
 
 async function loadOwners() {

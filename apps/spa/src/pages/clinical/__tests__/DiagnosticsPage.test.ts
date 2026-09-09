@@ -14,6 +14,9 @@ const mockLaboratoryListOrders = vi.fn();
 const mockLaboratoryListReportTypes = vi.fn();
 const mockLaboratoryCreateOrder = vi.fn();
 const mockLaboratoryRecordResult = vi.fn();
+let persistedDiagnosticNotes: Array<Record<string, unknown>> = [];
+let persistedDiagnosticOrders: Array<Record<string, unknown>> = [];
+let persistedDiagnosticAttachments: Array<Record<string, unknown>> = [];
 
 vi.mock('@/services/encounter', () => ({
   encounterService: {
@@ -187,6 +190,88 @@ describe('DiagnosticsPage', () => {
       uploadedByUserId: 'user-1',
       createdAt: '2026-04-10T00:00:00Z'
     });
+
+    persistedDiagnosticNotes = [];
+    persistedDiagnosticOrders = [
+      {
+        id: 'ord-1',
+        accountId: 'acc-1',
+        encounterId: 'enc-1',
+        patientId: 'pat-1',
+        examType: 'Hemograma',
+        examCatalogId: 'cat_001',
+        reason: 'Check-up',
+        status: 'requested',
+        createdAt: '2026-04-10T00:00:00Z',
+        updatedAt: '2026-04-10T00:00:00Z'
+      }
+    ];
+    persistedDiagnosticAttachments = [];
+    mockDiagnosticsList.mockImplementation(() => Promise.resolve(persistedDiagnosticNotes));
+    mockAttachmentsList.mockImplementation(() => Promise.resolve(persistedDiagnosticAttachments));
+    mockLaboratoryListOrders.mockImplementation(() => Promise.resolve(persistedDiagnosticOrders));
+    mockLaboratoryCreateOrder.mockImplementation(async (payload: Record<string, unknown>) => {
+      const created = {
+        ...payload,
+        id: 'ord-2',
+        accountId: 'acc-1',
+        examCatalogId: 'cat_001',
+        status: 'requested',
+        createdAt: '2026-04-10T00:00:00Z',
+        updatedAt: '2026-04-10T00:00:00Z'
+      };
+      persistedDiagnosticOrders = [created, ...persistedDiagnosticOrders];
+      return created;
+    });
+    mockLaboratoryRecordResult.mockImplementation(
+      async (orderId: string, payload: Record<string, unknown>) => {
+        const existing = persistedDiagnosticOrders.find((order) => order.id === orderId) ?? {};
+        const updated = {
+          ...existing,
+          ...payload,
+          id: orderId,
+          status: payload.status,
+          resultSummary: payload.resultSummary ?? existing.resultSummary,
+          resultAttachmentId: payload.resultAttachmentId ?? existing.resultAttachmentId,
+          updatedAt: '2026-04-10T00:00:00Z'
+        };
+        persistedDiagnosticOrders = persistedDiagnosticOrders.map((order) =>
+          order.id === orderId ? updated : order
+        );
+        return updated;
+      }
+    );
+    mockDiagnosticsCreate.mockImplementation(async (payload: Record<string, unknown>) => {
+      const created = {
+        ...payload,
+        id: 'entry-1',
+        accountId: 'acc-1',
+        medicalRecordId: 'mr-1',
+        entryType: 'assessment',
+        authoredByUserId: 'user-1',
+        version: 1,
+        createdAt: '2026-04-10T00:00:00Z',
+        updatedAt: '2026-04-10T00:00:00Z'
+      };
+      persistedDiagnosticNotes = [created, ...persistedDiagnosticNotes];
+      return created;
+    });
+    mockAttachmentsUpload.mockImplementation(async (encounterId: string, payload: Record<string, unknown>) => {
+      const created = {
+        ...payload,
+        id: 'att-1',
+        accountId: 'acc-1',
+        linkedEntityType: 'medical_record',
+        linkedEntityId: 'mr-1',
+        storageKey: 'files/resultado.pdf',
+        source: 'upload',
+        uploadedByUserId: 'user-1',
+        createdAt: '2026-04-10T00:00:00Z',
+        encounterId
+      };
+      persistedDiagnosticAttachments = [created, ...persistedDiagnosticAttachments];
+      return created;
+    });
   });
 
   it('uses encounter query context without creating a diagnostic request automatically', async () => {
@@ -231,6 +316,7 @@ describe('DiagnosticsPage', () => {
     expect(wrapper.text()).toContain('Contexto do atendimento clínico');
     expect(wrapper.text()).toContain('enc-2');
     expect(wrapper.text()).toContain('Exame de controle');
+    expect(mockEncounterList).toHaveBeenCalledTimes(1);
     expect(mockRecord).toHaveBeenCalledWith('enc-2');
     expect(mockLaboratoryCreateOrder).not.toHaveBeenCalled();
     expect(mockDiagnosticsCreate).not.toHaveBeenCalled();
@@ -253,15 +339,19 @@ describe('DiagnosticsPage', () => {
         encounterId: 'enc-1',
         patientId: 'pat-1',
         examType: 'Hemograma'
-      })
+      }),
+      { idempotencyKey: expect.any(String) }
     );
+    const orderKey = mockLaboratoryCreateOrder.mock.calls[0]?.[1]?.idempotencyKey;
     expect(mockDiagnosticsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         encounterId: 'enc-1',
         patientId: 'pat-1',
         title: expect.any(String)
-      })
+      }),
+      { idempotencyKey: expect.any(String) }
     );
+    expect(mockDiagnosticsCreate.mock.calls[0]?.[1]?.idempotencyKey).not.toBe(orderKey);
 
     const forms = wrapper.findAll('form');
     const inputs = wrapper.findAll('input');
@@ -271,8 +361,23 @@ describe('DiagnosticsPage', () => {
     await forms[1].trigger('submit');
     await flushPromises();
 
-    expect(mockAttachmentsUpload).toHaveBeenCalled();
-    expect(mockLaboratoryRecordResult).toHaveBeenCalled();
+    expect(mockAttachmentsUpload).toHaveBeenCalledWith(
+      'enc-1',
+      expect.objectContaining({ fileName: 'resultado.pdf', checksum: 'sha256' }),
+      { idempotencyKey: expect.any(String) }
+    );
+    expect(mockLaboratoryRecordResult).toHaveBeenNthCalledWith(
+      1,
+      'ord-1',
+      { status: 'collected', collectedByUserId: 'diagnostics-page' },
+      { idempotencyKey: expect.any(String) }
+    );
+    expect(mockLaboratoryRecordResult).toHaveBeenNthCalledWith(
+      2,
+      'ord-1',
+      { status: 'resulted', resultSummary: 'resultado.pdf', resultAttachmentId: 'att-1' },
+      { idempotencyKey: expect.any(String) }
+    );
   });
 
   it('does not show success when the clinical diagnostic note fails after order creation', async () => {
@@ -291,7 +396,7 @@ describe('DiagnosticsPage', () => {
     expect(mockLaboratoryCreateOrder).toHaveBeenCalled();
     expect(mockDiagnosticsCreate).toHaveBeenCalled();
     expect(wrapper.find('[variant="success"]').exists()).toBe(false);
-    expect(wrapper.find('[variant="warning"]').text()).toContain('Pedido laboratorial registrado');
+    expect(wrapper.find('[variant="warning"]').text()).toContain('Pedido laboratorial confirmado');
     expect(wrapper.find('[variant="warning"]').text()).toContain('Prontuário indisponível');
   });
   it('masks the previous encounter records and drafts while a new context is pending', async () => {
@@ -502,7 +607,7 @@ describe('DiagnosticsPage', () => {
     expect(mockDiagnosticsCreate).toHaveBeenCalledWith({
       encounterId: 'enc-A', patientId: 'pat-A', title: 'Título A',
       content: 'Tipo de exame: Hemograma (HEM)\nJustificativa: Justificativa A'
-    });
+    }, { idempotencyKey: expect.any(String) });
     expect(wrapper.text()).not.toContain('Pedido laboratorial registrado e vinculado ao prontuário.');
     expect((wrapper.get('select').element as HTMLSelectElement).value).toBe('enc-B');
   });
@@ -526,10 +631,49 @@ describe('DiagnosticsPage', () => {
     pendingUpload.resolve({ id: 'attachment-A', fileName: 'arquivo-A.pdf' });
     await flushPromises();
     expect(mockAttachmentsUpload.mock.calls[0][0]).toBe('enc-A');
-    expect(mockLaboratoryRecordResult).toHaveBeenLastCalledWith(linkedId, {
+    expect(mockLaboratoryRecordResult).toHaveBeenNthCalledWith(2, linkedId, {
       status: 'resulted', resultSummary: 'Resultado do paciente A', resultAttachmentId: 'attachment-A'
-    });
+    }, { idempotencyKey: expect.any(String) });
     expect(wrapper.text()).not.toContain('Resultado anexado ao prontuário e liberado no laboratório.');
+  });
+
+  it('does not let an old request settle the spinner for a newer encounter context', async () => {
+    mockEncounterList.mockResolvedValue(encounterPair);
+    const oldRequest = deferred<unknown>();
+    const currentRequest = deferred<unknown>();
+    mockLaboratoryCreateOrder
+      .mockReturnValueOnce(oldRequest.promise)
+      .mockReturnValueOnce(currentRequest.promise);
+
+    const wrapper = await mountPage();
+    await flushPromises();
+    await wrapper.get('textarea').setValue('Solicitação do atendimento A');
+    await wrapper.findAll('form')[0].trigger('submit');
+    expect(wrapper.findAll('form')[0].find('button[type="submit"]').attributes('aria-busy')).toBe('true');
+
+    (wrapper.vm as unknown as { selectedEncounterId: string }).selectedEncounterId = 'enc-B';
+    await flushPromises();
+    await wrapper.findAll('form')[0].trigger('submit');
+    const currentSubmit = wrapper.findAll('form')[0].find('button[type="submit"]');
+    expect(currentSubmit.attributes('aria-busy')).toBe('true');
+
+    oldRequest.resolve({ id: 'order-A' });
+    await flushPromises();
+    expect(currentSubmit.attributes('aria-busy')).toBe('true');
+
+    currentRequest.resolve({
+      id: 'order-B',
+      encounterId: 'enc-B',
+      patientId: 'pat-B',
+      examType: 'Hemograma',
+      reason: 'Solicitação registrada na central diagnóstica.',
+      status: 'requested'
+    });
+    await flushPromises();
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.findAll('form')[0].find('button[type="submit"]').attributes('aria-busy')).not.toBe('true');
+    wrapper.unmount();
   });
 
 });

@@ -1,4 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router';
+import { publicRoutes } from './public-routes';
 
 const platformRoutes: RouteRecordRaw[] = [
   {
@@ -221,25 +222,7 @@ const reportWorkbenchRoutes: RouteRecordRaw[] = [
   )
 ];
 
-export const routes: RouteRecordRaw[] = [
-  {
-    path: '/auth/mfa',
-    name: 'Mfa',
-    component: () => import('@/pages/auth/MfaPage.vue'),
-    meta: { requiresAuth: false, title: 'MFA', breadcrumb: 'MFA' }
-  },
-  {
-    path: '/login',
-    name: 'Login',
-    component: () => import('@/pages/LoginPage.vue'),
-    meta: { requiresAuth: false, title: 'Login', breadcrumb: 'Login' }
-  },
-  {
-    path: '/setup',
-    name: 'Setup',
-    component: () => import('@/pages/setup/SetupPage.vue'),
-    meta: { requiresAuth: false, title: 'Configuração inicial', breadcrumb: 'Configuração inicial' }
-  },
+export const privateRoutes: RouteRecordRaw[] = [
   {
     path: '/',
     component: () => import('@/layouts/AppLayout.vue'),
@@ -780,7 +763,13 @@ export const routes: RouteRecordRaw[] = [
           '/atendimento/agenda',
           '/atendimento/atendimentos/agenda'
         ],
-        meta: { title: 'Agenda', breadcrumb: 'Agenda', breadcrumbParent: 'Atendimento', icon: 'calendar' }
+        meta: {
+          title: 'Agenda',
+          breadcrumb: 'Agenda',
+          breadcrumbParent: 'Atendimento',
+          icon: 'calendar',
+          pageOwnsHeader: true
+        }
       },
       {
         path: 'appointments/availability',
@@ -2905,7 +2894,12 @@ export const routes: RouteRecordRaw[] = [
       ...reportWorkbenchRoutes,
       ...platformRoutes
     ]
-  },
+  }
+];
+
+export const routes: RouteRecordRaw[] = [
+  ...publicRoutes,
+  ...privateRoutes,
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',

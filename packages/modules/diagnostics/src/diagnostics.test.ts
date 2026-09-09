@@ -1012,6 +1012,14 @@ test('LaboratoryService listResults filters only released or evidenced orders', 
     results.some((item) => item.id === openOrder.id),
     false
   );
+
+  const pendingResults = await laboratory.listResults('acc_test' as never, undefined, {
+    includePending: true
+  });
+  assert.equal(
+    pendingResults.some((item) => item.id === openOrder.id),
+    true
+  );
 });
 
 test('LaboratoryService getOrder blocks access to another account and proxy methods stay coherent', () => {

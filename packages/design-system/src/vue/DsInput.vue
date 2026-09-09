@@ -17,11 +17,12 @@
       :autocomplete="autocomplete"
       :aria-label="ariaLabel"
       :aria-labelledby="ariaLabelledby"
+      :aria-invalid="ariaInvalid ?? !!error"
+      :aria-required="required || undefined"
+      :aria-describedby="describedById"
       :step="step"
       :min="min"
       :max="max"
-      :aria-invalid="!!error"
-      :aria-describedby="describedById"
       class="ds-input"
       @input="modelValue = ($event.target as HTMLInputElement).value"
       @blur="$emit('blur')"
@@ -39,7 +40,8 @@
       :rows="rows"
       :aria-label="ariaLabel"
       :aria-labelledby="ariaLabelledby"
-      :aria-invalid="!!error"
+      :aria-invalid="ariaInvalid ?? !!error"
+      :aria-required="required || undefined"
       :aria-describedby="describedById"
       class="ds-input ds-input--textarea"
       @input="modelValue = ($event.target as HTMLTextAreaElement).value"
@@ -54,7 +56,8 @@
       :required="required"
       :aria-label="ariaLabel"
       :aria-labelledby="ariaLabelledby"
-      :aria-invalid="!!error"
+      :aria-invalid="ariaInvalid ?? !!error"
+      :aria-required="required || undefined"
       :aria-describedby="describedById"
       class="ds-input ds-input--select"
       @change="modelValue = ($event.target as HTMLSelectElement).value"
@@ -115,6 +118,8 @@ export interface DsInputProps {
   autocomplete?: string;
   ariaLabel?: string;
   ariaLabelledby?: string;
+  ariaDescribedby?: string;
+  ariaInvalid?: boolean;
   rows?: number;
   id?: string;
   step?: string | number;
@@ -135,6 +140,8 @@ const props = withDefaults(defineProps<DsInputProps>(), {
   autocomplete: undefined,
   ariaLabel: undefined,
   ariaLabelledby: undefined,
+  ariaDescribedby: undefined,
+  ariaInvalid: undefined,
   rows: 4,
   id: undefined,
   step: undefined,
@@ -151,9 +158,13 @@ const generatedInputId = `ds-input-${Math.random().toString(36).slice(2, 8)}`;
 const inputId = computed(() => props.id || generatedInputId);
 const hintId = computed(() => `${inputId.value}-hint`);
 const errorId = computed(() => `${inputId.value}-error`);
-const describedById = computed(() =>
-  props.error ? errorId.value : props.hint ? hintId.value : undefined
-);
+const describedById = computed(() => {
+  const ids = [
+    props.ariaDescribedby,
+    props.error ? errorId.value : props.hint ? hintId.value : undefined
+  ].filter(Boolean);
+  return ids.length ? ids.join(' ') : undefined;
+});
 </script>
 
 <style scoped>

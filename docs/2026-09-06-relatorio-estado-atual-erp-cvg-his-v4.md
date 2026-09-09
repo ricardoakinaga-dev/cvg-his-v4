@@ -1,32 +1,84 @@
 ---
 document_status: current
 document_kind: baseline
-effective_date: 2026-09-06
+effective_date: 2026-09-07
 owner: PMO, Engenharia, Produto e QA CVG-HIS
 review_cycle: weekly
 ---
 
 # Relatório de estado atual — ERP CVG-HIS V4
 
-**Data da avaliação:** 06/09/2026 — America/Sao_Paulo  
+**Data da avaliação:** baseline de 06/09/2026; revalidação técnica em 07/09/2026 — America/Sao_Paulo
 **Escopo:** código, testes, documentação, evidências locais disponíveis e prontidão operacional do worktree compartilhado.  
 **Decisão atual:** **NO-GO para produção crítica e para certificação Triplo AAA.** O sistema tem uma base extensa e executável, mas ainda não há prova integrada suficiente de banco-alvo, provedores, paridade completa, operação e aceite humano.
 
 Este relatório é a baseline ativa do programa [ERP State of Art / Triplo AAA](./2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md). A nota mede maturidade observada; não substitui gates obrigatórios. Um único bloqueador de segurança, integridade financeira, isolamento, recuperação ou aceite pode impedir uma promoção mesmo com nota global alta.
 
+## 0. Adendo de execução — 07/09/2026
+
+A revalidação desta rodada confirmou avanço técnico, mas não mudou a nota
+histórica nem a decisão de promoção. O worktree continua compartilhado e sem
+um candidato imutável; portanto, esta seção registra `PASS_BOUNDED`, não
+certificação.
+
+| Evidência fresca           | Resultado observado                                                                                                                                                                                                                                                                    | Limite que permanece                                                                                                                |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm test`                | PASS, exit code 0 no workspace; API confirmou 564 testes; SPA confirmou 198 arquivos/1.668 testes; worker e pacotes compartilhados sem falha; 1 integração laboratorial opcional foi pulada por ambiente                                                                               | o harness usa o banco explícito do `.env` quando disponível e não substitui o critical gate em ambiente dedicado                    |
+| `pnpm test:critical`       | **PASS_BOUNDED**, exit code 0; critical database/setup com 65 arquivos/594 testes e critical process com 10/10 cenários, em PostgreSQL/Redis locais efêmeros, sem fallback e com cleanup por cenário                                                                                   | não prova checkout limpo, CI remoto, target, providers ou repetição de recertificação                                               |
+| E2E SPA scoped             | **PASS_BOUNDED**, exit code 0; 9/9 jornadas contra API, PostgreSQL e Redis reais; matriz visual 29/29 e auditoria master 299/299 também passaram com cleanup sem erro                                                                                                                  | não cobre internação/alta e financeiro amplo, WCAG independente, browsers adicionais, target, CI remoto, providers ou aceite humano |
+| `pnpm typecheck`           | PASS, 67/68 projetos selecionados                                                                                                                                                                                                                                                      | checkout limpo e execução remota no mesmo SHA ainda não comprovados                                                                 |
+| `pnpm lint` / `pnpm build` | PASS; API, worker e SPA/PWA construídos                                                                                                                                                                                                                                                | warnings de chunk/import dinâmico continuam como observação de performance                                                          |
+| Contratos estáticos        | PASS em OpenAPI (413 paths, 40 tags, 518 schemas), namespaces, migration-source, deploy-surface, RLS (168/169 com 1 exceção documentada), docs e segurança enterprise (0 crítico/alto/moderado conhecido)                                                                              | roles/grants no target, CI remoto, rollout e evidência operacional real ainda faltam                                                |
+| Prontidão/paridade         | `readiness:enterprise` 92/100: 28 PASS, 3 WARN, 1 FAIL; `vetus:parity:audit` confirma 4/11 domínios; `external:check` 0/10 prontos                                                                                                                                                     | o FAIL de paridade e os bloqueios externos continuam impedindo promoção; o score mede camadas de prova, não equivalência funcional  |
+| Integridade de runtime     | guard estrito `REQUIRE_TEST_DB`; allocator durável de número de venda na migration 0162; migration 0163 aplica `FORCE RLS` incrementalmente; migration 0164 corrige cascata legítima de billing; API/worker exigem schema, policies e `FORCE RLS`; critical gate e E2E scoped passaram | E2E amplo, recuperação no target, CI remoto e aceitação de release ainda não executados                                             |
+| Frontend                   | navegação, scroll/foco e componentes compartilhados receberam correções; E2E scoped 9/9, matriz visual 29/29 e auditoria master 299/299 estão verdes                                                                                                                                   | WCAG/leitor de tela independente, browsers adicionais, target e aceite humano continuam pendentes                                   |
+
+Evidência visual adicional: os snapshots foram comparados com a implementação
+vigente antes da promoção; o login usa poster estático para retirar variação do
+vídeo decorativo, e a agenda visual seleciona a visão diária pela query pública.
+A repetição sem `--update-snapshots` passou 29/29. A auditoria master passou
+299/299 depois de cada rota receber uma página nova, eliminando o falso negativo
+causado por acúmulo do renderer. Isso aumenta a confiança local de UX, mas não
+é aceite independente de acessibilidade nem certificação AAA.
+
+O lote crítico/enterprise subsequente passou **40/40** casos contra o mesmo
+envelope real, cobrindo RBAC, internação, agenda, billing, axe, responsividade,
+relatórios e finanças. As falhas anteriores de contrato da agenda e dos filtros
+de relatório foram corrigidas e não reapareceram nessa execução.
+
+O lote D também passou **40/40** no estado atual: NFS-e, setup, isolamento
+tenant, fluxos Vetus, webhooks e as 29 provas visuais. O conjunto visual foi
+executado sem atualização de snapshots e permaneceu verde.
+
+A reexecução final do processo crítico precisou usar a URL administrativa de
+migração apenas para criar/destruir as bases efêmeras e os binários Redis
+privados explicitamente, pois o papel definido em `DATABASE_URL` no `.env` não
+possui `CREATEDB`. O resultado funcional permaneceu 65/65 arquivos e 594/594
+testes de banco, mais 10/10 processos; a diferença é um requisito de bootstrap
+do host que deve ser resolvido no CI/target, não mascarado por fallback.
+
+As tentativas de crítica independente em contexto fresco foram encerradas sem
+parecer utilizável e sem tocar no checkout. Isso é uma lacuna de evidência, não
+uma aprovação implícita. A nota global permanece **75/100** até uma nova
+reavaliação dos 67 itens com evidência comparável.
+
 ## 1. Sumário executivo
 
-| Dimensão                  |     Peso | Nota atual | Confiança                                     | Leitura executiva                                                                                                      |
-| ------------------------- | -------: | ---------: | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Engenharia                |      40% |   **85,5** | Alta para gates locais; média para integração | Código amplo, build e qualidade estática fortes; integração PostgreSQL/critical gate não está reproduzível neste host. |
-| Produto e paridade        |      35% |   **75,6** | Média                                         | Núcleo clínico, cadastros e estoque são reais; providers e 7 dos 11 domínios de paridade permanecem sem homologação.   |
-| Operação                  |      15% |   **58,4** | Média-baixa                                   | Há automação e runbooks, mas target, carga, restore/RTO-RPO, CI remoto e cutover não foram comprovados.                |
-| Governança                |      10% |   **59,4** | Média                                         | Documentação rica e controles locais existem; UAT humano, LGPD independente e controles SOC2 reais ainda não fecharam. |
-| **Nota global ponderada** | **100%** | **75/100** | Média                                         | **Avançar em construção/homologação; manter promoção bloqueada.**                                                      |
+| Dimensão                  |     Peso | Nota atual | Confiança                                     | Leitura executiva                                                                                                                                        |
+| ------------------------- | -------: | ---------: | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Engenharia                |      40% |   **85,5** | Alta para gates locais; média para integração | Código amplo, build e qualidade estática fortes; critical gate local agora é reproduzível, mas target, CI, coverage e checkout limpo permanecem abertos. |
+| Produto e paridade        |      35% |   **75,6** | Média                                         | Núcleo clínico, cadastros e estoque são reais; providers e 7 dos 11 domínios de paridade permanecem sem homologação.                                     |
+| Operação                  |      15% |   **58,4** | Média-baixa                                   | Há automação e runbooks, mas target, carga, restore/RTO-RPO, CI remoto e cutover não foram comprovados.                                                  |
+| Governança                |      10% |   **59,4** | Média                                         | Documentação rica e controles locais existem; UAT humano, LGPD independente e controles SOC2 reais ainda não fecharam.                                   |
+| **Nota global ponderada** | **100%** | **75/100** | Média                                         | **Avançar em construção/homologação; manter promoção bloqueada.**                                                                                        |
 
 Fórmula: `0,40 × 85,5 + 0,35 × 75,6 + 0,15 × 58,4 + 0,10 × 59,4 = 75,3`, arredondada para **75**. As notas individuais não são porcentagens de código implementado; consideram comportamento, evidência atual, limites e risco de uso.
 
-## 2. Evidência executada e limites
+## 2. Evidência executada e limites — snapshot-base de 06/09
+
+As linhas abaixo preservam o snapshot que originou a nota. Quando houver
+divergência, o adendo de 07/09 é a evidência técnica mais recente; a ausência
+de uma linha no adendo não significa que um gate externo tenha sido aprovado.
 
 | Verificação                                            | Resultado observado em 06/09                                                                                  | Limite que permanece                                                                                            |
 | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
@@ -67,23 +119,23 @@ Estado atual frente à régua: **nenhum AAA gate global está aprovado**. Há v�
 
 ## 4. Notas por item — engenharia
 
-| Item                               | Nota /100 | Diagnóstico e limite principal                                                                                                          |
-| ---------------------------------- | --------: | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Arquitetura modular                |    **82** | Monorepo com apps e módulos reais; `server.ts`, roteamento e páginas críticas ainda concentram muita responsabilidade.                  |
-| TypeScript e consistência de tipos |    **96** | Typecheck global selecionado passou; falta manter a prova no candidato limpo e no CI remoto.                                            |
-| Build e empacotamento              |    **96** | Build da SPA/API/worker passa; avisos de chunk e import estático precisam de acompanhamento de performance.                             |
-| Lint e padrões estáticos           |    **94** | Lint passa com guardrails relevantes; padrão estático não cobre integração, dados e experiência final.                                  |
-| Testes unitários/componentes       |    **93** | Volume e regressão local são fortes; skips de dependências reais e mocks reduzem a confiança de release.                                |
-| Cobertura e alcance da suíte       |    **78** | Percentuais globais passam o limiar local, mas rotas, repositórios e módulos críticos estão excluídos da instrumentação.                |
-| Integração PostgreSQL              |    **62** | Existem testes e slices reais, mas o critical bootstrap não reproduz neste host e o teste E2E atual caiu em fallback.                   |
-| API e OpenAPI                      |    **92** | Superfície ampla, 413 paths e validação de contrato verde; readiness e providers reais ainda são fronteiras separadas.                  |
-| Schema e migrações                 |    **86** | Runner canônico, checksum, 167 migrações e guards existem; aplicação/upgrade positivo no target ainda não foi observado.                |
-| Autenticação e MFA                 |    **86** | Limites de entrada, MFA e fail-closed têm testes; aceite de operação, rotação e configuração de produção seguem pendentes.              |
-| RLS e isolamento tenant            |    **82** | Catálogo e provas locais são fortes; role/grants/`NOBYPASSRLS` no banco alvo e cross-tenant no ambiente de promoção não estão fechados. |
-| Worker, leases e retry             |    **84** | Consumers, leases, DLQ e shutdown existem; providers, Redis/failover e cadeia distribuída precisam de ensaio integrado.                 |
-| Design system e componentes        |    **87** | Sistema visual específico, estados e revisões scoped comprovados; consistência global e regressão no candidato ainda faltam.            |
-| Controle de complexidade           |    **72** | Guard passa com limites ajustados, porém hotspots grandes não têm decomposição e podem degradar rapidamente.                            |
-| Segredos, dependências e SAST      |    **92** | Scans locais sem crítico/alto; rotação real, break-glass e prova de supply chain no target ainda não ocorreram.                         |
+| Item                               | Nota /100 | Diagnóstico e limite principal                                                                                                                                        |
+| ---------------------------------- | --------: | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Arquitetura modular                |    **82** | Monorepo com apps e módulos reais; `server.ts`, roteamento e páginas críticas ainda concentram muita responsabilidade.                                                |
+| TypeScript e consistência de tipos |    **96** | Typecheck global selecionado passou; falta manter a prova no candidato limpo e no CI remoto.                                                                          |
+| Build e empacotamento              |    **96** | Build da SPA/API/worker passa; avisos de chunk e import estático precisam de acompanhamento de performance.                                                           |
+| Lint e padrões estáticos           |    **94** | Lint passa com guardrails relevantes; padrão estático não cobre integração, dados e experiência final.                                                                |
+| Testes unitários/componentes       |    **93** | Volume e regressão local são fortes; skips de dependências reais e mocks reduzem a confiança de release.                                                              |
+| Cobertura e alcance da suíte       |    **78** | Percentuais globais passam o limiar local, mas rotas, repositórios e módulos críticos estão excluídos da instrumentação.                                              |
+| Integração PostgreSQL              |    **62** | Nota baseline congelada: critical gate 594/594 e E2E scoped 9/9 passaram localmente; target, CI, escopo amplo e recertificação do mesmo SHA ainda não estão provados. |
+| API e OpenAPI                      |    **92** | Superfície ampla, 413 paths e validação de contrato verde; readiness e providers reais ainda são fronteiras separadas.                                                |
+| Schema e migrações                 |    **86** | Runner canônico, checksum, 168 migrações e guards existem; aplicação/upgrade positivo no target ainda não foi observado.                                              |
+| Autenticação e MFA                 |    **86** | Limites de entrada, MFA e fail-closed têm testes; aceite de operação, rotação e configuração de produção seguem pendentes.                                            |
+| RLS e isolamento tenant            |    **82** | Catálogo e provas locais são fortes; role/grants/`NOBYPASSRLS` no banco alvo e cross-tenant no ambiente de promoção não estão fechados.                               |
+| Worker, leases e retry             |    **84** | Consumers, leases, DLQ e shutdown existem; providers, Redis/failover e cadeia distribuída precisam de ensaio integrado.                                               |
+| Design system e componentes        |    **87** | Sistema visual específico, estados e revisões scoped comprovados; consistência global e regressão no candidato ainda faltam.                                          |
+| Controle de complexidade           |    **72** | Guard passa com limites ajustados, porém hotspots grandes não têm decomposição e podem degradar rapidamente.                                                          |
+| Segredos, dependências e SAST      |    **92** | Scans locais sem crítico/alto; rotação real, break-glass e prova de supply chain no target ainda não ocorreram.                                                       |
 
 ## 5. Notas por item — produto e funcionalidades
 
@@ -131,16 +183,16 @@ Estado atual frente à régua: **nenhum AAA gate global está aprovado**. Há v�
 
 ## 6. Notas por item — operação e entrega
 
-| Item                           | Nota /100 | Diagnóstico e limite principal                                                                                     |
-| ------------------------------ | --------: | ------------------------------------------------------------------------------------------------------------------ |
-| CI/CD                          |    **65** | Scripts e guards são amplos; execução remota, ruleset e artefatos do SHA atual não foram observados.               |
-| Release e artefatos imutáveis  |    **55** | Workflow por SHA/digest/SBOM existe; worktree está misto e ainda não há candidato imutável certificado.            |
-| Compose, Helm e deploy         |    **68** | Superfície canônica valida estaticamente; Helm binário/cluster e rollout target não foram executados nesta sessão. |
-| Instalação, upgrade e rollback |    **68** | Política e scripts existem; drill completo no alvo, compatibilidade e rollback cronometrado faltam.                |
-| Backup e restauração           |    **65** | Restore local representativo bounded existe; RPO/RTO, retenção, storage e failover de produção não.                |
-| Observabilidade e game day     |    **66** | Health, métricas e experimentos existem; alertas humanos e cadeia distribuída no alvo não foram provados.          |
-| Performance e endurance        |    **50** | SLOs e perfis estão definidos; não há medição representativa atual de capacidade/endurance.                        |
-| Ambiente integrado             |    **30** | Host não oferece a combinação PostgreSQL/Redis/Docker necessária ao critical/E2E; fallback não deve ser promoção.  |
+| Item                           | Nota /100 | Diagnóstico e limite principal                                                                                                             |
+| ------------------------------ | --------: | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| CI/CD                          |    **65** | Scripts e guards são amplos; execução remota, ruleset e artefatos do SHA atual não foram observados.                                       |
+| Release e artefatos imutáveis  |    **55** | Workflow por SHA/digest/SBOM existe; worktree está misto e ainda não há candidato imutável certificado.                                    |
+| Compose, Helm e deploy         |    **68** | Superfície canônica valida estaticamente; Helm binário/cluster e rollout target não foram executados nesta sessão.                         |
+| Instalação, upgrade e rollback |    **68** | Política e scripts existem; drill completo no alvo, compatibilidade e rollback cronometrado faltam.                                        |
+| Backup e restauração           |    **65** | Restore local representativo bounded existe; RPO/RTO, retenção, storage e failover de produção não.                                        |
+| Observabilidade e game day     |    **66** | Health, métricas e experimentos existem; alertas humanos e cadeia distribuída no alvo não foram provados.                                  |
+| Performance e endurance        |    **50** | SLOs e perfis estão definidos; não há medição representativa atual de capacidade/endurance.                                                |
+| Ambiente integrado             |    **30** | PostgreSQL/Redis locais provaram critical gate e E2E scoped 9/9; target, capacidade, escopo amplo e CI remoto continuam fora da evidência. |
 
 ## 7. Notas por item — governança e evidências
 
@@ -154,12 +206,12 @@ Estado atual frente à régua: **nenhum AAA gate global está aprovado**. Há v�
 
 ## 8. Riscos que governam a decisão
 
-1. **Critical gate e E2E não reproduzíveis:** o ambiente do host não fornece os serviços isolados necessários; qualquer promoção baseada somente na suíte de pacote é inválida.
+1. **Evidência local versus target:** critical gate e E2E scoped já são reproduzíveis em runtime efêmero local, mas a matriz browser-to-database completa, o target e o CI remoto ainda não foram provados; qualquer promoção baseada somente no envelope local continua inválida.
 2. **Provedores externos bloqueados:** pagamentos, fiscal, laboratório, comunicação, storage e integrações exigem decisão, credenciais e sandbox autorizados.
 3. **Paridade funcional incompleta:** o inventário tem evidência, mas apenas 4/11 domínios foram verificados por comportamento.
-4. **Candidato não imutável:** 676 mudanças no worktree impedem atribuir testes a uma versão única sem congelamento e checkout limpo.
+4. **Candidato não imutável:** o worktree compartilhado e sujo impede atribuir testes a uma versão única sem congelamento e checkout limpo.
 5. **Cobertura de alcance reduzido:** os percentuais atuais não instrumentam toda a superfície crítica; ampliar ou justificar escopo exige mapa por risco.
-6. **Qualidade visual scoped:** os recortes recentes são bons sinais de produto, mas não sustentam a afirmação de AAA global; o dashboard ainda falha comparação com baseline e falta revisão assistiva completa.
+6. **Qualidade visual scoped:** a matriz visual local está reproduzível em 29/29 e a auditoria master em 299/299; isso não sustenta AAA global sem WCAG independente, browsers adicionais, target e UAT.
 7. **Complexidade sem margem:** o guard passa, mas páginas e composition roots estão no limite e aumentam o custo de cada mudança.
 
 ## 9. Decisão e próximos 10 dias úteis
@@ -168,13 +220,13 @@ Estado atual frente à régua: **nenhum AAA gate global está aprovado**. Há v�
 
 Prioridade executiva:
 
-1. disponibilizar PostgreSQL/Redis/Docker ou ambiente equivalente dedicado e eliminar fallback nos gates;
+1. preservar o runtime local como evidência bounded e prover target/CI remoto sem fallback para os gates finais;
 2. congelar um SHA candidato e reconciliar os contratos de CI, critical gate e cobertura;
-3. fechar prova financeira de cartão, PIX, estorno e conciliação em sandbox;
-4. transformar os 11 domínios de paridade em cenários comportamentais com aceite de Produto;
-5. definir RPO/RTO, target, providers, owners, DPO e autoridade de go/no-go;
-6. executar a matriz visual/a11y no escopo de release e repetir dashboard contra baseline deliberadamente revisada;
-7. só então rodar carga, restore, cutover/rollback e recertificação final no mesmo SHA.
+3. ampliar o E2E browser-to-database com login/setup, atendimento, internação/alta, financeiro, recovery, a11y e tenant A/B; recertificar no target/CI;
+4. fechar prova financeira de cartão, PIX, estorno e conciliação em sandbox;
+5. transformar os 11 domínios de paridade em cenários comportamentais com aceite de Produto;
+6. definir RPO/RTO, target, providers, owners, DPO e autoridade de go/no-go;
+7. executar a matriz visual/a11y, carga, restore, cutover/rollback e recertificação final no mesmo SHA.
 
 ### Fontes canônicas relacionadas
 

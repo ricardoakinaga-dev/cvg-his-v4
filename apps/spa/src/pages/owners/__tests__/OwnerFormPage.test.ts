@@ -124,10 +124,14 @@ describe('OwnerFormPage', () => {
     expect(wrapper.find('#creditBalance').exists()).toBe(true);
     expect(wrapper.find('#availablePoints').exists()).toBe(true);
     expect(wrapper.find('#blockedPoints').exists()).toBe(true);
-    expect(wrapper.text()).toContain('Identificação do Cliente');
+    expect(wrapper.text()).toContain('Identificação do Tutor');
     expect(wrapper.text()).toContain('Informações de Contato');
-    expect(wrapper.text()).toContain('Documentação do Cliente');
-    expect(wrapper.text()).toContain('Endereço do Cliente');
+    expect(wrapper.find('#owner-contact-title').text()).toContain('*');
+    expect(wrapper.find('.contact-fields').attributes('role')).toBe('group');
+    expect(wrapper.find('.contact-fields').attributes('aria-required')).toBe('true');
+    expect(wrapper.find('.contact-fields').attributes('aria-describedby')).toBe('owner-contact-hint');
+    expect(wrapper.text()).toContain('Documentação do Tutor');
+    expect(wrapper.text()).toContain('Endereço do Tutor');
     expect(wrapper.text()).toContain('Observações Gerais');
   });
 
@@ -153,7 +157,51 @@ describe('OwnerFormPage', () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.text()).toContain('Preencha pelo menos um telefone, celular ou e-mail');
+    expect(wrapper.find('.contact-fields').attributes('aria-describedby')).toBe('owner-contact-hint owner-contact-error');
+    expect(wrapper.find('#owner-contact-error').attributes('role')).toBe('alert');
+    expect(wrapper.find('#phone1').attributes('aria-invalid')).toBe('true');
+    expect(wrapper.find('#phone1').attributes('aria-describedby')).toBe('owner-contact-hint owner-contact-error');
     expect(mockCreateFn).not.toHaveBeenCalled();
+  });
+
+  it('shows a navigable validation summary and focuses the first invalid field', async () => {
+    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
+    const wrapper = mount(OwnerFormPage, { attachTo: document.body });
+
+    await flushPromises();
+    await wrapper.find('form').trigger('submit');
+
+    const summary = wrapper.get('#owner-form-error-summary');
+    expect(summary.attributes('aria-labelledby')).toBe('owner-form-error-summary-title');
+    expect(wrapper.find('form').attributes('novalidate')).toBeDefined();
+    expect(wrapper.find('form').attributes('aria-describedby')).toBe('owner-form-error-summary');
+    expect(summary.findAll('a')).toHaveLength(2);
+    expect(summary.text()).toContain('Nome: Nome é obrigatório');
+    expect(summary.text()).toContain('Contato: Preencha pelo menos um telefone');
+    expect(document.activeElement).toBe(wrapper.find('#fullName').element);
+    expect(wrapper.find('#fullName').attributes('aria-invalid')).toBe('true');
+
+    await summary.find('a[href="#phone1"]').trigger('click');
+    expect(document.activeElement).toBe(wrapper.find('#phone1').element);
+    expect(wrapper.find('#phone1').attributes('aria-invalid')).toBe('true');
+    wrapper.unmount();
+  });
+
+  it('opens a collapsed required contact section before focusing its validation link', async () => {
+    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
+    const wrapper = mount(OwnerFormPage, { attachTo: document.body });
+
+    await flushPromises();
+    await wrapper.find('form').trigger('submit');
+    const contactSection = wrapper.findAll('details.owner-section')[1];
+    expect((contactSection.element as HTMLDetailsElement).open).toBe(true);
+    await contactSection.find('summary').trigger('click');
+    expect((contactSection.element as HTMLDetailsElement).open).toBe(false);
+
+    await wrapper.get('#owner-form-error-summary a[href="#phone1"]').trigger('click');
+    expect((contactSection.element as HTMLDetailsElement).open).toBe(true);
+    expect(document.activeElement).toBe(wrapper.find('#phone1').element);
+    wrapper.unmount();
   });
 
   it('submits the new customer payload successfully', async () => {
@@ -188,7 +236,7 @@ describe('OwnerFormPage', () => {
         originalCreatedAt: '2024-05-03'
       })
     );
-    expect(wrapper.text()).toContain('Cliente cadastrado com sucesso');
+    expect(wrapper.text()).toContain('Tutor cadastrado com sucesso');
   });
 
   it('hydrates the expanded fields in edit mode', async () => {
@@ -256,7 +304,7 @@ describe('OwnerFormPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('não corresponde ao endereço solicitado');
-    expect(wrapper.text()).not.toContain('Cliente atualizado com sucesso');
+    expect(wrapper.text()).not.toContain('Tutor atualizado com sucesso');
   });
   it('does not duplicate a pending save or navigate away from edits made during it', async () => {
     const request = deferred<{ id: string }>();
@@ -294,6 +342,35 @@ describe('OwnerFormPage', () => {
     expect(wrapper.text()).toContain('Serviço indisponível');
     expect((wrapper.find('#fullName').element as HTMLInputElement).value).toBe('Rascunho');
     expect(mockRouterPush).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('turns a duplicate conflict into a recoverable action and preserves the draft', async () => {
+    mockCreateFn.mockRejectedValueOnce(Object.assign(new Error('Possible duplicate owner detected'), {
+      status: 409,
+      body: {
+        code: 'CONFLICT',
+        message: 'Possible duplicate owner detected',
+        details: { ownerId: 'owner-existing' }
+      }
+    }));
+    const OwnerFormPage = (await import('../OwnerFormPage.vue')).default;
+    const wrapper = mount(OwnerFormPage, { attachTo: document.body });
+
+    await flushPromises();
+    await wrapper.find('#fullName').setValue('Maria Silva');
+    await wrapper.find('#documentId').setValue('111.111.111-11');
+    await wrapper.find('#mobile').setValue('11999991111');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('.duplicate-feedback-region').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Nada novo foi criado');
+    expect(wrapper.find('.form-feedback-region').exists()).toBe(false);
+    expect((wrapper.find('#fullName').element as HTMLInputElement).value).toBe('Maria Silva');
+    expect((wrapper.find('#documentId').element as HTMLInputElement).value).toBe('111.111.111-11');
+    await wrapper.findAll('button').find((button) => button.text() === 'Abrir tutor existente')!.trigger('click');
+    expect(mockRouterPush).toHaveBeenCalledWith('/owners/owner-existing');
     wrapper.unmount();
   });
 

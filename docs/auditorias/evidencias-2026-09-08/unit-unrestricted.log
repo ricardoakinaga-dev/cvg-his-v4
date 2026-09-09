@@ -1,0 +1,514 @@
+
+ RUN  v3.2.7 /home/ricardo/cvg-his-v4
+
+[test-setup] Initializing test environment...
+[test-setup] Using test database cvg_his_v2
+[test-setup] Preserving explicit database cvg_his_v2; skipped reset, migrations, seed and grants
+missingxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+...[truncated] ✓ tests/unit/infra/critical-process-suite-contract.test.ts (24 tests) 9243ms
+   ✓ critical process proof execution contract > returns a typed hook failure and reaps the owned descendants  541ms
+   ✓ critical process proof execution contract > returns a typed abort-registration failure and reaps the child  543ms
+   ✓ critical process proof execution contract > returns a typed abort-state access failure and reaps the child  540ms
+   ✓ critical process proof execution contract > does not leak a credential split across diagnostic chunks  1041ms
+   ✓ critical process proof execution contract > terminates descendants in the owned process group on timeout  3038ms
+   ✓ critical process proof execution contract > terminates descendants after an ordinary non-zero child exit  3153ms
+ ✓ tests/unit/infra/namespace-boundary.test.ts (3 tests) 4139ms
+   ✓ canonical package namespace guard > accepts the repository graph after canonical migration  3421ms
+   ✓ canonical package namespace guard > reports legacy manifest and source edges in a fixture  363ms
+   ✓ canonical package namespace guard > ignores legacy namespace text inside comments and ordinary strings  355ms
+ ✓ tests/unit/infra/restore-drill-security.test.ts (4 tests) 2440ms
+   ✓ restore-drill storage archive boundary > rejects a destination-symlink archive entry before extraction  2185ms
+ ✓ tests/unit/infra/run-tsx-file.test.ts (1 test) 393ms
+   ✓ runTsxFileSync > runs a script whose path and argument contain spaces and Unicode  393ms
+ ✓ tests/unit/infra/migration-source-of-truth.test.ts (1 test) 39ms
+ ✓ tests/unit/infra/compose-local-security.test.ts (6 tests) 185ms
+ ❯ tests/unit/infra/requirement-evidence-matrix.test.ts (2 tests | 1 failed) 13ms
+   × requirement evidence matrix contract > maps every frozen Quality Bar criterion to a single auditable row 13ms
+     → expected '`PASS_BOUNDED` local — 9/9 jornadas, …' to contain 'PARTIAL'
+   ✓ requirement evidence matrix contract > requires rejecting evidence, revision-bound references and honest status 0ms
+ ✓ packages/modules/attachments/src/attachment-scanner.test.ts (1 test) 5ms
+{"level":"INFO","message":"Database initialization skipped (no DATABASE_URL provided), using in-memory repositories","timestamp":"2026-09-08T12:03:35.060Z","pid":1985566,"service":"bootstrap"}
+{"level":"INFO","message":"Database initialization skipped (no DATABASE_URL provided), using in-memory repositories","timestamp":"2026-09-08T12:03:35.115Z","pid":1985566,"service":"bootstrap"}
+{"level":"INFO","message":"Initializing database connection with retry","timestamp":"2026-09-08T12:03:35.395Z","pid":1985566,"service":"bootstrap","url":"postgresql://***:***@127.0.0.1:1/unavailable","maxRetries":1,"retryDelayMs":0}
+{"level":"INFO","message":"Attempting database connection","timestamp":"2026-09-08T12:03:35.395Z","pid":1985566,"service":"bootstrap","attempt":1,"maxRetries":1}
+{"level":"INFO","message":"Database health check failed, will retry","timestamp":"2026-09-08T12:03:35.400Z","pid":1985566,"service":"bootstrap","attempt":1,"detail":"connect ECONNREFUSED 127.0.0.1:1"}
+{"level":"INFO","message":"Database connection closed","timestamp":"2026-09-08T12:03:35.400Z","pid":1985566,"service":"bootstrap"}
+{"level":"INFO","message":"Initializing database connection with retry","timestamp":"2026-09-08T12:03:35.449Z","pid":1985566,"service":"bootstrap","url":"postgresql://***:***@127.0.0.1:1/unavailable","maxRetries":1,"retryDelayMs":0}
+{"level":"INFO","message":"Attempting database connection","timestamp":"2026-09-08T12:03:35.449Z","pid":1985566,"service":"bootstrap","attempt":1,"maxRetries":1}
+{"level":"INFO","message":"Database health check failed, will retry","timestamp":"2026-09-08T12:03:35.450Z","pid":1985566,"service":"bootstrap","attempt":1,"detail":"connect ECONNREFUSED 127.0.0.1:1"}
+{"level":"INFO","message":"Database connection closed","timestamp":"2026-09-08T12:03:35.450Z","pid":1985566,"service":"bootstrap"}
+{"level":"INFO","message":"Initializing database connection with retry","timestamp":"2026-09-08T12:03:35.502Z","pid":1985566,"service":"bootstrap","url":"postgresql://***:***@127.0.0.1:1/unavailable","maxRetries":1,"retryDelayMs":0}
+{"level":"INFO","message":"Attempting database connection","timestamp":"2026-09-08T12:03:35.502Z","pid":1985566,"service":"bootstrap","attempt":1,"maxRetries":1}
+{"level":"INFO","message":"Database health check failed, will retry","timestamp":"2026-09-08T12:03:35.503Z","pid":1985566,"service":"bootstrap","attempt":1,"detail":"connect ECONNREFUSED 127.0.0.1:1"}
+{"level":"INFO","message":"Database connection closed","timestamp":"2026-09-08T12:03:35.503Z","pid":1985566,"service":"bootstrap"}
+{"level":"INFO","message":"Initializing database connection with retry","timestamp":"2026-09-08T12:03:35.550Z","pid":1985566,"service":"bootstrap","url":"postgresql://***:***@127.0.0.1:1/unavailable","maxRetries":1,"retryDelayMs":0}
+{"level":"INFO","message":"Attempting database connection","timestamp":"2026-09-08T12:03:35.550Z","pid":1985566,"service":"bootstrap","attempt":1,"maxRetries":1}
+{"level":"INFO","message":"Database health check failed, will retry","timestamp":"2026-09-08T12:03:35.551Z","pid":1985566,"service":"bootstrap","attempt":1,"detail":"connect ECONNREFUSED 127.0.0.1:1"}
+{"level":"INFO","message":"Database connection closed","timestamp":"2026-09-08T12:03:35.551Z","pid":1985566,"service":"bootstrap"}
+{"level":"INFO","message":"Initializing database connection with retry","timestamp":"2026-09-08T12:03:35.975Z","pid":1985566,"service":"bootstrap","url":"postgresql://***:***@127.0.0.1:1/require_test_db_unavailable","maxRetries":1,"retryDelayMs":0}
+{"level":"INFO","message":"Attempting database connection","timestamp":"2026-09-08T12:03:35.976Z","pid":1985566,"service":"bootstrap","attempt":1,"maxRetries":1}
+{"level":"INFO","message":"Database health check failed, will retry","timestamp":"2026-09-08T12:03:35.977Z","pid":1985566,"service":"bootstrap","attempt":1,"detail":"connect ECONNREFUSED 127.0.0.1:1"}
+{"level":"INFO","message":"Database connection closed","timestamp":"2026-09-08T12:03:35.977Z","pid":1985566,"service":"bootstrap"}
+ ✓ tests/unit/api/bootstrap.test.ts (21 tests) 2467ms
+   ✓ bootstrap > keeps in-memory repositories when skipDatabase is enabled  1331ms
+ ✓ packages/modules/mfa/src/mfa.test.ts (63 tests) 2233ms
+ ✓ packages/modules/users/src/users.test.ts (13 tests) 782ms
+ ✓ tests/unit/mfa/crypto.test.ts (12 tests) 371ms
+ ✓ tests/unit/modules/mfa-service-coverage.test.ts (6 tests) 456ms
+ ✓ tests/unit/mfa/mfa-service.test.ts (27 tests) 133ms
+ ✓ tests/unit/modules/users-service.test.ts (4 tests) 317ms
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService processPending marks events as completed
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.event (1669f9e3-7a5f-4549-a2b0-84c06d47cd29) correlation=corr_test_123 to 1 handler(s) — attempt 1/3
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService processPending marks events as completed
+[EventBus] Event test.event (1669f9e3-7a5f-4549-a2b0-84c06d47cd29) correlation=corr_test_123 completed — 1 handler(s) succeeded
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService subscribe calls handler when event is processed
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.event (bfc5511b-3f39-468f-980a-c18394a551d1) correlation=corr_test_123 to 1 handler(s) — attempt 1/3
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService subscribe calls handler when event is processed
+[EventBus] Event test.event (bfc5511b-3f39-468f-980a-c18394a551d1) correlation=corr_test_123 completed — 1 handler(s) succeeded
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService multiple handlers are all called
+[EventBus] Processing claimed event with 2 handler(s) registered
+[EventBus] Dispatching event test.event (bd6f6d45-5b0b-4b3b-8f9f-23a909002e57) correlation=corr_test_123 to 2 handler(s) — attempt 1/3
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService multiple handlers are all called
+[EventBus] Event test.event (bd6f6d45-5b0b-4b3b-8f9f-23a909002e57) correlation=corr_test_123 completed — 2 handler(s) succeeded
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService processPending schedules retry with backoff on failure
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.retry_event (ded83854-3a04-40bd-a15c-3665399a751f) correlation=corr_test_123 to 1 handler(s) — attempt 1/3
+
+stderr | packages/modules/event-bus/src/event-bus.test.ts > EventBusService processPending schedules retry with backoff on failure
+[EventBus] test.retry_event (ded83854-3a04-40bd-a15c-3665399a751f) correlation=corr_test_123 retry 1/3 in 1000ms: always fails
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService processPending moves event to DLQ after max attempts
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.dlq_event (6d5f3fa9-911a-45d6-810a-c8447e399ec9) correlation=corr_test_123 to 1 handler(s) — attempt 1/2
+
+stderr | packages/modules/event-bus/src/event-bus.test.ts > EventBusService processPending moves event to DLQ after max attempts
+[EventBus] test.dlq_event (6d5f3fa9-911a-45d6-810a-c8447e399ec9) correlation=corr_test_123 retry 1/2 in 1ms: always fails
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService processPending moves event to DLQ after max attempts
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.dlq_event (6d5f3fa9-911a-45d6-810a-c8447e399ec9) correlation=corr_test_123 to 1 handler(s) — attempt 2/2
+
+stderr | packages/modules/event-bus/src/event-bus.test.ts > EventBusService processPending moves event to DLQ after max attempts
+[EventBus] [DLQ] test.dlq_event (6d5f3fa9-911a-45d6-810a-c8447e399ec9) correlation=corr_test_123 moved to dead-letter queue after 2 attempts: always fails
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService getDeadLetterEvents returns failed events
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.dlq_1 (0b366164-8ee0-4eb0-ba40-3884c92ed4c8) correlation=corr_test_123 to 1 handler(s) — attempt 1/1
+
+stderr | packages/modules/event-bus/src/event-bus.test.ts > EventBusService getDeadLetterEvents returns failed events
+[EventBus] [DLQ] test.dlq_1 (0b366164-8ee0-4eb0-ba40-3884c92ed4c8) correlation=corr_test_123 moved to dead-letter queue after 1 attempts: always fails
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService getDeadLetterEvents returns failed events
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.dlq_2 (e3a725ee-a469-4a19-9b02-38157d1e69a9) correlation=corr_test_123 to 1 handler(s) — attempt 1/1
+
+stderr | packages/modules/event-bus/src/event-bus.test.ts > EventBusService getDeadLetterEvents returns failed events
+[EventBus] [DLQ] test.dlq_2 (e3a725ee-a469-4a19-9b02-38157d1e69a9) correlation=corr_test_123 moved to dead-letter queue after 1 attempts: always fails
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService reprocessEvent resets failed event to pending
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.reprocess_event (087b157c-4258-44ec-9fc9-9b9f4ae9b93a) correlation=corr_test_123 to 1 handler(s) — attempt 1/1
+
+stderr | packages/modules/event-bus/src/event-bus.test.ts > EventBusService reprocessEvent resets failed event to pending
+[EventBus] [DLQ] test.reprocess_event (087b157c-4258-44ec-9fc9-9b9f4ae9b93a) correlation=corr_test_123 moved to dead-letter queue after 1 attempts: always fails
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > retry executes only the consumer that has no committed inbox receipt
+[EventBus] Processing claimed event with 2 handler(s) registered
+[EventBus] Dispatching event test.partial-retry (c74e6a92-bf1e-4989-a20f-4125131a1f31) correlation=corr_test_123 to 2 handler(s) — attempt 1/3
+
+stderr | packages/modules/event-bus/src/event-bus.test.ts > retry executes only the consumer that has no committed inbox receipt
+[EventBus] test.partial-retry (c74e6a92-bf1e-4989-a20f-4125131a1f31) correlation=corr_test_123 retry 1/3 in 1ms: retry consumer b
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > retry executes only the consumer that has no committed inbox receipt
+[EventBus] Processing claimed event with 2 handler(s) registered
+[EventBus] Dispatching event test.partial-retry (c74e6a92-bf1e-4989-a20f-4125131a1f31) correlation=corr_test_123 to 2 handler(s) — attempt 2/3
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > retry executes only the consumer that has no committed inbox receipt
+[EventBus] Event test.partial-retry (c74e6a92-bf1e-4989-a20f-4125131a1f31) correlation=corr_test_123 completed — 2 handler(s) succeeded
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > renews the lease while a slow consumer is running
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.slow (c9b3ded5-5b48-4b44-8da8-4adfd80c9c45) correlation=corr_test_123 to 1 handler(s) — attempt 1/3
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > renews the lease while a slow consumer is running
+[EventBus] Event test.slow (c9b3ded5-5b48-4b44-8da8-4adfd80c9c45) correlation=corr_test_123 completed — 1 handler(s) succeeded
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > claims one event at a time so queued leases cannot expire
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.batch-a (6da751bb-e4b4-41c5-a12b-4ce5a5e01068) correlation=corr_test_123 to 1 handler(s) — attempt 1/3
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > claims one event at a time so queued leases cannot expire
+[EventBus] Event test.batch-a (6da751bb-e4b4-41c5-a12b-4ce5a5e01068) correlation=corr_test_123 completed — 1 handler(s) succeeded
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > claims one event at a time so queued leases cannot expire
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.batch-b (ade5d8b3-e38b-42b7-9992-857e1fd70c00) correlation=corr_test_123 to 1 handler(s) — attempt 1/3
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > claims one event at a time so queued leases cannot expire
+[EventBus] Event test.batch-b (ade5d8b3-e38b-42b7-9992-857e1fd70c00) correlation=corr_test_123 completed — 1 handler(s) succeeded
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > quarantines a claimed event without canonical tenant metadata
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.missing-tenant-metadata (5bbff62c-2a51-48f9-ad7e-3b1ba42abe92) correlation=corr_test_123 to 1 handler(s) — attempt 1/3
+
+stderr | packages/modules/event-bus/src/event-bus.test.ts > quarantines a claimed event without canonical tenant metadata
+[EventBus] test.missing-tenant-metadata (5bbff62c-2a51-48f9-ad7e-3b1ba42abe92) correlation=corr_test_123 retry 1/3 in 1000ms: Outbox payload _meta must be an object with the claimed event account
+
+ ✓ packages/modules/event-bus/src/event-bus.test.ts (24 tests) 439ms
+   ✓ renews the lease while a slow consumer is running  401ms
+ ✓ tests/unit/infra/security-operations-certification.test.ts (3 tests) 88ms
+ ✓ tests/unit/auth/interactive-principal-guard.test.ts (11 tests) 165ms
+ ✓ packages/db/src/password.test.ts (1 test) 58ms
+ ✓ tests/unit/infra/deploy-surface-of-truth.test.ts (5 tests) 34ms
+ ✓ packages/modules/owners/src/owners.test.ts (44 tests) 51ms
+ ✓ tests/unit/worker/pix-payment-dispatch-guards.test.ts (81 tests) 29ms
+ ✓ tests/unit/infra/documentation-governance.test.ts (4 tests) 39ms
+ ✓ packages/modules/scheduling/src/scheduling.test.ts (60 tests) 51ms
+ ✓ tests/unit/shared/tenant-unit-of-work.test.ts (26 tests) 33ms
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > closes counter sale without open register and skips cash movements
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > closes counter sale with open register and records mapped cash movements
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > fails close when runtime inventory bridge cannot resolve the SKU
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > applies card settlement when encounter financial payment uses external reference type other
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > ignores unsupported external reference types when settling receivables
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > skips transaction settlement updates when external reference id is missing
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > publishes notification.sent events when queued notifications are processed
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > initializes without scoped hydrations when no bootstrap account id can be resolved
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > publishes appointment.status_changed when an appointment is cancelled
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > publishes encounter.status_changed when the encounter moves to observation
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > publishes patient.created when a patient is registered at runtime
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+ ✓ tests/unit/api/runtime-operational-coverage.test.ts (11 tests) 24ms
+ ✓ tests/unit/shared-utils/utils.test.ts (9 tests) 53ms
+{"level":"WARN","message":"account locked due to repeated MFA failures","timestamp":"2026-09-08T12:03:42.191Z","pid":1985566,"service":"auth-brute-force","identifier":"user_admin","attemptCount":1,"lockedUntilSeconds":60}
+ ✓ packages/modules/auth/src/auth.test.ts (34 tests) 23ms
+ ✓ packages/modules/reports/src/reports.test.ts (33 tests) 43ms
+ ✓ packages/modules/counter-sales/src/counter-sale-cancellation-report.test.ts (46 tests) 10ms
+ ✓ tests/unit/infra/openapi-frontend-contract.test.ts (7 tests) 17ms
+ ✓ tests/unit/api/openapi-routes.test.ts (4 tests) 14ms
+ ✓ tests/unit/api/financial-routes.test.ts (11 tests) 8ms
+ ✓ packages/modules/audit/src/audit.test.ts (29 tests) 30ms
+ ✓ tests/unit/observability/metrics.test.ts (17 tests) 12ms
+ ✓ packages/modules/inventory/src/inventory.test.ts (33 tests) 12ms
+ ✓ tests/unit/modules/feature-flags-provider.test.ts (3 tests) 5ms
+ ✓ packages/modules/patients/src/patients.test.ts (50 tests) 12ms
+ ✓ tests/unit/design-system/design-system.test.ts (41 tests) 14ms
+ ✓ tests/unit/api/startup-secrets-runtime.test.ts (8 tests) 7ms
+ ✓ tests/unit/api/pix-transaction-repository-database.test.ts (5 tests) 3ms
+ ✓ packages/modules/counter-sales/src/counter-sales.test.ts (44 tests) 17ms
+ ✓ tests/unit/infra/release-manifest.test.ts (2 tests) 17ms
+ ✓ packages/modules/attachments/src/file-storage.test.ts (3 tests) 18ms
+ ✓ packages/modules/quotes/src/quotes.test.ts (20 tests) 4ms
+ ✓ packages/modules/webhooks/src/webhooks.test.ts (22 tests) 9ms
+ ✓ tests/unit/db/commissions-payment-integrity-migration.test.ts (1 test) 2ms
+ ✓ packages/modules/access-control/src/access-control.test.ts (37 tests) 13ms
+ ✓ tests/unit/fiscal/cfop-table.test.ts (17 tests) 6ms
+stdout | tests/unit/api/runtime.test.ts > runtime > builds and initializes the in-memory runtime graph
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime.test.ts > runtime > enables MFA service when an encryption key is provided
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime.test.ts > runtime > schedules or skips automatic WhatsApp reminders according to the runtime flag
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event billing.record.created (5a0245a2-5393-402c-ad88-e4e7b765b07e) correlation=evt_mtsmfgkj_10497a73bf088ccce7 to 3 handler(s) — attempt 1/3
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Event billing.record.created (5a0245a2-5393-402c-ad88-e4e7b765b07e) correlation=evt_mtsmfgkj_10497a73bf088ccce7 completed — 3 handler(s) succeeded
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event encounter.created (98aec765-e83e-4d40-84cf-2395a70b005c) correlation=evt_mtsmfgkj_fcfbf010a2a6517d8f to 3 handler(s) — attempt 1/3
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Event encounter.created (98aec765-e83e-4d40-84cf-2395a70b005c) correlation=evt_mtsmfgkj_fcfbf010a2a6517d8f completed — 3 handler(s) succeeded
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event billing.status_changed (81ebe93e-305e-4aa0-9a5d-bde23df6f415) correlation=evt_mtsmfgkj_394b62d5947a3aceed to 3 handler(s) — attempt 1/3
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Event billing.status_changed (81ebe93e-305e-4aa0-9a5d-bde23df6f415) correlation=evt_mtsmfgkj_394b62d5947a3aceed completed — 3 handler(s) succeeded
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event payment.pix.intent.created (76f7a7e6-e30e-4919-adf1-960e699a3d40) correlation=corr_pix_financial_intent to 3 handler(s) — attempt 1/3
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[PaymentsConsumer] PIX intent created: pix_intent_runtime_1 for account acc_cvg_demo (billingRecordId: bill_mtsmfgkj_175eb9419ad73804df) — amount: 150 BRL
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Event payment.pix.intent.created (76f7a7e6-e30e-4919-adf1-960e699a3d40) correlation=corr_pix_financial_intent completed — 3 handler(s) succeeded
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event payment.pix.confirmed (616b049f-c5a0-4a2e-ad83-da9338036a31) correlation=corr_pix_financial_confirm to 3 handler(s) — attempt 1/3
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[PaymentsConsumer] Settled billing record bill_mtsmfgkj_175eb9419ad73804df after PIX confirmation (event 616b049f-c5a0-4a2e-ad83-da9338036a31)
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Event payment.pix.confirmed (616b049f-c5a0-4a2e-ad83-da9338036a31) correlation=corr_pix_financial_confirm completed — 3 handler(s) succeeded
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event billing.status_changed (6b7c1792-604f-426d-a47b-aa57d8cee6f2) correlation=evt_mtsmfgkl_d988e5dfca77814cbc to 3 handler(s) — attempt 1/3
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Event billing.status_changed (6b7c1792-604f-426d-a47b-aa57d8cee6f2) correlation=evt_mtsmfgkl_d988e5dfca77814cbc completed — 3 handler(s) succeeded
+
+ ✓ tests/unit/api/runtime.test.ts (4 tests) 12ms
+ ✓ tests/unit/http-command-helpers.test.ts (7 tests) 9ms
+ ✓ packages/modules/prescription-executions/src/prescription-executions.test.ts (28 tests) 7ms
+ ✓ tests/unit/fiscal/nfse-emitter.test.ts (26 tests) 12ms
+ ✓ packages/modules/notifications-whatsapp/src/whatsapp.test.ts (29 tests) 8ms
+ ✓ tests/unit/shared/feature-flags-shared.test.ts (9 tests) 6ms
+ ✓ tests/unit/api/database-prescription.repository.test.ts (3 tests) 5ms
+ ✓ packages/modules/medical-records/src/medical-records.test.ts (23 tests) 10ms
+ ✓ packages/db/src/reconcile-runtime-roles.test.ts (11 tests) 9ms
+ ✓ packages/modules/diagnostics/src/diagnostics.test.ts (32 tests) 10ms
+ ✓ packages/modules/financial/src/financial.test.ts (19 tests) 7ms
+ ✓ packages/modules/fiscal/src/fiscal.test.ts (18 tests) 7ms
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:03:44.060Z","pid":1985566,"service":"auth-brute-force","identifier":"user1","attemptCount":3,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated MFA failures","timestamp":"2026-09-08T12:03:44.060Z","pid":1985566,"service":"auth-brute-force","identifier":"user1","attemptCount":3,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:03:44.060Z","pid":1985566,"service":"auth-brute-force","identifier":"user1","attemptCount":3,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:03:44.061Z","pid":1985566,"service":"auth-brute-force","identifier":"user1","attemptCount":3,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:03:44.061Z","pid":1985566,"service":"auth-brute-force","identifier":"user1","attemptCount":1,"lockedUntilSeconds":30}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:03:44.064Z","pid":1985566,"service":"auth-brute-force","identifier":"vet","attemptCount":2,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:03:44.065Z","pid":1985566,"service":"auth-brute-force","identifier":"vet","attemptCount":1,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:03:44.065Z","pid":1985566,"service":"auth-brute-force","identifier":"vet","attemptCount":1,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated MFA failures","timestamp":"2026-09-08T12:03:44.066Z","pid":1985566,"service":"auth-brute-force","identifier":"user_admin","attemptCount":2,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:03:44.067Z","pid":1985566,"service":"auth-brute-force","identifier":"vet","attemptCount":2,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:03:44.067Z","pid":1985566,"service":"auth-brute-force","identifier":"admin","attemptCount":2,"lockedUntilSeconds":60}
+ ✓ tests/unit/auth/hardening.test.ts (24 tests) 8ms
+ ✓ tests/unit/infra/runtime-lifecycle.test.ts (4 tests) 7ms
+ ✓ tests/unit/tenant-context/context.test.ts (10 tests) 11ms
+ ✓ packages/modules/event-consumers/src/payments.consumer.test.ts (10 tests) 7ms
+ ✓ tests/unit/modules/fiscal-database-repository.test.ts (4 tests) 2ms
+ ✓ tests/unit/infra/complexity-hotspots.test.ts (3 tests) 6ms
+ ✓ packages/modules/services/src/services.test.ts (17 tests) 5ms
+ ✓ packages/modules/encounters/src/encounters.test.ts (27 tests) 6ms
+ ✓ packages/modules/prescriptions/src/prescriptions.test.ts (35 tests) 8ms
+ ✓ tests/unit/design-system/advanced-components.test.ts (54 tests) 5ms
+ ✓ tests/unit/modules/encounters-service.test.ts (4 tests) 2ms
+ ✓ tests/unit/lgpd/lgpd-service.test.ts (30 tests) 4ms
+ ✓ tests/unit/api/slos.test.ts (29 tests) 2ms
+ ✓ tests/unit/modules/counter-sales-service.test.ts (7 tests) 3ms
+ ✓ tests/unit/api/pix-provider-webhook-payload.test.ts (41 tests) 4ms
+ ✓ tests/unit/api/pix-provider-webhook-verifier.test.ts (25 tests) 6ms
+ ✓ tests/unit/api/email-gateway-runtime.test.ts (3 tests) 2ms
+ ✓ tests/unit/modules/webauthn-durable-state.test.ts (5 tests) 6ms
+ ✓ tests/unit/modules/fiscal-service.test.ts (8 tests) 4ms
+ ✓ tests/unit/modules/triage-service.test.ts (3 tests) 2ms
+ ✓ tests/unit/rls/text-based-tables-migration.test.ts (38 tests) 3ms
+ ✓ tests/unit/modules/diagnostics.test.ts (6 tests) 3ms
+ ✓ packages/db/src/rls.test.ts (10 tests) 7ms
+ ✓ tests/unit/modules/financial.test.ts (5 tests) 3ms
+ ✓ tests/unit/infra/runtime-role-grants.test.ts (14 tests) 4ms
+ ✓ packages/modules/marketing/src/marketing.test.ts (12 tests) 7ms
+ ✓ tests/unit/api/auth-rate-limiter-runtime.test.ts (3 tests) 3ms
+ ✓ tests/unit/worker/pix-payment-dispatch-normalization.test.ts (20 tests) 2ms
+ ✓ tests/unit/modules/inventory-service.test.ts (7 tests) 3ms
+ ✓ packages/modules/products/src/products.test.ts (16 tests) 4ms
+ ✓ tests/unit/api/health-routes-contract.test.ts (3 tests) 3ms
+ ✓ packages/modules/api-keys/src/api-keys.test.ts (13 tests) 2ms
+ ✓ tests/unit/api/runtime-repositories.test.ts (3 tests) 2ms
+ ✓ packages/modules/medical-records/src/medical-records.boundary-coverage.test.ts (10 tests) 5ms
+ ✓ tests/unit/api/request-encounter-pix-payment-command.test.ts (25 tests) 4ms
+ ✓ packages/modules/inpatient/src/inpatient.test.ts (18 tests) 5ms
+ ✓ packages/modules/cash/src/cash.test.ts (19 tests) 7ms
+ ✓ tests/unit/modules/patients-service.test.ts (5 tests) 3ms
+ ✓ tests/unit/worker/health-contract.test.ts (6 tests) 1ms
+ ✓ packages/modules/attachments/src/attachments.test.ts (19 tests) 5ms
+ ✓ packages/modules/auth/src/auth-refresh-audit.test.ts (3 tests) 3ms
+ ✓ tests/unit/api/feature-flags.test.ts (6 tests) 3ms
+ ✓ tests/unit/observability/logging.test.ts (10 tests) 3ms
+ ✓ packages/modules/billing/src/billing.test.ts (20 tests) 4ms
+ ✓ tests/unit/fiscal/tax-calculator.test.ts (27 tests) 3ms
+ ✓ packages/modules/lgpd/src/lgpd.test.ts (28 tests) 5ms
+ ✓ packages/modules/packages/src/packages.test.ts (5 tests) 3ms
+ ✓ packages/modules/discharges/src/discharges.test.ts (17 tests) 4ms
+ ✓ packages/modules/soc2/src/controls.test.ts (27 tests) 3ms
+ ✓ tests/unit/api/feature-flags-routes.test.ts (2 tests) 2ms
+ ✓ packages/modules/ml/src/applied-ml.test.ts (10 tests) 4ms
+ ✓ tests/unit/rls/migration.test.ts (27 tests) 2ms
+ ✓ tests/unit/api/chaos-operational-state.test.ts (25 tests) 2ms
+ ✓ tests/unit/mfa/totp.test.ts (13 tests) 2ms
+ ✓ packages/modules/staff/src/staff.test.ts (7 tests) 3ms
+ ✓ tests/unit/db/advance-payment-migration.test.ts (1 test) 1ms
+ ✓ tests/unit/api/raw-request-body.test.ts (5 tests) 2ms
+ ✓ packages/security/src/security.test.ts (30 tests) 4ms
+ ✓ tests/unit/api/health.test.ts (11 tests) 2ms
+ ✓ tests/unit/modules/scheduling.test.ts (4 tests) 2ms
+ ✓ packages/modules/commissions/src/commissions.test.ts (7 tests) 3ms
+ ✓ tests/unit/db/commissions-staff-authority-migration.test.ts (2 tests) 2ms
+ ✓ tests/unit/modules/counter-sales-repository.test.ts (9 tests) 3ms
+ ✓ tests/unit/api/encounter-cash-receipt-command.test.ts (9 tests) 2ms
+ ✓ packages/modules/commercial/src/commercial.test.ts (6 tests) 2ms
+ ✓ packages/modules/triage/src/triage.test.ts (11 tests) 4ms
+ ✓ tests/unit/api/app-state.test.ts (24 tests) 2ms
+ ✓ tests/unit/api/pix-provider-webhook-keyring.test.ts (10 tests) 1ms
+ ✓ packages/modules/commissions/src/commission-calculations-report.test.ts (4 tests) 2ms
+ ✓ packages/modules/owners/src/owners-report.test.ts (5 tests) 2ms
+ ✓ tests/unit/api/card-transaction-repository-database.test.ts (3 tests) 2ms
+ ✓ packages/modules/inpatient/src/inpatient.tenant-boundary.test.ts (5 tests) 2ms
+ ✓ packages/modules/inventory/src/inventory-movements-report.test.ts (4 tests) 2ms
+stdout | packages/modules/ml/src/smart-scheduling.test.ts > SmartSchedulingService > trainModel > processes historical data and logs statistics
+Visit type consulta: avg 32min (2 samples)
+Visit type exame: avg 50min (1 samples)
+
+ ✓ packages/modules/ml/src/smart-scheduling.test.ts (15 tests) 2ms
+ ✓ tests/unit/contracts/counter-sale-cancellation-contract.test.ts (2 tests) 3ms
+ ✓ packages/modules/ml/src/ml.test.ts (12 tests) 2ms
+ ✓ tests/unit/modules/feature-flags-repository.test.ts (3 tests) 2ms
+ ✓ tests/unit/infra/restore-fixture-contract.test.ts (9 tests) 1ms
+ ✓ packages/modules/medical-records/src/medical-records.canonical-coverage.test.ts (3 tests) 2ms
+ ✓ packages/modules/commissions/src/commission-authority.test.ts (5 tests) 2ms
+ ✓ packages/modules/inventory/src/inventory-products-report.test.ts (4 tests) 2ms
+ ✓ packages/modules/inventory/src/inventory-invoices-report.test.ts (4 tests) 3ms
+ ✓ tests/unit/modules/staff-service.test.ts (3 tests) 1ms
+ ✓ packages/modules/inventory/src/inventory-stock-report.test.ts (6 tests) 2ms
+ ✓ tests/unit/db/pix-service-principal-schema.test.ts (4 tests) 1ms
+ ✓ packages/shared/database/src/client.test.ts (7 tests) 1ms
+ ✓ tests/unit/infra/ci-contract.test.ts (13 tests) 2ms
+ ✓ packages/modules/patients/src/patients-report.test.ts (5 tests) 2ms
+ ✓ packages/modules/commissions/src/commission-payment.test.ts (2 tests) 1ms
+ ✓ packages/modules/services/src/services-report.test.ts (4 tests) 2ms
+ ✓ packages/db/src/migrate.test.ts (9 tests) 2ms
+ ✓ packages/modules/financial/src/finance-catalog-report.test.ts (4 tests) 2ms
+ ✓ packages/modules/notifications/src/notifications.test.ts (10 tests) 2ms
+ ✓ packages/modules/pix/src/pix.test.ts (9 tests) 2ms
+ ✓ packages/modules/encounters/src/database-encounter.repository.test.ts (5 tests) 2ms
+ ✓ packages/modules/financial/src/receivables-report.test.ts (4 tests) 2ms
+ ✓ packages/modules/surgery/src/surgery.test.ts (9 tests) 2ms
+ ✓ packages/modules/encounters/src/encounters.boundary-coverage.test.ts (5 tests) 2ms
+ ✓ tests/unit/db/counter-sale-clinical-receipts-migration.test.ts (2 tests) 1ms
+ ✓ packages/modules/counter-sales/src/counter-sale-cancellation-history.test.ts (5 tests) 2ms
+ ✓ packages/modules/prescriptions/src/prescriptions.boundary-coverage.test.ts (3 tests) 2ms
+ ✓ packages/modules/soc2/src/provenance.test.ts (3 tests) 2ms
+ ✓ packages/modules/reports/src/cancellation-report-definitions.test.ts (1 test) 1ms
+ ✓ tests/unit/modules/counter-sales.test.ts (2 tests) 1ms
+ ✓ tests/unit/modules/webauthn-service.test.ts (4 tests) 2ms
+ ✓ tests/unit/api/encounter-cash-receipt-reversal-command.test.ts (8 tests) 1ms
+ ✓ tests/unit/db/fiscal-nfse-operation-migration.test.ts (2 tests) 1ms
+ ✓ packages/modules/notifications/src/notifications.tenant-boundary.test.ts (2 tests) 1ms
+ ✓ packages/modules/encounters/src/clinical-handoffs.tenant-boundary.test.ts (3 tests) 1ms
+ ✓ packages/modules/access-control/src/access-catalog.contract.test.ts (2 tests) 1ms
+ ✓ tests/unit/modules/owners-service.test.ts (4 tests) 1ms
+ ✓ packages/modules/api-keys/src/repositories/database-api-key.repository.test.ts (4 tests) 1ms
+ ✓ tests/unit/tenant-context/middleware.test.ts (7 tests) 1ms
+ ✓ tests/unit/infra/report-date-semantics-contract.test.ts (3 tests) 1ms
+ ✓ tests/unit/infra/database-chaos-fail-closed-contract.test.ts (4 tests) 1ms
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:03:47.234Z","pid":1985566,"service":"auth-brute-force","identifier":"user1","attemptCount":3,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:03:47.234Z","pid":1985566,"service":"auth-brute-force","identifier":"user1","attemptCount":3,"lockedUntilSeconds":300}
+{"level":"WARN","message":"account locked due to repeated MFA failures","timestamp":"2026-09-08T12:03:47.234Z","pid":1985566,"service":"auth-brute-force","identifier":"user1","attemptCount":3,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:03:47.235Z","pid":1985566,"service":"auth-brute-force","identifier":"userx","attemptCount":5,"lockedUntilSeconds":300}
+ ✓ packages/modules/auth/src/brute-force.test.ts (12 tests) 1ms
+ ✓ tests/unit/infra/critical-soak.test.ts (3 tests) 1ms
+ ✓ tests/unit/infra/release-workflow-contract.test.ts (3 tests) 1ms
+ ✓ packages/db/src/access-control-catalog.test.ts (2 tests) 1ms
+ ✓ packages/tenant-context/src/index.test.ts (7 tests) 1ms
+ ✓ tests/unit/infra/performance-gate-contract.test.ts (3 tests) 0ms
+ ✓ tests/unit/db/laboratory-provider-ingress-migration.test.ts (2 tests) 1ms
+ ✓ packages/db/src/migration-target.test.ts (3 tests) 0ms
+ ✓ packages/modules/event-consumers/src/event-consumers.test.ts (2 tests) 1ms
+ ✓ tests/unit/db/reports-schedule-claim-migration.test.ts (2 tests) 0ms
+ ✓ tests/unit/api/database-chaos-write-guard.test.ts (19 tests) 1ms
+ ✓ tests/unit/observability/prometheus-alerts-slo-alignment.test.ts (5 tests) 1ms
+ ✓ packages/modules/diagnostics/src/laboratory-result-values.test.ts (2 tests) 1ms
+ ✓ packages/modules/attachments/src/attachment-repository.test.ts (1 test) 1ms
+ ✓ packages/modules/payments/src/card-capture-lock.test.ts (1 test) 1ms
+ ✓ packages/modules/reports/src/report-catalog-contract.test.ts (2 tests) 1ms
+ ✓ tests/unit/api/pix-provider-event-fingerprints.test.ts (4 tests) 1ms
+ ✓ tests/unit/db/marketing-permission-catalog.test.ts (2 tests) 0ms
+ ✓ tests/unit/db/counter-sale-payment-authority-migration.test.ts (2 tests) 0ms
+ ✓ tests/unit/db/encounter-cash-receipt-reversal-migration.test.ts (2 tests) 1ms
+ ✓ tests/unit/db/scheduling-queue-transfer-receipts-migration.test.ts (3 tests) 0ms
+ ✓ tests/unit/db/counter-sale-number-sequence-migration.test.ts (2 tests) 0ms
+ ✓ tests/unit/db/report-engine-migration.test.ts (3 tests) 0ms
+ ✓ tests/unit/db/webhook-delivery-migration.test.ts (2 tests) 0ms
+ ✓ tests/unit/db/api-key-auth-boundary.test.ts (2 tests) 0ms
+ ✓ tests/unit/api/auth-rate-limiter.test.ts (2 tests) 1ms
+ ✓ tests/unit/db/reports-delivery-lease-migration.test.ts (2 tests) 1ms
+ ✓ packages/modules/financial/src/advance-payments-report.test.ts (1 test) 0ms
+ ✓ tests/unit/db/finance-catalog-migration.test.ts (1 test) 1ms
+ ✓ tests/unit/database/service-principal-writer-linearization-migration.test.ts (2 tests) 1ms
+ ✓ tests/unit/infra/ephemeral-game-day-contract.test.ts (3 tests) 0ms
+ ✓ tests/unit/infra/critical-soak-workflow-contract.test.ts (2 tests) 0ms
+ ✓ tests/unit/db/finance-operational-catalogs-migration.test.ts (2 tests) 0ms
+ ✓ tests/unit/db/seed-laboratory-signer-contract.test.ts (1 test) 0ms
+ ✓ tests/unit/db/staff-professions-migration.test.ts (1 test) 0ms
+ ✓ packages/modules/inpatient/src/inpatient-hydration.test.ts (1 test) 0ms
+ ✓ tests/unit/db/e2e-role-seed-contract.test.ts (3 tests) 0ms
+ ✓ tests/unit/db/billing-item-cascade-delete-migration.test.ts (1 test) 0ms
+ ✓ tests/unit/observability/metrics-slo-snapshot.test.ts (1 test) 0ms
+ ✓ packages/modules/surgery/src/surgery-hydration.test.ts (1 test) 0ms
+ ✓ tests/unit/infra/restore-drill-timing-contract.test.ts (1 test) 0ms
+ ✓ tests/unit/architecture/pix-b2b-boundaries.test.ts (1 test) 0ms
+ ✓ packages/modules/event-bus/src/event-catalog.test.ts (1 test) 0ms
+ ✓ tests/unit/db/owner-patient-relationship-migration.test.ts (1 test) 0ms
+ ✓ tests/unit/db/scheduling-checkin-uniqueness-migration.test.ts (1 test) 0ms
+ ✓ tests/unit/infra/visual-route-stub-contract.test.ts (1 test) 0ms
+ ✓ tests/unit/infra/migration-source-artifact.test.ts (1 test) 0ms
+ ✓ tests/unit/rls/user-roles-migration.test.ts (1 test) 0ms
+ ↓ packages/modules/diagnostics/src/laboratory-postgres.integration.test.ts (1 test | 1 skipped)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/infra/requirement-evidence-matrix.test.ts > requirement evidence matrix contract > maps every frozen Quality Bar criterion to a single auditable row
+AssertionError: expected '`PASS_BOUNDED` local — 9/9 jornadas, …' to contain 'PARTIAL'
+
+Expected: "PARTIAL"
+Received: "`PASS_BOUNDED` local — 9/9 jornadas, visual 29/29 e auditoria master 299/299; WCAG independente, leitor de tela, browsers adicionais, target e UAT ainda não liberam."
+
+ ❯ tests/unit/infra/requirement-evidence-matrix.test.ts:57:24
+     55|           ? 'BLOCKED'
+     56|           : 'PARTIAL';
+     57|       expect(cells[5]).toContain(stateToken);
+       |                        ^
+     58|     }
+     59|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 223 passed | 1 skipped (225)
+      Tests  1 failed | 2452 passed | 1 skipped (2454)
+   Start at  09:03:14
+   Duration  33.17s (transform 3.89s, setup 178ms, collect 5.77s, tests 25.03s, environment 949ms, prepare 96ms)
+

@@ -60,21 +60,21 @@
       </form>
     </section>
 
-    <p v-if="!loading && !loadFailed" class="record-count" role="status">{{ filteredReports.length }} registro(s) encontrado(s)</p>
-    <section v-if="loadFailed && !loading" class="load-failure" role="status">
-      <strong>Não foi possível carregar os laudos</strong>
-      <DsButton variant="secondary" @click="load">Tentar novamente</DsButton>
-    </section>
-
+    <p v-if="!loading && !loadFailed && !accessDenied" class="record-count" role="status">{{ filteredReports.length }} registro(s) encontrado(s)</p>
     <DataTable
-      v-else
       :columns="columns"
       :rows="filteredReports"
       :loading="loading"
+      :feedback="tableFeedback"
       empty-icon="📋"
       empty-title="Nenhum registro encontrado"
       variant="hoverable"
     >
+      <template v-if="tableFeedback?.kind === 'error'" #feedbackAction>
+        <DsButton variant="secondary" :loading="loading" :disabled="loading" @click="load">
+          Tentar novamente
+        </DsButton>
+      </template>
       <template #cell-id="{ row }">
         <span class="report-id">{{ shortId((row as LaboratoryReportRow).id) }}</span>
       </template>
@@ -84,8 +84,18 @@
       <template #cell-enteredAt="{ row }">
         {{ formatDate((row as LaboratoryReportRow).enteredAt) }}
       </template>
+      <template #cell-status="{ row }">
+        <span :class="`report-status report-status--${(row as LaboratoryReportRow).status}`">
+          {{ statusLabel((row as LaboratoryReportRow).status) }}
+        </span>
+      </template>
       <template #cell-value="{ row }">
-        <span title="Valor não informado">{{ (row as LaboratoryReportRow).value }}</span>
+        <div class="result-value-cell">
+          <span>{{ resultValueSummary(row as LaboratoryReportRow) }}</span>
+          <small v-if="(row as LaboratoryReportRow).resultValues?.length" class="result-value-cell__meta">
+            {{ (row as LaboratoryReportRow).resultValues?.length }} parâmetro(s) estruturado(s)
+          </small>
+        </div>
       </template>
       <template #cell-actions="{ row }">
         <div class="report-actions">
@@ -105,6 +115,17 @@
           >
             Laudo
           </DsButton>
+          <DsButton
+            v-if="(row as LaboratoryReportRow).resultAttachmentId"
+            size="sm"
+            variant="ghost"
+            :loading="attachmentOpeningId === (row as LaboratoryReportRow).id"
+            :disabled="Boolean(attachmentOpeningId)"
+            :aria-label="`Abrir anexo do laudo ${shortId((row as LaboratoryReportRow).id)}`"
+            @click="openAttachment(row as LaboratoryReportRow)"
+          >
+            Abrir anexo
+          </DsButton>
         </div>
       </template>
     </DataTable>
@@ -112,11 +133,11 @@
     <details class="summary-disclosure">
       <summary>Resumo dos laudos</summary>
       <dl class="summary-grid" aria-label="Resumo dos laudos">
-        <div><dt>Laudos</dt><dd>{{ loading || loadFailed ? '—' : reports.length }}</dd></div>
-        <div><dt>Fechados</dt><dd>{{ loading || loadFailed ? '—' : closedCount }}</dd></div>
-        <div><dt>Com anomalia · geral</dt><dd>{{ loading || loadFailed || !anomalies ? '—' : anomalies.flaggedOrders }}</dd></div>
+        <div><dt>Laudos</dt><dd>{{ loading || loadFailed || accessDenied ? '—' : reports.length }}</dd></div>
+        <div><dt>Fechados</dt><dd>{{ loading || loadFailed || accessDenied ? '—' : closedCount }}</dd></div>
+        <div><dt>Com anomalia · geral</dt><dd>{{ loading || loadFailed || accessDenied || !anomalies ? '—' : anomalies.flaggedOrders }}</dd></div>
       </dl>
-      <p v-if="!loading && !loadFailed && !anomalies" class="summary-note">Análise de anomalias indisponível.</p>
+      <p v-if="!loading && !loadFailed && !accessDenied && !anomalies" class="summary-note">Análise de anomalias indisponível.</p>
       <p class="summary-note">Laudos e fechados: registros carregados, antes dos filtros locais. Anomalias: análise geral do laboratório.</p>
     </details>
 
@@ -147,8 +168,10 @@ import DataTable from '@/components/DataTable.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
-import type { DataTableColumn } from '@/components/DataTable.vue';
+import type { DataTableColumn, DataTableFeedback } from '@/components/DataTable.vue';
 import type { DiagnosticOrderSummary } from '@cvg-his-v2/shared-types';
+import { spaRuntimeConfig } from '@/config/runtime';
+import { attachmentService, type AttachmentDownloadUrlResponse } from '@/services/attachments';
 import { laboratoryService } from '@/services/laboratory';
 import { mlService, type LabAnomalyResponse } from '@/services/ml';
 import { ownerService } from '@/services/owner';
@@ -172,7 +195,10 @@ const owners = ref<OwnerSummary[]>([]);
 const anomalies = ref<LabAnomalyResponse | null>(null);
 const loading = ref(false);
 const loadFailed = ref(false);
+const accessDenied = ref(false);
 const printingId = ref<string | null>(null);
+const attachmentOpeningId = ref<string | null>(null);
+let loadGeneration = 0;
 const printableReportHtml = ref('');
 const error = ref('');
 const draftFilters = reactive({
@@ -194,8 +220,9 @@ const columns: DataTableColumn[] = [
   { key: 'animalName', label: 'Animal' },
   { key: 'finalizedAt', label: 'Data de Finalização', width: '16%' },
   { key: 'enteredAt', label: 'Data de Entrada', width: '15%' },
-  { key: 'value', label: 'Valor', width: '110px' },
-  { key: 'actions', label: 'Abrir', class: 'table__actions-col', width: '110px' }
+  { key: 'status', label: 'Situação', width: '150px' },
+  { key: 'value', label: 'Resultados', width: '320px' },
+  { key: 'actions', label: 'Ações', class: 'table__actions-col', width: '260px' }
 ];
 
 const ownerById = computed(() => new Map(owners.value.map((owner) => [owner.id, owner])));
@@ -213,7 +240,7 @@ const decoratedReports = computed<LaboratoryReportRow[]>(() =>
       animalName: patient?.name ?? report.patientId,
       finalizedAt: report.status === 'resulted' ? report.updatedAt : '',
       enteredAt: report.createdAt,
-      value: '—'
+      value: resultValueSummary(report)
     };
   })
 );
@@ -240,6 +267,57 @@ const filteredReports = computed(() => {
   });
 });
 
+const hasActiveReportFilters = computed(() => Boolean(
+  appliedFilters.code ||
+  appliedFilters.client ||
+  appliedFilters.owner ||
+  appliedFilters.animal ||
+  appliedFilters.finalizedAt ||
+  appliedFilters.enteredAt ||
+  appliedFilters.body ||
+  !appliedFilters.closed
+));
+
+const tableFeedback = computed<DataTableFeedback | null>(() => {
+  if (accessDenied.value) {
+    return {
+      kind: 'forbidden',
+      icon: '🔒',
+      title: 'Acesso aos laudos negado',
+      description: 'Seu perfil não tem a permissão diagnostics.read para consultar resultados laboratoriais.'
+    };
+  }
+
+  if (loadFailed.value) {
+    return {
+      kind: 'error',
+      icon: '⚠️',
+      title: 'Não foi possível carregar os laudos',
+      description: 'A consulta ao serviço do laboratório falhou. Tente novamente para atualizar a lista.'
+    };
+  }
+
+  if (hasActiveReportFilters.value && filteredReports.value.length === 0) {
+    return {
+      kind: 'no-results',
+      icon: '🔎',
+      title: 'Nenhum laudo corresponde aos filtros',
+      description: 'Revise os filtros e tente novamente.'
+    };
+  }
+
+  if (reports.value.length === 0) {
+    return {
+      kind: 'empty',
+      icon: '📋',
+      title: 'Nenhum laudo encontrado',
+      description: 'Ainda não há laudos laboratoriais para exibir.'
+    };
+  }
+
+  return null;
+});
+
 const closedCount = computed(() => reports.value.filter((item) => item.status === 'resulted').length);
 const advancedFilterCount = computed(() =>
   [appliedFilters.client, appliedFilters.owner, appliedFilters.finalizedAt, appliedFilters.enteredAt, appliedFilters.body]
@@ -260,6 +338,30 @@ function laboratoryResultSearchText(report: LaboratoryReportRow): string {
       value.reference
     ])
   ].filter((part): part is string => Boolean(part)).join(' '));
+}
+
+function statusLabel(status: DiagnosticOrderSummary['status']): string {
+  return {
+    requested: 'Aguardando resultado',
+    collected: 'Coletado · aguardando resultado',
+    resulted: 'Concluído',
+    cancelled: 'Cancelado'
+  }[status];
+}
+
+function resultValueSummary(report: DiagnosticOrderSummary): string {
+  const values = report.resultValues ?? [];
+  if (values.length) {
+    return values.map((value) => {
+      const parameter = value.parameter.trim() || 'Parâmetro';
+      const measurement = [value.value.trim(), value.unit?.trim()].filter(Boolean).join(' ');
+      const reference = value.reference?.trim() ? ` · ref. ${value.reference.trim()}` : '';
+      return `${parameter}: ${measurement || 'valor não informado'}${reference}`;
+    }).join(' · ');
+  }
+  if (report.resultSummary?.trim()) return report.resultSummary.trim();
+  if (report.resultAttachmentId) return 'Resultado disponível em anexo';
+  return statusLabel(report.status);
 }
 
 function shortId(id: string): string {
@@ -296,9 +398,62 @@ async function openPrintableReport(report: LaboratoryReportRow) {
   }
 }
 
+function resolveAttachmentDownloadUrl(
+  attachmentId: string,
+  response: AttachmentDownloadUrlResponse
+): string {
+  const rawUrl = response.url;
+  const expectedPath = `/attachments/${encodeURIComponent(attachmentId)}/content`;
+  if (typeof rawUrl !== 'string' || !rawUrl.startsWith('/')) {
+    throw new Error('A API não confirmou uma URL válida para este anexo.');
+  }
+
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(rawUrl, 'https://cvg-his.invalid');
+  } catch {
+    throw new Error('A API não confirmou uma URL válida para este anexo.');
+  }
+
+  const expiresAt = typeof response.expiresAt === 'string' ? Date.parse(response.expiresAt) : Number.NaN;
+  if (
+    parsedUrl.origin !== 'https://cvg-his.invalid' ||
+    parsedUrl.pathname !== expectedPath ||
+    !parsedUrl.searchParams.get('token') ||
+    !Number.isFinite(expiresAt) ||
+    expiresAt <= Date.now()
+  ) {
+    throw new Error('A API não confirmou uma URL válida e vigente para este anexo.');
+  }
+
+  return `${spaRuntimeConfig.apiBaseUrl}/api${rawUrl}`;
+}
+
+async function openAttachment(report: LaboratoryReportRow) {
+  const attachmentId = report.resultAttachmentId;
+  if (!attachmentId || attachmentOpeningId.value) return;
+
+  attachmentOpeningId.value = attachmentId;
+  error.value = '';
+  try {
+    const response = await attachmentService.getDownloadUrl(attachmentId);
+    const downloadUrl = resolveAttachmentDownloadUrl(attachmentId, response);
+    const openedWindow = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+    if (!openedWindow) {
+      throw new Error('O navegador bloqueou a abertura do anexo. Permita novas abas e tente novamente.');
+    }
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Não foi possível abrir o anexo.';
+  } finally {
+    attachmentOpeningId.value = null;
+  }
+}
+
 async function load() {
+  const generation = ++loadGeneration;
   loading.value = true;
   loadFailed.value = false;
+  accessDenied.value = false;
   error.value = '';
   try {
     const [reportsResult, patientsResult, ownersResult, anomalyResponse] = await Promise.allSettled([
@@ -314,21 +469,29 @@ async function load() {
       mlService.getLabAnomalies({ examType: undefined }).catch(() => null)
     ]);
 
+    if (generation !== loadGeneration) return;
+
     if (reportsResult.status === 'rejected') {
       throw reportsResult.reason;
     }
 
-    reports.value = reportsResult.value;
+      reports.value = reportsResult.value;
     patients.value = patientsResult.status === 'fulfilled' ? patientsResult.value : [];
     owners.value = ownersResult.status === 'fulfilled' ? ownersResult.value : [];
     anomalies.value = anomalyResponse.status === 'fulfilled' ? anomalyResponse.value : null;
   } catch (err: unknown) {
-    loadFailed.value = true;
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar laudos';
+    if (generation !== loadGeneration) return;
+    accessDenied.value = isForbiddenError(err);
+    loadFailed.value = !accessDenied.value;
     reports.value = [];
   } finally {
-    loading.value = false;
+    if (generation === loadGeneration) loading.value = false;
   }
+}
+
+function isForbiddenError(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && 'status' in err &&
+    (err as { status?: unknown }).status === 403;
 }
 
 watch(
@@ -386,19 +549,6 @@ onMounted(load);
   font-variant-numeric: tabular-nums;
 }
 .record-count { margin: 0; }
-.load-failure {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-surface);
-  color: var(--color-text);
-}
-
 .filter-panel {
   padding: 16px;
   border: 1px solid var(--color-border, #e2e8f0);

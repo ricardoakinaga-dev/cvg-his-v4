@@ -1262,6 +1262,95 @@ test('tenant command envelope replays the complete HTTP response without repeati
   assert.equal(commandCalls, 1);
 });
 
+test('cash drawer mutations receive the server tenant-command runner envelope', async () => {
+  const calls: Array<{
+    operation: string;
+    idempotencyKey: string;
+    payload: unknown;
+  }> = [];
+  const server = createServerUnderTest({
+    unitOfWork: {
+      async execute(
+        context: { readonly operation: string; readonly idempotencyKey: string },
+        payload: unknown,
+        command: () => Promise<unknown>
+      ) {
+        calls.push({
+          operation: context.operation,
+          idempotencyKey: context.idempotencyKey,
+          payload
+        });
+        return { value: await command(), replayed: false };
+      }
+    } as never
+  });
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const open = await performRequest(server, {
+    method: 'POST',
+    url: '/cash-register/open',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      'idempotency-key': 'cash-server-open-1',
+      host: 'localhost'
+    },
+    body: { openingAmount: 100, notes: 'Abertura HTTP' }
+  });
+  assert.equal(open.statusCode, 201);
+
+  const movement = await performRequest(server, {
+    method: 'POST',
+    url: '/cash-register/movements',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      'idempotency-key': 'cash-server-movement-1',
+      host: 'localhost'
+    },
+    body: { movementType: 'supply', amount: 10, reference: 'HTTP-REF' }
+  });
+  assert.equal(movement.statusCode, 201);
+
+  const close = await performRequest(server, {
+    method: 'POST',
+    url: '/cash-register/close',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      'idempotency-key': 'cash-server-close-1',
+      host: 'localhost'
+    },
+    body: { closingAmount: 110, notes: 'Fechamento HTTP' }
+  });
+  assert.equal(close.statusCode, 200);
+
+  assert.deepEqual(calls, [
+    {
+      operation: 'cash.register.open',
+      idempotencyKey: 'cash-server-open-1',
+      payload: { openingAmount: 100, notes: 'Abertura HTTP' }
+    },
+    {
+      operation: 'cash.movement.create',
+      idempotencyKey: 'cash-server-movement-1',
+      payload: {
+        movementType: 'supply',
+        amount: 10,
+        reference: 'HTTP-REF'
+      }
+    },
+    {
+      operation: 'cash.register.close',
+      idempotencyKey: 'cash-server-close-1',
+      payload: {
+        closingAmount: 110,
+        notes: 'Fechamento HTTP'
+      }
+    }
+  ]);
+});
+
 test('prescription execution replay rechecks authorization before returning the cached response', async () => {
   const accountId = '00000000-0000-0000-0000-000000000201';
   const userId = '00000000-0000-0000-0000-000000000202';

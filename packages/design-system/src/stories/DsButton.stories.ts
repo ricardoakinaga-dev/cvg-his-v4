@@ -121,6 +121,32 @@ export const Disabled: Story = {
   })
 };
 
+export const StateMatrix: Story = {
+  name: 'State matrix',
+  render: () => ({
+    components: { DsButton },
+    template: `
+      <div style="display: grid; gap: 16px; max-width: 720px;">
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+          <DsButton variant="primary">Idle / foco</DsButton>
+          <DsButton variant="primary" disabled>Desabilitado</DsButton>
+          <DsButton variant="primary" :loading="true">Carregando</DsButton>
+          <DsButton variant="success" icon="check">Concluído</DsButton>
+        </div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+          <DsButton variant="secondary" size="sm">Compacto</DsButton>
+          <DsButton variant="secondary" size="md">Padrão</DsButton>
+          <DsButton variant="secondary" size="lg">Confortável</DsButton>
+        </div>
+        <p style="margin: 0; color: var(--color-text-secondary, #475b6d);">
+          O estado de sucesso é representado por uma resposta confirmada da operação;
+          hover e pressão continuam complementares ao texto e ao foco visível.
+        </p>
+      </div>
+    `
+  })
+};
+
 export const AllVariants: Story = {
   name: 'All Variants',
   render: () => ({

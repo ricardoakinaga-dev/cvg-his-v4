@@ -1,6 +1,6 @@
 # CVG-HIS V4 - Documentacao ativa
 
-**Atualizado em:** 2026-09-06 (programa executivo State of Art / Triplo AAA)
+**Atualizado em:** 2026-09-07 (programa executivo State of Art / Triplo AAA)
 
 Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afirmacao de funcionalidade so e considerada valida quando estiver sustentada por codigo executavel e teste comportamental.
 
@@ -12,18 +12,20 @@ Esta é a fonte ativa para decisão, execução e acompanhamento do programa. O
 objetivo é elevar o ERP de uma base extensa em construção para um candidato
 reproduzível, integrado, seguro, acessível e operável com régua Triplo AAA.
 
-1. [Relatório de estado atual](2026-09-06-relatorio-estado-atual-erp-cvg-his-v4.md) — 67 itens pontuados, evidências executadas, limites e decisão atual **75/100, NO-GO**.
+1. [Relatório de estado atual](2026-09-06-relatorio-estado-atual-erp-cvg-his-v4.md) — 67 itens pontuados, baseline **75/100, NO-GO**, com revalidação técnica de 07/09 no adendo.
 2. [Plano executivo State of Art / Triplo AAA](2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md) — objetivos, investimento, gates, governança e decisões necessárias.
 3. [Roadmap State of Art / Triplo AAA](2026-09-06-roadmap-erp-state-of-art-triplo-aaa.md) — fases relativas a T0, caminho crítico, marcos e trajetória de maturidade.
 4. [Backlog State of Art / Triplo AAA](2026-09-06-backlog-erp-state-of-art-triplo-aaa.md) — 50 entregas `AAA-*`, status, dependências, owners e critérios de aceite.
 5. [Quality Bar](engineering/QUALITY_BAR.md) e [matriz de evidências](engineering/REQUIREMENT_EVIDENCE_MATRIX.md) — gates que impedem que uma nota ou um arquivo substitua prova.
+6. [Evidência do critical gate de 07/09](engineering/CRITICAL_GATE_2026-09-07.md) — `PASS_BOUNDED` local: 65/65 arquivos, 594/594 testes e 10/10 processos; limites de target e recertificação preservados.
+7. [Evidência E2E SPA de 07/09](engineering/E2E_SPA_2026-09-07.md) — `PASS_BOUNDED` scoped: 9/9 jornadas contra PostgreSQL/Redis reais, com cleanup sem erro.
 
 O selo “Triplo AAA” é aspiracional e só poderá ser usado após nota global ≥95,
 dimensões ≥90, nenhum item crítico abaixo de 85, gates obrigatórios aprovados,
 evidência fresca no mesmo SHA, revisão independente e aceites de Produto,
 Operação, Segurança/DPO e liberação.
 
-- Ponto de salvamento de06/09/2026 (histórico arquivado: `legado/docs/2026-09-06-checkpoint-salvamento.md`) —
+- Ponto de salvamento de 06/09/2026 (histórico arquivado: `legado/docs/2026-09-06-checkpoint-salvamento.md`) —
   retomada da execução interrompida a pedido do usuário; falhas e próximos passos
   preservados, sem declaração de release pronta.
 
@@ -99,7 +101,7 @@ Em divergencias, use esta ordem:
 
 1. comportamento reproduzido na aplicacao e testes sobre runtime real;
 2. codigo e contratos da API;
-3. baseline/relatório e plano ativos de 6 de setembro de 2026, incluindo a Quality Bar e procedimentos posteriores explicitamente vigentes;
+3. baseline/relatório e plano ativos de 7 de setembro de 2026, incluindo a Quality Bar e procedimentos posteriores explicitamente vigentes;
 4. baseline executiva de 2 de setembro de 2026 e arquitetura/ADRs vigentes quando não contraditos pelo programa atual;
 5. auditorias de julho de 2026, como baseline anterior;
 6. acervo Vetus como referencia de produto;

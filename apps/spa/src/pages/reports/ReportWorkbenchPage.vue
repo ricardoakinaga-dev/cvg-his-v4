@@ -11,7 +11,7 @@
           v-if="spec.exportable"
           variant="primary"
           :loading="exporting"
-          :disabled="loading || loadFailed || !reportReady"
+          :disabled="loading || loadFailed || !reportReady || serverFiltersChanged || exportPending"
           @click="exportCurrentReport"
         >
           {{ spec.primaryAction }}
@@ -180,12 +180,40 @@
       {{ error }}
     </DsAlert>
 
+    <div v-if="exportPending" class="report-export-recovery" role="status" aria-live="polite">
+      <strong>Exportação em reconciliação</strong>
+      <span v-if="pendingExport"
+        >Verifique o artefato persistido antes de iniciar qualquer novo processamento.</span
+      >
+      <div class="report-filters__actions">
+        <DsButton
+          type="button"
+          variant="secondary"
+          :loading="exporting"
+          :disabled="exporting"
+          @click="reconcilePendingExport"
+        >
+          Verificar exportação pendente
+        </DsButton>
+        <DsButton
+          v-if="exportRetryAvailable"
+          type="button"
+          variant="ghost"
+          :loading="exporting"
+          :disabled="exporting"
+          @click="retryPendingExport"
+        >
+          Repetir com a mesma chave
+        </DsButton>
+      </div>
+    </div>
+
     <DsAlert v-if="success" variant="success" dismissible @dismiss="success = ''">
       {{ success }}
     </DsAlert>
 
-    <p v-if="serverFiltersChanged" class="report-query-note" role="status">Filtros alterados. {{ isFinancialPayablesReport || isFinancialReceivablesReport ? 'A tabela filtra os registros carregados;' : 'A tabela mostra a última consulta;' }} o CSV será gerado com os filtros atuais.</p>
-    <section class="report-results" :aria-label="spec.tableTitle">
+    <p v-if="reportFiltersChanged" class="report-query-note" role="status">Filtros alterados. A tabela mostra a última execução server-side; aplique os filtros para atualizar e exportar exatamente o mesmo recorte.</p>
+    <section class="report-results" :data-execution-id="activeServerExecution?.id || undefined">
       <h2>{{ spec.tableTitle }}</h2>
       <DataTable
         :columns="spec.columns"
@@ -195,25 +223,34 @@
         :empty-title="
           loadFailed
             ? 'Não foi possível carregar o relatório'
-            : spec.emptyTitle
+            : reportHasActiveFilters && reportReady && rows.length === 0
+              ? 'Sem resultados para os filtros'
+              : spec.emptyTitle
         "
         :empty-description="
           loadFailed
             ? 'Tente novamente para consultar os registros.'
-            : (isFinancialPayablesReport ? 'Os títulos aparecem aqui quando correspondem ao período consultado.' : spec.emptyDescription)
+            : reportHasActiveFilters && reportReady && rows.length === 0
+              ? 'Nenhum registro corresponde ao recorte atual. Limpe os filtros para consultar o período completo.'
+              : spec.emptyDescription
         "
         :caption="
           isChequesReport
             ? 'Cheques'
             : isDeletedSalesCounterSalesReport
               ? spec.tableTitle
-              : undefined
+              : spec.tableTitle
         "
         variant="hoverable"
       >
         <template v-if="loadFailed" #emptyAction>
           <DsButton variant="secondary" :loading="loading" @click="loadReport">
             Tentar novamente
+          </DsButton>
+        </template>
+        <template v-else-if="reportHasActiveFilters && reportReady && rows.length === 0" #emptyAction>
+          <DsButton variant="secondary" :loading="loading" @click="resetFilters">
+            Limpar filtros
           </DsButton>
         </template>
         <template #cell-amount="{ row }">
@@ -380,14 +417,15 @@ import {
   type AdministrativeReportsResponse
 } from '@/services/administrativeReports';
 import { auditService } from '@/services/audit';
-import { saveBrowserDownload, withDownloadTimeout } from '@/services/download';
 import {
-  financialPayablesService,
-  type FinancialPayableRecord
-} from '@/services/financialPayables';
-import { financialReceivablesService } from '@/services/financialReceivables';
+  DownloadTimeoutError,
+  saveBrowserDownload,
+  withDownloadTimeout
+} from '@/services/download';
+
 import { reportsService, type ReportExecutionDetail } from '@/services/reports';
-import type { FinancialReceivableListItem } from '@/types/financialReceivables';
+import { ApiError } from '@/services/api';
+
 import { patientStatusLabel, sexLabel, speciesLabel } from '@/utils/labels';
 import { buildReportCsv } from '@/utils/report-export';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
@@ -396,206 +434,28 @@ import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import type { AuditEventSummary } from '@cvg-his-v2/shared-types';
 import type { ReportCard, ReportSpec } from './reportWorkbenchTypes';
 import { useCancellationReports } from './useCancellationReports';
+import { createReportSpecs } from './reportWorkbenchSpecs';
 
-type ReportKey =
-  | 'audit-appointments'
-  | 'cash-drawer'
-  | 'cash-flow'
-  | 'dre'
-  | 'packages'
-  | 'accounts-receivable'
-  | 'received-accounts'
-  | 'accounts-payable'
-  | 'paid-accounts'
-  | 'cheques'
-  | 'advance-payments'
-  | 'sales-counter-sales'
-  | 'produced-items'
-  | 'production'
-  | 'appointments'
-  | 'professional-care'
-  | 'service-invoices'
-  | 'register-services'
-  | 'register-owners'
-  | 'register-patients'
-  | 'register-suppliers'
-  | 'deleted-sales-counter-sales'
-  | 'inventory-stock'
-  | 'inventory-movements'
-  | 'inventory-invoices'
-  | 'inventory-products';
-
-interface ChequeReportRow extends Record<string, unknown> {
-  readonly paymentId: string;
-  readonly counterSaleId: string;
-  readonly saleNumber: string;
-  readonly saleStatus: string;
-  readonly reference: string | null;
-  readonly amount: number;
-  readonly installments: number;
-  readonly recordedAt: string;
-  readonly notes: string | null;
-}
-
-interface AdvancePaymentReportRow extends Record<string, unknown> {
-  readonly paymentId: string;
-  readonly ownerName: string;
-  readonly documentId: string;
-  readonly issuedAt: string;
-  readonly originalAmount: number;
-  readonly compensatedAmount: number;
-  readonly balance: number;
-  readonly origin: string;
-  readonly status: 'available' | 'partially_compensated' | 'compensated';
-  readonly notes: string;
-}
-
-interface SupplierReportRow extends Record<string, unknown> {
-  readonly code: string;
-  readonly name: string;
-  readonly kind: string;
-  readonly category: string;
-  readonly costCenterCode: string;
-  readonly costCenterName: string;
-  readonly description: string;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-}
-
-interface InventoryProductReportRow extends Record<string, unknown> {
-  readonly sku: string;
-  readonly name: string;
-  readonly unit: string;
-  readonly onHandQuantity: number;
-  readonly reorderLevel: number;
-  readonly unitCostAmount: number;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-}
-
-interface InventoryStockReportRow extends Record<string, unknown> {
-  readonly sku: string;
-  readonly name: string;
-  readonly unit: string;
-  readonly onHandQuantity: number;
-  readonly reorderLevel: number;
-  readonly unitCostAmount: number;
-  readonly stockValue: number;
-  readonly reorderStatus: 'below_reorder_level' | 'adequate';
-  readonly createdAt: string;
-  readonly updatedAt: string;
-}
-
-interface InventoryMovementReportRow extends Record<string, unknown> {
-  readonly movementId: string;
-  readonly occurredAt: string;
-  readonly movementType: 'adjustment' | 'inbound' | 'outbound' | 'transfer' | 'consumption';
-  readonly sku: string;
-  readonly name: string;
-  readonly unit: string;
-  readonly quantityDelta: number;
-  readonly balanceBefore: number;
-  readonly balanceAfter: number;
-  readonly unitCostAmount: number;
-  readonly reason: string;
-  readonly reference: string;
-  readonly recordedByUserId: string;
-}
-
-interface InventoryPurchaseReportRow extends Record<string, unknown> {
-  readonly purchaseId: string;
-  readonly invoiceNumber: string;
-  readonly supplierName: string;
-  readonly status: 'draft' | 'approved' | 'partially_received' | 'received' | 'cancelled';
-  readonly totalAmount: number;
-  readonly receivedAmount: number;
-  readonly payableId: string | null;
-  readonly createdByUserId: string;
-  readonly approvedByUserId: string | null;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-  readonly receivedAt: string | null;
-}
-
-interface ServiceInvoiceReportRow extends Record<string, unknown> {
-  readonly documentId: string;
-  readonly serie: string;
-  readonly numero: number;
-  readonly competencia: string;
-  readonly status: 'draft' | 'issued' | 'cancelled' | 'error';
-  readonly customerName: string;
-  readonly customerDocument: string;
-  readonly provider: string;
-  readonly serviceDescriptions: string;
-  readonly serviceCodes: string;
-  readonly serviceQuantity: number;
-  readonly serviceSubtotal: number;
-  readonly totalIss: number;
-  readonly totalPis: number;
-  readonly totalCofins: number;
-  readonly totalCsll: number;
-  readonly totalIrrf: number;
-  readonly totalInss: number;
-  readonly totalDocument: number;
-  readonly observations: string;
-  readonly createdAt: string;
-  readonly authorizationCode: string;
-}
-
-interface AppointmentReportRow extends Record<string, unknown> {
-  readonly appointmentId: string;
-  readonly scheduledAt: string;
-  readonly status: 'scheduled' | 'checked_in' | 'completed' | 'cancelled';
-  readonly reason: string;
-  readonly patientId: string;
-  readonly ownerId: string;
-  readonly practitionerStaffId: string | null;
-  readonly serviceId: string | null;
-  readonly unit: string | null;
-  readonly specialty: string | null;
-  readonly resourceLabel: string | null;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-}
-
-interface ProfessionalCareReportRow extends Record<string, unknown> {
-  readonly professional: string;
-  readonly scheduled: number;
-  readonly completed: number;
-  readonly checkedIn: number;
-  readonly cancelled: number;
-  readonly services: number;
-}
-
-interface RegisterServicesReportRow extends Record<string, unknown> {
-  readonly code: string;
-  readonly name: string;
-  readonly description: string;
-  readonly basePrice: number;
-  readonly status: 'active' | 'inactive';
-  readonly createdAt: string;
-}
-
-interface RegisterOwnersReportRow extends Record<string, unknown> {
-  readonly documentId: string;
-  readonly fullName: string;
-  readonly primaryContact: string;
-  readonly city: string;
-  readonly financialResponsible: 'Sim' | 'Não';
-  readonly status: 'active' | 'inactive';
-  readonly createdAt: string;
-}
-
-interface RegisterPatientsReportRow extends Record<string, unknown> {
-  readonly code: string;
-  readonly name: string;
-  readonly species: string;
-  readonly breed: string;
-  readonly sex: 'male' | 'female' | 'unknown';
-  readonly microchip: string;
-  readonly status: 'active' | 'inactive' | 'deceased';
-  readonly createdAt: string;
-}
+import type {
+  AdvancePaymentReportRow,
+  AppointmentReportRow,
+  ChequeReportRow,
+  FinancialPayableReportRow,
+  FinancialPayableServerRow,
+  FinancialReceivableReportRow,
+  FinancialReceivableServerRow,
+  InventoryMovementReportRow,
+  InventoryProductReportRow,
+  InventoryPurchaseReportRow,
+  InventoryStockReportRow,
+  ProfessionalCareReportRow,
+  RegisterOwnersReportRow,
+  RegisterPatientsReportRow,
+  RegisterServicesReportRow,
+  ReportKey,
+  ServiceInvoiceReportRow,
+  SupplierReportRow
+} from './reportWorkbenchModels';
 
 const props = defineProps<{
   reportKey: ReportKey;
@@ -608,6 +468,9 @@ const appliedServerFilters = ref('');
 let reportRequestId = 0;
 const customerPackages = ref<CustomerPackageDetail[]>([]);
 const exporting = ref(false);
+const exportPending = ref(false);
+const exportRetryAvailable = ref(false);
+const pendingExport = ref<{ executionId: string; format: 'csv' } | null>(null);
 const error = ref('');
 const success = ref('');
 const report = ref<AdministrativeReportsResponse | null>(null);
@@ -616,8 +479,8 @@ const services = ref<RegisterServicesReportRow[]>([]);
 const owners = ref<RegisterOwnersReportRow[]>([]);
 const patients = ref<RegisterPatientsReportRow[]>([]);
 const suppliers = ref<SupplierReportRow[]>([]);
-const financialPayables = ref<FinancialPayableRecord[]>([]);
-const financialReceivables = ref<FinancialReceivableListItem[]>([]);
+const financialPayables = ref<FinancialPayableReportRow[]>([]);
+const financialReceivables = ref<FinancialReceivableReportRow[]>([]);
 const appointmentReportExecution = ref<ReportExecutionDetail | null>(null);
 const professionalCareReportExecution = ref<ReportExecutionDetail | null>(null);
 const chequeReportExecution = ref<ReportExecutionDetail | null>(null);
@@ -630,16 +493,18 @@ const inventoryProductReportExecution = ref<ReportExecutionDetail | null>(null);
 const inventoryStockReportExecution = ref<ReportExecutionDetail | null>(null);
 const inventoryMovementReportExecution = ref<ReportExecutionDetail | null>(null);
 const inventoryInvoiceReportExecution = ref<ReportExecutionDetail | null>(null);
-const filters = ref({
-  dateFrom: '',
-  dateTo: '',
-  search: '',
-  status: '',
-  client: '',
-  user: '',
-  action: '',
-  type: ''
-});
+const activeServerExecution = ref<ReportExecutionDetail | null>(null);
+const REPORT_FILTER_KEYS = [
+  'dateFrom',
+  'dateTo',
+  'search',
+  'status',
+  'client',
+  'user',
+  'action',
+  'type'
+] as const;
+const filters = ref(readReportFiltersFromUrl());
 
 const APPOINTMENT_AUDIT_ENTITY_TYPES = [
   'appointment',
@@ -708,191 +573,52 @@ const advancePaymentReportColumns: DataTableColumn[] = [
   { key: 'notes', label: 'Observações' }
 ];
 
-const specs: Record<ReportKey, ReportSpec> = {
-  'audit-appointments': {
-    title: 'Auditoria de Agendamentos',
-    group: 'Relatórios de Auditorias',
-    subtitle: 'Relatório Vetus-like de alterações, usuários e tipos ligados aos agendamentos',
-    icon: '🧾',
-    primaryPath: '/audit',
-    primaryAction: 'Exportar CSV',
-    exportable: true,
-    tableTitle: 'Eventos de agenda auditados',
-    emptyTitle: 'Nenhum agendamento auditado encontrado',
-    emptyDescription:
-      'Ajuste Data início, Data fim, Cliente, Usuário, Ação ou Tipo para localizar eventos de agenda.',
-    note: 'A rota Vetus observada expõe filtros Data início, Data fim, Cliente, Usuário, Ação e Tipo. Exporta CSV dos eventos carregados; a exportação integral Vetus permanece pendente.',
-    columns: [
-      { key: 'occurredAt', label: 'Data' },
-      { key: 'actorId', label: 'Usuário' },
-      { key: 'action', label: 'Ação' },
-      { key: 'entityType', label: 'Tipo' },
-      { key: 'entityId', label: 'Agendamento' },
-      { key: 'payloadSummary', label: 'Resumo' }
-    ],
-    cards: () => [],
-    rows: () => []
-  },
-  'cash-drawer': {
-    title: 'Gaveta',
-    group: 'Relatórios Financeiros',
-    subtitle: 'Relatório financeiro legacy de gavetas, saldos e conferência de caixa',
-    icon: '🧾',
-    primaryPath: '/cash',
-    primaryAction: 'Exportar CSV',
-    exportable: true,
-    tableTitle: 'Gavetas no período',
-    emptyTitle: 'Sem gavetas no período',
-    emptyDescription:
-      'Gavetas abertas ou fechadas aparecem aqui quando houver movimento de caixa no período.',
-    note: 'A rota Vetus legacy observada e Sistema/Relatorio/GavetaRelatorio.htm. Exporta CSV das gavetas carregadas; esta visão é somente leitura e não abre, fecha ou movimenta caixa.',
-    columns: [
-      { key: 'status', label: 'Status' },
-      { key: 'openedAt', label: 'Abertura' },
-      { key: 'closedAt', label: 'Fechamento' },
-      { key: 'openingAmount', label: 'Abertura' },
-      { key: 'closingAmount', label: 'Fechamento' },
-      { key: 'runningBalance', label: 'Saldo' },
-      { key: 'difference', label: 'Diferença' }
-    ],
-    cards: (current) => [
-      {
-        label: 'Gavetas no período',
-        value: count(current?.domains.cash.registerCount),
-        icon: '🧾'
-      },
-      {
-        label: 'Gaveta aberta',
-        value: current?.domains.cash.hasOpenRegister ? 'Sim' : 'Não',
-        icon: '🏦'
-      },
-      { label: 'Saldo aberto', value: money(current?.executive.openCashBalance), icon: '💰' }
-    ],
-    rows: (current) =>
-      (current?.domains.cash.recentRegisters ?? []).map((row) => ({
-        ...row,
-        id: row.id
-      })) as unknown as DataTableRow[]
-  },
-  'cash-flow': {
-    title: 'Fluxo de Caixa',
-    group: 'Relatórios Financeiros',
-    subtitle:
-      'Indicadores de entradas, recebíveis e caixa no período consultado.',
-    icon: '📈',
-    primaryPath: '/finance/cash-flow',
-    primaryAction: 'Exportar CSV',
-    exportable: true,
-    tableTitle: 'Indicadores financeiros',
-    emptyTitle: 'Sem fluxo consolidado',
-    emptyDescription: 'Entradas, recebíveis e caixa aparecem aqui conforme o período selecionado.',
-    note: 'A rota Vetus legacy observada e Sistema/Relatorio/FluxoDeCaixaRelatorio.htm. Exporta CSV dos indicadores carregados; esta visão é somente leitura e não baixa nem concilia fluxo.',
-    columns: [
-      { key: 'label', label: 'Indicador' },
-      { key: 'amount', label: 'Valor' },
-      { key: 'scope', label: 'Origem' }
-    ],
-    cards: (current) => [
-      {
-        label: 'Receita comercial',
-        value: money(current?.executive.commercialRevenue),
-        icon: '📈'
-      },
-      {
-        label: 'Recebíveis abertos',
-        value: money(current?.executive.outstandingReceivables),
-        icon: '💵'
-      },
-      { label: 'Saldo aberto', value: money(current?.executive.openCashBalance), icon: '🏦' }
-    ],
-    rows: (current) =>
-      [
-        {
-          id: 'commercial-revenue',
-          nature: 'Entrada',
-          label: 'Receita comercial consolidada',
-          amount: current?.executive.commercialRevenue ?? 0,
-          scope: 'Comercial'
-        },
-        {
-          id: 'pix-completed',
-          nature: 'Entrada',
-          label: 'PIX concluídos',
-          amount: current?.domains.financial.pix.completedAmount ?? 0,
-          scope: 'PIX'
-        },
-        {
-          id: 'receivables-open',
-          nature: 'Previsto',
-          label: 'Recebíveis em aberto',
-          amount: current?.executive.outstandingReceivables ?? 0,
-          scope: 'Contas a Receber'
-        },
-        {
-          id: 'open-cash',
-          nature: 'Saldo',
-          label: 'Saldo da gaveta aberta',
-          amount: current?.executive.openCashBalance ?? null,
-          scope: 'Gaveta'
-        }
-      ] as DataTableRow[]
-  },
-  dre: {
-    title: 'DRE - Demonstrativo de Resultados', group: 'Relatórios Financeiros',
-    subtitle: 'Resultado contábil por período.', icon: '💰',
-    primaryPath: '/reports/accounts', primaryAction: 'Relatórios financeiros',
-    tableTitle: 'DRE indisponível', emptyTitle: 'DRE indisponível',
-    emptyDescription: 'Ainda não há uma fonte contábil consolidada de receitas, despesas e resultado para este relatório.',
-    columns: [], cards: () => [], rows: () => []
-  },
-  packages: {
-    title: 'Pacotes', group: 'Relatórios Financeiros',
-    subtitle: 'Pacotes cadastrados e saldo dos itens contratados.', icon: '📦',
-    primaryPath: '/packages', primaryAction: 'Exportar CSV', exportable: true,
-    tableTitle: 'Pacotes cadastrados', emptyTitle: 'Nenhum pacote encontrado',
-    emptyDescription: 'Os pacotes cadastrados aparecem nesta consulta.',
-    note: 'Saldo operacional dos itens. Esta consulta não representa receita recebida. O período considera a data de início do pacote.',
-    columns: [{key:'number',label:'Pacote'}, {key:'packageStatus',label:'Situação'},
-      {key:'startsAt',label:'Início'}, {key:'itemCount',label:'Itens'}, {key:'remainingQuantity',label:'Saldo de unidades'}],
-    cards: () => [], rows: () => []
-  },
-  'accounts-receivable': receivableSpec(
-    'Contas a Receber',
-    'Recebíveis em aberto por tutor e paciente',
-    'open'
-  ),
-  'received-accounts': receivableSpec(
-    'Contas Recebidas',
-    'Recebíveis liquidados por tutor e paciente',
-    'received'
-  ),
-  'accounts-payable': accountsPayableReportSpec(),
-  'paid-accounts': paidAccountsReportSpec(),
-  cheques: chequesReportSpec(),
-  'advance-payments': advancePaymentsReportSpec(),
-  'sales-counter-sales': salesCounterSalesReportSpec(),
-  'produced-items': producedItemsReportSpec(),
-  production: productionReportSpec(),
-  appointments: appointmentsReportSpec(),
-  'professional-care': professionalCareReportSpec(),
-  'service-invoices': serviceInvoicesReportSpec(),
-  'register-services': registerServicesReportSpec(),
-  'register-owners': registerOwnersReportSpec(),
-  'register-patients': registerPatientsReportSpec(),
-  'register-suppliers': registerSuppliersReportSpec(),
-  'deleted-sales-counter-sales': cancellationReports.snapshotSpec,
-  'inventory-stock': inventoryStockReportSpec(),
-  'inventory-movements': inventoryMovementsReportSpec(),
-  'inventory-invoices': inventoryInvoicesReportSpec(),
-  'inventory-products': inventoryProductsReportSpec()
-};
+const specs: Record<ReportKey, ReportSpec> = createReportSpecs({
+  count,
+  money,
+  financialPayableColumns,
+  financialReceivableColumns,
+  chequeReportColumns,
+  advancePaymentReportColumns,
+  receivableSpec,
+  accountsPayableReportSpec,
+  paidAccountsReportSpec,
+  chequesReportSpec,
+  advancePaymentsReportSpec,
+  salesCounterSalesReportSpec,
+  producedItemsReportSpec,
+  productionReportSpec,
+  appointmentsReportSpec,
+  professionalCareReportSpec,
+  serviceInvoicesReportSpec,
+  registerServicesReportSpec,
+  registerOwnersReportSpec,
+  registerPatientsReportSpec,
+  registerSuppliersReportSpec,
+  cancellationSnapshotSpec: cancellationReports.snapshotSpec,
+  inventoryStockReportSpec,
+  inventoryMovementsReportSpec,
+  inventoryInvoicesReportSpec,
+  inventoryProductsReportSpec
+});
 
 const spec = computed(() =>
   props.reportKey === 'deleted-sales-counter-sales'
     ? cancellationReports.spec.value
     : specs[props.reportKey]
 );
-const serverFiltersChanged = computed(() => Boolean(spec.value.serverReportId && reportReady.value && appliedServerFilters.value !== JSON.stringify(buildServerReportFilters())));
+const reportFiltersChanged = computed(() =>
+  Boolean(
+    spec.value.serverReportId &&
+      reportReady.value &&
+      appliedServerFilters.value !== JSON.stringify(buildServerReportFilters())
+  )
+);
+const serverFiltersChanged = computed(() =>
+  Boolean(
+    activeServerExecution.value && reportFiltersChanged.value
+  )
+);
 const reportSubtitle = computed(() => (props.reportKey === 'accounts-payable' ? 'Títulos registrados, em todas as situações.' : spec.value.subtitle)
   .replace(/Relatório (financeiro )?legacy (de |do |da )?/gi, '')
   .replace(/Relatório Vetus-like de /g, '').replace(/Relatório server-backed do catálogo persistido de /g, 'Catálogo de ')
@@ -953,7 +679,7 @@ const inventoryPeriodSubject = computed(() =>
 );
 const inventoryPeriodHint = computed(() =>
   ['inventory-stock', 'inventory-products'].includes(props.reportKey)
-    ? 'Data de cadastro dos produtos. Os saldos mostrados são atuais.'
+    ? 'Data de cadastro dos produtos (UTC). Os saldos mostrados são atuais.'
     : props.reportKey === 'inventory-invoices' ? 'Data de criação da compra, independentemente do recebimento.'
       : props.reportKey === 'inventory-movements' ? 'Data de registro da movimentação.' : null
 );
@@ -996,29 +722,11 @@ const auditActionOptions = computed(() =>
 const auditTypeOptions = computed(() =>
   uniqueSorted(auditEvents.value.map((event) => event.entityType))
 );
-const filteredFinancialPayables = computed(() =>
-  financialPayables.value.filter((payable) => {
-    if (isPaidAccountsReport.value && payable.status !== 'paid') return false;
-    const dueAt = payable.dueAt.slice(0, 10);
-    if (filters.value.dateFrom && dueAt < filters.value.dateFrom) return false;
-    if (filters.value.dateTo && dueAt > filters.value.dateTo) return false;
-    return true;
-  })
-);
-const filteredFinancialReceivables = computed(() =>
-  financialReceivables.value.filter((receivable) => {
-    const expectedStatus = isReceivedAccountsReport.value ? 'settled' : 'open';
-    if (receivable.status !== expectedStatus) return false;
-    const reportDate = (
-      expectedStatus === 'settled'
-        ? (receivable.settledAt ?? receivable.issuedAt)
-        : (receivable.dueAt ?? receivable.issuedAt)
-    ).slice(0, 10);
-    if (filters.value.dateFrom && reportDate < filters.value.dateFrom) return false;
-    if (filters.value.dateTo && reportDate > filters.value.dateTo) return false;
-    return true;
-  })
-);
+// Financial rows come from the same server-side execution used by export.
+// Keeping these computed values as identity projections prevents a second,
+// client-local filter from diverging from the persisted report snapshot.
+const filteredFinancialPayables = computed(() => financialPayables.value);
+const filteredFinancialReceivables = computed(() => financialReceivables.value);
 const chequeReportRows = computed<ChequeReportRow[]>(() =>
   (chequeReportExecution.value?.rows ?? []).filter(isChequeReportRow)
 );
@@ -1217,6 +925,9 @@ const rows = computed(() => {
   if (isInventoryProductsReport.value) return inventoryProductsReportRows.value;
   return spec.value.rows(report.value);
 });
+const reportHasActiveFilters = computed(() =>
+  REPORT_FILTER_KEYS.some((key) => filters.value[key].trim().length > 0)
+);
 const auditAppointmentCards = computed<ReportCard[]>(() => [
   { label: 'Eventos de agenda', value: count(filteredAuditEvents.value.length), icon: '📅' },
   {
@@ -1508,8 +1219,10 @@ const inventoryProductsReportCards = computed<ReportCard[]>(() => {
 async function loadReport() {
   const requestId = ++reportRequestId;
   const requestedFilters = JSON.stringify(buildServerReportFilters());
+  persistReportFiltersInUrl();
   reportReady.value = false;
   loadFailed.value = false;
+  activeServerExecution.value = null;
   if (props.reportKey === 'dre') { loading.value = false; error.value = ''; return; }
   async function current<T>(pending: Promise<T>): Promise<T> {
     const result = await pending;
@@ -1554,6 +1267,7 @@ async function loadReport() {
         throw new Error('Resposta inválida do relatório de agendamentos');
       }
       appointmentReportExecution.value = execution;
+      activeServerExecution.value = execution;
       report.value = null;
     } else if (isProfessionalCareReport.value) {
       const execution = await current(reportsService.execute({
@@ -1564,18 +1278,62 @@ async function loadReport() {
         throw new Error('Resposta inválida do relatório por profissional');
       }
       professionalCareReportExecution.value = execution;
+      activeServerExecution.value = execution;
       report.value = null;
     } else if (isFinancialReceivablesReport.value) {
-      financialReceivables.value = [];
-      financialReceivables.value = await current(listAllFinancialReceivables(
-        isReceivedAccountsReport.value ? 'settled' : 'open'
-      ));
+      const execution = await current(reportsService.execute({
+        reportId: 'financial-receivables',
+        filters: buildServerReportFilters()
+      }));
+      const receivableRows = execution.rows.filter(isFinancialReceivableReportRow);
+      if (receivableRows.length !== execution.rows.length) {
+        throw new Error('Resposta inválida do relatório de contas a receber');
+      }
+      financialReceivables.value = receivableRows.map((row, index) => ({
+        id: `${execution.id}:receivable:${index}`,
+        patientName: row.patientName,
+        ownerName: row.ownerName,
+        patientSpecies: row.patientSpecies,
+        encounterId: row.encounterId,
+        installmentNumber: row.installmentNumber,
+        installmentLabel: row.installmentLabel,
+        issuedAt: row.issuedAt,
+        dueAt: row.dueAt,
+        settledAt: row.settledAt,
+        amountOriginal: row.amountOriginal,
+        amountPaid: row.amountPaid,
+        amountOutstanding: row.amountOutstanding,
+        status: row.status,
+        financialStatus: row.financialStatus,
+        encounterStatus: row.encounterStatus,
+        paymentCount: row.paymentCount
+      }));
+      activeServerExecution.value = execution;
       report.value = null;
     } else if (isFinancialPayablesReport.value) {
-      financialPayables.value = [];
-      financialPayables.value = await current(listAllFinancialPayables(
-        isPaidAccountsReport.value ? 'paid' : ''
-      ));
+      const execution = await current(reportsService.execute({
+        reportId: 'financial-payables',
+        filters: buildServerReportFilters()
+      }));
+      const payableRows = execution.rows.filter(isFinancialPayableReportRow);
+      if (payableRows.length !== execution.rows.length) {
+        throw new Error('Resposta inválida do relatório de contas a pagar');
+      }
+      financialPayables.value = payableRows.map((row, index) => ({
+        id: `${execution.id}:payable:${index}`,
+        supplierName: row.supplierName,
+        description: row.description,
+        category: row.category,
+        issuedAt: row.issuedAt,
+        dueAt: row.dueAt,
+        totalAmount: row.totalAmount,
+        paidAmount: row.paidAmount,
+        outstandingAmount: row.outstandingAmount,
+        status: row.status,
+        paymentMethod: row.paymentMethod,
+        reconciliationStatus: row.reconciliationStatus
+      }));
+      activeServerExecution.value = execution;
       report.value = null;
     } else if (isChequesReport.value) {
       const execution = await current(reportsService.execute({
@@ -1586,6 +1344,7 @@ async function loadReport() {
         throw new Error('Resposta inválida do relatório de cheques');
       }
       chequeReportExecution.value = execution;
+      activeServerExecution.value = execution;
       report.value = null;
     } else if (isAdvancePaymentsReport.value) {
       const execution = await current(reportsService.execute({
@@ -1596,6 +1355,7 @@ async function loadReport() {
         throw new Error('Resposta inválida do relatório de pagamentos antecipados');
       }
       advancePaymentReportExecution.value = execution;
+      activeServerExecution.value = execution;
       report.value = null;
     } else if (isServiceInvoicesReport.value) {
       const execution = await current(reportsService.execute({
@@ -1606,6 +1366,7 @@ async function loadReport() {
         throw new Error('Resposta inválida do relatório de NF de serviços prestados');
       }
       serviceInvoiceReportExecution.value = execution;
+      activeServerExecution.value = execution;
       report.value = null;
     } else if (isRegisterServicesReport.value) {
       const execution = await current(reportsService.execute({
@@ -1616,6 +1377,7 @@ async function loadReport() {
         throw new Error('Resposta inválida do relatório de serviços');
       }
       services.value = execution.rows.filter(isRegisterServicesReportRow);
+      activeServerExecution.value = execution;
       report.value = null;
     } else if (isRegisterOwnersReport.value) {
       const execution = await current(reportsService.execute({
@@ -1626,6 +1388,7 @@ async function loadReport() {
         throw new Error('Resposta inválida do relatório de clientes');
       }
       owners.value = execution.rows.filter(isRegisterOwnersReportRow);
+      activeServerExecution.value = execution;
       report.value = null;
     } else if (isRegisterPatientsReport.value) {
       const execution = await current(reportsService.execute({
@@ -1636,6 +1399,7 @@ async function loadReport() {
         throw new Error('Resposta inválida do relatório de animais');
       }
       patients.value = execution.rows.filter(isRegisterPatientsReportRow);
+      activeServerExecution.value = execution;
       report.value = null;
     } else if (isRegisterSuppliersReport.value) {
       const execution = await current(reportsService.execute({
@@ -1646,6 +1410,7 @@ async function loadReport() {
         throw new Error('Resposta inválida do relatório de fornecedores e despesas');
       }
       suppliers.value = execution.rows.filter(isSupplierReportRow);
+      activeServerExecution.value = execution;
       report.value = null;
     } else if (isDeletedSalesCounterSalesReport.value) {
       const isHistory = isCancellationHistoryReport.value;
@@ -1655,6 +1420,7 @@ async function loadReport() {
       }));
       if (cancellationRequestId !== cancellationReportRequestId) return;
       cancellationReports.acceptExecution(execution, isHistory ? 'history' : 'opening-date');
+      activeServerExecution.value = execution;
       report.value = null;
     } else if (isInventoryProductsReport.value) {
       const execution = await current(reportsService.execute({
@@ -1665,6 +1431,7 @@ async function loadReport() {
         throw new Error('Resposta inválida do relatório de produtos de estoque');
       }
       inventoryProductReportExecution.value = execution;
+      activeServerExecution.value = execution;
       report.value = null;
     } else if (isInventoryStockReport.value) {
       const execution = await current(reportsService.execute({
@@ -1675,6 +1442,7 @@ async function loadReport() {
         throw new Error('Resposta inválida do relatório de estoque');
       }
       inventoryStockReportExecution.value = execution;
+      activeServerExecution.value = execution;
       report.value = null;
     } else if (isInventoryMovementsReport.value) {
       const execution = await current(reportsService.execute({
@@ -1685,6 +1453,7 @@ async function loadReport() {
         throw new Error('Resposta inválida do relatório de movimentações de estoque');
       }
       inventoryMovementReportExecution.value = execution;
+      activeServerExecution.value = execution;
       report.value = null;
     } else if (isInventoryInvoicesReport.value) {
       const execution = await current(reportsService.execute({
@@ -1695,6 +1464,7 @@ async function loadReport() {
         throw new Error('Resposta inválida do relatório de entradas de compras');
       }
       inventoryInvoiceReportExecution.value = execution;
+      activeServerExecution.value = execution;
       report.value = null;
     } else {
       report.value = await current(administrativeReportsService.getHubs({
@@ -1723,52 +1493,58 @@ function changeCancellationReportView(value: string | number): void {
   void loadReport();
 }
 
-async function listAllFinancialPayables(status: '' | 'paid'): Promise<FinancialPayableRecord[]> {
-  const pageSize = 100;
-  const all: FinancialPayableRecord[] = [];
-  let page = 1;
-
-  while (true) {
-    const response = await financialPayablesService.list({ status, page, pageSize });
-    all.push(...response.data);
-    if (response.data.length === 0 || all.length >= response.total) return all;
-    page += 1;
-  }
-}
-
-async function listAllFinancialReceivables(
-  status: '' | 'open' | 'settled'
-): Promise<FinancialReceivableListItem[]> {
-  const pageSize = 100;
-  const all: FinancialReceivableListItem[] = [];
-  let page = 1;
-
-  while (true) {
-    const response = await financialReceivablesService.list({ status, page, pageSize });
-    all.push(...response.data);
-    if (response.data.length === 0 || all.length >= response.total) return all;
-    page += 1;
-  }
-}
-
 async function exportCurrentReport(): Promise<void> {
-  if (!spec.value.exportable || exporting.value || loading.value || loadFailed.value || !reportReady.value) return;
+  if (
+    !spec.value.exportable ||
+    exporting.value ||
+    exportPending.value ||
+    loading.value ||
+    loadFailed.value ||
+    serverFiltersChanged.value ||
+    !reportReady.value
+  ) return;
 
   exporting.value = true;
   error.value = '';
   success.value = '';
+  let attemptedExecutionId: string | null = null;
 
   try {
     if (spec.value.serverReportId) {
-      const { execution, exported } = await withDownloadTimeout(async () => {
+      const displayedExecution = activeServerExecution.value;
+      if (
+        displayedExecution &&
+        (!displayedExecution.reportId || displayedExecution.reportId === spec.value.serverReportId)
+      ) {
+        attemptedExecutionId = displayedExecution.id;
+        const exported = await withDownloadTimeout((signal) =>
+          reportsService.exportExecution(displayedExecution.id, 'csv', {
+            signal,
+            idempotencyKey: reportExportIdempotencyKey(displayedExecution.id)
+          })
+        );
+        saveBrowserDownload(exported);
+        clearPendingExport();
+        success.value = isCancellationHistoryReport.value
+          ? `CSV gerado com ${displayedExecution.rowCount} cancelamento(s).`
+          : `Exportação server-side auditada gerada com ${displayedExecution.rowCount} linha(s).`;
+        return;
+      }
+
+      const { execution, exported } = await withDownloadTimeout(async (signal) => {
         const execution = await reportsService.execute({
           reportId: spec.value.serverReportId!,
           filters: buildServerReportFilters()
+        }, { signal });
+        attemptedExecutionId = execution.id;
+        const exported = await reportsService.exportExecution(execution.id, 'csv', {
+          signal,
+          idempotencyKey: reportExportIdempotencyKey(execution.id)
         });
-        const exported = await reportsService.exportExecution(execution.id, 'csv');
         return { execution, exported };
       });
       saveBrowserDownload(exported);
+      clearPendingExport();
       success.value = isCancellationHistoryReport.value
         ? `CSV gerado com ${execution.rowCount} cancelamento(s).`
         : `Exportação server-side auditada gerada com ${execution.rowCount} linha(s).`;
@@ -1782,8 +1558,95 @@ async function exportCurrentReport(): Promise<void> {
       filename: buildReportFilename(spec.value.title)
     });
     success.value = `Exportação CSV gerada com ${rows.value.length} linha(s).`;
+    clearPendingExport();
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Não foi possível exportar o relatório';
+    if (err instanceof DownloadTimeoutError) {
+      const executionId = attemptedExecutionId ?? activeServerExecution.value?.id ?? null;
+      if (executionId) {
+        markPendingExport(executionId);
+        error.value = 'A exportação pode ainda estar sendo processada. Verifique o artefato persistido antes de repetir.';
+      } else {
+        error.value = 'A exportação pode ainda estar sendo processada. Atualize o relatório para obter a execução e depois reconcilie o artefato.';
+      }
+    } else {
+      error.value = err instanceof Error ? err.message : 'Não foi possível exportar o relatório';
+    }
+  } finally {
+    exporting.value = false;
+  }
+}
+
+function reportExportIdempotencyKey(executionId: string): string {
+  return `report-export:${executionId}:csv`;
+}
+
+function markPendingExport(executionId: string): void {
+  pendingExport.value = { executionId, format: 'csv' };
+  exportPending.value = true;
+  exportRetryAvailable.value = false;
+}
+
+function clearPendingExport(): void {
+  pendingExport.value = null;
+  exportPending.value = false;
+  exportRetryAvailable.value = false;
+}
+
+function isNotFoundError(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 404;
+}
+
+async function reconcilePendingExport(): Promise<void> {
+  const pending = pendingExport.value;
+  if (!pending || exporting.value) return;
+
+  exporting.value = true;
+  error.value = '';
+  success.value = '';
+  try {
+    const exported = await withDownloadTimeout((signal) =>
+      reportsService.getExecutionExport(pending.executionId, pending.format, { signal })
+    );
+    saveBrowserDownload(exported);
+    success.value = 'Artefato de exportação reconciliado e baixado com segurança.';
+    clearPendingExport();
+  } catch (err) {
+    if (isNotFoundError(err)) {
+      exportRetryAvailable.value = true;
+      error.value = 'O artefato ainda não está disponível. Se o processamento foi interrompido, repita usando a mesma chave idempotente.';
+    } else if (err instanceof DownloadTimeoutError) {
+      error.value = 'A verificação excedeu o tempo limite. O artefato pode estar pendente; tente verificar novamente.';
+    } else {
+      error.value = err instanceof Error ? err.message : 'Não foi possível verificar a exportação pendente';
+    }
+  } finally {
+    exporting.value = false;
+  }
+}
+
+async function retryPendingExport(): Promise<void> {
+  const pending = pendingExport.value;
+  if (!pending || exporting.value) return;
+
+  exporting.value = true;
+  error.value = '';
+  success.value = '';
+  try {
+    const exported = await withDownloadTimeout((signal) =>
+      reportsService.exportExecution(pending.executionId, pending.format, {
+        signal,
+        idempotencyKey: reportExportIdempotencyKey(pending.executionId)
+      })
+    );
+    saveBrowserDownload(exported);
+    success.value = 'Exportação reconciliada com a mesma chave idempotente.';
+    clearPendingExport();
+  } catch (err) {
+    if (err instanceof DownloadTimeoutError) {
+      error.value = 'A repetição ainda está em processamento. Verifique o artefato antes de tentar novamente.';
+    } else {
+      error.value = err instanceof Error ? err.message : 'Não foi possível repetir a exportação pendente';
+    }
   } finally {
     exporting.value = false;
   }
@@ -1855,17 +1718,61 @@ function resetFilters() {
     action: '',
     type: ''
   };
+  persistReportFiltersInUrl();
   void loadReport();
+}
+
+function readReportFiltersFromUrl() {
+  const defaults = {
+    dateFrom: '',
+    dateTo: '',
+    search: '',
+    status: '',
+    client: '',
+    user: '',
+    action: '',
+    type: ''
+  };
+  if (typeof window === 'undefined' || !isReportRoutePath(window.location.pathname)) return defaults;
+  const params = new URLSearchParams(window.location.search);
+  return Object.fromEntries(
+    REPORT_FILTER_KEYS.map((key) => [key, params.get(key) ?? ''])
+  ) as typeof defaults;
+}
+
+function persistReportFiltersInUrl(): void {
+  if (
+    typeof window === 'undefined' ||
+    !isReportRoutePath(window.location.pathname) ||
+    typeof window.history?.replaceState !== 'function'
+  ) return;
+  const params = new URLSearchParams(window.location.search);
+  for (const key of REPORT_FILTER_KEYS) {
+    const value = filters.value[key].trim();
+    if (value) params.set(key, value);
+    else params.delete(key);
+  }
+  const query = params.toString();
+  const path = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
+  window.history.replaceState(window.history.state, '', path);
+}
+
+function isReportRoutePath(pathname: string): boolean {
+  return /^(?:\/reports|\/relatorios)(?:\/|$)/.test(pathname);
 }
 
 function matchesAuditFilters(event: AuditEventSummary): boolean {
   const clientNeedle = filters.value.client.trim().toLowerCase();
   const userNeedle = filters.value.user.trim().toLowerCase();
   const occurredAt = new Date(event.occurredAt);
-  const fromDate = filters.value.dateFrom ? new Date(`${filters.value.dateFrom}T00:00:00`) : null;
-  const toDate = filters.value.dateTo ? new Date(`${filters.value.dateTo}T23:59:59`) : null;
+  const fromDate = filters.value.dateFrom
+    ? new Date(`${filters.value.dateFrom}T00:00:00.000Z`)
+    : null;
+  const toDateExclusive = filters.value.dateTo
+    ? addUtcCalendarDay(filters.value.dateTo)
+    : null;
   const matchesDateFrom = !fromDate || occurredAt >= fromDate;
-  const matchesDateTo = !toDate || occurredAt <= toDate;
+  const matchesDateTo = !toDateExclusive || occurredAt < toDateExclusive;
   const matchesClient =
     !clientNeedle ||
     [event.entityId, event.payloadSummary].some((value) =>
@@ -1879,6 +1786,12 @@ function matchesAuditFilters(event: AuditEventSummary): boolean {
   return (
     matchesDateFrom && matchesDateTo && matchesClient && matchesUser && matchesAction && matchesType
   );
+}
+
+function addUtcCalendarDay(dateValue: string): Date {
+  const date = new Date(`${dateValue}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date;
 }
 
 function uniqueSorted(values: string[]): string[] {
@@ -2538,6 +2451,67 @@ function isChequeReportRow(row: Record<string, unknown>): row is ChequeReportRow
   );
 }
 
+function isFinancialPayableReportRow(
+  row: Record<string, unknown>
+): row is FinancialPayableServerRow {
+  return (
+    typeof row.supplierName === 'string' &&
+    typeof row.description === 'string' &&
+    typeof row.category === 'string' &&
+    typeof row.issuedAt === 'string' &&
+    !Number.isNaN(Date.parse(row.issuedAt)) &&
+    typeof row.dueAt === 'string' &&
+    !Number.isNaN(Date.parse(row.dueAt)) &&
+    typeof row.totalAmount === 'number' &&
+    Number.isFinite(row.totalAmount) &&
+    typeof row.paidAmount === 'number' &&
+    Number.isFinite(row.paidAmount) &&
+    typeof row.outstandingAmount === 'number' &&
+    Number.isFinite(row.outstandingAmount) &&
+    (row.status === 'open' ||
+      row.status === 'partial' ||
+      row.status === 'paid' ||
+      row.status === 'cancelled') &&
+    (row.paymentMethod === null || typeof row.paymentMethod === 'string') &&
+    (row.reconciliationStatus === 'not_required' ||
+      row.reconciliationStatus === 'pending' ||
+      row.reconciliationStatus === 'reconciled')
+  );
+}
+
+function isFinancialReceivableReportRow(
+  row: Record<string, unknown>
+): row is FinancialReceivableServerRow {
+  return (
+    typeof row.patientName === 'string' &&
+    typeof row.ownerName === 'string' &&
+    (typeof row.patientSpecies === 'string' || row.patientSpecies === null) &&
+    typeof row.encounterId === 'string' &&
+    typeof row.installmentNumber === 'number' &&
+    Number.isInteger(row.installmentNumber) &&
+    row.installmentNumber > 0 &&
+    typeof row.installmentLabel === 'string' &&
+    typeof row.issuedAt === 'string' &&
+    !Number.isNaN(Date.parse(row.issuedAt)) &&
+    (typeof row.dueAt === 'string' || row.dueAt === null) &&
+    (typeof row.settledAt === 'string' || row.settledAt === null) &&
+    typeof row.amountOriginal === 'number' &&
+    Number.isFinite(row.amountOriginal) &&
+    typeof row.amountPaid === 'number' &&
+    Number.isFinite(row.amountPaid) &&
+    typeof row.amountOutstanding === 'number' &&
+    Number.isFinite(row.amountOutstanding) &&
+    (row.status === 'open' || row.status === 'settled') &&
+    (row.financialStatus === 'pending' ||
+      row.financialStatus === 'partial' ||
+      row.financialStatus === 'paid') &&
+    (row.encounterStatus === 'open' || row.encounterStatus === 'closed') &&
+    typeof row.paymentCount === 'number' &&
+    Number.isInteger(row.paymentCount) &&
+    row.paymentCount >= 0
+  );
+}
+
 function isAdvancePaymentReportRow(row: Record<string, unknown>): row is AdvancePaymentReportRow {
   return (
     typeof row.paymentId === 'string' &&
@@ -3075,7 +3049,10 @@ function formatDateTime(value: string | null): string {
 }
 
 onMounted(loadReport);
-watch(() => props.reportKey, resetFilters);
+watch(() => props.reportKey, () => {
+  clearPendingExport();
+  resetFilters();
+});
 onBeforeUnmount(() => { reportRequestId += 1; });
 </script>
 
@@ -3135,6 +3112,8 @@ onBeforeUnmount(() => { reportRequestId += 1; });
 }
 
 .report-query-note { margin: 0; padding: 12px 16px; border-left: 3px solid var(--color-primary); color: var(--color-text-secondary); font-size: 14px; line-height: 1.5; }
+.report-export-recovery { display: grid; gap: 8px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--color-warning, #b7791f) 45%, var(--color-border)); border-radius: 12px; background: color-mix(in srgb, var(--color-warning, #b7791f) 8%, var(--color-surface)); color: var(--color-text); }
+.report-export-recovery span { color: var(--color-text-secondary); font-size: 14px; line-height: 1.5; }
 .report-period-hint { grid-column: 1 / -1; margin: 0; color: var(--color-text-secondary); font-size: 13px; line-height: 1.5; }
 .report-results h2 { margin: 0 0 12px; font-size: 18px; font-weight: 600; }
 .report-money { white-space: nowrap; font-variant-numeric: tabular-nums; }

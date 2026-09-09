@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/vue';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import DsSidebarNav from '../vue/DsSidebarNav.vue';
 
 const meta = {

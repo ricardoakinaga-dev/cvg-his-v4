@@ -1277,7 +1277,8 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
       const counterSalesTablesReady =
         (await databaseTableExists('counter_sales')) &&
         (await databaseTableExists('counter_sale_items')) &&
-        (await databaseTableExists('counter_sale_payments'));
+        (await databaseTableExists('counter_sale_payments')) &&
+        (await databaseTableExists('counter_sale_number_sequences'));
       const quotesTablesReady =
         (await databaseTableExists('quotes')) && (await databaseTableExists('quote_items'));
       const inventoryTablesReady =

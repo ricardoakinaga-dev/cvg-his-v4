@@ -1,0 +1,5 @@
+
+> cvg-his-v2@0.1.0 validate:rls /home/ricardo/cvg-his-v4
+> tsx scripts/validate-rls-coverage.ts
+
+RLS coverage valid: 168/169 tenant table(s) protected, 1 documented exception(s).

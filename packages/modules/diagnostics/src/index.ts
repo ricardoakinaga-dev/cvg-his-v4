@@ -31,7 +31,8 @@ import type {
 import {
   InMemoryLaboratoryCatalogRepository,
   LaboratoryService,
-  type LaboratoryCatalogRepository
+  type LaboratoryCatalogRepository,
+  type LaboratoryResultListOptions
 } from './laboratory.js';
 import type {
   LaboratoryOrderSummary,
@@ -64,7 +65,8 @@ export type { LaboratoryCatalogRepository };
 export {
   DatabaseLaboratoryCatalogRepository,
   InMemoryLaboratoryCatalogRepository,
-  LaboratoryService
+  LaboratoryService,
+  type LaboratoryResultListOptions
 };
 
 const VALID_DIAGNOSTIC_TRANSITIONS: Record<string, readonly string[]> = {

@@ -7,7 +7,7 @@
     >
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
-        <DsButton variant="primary" @click="router.push('/staff/new')"
+        <DsButton variant="primary" data-focus-key="staff-create" @click="router.push('/staff/new')"
           >+ Incluir Novo Profissional</DsButton
         >
       </template>
@@ -65,6 +65,7 @@
           <DsButton
             size="sm"
             variant="secondary"
+            :data-focus-key="`staff-details-${staffRow(row).id}`"
             @click="router.push(`/staff/${staffRow(row).id}`)"
           >
             Ver Detalhes
@@ -72,6 +73,7 @@
           <DsButton
             size="sm"
             variant="secondary"
+            :data-focus-key="`staff-edit-${staffRow(row).id}`"
             @click="router.push(`/staff/${staffRow(row).id}/edit`)"
           >
             Editar
@@ -149,7 +151,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue';
+import { onBeforeUnmount, onMounted, ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
@@ -166,6 +168,8 @@ const staff = ref<StaffSummary[]>([]);
 const loading = ref(false);
 const error = ref('');
 const search = ref('');
+let active = true;
+let requestGeneration = 0;
 
 const columns: DataTableColumn[] = [
   { key: 'fullName', label: 'Nome' },
@@ -226,18 +230,26 @@ const integrations = [
 ];
 
 async function loadData() {
+  const generation = ++requestGeneration;
   loading.value = true;
   error.value = '';
   try {
-    staff.value = await staffService.list();
+    const nextStaff = await staffService.list();
+    if (active && generation === requestGeneration) staff.value = nextStaff;
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar equipe';
+    if (active && generation === requestGeneration) {
+      error.value = err instanceof Error ? err.message : 'Erro ao carregar equipe';
+    }
   } finally {
-    loading.value = false;
+    if (active && generation === requestGeneration) loading.value = false;
   }
 }
 
 onMounted(loadData);
+onBeforeUnmount(() => {
+  active = false;
+  requestGeneration += 1;
+});
 
 function staffRow(row: unknown): StaffSummary {
   return row as StaffSummary;

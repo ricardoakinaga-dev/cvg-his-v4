@@ -1,15 +1,51 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { routes } from './routes';
+import { publicRoutes } from './public-routes';
+import { scrollBehavior } from './scroll-behavior';
 import { useAuthStore } from '@/stores/auth';
 import { useAppStore } from '@/stores/app';
+import { canAccessNavigationPath, hasNavigationPermissionRule } from '@/navigation-permissions';
 import { clearChunkRecoveryTarget, recoverChunkLoadError } from './chunk-recovery';
-import { fetchSetupState, type SetupState } from '@/services/setup';
-import type { LocationQueryRaw, RouteLocationRaw } from 'vue-router';
+import type { SetupState } from '@/services/setup';
+import type {
+  LocationQueryRaw,
+  RouteLocationNormalized,
+  RouteLocationRaw,
+  RouteRecordRaw
+} from 'vue-router';
+
+const deferredPrivateRoute: RouteRecordRaw = {
+  path: '/:pathMatch(.*)*',
+  name: 'DeferredPrivateRoute',
+  component: () => import('@/pages/NotFoundPage.vue'),
+  meta: { title: 'Página não encontrada', requiresAuth: false }
+};
 
 export const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes: [...publicRoutes, deferredPrivateRoute],
+  scrollBehavior
 });
+
+let privateRoutesRequest: Promise<void> | null = null;
+let privateRoutesLoaded = false;
+
+async function ensurePrivateRoutes(): Promise<void> {
+  if (!privateRoutesRequest) {
+    privateRoutesRequest = import('./routes')
+      .then(({ privateRoutes }) => {
+        for (const route of privateRoutes) {
+          router.addRoute(route);
+        }
+        privateRoutesLoaded = true;
+      })
+      .catch((error) => {
+        privateRoutesRequest = null;
+        throw error;
+      });
+  }
+
+  await privateRoutesRequest;
+}
 
 interface SetupRedirectInput {
   readonly path: string;
@@ -35,6 +71,17 @@ const SENSITIVE_ROUTE_KEYS = new Set([
   'setupbootstraptoken'
 ]);
 
+interface SessionAccessResponse {
+  access?: {
+    permissionCodes?: string[];
+  };
+}
+
+let permissionToken: string | null = null;
+let permissionCodes: readonly string[] | null = null;
+let permissionRequestToken: string | null = null;
+let permissionRequest: Promise<readonly string[]> | null = null;
+
 function normalizedRouteKey(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
@@ -42,7 +89,9 @@ function normalizedRouteKey(value: string): string {
 /** Removes credential-shaped route material without reading or persisting it. */
 export function getSanitizedRoute(route: SanitizableRoute): RouteLocationRaw | undefined {
   const safeQuery = Object.fromEntries(
-    Object.entries(route.query).filter(([key]) => !SENSITIVE_ROUTE_KEYS.has(normalizedRouteKey(key)))
+    Object.entries(route.query).filter(
+      ([key]) => !SENSITIVE_ROUTE_KEYS.has(normalizedRouteKey(key))
+    )
   ) as LocationQueryRaw;
   const queryChanged = Object.keys(safeQuery).length !== Object.keys(route.query).length;
   const hashChanged = /(?:access|bootstrap|refresh|setup)[_-]?token/i.test(route.hash);
@@ -66,9 +115,7 @@ export function resolveSetupRedirect(input: SetupRedirectInput): RouteLocationRa
 
   if (input.needsMfa && input.path !== '/auth/mfa') {
     const nextPath = input.nextPath ?? (input.requiresAuth ? input.fullPath : undefined);
-    return nextPath
-      ? { path: '/auth/mfa', query: { next: nextPath } }
-      : { path: '/auth/mfa' };
+    return nextPath ? { path: '/auth/mfa', query: { next: nextPath } } : { path: '/auth/mfa' };
   }
 
   if (input.setupState?.setupRequired && input.path !== '/setup') {
@@ -89,9 +136,74 @@ export function resolveSetupRedirect(input: SetupRedirectInput): RouteLocationRa
   return undefined;
 }
 
+function routePermissionCandidates(to: RouteLocationNormalized): string[] {
+  return [
+    to.path,
+    ...to.matched.flatMap((record) => [record.path, record.aliasOf?.path ?? ''])
+  ].filter((path, index, candidates) => path && path !== '/' && candidates.indexOf(path) === index);
+}
+
+function routePermissionPath(to: RouteLocationNormalized): string | undefined {
+  return routePermissionCandidates(to).find(hasNavigationPermissionRule);
+}
+
+async function loadNavigationPermissionCodes(
+  auth: ReturnType<typeof useAuthStore>
+): Promise<readonly string[] | null> {
+  const token = auth.accessToken;
+  if (!token) return null;
+
+  if (permissionToken === token && permissionCodes !== null) {
+    return permissionCodes;
+  }
+
+  if (permissionRequestToken === token && permissionRequest) {
+    return permissionRequest;
+  }
+
+  permissionToken = token;
+  permissionCodes = null;
+  permissionRequestToken = token;
+  permissionRequest = import('@/services/api')
+    .then(({ apiRequest }) => apiRequest<SessionAccessResponse>('/auth/session'))
+    .then((session) => session.access?.permissionCodes ?? [])
+    .catch(() => [])
+    .then((codes) => {
+      if (permissionToken === token) {
+        permissionCodes = codes;
+      }
+      return codes;
+    })
+    .finally(() => {
+      if (permissionRequestToken === token) {
+        permissionRequestToken = null;
+        permissionRequest = null;
+      }
+    });
+
+  return permissionRequest;
+}
+
+/** Pure route policy used by the global guard and by focused tests. */
+export function resolveNavigationPermissionRedirect(
+  to: Pick<RouteLocationNormalized, 'path'>,
+  codes: readonly string[] | null
+): RouteLocationRaw | undefined {
+  return canAccessNavigationPath(to.path, codes) ? undefined : { path: '/' };
+}
+
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
-  const requiresAuth = to.meta.requiresAuth !== false;
+  const isDeferredRoute = to.name === 'DeferredPrivateRoute';
+  if (isDeferredRoute && !privateRoutesLoaded) {
+    // A legacy alias may not have a lightweight permission entry of its own.
+    // Hydrate the private route table once, then let Vue Router resolve the
+    // canonical record/alias and run the normal auth and permission guards.
+    await ensurePrivateRoutes();
+    return to.fullPath;
+  }
+  const knownPrivatePath = isDeferredRoute && hasNavigationPermissionRule(to.path);
+  const requiresAuth = to.meta.requiresAuth !== false || knownPrivatePath;
   const sanitizedRoute = getSanitizedRoute(to);
 
   if (sanitizedRoute) {
@@ -99,9 +211,13 @@ router.beforeEach(async (to) => {
   }
 
   const shouldCheckSetup = !auth.isAuthenticated && !auth.needsMfa;
-  const setupState = shouldCheckSetup ? await fetchSetupState().catch(() => null) : null;
+  const setupState = shouldCheckSetup
+    ? await import('@/services/setup')
+        .then(({ fetchSetupState }) => fetchSetupState())
+        .catch(() => null)
+    : null;
 
-  return resolveSetupRedirect({
+  const setupRedirect = resolveSetupRedirect({
     path: to.path,
     fullPath: to.fullPath,
     nextPath: typeof to.query.next === 'string' ? to.query.next : undefined,
@@ -110,15 +226,41 @@ router.beforeEach(async (to) => {
     needsMfa: auth.needsMfa,
     setupState
   });
+
+  if (setupRedirect) return setupRedirect;
+
+  // Presentation filtering is complemented by a route-level deny so a typed
+  // deep link cannot mount a private module that is absent from the session.
+  // Synthetic/public routes without the shell's private meta stay untouched.
+  const privateShellRoute =
+    requiresAuth && to.matched.some((record) => record.meta.requiresAuth === true);
+
+  if (privateShellRoute && to.path !== '/') {
+    const permissionPath = routePermissionPath(to);
+    const sessionPermissionCodes = await loadNavigationPermissionCodes(auth);
+    if (!permissionPath) return { path: '/' };
+
+    const permissionRedirect = resolveNavigationPermissionRedirect(
+      { path: permissionPath },
+      sessionPermissionCodes
+    );
+    if (permissionRedirect) return permissionRedirect;
+  }
+
+  return undefined;
 });
 
-router.afterEach((to) => {
+router.afterEach((to, _from, failure) => {
+  // Aborted navigation leaves the current task active, including its title
+  // and recent-route entry (for example when a dirty form stays open).
+  if (failure) return;
   clearChunkRecoveryTarget();
 
   const app = useAppStore();
-  const title = typeof to.meta.title === 'string' && to.meta.title.trim().length > 0
-    ? to.meta.title
-    : 'CVG HIS SPA';
+  const title =
+    typeof to.meta.title === 'string' && to.meta.title.trim().length > 0
+      ? to.meta.title
+      : 'CVG HIS SPA';
 
   app.setPageTitle(title);
 

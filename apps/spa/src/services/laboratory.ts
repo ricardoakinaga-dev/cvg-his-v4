@@ -55,6 +55,10 @@ export interface LaboratoryOrderListFilters {
   id?: string;
 }
 
+export interface LaboratoryMutationOptions {
+  readonly idempotencyKey?: string;
+}
+
 export interface LaboratoryReportListFilters {
   examType?: string;
   code?: string;
@@ -125,19 +129,29 @@ export const laboratoryService = {
     );
   },
 
-  async createOrder(payload: CreateDiagnosticOrderRequest): Promise<DiagnosticOrderSummary> {
+  async createOrder(
+    payload: CreateDiagnosticOrderRequest,
+    options?: LaboratoryMutationOptions
+  ): Promise<DiagnosticOrderSummary> {
     return apiRequest<DiagnosticOrderSummary>('/laboratory/orders', {
       method: 'POST',
+      ...(options?.idempotencyKey
+        ? { headers: { 'Idempotency-Key': options.idempotencyKey } }
+        : {}),
       body: JSON.stringify(payload)
     });
   },
 
   async recordResult(
     orderId: string,
-    payload: RecordDiagnosticResultRequest
+    payload: RecordDiagnosticResultRequest,
+    options?: LaboratoryMutationOptions
   ): Promise<DiagnosticOrderSummary> {
     return apiRequest<DiagnosticOrderSummary>(`/laboratory/orders/${orderId}/result`, {
       method: 'POST',
+      ...(options?.idempotencyKey
+        ? { headers: { 'Idempotency-Key': options.idempotencyKey } }
+        : {}),
       body: JSON.stringify(payload)
     });
   },

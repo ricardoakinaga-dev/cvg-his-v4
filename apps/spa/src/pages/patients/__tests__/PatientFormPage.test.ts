@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { reactive } from 'vue';
+import { reactive, defineComponent } from 'vue';
+import { createRouter, createMemoryHistory } from 'vue-router';
+import { createUnsavedChangesCoordinator, unsavedChangesCoordinatorKey } from '@/composables/unsavedChangesCoordinator';
 import { mount, flushPromises, enableAutoUnmount } from '@vue/test-utils';
 
 const mockOwners = [
@@ -92,6 +94,7 @@ const mockAnimalSpeciesListFn = vi.fn().mockResolvedValue([
     updatedAt: '2024-01-01T00:00:00Z'
   }
 ]);
+let realRouting = false;
 const mockRouterPush = vi.fn();
 const mockRouteParams = vi.fn().mockReturnValue({ params: {}, path: '/patients/new' });
 
@@ -137,12 +140,16 @@ vi.mock('@/services/species', async () => {
   };
 });
 
-vi.mock('vue-router', () => ({
-  useRoute: () => mockRouteParams(),
-  useRouter: () => ({
-    push: mockRouterPush
-  })
-}));
+vi.mock('vue-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('vue-router')>();
+  return {
+    ...actual,
+    useRoute: () => realRouting ? actual.useRoute() : mockRouteParams(),
+    useRouter: () => realRouting ? actual.useRouter() : { push: mockRouterPush },
+    onBeforeRouteLeave: (...args: Parameters<typeof actual.onBeforeRouteLeave>) => { if (realRouting) actual.onBeforeRouteLeave(...args); },
+    onBeforeRouteUpdate: (...args: Parameters<typeof actual.onBeforeRouteUpdate>) => { if (realRouting) actual.onBeforeRouteUpdate(...args); }
+  };
+});
 
 enableAutoUnmount(afterEach);
 afterEach(() => { vi.useRealTimers(); });
@@ -167,6 +174,7 @@ async function linkOwner(wrapper: Awaited<ReturnType<typeof mountForm>>, index =
 
 describe('PatientFormPage', () => {
   beforeEach(() => {
+    realRouting = false;
     vi.clearAllMocks();
     mockOwnerListFn.mockResolvedValue(mockOwners);
     mockOwnerListPageFn.mockImplementation(async () => ({ items: await mockOwnerListFn() }));
@@ -289,6 +297,8 @@ describe('PatientFormPage', () => {
     expect(wrapper.find('#chronicDisease').exists()).toBe(true);
     expect(wrapper.find('#allergy').exists()).toBe(true);
     expect(wrapper.find('#temperament').exists()).toBe(true);
+    expect(wrapper.find('#ownerSearch').attributes('required')).toBeDefined();
+    expect(wrapper.find('label[for="ownerSearch"]').text()).toContain('Tutor responsável');
     expect(wrapper.find('#legacyVetusId').exists()).toBe(true);
     expect(wrapper.find('#originalCreatedAt').exists()).toBe(true);
     expect(wrapper.find('#generalNotes').exists()).toBe(true);
@@ -485,6 +495,40 @@ describe('PatientFormPage', () => {
 
     expect(wrapper.text()).toMatch(/cliente|tutor/i);
     expect(wrapper.text()).toContain('respons');
+    expect(mockPatientCreateFn).not.toHaveBeenCalled();
+  });
+
+  it('shows a navigable validation summary and focuses the first invalid field', async () => {
+    const PatientFormPage = (await import('../PatientFormPage.vue')).default;
+    const wrapper = mount(PatientFormPage, {
+      attachTo: document.body,
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a :href="to"><slot /></a>',
+            props: ['to']
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+    await wrapper.find('form').trigger('submit');
+
+    const summary = wrapper.get('#patient-form-error-summary');
+    expect(summary.attributes('aria-labelledby')).toBe('patient-form-error-summary-title');
+    expect(wrapper.find('form').attributes('novalidate')).toBeDefined();
+    expect(wrapper.find('form').attributes('aria-describedby')).toBe('patient-form-error-summary');
+    expect(summary.findAll('a')).toHaveLength(4);
+    expect(summary.text()).toContain('Nome do animal');
+    expect(summary.text()).toContain('Tutor responsável');
+    expect(document.activeElement).toBe(wrapper.find('#name').element);
+    expect(wrapper.find('#ownerSearch').attributes('aria-invalid')).toBe('true');
+    expect(wrapper.find('#ownerSearch').attributes('aria-describedby')).toBe('ownerSearch-error');
+    expect(wrapper.find('#ownerSearch').attributes('required')).toBeDefined();
+
+    await summary.find('a[href="#sex"]').trigger('click');
+    expect(document.activeElement).toBe(wrapper.find('#sex').element);
     expect(mockPatientCreateFn).not.toHaveBeenCalled();
   });
 
@@ -1029,6 +1073,159 @@ describe('PatientFormPage', () => {
     expect(wrapper.find('#name').element.matches(':disabled')).toBe(true);
     await vi.runAllTimersAsync();
     expect(mockRouterPush).toHaveBeenCalledTimes(1);
+  });
+
+  it('turns a duplicate conflict into a recoverable action and preserves the draft', async () => {
+    mockPatientCreateFn.mockRejectedValueOnce(Object.assign(new Error('Possible duplicate patient detected'), {
+      status: 409,
+      body: {
+        code: 'CONFLICT',
+        message: 'Possible duplicate patient detected',
+        details: { patientId: 'patient-existing' }
+      }
+    }));
+    const wrapper = await mountForm();
+    await linkOwner(wrapper);
+    await wrapper.find('#name').setValue('Rex');
+    await wrapper.find('#species').setValue('canine');
+    await wrapper.find('#sex').setValue('male');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('.duplicate-feedback-region').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Nada novo foi criado');
+    expect(wrapper.find('.form-feedback-region').exists()).toBe(false);
+    expect((wrapper.find('#name').element as HTMLInputElement).value).toBe('Rex');
+    await wrapper.findAll('button').find((button) => button.text() === 'Abrir animal existente')!.trigger('click');
+    expect(mockRouterPush).toHaveBeenCalledWith('/patients/patient-existing');
+  });
+
+  async function mountRouted(path = '/patients/pat-1/edit') {
+    realRouting = true;
+    const PatientFormPage = (await import('../PatientFormPage.vue')).default;
+    const router = createRouter({ history: createMemoryHistory(), routes: [
+      { path: '/patients/new', component: PatientFormPage },
+      { path: '/patients/:id/edit', component: PatientFormPage },
+      { path: '/patients/:id?', component: { template: '<p>Destino</p>' } }
+    ] });
+    await router.push(path);
+    await router.isReady();
+    const coordinator = createUnsavedChangesCoordinator();
+    const wrapper = mount(defineComponent({ template: '<RouterView />' }), { global: {
+      plugins: [router], provide: { [unsavedChangesCoordinatorKey as symbol]: coordinator }, stubs: { Teleport: true }
+    } });
+    await flushPromises();
+    return { wrapper, router, coordinator };
+  }
+
+  it('keeps hydrated edit data clean and permits leaving without confirmation', async () => {
+    const { wrapper, router } = await mountRouted();
+    expect((wrapper.find('#breed').element as HTMLSelectElement).value).toBe('Golden Retriever');
+    await router.push('/patients');
+    expect(router.currentRoute.value.path).toBe('/patients');
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
+  });
+
+  it('keeps initial owner query hydration clean', async () => {
+    const { wrapper, router } = await mountRouted('/patients/new?ownerId=owner-2');
+    expect(wrapper.find('.linked-owner').text()).toContain('Maria Santos');
+    await router.push('/patients');
+    expect(router.currentRoute.value.path).toBe('/patients');
+  });
+
+  it('protects dirty edits before switching the owner query that reloads the form', async () => {
+    const { wrapper, router } = await mountRouted('/patients/new?ownerId=owner-1');
+    await wrapper.find('#name').setValue('Rascunho antes de trocar o tutor');
+
+    const declined = router.push('/patients/new?ownerId=owner-2');
+    await flushPromises();
+    expect(wrapper.find('[role="dialog"]').text()).toContain('Alterações não salvas');
+    expect((wrapper.find('#name').element as HTMLInputElement).value).toBe('Rascunho antes de trocar o tutor');
+    await wrapper.find('#patient-continue-editing').trigger('click');
+    await declined;
+
+    expect(router.currentRoute.value.fullPath).toBe('/patients/new?ownerId=owner-1');
+    expect((wrapper.find('#name').element as HTMLInputElement).value).toBe('Rascunho antes de trocar o tutor');
+
+    const accepted = router.push('/patients/new?ownerId=owner-2');
+    await flushPromises();
+    await wrapper.findAll('button').find((button) => button.text() === 'Descartar e sair')!.trigger('click');
+    await accepted;
+    await flushPromises();
+
+    expect(router.currentRoute.value.fullPath).toBe('/patients/new?ownerId=owner-2');
+    expect(wrapper.find('.linked-owner').text()).toContain('Maria Santos');
+    expect((wrapper.find('#name').element as HTMLInputElement).value).toBe('');
+  });
+
+  it('declines leaving with edits intact, then discards on explicit confirmation', async () => {
+    const { wrapper, router } = await mountRouted();
+    await wrapper.find('#name').setValue('Rascunho');
+    const declined = router.push('/patients');
+    await flushPromises();
+    expect(wrapper.find('[role="dialog"]').text()).toContain('Alterações não salvas');
+    await wrapper.find('#patient-continue-editing').trigger('click');
+    await declined;
+    expect(router.currentRoute.value.path).toBe('/patients/pat-1/edit');
+    expect((wrapper.find('#name').element as HTMLInputElement).value).toBe('Rascunho');
+    const accepted = router.push('/patients');
+    await flushPromises();
+    await wrapper.findAll('button').find(button => button.text() === 'Descartar e sair')!.trigger('click');
+    await accepted;
+    expect(router.currentRoute.value.path).toBe('/patients');
+  });
+
+  it('protects dirty edits before switching the loaded patient', async () => {
+    const { wrapper, router } = await mountRouted();
+    await wrapper.find('#name').setValue('Não perder');
+    const navigation = router.push('/patients/pat-2/edit');
+    await flushPromises();
+    await wrapper.find('#patient-continue-editing').trigger('click');
+    await navigation;
+    expect(mockPatientGetByIdFn).toHaveBeenCalledTimes(1);
+    expect((wrapper.find('#name').element as HTMLInputElement).value).toBe('Não perder');
+  });
+
+  it('retains dirty protection after a failed save', async () => {
+    const { wrapper, router } = await mountRouted();
+    mockPatientUpdateFn.mockRejectedValueOnce(new Error('Falha ao salvar'));
+    await wrapper.find('#name').setValue('Rascunho');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Falha ao salvar');
+    const navigation = router.push('/patients');
+    await flushPromises();
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(true);
+    await wrapper.find('#patient-continue-editing').trigger('click');
+    await navigation;
+    expect((wrapper.find('#name').element as HTMLInputElement).value).toBe('Rascunho');
+  });
+
+  it('marks a confirmed save clean before its scheduled navigation', async () => {
+    vi.useFakeTimers();
+    const { wrapper, router } = await mountRouted();
+    await wrapper.find('#name').setValue('Nome salvo');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(mockPatientUpdateFn).toHaveBeenCalledWith('pat-1', expect.objectContaining({ name: 'Nome salvo' }));
+    await vi.runAllTimersAsync();
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/patients/pat-1');
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
+  });
+
+  it('coordinates logout confirmation and unregisters on unmount', async () => {
+    const { wrapper, coordinator } = await mountRouted();
+    await wrapper.find('#name').setValue('Rascunho');
+    const logout = coordinator.confirmAndDiscard();
+    await flushPromises();
+    await wrapper.find('#patient-continue-editing').trigger('click');
+    expect(await logout).toBe(false);
+    const pending = coordinator.confirmAndDiscard();
+    await flushPromises();
+    wrapper.unmount();
+    expect(await pending).toBe(false);
+    expect(await coordinator.confirmAndDiscard()).toBe(true);
   });
 
 });

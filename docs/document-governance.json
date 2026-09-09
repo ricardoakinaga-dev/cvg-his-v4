@@ -3,24 +3,21 @@
   "current_documents": {
     "baseline": {
       "path": "docs/2026-09-06-relatorio-estado-atual-erp-cvg-his-v4.md",
-      "effective_date": "2026-09-06"
+      "effective_date": "2026-09-07"
     },
     "plan": {
       "path": "docs/2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md",
-      "effective_date": "2026-09-06"
+      "effective_date": "2026-09-07"
     },
     "roadmap": {
       "path": "docs/2026-09-06-roadmap-erp-state-of-art-triplo-aaa.md",
-      "effective_date": "2026-09-06"
+      "effective_date": "2026-09-07"
     },
     "backlog": {
       "path": "docs/2026-09-06-backlog-erp-state-of-art-triplo-aaa.md",
-      "effective_date": "2026-09-06"
+      "effective_date": "2026-09-07"
     }
   },
   "historical_documents": [],
-  "linked_indexes": [
-    "docs/README.md",
-    "docs/430-fonte-de-verdade-documental.md"
-  ]
+  "linked_indexes": ["docs/README.md", "docs/430-fonte-de-verdade-documental.md"]
 }

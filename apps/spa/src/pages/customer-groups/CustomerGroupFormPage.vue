@@ -38,7 +38,7 @@
             <span>Grupos Ativos</span>
           </label>
           <div class="form-actions">
-            <DsButton variant="primary" type="submit" :loading="submitting">Salvar</DsButton>
+            <DsButton variant="primary" type="submit" :loading="submitting" :disabled="successPending">Salvar</DsButton>
             <DsButton variant="secondary" type="button" @click="router.push('/customer-groups')">Cancelar</DsButton>
           </div>
         </form>
@@ -73,6 +73,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import AppPageHeader from '@/components/AppPageHeader.vue';
+import { useSuccessRedirect } from '@/composables/successRedirect';
 import { customerGroupsService } from '@/services/customerGroups';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
@@ -84,6 +85,8 @@ const route = useRoute();
 const customerGroupId = computed(() => route.params.id as string | undefined);
 const isEditing = computed(() => Boolean(customerGroupId.value));
 const submitting = ref(false);
+const successRedirect = useSuccessRedirect();
+const successPending = successRedirect.successPending;
 const error = ref('');
 const successMessage = ref('');
 const form = ref({
@@ -122,6 +125,7 @@ async function loadCustomerGroup() {
 }
 
 async function submitForm() {
+  if (submitting.value || !successRedirect.begin()) return;
   if (!form.value.name.trim()) {
     error.value = 'Descrição é obrigatória';
     return;
@@ -148,7 +152,7 @@ async function submitForm() {
       await customerGroupsService.create(payload);
     }
     successMessage.value = 'Grupo de Clientes salvo com sucesso.';
-    setTimeout(() => router.push('/customer-groups'), 1200);
+    successRedirect.schedule(() => router.push('/customer-groups'), successMessage.value);
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao salvar grupo de clientes';
   } finally {

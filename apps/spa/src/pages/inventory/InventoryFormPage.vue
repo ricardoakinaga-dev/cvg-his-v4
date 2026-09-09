@@ -80,7 +80,7 @@
           />
 
           <div class="form-actions">
-            <DsButton type="submit" variant="primary" :loading="saving" :disabled="saving">
+            <DsButton type="submit" variant="primary" :loading="saving" :disabled="saving || successPending">
               {{ saving ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Criar Item' }}
             </DsButton>
             <DsButton variant="secondary" tag="a" to="/inventory">Cancelar</DsButton>
@@ -120,6 +120,7 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
+import { useSuccessRedirect } from '@/composables/successRedirect';
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -143,6 +144,8 @@ const form = ref({
 const formError = ref('');
 const successMessage = ref('');
 const saving = ref(false);
+const successRedirect = useSuccessRedirect();
+const successPending = successRedirect.successPending;
 
 const summaryCards = computed(() => [
   { label: 'SKU', value: form.value.sku.trim() || '—', hint: 'Código único do item' },
@@ -178,6 +181,7 @@ onMounted(async () => {
 });
 
 async function onSubmit() {
+  if (saving.value || !successRedirect.begin()) return;
   saving.value = true;
   formError.value = '';
   successMessage.value = '';
@@ -203,7 +207,7 @@ async function onSubmit() {
       });
       successMessage.value = 'Item criado com sucesso!';
     }
-    setTimeout(() => router.push('/inventory'), 1500);
+    successRedirect.schedule(() => router.push('/inventory'), successMessage.value);
   } catch (err: unknown) {
     formError.value = err instanceof Error ? err.message : 'Erro ao salvar item';
   } finally {

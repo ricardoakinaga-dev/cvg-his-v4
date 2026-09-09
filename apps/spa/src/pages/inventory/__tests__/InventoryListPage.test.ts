@@ -165,4 +165,83 @@ describe('InventoryListPage', () => {
     expect(wrapper.text()).toContain('Dipirona Injetavel');
   });
 
+  it('selects a visible item and shows count, scope, and local-only status', async () => {
+    const wrapper = mount((await import('../InventoryListPage.vue')).default);
+    await flushPromises();
+
+    const firstCheckbox = wrapper.get('[data-testid="inventory-select-inv_dipyrone"]');
+    await firstCheckbox.setValue(true);
+
+    expect((firstCheckbox.element as HTMLInputElement).checked).toBe(true);
+    expect(wrapper.get('[data-testid="selected-count"]').text()).toBe('1 item selecionado');
+    expect(wrapper.get('[data-testid="selection-scope"]').text())
+      .toContain('Escopo: resultados visíveis da consulta atual (página atual).');
+    expect(wrapper.text()).toContain('Seleção local para revisão; nenhuma alteração é salva.');
+  });
+
+  it('selects only the current query results and labels select-all with query/page scope', async () => {
+    mockListFn.mockImplementation((query?: string) => Promise.resolve(query === 'Gaze' ? [mockItems[1]] : mockItems));
+    const wrapper = mount((await import('../InventoryListPage.vue')).default);
+    await flushPromises();
+
+    await wrapper.get('input[type="search"]').setValue('Gaze');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+
+    const selectAll = wrapper.get('[data-testid="inventory-select-all"]');
+    expect(selectAll.attributes('aria-label'))
+      .toBe('Selecionar todos os resultados visíveis da consulta atual (“Gaze”) (página atual)');
+    expect(selectAll.attributes('aria-label')).not.toMatch(/total|servidor/i);
+
+    await selectAll.setValue(true);
+
+    expect(wrapper.get('[data-testid="selected-count"]').text()).toBe('1 item selecionado');
+    expect((wrapper.get('[data-testid="inventory-select-inv_gauze"]').element as HTMLInputElement).checked).toBe(true);
+    expect(wrapper.find('[data-testid="inventory-select-inv_dipyrone"]').exists()).toBe(false);
+  });
+
+  it('clears selection when the applied filter changes', async () => {
+    mockListFn.mockImplementation((query?: string) => Promise.resolve(query ? [mockItems[1]] : mockItems));
+    const wrapper = mount((await import('../InventoryListPage.vue')).default);
+    await flushPromises();
+
+    await wrapper.get('[data-testid="inventory-select-inv_dipyrone"]').setValue(true);
+    expect(wrapper.get('[data-testid="selected-count"]').text()).toBe('1 item selecionado');
+
+    await wrapper.get('input[type="search"]').setValue('Gaze');
+    expect(wrapper.get('[data-testid="selected-count"]').text()).toBe('0 itens selecionados');
+
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.get('[data-testid="selected-count"]').text()).toBe('0 itens selecionados');
+    expect(wrapper.find('[data-testid="inventory-select-inv_dipyrone"]').exists()).toBe(false);
+    expect((wrapper.get('[data-testid="inventory-select-inv_gauze"]').element as HTMLInputElement).checked).toBe(false);
+  });
+
+  it('clears selection before a reload hides the previous rows', async () => {
+    let resolveReload: (value: typeof mockItems) => void;
+    const reloadPromise = new Promise<typeof mockItems>((resolve) => {
+      resolveReload = resolve;
+    });
+    mockListFn.mockResolvedValueOnce(mockItems).mockImplementationOnce(() => reloadPromise);
+    const wrapper = mount((await import('../InventoryListPage.vue')).default);
+    await flushPromises();
+
+    await wrapper.get('[data-testid="inventory-select-inv_dipyrone"]').setValue(true);
+    expect(wrapper.get('[data-testid="selected-count"]').text()).toBe('1 item selecionado');
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Atualizar')!.trigger('click');
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="selection-status"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="inventory-select-inv_dipyrone"]').exists()).toBe(false);
+
+    resolveReload!(mockItems);
+    await flushPromises();
+
+    expect(wrapper.get('[data-testid="selected-count"]').text()).toBe('0 itens selecionados');
+    expect((wrapper.get('[data-testid="inventory-select-inv_dipyrone"]').element as HTMLInputElement).checked).toBe(false);
+  });
+
 });

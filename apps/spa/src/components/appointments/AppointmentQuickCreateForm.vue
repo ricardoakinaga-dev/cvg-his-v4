@@ -336,7 +336,7 @@ import type {
 import type { OwnerSummary } from '@/types/owner';
 import type { PatientSummary } from '@/types/patient';
 import type { ServiceSummary } from '@/services/services';
-import { speciesLabel } from '@/utils/labels';
+import { formatOwnerContact, speciesLabel } from '@/utils/labels';
 
 interface Props {
   compact?: boolean;
@@ -474,7 +474,7 @@ const ownerPrimaryContact = computed(() => {
   const owner = props.ownerSnapshot;
   if (!owner) return 'Sem contato principal';
   const primary = owner.contacts.find((contact) => contact.primary) ?? owner.contacts[0];
-  return primary ? `${primary.label}: ${primary.value}` : 'Sem contato principal';
+  return primary ? formatOwnerContact(primary, 'Sem contato principal') : 'Sem contato principal';
 });
 
 let availabilityRequestId = 0;

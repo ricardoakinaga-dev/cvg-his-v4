@@ -31,6 +31,10 @@ async function createFixture(
     readonly billingStatus?: string;
     readonly encounterStatus?: 'open' | 'closed';
     readonly amount?: string;
+    readonly financialPaidAmount?: string;
+    readonly financialBalanceDue?: string;
+    readonly financialTotal?: string;
+    readonly withoutFinancialAccount?: boolean;
   } = {}
 ): Promise<Fixture> {
   const accountId = randomUUID();
@@ -101,6 +105,24 @@ async function createFixture(
       actorUserId
     ]
   );
+
+  if (!overrides.withoutFinancialAccount) {
+    const financialTotal = overrides.financialTotal ?? overrides.amount ?? AMOUNT;
+    await pool.query(
+      `INSERT INTO encounter_financial_accounts (
+         id, account_id, encounter_id, financial_status,
+         subtotal_snapshot, total_snapshot, paid_amount, balance_due, snapshot_json
+       ) VALUES ($1, $2, $3, 'pending', $4, $4, $5, $6, '{}')`,
+      [
+        randomUUID(),
+        accountId,
+        encounterId,
+        financialTotal,
+        overrides.financialPaidAmount ?? '0.00',
+        overrides.financialBalanceDue ?? financialTotal
+      ]
+    );
+  }
 
   return { accountId, actorUserId, encounterId, billingRecordId };
 }
@@ -187,6 +209,31 @@ describe('RequestEncounterPixPaymentCommand PostgreSQL contract', () => {
 
   beforeEach(async () => {
     await pool.query('TRUNCATE TABLE accounts CASCADE');
+  });
+
+  it('allows encounter deletion to cascade billing items after their parent is removed', async () => {
+    const fixture = await createFixture(pool);
+
+    const deleted = await pool.query('DELETE FROM encounters WHERE account_id = $1 AND id = $2', [
+      fixture.accountId,
+      fixture.encounterId
+    ]);
+
+    expect(deleted.rowCount).toBe(1);
+
+    const remaining = await pool.query<{
+      readonly encounters: number;
+      readonly billingRecords: number;
+      readonly billingItems: number;
+    }>(
+      `SELECT
+         (SELECT COUNT(*)::int FROM encounters WHERE account_id = $1 AND id = $2) AS encounters,
+         (SELECT COUNT(*)::int FROM billing_records WHERE account_id = $1 AND id = $3) AS "billingRecords",
+         (SELECT COUNT(*)::int FROM billing_items WHERE account_id = $1 AND encounter_id = $2) AS "billingItems"`,
+      [fixture.accountId, fixture.encounterId, fixture.billingRecordId]
+    );
+
+    expect(remaining.rows[0]).toEqual({ encounters: 0, billingRecords: 0, billingItems: 0 });
   });
 
   it('forces tenant RLS and rejects a billing record from another encounter in the same account', async () => {
@@ -653,7 +700,11 @@ describe('RequestEncounterPixPaymentCommand PostgreSQL contract', () => {
   it.each([
     ['open encounter', { encounterStatus: 'open' as const }, 'ENCOUNTER_NOT_CLOSED'],
     ['settled billing', { billingStatus: 'settled' }, 'BILLING_NOT_RECEIVABLE'],
-    ['zero billing', { amount: '0.00' }, 'BILLING_NOT_RECEIVABLE']
+    ['zero billing', { amount: '0.00' }, 'BILLING_NOT_RECEIVABLE'],
+    ['paid financial account', { financialPaidAmount: '1.00', financialBalanceDue: '11.55' }, 'BILLING_NOT_RECEIVABLE'],
+    ['partial financial balance', { financialBalanceDue: '1.00' }, 'BILLING_NOT_RECEIVABLE'],
+    ['financial total mismatch', { financialTotal: '10.00' }, 'BILLING_NOT_RECEIVABLE'],
+    ['missing financial account', { withoutFinancialAccount: true }, 'BILLING_NOT_RECEIVABLE']
   ])('rejects %s without durable payment artifacts', async (_name, overrides, code) => {
     const fixture = await createFixture(pool, overrides);
     const input = requestInput(fixture);

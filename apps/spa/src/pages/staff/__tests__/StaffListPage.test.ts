@@ -79,6 +79,12 @@ describe('StaffListPage', () => {
     expect(wrapper.text()).toContain('Folgas');
     expect(wrapper.text()).toContain('Comissões');
     expect(wrapper.text()).toContain('Profissões');
+    expect(wrapper.find('button[data-focus-key="staff-create"]').exists()).toBe(true);
+    expect(wrapper.find('button[data-focus-key="staff-details-staff-1"]').exists()).toBe(true);
+    expect(wrapper.find('button[data-focus-key="staff-edit-staff-1"]').exists()).toBe(true);
+    expect(wrapper.find('button[data-focus-key="staff-details-staff-2"]').exists()).toBe(true);
+    expect(wrapper.find('button[data-focus-key="staff-edit-staff-2"]').exists()).toBe(true);
+    expect(wrapper.get('button[data-focus-key="staff-details-staff-1"]').attributes('id')).toBeUndefined();
   });
 
   it('filters professionals by employee code or name', async () => {

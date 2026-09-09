@@ -1,9 +1,11 @@
 import { computed, inject, onBeforeUnmount, onMounted, ref } from 'vue';
-import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate, type RouteLocationNormalized } from 'vue-router';
 import { unsavedChangesCoordinatorKey } from './unsavedChangesCoordinator';
 
 /** Component-local protection. No personal data is persisted in browser storage. */
-export function useUnsavedChanges(snapshot: () => string) {
+export function useUnsavedChanges(snapshot: () => string, options: {
+  resetsForm?: (to: RouteLocationNormalized, from: RouteLocationNormalized) => boolean;
+} = {}) {
   const cleanSnapshot = ref(snapshot());
   const dirty = computed(() => snapshot() !== cleanSnapshot.value);
   const leaveRequested = ref(false);
@@ -34,7 +36,9 @@ export function useUnsavedChanges(snapshot: () => string) {
   }
 
   onBeforeRouteLeave(requestLeave);
-  onBeforeRouteUpdate((to, from) => to.path === from.path || requestLeave());
+  onBeforeRouteUpdate((to, from) =>
+    (to.path === from.path && !options.resetsForm?.(to, from)) || requestLeave()
+  );
   const unregister = coordinator?.register({ snapshot, confirm: requestLeave, discard: (value) => { cleanSnapshot.value = value; } });
   onMounted(() => window.addEventListener('beforeunload', beforeUnload));
   onBeforeUnmount(() => {

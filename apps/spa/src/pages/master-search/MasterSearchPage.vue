@@ -324,7 +324,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref, computed } from 'vue';
+import { computed, inject, onMounted, reactive, ref, watch } from 'vue';
+import { routeLocationKey, routerKey } from 'vue-router';
 import { billingService } from '@/services/billing';
 import { counterSalesService, type CounterSaleSummary } from '@/services/counterSales';
 import { laboratoryService } from '@/services/laboratory';
@@ -350,8 +351,11 @@ import StatusBadge from '@/components/StatusBadge.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 
 const PRIORITY360_FILTER_STORAGE_KEY = 'cvg-his-v2:master-search:priority360-filter';
+const SEARCH_QUERY_PARAM = 'q';
 
-const query = ref('');
+const route = inject(routeLocationKey, null);
+const router = inject(routerKey, null);
+const query = ref(readRouteSearchQuery(route?.query?.[SEARCH_QUERY_PARAM]));
 const loading = ref(false);
 const error = ref('');
 const owners = ref<OwnerSummary[]>([]);
@@ -422,6 +426,28 @@ const priority360Summary = computed(() => {
 const hasPriority360Filter = computed(() => priority360Only.value || Boolean(priority360Filter.value));
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function readRouteSearchQuery(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function persistSearchQuery(value: string) {
+  if (!route || !router) return;
+  const normalized = value.trim();
+  const current = readRouteSearchQuery(route.query[SEARCH_QUERY_PARAM]);
+  if (normalized === current) return;
+
+  const nextQuery = { ...route.query };
+  if (normalized) {
+    nextQuery[SEARCH_QUERY_PARAM] = normalized;
+  } else {
+    delete nextQuery[SEARCH_QUERY_PARAM];
+  }
+
+  void router.replace({ query: nextQuery });
+}
+
+watch(query, persistSearchQuery);
 
 function onQueryInput() {
   if (searchTimeout) clearTimeout(searchTimeout);

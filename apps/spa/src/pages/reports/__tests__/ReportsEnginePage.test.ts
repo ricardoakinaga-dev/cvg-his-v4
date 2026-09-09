@@ -274,7 +274,11 @@ describe('ReportsEnginePage', () => {
     await wrapper.findAll('button').find((button) => button.text() === 'Agendar relatório')?.trigger('click');
     await flushPromises();
 
-    expect(reportsService.exportExecution).toHaveBeenCalledWith(execution.id, 'csv');
+    expect(reportsService.exportExecution).toHaveBeenCalledWith(
+      execution.id,
+      'csv',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
     expect(reportsService.createSchedule).toHaveBeenCalledWith(
       expect.objectContaining({
         reportId: definition.id,

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import {
   colors,
@@ -7,12 +9,16 @@ import {
   typography,
   transitions,
   zIndex,
-  layout
+  layout,
+  semanticTokens,
+  cvgPulseTokens
 } from '../../../packages/design-system/src/tokens/index.js';
 import {
   lightTheme,
   darkTheme,
-  generateThemeCSS
+  generateThemeCSS,
+  cvgPulseLightTheme,
+  cvgPulseDarkTheme
 } from '../../../packages/design-system/src/themes/index.js';
 import { renderButton } from '../../../packages/design-system/src/components/button.js';
 import { renderInput, renderSelect } from '../../../packages/design-system/src/components/input.js';
@@ -22,6 +28,68 @@ import {
   renderAlert,
   renderSpinner
 } from '../../../packages/design-system/src/components/display.js';
+
+const variablesCss = readFileSync(
+  resolve(process.cwd(), 'packages/design-system/src/tokens/variables.css'),
+  'utf8'
+);
+
+function extractCssBlock(selector: string): string {
+  const selectorStart = variablesCss.indexOf(`${selector} {`);
+  if (selectorStart < 0) throw new Error(`CSS selector not found: ${selector}`);
+
+  const blockStart = variablesCss.indexOf('{', selectorStart);
+  let depth = 0;
+  for (let index = blockStart; index < variablesCss.length; index += 1) {
+    if (variablesCss[index] === '{') depth += 1;
+    if (variablesCss[index] === '}') {
+      depth -= 1;
+      if (depth === 0) return variablesCss.slice(blockStart + 1, index);
+    }
+  }
+
+  throw new Error(`CSS block not closed: ${selector}`);
+}
+
+function cssDeclarations(selector: string): Record<string, string> {
+  return Object.fromEntries(
+    [...extractCssBlock(selector).matchAll(/^\s*(--[a-z0-9-]+):\s*([^;]+);/gim)].map(
+      ([, name, value]) => [name, value.trim().replace(/\s+/g, ' ')]
+    )
+  );
+}
+
+function declaredCssVariables(): Set<string> {
+  return new Set([...variablesCss.matchAll(/^\s*(--[a-z0-9-]+):/gim)].map(([, name]) => name));
+}
+
+function cssReferences(value: unknown): string[] {
+  if (typeof value === 'string') {
+    return [...value.matchAll(/var\((--[a-z0-9-]+)\)/g)].map(([, name]) => name);
+  }
+  if (value && typeof value === 'object') {
+    return Object.values(value).flatMap((nestedValue) => cssReferences(nestedValue));
+  }
+  return [];
+}
+
+const themeCssVariables = {
+  bg: '--color-bg',
+  bgElevated: '--color-bg-elevated',
+  bgSubtle: '--color-bg-subtle',
+  bgOverlay: '--color-bg-overlay',
+  surface: '--color-surface',
+  surfaceGlass: '--color-surface-glass',
+  surfaceHover: '--color-surface-hover',
+  border: '--color-border',
+  borderStrong: '--color-border-strong',
+  text: '--color-text',
+  textSecondary: '--color-text-secondary',
+  textMuted: '--color-text-muted',
+  textInverse: '--color-text-inverse',
+  textLink: '--color-text-link',
+  focusRing: '--color-focus-ring'
+} as const;
 
 describe('Design System — Tokens', () => {
   it('should have complete color palette', () => {
@@ -73,6 +141,41 @@ describe('Design System — Tokens', () => {
     expect(layout.touchMin).toBe('44px');
     expect(layout.topbarHeight).toBe('56px');
   });
+
+  it('should expose the current CVG Pulse map through declared CSS anchors', () => {
+    const cssVariables = declaredCssVariables();
+    const rootCss = cssDeclarations(':root');
+    const references = cssReferences(cvgPulseTokens);
+
+    expect(references.length).toBeGreaterThan(100);
+    for (const reference of references) expect(cssVariables).toContain(reference);
+
+    expect(cvgPulseTokens.colors.primary[500]).toBe('var(--color-primary-500)');
+    expect(cvgPulseTokens.colors.brand.cyan).toBe('var(--color-cyan)');
+    expect(cvgPulseTokens.colors.brand.mint).toBe('var(--color-mint)');
+    expect(cvgPulseTokens.colors.brand.ink).toBe('var(--color-ink)');
+    expect(cvgPulseTokens.typography.fontFamily.interface).toBe('var(--font-family-sans)');
+    expect(cvgPulseTokens.semantic).toBe(semanticTokens);
+
+    expect(rootCss['--color-primary-500']).toBe('#0fa8b8');
+    expect(rootCss['--color-success-500']).toBe('#159f83');
+    expect(rootCss['--color-ink']).toBe('#112530');
+    expect(rootCss['--color-cyan']).toBe('var(--color-primary-500)');
+    expect(rootCss['--color-mint']).toBe('var(--color-success-500)');
+    expect(rootCss['--font-family-sans']).toContain("'Aptos'");
+  });
+
+  it('should keep legacy token exports available with their compatibility values', () => {
+    expect(colors.primary[500]).toBe('#3b82f6');
+    expect(colors.neutral[500]).toBe('#64748b');
+    expect(typography.fontFamily.sans).toContain('Inter');
+    expect(spacing[4]).toBe('1rem');
+    expect(radius.md).toBe('0.5rem');
+    expect(shadows.focus).toContain('rgba(37, 99, 235, 0.4)');
+    expect(transitions.duration.fast).toBe('150ms');
+    expect(zIndex.tooltip).toBe(600);
+    expect(layout.maxWidthContainer).toBe('1280px');
+  });
 });
 
 describe('Design System — Themes', () => {
@@ -101,6 +204,28 @@ describe('Design System — Themes', () => {
     expect(lightTheme.bg).not.toBe(darkTheme.bg);
     expect(lightTheme.surface).not.toBe(darkTheme.surface);
     expect(lightTheme.text).not.toBe(darkTheme.text);
+  });
+
+  it('should keep the current CVG Pulse themes synchronized with CSS anchors', () => {
+    const lightCss = cssDeclarations(':root');
+    const darkCss = cssDeclarations(":root[data-theme='dark']");
+
+    for (const [field, cssVariable] of Object.entries(themeCssVariables)) {
+      expect(cvgPulseLightTheme[field as keyof typeof cvgPulseLightTheme]).toBe(lightCss[cssVariable]);
+      expect(cvgPulseDarkTheme[field as keyof typeof cvgPulseDarkTheme]).toBe(darkCss[cssVariable]);
+    }
+
+    expect(cvgPulseLightTheme.bg).toBe('#eef4f6');
+    expect(cvgPulseDarkTheme.bg).toBe('#091522');
+    expect(cvgPulseLightTheme).not.toEqual(lightTheme);
+    expect(cvgPulseDarkTheme).not.toEqual(darkTheme);
+  });
+
+  it('should generate CSS from the current light theme without changing the legacy generator', () => {
+    const css = generateThemeCSS(cvgPulseLightTheme);
+    expect(css).toContain('--color-bg: #eef4f6;');
+    expect(css).toContain('--color-text: #112530;');
+    expect(css).toContain('--color-focus-ring: rgba(15, 168, 184, 0.42);');
   });
 });
 

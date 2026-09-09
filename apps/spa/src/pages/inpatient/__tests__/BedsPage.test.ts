@@ -80,6 +80,9 @@ describe('BedsPage', () => {
     expect(wrapper.text()).toContain('Código');
     expect(wrapper.text()).toContain('Descrição');
     expect(wrapper.text()).toContain('Abrir');
+    expect(wrapper.find('button[data-focus-key="beds-create"]').exists()).toBe(true);
+    expect(wrapper.find('button[data-focus-key="beds-open-bed-1"]').exists()).toBe(true);
+    expect(wrapper.find('button[data-focus-key="beds-open-bed-2"]').exists()).toBe(true);
   });
 
   it('searches using code, description and active filters', async () => {
@@ -248,6 +251,8 @@ describe('BedsPage operational truth', () => {
     expect(wrapper.findAll('th').map((cell) => cell.text())).toEqual(['Código', 'Descrição', 'Setor', 'Status', 'Boxes Ativos', 'Abrir']);
     expect(wrapper.get('a[href="/sectors"]').text()).toContain('Setores');
     expect(wrapper.get('a[href="/inpatient/board"]').text()).toContain('Mapa de Leitos');
+    expect(wrapper.get('button[data-focus-key="beds-create"]').attributes('id')).toBeUndefined();
+    expect(wrapper.get('button[data-focus-key="beds-open-bed-1"]').attributes('id')).toBeUndefined();
     await action(wrapper, /^Incluir$/).trigger('click');
     expect(mockPush).toHaveBeenLastCalledWith('/beds/new');
     await action(wrapper, /^Abrir$/).trigger('click');

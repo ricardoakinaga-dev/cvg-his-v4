@@ -141,7 +141,7 @@ test.describe('Busca Mestre 360 mobile visual', () => {
     await stabilizeMobile360(page);
 
     const receptionSearch = page.getByRole('search');
-    await receptionSearch.getByPlaceholder(/buscar tutor ou paciente/i).fill(patientName);
+    await receptionSearch.getByLabel('Busca da recepção', { exact: true }).fill(patientName);
     await receptionSearch.getByRole('button', { name: 'Buscar', exact: true }).click();
 
     const quickActions = page.getByLabel('Acoes rapidas contextuais da recepcao');

@@ -116,6 +116,24 @@ describe('AppPageHeader', () => {
     expect(wrapper.text()).toContain('Atualizar');
   });
 
+  it('keeps secondary actions in a native disclosure when mobile collapsing is enabled', () => {
+    const wrapper = mount(AppPageHeader, {
+      props: {
+        title: 'Title',
+        primaryAction: { label: 'Novo' },
+        secondaryActions: [{ label: 'Atualizar', variant: 'secondary' }],
+        collapseSecondaryActionsOnMobile: true
+      }
+    });
+
+    const disclosure = wrapper.find('details.app-page-header__secondary-actions--collapsible');
+    expect(disclosure.exists()).toBe(true);
+    expect(disclosure.find('summary').text()).toBe('Mais ações');
+    expect(disclosure.find('.ds-btn').text()).toContain('Atualizar');
+    expect(wrapper.find('.app-page-header__primary').text()).toContain('Novo');
+    expect(disclosure.attributes('open')).toBeDefined();
+  });
+
   it('renders optional operational context and next steps', () => {
     const wrapper = mount(AppPageHeader, {
       props: {
@@ -171,6 +189,23 @@ describe('AppPageHeader', () => {
     });
     expect(wrapper.find('.app-page-header').exists()).toBe(true);
     expect(wrapper.find('.app-page-header').element.tagName).toBe('HEADER');
+  });
+
+  it('forwards consumer attributes to the header when tabs render as a sibling', () => {
+    const wrapper = mount(AppPageHeader, {
+      attrs: {
+        class: 'app-page-header--agenda',
+        'data-surface': 'agenda'
+      },
+      props: {
+        title: 'Agenda',
+        tabs: [{ key: 'list', label: 'Lista' }]
+      }
+    });
+
+    const header = wrapper.find('.app-page-header');
+    expect(header.classes()).toContain('app-page-header--agenda');
+    expect(header.attributes('data-surface')).toBe('agenda');
   });
 
   it('labels the page action group for keyboard and assistive technology users', () => {

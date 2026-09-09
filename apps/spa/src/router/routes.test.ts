@@ -42,6 +42,7 @@ describe('router convergence', () => {
       '/agendamentos/novo',
       '/atendimento/atendimentos/agenda/novo'
     ]);
+    expect(findChildRoute('appointments')?.meta?.pageOwnsHeader).toBe(true);
   });
 
   it('anchors the renamed atendimento and cadastros routes to the new taxonomy', () => {

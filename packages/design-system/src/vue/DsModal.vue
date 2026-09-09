@@ -77,6 +77,15 @@ function onOverlayClick() {
   }
 }
 
+function getFocusableElements(): HTMLElement[] {
+  if (!modalRef.value) return [];
+  return Array.from(
+    modalRef.value.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]):not([aria-disabled="true"])'
+    )
+  ).filter((element) => !element.hasAttribute('hidden'));
+}
+
 function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape' && props.closable && props.open) {
     event.preventDefault();
@@ -84,9 +93,7 @@ function handleKeydown(event: KeyboardEvent) {
   }
   // Focus trap
   if (event.key === 'Tab' && props.open && modalRef.value) {
-    const focusable = modalRef.value.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
+    const focusable = getFocusableElements();
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
     if (!first || !last) {
@@ -107,9 +114,7 @@ function handleKeydown(event: KeyboardEvent) {
 function onModalMounted(el: Element | ComponentPublicInstance | null) {
   if (el && (el as HTMLElement).querySelector) {
     modalRef.value = el as HTMLElement;
-    const focusable = modalRef.value?.querySelector<HTMLElement>(
-      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-    );
+    const focusable = getFocusableElements()[0];
     const initial = props.initialFocus
       ? modalRef.value.querySelector<HTMLElement>(props.initialFocus) : null;
     (initial || focusable || modalRef.value)?.focus();
@@ -152,9 +157,7 @@ watch(
         ? document.activeElement
         : null;
       await nextTick();
-      const focusable = modalRef.value?.querySelector<HTMLElement>(
-        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      );
+      const focusable = getFocusableElements()[0];
       const initial = props.initialFocus
         ? modalRef.value?.querySelector<HTMLElement>(props.initialFocus) : null;
       (initial || focusable || modalRef.value)?.focus();

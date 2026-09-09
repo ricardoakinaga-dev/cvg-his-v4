@@ -1,3 +1,33 @@
+export const clinicalLabels = {
+  tutor: {
+    singular: 'Tutor',
+    singularLower: 'tutor',
+    plural: 'Tutores',
+    pluralLower: 'tutores'
+  },
+  patient: {
+    singular: 'Paciente',
+    singularLower: 'paciente',
+    plural: 'Pacientes',
+    pluralLower: 'pacientes'
+  },
+  encounter: {
+    singular: 'Atendimento',
+    singularLower: 'atendimento',
+    plural: 'Atendimentos',
+    pluralLower: 'atendimentos'
+  },
+  appointment: {
+    singular: 'Agendamento',
+    singularLower: 'agendamento',
+    plural: 'Agendamentos',
+    pluralLower: 'agendamentos'
+  },
+  agenda: 'Agenda',
+  queue: 'Fila',
+  conveyor: 'Esteira'
+} as const;
+
 export const speciesMap: Record<string, string> = {
   not_defined: 'Não definida',
   avian: 'Avícola',
@@ -111,6 +141,31 @@ export const ownerStatusMap: Record<string, string> = {
 
 export function ownerStatusLabel(s: string): string {
   return ownerStatusMap[s] || s;
+}
+
+const ownerContactTypeMap: Record<string, string> = {
+  phone: 'Telefone',
+  email: 'E-mail',
+  whatsapp: 'WhatsApp'
+};
+
+export function ownerContactDisplayLabel(contact: { label?: unknown; type?: unknown }): string {
+  if (typeof contact.label === 'string' && contact.label.trim()) return contact.label.trim();
+  const typedLabel = typeof contact.type === 'string' ? ownerContactTypeMap[contact.type] : undefined;
+  if (typeof typedLabel === 'string') {
+    return typedLabel;
+  }
+  return 'Contato';
+}
+
+export function formatOwnerContact(
+  contact: { label?: unknown; type?: unknown; value?: unknown },
+  fallback = 'Não informado'
+): string {
+  if (!contact) return fallback;
+  const value =
+    typeof contact.value === 'string' && contact.value.trim() ? contact.value.trim() : fallback;
+  return `${ownerContactDisplayLabel(contact)}: ${value}`;
 }
 
 export const encounterAllowedTransitions: Record<string, string[]> = {

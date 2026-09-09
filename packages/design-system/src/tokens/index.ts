@@ -1,3 +1,9 @@
+/**
+ * Legacy JS color snapshot.
+ *
+ * Keep this export stable for existing consumers. It is intentionally not the
+ * current CVG Pulse palette; use `cvgPulseTokens.colors` for CSS-backed tokens.
+ */
 export const colors = {
   primary: {
     50: '#eff6ff',
@@ -79,6 +85,7 @@ export const colors = {
   }
 } as const;
 
+/** Legacy JS spacing snapshot; use `cvgPulseTokens.spacing` for new consumers. */
 export const spacing = {
   0: '0',
   1: '0.25rem',
@@ -95,6 +102,7 @@ export const spacing = {
   24: '6rem'
 } as const;
 
+/** Legacy JS radius snapshot; use `cvgPulseTokens.radius` for new consumers. */
 export const radius = {
   none: '0',
   sm: '0.375rem',
@@ -105,6 +113,10 @@ export const radius = {
   full: '9999px'
 } as const;
 
+/**
+ * Legacy JS shadow snapshot. Keep its literal values stable; use
+ * `cvgPulseTokens.shadows` for the current CSS-backed contract.
+ */
 export const shadows = {
   xs: '0 1px 2px rgba(0, 0, 0, 0.04)',
   sm: '0 2px 8px rgba(0, 0, 0, 0.06)',
@@ -116,6 +128,10 @@ export const shadows = {
   focus: '0 0 0 3px rgba(37, 99, 235, 0.4)'
 } as const;
 
+/**
+ * Legacy JS typography snapshot (including Inter). Keep it stable for existing
+ * consumers; use `cvgPulseTokens.typography` for the current Aptos-backed roles.
+ */
 export const typography = {
   fontFamily: {
     sans: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -144,6 +160,10 @@ export const typography = {
   }
 } as const;
 
+/**
+ * Legacy JS transition snapshot. CSS-backed motion tokens are exposed under
+ * `cvgPulseTokens.motion` and retain reduced-motion behavior in CSS.
+ */
 export const transitions = {
   ease: {
     default: 'cubic-bezier(0.4, 0, 0.2, 1)',
@@ -156,6 +176,7 @@ export const transitions = {
   }
 } as const;
 
+/** Legacy JS z-index snapshot; use `cvgPulseTokens.zIndex` for new consumers. */
 export const zIndex = {
   dropdown: 100,
   sticky: 200,
@@ -165,6 +186,7 @@ export const zIndex = {
   tooltip: 600
 } as const;
 
+/** Legacy JS layout snapshot; use `cvgPulseTokens.layout` for new consumers. */
 export const layout = {
   touchMin: '44px',
   maxWidthProse: '65ch',
@@ -254,4 +276,253 @@ export const semanticTokens = {
       route: 'var(--motion-distance-route)'
     }
   }
+} as const;
+
+/**
+ * Current CVG Pulse token map. Values are CSS custom-property references so
+ * `variables.css` remains the runtime source of truth for cyan, mint, ink,
+ * Aptos, themes, and reduced motion.
+ *
+ * Migration map for the public JS API:
+ * - `colors.*` (blue/slate snapshot) -> `cvgPulseTokens.colors.*`
+ * - `typography.fontFamily.sans` (Inter) ->
+ *   `cvgPulseTokens.typography.fontFamily.interface` (Aptos stack)
+ * - `lightTheme` / `darkTheme` -> `cvgPulseLightTheme` / `cvgPulseDarkTheme`
+ * - existing `semanticTokens` remains available and is also exposed as the
+ *   `semantic` layer below.
+ *
+ * The legacy exports above are deliberately not aliases of this object: their
+ * literal values are a compatibility contract and must not be reinterpreted.
+ */
+export const cvgPulseTokens = {
+  colors: {
+    primary: {
+      50: 'var(--color-primary-50)',
+      100: 'var(--color-primary-100)',
+      200: 'var(--color-primary-200)',
+      300: 'var(--color-primary-300)',
+      400: 'var(--color-primary-400)',
+      500: 'var(--color-primary-500)',
+      600: 'var(--color-primary-600)',
+      700: 'var(--color-primary-700)',
+      800: 'var(--color-primary-800)',
+      900: 'var(--color-primary-900)'
+    },
+    accent: {
+      50: 'var(--color-accent-50)',
+      100: 'var(--color-accent-100)',
+      200: 'var(--color-accent-200)',
+      300: 'var(--color-accent-300)',
+      400: 'var(--color-accent-400)',
+      500: 'var(--color-accent-500)',
+      600: 'var(--color-accent-600)',
+      700: 'var(--color-accent-700)',
+      800: 'var(--color-accent-800)',
+      900: 'var(--color-accent-900)'
+    },
+    success: {
+      50: 'var(--color-success-50)',
+      100: 'var(--color-success-100)',
+      200: 'var(--color-success-200)',
+      300: 'var(--color-success-300)',
+      400: 'var(--color-success-400)',
+      500: 'var(--color-success-500)',
+      600: 'var(--color-success-600)',
+      700: 'var(--color-success-700)',
+      800: 'var(--color-success-800)',
+      900: 'var(--color-success-900)'
+    },
+    warning: {
+      50: 'var(--color-warning-50)',
+      100: 'var(--color-warning-100)',
+      200: 'var(--color-warning-200)',
+      300: 'var(--color-warning-300)',
+      400: 'var(--color-warning-400)',
+      500: 'var(--color-warning-500)',
+      600: 'var(--color-warning-600)',
+      700: 'var(--color-warning-700)',
+      800: 'var(--color-warning-800)',
+      900: 'var(--color-warning-900)'
+    },
+    danger: {
+      50: 'var(--color-danger-50)',
+      100: 'var(--color-danger-100)',
+      200: 'var(--color-danger-200)',
+      300: 'var(--color-danger-300)',
+      400: 'var(--color-danger-400)',
+      500: 'var(--color-danger-500)',
+      600: 'var(--color-danger-600)',
+      700: 'var(--color-danger-700)',
+      800: 'var(--color-danger-800)',
+      900: 'var(--color-danger-900)'
+    },
+    info: {
+      50: 'var(--color-info-50)',
+      100: 'var(--color-info-100)',
+      200: 'var(--color-info-200)',
+      300: 'var(--color-info-300)',
+      400: 'var(--color-info-400)',
+      500: 'var(--color-info-500)',
+      600: 'var(--color-info-600)',
+      700: 'var(--color-info-700)',
+      800: 'var(--color-info-800)',
+      900: 'var(--color-info-900)'
+    },
+    neutral: {
+      0: 'var(--color-neutral-0)',
+      50: 'var(--color-neutral-50)',
+      100: 'var(--color-neutral-100)',
+      200: 'var(--color-neutral-200)',
+      300: 'var(--color-neutral-300)',
+      400: 'var(--color-neutral-400)',
+      500: 'var(--color-neutral-500)',
+      600: 'var(--color-neutral-600)',
+      700: 'var(--color-neutral-700)',
+      800: 'var(--color-neutral-800)',
+      900: 'var(--color-neutral-900)',
+      950: 'var(--color-neutral-950)'
+    },
+    surface: {
+      bg: 'var(--color-bg)',
+      bgElevated: 'var(--color-bg-elevated)',
+      bgSubtle: 'var(--color-bg-subtle)',
+      bgOverlay: 'var(--color-bg-overlay)',
+      surface: 'var(--color-surface)',
+      surfaceGlass: 'var(--color-surface-glass)',
+      surfaceHover: 'var(--color-surface-hover)',
+      border: 'var(--color-border)',
+      borderStrong: 'var(--color-border-strong)',
+      text: 'var(--color-text)',
+      textSecondary: 'var(--color-text-secondary)',
+      textMuted: 'var(--color-text-muted)',
+      textInverse: 'var(--color-text-inverse)',
+      textLink: 'var(--color-text-link)',
+      focusRing: 'var(--color-focus-ring)'
+    },
+    brand: {
+      ink: 'var(--color-ink)',
+      navy: 'var(--color-navy)',
+      offWhite: 'var(--color-off-white)',
+      cyan: 'var(--color-cyan)',
+      coral: 'var(--color-coral)',
+      mint: 'var(--color-mint)',
+      primarySubtle: 'var(--color-primary-subtle)',
+      primarySurface: 'var(--color-primary-surface)'
+    }
+  },
+  spacing: {
+    0: 'var(--space-0)',
+    1: 'var(--space-1)',
+    2: 'var(--space-2)',
+    3: 'var(--space-3)',
+    4: 'var(--space-4)',
+    5: 'var(--space-5)',
+    6: 'var(--space-6)',
+    8: 'var(--space-8)',
+    10: 'var(--space-10)',
+    12: 'var(--space-12)',
+    16: 'var(--space-16)',
+    20: 'var(--space-20)',
+    24: 'var(--space-24)'
+  },
+  radius: {
+    none: 'var(--radius-none)',
+    sm: 'var(--radius-sm)',
+    md: 'var(--radius-md)',
+    lg: 'var(--radius-lg)',
+    xl: 'var(--radius-xl)',
+    '2xl': 'var(--radius-2xl)',
+    full: 'var(--radius-full)'
+  },
+  shadows: {
+    xs: 'var(--shadow-xs)',
+    sm: 'var(--shadow-sm)',
+    md: 'var(--shadow-md)',
+    lg: 'var(--shadow-lg)',
+    xl: 'var(--shadow-xl)',
+    glow: 'var(--shadow-glow)',
+    inner: 'var(--shadow-inner)',
+    focus: 'var(--shadow-focus)'
+  },
+  typography: {
+    fontFamily: {
+      interface: 'var(--font-family-sans)',
+      editorial: 'var(--font-family-display)',
+      code: 'var(--font-family-mono)'
+    },
+    fontSize: {
+      xs: 'var(--font-size-xs)',
+      sm: 'var(--font-size-sm)',
+      base: 'var(--font-size-base)',
+      lg: 'var(--font-size-lg)',
+      xl: 'var(--font-size-xl)',
+      '2xl': 'var(--font-size-2xl)',
+      '3xl': 'var(--font-size-3xl)',
+      '4xl': 'var(--font-size-4xl)'
+    },
+    fontWeight: {
+      normal: 'var(--font-weight-normal)',
+      medium: 'var(--font-weight-medium)',
+      semibold: 'var(--font-weight-semibold)',
+      bold: 'var(--font-weight-bold)'
+    },
+    lineHeight: {
+      tight: 'var(--line-height-tight)',
+      normal: 'var(--line-height-normal)',
+      relaxed: 'var(--line-height-relaxed)'
+    },
+    letterSpacing: {
+      tight: 'var(--letter-spacing-tight)',
+      normal: 'var(--letter-spacing-normal)',
+      wide: 'var(--letter-spacing-wide)'
+    },
+    roles: {
+      familyInterface: 'var(--type-family-interface)',
+      familyEditorial: 'var(--type-family-editorial)',
+      familyCode: 'var(--type-family-code)',
+      sizeBody: 'var(--type-size-body)',
+      sizeLabel: 'var(--type-size-label)',
+      sizeMetadata: 'var(--type-size-metadata)',
+      sizePageTitle: 'var(--type-size-page-title)',
+      sizeEditorial: 'var(--type-size-editorial)',
+      weightBody: 'var(--type-weight-body)',
+      weightLabel: 'var(--type-weight-label)',
+      weightTitle: 'var(--type-weight-title)',
+      leadingBody: 'var(--type-leading-body)',
+      leadingTitle: 'var(--type-leading-title)',
+      trackingBody: 'var(--type-tracking-body)',
+      trackingTitle: 'var(--type-tracking-title)',
+      numericVariant: 'var(--type-numeric-variant)',
+      measureProse: 'var(--type-measure-prose)'
+    }
+  },
+  transitions: {
+    ease: {
+      default: 'var(--ease-default)',
+      bounce: 'var(--ease-bounce)'
+    },
+    duration: {
+      fast: 'var(--duration-fast)',
+      normal: 'var(--duration-normal)',
+      slow: 'var(--duration-slow)'
+    }
+  },
+  motion: semanticTokens.motion,
+  layout: {
+    touchMin: 'var(--touch-min)',
+    maxWidthProse: 'var(--max-width-prose)',
+    maxWidthContainer: 'var(--max-width-container)',
+    sidebarWidth: 'var(--sidebar-width)',
+    sidebarCollapsedWidth: 'var(--sidebar-collapsed-width)',
+    topbarHeight: 'var(--topbar-height)'
+  },
+  zIndex: {
+    dropdown: 'var(--z-dropdown)',
+    sticky: 'var(--z-sticky)',
+    overlay: 'var(--z-overlay)',
+    modal: 'var(--z-modal)',
+    toast: 'var(--z-toast)',
+    tooltip: 'var(--z-tooltip)'
+  },
+  semantic: semanticTokens
 } as const;

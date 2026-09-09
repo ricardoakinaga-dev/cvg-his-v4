@@ -1,0 +1,252 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-07T22:05:00Z",
+  "criterion": "FEA-002",
+  "evidenceStatus": "PROTOCOL_ONLY",
+  "status": "PROTOCOL_READY_HUMAN_MEASUREMENT_PENDING",
+  "scope": "Roteiro sanitizado para a baseline de cinco tarefas prioritárias; não contém observações de participantes nem métricas fabricadas.",
+  "privacy": {
+    "fixturePolicy": "Todos os nomes, IDs, telefones, valores e textos abaixo são sintéticos e não representam prontuário real.",
+    "recording": "Vídeo somente com consentimento separado; o artefato não armazena vídeo, áudio, rosto ou dado clínico.",
+    "exportPolicy": "Exportar somente linhas agregadas e IDs de sessão aleatórios; remover qualquer anotação livre que possa identificar pessoa real."
+  },
+  "operationalReview": {
+    "owner": "Produto + representante de Operação (OP)",
+    "targetSessions": 10,
+    "sampling": "2 sessões por perfil; cada sessão executa as cinco tarefas em uma de duas ordens balanceadas.",
+    "profiles": [
+      {
+        "id": "reception-standard",
+        "role": "recepção",
+        "context": "rotina",
+        "familiarity": "alta",
+        "shift": "diurno"
+      },
+      {
+        "id": "reception-low-digital",
+        "role": "recepção",
+        "context": "rotina",
+        "familiarity": "baixa",
+        "shift": "diurno"
+      },
+      {
+        "id": "veterinarian-on-call",
+        "role": "médico-veterinário",
+        "context": "plantão",
+        "familiarity": "média",
+        "shift": "noturno"
+      },
+      {
+        "id": "cash-operator",
+        "role": "caixa/financeiro",
+        "context": "fechamento",
+        "familiarity": "alta",
+        "shift": "diurno"
+      },
+      {
+        "id": "shift-float",
+        "role": "profissional de apoio",
+        "context": "plantão",
+        "familiarity": "baixa",
+        "shift": "noturno"
+      }
+    ],
+    "participantRules": [
+      "Recrutar pessoas que não tenham construído a tela avaliada.",
+      "Não usar dados clínicos reais; o moderador lê apenas o cenário e não ensina o caminho.",
+      "Registrar consentimento, familiaridade declarada, função e contexto de plantão sem nome pessoal.",
+      "Interromper e classificar como erro crítico qualquer ação que altere registro errado, perca rascunho ou confirme pagamento sem confirmação explícita."
+    ]
+  },
+  "sanitizedFixture": {
+    "tenantId": "tenant-demo-001",
+    "staffId": "staff-demo-001",
+    "owner": {
+      "id": "owner-demo-001",
+      "name": "Rosa Almeida",
+      "phone": "+55 11 90000-0001"
+    },
+    "patient": {
+      "id": "patient-demo-001",
+      "name": "Mimo",
+      "species": "canino",
+      "breed": "sem raça definida"
+    },
+    "appointment": {
+      "id": "appointment-demo-001",
+      "date": "2026-09-07",
+      "time": "09:40",
+      "service": "consulta de rotina"
+    },
+    "encounter": {
+      "id": "encounter-demo-001",
+      "status": "open"
+    },
+    "financial": {
+      "currency": "BRL",
+      "amountCents": 18900,
+      "paymentStatus": "pending"
+    }
+  },
+  "tasks": [
+    {
+      "id": "T01",
+      "title": "Localizar tutor/paciente e iniciar atendimento",
+      "profiles": ["reception-standard", "reception-low-digital", "shift-float"],
+      "route": "/reception",
+      "surface": "ReceptionGatewayPage",
+      "prompt": "Encontre Rosa Almeida, confirme o paciente Mimo e avance para o atendimento sem criar um encontro incorreto.",
+      "requiredContent": ["campo de busca", "resultado de tutor e paciente", "fila", "ação contextual", "próximo passo"],
+      "preconditions": ["busca pode retornar tutor e paciente", "fila sintética carregada", "sem encontro novo automático"],
+      "successCriteria": [
+        "A pessoa encontra o tutor/paciente sem precisar decifrar jargão.",
+        "O contexto selecionado aparece na ação seguinte e o ID do tutor é preservado.",
+        "Nenhum encontro é criado antes da ação explícita."
+      ],
+      "errorScenarios": ["sem resultado", "resposta antiga chegando depois da busca atual", "fila indisponível", "seleção de tutor sem paciente"],
+      "metrics": ["time_to_first_meaningful_action_ms", "task_duration_ms", "activation_count", "scroll_distance_css_px", "error_count", "completion"],
+      "syntheticReferences": [
+        "docs/frontend/implementation/evidence/continuity-5zoTvq/report.json",
+        "docs/frontend/implementation/evidence/continuity-11pldJ/report.json"
+      ]
+    },
+    {
+      "id": "T02",
+      "title": "Encontrar o próximo compromisso na Agenda",
+      "profiles": ["reception-standard", "veterinarian-on-call", "shift-float"],
+      "route": "/appointments?agendaDate=2026-09-07&agendaView=week",
+      "surface": "AppointmentsListPage",
+      "prompt": "Abra o compromisso de Rosa Almeida às 09:40, confira o contexto e volte à lista sem perder o modo da Agenda.",
+      "requiredContent": ["data/modo", "primeiro compromisso relevante", "profissional/serviço", "drawer de detalhes", "ação de retorno"],
+      "preconditions": ["massa com compromisso às 09:40", "modo semana e dia disponíveis", "drawer pode ser fechado por teclado"],
+      "successCriteria": [
+        "O primeiro compromisso relevante é alcançado na massa pactuada.",
+        "O detalhe abre sem duplicar cabeçalho ou contexto estrutural.",
+        "Ao retornar, data, modo e filtros estruturais continuam compreensíveis."
+      ],
+      "errorScenarios": ["fora do expediente", "conflito de horário", "cancelamento", "reload limpando texto livre por contrato", "foco perdido ao fechar drawer"],
+      "metrics": ["time_to_first_meaningful_action_ms", "task_duration_ms", "activation_count", "scroll_distance_css_px", "error_count", "completion"],
+      "syntheticReferences": ["docs/frontend/implementation/evidence/continuity-A6VXry/report.json"]
+    },
+    {
+      "id": "T03",
+      "title": "Cadastrar tutor/paciente sem perder a edição",
+      "profiles": ["reception-standard", "reception-low-digital", "shift-float"],
+      "route": "/owners/new -> /patients/new?ownerId=owner-demo-001",
+      "surface": "OwnerFormPage + PatientFormPage",
+      "prompt": "Cadastre Rosa Almeida e Mimo com os campos mínimos; provoque um erro de validação e depois tente sair com uma edição não salva.",
+      "requiredContent": ["identificação", "contato obrigatório", "seções progressivas", "resumo de erros", "ação sticky", "confirmação de saída"],
+      "preconditions": ["telefone mínimo é obrigatório", "respostas de save podem falhar", "conflito 409 pode apontar registro existente"],
+      "successCriteria": [
+        "O primeiro erro recebe foco e está associado ao campo correto.",
+        "A entrada permanece após falha e a troca de tutor suja é protegida.",
+        "Duplicidade oferece manter rascunho ou abrir registro existente com confirmação."
+      ],
+      "errorScenarios": ["campo obrigatório ausente", "save 500", "conflito 409 duplicado", "troca de ownerId com dirty state", "logout com edição"],
+      "metrics": ["time_to_first_meaningful_action_ms", "task_duration_ms", "activation_count", "scroll_distance_css_px", "error_count", "completion", "critical_error"],
+      "syntheticReferences": [
+        "docs/frontend/implementation/evidence/continuity-ty2R5x/report.json",
+        "docs/frontend/implementation/evidence/continuity-JOB4sv/report.json",
+        "docs/frontend/implementation/evidence/continuity-niDPip/report.json"
+      ]
+    },
+    {
+      "id": "T04",
+      "title": "Revisar contexto clínico e registrar uma atualização",
+      "profiles": ["veterinarian-on-call", "shift-float"],
+      "route": "/patients/patient-demo-001",
+      "surface": "PatientDetailPage + MedicalRecordsDetailPage",
+      "prompt": "Confirme que está no paciente Mimo, revise o contexto clínico visível e registre uma atualização de acompanhamento; se houver falha, tente novamente sem perder o rascunho.",
+      "requiredContent": ["identidade do paciente", "tutor", "estado do atendimento", "histórico", "ação clínica", "feedback de save/retry"],
+      "preconditions": ["contexto do paciente está disponível", "save pode falhar na primeira tentativa", "anexo/diagnóstico usam dados sintéticos"],
+      "successCriteria": [
+        "Paciente e tutor ficam identificados antes da ação clínica.",
+        "Falha inicial preserva o rascunho e a segunda tentativa é explícita.",
+        "A atualização confirmada retorna com identidade e contexto corretos."
+      ],
+      "errorScenarios": ["paciente inexistente", "permissão insuficiente", "save falho", "contexto trocado durante requisição", "anexo ainda não confirmado"],
+      "metrics": ["time_to_first_meaningful_action_ms", "task_duration_ms", "activation_count", "scroll_distance_css_px", "error_count", "completion", "critical_error"],
+      "syntheticReferences": [
+        "docs/frontend/implementation/evidence/continuity-2Iakc3/report.json",
+        "docs/frontend/implementation/evidence/continuity-VCI5AU/report.json"
+      ]
+    },
+    {
+      "id": "T05",
+      "title": "Confirmar cobrança PIX com estado inequívoco",
+      "profiles": ["cash-operator", "veterinarian-on-call"],
+      "route": "/encounters/encounter-demo-001",
+      "surface": "EncounterDetailPage + EncounterPixPaymentPanel",
+      "prompt": "Verifique a elegibilidade do atendimento de R$ 189,00, inicie o PIX e identifique quando o pagamento estiver confirmado; não prossiga se os dados financeiros estiverem incoerentes.",
+      "requiredContent": ["total", "moeda", "saldo", "conta financeira", "status pending/settled", "QR", "retry", "confirmação"],
+      "preconditions": ["atendimento aberto", "conta financeira sintética", "provider é simulado apenas no dry-run", "chave de idempotência disponível"],
+      "successCriteria": [
+        "A ação fica bloqueada quando total, saldo ou conta não são elegíveis.",
+        "O pending é distinto de pagamento confirmado e não usa animação como prova.",
+        "Refresh/retry mantém a tentativa do atendimento e não duplica cobrança."
+      ],
+      "errorScenarios": ["conta ausente", "moeda inválida", "saldo residual", "provider indisponível", "timeout", "reversão", "duplo clique"],
+      "metrics": ["time_to_first_meaningful_action_ms", "task_duration_ms", "activation_count", "scroll_distance_css_px", "error_count", "completion", "critical_error"],
+      "syntheticReferences": [
+        "docs/frontend/implementation/evidence/continuity-kPxWqj/report.json",
+        "docs/frontend/implementation/evidence/continuity-oIF3nA/report.json"
+      ]
+    }
+  ],
+  "measurementPlan": {
+    "unit": "uma linha por participante-sessão-tarefa",
+    "requiredFields": [
+      "session_id_random",
+      "profile_id",
+      "task_id",
+      "viewport_class",
+      "theme",
+      "order_group",
+      "started_at_local",
+      "completed_at_local",
+      "task_duration_ms",
+      "time_to_first_meaningful_action_ms",
+      "activation_count",
+      "keyboard_activation_count",
+      "scroll_distance_css_px",
+      "error_count",
+      "critical_error",
+      "completion",
+      "assistance_count",
+      "moderator_note_sanitized"
+    ],
+    "definitions": {
+      "meaningfulAction": "Primeira ativação que avança o objetivo da tarefa, por ponteiro ou teclado, sem contar foco automático.",
+      "activationCount": "Cliques ou ativações de teclado observáveis; excluir automação do moderador e eventos de foco.",
+      "scrollDistance": "Maior posição vertical/horizontal alcançada menos a posição inicial, por componente e documento quando aplicável.",
+      "errorCount": "Ação que exige correção, mensagem de erro causada pela decisão da pessoa ou pedido de ajuda; separar de falha do ambiente.",
+      "criticalError": "Ação irreversível no registro errado, perda de conteúdo ou confirmação financeira indevida; encerra a tarefa e exige revisão.",
+      "completion": "1 somente quando todos os critérios de sucesso forem observados; 0 quando a pessoa abandona, excede o tempo pactuado ou incorre em erro crítico."
+    },
+    "analysis": [
+      "Reportar mediana e distribuição, não somente média; separar por perfil, tarefa, viewport e contexto de plantão.",
+      "Informar denominador e perdas; não calcular taxa com sessão interrompida como sucesso.",
+      "Comparar as duas ordens de tarefa para detectar efeito de aprendizado.",
+      "Registrar limitações de amostra, familiaridade digital e assistência do moderador."
+    ],
+    "recommendedViewportClasses": ["390x844", "768x1024", "1440x900"],
+    "recommendedThemes": ["light", "dark"]
+  },
+  "dryRun": {
+    "status": "SYNTHETIC_REFERENCE_ONLY",
+    "humanObservations": 0,
+    "humanMetrics": null,
+    "note": "Os relatórios abaixo demonstram estados e fluxos em browser sintético; não são participantes, não medem competência humana e não encerram FEA-002 ou FEA-033.",
+    "references": [
+      "docs/frontend/implementation/evidence/continuity-5zoTvq/report.json",
+      "docs/frontend/implementation/evidence/continuity-A6VXry/report.json",
+      "docs/frontend/implementation/evidence/continuity-ty2R5x/report.json",
+      "docs/frontend/implementation/evidence/continuity-JOB4sv/report.json",
+      "docs/frontend/implementation/evidence/continuity-niDPip/report.json",
+      "docs/frontend/implementation/evidence/continuity-2Iakc3/report.json",
+      "docs/frontend/implementation/evidence/continuity-VCI5AU/report.json",
+      "docs/frontend/implementation/evidence/continuity-kPxWqj/report.json",
+      "docs/frontend/implementation/evidence/continuity-oIF3nA/report.json"
+    ]
+  }
+}

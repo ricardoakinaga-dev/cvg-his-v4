@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { defineComponent } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
+import { createMemoryHistory, createRouter, RouterView } from 'vue-router';
 
 const mockOwnerList = vi.fn();
 const mockPatientList = vi.fn();
@@ -185,6 +187,27 @@ const counterSalesSearchResult = [
   }
 ];
 
+async function mountMasterSearchPage(path = '/master-search') {
+  const Page = (await import('../MasterSearchPage.vue')).default;
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/master-search', component: Page },
+      { path: '/owners/:id', component: { template: '<div>Tutor</div>' } },
+      { path: '/patients/:id', component: { template: '<div>Paciente</div>' } },
+      { path: '/products/:id', component: { template: '<div>Produto</div>' } },
+      { path: '/counter-sales/:id', component: { template: '<div>Comanda</div>' } }
+    ]
+  });
+  await router.push(path);
+  await router.isReady();
+  const wrapper = mount(defineComponent({ template: '<RouterView />' }), {
+    global: { plugins: [router], components: { RouterView } }
+  });
+  await flushPromises();
+  return { wrapper, router };
+}
+
 describe('MasterSearchPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -215,8 +238,7 @@ describe('MasterSearchPage', () => {
   });
 
   it('keeps empty state when search query is blank', async () => {
-    const MasterSearchPage = (await import('../MasterSearchPage.vue')).default;
-    const wrapper = mount(MasterSearchPage);
+    const { wrapper } = await mountMasterSearchPage();
 
     await flushPromises();
     expect(wrapper.text()).toContain('Busca federada');
@@ -236,8 +258,7 @@ describe('MasterSearchPage', () => {
   });
 
   it('renders grouped results for owners, patients and links', async () => {
-    const MasterSearchPage = (await import('../MasterSearchPage.vue')).default;
-    const wrapper = mount(MasterSearchPage);
+    const { wrapper } = await mountMasterSearchPage();
 
     await flushPromises();
     const searchInput = wrapper.find('input[type="search"]');
@@ -302,8 +323,7 @@ describe('MasterSearchPage', () => {
     mockVaccinesDewormersList.mockResolvedValue([]);
     mockBillingList.mockResolvedValue([]);
 
-    const MasterSearchPage = (await import('../MasterSearchPage.vue')).default;
-    const wrapper = mount(MasterSearchPage);
+    const { wrapper } = await mountMasterSearchPage();
 
     await flushPromises();
     await wrapper.find('input[type="search"]').setValue('pet');
@@ -387,8 +407,7 @@ describe('MasterSearchPage', () => {
       Promise.resolve([{ ...billingSearchContext[0], patientId: 'patient-financial' }])
     );
 
-    const MasterSearchPage = (await import('../MasterSearchPage.vue')).default;
-    const wrapper = mount(MasterSearchPage);
+    const { wrapper } = await mountMasterSearchPage();
 
     await flushPromises();
     await wrapper.find('input[type="search"]').setValue('prioridade');
@@ -477,8 +496,7 @@ describe('MasterSearchPage', () => {
       Promise.resolve([{ ...billingSearchContext[0], patientId: 'patient-financial' }])
     );
 
-    const MasterSearchPage = (await import('../MasterSearchPage.vue')).default;
-    const wrapper = mount(MasterSearchPage);
+    const { wrapper } = await mountMasterSearchPage();
 
     await flushPromises();
     await wrapper.find('input[type="search"]').setValue('prioridade');
@@ -545,8 +563,7 @@ describe('MasterSearchPage', () => {
     );
     mockBillingList.mockResolvedValue([]);
 
-    const MasterSearchPage = (await import('../MasterSearchPage.vue')).default;
-    const wrapper = mount(MasterSearchPage);
+    const { wrapper } = await mountMasterSearchPage();
 
     await flushPromises();
     await wrapper.find('input[type="search"]').setValue('prioridade');
@@ -614,8 +631,7 @@ describe('MasterSearchPage', () => {
     );
     mockBillingList.mockResolvedValue([]);
 
-    const MasterSearchPage = (await import('../MasterSearchPage.vue')).default;
-    const wrapper = mount(MasterSearchPage);
+    const { wrapper } = await mountMasterSearchPage();
 
     await flushPromises();
     await wrapper.find('input[type="search"]').setValue('prioridade');
@@ -644,8 +660,7 @@ describe('MasterSearchPage', () => {
     mockProductList.mockResolvedValue([]);
     mockCounterSalesList.mockResolvedValue([]);
 
-    const MasterSearchPage = (await import('../MasterSearchPage.vue')).default;
-    const wrapper = mount(MasterSearchPage);
+    const { wrapper } = await mountMasterSearchPage();
 
     await flushPromises();
     await wrapper.find('input[type="search"]').setValue('sem-match');
@@ -659,8 +674,7 @@ describe('MasterSearchPage', () => {
   it('keeps partial results visible when one search group fails', async () => {
     mockProductList.mockRejectedValueOnce(new Error('Produtos indisponíveis'));
 
-    const MasterSearchPage = (await import('../MasterSearchPage.vue')).default;
-    const wrapper = mount(MasterSearchPage);
+    const { wrapper } = await mountMasterSearchPage();
 
     await flushPromises();
     await wrapper.find('input[type="search"]').setValue('rex');
@@ -677,8 +691,7 @@ describe('MasterSearchPage', () => {
   });
 
   it('clears query and aggregated results', async () => {
-    const MasterSearchPage = (await import('../MasterSearchPage.vue')).default;
-    const wrapper = mount(MasterSearchPage);
+    const { wrapper } = await mountMasterSearchPage();
 
     await flushPromises();
     const searchInput = wrapper.find('input[type="search"]');
@@ -699,5 +712,38 @@ describe('MasterSearchPage', () => {
     expect(wrapper.text()).not.toContain('Rex');
     expect(wrapper.text()).not.toContain('Ração Premium');
     expect(wrapper.text()).not.toContain('CS-0001');
+  });
+
+  it('preserves the search context when returning from a selected result', async () => {
+    const { wrapper, router } = await mountMasterSearchPage();
+    const searchInput = wrapper.find('input[type="search"]');
+    await searchInput.setValue('rex');
+    await flushPromises();
+
+    expect(router.currentRoute.value.query.q).toBe('rex');
+
+    const buscarButton = wrapper.findAll('button').find((button) => button.text() === 'Buscar');
+    await buscarButton!.trigger('click');
+    await flushPromises();
+
+    const resultLink = wrapper
+      .findAll('a')
+      .find((link) => link.attributes('href') === '/patients/patient-1');
+    expect(resultLink).toBeTruthy();
+    await resultLink!.trigger('click');
+    await router.isReady();
+    await flushPromises();
+
+    expect(router.currentRoute.value.path).toBe('/patients/patient-1');
+    expect(router.currentRoute.value.query).toEqual({});
+
+    await router.back();
+    await router.isReady();
+    await flushPromises();
+
+    expect(router.currentRoute.value.fullPath).toBe('/master-search?q=rex');
+    expect((wrapper.find('input[type="search"]').element as HTMLInputElement).value).toBe('rex');
+    expect(wrapper.text()).toContain('Maria Souza');
+    expect(wrapper.text()).toContain('Rex');
   });
 });

@@ -87,6 +87,7 @@ async function applyDateFilter(
   page: Page,
   date: string
 ): Promise<{ execution: ReportExecution; requestBody: unknown }> {
+  await page.getByText('Filtros da consulta', { exact: true }).click();
   await page.getByLabel('De', { exact: true }).fill(date);
   await page.getByLabel('Até', { exact: true }).fill(date);
 
@@ -108,12 +109,9 @@ async function applyDateFilter(
 }
 
 async function exportCurrentReport(
-  page: Page
+  page: Page,
+  execution: ReportExecution
 ): Promise<{ execution: ReportExecution; exported: ReportExport; filename: string }> {
-  const executionResponse = page.waitForResponse(
-    (response) =>
-      response.url().endsWith('/api/reports/executions') && response.request().method() === 'POST'
-  );
   const exportResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/reports/executions/') &&
@@ -129,8 +127,7 @@ async function exportCurrentReport(
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Exportar CSV', exact: true }).click();
 
-  const [execution, exported, downloaded, request] = await Promise.all([
-    executionResponse.then((response) => response.json() as Promise<ReportExecution>),
+  const [exported, downloaded, request] = await Promise.all([
     exportResponse.then((response) => response.json() as Promise<ReportExport>),
     download,
     exportRequest
@@ -223,7 +220,7 @@ test.describe('Relatórios de cadastros — execução e exportação', () => {
     expectRegistryExecution(filtered.execution, 'registration-owners', expectedRow);
     await expect(page.getByText(ownerName, { exact: true })).toBeVisible();
 
-    const exported = await exportCurrentReport(page);
+    const exported = await exportCurrentReport(page, filtered.execution);
     expectRegistryExecution(exported.execution, 'registration-owners', expectedRow);
     expectCsvExport(
       exported.exported,
@@ -293,7 +290,7 @@ test.describe('Relatórios de cadastros — execução e exportação', () => {
     expectRegistryExecution(filtered.execution, 'registration-patients', expectedRow);
     await expect(page.getByText(patient.name, { exact: true })).toBeVisible();
 
-    const exported = await exportCurrentReport(page);
+    const exported = await exportCurrentReport(page, filtered.execution);
     expectRegistryExecution(exported.execution, 'registration-patients', expectedRow);
     expectCsvExport(
       exported.exported,
@@ -348,7 +345,7 @@ test.describe('Relatórios de cadastros — execução e exportação', () => {
       expectRegistryExecution(filtered.execution, 'registration-services', expectedRow);
       await expect(page.getByText(serviceName, { exact: true })).toBeVisible();
 
-      const exported = await exportCurrentReport(page);
+    const exported = await exportCurrentReport(page, filtered.execution);
       expectRegistryExecution(exported.execution, 'registration-services', expectedRow);
       expectCsvExport(
         exported.exported,

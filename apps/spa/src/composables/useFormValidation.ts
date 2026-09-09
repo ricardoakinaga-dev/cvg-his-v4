@@ -1,5 +1,6 @@
 import { ref, reactive } from 'vue';
 import type { Ref } from 'vue';
+import { useSuccessRedirect } from './successRedirect';
 
 export type ValidationRule = (value: unknown) => string | null;
 
@@ -97,11 +98,13 @@ export function useEntityForm<TCreate, TUpdate = TCreate>(options: {
   const validation = useFormValidation({ rules: options.rules });
   const isEdit = options.isEdit || ref(false);
   const entityId = options.entityId || ref('');
+  const successRedirect = useSuccessRedirect();
 
   async function handleSubmit(
     buildPayload: () => TCreate | TUpdate,
     values: Record<string, unknown>
   ): Promise<boolean> {
+    if (validation.submitting.value || !successRedirect.begin()) return false;
     validation.markAllTouched();
     validation.formError.value = '';
     validation.successMessage.value = '';
@@ -114,15 +117,15 @@ export function useEntityForm<TCreate, TUpdate = TCreate>(options: {
       if (isEdit.value && options.updateFn) {
         await options.updateFn(entityId.value, buildPayload() as TUpdate);
         validation.successMessage.value = `${options.successLabel || options.entityLabel} atualizado com sucesso!`;
-        setTimeout(() => {
+        successRedirect.schedule(() => {
           window.location.href = `${options.redirectBase}/${entityId.value}`;
-        }, 1000);
+        }, validation.successMessage.value);
       } else {
         const created = await options.createFn(buildPayload() as TCreate);
         validation.successMessage.value = `${options.successLabel || options.entityLabel} cadastrado com sucesso!`;
-        setTimeout(() => {
+        successRedirect.schedule(() => {
           window.location.href = `${options.redirectBase}/${created.id}`;
-        }, 1000);
+        }, validation.successMessage.value);
       }
       return true;
     } catch (err: unknown) {
@@ -138,6 +141,7 @@ export function useEntityForm<TCreate, TUpdate = TCreate>(options: {
     ...validation,
     isEdit,
     entityId,
+    successPending: successRedirect.successPending,
     handleSubmit
   };
 }

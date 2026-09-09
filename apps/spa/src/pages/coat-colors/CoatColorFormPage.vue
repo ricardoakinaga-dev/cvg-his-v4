@@ -42,7 +42,7 @@
             <span>Cores Ativas</span>
           </label>
           <div class="form-actions">
-            <DsButton variant="primary" type="submit" :loading="submitting">Salvar</DsButton>
+            <DsButton variant="primary" type="submit" :loading="submitting" :disabled="successPending">Salvar</DsButton>
             <DsButton variant="secondary" type="button" @click="router.push('/coat-colors')">Cancelar</DsButton>
           </div>
         </form>
@@ -79,6 +79,7 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import AppPageHeader from '@/components/AppPageHeader.vue';
+import { useSuccessRedirect } from '@/composables/successRedirect';
 import { coatColorService } from '@/services/coatColors';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
@@ -90,6 +91,8 @@ const route = useRoute();
 const coatColorId = computed(() => route.params.id as string | undefined);
 const isEditing = computed(() => Boolean(coatColorId.value));
 const submitting = ref(false);
+const successRedirect = useSuccessRedirect();
+const successPending = successRedirect.successPending;
 const loading = ref(false);
 const error = ref('');
 const successMessage = ref('');
@@ -141,6 +144,7 @@ async function loadCoatColor(id: string, generation: number, key: string) {
 }
 
 async function submitForm() {
+  if (submitting.value || !successRedirect.begin()) return;
   if (!form.name.trim()) {
     error.value = 'Descrição é obrigatória';
     return;
@@ -174,9 +178,9 @@ async function submitForm() {
     }
     if (!isCurrentRequest(generation, targetKey)) return;
     successMessage.value = 'Cor/Pelagem salva com sucesso.';
-    setTimeout(() => {
-      if (isCurrentRequest(generation, targetKey)) void router.push('/coat-colors');
-    }, 1200);
+    successRedirect.schedule(() => {
+      if (isCurrentRequest(generation, targetKey)) return router.push('/coat-colors');
+    }, successMessage.value);
   } catch (err: unknown) {
     if (isCurrentRequest(generation, targetKey)) error.value = err instanceof Error ? err.message : 'Erro ao salvar cor/pelagem';
   } finally {
@@ -188,6 +192,7 @@ watch(routeKey, (key, previousKey) => {
   if (key === previousKey) return;
   const generation = pageGeneration.value + 1;
   pageGeneration.value = generation;
+  successRedirect.invalidate();
   resetForm();
   void loadCoatColor(coatColorId.value ?? '', generation, key);
 }, { immediate: true });
@@ -195,6 +200,7 @@ watch(routeKey, (key, previousKey) => {
 onBeforeUnmount(() => {
   active = false;
   pageGeneration.value += 1;
+  successRedirect.invalidate();
 });
 </script>
 

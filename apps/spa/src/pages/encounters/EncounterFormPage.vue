@@ -37,7 +37,7 @@
           <div class="form-row"><DsInput id="visitType" v-model="form.visitType" type="select" label="Tipo" required><option value="walk_in">Walk-in</option><option value="scheduled">Agendado</option><option value="return">Retorno</option></DsInput><DsInput id="origin" v-model="form.origin" type="select" label="Origem"><option value="reception">Recepção</option><option value="schedule">Agendamento</option><option value="return">Retorno</option></DsInput></div>
           <DsInput id="reason" v-model="form.reason" type="textarea" label="Motivo (Queixa)" placeholder="Descreva o motivo principal da consulta" :error="errors.reason" :rows="4" required />
         </section>
-        <div class="form-actions"><DsButton type="submit" variant="primary" :loading="submitting" :disabled="!canSubmit">{{ submitting ? 'Abrindo...' : 'Abrir Atendimento' }}</DsButton><DsButton type="button" variant="secondary" tag="a" to="/encounters">Cancelar</DsButton></div>
+        <div class="form-actions"><DsButton type="submit" variant="primary" :loading="submitting" :disabled="!canSubmit || successPending">{{ submitting ? 'Abrindo...' : 'Abrir Atendimento' }}</DsButton><DsButton type="button" variant="secondary" tag="a" to="/encounters">Cancelar</DsButton></div>
       </fieldset>
       <p class="form-footnote">Os campos com * são obrigatórios.</p>
     </form>
@@ -55,6 +55,7 @@ import type { CreateEncounterRequest } from '@/types/encounter';
 import type { PatientSummary } from '@/types/patient';
 import type { OwnerSummary } from '@/types/owner';
 import { useFormValidation } from '@/composables/useFormValidation';
+import { useSuccessRedirect } from '@/composables/successRedirect';
 import { speciesLabel } from '@/utils/labels';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
@@ -69,14 +70,15 @@ const patientsError = ref(''), ownerError = ref(''), contextError = ref('');
 const searchDraft = ref(''), appliedSearch = ref(''), queryOwnerFilter = ref('');
 const page = ref(1), pages = ref(1), remotePaging = ref(false);
 let generation = 0, listGeneration = 0, ownerGeneration = 0, active = true;
-let redirectTimer: ReturnType<typeof setTimeout> | undefined;
 const current = (version: number) => active && generation === version;
 const visiblePatients = computed(() => remotePaging.value ? patients.value : patients.value.slice((page.value - 1) * 12, page.value * 12));
 const selectedOutsidePage = computed(() => selectedPatient.value && !visiblePatients.value.some(p => p.id === selectedPatient.value!.id));
 const ownerContact = computed(() => (selectedOwner.value?.contacts?.find(c => c.primary) || selectedOwner.value?.contacts?.[0])?.value || '');
 const { errors, formError, successMessage, submitting, validate, clearErrors } = useFormValidation({ rules: { patientId: [(v: unknown) => !v ? 'Selecione um paciente' : null], reason: [(v: unknown) => !(v as string)?.trim() ? 'Motivo é obrigatório' : null] } });
+const successRedirect = useSuccessRedirect();
+const successPending = successRedirect.successPending;
 const previousWrite = ref<{ message: string; patientName: string; encounterId?: string } | null>(null);
-const locked = computed(() => submitting.value || completed.value);
+const locked = computed(() => submitting.value || completed.value || successPending.value);
 const canSubmit = computed(() => !locked.value && !initialLoading.value && !contextError.value && !ownerLoading.value && Boolean(selectedPatient.value && selectedOwner.value && selectedPatient.value.id === form.patientId && selectedPatient.value.primaryOwnerId === selectedOwner.value.id && form.ownerId === selectedOwner.value.id));
 const patientOption = (p: PatientSummary) => `${p.name} · ${speciesLabel(p.species)} · ${p.id}`;
 async function loadPatients(requestedPage = 1, search = searchDraft.value.trim()) {
@@ -115,7 +117,7 @@ async function choosePatient() {
 }
 function queryValue(key: string) { const value = route.query?.[key]; return typeof value === 'string' ? value.trim() : ''; }
 async function loadPage() {
-  const version = ++generation; listGeneration++; ownerGeneration++; clearTimeout(redirectTimer);
+  const version = ++generation; listGeneration++; ownerGeneration++; successRedirect.invalidate();
   initialLoading.value = true; completed.value = false; contextError.value = ''; ownerError.value = ''; ownerLoading.value = false;
   Object.assign(form, emptyForm()); selectedPatient.value = null; selectedOwner.value = null; clearErrors(); formError.value = ''; successMessage.value = ''; searchDraft.value = '';
   let requestedPatient = queryValue('patientId'), requestedOwner = queryValue('ownerId'); const appointmentId = queryValue('appointmentId'); queryOwnerFilter.value = requestedOwner;
@@ -141,7 +143,7 @@ async function loadPage() {
 }
 function clearContext() {
   if (locked.value) return;
-  generation++; ownerGeneration++; listGeneration++; clearTimeout(redirectTimer); initialLoading.value = false; contextError.value = ''; ownerError.value = ''; ownerLoading.value = false;
+  generation++; ownerGeneration++; listGeneration++; successRedirect.invalidate(); initialLoading.value = false; contextError.value = ''; ownerError.value = ''; ownerLoading.value = false;
   selectedPatient.value = null; selectedOwner.value = null; form.patientId = ''; form.ownerId = ''; form.appointmentId = ''; queryOwnerFilter.value = ''; searchDraft.value = ''; void loadPatients(1, '');
 }
 function clearOwnerScope() { if (locked.value) return; queryOwnerFilter.value = ''; void loadPatients(1, appliedSearch.value); }
@@ -150,6 +152,7 @@ async function onSubmit() {
   if (locked.value || initialLoading.value) return;
   if (!validate({ patientId: form.patientId, reason: form.reason })) return;
   if (!canSubmit.value) { formError.value = 'Confirme a identificação do paciente e do tutor antes de abrir o atendimento.'; return; }
+  if (!successRedirect.begin()) return;
   const version = generation, submittedPatientName = selectedPatient.value!.name;
   const payload: CreateEncounterRequest = { patientId: form.patientId, ownerId: form.ownerId, visitType: form.visitType, origin: form.origin, reason: form.reason.trim() };
   if (form.appointmentId) payload.appointmentId = form.appointmentId;
@@ -158,13 +161,13 @@ async function onSubmit() {
     const created = await encounterService.create(payload);
     if (!current(version)) { if (active) previousWrite.value = { message: `Atendimento de ${submittedPatientName} aberto.`, patientName: submittedPatientName, encounterId: created.id }; return; }
     completed.value = true; successMessage.value = 'Atendimento aberto com sucesso!';
-    redirectTimer = setTimeout(() => { if (current(version)) void router.push(`/encounters/${created.id}`); }, 1000);
+    successRedirect.schedule(() => { if (current(version)) return router.push(`/encounters/${created.id}`); }, successMessage.value);
   } catch (err: unknown) { if (current(version)) formError.value = err instanceof Error ? err.message : 'Erro ao abrir atendimento'; else if (active) previousWrite.value = { message: `Não foi possível abrir o atendimento de ${submittedPatientName}. ${err instanceof Error ? err.message : 'Tente novamente.'}`, patientName: submittedPatientName }; }
   finally { if (active) submitting.value = false; }
 }
 onMounted(loadPage);
 watch(() => [route.query?.patientId, route.query?.ownerId, route.query?.appointmentId], () => { void loadPage(); }, { flush: 'sync' });
-onBeforeUnmount(() => { active = false; generation++; listGeneration++; ownerGeneration++; clearTimeout(redirectTimer); });
+onBeforeUnmount(() => { active = false; generation++; listGeneration++; ownerGeneration++; successRedirect.invalidate(); });
 </script>
 
 <style scoped>

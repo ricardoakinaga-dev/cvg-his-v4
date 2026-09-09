@@ -8,6 +8,7 @@ const mockSetGrant = vi.fn();
 const mockReplaceUserRoles = vi.fn();
 const mockReplaceUserTeams = vi.fn();
 const mockReplaceUserSectors = vi.fn();
+const mockReplaceUserMemberships = vi.fn();
 const mockCreateTeam = vi.fn();
 const mockCreateSector = vi.fn();
 const mockUpdateTeam = vi.fn();
@@ -22,6 +23,7 @@ vi.mock('@/services/accessControl', () => ({
     replaceUserRoles: mockReplaceUserRoles,
     replaceUserTeams: mockReplaceUserTeams,
     replaceUserSectors: mockReplaceUserSectors,
+    replaceUserMemberships: mockReplaceUserMemberships,
     createTeam: mockCreateTeam,
     createSector: mockCreateSector,
     updateTeam: mockUpdateTeam,
@@ -92,7 +94,9 @@ const catalogResponse = {
   },
   memberships: {
     userTeams: [{ userId: 'user-1', teamId: 'team-1' }],
-    userSectors: [{ userId: 'user-1', teamId: undefined, sectorId: 'sector-1' }].map(({ userId, sectorId }) => ({ userId, sectorId }))
+    userSectors: [{ userId: 'user-1', teamId: undefined, sectorId: 'sector-1' }].map(
+      ({ userId, sectorId }) => ({ userId, sectorId })
+    )
   },
   legacyRoles: [{ userId: 'user-1', roleCodes: ['admin'] }]
 };
@@ -155,6 +159,7 @@ describe('AccessControlPage', () => {
     mockReplaceUserRoles.mockResolvedValue({ ok: true });
     mockReplaceUserTeams.mockResolvedValue({ ok: true });
     mockReplaceUserSectors.mockResolvedValue({ ok: true });
+    mockReplaceUserMemberships.mockResolvedValue({ ok: true });
     mockCreateTeam.mockResolvedValue(catalogResponse.teams[0]);
     mockCreateSector.mockResolvedValue(catalogResponse.sectors[0]);
     mockUpdateTeam.mockResolvedValue(catalogResponse.teams[0]);
@@ -186,6 +191,261 @@ describe('AccessControlPage', () => {
     expect(wrapper.text()).toContain('Nenhum dado disponível.');
   });
 
+  it('explains the editable scope and exposes keyboard-safe form semantics', async () => {
+    const AccessControlPage = (await import('../AccessControlPage.vue')).default;
+    const wrapper = mount(AccessControlPage);
+
+    await flushPromises();
+    expect(wrapper.text()).toContain(
+      'altera somente grupos, setores, vínculos de usuários e grants'
+    );
+    expect(wrapper.text()).toContain('não são editáveis nesta tela');
+
+    const tabs = wrapper.findAll('[role="tab"]');
+    expect(tabs).toHaveLength(5);
+    expect(tabs[0].attributes('type')).toBe('button');
+    expect(tabs[0].attributes('aria-controls')).toBe('access-panel-summary');
+    expect(tabs[0].attributes('aria-selected')).toBe('true');
+    expect(tabs[0].attributes('tabindex')).toBe('0');
+    expect(tabs[1].attributes('tabindex')).toBe('-1');
+
+    await tabs[0].trigger('keydown', { key: 'ArrowRight' });
+    expect(wrapper.find('[role="tab"][aria-selected="true"]').text()).toContain('Usuários');
+    await wrapper.find('[role="tab"][aria-selected="true"]').trigger('keydown', { key: 'Home' });
+    expect(wrapper.find('[role="tab"][aria-selected="true"]').text()).toContain('Resumo');
+
+    const permissionFilter = wrapper.get('input#access-permission-filter');
+    expect(permissionFilter.attributes('aria-describedby')).toContain(
+      'access-permission-filter-hint'
+    );
+
+    const usersTab = tabs.find((button) => button.text() === 'Usuários');
+    await usersTab!.trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[role="tab"][aria-selected="true"]').attributes('tabindex')).toBe('0');
+    expect(wrapper.findAll('[role="tab"]').filter((tab) => tab.attributes('tabindex') === '0')).toHaveLength(1);
+    expect(wrapper.get('fieldset legend').text()).toBe('Roles legadas');
+    expect(wrapper.get('button[type="submit"]').text()).toContain('Salvar vínculos do usuário');
+
+    await wrapper.find('[role="tab"][aria-selected="true"]').trigger('keydown', { key: 'Home' });
+    await flushPromises();
+    expect(wrapper.find('[role="tab"][aria-selected="true"]').attributes('tabindex')).toBe('0');
+    expect(wrapper.findAll('[role="tab"]').filter((tab) => tab.attributes('tabindex') === '0')).toHaveLength(1);
+  });
+
+  it('turns a forbidden catalog response into an explicit, focused recovery state', async () => {
+    mockGetCatalog.mockRejectedValueOnce({ status: 403 });
+
+    const AccessControlPage = (await import('../AccessControlPage.vue')).default;
+    const wrapper = mount(AccessControlPage, {
+      global: { stubs: { DsAlert: false } },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+    expect(wrapper.text()).toContain('Sem permissão para governança de acesso.');
+    expect(wrapper.text()).toContain('Seu perfil não pode consultar ou alterar este catálogo');
+    expect(
+      wrapper.get('button[aria-label="Tentar novamente o carregamento de governança de acesso"]')
+    ).toBeTruthy();
+    expect(wrapper.find('.ds-alert__dismiss').exists()).toBe(false);
+    expect(wrapper.get('[role="alert"][tabindex="-1"]').element).toBe(document.activeElement);
+    expect(wrapper.text()).not.toContain('Nenhum dado disponível.');
+
+    mockGetCatalog.mockResolvedValueOnce(catalogResponse);
+    await wrapper
+      .get('button[aria-label="Tentar novamente o carregamento de governança de acesso"]')
+      .trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Mapa Vetus IAM');
+    wrapper.unmount();
+  });
+
+  it('exposes the matrix action status as text, independently of color', async () => {
+    const AccessControlPage = (await import('../AccessControlPage.vue')).default;
+    const wrapper = mount(AccessControlPage);
+
+    await flushPromises();
+    const chips = wrapper.findAll('.action-chip');
+    expect(chips).toHaveLength(6);
+    expect(chips[0].text()).toBe('ConsultarSim');
+    expect(chips[3].text()).toBe('ExcluirNão');
+    expect(chips[3].attributes('aria-label')).toBe('Excluir: Não');
+  });
+
+  it('keeps a forbidden mutation explicit instead of presenting a false success', async () => {
+    mockUpdateTeam.mockRejectedValueOnce({ status: 403 });
+
+    const AccessControlPage = (await import('../AccessControlPage.vue')).default;
+    const wrapper = mount(AccessControlPage);
+
+    await flushPromises();
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Grupos')!
+      .trigger('click');
+    await flushPromises();
+    await wrapper.get('button[aria-label="Editar Equipe Cirúrgica"]').trigger('click');
+    await wrapper.get('form.entity-form').trigger('submit');
+    await flushPromises();
+
+    expect(mockUpdateTeam).toHaveBeenCalledWith('team-1', expect.any(Object));
+    expect(wrapper.text()).toContain('Sem permissão para governança de acesso.');
+    expect(wrapper.text()).not.toContain('Grupo de acesso atualizado');
+  });
+
+  it('ignores a stale catalog response when a newer reload completes first', async () => {
+    const firstCatalog = deferred<typeof catalogResponse>();
+    const secondCatalog = deferred<typeof catalogResponse>();
+    const firstMatrix = deferred<typeof modulePermissionMatrixResponse>();
+    const secondMatrix = deferred<typeof modulePermissionMatrixResponse>();
+    const currentCatalog = {
+      ...catalogResponse,
+      users: [
+        {
+          ...catalogResponse.users[0],
+          id: 'user-2',
+          username: 'lucas',
+          displayName: 'Lucas Vet'
+        }
+      ],
+      memberships: { userTeams: [], userSectors: [] },
+      legacyRoles: []
+    };
+    const currentMatrix = {
+      ...modulePermissionMatrixResponse,
+      accountId: 'acc-current',
+      items: [{ ...modulePermissionMatrixResponse.items[0], module: 'current-module' }]
+    };
+    mockGetCatalog.mockReset();
+    mockGetModulePermissionMatrix.mockReset();
+    mockGetCatalog.mockReturnValueOnce(firstCatalog.promise).mockReturnValueOnce(secondCatalog.promise);
+    mockGetModulePermissionMatrix
+      .mockReturnValueOnce(firstMatrix.promise)
+      .mockReturnValueOnce(secondMatrix.promise);
+
+    const AccessControlPage = (await import('../AccessControlPage.vue')).default;
+    const wrapper = mount(AccessControlPage);
+    const secondLoad = (
+      wrapper.vm as unknown as { loadCatalog: () => Promise<void> }
+    ).loadCatalog();
+
+    secondCatalog.resolve(currentCatalog);
+    secondMatrix.resolve(currentMatrix);
+    await secondLoad;
+    await flushPromises();
+
+    await wrapper
+      .findAll('[role="tab"]')
+      .find((button) => button.text().includes('Usuários'))!
+      .trigger('click');
+    await flushPromises();
+    expect(wrapper.get('#access-user-select option').text()).toContain('Lucas Vet');
+
+    firstCatalog.resolve(catalogResponse);
+    firstMatrix.resolve(modulePermissionMatrixResponse);
+    await flushPromises();
+
+    expect(wrapper.get('#access-user-select option').text()).toContain('Lucas Vet');
+    expect(wrapper.get('#access-user-select option').text()).not.toContain('Maria Vet');
+  });
+
+  it('normalizes the matrix target when a catalog refresh removes the selected subject', async () => {
+    const AccessControlPage = (await import('../AccessControlPage.vue')).default;
+    const wrapper = mount(AccessControlPage);
+
+    await flushPromises();
+    await wrapper
+      .findAll('[role="tab"]')
+      .find((button) => button.text().includes('Matriz'))!
+      .trigger('click');
+    await flushPromises();
+    expect((wrapper.get('#access-matrix-subject-id').element as HTMLSelectElement).value).toBe(
+      'team-1'
+    );
+
+    const refreshedCatalog = {
+      ...catalogResponse,
+      teams: [
+        {
+          ...catalogResponse.teams[0],
+          id: 'team-2',
+          name: 'Equipe de Internação'
+        }
+      ],
+      assignments: {
+        ...catalogResponse.assignments,
+        teamPermissions: []
+      },
+      memberships: {
+        ...catalogResponse.memberships,
+        userTeams: []
+      }
+    };
+    mockGetCatalog.mockResolvedValueOnce(refreshedCatalog);
+    mockGetModulePermissionMatrix.mockResolvedValueOnce(modulePermissionMatrixResponse);
+
+    await (
+      wrapper.vm as unknown as { loadCatalog: () => Promise<void> }
+    ).loadCatalog();
+    await flushPromises();
+
+    expect((wrapper.get('#access-matrix-subject-id').element as HTMLSelectElement).value).toBe(
+      'team-2'
+    );
+    const grantSelect = wrapper.get(
+      'select[aria-label="Estado de patients.read para Equipe de Internação"]'
+    );
+    await grantSelect.setValue('allow');
+    await flushPromises();
+
+    expect(mockSetGrant).toHaveBeenCalledWith({
+      subjectType: 'team',
+      subjectId: 'team-2',
+      permissionCode: 'patients.read',
+      effect: 'allow'
+    });
+    expect(mockSetGrant).not.toHaveBeenCalledWith(
+      expect.objectContaining({ subjectId: 'team-1' })
+    );
+  });
+
+  it('blocks matrix grants while the catalog is refreshing', async () => {
+    const AccessControlPage = (await import('../AccessControlPage.vue')).default;
+    const wrapper = mount(AccessControlPage);
+
+    await flushPromises();
+    await wrapper
+      .findAll('[role="tab"]')
+      .find((button) => button.text().includes('Matriz'))!
+      .trigger('click');
+    await flushPromises();
+
+    const pendingCatalog = deferred<typeof catalogResponse>();
+    const pendingMatrix = deferred<typeof modulePermissionMatrixResponse>();
+    mockGetCatalog.mockReturnValueOnce(pendingCatalog.promise);
+    mockGetModulePermissionMatrix.mockReturnValueOnce(pendingMatrix.promise);
+    const reload = (
+      wrapper.vm as unknown as { loadCatalog: () => Promise<void> }
+    ).loadCatalog();
+    await wrapper.vm.$nextTick();
+
+    await (
+      wrapper.vm as unknown as {
+        updateGrant: (permissionCode: string, effect: string) => Promise<void>;
+      }
+    ).updateGrant('patients.read', 'allow');
+    expect(mockSetGrant).not.toHaveBeenCalled();
+
+    pendingCatalog.resolve(catalogResponse);
+    pendingMatrix.resolve(modulePermissionMatrixResponse);
+    await reload;
+    await flushPromises();
+    expect(
+      wrapper.get('select[aria-label="Estado de patients.read para Equipe Cirúrgica"]').attributes('disabled')
+    ).toBeUndefined();
+  });
+
   it('renders the summary catalog and filters permissions by query', async () => {
     const AccessControlPage = (await import('../AccessControlPage.vue')).default;
     const wrapper = mount(AccessControlPage);
@@ -194,9 +454,7 @@ describe('AccessControlPage', () => {
     expect(wrapper.text()).toContain('RH');
     expect(wrapper.text()).toContain('Usuários');
     expect(wrapper.text()).toContain('Grupos de Acesso');
-    expect(wrapper.text()).toContain('Usuarios/GruposDeAcesso.htm');
-    expect(wrapper.text()).toContain('GET /users/{id}/access-groups');
-    expect(wrapper.text()).toContain('grupo de acesso, usuário individual e matriz de permissões efetivas');
+    expect(wrapper.text()).toContain('MFA, sessões, chaves de API e auditoria');
     expect(wrapper.text()).toContain('Catálogo de permissões');
     expect(wrapper.text()).toContain('Mapa Vetus IAM');
     expect(wrapper.text()).toContain('Permissão por rotina');
@@ -214,7 +472,9 @@ describe('AccessControlPage', () => {
     expect(wrapper.text()).toContain('patients.read');
     expect(wrapper.text()).toContain('Administrador');
 
-    const filterInput = wrapper.find('input[placeholder="Filtrar permissões por código, módulo ou descrição"]');
+    const filterInput = wrapper.find(
+      'input[placeholder="Filtrar permissões por código, módulo ou descrição"]'
+    );
     await filterInput.setValue('write');
     await flushPromises();
 
@@ -241,6 +501,26 @@ describe('AccessControlPage', () => {
     expect(wrapper.text()).toContain('MFA');
     expect(wrapper.text()).toContain('Tenant');
     expect(mockGetEffectivePermissions).toHaveBeenCalledWith('user-1');
+  });
+
+  it('persists the complete user membership form through one atomic service command', async () => {
+    const AccessControlPage = (await import('../AccessControlPage.vue')).default;
+    const wrapper = mount(AccessControlPage);
+
+    await flushPromises();
+    await wrapper.findAll('button').find((button) => button.text() === 'Usuários')!.trigger('click');
+    await flushPromises();
+    await wrapper.get('form.membership-form').trigger('submit');
+    await flushPromises();
+
+    expect(mockReplaceUserMemberships).toHaveBeenCalledWith('user-1', {
+      roleCodes: ['admin'],
+      teamIds: ['team-1'],
+      sectorIds: ['sector-1']
+    });
+    expect(mockReplaceUserRoles).not.toHaveBeenCalled();
+    expect(mockReplaceUserTeams).not.toHaveBeenCalled();
+    expect(mockReplaceUserSectors).not.toHaveBeenCalled();
   });
 
   it('switches to the groups tab and renders access groups as Vetus groups', async () => {
@@ -272,9 +552,12 @@ describe('AccessControlPage', () => {
     const nameInput = wrapper.find('input[placeholder="Grupo Cirúrgico"]');
     await nameInput.setValue('Equipe Cirúrgica Central');
     const buttons = wrapper.findAll('button');
-    const saveButton = buttons.find((button: (typeof buttons)[number]) => button.text() === 'Salvar grupo');
+    const saveButton = buttons.find(
+      (button: (typeof buttons)[number]) => button.text() === 'Salvar alterações do grupo'
+    );
     expect(saveButton).toBeTruthy();
-    await saveButton!.trigger('click');
+    expect(saveButton!.attributes('type')).toBe('submit');
+    await wrapper.get('form.entity-form').trigger('submit');
     await flushPromises();
 
     expect(mockUpdateTeam).toHaveBeenCalledWith('team-1', {

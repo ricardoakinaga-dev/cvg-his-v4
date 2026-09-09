@@ -26,7 +26,7 @@ describe('DsModal.vue', () => {
       props: { open: false, title: 'Editar registro', teleport: false },
       attachTo: document.body,
       slots: {
-        default: '<button id="first-action">Primeiro</button><button id="last-action">Último</button>'
+        default: '<button id="first-action">Primeiro</button><button id="last-action">Último</button><button disabled>Indisponível</button>'
       }
     });
 
@@ -52,6 +52,23 @@ describe('DsModal.vue', () => {
 
     wrapper.unmount();
     opener.remove();
+  });
+
+  it('does not trap focus on disabled controls', async () => {
+    const wrapper = mount(DsModal, {
+      props: { open: true, title: 'Ação', teleport: false },
+      attachTo: document.body,
+      slots: {
+        default: '<button id="enabled-action">Disponível</button><button disabled>Indisponível</button>'
+      }
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    wrapper.get('#enabled-action').element.focus();
+    await wrapper.get('.ds-modal-overlay').trigger('keydown', { key: 'Tab' });
+
+    expect(document.activeElement).toBe(wrapper.get('.ds-modal__close').element);
+    wrapper.unmount();
   });
 
   it('locks body scrolling while open and restores the previous value', async () => {

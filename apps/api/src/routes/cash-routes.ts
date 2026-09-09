@@ -15,15 +15,18 @@ import type {
   OpenCashRegisterRequest
 } from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
+import type { JsonValue } from '@cvg-his-v2/shared-database';
 import { ConflictError, ValidationError } from '@cvg-his-v2/shared-errors';
 
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
+import type { TenantCommandRunner } from '../helpers/tenant-command.js';
 
 export interface CashRoutesHandlers {
   cash: CashService;
   audit: AuditService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
+  readonly runCommand?: TenantCommandRunner;
 }
 
 function json(response: ServerResponse, statusCode: number, payload: unknown): true {
@@ -164,6 +167,46 @@ function ensureMovementType(value: unknown): CreateCashMovementRequest['movement
   throw new ValidationError('movementType must be supply, deposit, withdrawal or adjustment');
 }
 
+function requireIdempotencyKey(request: IncomingMessage): string {
+  const header = request.headers?.['idempotency-key'];
+  if (Array.isArray(header) && header.length !== 1) {
+    throw new ValidationError('Idempotency-Key header must contain exactly one value');
+  }
+  const value = Array.isArray(header) ? header[0] : header;
+  if (typeof value !== 'string') {
+    throw new ValidationError('Idempotency-Key header is required');
+  }
+  const normalized = value.trim();
+  if (!normalized || normalized.length > 255) {
+    throw new ValidationError(
+      'Idempotency-Key header is required and must contain at most 255 characters'
+    );
+  }
+  return normalized;
+}
+
+async function runMutation<T>(
+  handlers: CashRoutesHandlers,
+  request: IncomingMessage,
+  principal: AuthenticatedPrincipal,
+  correlationId: string,
+  operation: string,
+  payload: JsonValue,
+  command: () => Promise<T>
+): Promise<T> {
+  if (!handlers.runCommand) return command();
+  return handlers.runCommand({
+    request,
+    idempotencyKey: requireIdempotencyKey(request),
+    accountId: principal.user.accountId,
+    actorUserId: principal.user.id,
+    correlationId,
+    operation,
+    payload,
+    command
+  });
+}
+
 export async function handleCashRoutes(
   pathname: string,
   request: IncomingMessage,
@@ -238,10 +281,23 @@ export async function handleCashRoutes(
   ) {
     const principal = await requirePrincipal(request, 'billing.manage');
     const payload = (await readJsonBody(request)) as OpenCashRegisterRequest;
-    const register = await cash.openRegister(principal.user.accountId, principal.user.id, {
-      openingAmount: Number(payload.openingAmount),
-      notes: payload.notes
-    });
+    const openingAmount = Number(payload.openingAmount);
+    const register = await runMutation(
+      handlers,
+      request,
+      principal,
+      correlationId,
+      'cash.register.open',
+      {
+        openingAmount,
+        ...(payload.notes === undefined ? {} : { notes: payload.notes })
+      },
+      () =>
+        cash.openRegister(principal.user.accountId, principal.user.id, {
+          openingAmount,
+          notes: payload.notes
+        })
+    );
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -264,21 +320,37 @@ export async function handleCashRoutes(
   ) {
     const principal = await requirePrincipal(request, 'billing.manage');
     const payload = (await readJsonBody(request)) as CreateCashMovementRequest;
-    const openRegister = await cash.findOpenRegister(principal.user.accountId);
-    if (!openRegister) {
-      throw new ConflictError('No open cash register');
-    }
-
-    const movement = await cash.recordMovement(
-      openRegister.id,
-      principal.user.accountId,
+    const movementType = ensureMovementType(payload.movementType);
+    const amount = Number(payload.amount);
+    const movement = await runMutation(
+      handlers,
+      request,
+      principal,
+      correlationId,
+      'cash.movement.create',
       {
-        movementType: ensureMovementType(payload.movementType),
-        amount: Number(payload.amount),
-        reference: payload.reference,
-        notes: payload.notes
+        movementType,
+        amount,
+        ...(payload.reference === undefined ? {} : { reference: payload.reference }),
+        ...(payload.notes === undefined ? {} : { notes: payload.notes })
       },
-      principal.user.id
+      async () => {
+        const openRegister = await cash.findOpenRegister(principal.user.accountId);
+        if (!openRegister) {
+          throw new ConflictError('No open cash register');
+        }
+        return cash.recordMovement(
+          openRegister.id,
+          principal.user.accountId,
+          {
+            movementType,
+            amount,
+            reference: payload.reference,
+            notes: payload.notes
+          },
+          principal.user.id
+        );
+      }
     );
 
     appendAudit(audit, {
@@ -302,15 +374,28 @@ export async function handleCashRoutes(
   ) {
     const principal = await requirePrincipal(request, 'billing.manage');
     const payload = (await readJsonBody(request)) as CloseCashRegisterRequest;
-    const openRegister = await cash.findOpenRegister(principal.user.accountId);
-    if (!openRegister) {
-      throw new ConflictError('No open cash register');
-    }
-
-    const result = await cash.closeRegister(openRegister.id, principal.user.id, {
-      closingAmount: Number(payload.closingAmount),
-      notes: payload.notes
-    });
+    const closingAmount = Number(payload.closingAmount);
+    const result = await runMutation(
+      handlers,
+      request,
+      principal,
+      correlationId,
+      'cash.register.close',
+      {
+        closingAmount,
+        ...(payload.notes === undefined ? {} : { notes: payload.notes })
+      },
+      async () => {
+        const openRegister = await cash.findOpenRegister(principal.user.accountId);
+        if (!openRegister) {
+          throw new ConflictError('No open cash register');
+        }
+        return cash.closeRegister(openRegister.id, principal.user.id, {
+          closingAmount,
+          notes: payload.notes
+        });
+      }
+    );
 
     appendAudit(audit, {
       actorId: principal.user.id,

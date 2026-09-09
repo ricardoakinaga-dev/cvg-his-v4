@@ -70,6 +70,7 @@ test.describe('Walkthrough operacional principal', () => {
       timeout: 15000
     });
     const referenceDate = scheduledAt.toISOString().slice(0, 10);
+    await page.getByRole('button', { name: 'Filtrar agenda', exact: true }).click();
     await page.getByRole('button', { name: `Selecionar ${referenceDate}`, exact: true }).click();
     await page.getByRole('button', { name: 'Aplicar', exact: true }).click();
     await page.waitForLoadState('networkidle');
@@ -85,7 +86,7 @@ test.describe('Walkthrough operacional principal', () => {
       timeout: 15000
     });
     const receptionSearch = page.getByRole('search');
-    await receptionSearch.getByPlaceholder(/buscar tutor ou paciente/i).fill(patientName);
+    await receptionSearch.getByLabel('Busca da recepção', { exact: true }).fill(patientName);
     await receptionSearch.getByRole('button', { name: 'Buscar', exact: true }).click();
     await expect(page.getByText(patientName).first()).toBeVisible({ timeout: 15000 });
     await page.getByRole('link', { name: 'Preparar check-in' }).first().click();

@@ -597,7 +597,7 @@
           <div v-if="owner.contacts.length" class="contacts-list">
             <div v-for="(contact, index) in owner.contacts" :key="index" class="contact-item">
               <div>
-                <strong>{{ contact.label }}</strong>
+                <strong>{{ ownerContactDisplayLabel(contact) }}</strong>
                 <p>{{ contact.value }}</p>
               </div>
               <div class="contact-item__badges">
@@ -802,7 +802,12 @@ import type { AppointmentSummary } from '@/types/appointment';
 import type { EncounterSummary } from '@/types/encounter';
 import type { BillingRecordSummary } from '@/types/billing';
 import type { DiagnosticOrderSummary } from '@cvg-his-v2/shared-types';
-import { formatDate, patientStatusLabel, speciesLabel } from '@/utils/labels';
+import {
+  formatDate,
+  ownerContactDisplayLabel,
+  patientStatusLabel,
+  speciesLabel
+} from '@/utils/labels';
 import StatusBadge from '@/components/StatusBadge.vue';
 import SkeletonLoader from '@/components/SkeletonLoader.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';

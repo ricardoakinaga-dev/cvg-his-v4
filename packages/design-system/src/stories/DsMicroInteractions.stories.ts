@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/vue';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import DsButton from '../vue/DsButton.vue';
 import DsAlert from '../vue/DsAlert.vue';
 import DsSkeleton from '../vue/DsSkeleton.vue';

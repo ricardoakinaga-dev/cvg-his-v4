@@ -452,13 +452,54 @@ describe('Laboratory analytical result pages', () => {
   });
 
   it('preserves structured results while explicitly reporting a reference catalog failure', async () => {
-    vi.mocked(laboratoryService.listReferenceValues).mockRejectedValue(new Error('Reference unavailable'));
+    vi.mocked(laboratoryService.listReferenceValues).mockRejectedValueOnce(new Error('Reference unavailable'));
     const wrapper = mount(LaboratoryBiochemistryPage);
     await flushPromises();
     await selectResult(wrapper);
     expect(selectedResult(wrapper).text()).toContain('92');
     expect(selectedResult(wrapper).text()).toContain('10-125 U/L');
     expect(wrapper.text()).toMatch(/referências.{0,90}(indispon|carregar|falh)|(?:indispon|carregar|falh).{0,90}referências/i);
+    expect(wrapper.find('[data-testid="data-table-feedback"] .empty-state__title').text()).toBe('Referências indisponíveis');
+    expect(wrapper.findAll('[role="alert"]').filter((node) => node.text().includes('Referências indisponíveis'))).toHaveLength(1);
+    expect(wrapper.findAll('button').filter((button) => button.text() === 'Tentar novamente')).toHaveLength(1);
+  });
+
+  it('retries only the reference catalog and keeps the selected result while it is pending', async () => {
+    type References = Awaited<ReturnType<typeof laboratoryService.listReferenceValues>>;
+    const retry = deferred<References>();
+    vi.mocked(laboratoryService.listReferenceValues)
+      .mockRejectedValueOnce(new Error('Reference unavailable'))
+      .mockReturnValueOnce(retry.promise);
+    const wrapper = mount(LaboratoryBiochemistryPage);
+    await flushPromises();
+    await selectResult(wrapper);
+
+    const selectedBeforeRetry = selectedResult(wrapper).text();
+    const retryButton = wrapper.get('[data-testid="data-table-feedback"] button');
+    await retryButton.trigger('click');
+    await wrapper.vm.$nextTick();
+    expect(selectedResult(wrapper).text()).toContain('92');
+    expect(selectedResult(wrapper).text()).toBe(selectedBeforeRetry);
+    expect(retryButton.attributes('aria-busy')).toBe('true');
+
+    retry.resolve([
+      { id: 'ref-bio-retry', parameter: 'ALT', examType: 'BIO', minValue: 10, maxValue: 125, unit: 'U/L' }
+    ]);
+    await flushPromises();
+    expect(wrapper.find('.lab-references [data-testid="data-table-feedback"]').exists()).toBe(false);
+    expect(wrapper.find('.lab-references tbody').text()).toContain('ALT');
+    expect(selectedResult(wrapper).text()).toBe(selectedBeforeRetry);
+  });
+
+  it('uses one terminal table feedback surface for a primary examination failure', async () => {
+    vi.mocked(laboratoryService.listBiochemistry).mockRejectedValueOnce(new Error('Source unavailable'));
+    const wrapper = mount(LaboratoryBiochemistryPage);
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="data-table-feedback"] .empty-state__title').text())
+      .toBe('Não foi possível carregar os exames');
+    expect(wrapper.findAll('[role="alert"]')).toHaveLength(1);
+    expect(wrapper.findAll('button').filter((button) => button.text() === 'Tentar novamente')).toHaveLength(1);
   });
 
   it('clears populated records and selected detail on source failure and retains failure after dismissing feedback', async () => {
@@ -543,6 +584,51 @@ describe('Laboratory analytical result pages', () => {
     expect(laboratoryService.listHemograms).toHaveBeenLastCalledWith({
       code: undefined, finalizedAt: undefined, enteredAt: undefined, body: undefined, closed: false
     });
+  });
+
+  it('distinguishes forbidden analytical access from a temporary failure', async () => {
+    vi.mocked(laboratoryService.listHemograms).mockRejectedValueOnce({ status: 403 });
+    const wrapper = mount(LaboratoryHemogramsPage);
+    await flushPromises();
+
+    expect(wrapper.get('[data-testid="data-table-feedback"] .empty-state__title').text())
+      .toBe('Acesso aos exames negado');
+    expect(wrapper.text()).not.toContain('Não foi possível carregar os exames');
+    expect(wrapper.get('[data-testid="data-table-feedback"]').text()).not.toContain('Tentar novamente');
+    expect(wrapper.find('.lab-references').exists()).toBe(false);
+  });
+
+  it('keeps pending results visible in the open view and separates filtered absence', async () => {
+    const concluded = {
+      id: 'diag_hem_concluded', accountId: 'acc_1', encounterId: 'enc_1', patientId: 'patient_1',
+      examType: 'Hemograma', examCatalogId: 'cat_001', reason: 'Check-up', status: 'resulted',
+      resultSummary: 'Resultado concluído', resultValues: [{ parameter: 'Hemacias', value: '6.2', unit: 'milhoes/uL', outOfRange: false }],
+      createdAt: '2026-04-24T08:30:00.000Z', updatedAt: '2026-04-25T10:00:00.000Z'
+    };
+    const pending = {
+      ...concluded, id: 'diag_hem_pending', status: 'collected', resultSummary: undefined, resultValues: []
+    } as never;
+    vi.mocked(laboratoryService.listHemograms).mockImplementation(async (filters) => {
+      if (filters?.closed === false && filters.code === 'ausente') return [];
+      return filters?.closed === false ? [pending] : [concluded as never];
+    });
+
+    const wrapper = mount(LaboratoryHemogramsPage);
+    await flushPromises();
+    await filterInput(wrapper, 'Situação').setValue('open');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Coletado');
+    expect(selectedResult(wrapper).text()).toContain('Sem valores estruturados');
+    expect(laboratoryService.listHemograms).toHaveBeenLastCalledWith(expect.objectContaining({ closed: false }));
+
+    await filterInput(wrapper, 'Código').setValue('ausente');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(wrapper.get('[data-testid="data-table-feedback"] .empty-state__title').text())
+      .toBe('Nenhum exame corresponde aos filtros');
+    expect(wrapper.find('section[aria-label="Resultado selecionado"]').exists()).toBe(false);
   });
 
 

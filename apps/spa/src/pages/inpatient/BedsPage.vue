@@ -1,7 +1,7 @@
 <template>
   <div class="beds-page">
     <AppPageHeader :breadcrumbs="['Atendimento', 'Cadastros', 'Boxes de Internação']" title="Boxes de Internação">
-      <template #actions><DsButton variant="primary" @click="router.push('/beds/new')">Incluir</DsButton></template>
+      <template #actions><DsButton variant="primary" data-focus-key="beds-create" @click="router.push('/beds/new')">Incluir</DsButton></template>
     </AppPageHeader>
 
     <section class="filter-panel" aria-label="Pesquisar boxes">
@@ -43,7 +43,7 @@
           </template>
           <template #cell-status="{ row }"><StatusBadge :label="statusLabel((row as BedSummary).status)" :variant="statusVariant(row as BedSummary)" /></template>
           <template #cell-active="{ row }">{{ (row as BedSummary).active ? 'Sim' : 'Não' }}</template>
-          <template #cell-actions="{ row }"><DsButton size="sm" variant="secondary" @click="router.push(`/beds/${(row as BedSummary).id}`)">Abrir</DsButton></template>
+          <template #cell-actions="{ row }"><DsButton size="sm" variant="secondary" :data-focus-key="`beds-open-${(row as BedSummary).id}`" @click="router.push(`/beds/${(row as BedSummary).id}`)">Abrir</DsButton></template>
         </DataTable>
       </template>
     </section>

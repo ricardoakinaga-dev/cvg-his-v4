@@ -139,6 +139,7 @@ export interface WorkerBootstrapResult {
   readonly unitOfWork?: TenantUnitOfWork;
   readonly reportRepository?: ReportRepository;
   readonly reportSources?: AdministrativeExecutiveReportSources;
+  readonly reportSchemaReady?: boolean;
   readonly audit?: AuditService;
   readonly advancePaymentsReportSchemaReady?: boolean;
   readonly pixPaymentDispatch?: WorkerPixPaymentDispatchRuntime;
@@ -556,6 +557,113 @@ async function checkAdvancePaymentsReportSchema(): Promise<boolean> {
   return result.rows[0]?.ready === true;
 }
 
+async function checkReportRuntimeSchema(): Promise<boolean> {
+  const result = await getPool().query<{ readonly ready: boolean }>(
+    `WITH required_columns(table_name, column_name) AS (
+       VALUES
+         ('report_executions', 'id'),
+         ('report_executions', 'account_id'),
+         ('report_executions', 'report_id'),
+         ('report_executions', 'requested_by_user_id'),
+         ('report_executions', 'status'),
+         ('report_executions', 'filters'),
+         ('report_executions', 'row_count'),
+         ('report_executions', 'generated_at'),
+         ('report_executions', 'expires_at'),
+         ('report_executions', 'columns'),
+         ('report_executions', 'rows'),
+         ('report_exports', 'id'),
+         ('report_exports', 'account_id'),
+         ('report_exports', 'execution_id'),
+         ('report_exports', 'format'),
+         ('report_exports', 'filename'),
+         ('report_exports', 'content_type'),
+         ('report_exports', 'content'),
+         ('report_exports', 'content_encoding'),
+         ('report_exports', 'exported_by_user_id'),
+         ('report_exports', 'exported_at'),
+         ('report_schedules', 'id'),
+         ('report_schedules', 'account_id'),
+         ('report_schedules', 'report_id'),
+         ('report_schedules', 'name'),
+         ('report_schedules', 'frequency'),
+         ('report_schedules', 'format'),
+         ('report_schedules', 'filters'),
+         ('report_schedules', 'recipients'),
+         ('report_schedules', 'is_active'),
+         ('report_schedules', 'next_run_at'),
+         ('report_schedules', 'last_run_at'),
+         ('report_schedules', 'last_execution_id'),
+         ('report_schedules', 'last_error'),
+         ('report_schedules', 'created_by_user_id'),
+         ('report_schedules', 'created_at'),
+         ('report_schedules', 'updated_at'),
+         ('report_schedules', 'claim_token'),
+         ('report_schedules', 'claim_until'),
+         ('report_schedules', 'claim_worker_id'),
+         ('report_schedule_deliveries', 'id'),
+         ('report_schedule_deliveries', 'account_id'),
+         ('report_schedule_deliveries', 'schedule_id'),
+         ('report_schedule_deliveries', 'execution_id'),
+         ('report_schedule_deliveries', 'export_id'),
+         ('report_schedule_deliveries', 'recipient'),
+         ('report_schedule_deliveries', 'status'),
+         ('report_schedule_deliveries', 'format'),
+         ('report_schedule_deliveries', 'delivered_at'),
+         ('report_schedule_deliveries', 'error'),
+         ('report_schedule_deliveries', 'created_at'),
+         ('report_schedule_deliveries', 'claim_token'),
+         ('report_schedule_deliveries', 'claim_until'),
+         ('report_schedule_deliveries', 'claim_worker_id')
+     )
+     SELECT
+       (
+       SELECT COUNT(*) = 4
+                AND COALESCE(BOOL_AND(c.relrowsecurity AND c.relforcerowsecurity), false)
+           FROM pg_class AS c
+           JOIN pg_namespace AS n ON n.oid = c.relnamespace
+          WHERE n.nspname = 'public'
+            AND c.relname = ANY($1::text[])
+            AND c.relkind IN ('r', 'p')
+       )
+       AND (
+         SELECT COUNT(*) = 4
+                AND COALESCE(
+                  BOOL_AND(
+                    POSITION('app.current_account_id()' IN
+                      LOWER(COALESCE(qual, '') || ' ' || COALESCE(with_check, ''))) > 0
+                  ),
+                  false
+                )
+           FROM pg_policies
+          WHERE schemaname = 'public'
+            AND policyname = ANY($2::text[])
+            AND tablename = ANY($1::text[])
+       )
+       AND NOT EXISTS (
+             SELECT 1
+               FROM required_columns AS required
+              WHERE NOT EXISTS (
+                SELECT 1
+                  FROM information_schema.columns AS column_info
+                 WHERE column_info.table_schema = 'public'
+                   AND column_info.table_name = required.table_name
+                   AND column_info.column_name = required.column_name
+              )
+           ) AS ready`,
+    [
+      ['report_executions', 'report_exports', 'report_schedules', 'report_schedule_deliveries'],
+      [
+        'report_executions_tenant_isolation',
+        'report_exports_tenant_isolation',
+        'report_schedules_tenant_isolation',
+        'report_schedule_deliveries_tenant_isolation'
+      ]
+    ]
+  );
+  return result.rows[0]?.ready === true;
+}
+
 export async function bootstrapWorkerServices(
   options: WorkerBootstrapOptions = {}
 ): Promise<WorkerBootstrapResult> {
@@ -677,6 +785,11 @@ export async function bootstrapWorkerServices(
       throw new Error('Worker event consumer schema is not ready');
     }
 
+    const reportSchemaReady = await checkReportRuntimeSchema();
+    if (!reportSchemaReady && databaseRequired) {
+      throw new Error('Worker report runtime schema is not ready');
+    }
+
     const advancePaymentsReportSchemaReady = await checkAdvancePaymentsReportSchema();
     if (!advancePaymentsReportSchemaReady && databaseRequired) {
       throw new Error('Worker advance-payment report schema is not ready');
@@ -791,9 +904,12 @@ export async function bootstrapWorkerServices(
       notificationRepository: new DatabaseNotificationRepository(db),
       outboxRepository: new DatabaseOutboxRepository(),
       unitOfWork: deliveryGuaranteesReady ? createTenantUnitOfWork(getPool()) : undefined,
-      reportRepository: new DatabaseReportRepository(),
+      reportRepository: reportSchemaReady ? new DatabaseReportRepository() : undefined,
+      reportSchemaReady,
       audit: new AuditService({ auditRepository: new DatabaseAuditRepository(db) }),
-      reportSources: createDatabaseReportSources(advancePaymentsReportSchemaReady),
+      reportSources: reportSchemaReady
+        ? createDatabaseReportSources(advancePaymentsReportSchemaReady)
+        : undefined,
       advancePaymentsReportSchemaReady,
       pixPaymentDispatch: createSyntheticPixPaymentDispatchRuntime({
         allowSyntheticProviders: options.allowSyntheticPixProvider === true,

@@ -164,7 +164,7 @@ test.describe('Login Real + Owner/Patient via UI', () => {
     expect(patientRequiredState.nameInvalid).toBe(true);
     expect(patientRequiredState.speciesInvalid).toBe(true);
     expect(patientRequiredState.sexInvalid).toBe(true);
-    await expect(page.getByPlaceholder('Buscar cliente por nome...')).toHaveValue('');
+    await expect(page.locator('#ownerSearch')).toHaveValue('');
     await expect(page).toHaveURL(/\/patients\/new$/, { timeout: 5000 });
     console.log('   ✅ Patient form exposes required-field invalid state before submission');
   });

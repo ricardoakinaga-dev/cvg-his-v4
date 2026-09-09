@@ -17,80 +17,111 @@
       <dl class="board-stats">
         <div>
           <dt>Total de leitos</dt>
-          <dd>{{ boardAvailable && !loading ? stats.totalBeds : '—' }}</dd>
+          <dd>{{ boardAvailable ? stats.totalBeds : '—' }}</dd>
         </div>
         <div>
           <dt>Ocupados</dt>
-          <dd>{{ boardAvailable && !loading ? stats.occupiedBeds : '—' }}</dd>
+          <dd>{{ boardAvailable ? stats.occupiedBeds : '—' }}</dd>
         </div>
         <div>
           <dt>Disponíveis</dt>
-          <dd>{{ boardAvailable && !loading ? stats.availableBeds : '—' }}</dd>
+          <dd>{{ boardAvailable ? stats.availableBeds : '—' }}</dd>
         </div>
       </dl>
     </section>
 
-    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
-      {{ error }}
+    <DsAlert
+      v-if="error"
+      variant="danger"
+      :dismissible="boardAvailable"
+      @dismiss="error = ''"
+    >
+      <div class="feedback-content">
+        <div class="feedback-message">
+          <strong>{{ boardAvailable ? 'Atualização não concluída' : accessDenied ? 'Acesso restrito' : 'Mapa indisponível' }}</strong>
+          <span>{{ error }}</span>
+          <span v-if="accessDenied">Seu perfil não tem permissão para consultar a ocupação dos leitos.</span>
+        </div>
+        <DsButton v-if="!accessDenied" variant="secondary" size="sm" :loading="loading" :disabled="loading" @click="loadBoard">
+          Tentar novamente
+        </DsButton>
+        <DsButton v-else tag="a" to="/inpatient" variant="secondary" size="sm">
+          Voltar à internação
+        </DsButton>
+      </div>
     </DsAlert>
 
-    <div v-if="loading" class="page-loading">
+    <div v-if="loading && !boardAvailable" class="page-loading">
       <DsSpinner size="md" />
     </div>
 
     <EmptyState
-      v-else-if="!boardAvailable"
+      v-else-if="!boardAvailable && !error"
       icon="alert"
-      title="Mapa indisponível"
-      description="Atualize para consultar a ocupação dos leitos."
+      :title="accessDenied ? 'Acesso restrito' : 'Mapa indisponível'"
+      :description="accessDenied ? 'Seu perfil não tem permissão para consultar a ocupação dos leitos.' : 'Atualize para consultar a ocupação dos leitos.'"
       size="sm"
     >
-      <template #action><DsButton @click="loadBoard">Tentar novamente</DsButton></template>
+      <template #action>
+        <DsButton v-if="!accessDenied" @click="loadBoard">Tentar novamente</DsButton>
+        <DsButton v-else tag="a" to="/inpatient" variant="secondary">Voltar à internação</DsButton>
+      </template>
     </EmptyState>
 
-    <EmptyState
-      v-else-if="board.items.length === 0"
-      icon="🗺️"
-      title="Nenhum setor configurado"
-      description="Cadastre o primeiro setor para organizar os leitos e receber pacientes."
-      size="sm"
-    >
-      <template #action><DsButton tag="a" to="/sectors">Configurar setores</DsButton></template>
-    </EmptyState>
+    <template v-else-if="boardAvailable">
+      <p v-if="loading" class="board-refresh-status" role="status">Atualizando mapa sem remover os leitos exibidos…</p>
+      <EmptyState
+        v-if="board.items.length === 0"
+        icon="🗺️"
+        title="Nenhum setor configurado"
+        description="Cadastre o primeiro setor para organizar os leitos e receber pacientes."
+        size="sm"
+      >
+        <template #action><DsButton tag="a" to="/sectors">Configurar setores</DsButton></template>
+      </EmptyState>
 
-    <div v-else class="board">
-      <div v-for="sector in board.items" :key="sector.sectorId" class="board-sector">
-        <div class="board-sector__header">
-          <h2 class="board-sector__title">{{ sector.sectorName }}</h2>
-          <span class="board-sector__badge">
-            {{ sector.occupiedBeds }}/{{ sector.totalBeds }} ocupados
-          </span>
-        </div>
-        <div class="board-beds">
-          <div
-            v-for="bed in sector.beds"
-            :key="bed.id"
-            class="bed-card"
-            :class="`bed-card--${bed.status}`"
-          >
-            <div class="bed-card__header">
-              <span class="bed-card__code">{{ bed.code }}</span>
-              <StatusBadge :label="bedStatus(bed.status)" :variant="bedStatusVariant(bed.status)" />
-            </div>
-            <div class="bed-card__name">{{ bed.name }}</div>
-            <div v-if="bed.patientId" class="bed-card__patient">
-              {{ patientName(bed.patientId) }}
-            </div>
-            <div v-if="bed.occupiedSince" class="bed-card__since">
-              Desde {{ formatDate(bed.occupiedSince) }}
-            </div>
-            <div v-if="bed.supportsSpecies" class="bed-card__species">
-              {{ speciesLabel(bed.supportsSpecies) }}
-            </div>
+      <div v-else class="board" :aria-busy="loading">
+        <div v-for="sector in board.items" :key="sector.sectorId" class="board-sector">
+          <div class="board-sector__header">
+            <h2 class="board-sector__title">{{ sector.sectorName }}</h2>
+            <span class="board-sector__badge">
+              {{ sector.occupiedBeds }}/{{ sector.totalBeds }} ocupados
+            </span>
+          </div>
+          <div class="board-beds">
+            <article
+              v-for="bed in sector.beds"
+              :key="bed.id"
+              class="bed-card"
+              :class="`bed-card--${bed.status}`"
+              :aria-label="`${bed.code}, ${bed.name}. Status: ${bedStatus(bed.status)}. ${bed.patientId ? `Paciente: ${patientName(bed.patientId)}` : 'Sem paciente vinculado'}`"
+            >
+              <div class="bed-card__header">
+                <span class="bed-card__code">{{ bed.code }}</span>
+                <StatusBadge :label="bedStatus(bed.status)" :variant="bedStatusVariant(bed.status)" />
+              </div>
+              <div class="bed-card__name">{{ bed.name }}</div>
+              <div v-if="bed.patientId" class="bed-card__patient">
+                {{ patientName(bed.patientId) }}
+              </div>
+              <div v-if="bed.occupiedSince" class="bed-card__since">
+                Desde {{ formatDate(bed.occupiedSince) }}
+              </div>
+              <div v-if="bed.supportsSpecies" class="bed-card__species">
+                {{ speciesLabel(bed.supportsSpecies) }}
+              </div>
+              <RouterLink
+                :to="`/beds/${bed.id}`"
+                class="bed-card__link"
+                :aria-label="`Ver detalhes do ${bed.code}`"
+              >
+                Ver detalhes
+              </RouterLink>
+            </article>
           </div>
         </div>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -110,6 +141,7 @@ import AppPageHeader from '@/components/AppPageHeader.vue';
 const board = ref<BedMapResponse>({ items: [], totalBeds: 0, occupiedBeds: 0, availableBeds: 0 });
 const loading = ref(true);
 const boardAvailable = ref(false);
+const accessDenied = ref(false);
 const error = ref('');
 const entityCache = useEntityCache();
 const patientNames = ref<Record<string, string>>({});
@@ -152,6 +184,7 @@ async function loadBoard() {
   const generation = ++loadGeneration;
   loading.value = true;
   error.value = '';
+  accessDenied.value = false;
   try {
     const nextBoard = await inpatientService.getBedMap();
     if (generation !== loadGeneration) return;
@@ -180,8 +213,16 @@ async function loadBoard() {
     );
   } catch (err: unknown) {
     if (generation !== loadGeneration) return;
-    boardAvailable.value = false;
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar mapa de leitos';
+    accessDenied.value = typeof err === 'object' && err !== null && 'status' in err && err.status === 403;
+    const detail = accessDenied.value
+      ? 'Acesso negado ao mapa de leitos.'
+      : err instanceof Error ? err.message : 'Erro ao carregar mapa de leitos';
+    if (accessDenied.value || !boardAvailable.value) {
+      boardAvailable.value = false;
+      error.value = detail;
+    } else {
+      error.value = `Não foi possível atualizar o mapa. O último mapa confirmado permanece em tela. ${detail}`;
+    }
   } finally {
     if (generation === loadGeneration) loading.value = false;
   }
@@ -231,6 +272,26 @@ async function loadBoard() {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+.board-refresh-status {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+.feedback-content {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+.feedback-message {
+  display: grid;
+  flex: 1 1 240px;
+  min-width: 0;
+  gap: 2px;
+}
+.feedback-message strong {
+  font-weight: 700;
 }
 .board-sector {
   background: var(--color-surface, #ffffff);
@@ -327,6 +388,17 @@ async function loadBoard() {
   color: var(--color-text-muted, #94a3b8);
   margin-top: 4px;
 }
+.bed-card__link {
+  display: inline-flex;
+  margin-top: 12px;
+  color: var(--color-primary-700, #066b80);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.bed-card__link:hover {
+  text-decoration: underline;
+}
 @media (max-width: 720px) {
   .bed-board-page :deep(.app-page-header) {
     padding: 18px;
@@ -342,6 +414,9 @@ async function loadBoard() {
   }
   .board-beds {
     padding: 14px;
+  }
+  .feedback-content {
+    align-items: stretch;
   }
 }
 </style>

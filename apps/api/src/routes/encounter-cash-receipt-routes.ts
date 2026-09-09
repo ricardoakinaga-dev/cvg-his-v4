@@ -289,10 +289,12 @@ export async function handleEncounterCashReceiptRoutes(
   if (createMatch && request.method === 'GET') {
     const principal = await handlers.requirePrincipal(request, 'billing.read');
     const encounterId = requireUuid(createMatch[1] ?? '', 'encounterId');
-    const receipt = await handlers.repository.findByEncounter(
-      principal.user.accountId,
-      encounterId
-    );
+    const includeReversed = new URL(request.url ?? '/', 'http://localhost').searchParams.get(
+      'includeReversed'
+    ) === 'true';
+    const receipt = includeReversed && handlers.repository.findLatestByEncounter
+      ? await handlers.repository.findLatestByEncounter(principal.user.accountId, encounterId)
+      : await handlers.repository.findByEncounter(principal.user.accountId, encounterId);
     if (!receipt) {
       throw new AppError('CASH_RECEIPT_NOT_FOUND', 'Cash receipt not found', 404);
     }

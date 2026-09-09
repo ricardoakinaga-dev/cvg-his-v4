@@ -16,6 +16,10 @@ export interface ThemeColors {
   focusRing: string;
 }
 
+/**
+ * Legacy light theme snapshot. Keep these values stable for existing SSR
+ * consumers; use `cvgPulseLightTheme` for the current CSS theme contract.
+ */
 export const lightTheme: ThemeColors = {
   bg: '#f0f4f8',
   bgElevated: '#ffffff',
@@ -34,6 +38,10 @@ export const lightTheme: ThemeColors = {
   focusRing: 'rgba(37, 99, 235, 0.4)'
 } as const;
 
+/**
+ * Legacy dark theme snapshot. Keep these values stable for existing SSR
+ * consumers; use `cvgPulseDarkTheme` for the current CSS theme contract.
+ */
 export const darkTheme: ThemeColors = {
   bg: '#0f172a',
   bgElevated: '#1e293b',
@@ -50,6 +58,53 @@ export const darkTheme: ThemeColors = {
   textInverse: '#0f172a',
   textLink: '#60a5fa',
   focusRing: 'rgba(96, 165, 250, 0.4)'
+} as const;
+
+/**
+ * Current CVG Pulse light theme values, matching the first `:root` block in
+ * `tokens/variables.css`. These values keep the existing SSR-friendly theme
+ * shape while making the current cyan/mint/ink and Aptos CSS contract explicit.
+ * The corresponding CSS source remains authoritative; unit tests bind these
+ * values to its declarations.
+ */
+export const cvgPulseLightTheme: ThemeColors = {
+  bg: '#eef4f6',
+  bgElevated: '#ffffff',
+  bgSubtle: '#f5f9fa',
+  bgOverlay: 'rgba(8, 23, 32, 0.58)',
+  surface: '#ffffff',
+  surfaceGlass: 'rgba(255, 255, 255, 0.9)',
+  surfaceHover: '#f1f8f9',
+  border: '#d5e2e6',
+  borderStrong: '#b8ccd2',
+  text: '#112530',
+  textSecondary: '#3e5c67',
+  textMuted: '#55717a',
+  textInverse: '#ffffff',
+  textLink: '#066b80',
+  focusRing: 'rgba(15, 168, 184, 0.42)'
+} as const;
+
+/**
+ * Current CVG Pulse dark theme values, matching the explicit
+ * `:root[data-theme='dark']` block in `tokens/variables.css`.
+ */
+export const cvgPulseDarkTheme: ThemeColors = {
+  bg: '#091522',
+  bgElevated: '#112337',
+  bgSubtle: '#0e1c2a',
+  bgOverlay: 'rgba(3, 11, 18, 0.78)',
+  surface: '#112337',
+  surfaceGlass: 'rgba(17, 35, 55, 0.9)',
+  surfaceHover: '#1a3346',
+  border: '#2b4558',
+  borderStrong: '#426277',
+  text: '#eff7f5',
+  textSecondary: '#b4cbd0',
+  textMuted: '#96b0b7',
+  textInverse: '#091522',
+  textLink: '#70e0e5',
+  focusRing: '#83e7eb'
 } as const;
 
 export function generateThemeCSS(theme: ThemeColors): string {

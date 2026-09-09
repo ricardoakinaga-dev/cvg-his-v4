@@ -48,7 +48,7 @@
             </label>
           </div>
           <div class="form-actions">
-            <DsButton variant="primary" :loading="submitting" type="submit">
+            <DsButton variant="primary" :loading="submitting" :disabled="successPending" type="submit">
               {{ isEditing ? 'Atualizar' : 'Cadastrar' }}
             </DsButton>
             <DsButton variant="secondary" type="button" @click="router.push('/staff')">
@@ -90,6 +90,7 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import { staffService } from '@/services/staff';
+import { useSuccessRedirect } from '@/composables/successRedirect';
 import type { ProfessionSummary, StaffSummary } from '@cvg-his-v2/shared-types';
 
 const router = useRouter();
@@ -108,6 +109,8 @@ const form = ref({
 const professions = ref<ProfessionSummary[]>([]);
 const loadingProfessions = ref(false);
 const submitting = ref(false);
+const successRedirect = useSuccessRedirect();
+const successPending = successRedirect.successPending;
 const error = ref('');
 const successMessage = ref('');
 
@@ -145,6 +148,7 @@ async function loadStaff() {
 }
 
 async function submitForm() {
+  if (submitting.value || !successRedirect.begin()) return;
   if (!form.value.employeeCode.trim()) {
     error.value = 'Código do funcionário é obrigatório';
     return;
@@ -177,7 +181,7 @@ async function submitForm() {
       });
       successMessage.value = 'Membro cadastrado com sucesso.';
     }
-    setTimeout(() => router.push('/staff'), 1500);
+    successRedirect.schedule(() => router.push('/staff'), successMessage.value);
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao salvar membro';
   } finally {

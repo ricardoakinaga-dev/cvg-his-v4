@@ -114,6 +114,16 @@ export interface ExecuteReportPayload {
   readonly filters?: Record<string, unknown>;
 }
 
+export interface ReportRequestOptions {
+  readonly signal?: AbortSignal;
+  readonly timeoutMs?: number;
+}
+
+export interface ReportExportRequestOptions extends ReportRequestOptions {
+  /** Stable key reused when a timed-out export must be retried safely. */
+  readonly idempotencyKey?: string;
+}
+
 export interface CreateReportSchedulePayload extends ExecuteReportPayload {
   readonly name: string;
   readonly frequency: ReportScheduleFrequency;
@@ -156,10 +166,14 @@ export const reportsService = {
     return [...(response.items ?? [])];
   },
 
-  async execute(payload: ExecuteReportPayload): Promise<ReportExecutionDetail> {
+  async execute(
+    payload: ExecuteReportPayload,
+    options: ReportRequestOptions = {}
+  ): Promise<ReportExecutionDetail> {
     return apiRequest<ReportExecutionDetail>('/reports/executions', {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      ...options
     });
   },
 
@@ -169,13 +183,34 @@ export const reportsService = {
     );
   },
 
-  async exportExecution(executionId: string, format: ReportFormat): Promise<ReportExportSummary> {
+  async exportExecution(
+    executionId: string,
+    format: ReportFormat,
+    options: ReportExportRequestOptions = {}
+  ): Promise<ReportExportSummary> {
+    const { signal, timeoutMs, idempotencyKey } = options;
     return apiRequest<ReportExportSummary>(
       `/reports/executions/${encodeURIComponent(executionId)}/export`,
       {
         method: 'POST',
-        body: JSON.stringify({ format })
+        body: JSON.stringify({ format }),
+        ...(signal ? { signal } : {}),
+        ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+        ...(idempotencyKey
+          ? { headers: { 'Idempotency-Key': idempotencyKey } }
+          : {})
       }
+    );
+  },
+
+  async getExecutionExport(
+    executionId: string,
+    format: ReportFormat = 'csv',
+    options: ReportRequestOptions = {}
+  ): Promise<ReportExportSummary> {
+    return apiRequest<ReportExportSummary>(
+      `/reports/executions/${encodeURIComponent(executionId)}/export?format=${encodeURIComponent(format)}`,
+      options
     );
   },
 

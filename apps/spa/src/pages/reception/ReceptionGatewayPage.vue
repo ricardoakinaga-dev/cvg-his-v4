@@ -398,7 +398,7 @@
         <span class="workflow-step__number">1</span>
         <div>
           <strong>Tutor</strong>
-          <p>Localizar ou cadastrar responsavel.</p>
+          <p>Localizar ou cadastrar {{ clinicalLabels.tutor.singularLower }}.</p>
         </div>
       </div>
       <div class="workflow-step">
@@ -420,7 +420,7 @@
     <section class="reception-primary-actions" aria-label="Acoes principais da recepcao">
       <RouterLink class="operation-link operation-link--primary" to="/owners/new">
         <strong>Cadastrar tutor</strong>
-        <span>Criar responsavel antes do paciente.</span>
+        <span>Criar {{ clinicalLabels.tutor.singularLower }} antes do paciente.</span>
       </RouterLink>
       <RouterLink class="operation-link operation-link--primary" to="/patients/new">
         <strong>Cadastrar paciente</strong>
@@ -461,7 +461,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import { ownerService } from '@/services/owner';
@@ -480,7 +480,7 @@ import type { BillingRecordSummary } from '@/types/billing';
 import type { ClinicalHandoffSummary } from '@/types/clinicalHandoff';
 import type { QueueEntrySummary, QueuePriority, QueueStatus } from '@/types/scheduling';
 import type { DiagnosticOrderSummary } from '@cvg-his-v2/shared-types';
-import { formatDateTime } from '@/utils/labels';
+import { clinicalLabels, formatDateTime } from '@/utils/labels';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
@@ -815,17 +815,37 @@ async function acknowledgeClinicalHandoff(handoffId: string) {
   }
 }
 
+let searchGeneration = 0;
+
+// Editing the query ends the previous search intent, even before the next submit.
+watch(query, invalidateSearch, { flush: 'sync' });
+onBeforeUnmount(invalidateSearch);
+
+function resetSearchResults() {
+  owners.value = [];
+  patients.value = [];
+  patientLaboratoryOrders.value = [];
+  patientPreventiveEvents.value = [];
+  patientBillingRecords.value = [];
+}
+
+function invalidateSearch() {
+  searchGeneration += 1;
+  loading.value = false;
+  searched.value = false;
+  error.value = '';
+  resetSearchResults();
+}
+
 async function runSearch() {
+  const generation = ++searchGeneration;
   const search = query.value.trim();
   searched.value = true;
   error.value = '';
+  resetSearchResults();
 
   if (!search) {
-    owners.value = [];
-    patients.value = [];
-    patientLaboratoryOrders.value = [];
-    patientPreventiveEvents.value = [];
-    patientBillingRecords.value = [];
+    loading.value = false;
     return;
   }
 
@@ -835,22 +855,20 @@ async function runSearch() {
       ownerService.list({ search, status: 'all' }),
       patientService.list({ search, status: 'all' })
     ]);
+    if (generation !== searchGeneration) return;
     owners.value = ownerItems;
     patients.value = patientItems;
-    await loadPatientPriorityContext(patientItems);
+    await loadPatientPriorityContext(patientItems, generation);
   } catch (err: unknown) {
+    if (generation !== searchGeneration) return;
     error.value = err instanceof Error ? err.message : 'Erro ao buscar tutor ou paciente';
-    owners.value = [];
-    patients.value = [];
-    patientLaboratoryOrders.value = [];
-    patientPreventiveEvents.value = [];
-    patientBillingRecords.value = [];
+    resetSearchResults();
   } finally {
-    loading.value = false;
+    if (generation === searchGeneration) loading.value = false;
   }
 }
 
-async function loadPatientPriorityContext(patientItems: PatientSummary[]) {
+async function loadPatientPriorityContext(patientItems: PatientSummary[], generation: number) {
   if (patientItems.length === 0) {
     patientLaboratoryOrders.value = [];
     patientPreventiveEvents.value = [];
@@ -869,6 +887,8 @@ async function loadPatientPriorityContext(patientItems: PatientSummary[]) {
       billingService.list({ ownerId: patient.primaryOwnerId })
     ])
   );
+
+  if (generation !== searchGeneration) return;
 
   patientLaboratoryOrders.value = contextResults
     .filter(
@@ -917,13 +937,7 @@ function isBillingRecordList(value: unknown[]): value is BillingRecordSummary[] 
 
 function clearSearch() {
   query.value = '';
-  searched.value = false;
-  error.value = '';
-  owners.value = [];
-  patients.value = [];
-  patientLaboratoryOrders.value = [];
-  patientPreventiveEvents.value = [];
-  patientBillingRecords.value = [];
+  invalidateSearch();
 }
 
 function encode(value: string): string {

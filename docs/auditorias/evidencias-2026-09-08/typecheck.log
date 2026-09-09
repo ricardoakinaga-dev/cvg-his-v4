@@ -1,0 +1,135 @@
+
+> cvg-his-v2@0.1.0 typecheck /home/ricardo/cvg-his-v4
+> pnpm -r --filter '@cvg-his-v2/*' --filter '@cvg-his/*' run typecheck
+
+Scope: 67 of 68 workspace projects
+packages/rbac typecheck$ tsc -p tsconfig.json --noEmit
+packages/shared/auth-sdk typecheck$ tsc -p tsconfig.json --noEmit
+packages/shared/errors typecheck$ tsc -p tsconfig.json --noEmit
+packages/shared/rate-limiter typecheck$ tsc -p tsconfig.json --noEmit
+packages/rbac typecheck: Done
+packages/shared/types typecheck$ tsc -p tsconfig.json --noEmit
+packages/shared/errors typecheck: Done
+packages/shared/utils typecheck$ tsc -p tsconfig.json --noEmit
+packages/shared/auth-sdk typecheck: Done
+packages/contracts typecheck$ tsc --noEmit
+packages/shared/rate-limiter typecheck: Done
+packages/shared/utils typecheck: Done
+packages/shared/types typecheck: Done
+packages/contracts typecheck: Done
+packages/design-system typecheck$ tsc -p tsconfig.json --noEmit && vue-tsc -p tsconfig.vue.json --noEmit
+packages/shared/logging typecheck$ tsc -p tsconfig.json --noEmit
+packages/shared/validation typecheck$ tsc -p tsconfig.json --noEmit
+packages/shared/logging typecheck: Done
+packages/shared/validation typecheck: Done
+packages/design-system typecheck: Done
+packages/chaos typecheck$ tsc -p tsconfig.json --noEmit
+packages/secrets typecheck$ tsc -p tsconfig.json --noEmit
+packages/security typecheck$ tsc -p tsconfig.json --noEmit
+packages/shared/config typecheck$ tsc -p tsconfig.json --noEmit
+packages/chaos typecheck: Done
+packages/security typecheck: Done
+packages/shared/config typecheck: Done
+packages/secrets typecheck: Done
+packages/shared/database typecheck$ tsc -p tsconfig.json --noEmit
+packages/shared/database typecheck: Done
+packages/modules/audit typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/lgpd typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/mfa typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/ml typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/mfa typecheck: Done
+packages/modules/soc2 typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/audit typecheck: Done
+packages/shared/contracts typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/ml typecheck: Done
+packages/tenant-context typecheck$ tsc --noEmit
+packages/modules/lgpd typecheck: Done
+packages/modules/soc2 typecheck: Done
+packages/tenant-context typecheck: Done
+packages/shared/contracts typecheck: Done
+apps/spa typecheck$ pnpm --filter @cvg-his-v2/spa^... build && vue-tsc --noEmit
+packages/modules/access-control typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/api-keys typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/cash typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/cash typecheck: Done
+packages/modules/commercial typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/access-control typecheck: Done
+packages/modules/commissions typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/api-keys typecheck: Done
+packages/modules/counter-sales typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/commercial typecheck: Done
+packages/modules/discharges typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/commissions typecheck: Done
+packages/modules/event-bus typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/counter-sales typecheck: Done
+packages/modules/fiscal typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/discharges typecheck: Done
+packages/modules/marketing typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/event-bus typecheck: Done
+packages/modules/owners typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/fiscal typecheck: Done
+packages/modules/packages typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/marketing typecheck: Done
+packages/modules/payments typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/packages typecheck: Done
+packages/modules/prescription-executions typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/owners typecheck: Done
+packages/modules/prescriptions typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/payments typecheck: Done
+packages/modules/products typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/prescriptions typecheck: Done
+packages/modules/quotes typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/prescription-executions typecheck: Done
+packages/modules/reports typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/products typecheck: Done
+packages/modules/services typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/quotes typecheck: Done
+packages/modules/staff typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/reports typecheck: Done
+packages/modules/users typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/services typecheck: Done
+packages/modules/webhooks typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/users typecheck: Done
+packages/shared/feature-flags typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/staff typecheck: Done
+packages/modules/webhooks typecheck: Done
+packages/shared/feature-flags typecheck: Done
+apps/spa typecheck: Done
+packages/modules/auth typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/feature-flags typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/patients typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/feature-flags typecheck: Done
+packages/modules/patients typecheck: Done
+packages/modules/auth typecheck: Done
+packages/modules/encounters typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/scheduling typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/encounters typecheck: Done
+packages/modules/scheduling typecheck: Done
+packages/modules/billing typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/inpatient typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/diagnostics typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/inventory typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/billing typecheck: Done
+packages/modules/medical-records typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/inpatient typecheck: Done
+packages/modules/notifications typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/diagnostics typecheck: Done
+packages/modules/surgery typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/inventory typecheck: Done
+packages/modules/triage typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/surgery typecheck: Done
+packages/modules/notifications typecheck: Done
+packages/modules/medical-records typecheck: Done
+packages/modules/triage typecheck: Done
+packages/modules/attachments typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/financial typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/notifications-whatsapp typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/notifications-whatsapp typecheck: Done
+packages/modules/financial typecheck: Done
+packages/modules/attachments typecheck: Done
+packages/modules/event-consumers typecheck$ tsc -p tsconfig.json --noEmit
+packages/modules/event-consumers typecheck: Done
+apps/api typecheck$ pnpm --filter @cvg-his-v2/api^... build && tsc -p tsconfig.json --noEmit
+apps/worker typecheck$ pnpm --filter @cvg-his-v2/worker^... build && tsc -p tsconfig.json --noEmit
+apps/worker typecheck: Done
+apps/api typecheck: Done

@@ -29,7 +29,9 @@ COMPOSE_PROJECT_NAME="cvg-his-v2-e2e"
 COMPOSE_NETWORK_NAME="${COMPOSE_PROJECT_NAME}_default"
 CLEANUP=true
 PLAYWRIGHT_TARGET_ARGS=()
+PLAYWRIGHT_EXTRA_ARGS=()
 DATABASE_URL_E2E="${E2E_DATABASE_URL:-postgres://postgres:postgres@localhost:5434/cvg_his_e2e}"
+REDIS_URL_E2E="${E2E_REDIS_URL:-redis://127.0.0.1:6381}"
 USE_EXTERNAL_DATABASE=false
 if [[ -n "${E2E_DATABASE_URL:-}" ]]; then
   USE_EXTERNAL_DATABASE=true
@@ -127,6 +129,10 @@ fi
 
 if [[ -n "${E2E_PLAYWRIGHT_TARGET:-}" ]]; then
   read -r -a PLAYWRIGHT_TARGET_ARGS <<< "$E2E_PLAYWRIGHT_TARGET"
+fi
+
+if [[ -n "${E2E_PLAYWRIGHT_EXTRA_ARGS:-}" ]]; then
+  read -r -a PLAYWRIGHT_EXTRA_ARGS <<< "$E2E_PLAYWRIGHT_EXTRA_ARGS"
 fi
 
 cleanup() {
@@ -324,13 +330,13 @@ E2E_ADMIN_USERNAME="$E2E_ADMIN_USERNAME" \
 E2E_ADMIN_EMAIL="$E2E_ADMIN_EMAIL" \
 E2E_ADMIN_PASSWORD="$E2E_ADMIN_PASSWORD" \
 E2E_DATABASE_URL="$DATABASE_URL_E2E" \
-E2E_REDIS_URL="redis://127.0.0.1:6381" \
+E2E_REDIS_URL="$REDIS_URL_E2E" \
 E2E_DATABASE_MODE="1" \
 API_DISABLE_INCOMPATIBLE_DB_REPOS="0" \
 AUTH_RATE_LIMIT_MAX_REQUESTS="200" \
 API_URL="http://localhost:${API_E2E_PORT}" \
 SPA_URL="http://localhost:${SPA_E2E_PORT}" \
-  npx playwright test --config playwright-spa.config.ts --list "${PLAYWRIGHT_TARGET_ARGS[@]}" \
+  npx playwright test --config playwright-spa.config.ts --list "${PLAYWRIGHT_TARGET_ARGS[@]}" "${PLAYWRIGHT_EXTRA_ARGS[@]}" \
   | tee tmp/playwright-discovery.txt
 
 # Freeze the complete suite before execution; archive old evidence before starting a new run.
@@ -338,7 +344,7 @@ if [[ ${#PLAYWRIGHT_TARGET_ARGS[@]} -eq 0 ]]; then
   E2E_DATABASE_MODE="1" \
   API_DISABLE_INCOMPATIBLE_DB_REPOS="0" \
   E2E_DATABASE_URL="$DATABASE_URL_E2E" \
-  E2E_REDIS_URL="redis://127.0.0.1:6381" \
+  E2E_REDIS_URL="$REDIS_URL_E2E" \
   AUTH_RATE_LIMIT_MAX_REQUESTS="200" \
   API_URL="http://localhost:${API_E2E_PORT}" \
   SPA_URL="http://localhost:${SPA_E2E_PORT}" \
@@ -361,13 +367,13 @@ E2E_SECOND_ADMIN_USERNAME="$E2E_SECOND_ADMIN_USERNAME" \
 E2E_SECOND_ADMIN_EMAIL="$E2E_SECOND_ADMIN_EMAIL" \
 E2E_SECOND_ADMIN_PASSWORD="$E2E_SECOND_ADMIN_PASSWORD" \
 E2E_DATABASE_URL="$DATABASE_URL_E2E" \
-E2E_REDIS_URL="redis://127.0.0.1:6381" \
+E2E_REDIS_URL="$REDIS_URL_E2E" \
 E2E_DATABASE_MODE="1" \
 API_DISABLE_INCOMPATIBLE_DB_REPOS="0" \
 AUTH_RATE_LIMIT_MAX_REQUESTS="200" \
   API_URL="http://localhost:${API_E2E_PORT}" \
 SPA_URL="http://localhost:${SPA_E2E_PORT}" \
-  npx playwright test --config playwright-spa.config.ts "${PLAYWRIGHT_TARGET_ARGS[@]}"
+  npx playwright test --config playwright-spa.config.ts "${PLAYWRIGHT_TARGET_ARGS[@]}" "${PLAYWRIGHT_EXTRA_ARGS[@]}"
 
 if [[ ${#PLAYWRIGHT_TARGET_ARGS[@]} -eq 0 ]]; then
   node scripts/validate-usability-playwright-evidence.mjs

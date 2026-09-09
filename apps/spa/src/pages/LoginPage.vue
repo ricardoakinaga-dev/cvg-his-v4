@@ -8,7 +8,7 @@
         <span class="hospital-brand__name" aria-hidden="true">Centro Veterinário<strong>Guarapiranga</strong></span>
       </div>
       <div class="login-controls" aria-label="Preferências de exibição">
-        <button v-if="!prefersReducedMotion && !videoLoadFailed" type="button" class="login-control"
+        <button v-if="shouldRenderVideo" type="button" class="login-control"
           :aria-label="playbackActive ? 'Pausar animação' : 'Reproduzir animação'" @click="togglePlayback">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
             <path v-if="playbackActive" d="M8 5v14M16 5v14" />
@@ -28,12 +28,12 @@
         <div class="login-stage__halo" aria-hidden="true" />
         <button type="button" class="login-stage__interaction"
           aria-label="Animar logo 3D do hospital" title="Mova o cursor ou toque para interagir"
-          :disabled="prefersReducedMotion || !playbackActive"
+          :disabled="!shouldRenderVideo || !playbackActive"
           @pointermove="tiltLogo" @pointerleave="resetLogoTilt" @blur="resetLogoTilt" @click="animateLogo">
-          <span class="login-stage__media" aria-hidden="true">
+          <span class="login-stage__media" aria-hidden="true" data-visual-asset="hospital-logo">
             <span ref="logoDepthRef" class="login-stage__depth" :style="{ transform: logoTransform }">
-              <img class="login-stage__poster" :src="'/art/hospital-logo-poster.webp'" alt="" width="720" height="720" />
-              <video v-if="!prefersReducedMotion && !videoLoadFailed" ref="videoRef" class="login-stage__video"
+              <img class="login-stage__poster" :src="'/art/hospital-logo-poster.webp'" alt="" width="720" height="720" decoding="async" fetchpriority="low" />
+              <video v-if="shouldRenderVideo" ref="videoRef" class="login-stage__video"
                 :src="'/art/hospital-logo-loop.mp4'" :poster="'/art/hospital-logo-poster.webp'"
                 autoplay muted loop playsinline preload="metadata" tabindex="-1"
                 @play="playbackActive = true" @pause="stopLogoMotion" @error="handleVideoError" />
@@ -120,9 +120,29 @@ const motionQuery = typeof window !== 'undefined'
 const prefersReducedMotion = ref(motionQuery?.matches ?? false);
 const playbackActive = ref(false);
 const videoLoadFailed = ref(false);
+type NetworkInformationLike = {
+  saveData?: boolean;
+  effectiveType?: string;
+  addEventListener?: (type: 'change', listener: () => void) => void;
+  removeEventListener?: (type: 'change', listener: () => void) => void;
+};
+function getNetworkInformation(): NetworkInformationLike | undefined {
+  if (typeof navigator === 'undefined') return undefined;
+  return (navigator as Navigator & { connection?: NetworkInformationLike }).connection;
+}
+function isNetworkConstrained() {
+  const connection = getNetworkInformation();
+  return connection?.saveData === true || connection?.effectiveType === 'slow-2g' || connection?.effectiveType === '2g';
+}
+const networkConstrained = ref(isNetworkConstrained());
+const shouldRenderVideo = computed(() => !prefersReducedMotion.value && !videoLoadFailed.value && !networkConstrained.value);
 function syncMotionPreference(event: MediaQueryListEvent) {
   prefersReducedMotion.value = event.matches;
   if (event.matches) { videoRef.value?.pause(); stopLogoMotion(); }
+}
+function syncNetworkPreference() {
+  networkConstrained.value = isNetworkConstrained();
+  if (networkConstrained.value) { videoRef.value?.pause(); stopLogoMotion(); }
 }
 async function togglePlayback() {
   const video = videoRef.value;
@@ -131,9 +151,13 @@ async function togglePlayback() {
     try { await video.play(); } catch { playbackActive.value = false; }
   } else video.pause();
 }
-onMounted(() => motionQuery?.addEventListener('change', syncMotionPreference));
+onMounted(() => {
+  motionQuery?.addEventListener('change', syncMotionPreference);
+  getNetworkInformation()?.addEventListener?.('change', syncNetworkPreference);
+});
 onBeforeUnmount(() => {
   motionQuery?.removeEventListener('change', syncMotionPreference);
+  getNetworkInformation()?.removeEventListener?.('change', syncNetworkPreference);
   logoAnimation?.cancel();
 });
 
@@ -147,6 +171,43 @@ const accountId = ref(import.meta.env.VITE_ACCOUNT_ID?.trim() ?? '');
 const error = ref('');
 const loading = ref(false);
 const nextPath = computed(() => (typeof route.query.next === 'string' ? route.query.next : '/'));
+
+type LoginErrorShape = {
+  message?: unknown;
+  status?: unknown;
+  body?: unknown;
+};
+
+function getLoginErrorMessage(error: unknown): string {
+  const candidate = error && typeof error === 'object' ? error as LoginErrorShape : {};
+  const body = candidate.body && typeof candidate.body === 'object'
+    ? candidate.body as { code?: unknown; message?: unknown }
+    : {};
+  const status = typeof candidate.status === 'number' ? candidate.status : null;
+  const code = typeof body.code === 'string' ? body.code : '';
+  const message = error instanceof Error && error.message.trim()
+    ? error.message.trim()
+    : typeof candidate.message === 'string' ? candidate.message.trim() : '';
+  const normalizedMessage = message.toLowerCase();
+
+  if (
+    status === 429 ||
+    code === 'RATE_LIMIT_EXCEEDED' ||
+    normalizedMessage.includes('too many requests')
+  ) {
+    return 'Muitas tentativas de acesso. Aguarde um instante e tente novamente.';
+  }
+
+  if (code === 'AUTHENTICATION_ERROR' || normalizedMessage === 'invalid username or password') {
+    return 'Confira usuário, senha e conta da clínica e tente novamente.';
+  }
+
+  if (normalizedMessage === 'failed to fetch' || normalizedMessage === 'network error') {
+    return 'Não foi possível conectar ao serviço de acesso. Verifique a conexão e tente novamente.';
+  }
+
+  return message || 'Falha ao fazer login';
+}
 
 async function handleLogin() {
   error.value = '';
@@ -184,11 +245,7 @@ async function handleLogin() {
     // Full page reload to ensure auth state is fresh
     window.location.href = window.location.origin + nextPath.value;
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Falha ao fazer login';
-    error.value =
-      message === 'Invalid username or password'
-        ? 'Confira usuário, senha e conta da clínica e tente novamente.'
-        : message;
+    error.value = getLoginErrorMessage(err);
   } finally {
     loading.value = false;
   }
@@ -350,7 +407,7 @@ async function handleLogin() {
 .login-page--dark .login-card__eyebrow { color: #8bd8d7; }
 @media (max-width: 860px) {
   .login-page { padding: 24px; }
-  .login-composition { grid-template-columns: minmax(0, 1fr); width: min(460px, 100%); gap: 24px; min-height: auto; padding-top: 18px; }
+  .login-composition { grid-template-columns: minmax(0, 1fr); width: min(460px, 100%); gap: 24px; min-height: auto; padding: 18px 0 8px; }
   .login-stage { height: 200px; }
   .login-stage__media { width: 280px; top: 50%; }
   .login-stage__halo { inset: 4% 20% 16%; }

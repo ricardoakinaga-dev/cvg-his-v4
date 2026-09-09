@@ -1,0 +1,99 @@
+
+CHECK validate:openapi
+
+> cvg-his-v2@0.1.0 validate:openapi /home/ricardo/cvg-his-v4
+> node scripts/validate-openapi.js
+
+(node:16) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/ricardo/cvg-his-v4/scripts/validate-openapi.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/ricardo/cvg-his-v4/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✅ OpenAPI valid: CVG HIS API v1.0.0 (414 paths)
+   Paths: 414 | Tags: 40 | Schemas: 518
+✅ All structural checks passed
+EXIT 0
+
+CHECK validate:namespaces
+
+> cvg-his-v2@0.1.0 validate:namespaces /home/ricardo/cvg-his-v4
+> node scripts/check-package-namespace-boundaries.mjs
+
+Package namespace boundary clean: canonical packages under apps, packages
+EXIT 0
+
+CHECK validate:migration-source
+
+> cvg-his-v2@0.1.0 validate:migration-source /home/ricardo/cvg-his-v4
+> node scripts/check-migration-source-of-truth.mjs
+
+[migration-source] PASS packages/db db:migrate points to the checksum-aware runner
+[migration-source] PASS packages/db db:seed points to the canonical seed entrypoint
+[migration-source] PASS .github/workflows/ci.yml invokes the canonical migration rail
+[migration-source] PASS docker-compose.v2.yml invokes the canonical migration rail
+[migration-source] PASS infra/scripts/prepare-test-db.mjs invokes the canonical migration rail
+[migration-source] PASS infra/scripts/cutover-v2.sh invokes the canonical migration rail
+[migration-source] PASS infra/helm/cvg-his-v2/templates/database-maintenance-jobs.yaml invokes the canonical migration rail
+[migration-source] PASS historical shared-database SQL is absent from the active source tree
+[migration-source] PASS packages/db/src/migrate.js is absent; TypeScript runner and generated dist output remain canonical
+[migration-source] PASS packages/db/src/migrate.d.ts is absent; TypeScript runner and generated dist output remain canonical
+[migration-source] PASS packages/db/src/migrate.js.map is absent; TypeScript runner and generated dist output remain canonical
+[migration-source] PASS packages/db/src/migrate.d.ts.map is absent; TypeScript runner and generated dist output remain canonical
+[migration-source] PASS packages/db/src/connection.js is absent; TypeScript runner and generated dist output remain canonical
+[migration-source] PASS packages/db/src/connection.js.map is absent; TypeScript runner and generated dist output remain canonical
+[migration-source] PASS packages/db/src/connection.d.ts is absent; TypeScript runner and generated dist output remain canonical
+[migration-source] PASS packages/db/src/connection.d.ts.map is absent; TypeScript runner and generated dist output remain canonical
+[migration-source] PASS packages/db/drizzle.config.ts is absent; TypeScript runner and generated dist output remain canonical
+[migration-source] canonical migration source-of-truth is consistent
+EXIT 0
+
+CHECK validate:rls
+
+> cvg-his-v2@0.1.0 validate:rls /home/ricardo/cvg-his-v4
+> tsx scripts/validate-rls-coverage.ts
+
+node:net:2302
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /tmp/tsx-1000/76.pipe
+    at Server.setupListenHandle [as _listen2] (node:net:2302:21)
+    at listenInCluster (node:net:2433:12)
+    at Server.listen (node:net:2575:5)
+    at file:///home/ricardo/cvg-his-v4/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/cli.mjs:53:31537
+    at new Promise (<anonymous>)
+    at createIpcServer (file:///home/ricardo/cvg-his-v4/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/cli.mjs:53:31515)
+    at async file:///home/ricardo/cvg-his-v4/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/cli.mjs:55:459 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/tmp/tsx-1000/76.pipe',
+  port: -1
+}
+
+Node.js v24.20.0
+ ELIFECYCLE  Command failed with exit code 1.
+EXIT 1
+
+CHECK validate:deploy-surface
+
+> cvg-his-v2@0.1.0 validate:deploy-surface /home/ricardo/cvg-his-v4
+> node scripts/check-deploy-surface-of-truth.mjs
+
+[deploy-surface] PASS canonical=infra/helm/cvg-his-v2 scanned=157
+EXIT 0
+
+CHECK complexity:check
+
+> cvg-his-v2@0.1.0 complexity:check /home/ricardo/cvg-his-v4
+> node scripts/check-complexity-hotspots.mjs
+
+Orçamento de complexidade válido: hotspots, owners e limites conferidos.
+EXIT 0
+
+CHECK docs:validate
+
+> cvg-his-v2@0.1.0 docs:validate /home/ricardo/cvg-his-v4
+> node scripts/validate-documentation.mjs
+
+Documentação válida: baseline, plano, roadmap, backlog, histórico e links locais conferidos.
+EXIT 0

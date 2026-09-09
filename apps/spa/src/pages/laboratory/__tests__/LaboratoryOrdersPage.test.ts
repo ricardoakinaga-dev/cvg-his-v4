@@ -3,7 +3,6 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import LaboratoryOrdersPage from '../LaboratoryOrdersPage.vue';
-import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import { laboratoryService } from '@/services/laboratory';
 import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
@@ -144,18 +143,92 @@ describe('LaboratoryOrdersPage', () => {
 
     expect(wrapper.text()).toContain('Exames');
     expect(wrapper.text()).toContain('Não foi possível carregar os exames');
-    expect(wrapper.text()).not.toContain('Nenhum registro encontrado');
+    expect(wrapper.get('[data-testid="data-table-feedback"]').text()).toContain('Tente novamente');
+    expect(wrapper.findAll('[role="alert"]')).toHaveLength(1);
     expect(wrapper.findAll('.summary-grid dd').map((item) => item.text())).toEqual(['—', '—', '—', '—']);
-    await wrapper.findComponent(DsAlert).vm.$emit('dismiss');
-    await flushPromises();
-    expect(wrapper.text()).not.toContain('Unexpected error');
-    expect(wrapper.find('.load-failure').exists()).toBe(true);
     vi.mocked(laboratoryService.listOrders).mockResolvedValueOnce([]);
-    await wrapper.get('.load-failure button').trigger('click');
+    await wrapper.get('[data-testid="data-table-feedback"] button').trigger('click');
     await flushPromises();
-    expect(wrapper.find('.load-failure').exists()).toBe(false);
-    expect(wrapper.text()).toContain('Nenhum registro encontrado');
+    expect(wrapper.get('[data-testid="data-table-feedback"] .empty-state__title').text())
+      .toBe('Nenhum exame encontrado');
+    expect(wrapper.findAll('[role="alert"]')).toHaveLength(0);
 
+  });
+
+  it('ignores an older refresh result when a newer request completes first', async () => {
+    let resolveFirst!: (value: never[]) => void;
+    let resolveSecond!: (value: never[]) => void;
+    const first = new Promise<never[]>((resolve) => { resolveFirst = resolve; });
+    const second = new Promise<never[]>((resolve) => { resolveSecond = resolve; });
+    vi.mocked(laboratoryService.listOrders)
+      .mockReturnValueOnce(first)
+      .mockReturnValueOnce(second);
+
+    const wrapper = mount(LaboratoryOrdersPage);
+    const secondLoad = (wrapper.vm as any).load();
+    resolveSecond([
+      {
+        id: 'diag_current' as never,
+        accountId: 'acc_1' as never,
+        encounterId: 'enc_1' as never,
+        patientId: 'paciente_1' as never,
+        examType: 'Bioquímico atual',
+        examCatalogId: 'cat_current',
+        reason: 'Resposta mais nova',
+        status: 'requested',
+        createdAt: '2026-04-25T08:30:00.000Z',
+        updatedAt: '2026-04-25T08:30:00.000Z'
+      }
+    ] as never[]);
+    await secondLoad;
+    await flushPromises();
+
+    resolveFirst([
+      {
+        id: 'diag_stale' as never,
+        accountId: 'acc_1' as never,
+        encounterId: 'enc_1' as never,
+        patientId: 'paciente_1' as never,
+        examType: 'Hemograma obsoleto',
+        examCatalogId: 'cat_stale',
+        reason: 'Resposta mais antiga',
+        status: 'requested',
+        createdAt: '2026-04-24T08:30:00.000Z',
+        updatedAt: '2026-04-24T08:30:00.000Z'
+      }
+    ] as never[]);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Bioquímico atual');
+    expect(wrapper.text()).not.toContain('Hemograma obsoleto');
+    expect(wrapper.findAll('.summary-grid dd')[0].text()).toBe('1');
+  });
+
+  it('distinguishes no-results from an intrinsic empty laboratory list', async () => {
+    vi.mocked(laboratoryService.listOrders).mockResolvedValue([
+      {
+        id: 'diag_1' as never,
+        accountId: 'acc_1' as never,
+        encounterId: 'enc_1' as never,
+        patientId: 'paciente_1' as never,
+        examType: 'Hemograma',
+        examCatalogId: 'cat_001',
+        reason: 'Backlog de coleta',
+        status: 'requested',
+        createdAt: '2026-04-24T08:30:00.000Z',
+        updatedAt: '2026-04-24T08:30:00.000Z'
+      }
+    ]);
+
+    const wrapper = mount(LaboratoryOrdersPage);
+    await flushPromises();
+    await wrapper.find('input[type="search"]').setValue('Cliente ausente');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.get('[data-testid="data-table-feedback"] .empty-state__title').text())
+      .toBe('Nenhum exame corresponde aos filtros');
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
   });
 
   it('filters exams by client, animal and date before searching', async () => {
@@ -389,6 +462,19 @@ describe('LaboratoryOrdersPage', () => {
     expect(wrapper.text()).toContain('Reportar resultado');
     expect(wrapper.text()).toContain('Tentativa 1');
   });
+
+  it('distinguishes forbidden access from a temporary unavailable order service', async () => {
+    vi.mocked(laboratoryService.listOrders).mockRejectedValue({ status: 403 });
+    const wrapper = mount(LaboratoryOrdersPage);
+    await flushPromises();
+
+    expect(wrapper.get('[data-testid="data-table-feedback"] .empty-state__title').text())
+      .toBe('Acesso aos exames negado');
+    expect(wrapper.text()).not.toContain('Não foi possível carregar os exames');
+    expect(wrapper.get('[data-testid="data-table-feedback"]').text()).not.toContain('Tente novamente');
+    expect(wrapper.findAll('.summary-grid dd').map((item) => item.text())).toEqual(['—', '—', '—', '—']);
+  });
+
   it('keeps summary values unknown until the records request resolves', async () => {
     let resolveRecords!: (value: never[]) => void;
     vi.mocked(laboratoryService.listOrders).mockImplementationOnce(() => new Promise((resolve) => { resolveRecords = resolve; }));

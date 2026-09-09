@@ -1285,7 +1285,7 @@ import type { InventoryItemSummary } from '@/types/inventory';
 import type { MedicalRecordListSummary } from '@/types/medicalRecords';
 import type { CreateOwnerRequest, OwnerSummary } from '@/types/owner';
 import type { PatientSummary } from '@/types/patient';
-
+import { formatOwnerContact } from '@/utils/labels';
 type CatalogItemType = 'all' | 'product' | 'service';
 
 const CANCELLATION_REASON_MAX_LENGTH = 500;
@@ -1852,7 +1852,7 @@ function ownerPrimaryContactLabel(ownerId: string | null) {
   if (!ownerId) return 'Sem contato';
   const owner = ownerMap.value[ownerId];
   const primary = owner?.contacts.find((contact) => contact.primary) ?? owner?.contacts[0];
-  return primary ? `${primary.label}: ${primary.value}` : 'Sem contato principal';
+  return primary ? formatOwnerContact(primary, 'Sem contato principal') : 'Sem contato principal';
 }
 
 function ownerPatientsLabel(ownerId: string | null) {
@@ -1867,7 +1867,7 @@ function ownerContactsSummary(ownerId: string | null) {
   if (!ownerId) return 'Sem contatos';
   const owner = ownerMap.value[ownerId];
   if (!owner || owner.contacts.length === 0) return 'Sem contatos';
-  return owner.contacts.map((contact) => `${contact.label}: ${contact.value}`).join(' · ');
+  return owner.contacts.map((contact) => formatOwnerContact(contact)).join(' · ');
 }
 
 function saleItemsCountLabel(sale: CounterSaleDetail) {
@@ -2516,7 +2516,7 @@ function buildOperationalPrintHtml(
         <div class="headline">Cliente e contexto</div>
         <h2>${escapeHtml(owner?.fullName ?? 'Comanda sem tutor')}</h2>
         <p class="note">
-          ${escapeHtml(ownerContact ? `${ownerContact.label}: ${ownerContact.value}` : 'Sem contato principal')}
+          ${escapeHtml(ownerContact ? formatOwnerContact(ownerContact, 'Sem contato principal') : 'Sem contato principal')}
           · ID ${escapeHtml(sale.id)}
         </p>
         <div class="grid">

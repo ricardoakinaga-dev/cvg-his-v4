@@ -1,10 +1,15 @@
 <template>
   <component
     :is="resolvedTag"
+    ref="buttonElement"
     :class="classes"
+    :style="loading && !fullWidth && loadingWidth ? { width: `${loadingWidth}px`, maxWidth: '100%' } : undefined"
     :disabled="isDisabled"
     :type="resolvedTag === 'button' ? type : undefined"
     :href="resolvedTag === 'a' && !isDisabled ? resolvedHref : undefined"
+    :target="resolvedTag === 'a' ? target : undefined"
+    :rel="resolvedTag === 'a' ? rel : undefined"
+    :download="resolvedTag === 'a' ? download : undefined"
     :aria-label="resolvedAriaLabel"
     :aria-disabled="resolvedTag === 'a' && isDisabled ? 'true' : undefined"
     :tabindex="resolvedTag === 'a' && isDisabled ? -1 : undefined"
@@ -25,7 +30,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, getCurrentInstance, useSlots } from 'vue';
+import { computed, getCurrentInstance, onMounted, ref, useSlots, watch } from 'vue';
 import type { Router } from 'vue-router';
 import DsIcon from './DsIcon.vue';
 
@@ -39,6 +44,9 @@ export interface DsButtonProps {
   tag?: 'button' | 'a';
   href?: string;
   to?: string;
+  target?: string;
+  rel?: string;
+  download?: string | boolean;
   ariaLabel?: string;
   icon?: string;
 }
@@ -53,11 +61,24 @@ const props = withDefaults(defineProps<DsButtonProps>(), {
   tag: 'button',
   href: undefined,
   to: undefined,
+  target: undefined,
+  rel: undefined,
+  download: undefined,
   ariaLabel: undefined,
   icon: undefined
 });
 
 const slots = useSlots();
+const buttonElement = ref<HTMLElement>();
+const loadingWidth = ref<number>();
+// Capture before Vue patches the loading label; pending work must not move
+// neighbouring controls. Full-width buttons continue to follow their container.
+watch(() => props.loading, (loading) => {
+  loadingWidth.value = loading ? buttonElement.value?.getBoundingClientRect().width : undefined;
+}, { flush: 'sync' });
+onMounted(() => {
+  if (props.loading) loadingWidth.value = buttonElement.value?.getBoundingClientRect().width;
+});
 // Read the installed router through Vue's public app context instead of
 // importing vue-router's runtime injection symbol. This keeps the design
 // system usable in isolated mounts/storybooks and in tests with partial
@@ -135,6 +156,7 @@ function onAuxClick(event: MouseEvent) {
 
 <style scoped>
 .ds-btn {
+  position: relative;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
@@ -143,19 +165,18 @@ function onAuxClick(event: MouseEvent) {
   min-width: var(--touch-min, 44px);
   min-height: var(--touch-min, 44px);
   padding: 0.625rem 1rem;
-  font-family: var(--font-family-sans, system-ui, sans-serif);
+  font-family: var(--type-family-interface, var(--font-family-sans, system-ui, sans-serif));
   font-size: var(--font-size-sm, 0.8125rem);
   font-weight: var(--font-weight-semibold, 600);
   letter-spacing: 0.01em;
   border: 1px solid transparent;
-  border-radius: var(--radius-md, 0.5rem);
+  border-radius: var(--material-radius-control, var(--radius-md, 0.5rem));
   cursor: pointer;
   transition:
-    background-color var(--duration-fast, 150ms) var(--ease-default, ease),
-    border-color var(--duration-fast, 150ms) var(--ease-default, ease),
-    box-shadow var(--duration-fast, 150ms) var(--ease-default, ease),
-    transform var(--duration-fast, 150ms) var(--ease-default, ease),
-    opacity var(--duration-fast, 150ms) var(--ease-default, ease);
+    background-color var(--motion-duration-hover, 120ms) var(--motion-ease-state, ease),
+    border-color var(--motion-duration-hover, 120ms) var(--motion-ease-state, ease),
+    box-shadow var(--motion-duration-hover, 120ms) var(--motion-ease-state, ease),
+    transform var(--motion-duration-press, 80ms) var(--motion-ease-state, ease);
   white-space: nowrap;
   user-select: none;
   text-decoration: none;
@@ -163,12 +184,12 @@ function onAuxClick(event: MouseEvent) {
 }
 
 .ds-btn:hover:not(:disabled):not(.ds-btn--loading) {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm, 0 2px 8px rgba(20, 34, 56, 0.07));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 16%), 0 2px 4px rgb(10 35 42 / 12%);
 }
 
 .ds-btn:active:not(:disabled):not(.ds-btn--loading) {
-  transform: translateY(0);
+  transform: translateY(var(--motion-distance-press, 1px));
+  box-shadow: inset 0 1px 2px rgb(10 35 42 / 16%);
 }
 
 .ds-btn:focus {
@@ -199,14 +220,20 @@ function onAuxClick(event: MouseEvent) {
 }
 
 .ds-btn--primary {
-  background: var(--color-primary-600, #2563eb);
-  color: var(--color-text-inverse, #ffffff);
-  border-color: var(--color-primary-600, #2563eb);
+  background: var(--action-primary-bg, var(--color-primary-700, #103d48));
+  color: var(--action-primary-content, var(--color-text-inverse, #ffffff));
+  border-color: var(--action-primary-bg, var(--color-primary-700, #103d48));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 16%), 0 1px 2px rgb(10 35 42 / 12%);
 }
 
 .ds-btn--primary:hover:not(:disabled) {
-  background: var(--color-primary-700, #1d4ed8);
-  border-color: var(--color-primary-700, #1d4ed8);
+  background: var(--action-primary-hover, var(--color-primary-800, #0b3039));
+  border-color: var(--action-primary-hover, var(--color-primary-800, #0b3039));
+}
+
+.ds-btn--primary:active:not(:disabled):not(.ds-btn--loading) {
+  background: var(--action-primary-pressed, var(--color-primary-900, #08242c));
+  border-color: var(--action-primary-pressed, var(--color-primary-900, #08242c));
 }
 
 .ds-btn--secondary {
@@ -262,6 +289,12 @@ function onAuxClick(event: MouseEvent) {
 
 .ds-btn--loading {
   cursor: wait;
+  opacity: 1;
+}
+
+.ds-btn--loading .ds-btn__label,
+.ds-btn--loading .ds-btn__icon {
+  opacity: 0;
 }
 
 .ds-btn--full-width {
@@ -287,18 +320,22 @@ function onAuxClick(event: MouseEvent) {
 }
 
 .ds-btn__spinner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   width: 1rem;
   height: 1rem;
   border: 2px solid currentColor;
   border-top-color: transparent;
   border-radius: 50%;
-  animation: ds-spin var(--duration-normal, 250ms) linear infinite;
+  animation: ds-spin 800ms linear infinite;
   flex: 0 0 auto;
 }
 
 @keyframes ds-spin {
   to {
-    transform: rotate(360deg);
+    transform: translate(-50%, -50%) rotate(360deg);
   }
 }
 

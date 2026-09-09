@@ -318,6 +318,40 @@ test('cash receipt GET collection recovers the unique receipt by encounter', asy
   assert.equal(auditEvent.correlationId, 'corr-cash-receipt');
 });
 
+test('cash receipt GET collection can recover the latest receipt including its reversal', async () => {
+  const response = new MockResponse();
+  const reversedReceipt = { ...receipt, reversalId: 'reversal-1', reversalReason: 'Correção' };
+  const calls: string[] = [];
+  const handled = await handleEncounterCashReceiptRoutes(
+    `/encounters/${encounterId}/cash-receipts`,
+    {
+      url: `/encounters/${encounterId}/cash-receipts?includeReversed=true`,
+      method: 'GET',
+      headers: {}
+    } as never,
+    response as never,
+    {
+      ...auditHandlers(),
+      command: {} as never,
+      repository: {
+        async findByEncounter() {
+          calls.push('active');
+          return receipt;
+        },
+        async findLatestByEncounter() {
+          calls.push('latest');
+          return reversedReceipt;
+        }
+      } as never,
+      requirePrincipal: () => principal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.deepEqual(calls, ['latest']);
+  assert.deepEqual(response.bodyJson(), reversedReceipt);
+});
+
 test('received encounters require an explicit reversal before reopen or delete operations', async () => {
   await assert.rejects(
     () =>

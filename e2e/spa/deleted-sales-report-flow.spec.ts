@@ -27,6 +27,7 @@ test.describe('Relatório de vendas e comandas canceladas', () => {
       page.getByRole('heading', { name: 'Exclusão de Vendas e Comandas', exact: true })
     ).toBeVisible();
 
+    await page.getByText('Filtros da consulta', { exact: true }).click();
     await page.getByLabel('Consultar', { exact: true }).selectOption('opening-date');
 
     const search = page.getByLabel('Número ou observação');
@@ -44,10 +45,6 @@ test.describe('Relatório de vendas e comandas canceladas', () => {
     );
     await expect(page.getByText(opened.number, { exact: true })).toBeVisible();
 
-    const executionResponse = page.waitForResponse(
-      (response) =>
-        response.url().endsWith('/api/reports/executions') && response.request().method() === 'POST'
-    );
     const exportResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/reports/executions/') &&
@@ -56,14 +53,13 @@ test.describe('Relatório de vendas e comandas canceladas', () => {
     );
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Exportar CSV', exact: true }).click();
-    const [execution, exported, downloaded] = await Promise.all([
-      executionResponse.then((response) => response.json()),
+    const [exported, downloaded] = await Promise.all([
       exportResponse.then((response) => response.json()),
       download
     ]);
 
-    expect(execution.reportId).toBe('commercial-deleted-sales');
-    expect(execution.rowCount).toBe(1);
+    expect(filteredExecution.reportId).toBe('commercial-deleted-sales');
+    expect(filteredExecution.rowCount).toBe(1);
     expect(exported.format).toBe('csv');
     expect(exported.content).toContain(opened.number);
     expect(exported.content).toContain(marker);
@@ -85,6 +81,7 @@ test.describe('Relatório de vendas e comandas canceladas', () => {
     await apiCall.post(`/counter-sales/${sale.id}/cancel`, { reason });
     await spaPage.goto('/reports/deleted-sales-counter-sales');
     await expect(page.getByLabel('Consultar', { exact: true })).toHaveValue('history');
+    await page.getByText('Filtros da consulta', { exact: true }).click();
     const today = new Date().toISOString().slice(0, 10);
     await page.getByLabel('Cancelamentos de (UTC)', { exact: true }).fill(today);
     await page.getByLabel('Cancelamentos até (UTC)', { exact: true }).fill(today);

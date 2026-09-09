@@ -8,11 +8,11 @@
       :primary-action="headerPrimaryAction"
     />
 
-    <DsAlert variant="info">
+    <aside class="users-list-page__context-note" role="note">
       Superfície Vetus-like para a rota legada Usuarios/Usuarios.htm. Usuário autenticável separado
       do profissional de agenda, com vínculos de perfil, contexto organizacional, Grupos de Acesso e
       Auditoria.
-    </DsAlert>
+    </aside>
 
     <section class="users-list-page__overview">
       <DsCard title="Resumo de acesso">
@@ -101,18 +101,27 @@
       </DsInput>
     </div>
 
-    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
-      {{ error }}
-    </DsAlert>
-
     <DataTable
       :columns="columns"
       :rows="userRows"
       :loading="loading"
-      :empty-text="emptyText"
+      :feedback="tableFeedback"
       variant="hoverable"
       caption="Lista de usuários do sistema"
     >
+      <template v-if="tableFeedback?.kind === 'error' || tableFeedback?.kind === 'unavailable' || tableFeedback?.kind === 'forbidden'" #feedbackAction>
+        <DsButton
+          v-if="tableFeedback.kind === 'forbidden'"
+          tag="a"
+          to="/"
+          variant="secondary"
+        >
+          Voltar ao painel
+        </DsButton>
+        <DsButton v-else variant="secondary" :loading="loading" :disabled="loading" @click="fetchData">
+          Tentar novamente
+        </DsButton>
+      </template>
       <template #cell-status="{ row }">
         <StatusBadge
           :label="userRow(row).status === 'active' ? 'Ativo' : 'Inativo'"
@@ -133,18 +142,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { computed, ref } from 'vue';
 import DataTable from '@/components/DataTable.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
-import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import { useListData } from '@/composables/useListData';
 import { userService } from '@/services/user';
 import type { UserSummary } from '@/types/user';
-import type { DataTableRow } from '@/components/DataTable.vue';
+import type { DataTableFeedback, DataTableRow } from '@/components/DataTable.vue';
 
 const search = ref('');
 const roleFilter = ref('');
@@ -153,11 +161,14 @@ const statusFilter = ref('');
 const {
   loading,
   error,
+  errorStatus,
+  errorCode,
   items: users,
   load: fetchData
 } = useListData<UserSummary>({
   fetchFn: () => userService.list(),
-  entityLabel: 'usuários'
+  entityLabel: 'usuários',
+  clearItemsOnErrorStatuses: [403]
 });
 
 const columns = [
@@ -194,11 +205,60 @@ const rolesCount = computed(() => new Set(users.value.map((u) => u.roleCode)).si
 const organizationContexts = computed(() => new Set(users.value.map((u) => u.accountId)).size);
 const userRows = computed(() => filteredUsers.value as unknown as DataTableRow[]);
 
-const emptyText = computed(() => {
-  if (search.value || roleFilter.value || statusFilter.value) {
-    return 'Nenhum usuário encontrado para os filtros selecionados';
+const hasActiveFilters = computed(() => Boolean(search.value || roleFilter.value || statusFilter.value));
+
+const tableFeedback = computed<DataTableFeedback | null>(() => {
+  if (error.value) {
+    if (errorStatus.value === 403) {
+      return {
+        kind: 'forbidden',
+        icon: '🔒',
+        title: 'Acesso aos usuários negado',
+        description: 'Seu perfil não tem permissão para consultar os usuários.'
+      };
+    }
+
+    const unavailable = errorStatus.value === 408 ||
+      (errorStatus.value !== null && errorStatus.value >= 500) ||
+      ['AbortError', 'ECONNABORTED', 'ERR_NETWORK', 'ETIMEDOUT', 'NetworkError', 'TypeError'].includes(
+        errorCode.value ?? ''
+      );
+    if (unavailable) {
+      return {
+        kind: 'unavailable',
+        icon: 'clock',
+        title: 'Serviço de usuários indisponível',
+        description: 'Não foi possível consultar os usuários agora. Tente novamente em instantes.'
+      };
+    }
+
+    return {
+      kind: 'error',
+      icon: '⚠️',
+      title: 'Não foi possível carregar os usuários',
+      description: 'A consulta de usuários não pôde ser concluída. Tente novamente para atualizar a lista.'
+    };
   }
-  return 'Nenhum usuário cadastrado';
+
+  if (hasActiveFilters.value && filteredUsers.value.length === 0) {
+    return {
+      kind: 'no-results',
+      icon: '🔎',
+      title: 'Nenhum usuário corresponde aos filtros',
+      description: 'Revise os filtros e tente novamente.'
+    };
+  }
+
+  if (users.value.length === 0) {
+    return {
+      kind: 'empty',
+      icon: '👥',
+      title: 'Nenhum usuário cadastrado',
+      description: 'Ainda não há usuários cadastrados para exibir.'
+    };
+  }
+
+  return null;
 });
 
 const roleLabelMap: Record<string, string> = {
@@ -235,8 +295,6 @@ function formatRole(code: string) {
 function userRow(row: unknown): UserSummary {
   return row as UserSummary;
 }
-
-onMounted(fetchData);
 </script>
 
 <style scoped>
@@ -250,6 +308,16 @@ onMounted(fetchData);
   display: grid;
   grid-template-columns: minmax(0, 1fr) 180px 160px;
   gap: 12px;
+}
+
+.users-list-page__context-note {
+  padding: 12px 16px;
+  border: 1px solid var(--color-info-200, #bfdbfe);
+  border-radius: 8px;
+  background: var(--color-info-50, #eff6ff);
+  color: var(--color-info-800, #1e40af);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .users-list-page__overview {

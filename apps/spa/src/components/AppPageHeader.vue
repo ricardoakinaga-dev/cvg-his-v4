@@ -1,5 +1,9 @@
 <template>
-  <header class="app-page-header" :class="{ 'app-page-header--with-aside': hasAside }">
+  <header
+    v-bind="$attrs"
+    class="app-page-header"
+    :class="{ 'app-page-header--with-aside': hasAside }"
+  >
     <div class="app-page-header__content">
       <nav
         v-if="normalizedBreadcrumbs.length > 0 || $slots.breadcrumbs"
@@ -111,44 +115,56 @@
       >
         <slot name="actions">
           <div class="app-page-header__action-group">
-            <template v-for="action in secondaryActions" :key="action.key ?? action.label">
-              <AppPageLink
-                v-if="action.to"
-                :to="action.to"
-                custom
-                v-slot="{ href, navigate }"
-              >
-                <DsButton
-                  :variant="secondaryActionVariant(action)"
-                  :size="action.size ?? 'md'"
-                  :type="action.type ?? 'button'"
-                  tag="a"
-                  :href="href"
-                  :disabled="action.disabled"
-                  :loading="action.loading"
-                  :aria-label="action.ariaLabel"
-                  :icon="action.icon"
-                  @click="navigateInternalAction(action, $event, navigate)"
-                >
-                  {{ action.label }}
-                </DsButton>
-              </AppPageLink>
-              <DsButton
-                v-else
-                :variant="secondaryActionVariant(action)"
-                :size="action.size ?? 'md'"
-                :type="action.type ?? 'button'"
-                :tag="action.href ? 'a' : 'button'"
-                :href="action.href"
-                :disabled="action.disabled"
-                :loading="action.loading"
-                :aria-label="action.ariaLabel"
-                :icon="action.icon"
-                @click="emitAction(action, $event)"
-              >
-                {{ action.label }}
-              </DsButton>
-            </template>
+            <component
+              :is="collapseSecondaryActionsOnMobile ? 'details' : 'div'"
+              :open="collapseSecondaryActionsOnMobile ? !isCompactViewport : undefined"
+              class="app-page-header__secondary-actions"
+              :class="{
+                'app-page-header__secondary-actions--collapsible': collapseSecondaryActionsOnMobile
+              }"
+            >
+              <summary v-if="collapseSecondaryActionsOnMobile">Mais ações</summary>
+              <div class="app-page-header__secondary-actions-body">
+                <template v-for="action in secondaryActions" :key="action.key ?? action.label">
+                  <AppPageLink
+                    v-if="action.to"
+                    :to="action.to"
+                    custom
+                    v-slot="{ href, navigate }"
+                  >
+                    <DsButton
+                      :variant="secondaryActionVariant(action)"
+                      :size="action.size ?? 'md'"
+                      :type="action.type ?? 'button'"
+                      tag="a"
+                      :href="href"
+                      :disabled="action.disabled"
+                      :loading="action.loading"
+                      :aria-label="action.ariaLabel"
+                      :icon="action.icon"
+                      @click="navigateInternalAction(action, $event, navigate)"
+                    >
+                      {{ action.label }}
+                    </DsButton>
+                  </AppPageLink>
+                  <DsButton
+                    v-else
+                    :variant="secondaryActionVariant(action)"
+                    :size="action.size ?? 'md'"
+                    :type="action.type ?? 'button'"
+                    :tag="action.href ? 'a' : 'button'"
+                    :href="action.href"
+                    :disabled="action.disabled"
+                    :loading="action.loading"
+                    :aria-label="action.ariaLabel"
+                    :icon="action.icon"
+                    @click="emitAction(action, $event)"
+                  >
+                    {{ action.label }}
+                  </DsButton>
+                </template>
+              </div>
+            </component>
             <template v-if="primaryAction">
               <AppPageLink
                 v-if="primaryAction.to"
@@ -208,12 +224,16 @@ import {
   defineComponent,
   getCurrentInstance,
   h,
+  onBeforeUnmount,
+  onMounted,
   ref,
   useSlots,
   watch,
   type Component,
   type PropType
 } from 'vue';
+
+defineOptions({ inheritAttrs: false });
 
 const AppPageLink = defineComponent({
   name: 'AppPageLink',
@@ -324,6 +344,8 @@ const props = withDefaults(
     modelValue?: string;
     primaryAction?: PageAction | null;
     secondaryActions?: PageAction[];
+    /** Keep secondary actions reachable while preserving a compact mobile header. */
+    collapseSecondaryActionsOnMobile?: boolean;
   }>(),
   {
     breadcrumbs: () => [],
@@ -333,11 +355,39 @@ const props = withDefaults(
     tabs: () => [],
     modelValue: '',
     primaryAction: null,
-    secondaryActions: () => []
+    secondaryActions: () => [],
+    collapseSecondaryActionsOnMobile: false
   }
 );
 
 const slots = useSlots();
+
+const isCompactViewport = ref(false);
+let compactViewportMediaQuery: MediaQueryList | undefined;
+
+function updateCompactViewport() {
+  isCompactViewport.value = compactViewportMediaQuery?.matches ?? false;
+}
+
+onMounted(() => {
+  if (typeof window === 'undefined' || !window.matchMedia) return;
+  compactViewportMediaQuery = window.matchMedia('(max-width: 720px)');
+  updateCompactViewport();
+  if (compactViewportMediaQuery.addEventListener) {
+    compactViewportMediaQuery.addEventListener('change', updateCompactViewport);
+  } else {
+    compactViewportMediaQuery.addListener?.(updateCompactViewport);
+  }
+});
+
+onBeforeUnmount(() => {
+  if (compactViewportMediaQuery?.removeEventListener) {
+    compactViewportMediaQuery.removeEventListener('change', updateCompactViewport);
+  } else {
+    compactViewportMediaQuery?.removeListener?.(updateCompactViewport);
+  }
+  compactViewportMediaQuery = undefined;
+});
 
 const emit = defineEmits<{
   'update:modelValue': [value: string];
@@ -577,6 +627,15 @@ function navigateInternalAction(
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.app-page-header__secondary-actions,
+.app-page-header__secondary-actions-body {
+  display: contents;
+}
+
+.app-page-header__secondary-actions--collapsible > summary {
+  display: none;
 }
 
 .app-page-header__action-group > :deep(.ds-btn) {
@@ -1007,11 +1066,89 @@ function navigateInternalAction(
     padding-inline: 12px;
   }
 }
+
+@media (max-width: 720px) {
+  .app-page-header__secondary-actions--collapsible {
+    display: block;
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .app-page-header__secondary-actions--collapsible > summary {
+    display: flex;
+    min-height: var(--touch-min, 44px);
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border: 1px solid var(--pulse-line, var(--color-border, #d5e2e6));
+    border-radius: 10px;
+    background: var(--pulse-surface-muted, var(--color-surface-muted, #f7fbfc));
+    color: var(--pulse-ink, var(--color-text, #112530));
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .app-page-header__secondary-actions--collapsible > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .app-page-header__secondary-actions--collapsible > summary::after {
+    color: var(--pulse-cyan-strong, var(--color-primary-700, #066b80));
+    content: '+';
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .app-page-header__secondary-actions--collapsible[open] > summary::after {
+    content: '−';
+  }
+
+  .app-page-header__secondary-actions--collapsible > summary:focus-visible {
+    outline: 3px solid var(--color-primary-500, #0fa8b8);
+    outline-offset: 2px;
+  }
+
+  .app-page-header__secondary-actions--collapsible > .app-page-header__secondary-actions-body {
+    display: none;
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+    gap: 8px;
+    width: 100%;
+    padding-top: 8px;
+  }
+
+  .app-page-header__secondary-actions--collapsible[open] > .app-page-header__secondary-actions-body {
+    display: grid;
+  }
+
+  .app-page-header__secondary-actions-body > * {
+    min-width: 0;
+  }
+
+  .app-page-header__secondary-actions-body :deep(.ds-btn) {
+    width: 100%;
+    min-width: var(--touch-min, 44px);
+  }
+}
 /* Keep real breadcrumb links available; static context is already in the shell. */
 .app-page-header__breadcrumbs:not(:has(a, button)) { display: none; }
 @media (max-width: 720px) {
-  .app-page-header__breadcrumbs { flex-wrap: nowrap; overflow-x: auto; margin-bottom: 8px; scrollbar-width: thin; }
-  .app-page-header__breadcrumb-item { flex: 0 0 auto; }
+  .app-page-header__breadcrumbs {
+    flex-wrap: wrap;
+    overflow-x: clip;
+    margin-bottom: 8px;
+  }
+  .app-page-header__breadcrumb-item {
+    flex: 0 1 auto;
+    max-width: 100%;
+  }
+  .app-page-header__breadcrumb-link,
+  .app-page-header__breadcrumb-current {
+    min-width: 0;
+    max-width: min(28ch, 100%);
+  }
   .app-page-header__actions > :deep(.ds-btn--primary) { flex: 1 0 100%; width: 100%; }
 }
 </style>

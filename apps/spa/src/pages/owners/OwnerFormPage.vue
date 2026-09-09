@@ -5,16 +5,27 @@
         {{ isEdit ? 'Editar Tutor' : 'Cadastrar Novo Tutor' }}
       </template>
       <template #subtitle>
-        Cadastro de cliente com identificação, informações de contato, documentação, endereço e observações.
+        Cadastro de {{ clinicalLabels.tutor.singularLower }} com identificação, informações de contato, documentação, endereço e observações.
       </template>
       <template #actions>
         <DsButton variant="secondary" tag="a" to="/owners">Cancelar</DsButton>
       </template>
     </AppPageHeader>
 
-    <DsAlert v-if="formError" variant="danger" dismissible @dismiss="formError = ''">
-      {{ formError }}
-    </DsAlert>
+    <div v-if="formError" ref="formErrorRegion" class="form-feedback-region" tabindex="-1">
+      <DsAlert variant="danger" dismissible @dismiss="formError = ''">
+        {{ formError }}
+      </DsAlert>
+    </div>
+    <div v-if="duplicateOwnerId" ref="duplicateFeedbackRegion" class="duplicate-feedback-region" tabindex="-1">
+      <DsAlert variant="warning" icon="alert" title="Cadastro possivelmente duplicado">
+        <p>Já existe um tutor com os mesmos dados de identificação. Nada novo foi criado e seu rascunho continua preservado.</p>
+        <div class="duplicate-feedback__actions">
+          <DsButton type="button" variant="secondary" @click="openDuplicateOwner">Abrir tutor existente</DsButton>
+          <DsButton type="button" variant="ghost" @click="dismissDuplicateWarning">Manter este rascunho</DsButton>
+        </div>
+      </DsAlert>
+    </div>
     <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
       {{ successMessage }}
     </DsAlert>
@@ -28,17 +39,38 @@
     </DsAlert>
 
     <div class="owner-form-page__layout">
-      <form class="owner-form" @submit.prevent="onSubmit">
+      <form
+        class="owner-form"
+        novalidate
+        :aria-describedby="validationErrorFields.length ? 'owner-form-error-summary' : undefined"
+        @submit.prevent="onSubmit"
+      >
+        <div
+          v-if="validationErrorFields.length"
+          id="owner-form-error-summary"
+          class="form-error-summary"
+          aria-labelledby="owner-form-error-summary-title"
+        >
+          <h2 id="owner-form-error-summary-title">Revise os campos obrigatórios</h2>
+          <p>Confira os campos destacados antes de salvar o tutor.</p>
+          <ul>
+            <li v-for="field in validationErrorFields" :key="field.key">
+              <a :href="`#${field.targetId}`" @click.prevent="focusValidationField(field.key)">
+                {{ field.label }}: {{ errors[field.key] }}
+              </a>
+            </li>
+          </ul>
+        </div>
         <fieldset class="owner-form-fields" :disabled="loading || !hydrated">
         <details open class="owner-section">
-          <summary class="owner-section__summary">Identificação do Cliente</summary>
+          <summary class="owner-section__summary">Identificação do {{ clinicalLabels.tutor.singular }}</summary>
           <div class="owner-section__body">
             <div class="form-row form-row--2">
               <DsInput
                 id="fullName"
                 v-model="form.fullName"
-                label="Nome *"
-                placeholder="Nome completo do cliente"
+                label="Nome"
+                :placeholder="`Nome completo do ${clinicalLabels.tutor.singularLower}`"
                 :error="errors.fullName"
                 required
               />
@@ -68,66 +100,63 @@
               </div>
             </div>
 
-            <div class="form-row form-row--2">
-              <DsInput
-                id="legacyVetusId"
-                v-model="form.legacyVetusId"
-                label="ID Vetus"
-                placeholder="ID legado do cliente"
-              />
-              <DsInput
-                id="originalCreatedAt"
-                v-model="form.originalCreatedAt"
-                label="Data de Cadastro Vetus"
-                type="date"
-              />
-            </div>
           </div>
         </details>
 
         <details open class="owner-section">
-          <summary class="owner-section__summary">Informações de Contato</summary>
+          <summary id="owner-contact-title" class="owner-section__summary">Informações de Contato <span class="required-mark" aria-hidden="true">*</span></summary>
           <div class="owner-section__body">
-            <div class="form-row form-row--2">
-              <DsInput
-                id="phone1"
-                v-model="form.phone1"
-                label="Telefone 1"
-                type="tel"
-                placeholder="(xx) xxxx-xxxxx"
-              />
-              <DsInput
-                id="phone2"
-                v-model="form.phone2"
-                label="Telefone 2"
-                type="tel"
-                placeholder="(xx) xxxx-xxxxx"
-              />
-            </div>
+            <div
+              class="contact-fields"
+              :class="{ 'contact-fields--error': Boolean(errors.contacts) }"
+              role="group"
+              aria-labelledby="owner-contact-title"
+              :aria-describedby="errors.contacts ? 'owner-contact-hint owner-contact-error' : 'owner-contact-hint'"
+              aria-required="true"
+            >
+              <p id="owner-contact-hint" class="field-hint">Informe pelo menos um telefone, celular ou e-mail.</p>
+              <div class="form-row form-row--2">
+                <DsInput
+                  id="phone1"
+                  v-model="form.phone1"
+                  label="Telefone 1"
+                  type="tel"
+                  placeholder="(xx) xxxx-xxxxx"
+                  :aria-invalid="Boolean(errors.contacts)"
+                  :aria-describedby="errors.contacts ? 'owner-contact-hint owner-contact-error' : 'owner-contact-hint'"
+                />
+                <DsInput
+                  id="phone2"
+                  v-model="form.phone2"
+                  label="Telefone 2"
+                  type="tel"
+                  placeholder="(xx) xxxx-xxxxx"
+                />
+              </div>
 
-            <div class="form-row form-row--2">
-              <DsInput
-                id="mobile"
-                v-model="form.mobile"
-                label="Celular"
-                type="tel"
-                placeholder="(xx) xxxx-xxxxx"
-              />
-              <DsInput
-                id="email"
-                v-model="form.email"
-                label="E-mail"
-                type="email"
-                placeholder="cliente@exemplo.com"
-              />
+              <div class="form-row form-row--2">
+                <DsInput
+                  id="mobile"
+                  v-model="form.mobile"
+                  label="Celular"
+                  type="tel"
+                  placeholder="(xx) xxxx-xxxxx"
+                />
+                <DsInput
+                  id="email"
+                  v-model="form.email"
+                  label="E-mail"
+                  type="email"
+                  :placeholder="`${clinicalLabels.tutor.singularLower}@exemplo.com`"
+                />
+              </div>
+              <p v-if="errors.contacts" id="owner-contact-error" class="form-field__error" role="alert">{{ errors.contacts }}</p>
             </div>
-
-            <span v-if="errors.contacts" class="form-field__error">{{ errors.contacts }}</span>
           </div>
         </details>
 
-        <details open class="owner-section">
-          <summary class="owner-section__summary">Documentação do Cliente</summary>
+        <details :open="isEdit" class="owner-section">
+          <summary class="owner-section__summary">Documentação do {{ clinicalLabels.tutor.singular }}</summary>
           <div class="owner-section__body">
             <div class="form-row form-row--3">
               <DsInput id="personType" v-model="form.personType" label="Física ou Jurídica" type="select">
@@ -145,8 +174,28 @@
           </div>
         </details>
 
-        <details open class="owner-section">
-          <summary class="owner-section__summary">Endereço do Cliente</summary>
+        <details :open="isEdit" class="owner-section">
+          <summary class="owner-section__summary">Dados legados</summary>
+          <div class="owner-section__body">
+            <div class="form-row form-row--2">
+              <DsInput
+                id="legacyVetusId"
+                v-model="form.legacyVetusId"
+                label="ID Vetus"
+                :placeholder="`ID legado do ${clinicalLabels.tutor.singularLower}`"
+              />
+              <DsInput
+                id="originalCreatedAt"
+                v-model="form.originalCreatedAt"
+                label="Data de Cadastro Vetus"
+                type="date"
+              />
+            </div>
+          </div>
+        </details>
+
+        <details :open="isEdit" class="owner-section">
+          <summary class="owner-section__summary">Endereço do {{ clinicalLabels.tutor.singular }}</summary>
           <div class="owner-section__body">
             <div class="form-row form-row--3">
               <DsInput id="zipCode" v-model="form.zipCode" label="CEP" placeholder="xxxxx-xxx" />
@@ -169,7 +218,7 @@
           </div>
         </details>
 
-        <details open class="owner-section">
+        <details :open="isEdit" class="owner-section">
           <summary class="owner-section__summary">Observações Gerais</summary>
           <div class="owner-section__body">
             <DsInput
@@ -177,7 +226,7 @@
               v-model="form.administrativeNotes"
               label="Observações gerais"
               type="textarea"
-              placeholder="Escreva aqui observações gerais sobre o cliente"
+              :placeholder="`Escreva aqui observações gerais sobre o ${clinicalLabels.tutor.singularLower}`"
               :rows="5"
               :maxlength="1000"
             />
@@ -185,7 +234,7 @@
           </div>
         </details>
 
-        <details open class="owner-section">
+        <details :open="isEdit" class="owner-section">
           <summary class="owner-section__summary">Financeiro</summary>
           <div class="owner-section__body">
             <div class="form-row form-row--2">
@@ -243,7 +292,7 @@
 
         <div class="form-actions">
         <DsButton type="submit" variant="primary" :loading="submitting" :disabled="loading || !hydrated">
-            {{ submitting ? 'Salvando...' : isEdit || createdOwnerId ? 'Salvar Alterações' : 'Cadastrar Cliente' }}
+            {{ submitting ? 'Salvando...' : isEdit || createdOwnerId ? 'Salvar Alterações' : `Cadastrar ${clinicalLabels.tutor.singularLower}` }}
           </DsButton>
           <DsButton variant="secondary" tag="a" to="/owners">Cancelar</DsButton>
         </div>
@@ -282,11 +331,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ownerService } from '@/services/owner';
 import type { CreateOwnerRequest, OwnerSummary, UpdateOwnerRequest } from '@/types/owner';
 import { useUnsavedChanges } from '@/composables/useUnsavedChanges';
+import { clinicalLabels } from '@/utils/labels';
+import { duplicateEntityId } from '@/utils/duplicateConflict';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import { useFormValidation } from '@/composables/useFormValidation';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
@@ -304,6 +355,7 @@ const ownerId = computed(() => String(route.params.id ?? ''));
 const routeOwnerId = computed(() => ownerId.value);
 const loading = ref(false);
 const createdOwnerId = ref('');
+const duplicateOwnerId = ref('');
 const hydrated = ref(false);
 let active = true;
 let pageGeneration = 0;
@@ -356,6 +408,48 @@ const validation = useFormValidation({
 });
 
 const { errors, formError, successMessage, submitting, validate } = validation;
+const formErrorRegion = ref<HTMLElement | null>(null);
+const duplicateFeedbackRegion = ref<HTMLElement | null>(null);
+const validationFields = [
+  { key: 'fullName', label: 'Nome', targetId: 'fullName' },
+  { key: 'contacts', label: 'Contato', targetId: 'phone1' }
+] as const;
+const validationErrorFields = computed(() => validationFields.filter(field => Boolean(errors[field.key])));
+
+function focusValidationField(key: typeof validationFields[number]['key']) {
+  const field = validationFields.find(item => item.key === key);
+  if (!field) return;
+  const target = document.getElementById(field.targetId);
+  const details = target?.closest('details');
+  if (details) details.open = true;
+  target?.focus();
+}
+async function focusDuplicateFeedback() {
+  await nextTick();
+  const region = duplicateFeedbackRegion.value;
+  if (!region) return;
+  const behavior = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+  region.scrollIntoView?.({ block: 'center', behavior });
+  region.focus({ preventScroll: true });
+}
+function openDuplicateOwner() {
+  const id = duplicateOwnerId.value;
+  if (id) void router.push(`/owners/${id}`);
+}
+function dismissDuplicateWarning() {
+  duplicateOwnerId.value = '';
+  const target = document.getElementById('documentId');
+  target?.closest('details')?.setAttribute('open', '');
+  target?.focus({ preventScroll: true });
+}
+async function focusFormError() {
+  await nextTick();
+  const region = formErrorRegion.value;
+  if (!region) return;
+  const behavior = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+  region.scrollIntoView?.({ block: 'center', behavior });
+  region.focus({ preventScroll: true });
+}
 
 function isCurrentLoad(generation: number, id: string) {
   return active && generation === pageGeneration && routeOwnerId.value === id;
@@ -371,6 +465,7 @@ function resetForm() {
   validation.clearErrors();
   formError.value = '';
   successMessage.value = '';
+  duplicateOwnerId.value = '';
 }
 
 const notesLength = computed(() => form.administrativeNotes.length);
@@ -481,7 +576,12 @@ function getValues(): Record<string, unknown> {
 
 async function onSubmit() {
   if (submitting.value || loading.value || !hydrated.value) return;
-  if (!validate(getValues())) return;
+  if (!validate(getValues())) {
+    await nextTick();
+    const firstInvalidField = validationErrorFields.value[0];
+    if (firstInvalidField) focusValidationField(firstInvalidField.key);
+    return;
+  }
 
   const submittedSnapshot = JSON.stringify(form);
   const targetId = ownerId.value;
@@ -491,6 +591,7 @@ async function onSubmit() {
   submitting.value = true;
   formError.value = '';
   successMessage.value = '';
+  duplicateOwnerId.value = '';
 
   try {
     const payloadBase = {
@@ -539,7 +640,7 @@ async function onSubmit() {
         throw new Error('O tutor retornado não corresponde ao endereço solicitado.');
       }
       markClean(submittedSnapshot);
-      successMessage.value = 'Cliente atualizado com sucesso!';
+      successMessage.value = `${clinicalLabels.tutor.singular} atualizado com sucesso!`;
       if (!dirty.value) void router.push(`/owners/${mutationId}`);
     } else {
       const payload: CreateOwnerRequest = payloadBase;
@@ -547,12 +648,21 @@ async function onSubmit() {
       if (!isCurrentLoad(generation, targetId)) return;
       createdOwnerId.value = created.id;
       markClean(submittedSnapshot);
-      successMessage.value = 'Cliente cadastrado com sucesso!';
+      successMessage.value = `${clinicalLabels.tutor.singular} cadastrado com sucesso!`;
       if (!dirty.value) void router.push(`/owners/${created.id}`);
     }
   } catch (err: unknown) {
     if (isCurrentLoad(generation, targetId)) {
-      formError.value = err instanceof Error ? err.message : 'Erro ao salvar cliente';
+      const conflictingOwnerId = duplicateEntityId(err, 'ownerId');
+      if (conflictingOwnerId) {
+        duplicateOwnerId.value = conflictingOwnerId;
+        formError.value = '';
+      } else {
+        formError.value =
+          err instanceof Error
+            ? err.message
+            : `Erro ao salvar ${clinicalLabels.tutor.singularLower}`;
+      }
     }
   } finally {
     if (isCurrentLoad(generation, targetId)) submitting.value = false;
@@ -605,7 +715,10 @@ async function loadOwner(id: string, generation: number) {
     hydrated.value = true;
   } catch (err: unknown) {
     if (isCurrentLoad(generation, id)) {
-      formError.value = err instanceof Error ? err.message : 'Erro ao carregar cliente';
+      formError.value =
+        err instanceof Error
+          ? err.message
+          : `Erro ao carregar ${clinicalLabels.tutor.singularLower}`;
     }
   } finally {
     if (isCurrentLoad(generation, id)) loading.value = false;
@@ -626,6 +739,9 @@ watch(
   },
   { immediate: true, flush: 'sync' }
 );
+
+watch(formError, (message) => { if (message) void focusFormError(); });
+watch(duplicateOwnerId, (id) => { if (id) void focusDuplicateFeedback(); });
 
 onBeforeUnmount(() => {
   active = false;
@@ -652,12 +768,13 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  scroll-padding-bottom: 104px;
 }
 
 .owner-section {
   border: 1px solid var(--color-border, #e2e8f0);
   border-radius: 18px;
-  background: linear-gradient(180deg, #fff, #f8fafc);
+  background: linear-gradient(180deg, var(--color-surface, #fff), var(--color-bg-subtle, #f8fafc));
   overflow: hidden;
 }
 
@@ -673,8 +790,8 @@ onBeforeUnmount(() => {
   font-weight: 800;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: #1e3a5f;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  color: var(--color-text, #1e3a5f);
+  border-bottom: 1px solid var(--color-border, rgba(226, 232, 240, 0.9));
 }
 
 .owner-section__summary::-webkit-details-marker {
@@ -686,6 +803,32 @@ onBeforeUnmount(() => {
   gap: 14px;
   padding: 18px;
 }
+
+.contact-fields { display: grid; gap: 14px; }
+.contact-fields--error { padding: 12px; border: 1px solid var(--color-danger-200, #f8bebc); border-radius: 12px; background: var(--color-danger-50, #fff0ef); }
+.field-hint { margin: 0; color: var(--color-text-secondary, #3e5c67); font-size: 13px; line-height: 1.5; }
+.form-feedback-region { scroll-margin-top: 120px; }
+.form-feedback-region:focus { outline: 3px solid var(--color-focus-ring); outline-offset: 4px; border-radius: 8px; }
+.duplicate-feedback-region { scroll-margin-top: 120px; }
+.duplicate-feedback-region:focus { outline: 3px solid var(--color-focus-ring); outline-offset: 4px; border-radius: 8px; }
+.duplicate-feedback__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+.form-error-summary {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+  border: 1px solid var(--color-danger-200, #f8bebc);
+  border-left: 4px solid var(--color-danger-600, #c64b52);
+  border-radius: 14px;
+  background: var(--color-danger-50, #fff0ef);
+  color: var(--color-text, #112530);
+}
+
+.form-error-summary h2 { color: var(--color-danger-800, #823037); font-size: 16px; }
+.form-error-summary p { color: var(--color-text-secondary, #3e5c67); font-size: 13px; line-height: 1.5; }
+.form-error-summary ul { display: grid; gap: 4px; padding-left: 18px; }
+.form-error-summary a { color: var(--color-danger-800, #823037); font-size: 13px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.form-error-summary a:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 3px; border-radius: 3px; }
 
 .form-row {
   display: grid;
@@ -726,7 +869,14 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  padding-top: 8px;
+  position: sticky;
+  top: calc(100vh - 80px);
+  top: calc(100dvh - 80px);
+  z-index: 2;
+  padding: 12px 0 max(12px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface, #ffffff);
+  box-shadow: 0 -8px 20px rgba(10, 35, 42, 0.1);
 }
 
 .owner-form-page__aside {

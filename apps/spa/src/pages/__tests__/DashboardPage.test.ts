@@ -13,8 +13,8 @@ const mockListInventory = vi.fn();
 const mockListLaboratoryOrders = vi.fn();
 
 const mockAppStore = {
-  recentRoutes: [],
-  favoriteRoutes: []
+  recentRoutes: [] as Array<{ path: string; label: string; icon?: string }>,
+  favoriteRoutes: [] as string[]
 };
 
 vi.mock('@/services/api', () => ({
@@ -76,6 +76,8 @@ function currentMonthDayDate(year: string): string {
 describe('DashboardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAppStore.recentRoutes = [];
+    mockAppStore.favoriteRoutes = [];
     mockApiRequest.mockReset();
     mockInitWidgets.mockReset();
     mockGetSloReport.mockReset();
@@ -278,8 +280,10 @@ describe('DashboardPage', () => {
               'audit.read',
               'inpatient.read',
               'inventory.read',
-              'diagnostics.read'
-            ]
+              'diagnostics.read',
+              'integrations.read'
+            ],
+            roleCodes: ['admin']
           }
         });
       }
@@ -374,6 +378,7 @@ describe('DashboardPage', () => {
 
     expect(wrapper.text()).toContain('Início');
     expect(wrapper.text()).toContain('Ver fila');
+    expect(wrapper.find('[data-testid="session-priority"]').text()).toContain('Administração');
     expect(wrapper.text()).toContain('Indicadores do plantão');
     expect(wrapper.text()).toContain('Atendimento e financeiro');
     expect(wrapper.text()).toContain('Central executiva Premium');
@@ -435,11 +440,99 @@ describe('DashboardPage', () => {
     expect(mockInitWidgets).toHaveBeenCalledTimes(1);
   });
 
+  it('hides persisted routes until session permissions are known and filters revoked routes', async () => {
+    const persistedRoutePaths = [
+      '/',
+      '/audit',
+      '/access-control',
+      '/api-client',
+      '/appointments',
+      '/triage',
+      '/inpatient',
+      '/medical-records',
+      '/counter-sales',
+      '/owners',
+      '/patients',
+      '/encounters',
+      '/laboratory/orders',
+      '/reports/inventory',
+      '/dashboards/financial',
+      '/unknown'
+    ];
+    mockAppStore.recentRoutes = persistedRoutePaths.map((path) => ({
+      path,
+      label: `persisted ${path}`,
+      icon: 'route'
+    }));
+    mockAppStore.favoriteRoutes = [...persistedRoutePaths];
+
+    let resolveSession!: (value: {
+      access: { permissionCodes: string[]; roleCodes: string[] };
+    }) => void;
+    const sessionResponse = new Promise<{
+      access: { permissionCodes: string[]; roleCodes: string[] };
+    }>((resolve) => {
+      resolveSession = resolve;
+    });
+    mockApiRequest.mockImplementation((path: string) => {
+      if (path === '/auth/session') return sessionResponse;
+      if (path === '/appointments') return Promise.resolve({ total: 0, items: [] });
+      return Promise.reject(new Error(`Unexpected path: ${path}`));
+    });
+
+    const DashboardPage = (await import('../DashboardPage.vue')).default;
+    const wrapper = mount(DashboardPage, {
+      global: {
+        stubs: {
+          RouterLink: {
+            props: ['to'],
+            template: '<a :data-route="to"><slot /></a>'
+          }
+        }
+      }
+    });
+
+    expect(wrapper.findAll('.link-list__item')).toHaveLength(0);
+
+    resolveSession({
+      access: { permissionCodes: ['scheduling.read'], roleCodes: ['reception'] }
+    });
+    await flushPromises();
+
+    const persistedLinks = wrapper.findAll('.link-list__item');
+    const renderedRoutes = persistedLinks.map((link) => link.attributes('data-route'));
+    expect(renderedRoutes.filter((path) => path === '/appointments')).toHaveLength(2);
+    expect(renderedRoutes.filter((path) => path === '/')).toHaveLength(2);
+    expect(renderedRoutes).not.toEqual(
+      expect.arrayContaining([
+        '/audit',
+        '/access-control',
+        '/api-client',
+        '/triage',
+        '/inpatient',
+        '/medical-records',
+        '/counter-sales',
+        '/owners',
+        '/patients',
+        '/encounters',
+        '/laboratory/orders',
+        '/reports/inventory',
+        '/dashboards/financial',
+        '/unknown'
+      ])
+    );
+    expect(wrapper.text()).not.toContain('persisted /audit');
+    expect(wrapper.text()).not.toContain('persisted /unknown');
+  });
+
   it('does not call forbidden executive sources for reception-only permissions', async () => {
     mockApiRequest.mockImplementation((path: string) => {
       if (path === '/auth/session') {
         return Promise.resolve({
-          access: { permissionCodes: ['owners.read', 'patients.read', 'scheduling.read'] }
+          access: {
+            permissionCodes: ['owners.read', 'patients.read', 'scheduling.read'],
+            roleCodes: ['reception']
+          }
         });
       }
       if (path === '/owners' || path === '/patients' || path === '/appointments') {
@@ -465,6 +558,226 @@ describe('DashboardPage', () => {
     expect(mockListInventory).not.toHaveBeenCalled();
     expect(mockListLaboratoryOrders).not.toHaveBeenCalled();
     expect(wrapper.find('[aria-label="Central executiva Premium"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="session-priority"]').text()).toContain('Recepção');
+    expect(wrapper.find('.premium-operation-guide').text()).not.toContain('Auditoria e evidências');
+    expect(wrapper.find('.premium-operation-guide').text()).not.toContain('SLO e suporte');
+  });
+
+  it('does not mount operational panels without the corresponding session permission', async () => {
+    mockApiRequest.mockImplementation((path: string) => {
+      if (path === '/auth/session') {
+        return Promise.resolve({
+          access: { permissionCodes: ['audit.read'], roleCodes: ['admin'] }
+        });
+      }
+      return Promise.reject(new Error(`Unexpected path: ${path}`));
+    });
+
+    const DashboardPage = (await import('../DashboardPage.vue')).default;
+    const wrapper = mount(DashboardPage, {
+      global: {
+        stubs: { RouterLink: { props: ['to'], template: '<a><slot /></a>' } }
+      }
+    });
+    await flushPromises();
+
+    expect(wrapper.find('.home-panels').exists()).toBe(false);
+    const panelTitles = wrapper
+      .findAll('.home-panels .panel-card__title')
+      .map((title) => title.text());
+    expect(panelTitles).not.toEqual(
+      expect.arrayContaining(['Comandas abertas', 'Agenda e lembretes', 'Aniversariantes do dia'])
+    );
+  });
+
+  it('prioritizes clinical work from the current clinical permission set', async () => {
+    mockApiRequest.mockImplementation((path: string) => {
+      if (path === '/auth/session') {
+        return Promise.resolve({
+          access: {
+            permissionCodes: ['owners.read', 'patients.read', 'encounters.read', 'triage.read'],
+            roleCodes: ['nurse']
+          }
+        });
+      }
+      if (path === '/owners' || path === '/patients') {
+        return Promise.resolve({ items: [], total: 0 });
+      }
+      return Promise.reject(new Error(`Unexpected path: ${path}`));
+    });
+
+    const DashboardPage = (await import('../DashboardPage.vue')).default;
+    const wrapper = mount(DashboardPage, {
+      global: {
+        stubs: { RouterLink: { props: ['to'], template: '<a><slot /></a>' } }
+      }
+    });
+    await flushPromises();
+
+    const priority = wrapper.find('[data-testid="session-priority"]');
+    expect(priority.text()).toContain('O que fazer agora');
+    expect(priority.text()).toContain('Enfermagem');
+    expect(priority.text()).toContain('Comece pela triagem');
+    expect(priority.text()).toContain('Abrir triagem');
+    expect(wrapper.find('.domain-shortcuts').text()).toContain('Triagem');
+    expect(wrapper.find('.domain-shortcuts').text()).not.toContain('Comandas');
+    expect(wrapper.find('.premium-operation-guide').text()).not.toContain('Auditoria e evidências');
+    expect(wrapper.find('.premium-operation-guide').text()).not.toContain('SLO e suporte');
+    expect(mockGetCommercialDashboard).not.toHaveBeenCalled();
+  });
+
+  it('prioritizes veterinarian clinical work with the canonical veterinarian role', async () => {
+    mockApiRequest.mockImplementation((path: string) => {
+      if (path === '/auth/session') {
+        return Promise.resolve({
+          access: {
+            permissionCodes: [
+              'owners.read',
+              'patients.read',
+              'encounters.read',
+              'medical-records.read'
+            ],
+            roleCodes: ['veterinarian']
+          }
+        });
+      }
+      if (path === '/owners' || path === '/patients') {
+        return Promise.resolve({ items: [], total: 0 });
+      }
+      return Promise.reject(new Error(`Unexpected path: ${path}`));
+    });
+
+    const DashboardPage = (await import('../DashboardPage.vue')).default;
+    const wrapper = mount(DashboardPage, {
+      global: {
+        stubs: {
+          RouterLink: {
+            props: ['to'],
+            template: '<a :data-route="to"><slot /></a>'
+          }
+        }
+      }
+    });
+    await flushPromises();
+
+    const priority = wrapper.find('[data-testid="session-priority"]');
+    expect(priority.text()).toContain('Médico-veterinário');
+    expect(priority.text()).toContain('Revise o próximo atendimento clínico');
+    expect(priority.text()).toContain('Abrir prontuários');
+    expect(priority.find('[data-route="/medical-records"]').exists()).toBe(true);
+    expect(priority.text()).not.toContain('doctor');
+  });
+
+  it('prioritizes finance without exposing clinical shortcuts', async () => {
+    mockApiRequest.mockImplementation((path: string) => {
+      if (path === '/auth/session') {
+        return Promise.resolve({
+          access: {
+            permissionCodes: ['billing.read', 'billing.manage', 'fiscal.read', 'counter_sale.read'],
+            roleCodes: ['finance']
+          }
+        });
+      }
+      if (path === '/counter-sales?status=open' || path === '/counter-sales?status=closed') {
+        return Promise.resolve({ items: [] });
+      }
+      if (typeof path === 'string' && path.startsWith('/counter-sales?status=open&dateFrom=')) {
+        return Promise.resolve({ items: [] });
+      }
+      return Promise.reject(new Error(`Unexpected path: ${path}`));
+    });
+
+    const DashboardPage = (await import('../DashboardPage.vue')).default;
+    const wrapper = mount(DashboardPage, {
+      global: {
+        stubs: { RouterLink: { props: ['to'], template: '<a><slot /></a>' } }
+      }
+    });
+    await flushPromises();
+
+    const priority = wrapper.find('[data-testid="session-priority"]');
+    expect(priority.text()).toContain('Financeiro');
+    expect(priority.text()).toContain('Abrir dashboard financeiro');
+    expect(wrapper.find('.domain-shortcuts').text()).toContain('Comandas');
+    expect(wrapper.text()).not.toContain('Agenda e lembretes');
+    expect(wrapper.text()).not.toContain('Agenda com registros para revisar');
+    expect(wrapper.find('.domain-shortcuts').text()).not.toContain('Triagem');
+    expect(wrapper.find('.domain-shortcuts').text()).not.toContain('Internação');
+    expect(mockApiRequest).not.toHaveBeenCalledWith('/appointments');
+    expect(wrapper.find('.premium-operation-guide').text()).not.toContain('Auditoria e evidências');
+    expect(wrapper.find('.premium-operation-guide').text()).not.toContain('SLO e suporte');
+    expect(mockGetSloReport).not.toHaveBeenCalled();
+    expect(mockGetOperationalCoverage).not.toHaveBeenCalled();
+  });
+
+  it('ignores a stale session and data response after a newer dashboard refresh', async () => {
+    let resolveFirstSession!: (value: unknown) => void;
+    let resolveSecondSession!: (value: unknown) => void;
+    const firstSession = new Promise((resolve) => {
+      resolveFirstSession = resolve;
+    });
+    const secondSession = new Promise((resolve) => {
+      resolveSecondSession = resolve;
+    });
+    let sessionRequest = 0;
+
+    mockApiRequest.mockImplementation((path: string) => {
+      if (path === '/auth/session') {
+        sessionRequest += 1;
+        return sessionRequest === 1 ? firstSession : secondSession;
+      }
+      return Promise.resolve({ items: [], total: 0 });
+    });
+
+    const DashboardPage = (await import('../DashboardPage.vue')).default;
+    const wrapper = mount(DashboardPage, {
+      global: {
+        stubs: {
+          AppPageHeader: {
+            props: ['secondaryActions', 'primaryAction'],
+            template:
+              '<header><button v-for="action in secondaryActions" :key="action.key" @click="action.onClick">{{ action.label }}</button></header>'
+          },
+          RouterLink: { props: ['to'], template: '<a :data-route="to"><slot /></a>' }
+        }
+      }
+    });
+
+    const refresh = wrapper.findAll('button').find((button) => button.text() === 'Atualizar');
+    expect(refresh).toBeDefined();
+    await refresh!.trigger('click');
+
+    resolveSecondSession({
+      access: {
+        permissionCodes: ['billing.read', 'billing.manage', 'counter_sale.read'],
+        roleCodes: ['finance']
+      }
+    });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Financeiro');
+    expect(wrapper.text()).not.toContain('Agenda e lembretes');
+    expect(wrapper.text()).not.toContain('Agenda com registros para revisar');
+    expect(mockApiRequest).not.toHaveBeenCalledWith('/appointments');
+
+    resolveFirstSession({
+      access: {
+        permissionCodes: [
+          'audit.read',
+          'owners.read',
+          'patients.read',
+          'scheduling.read',
+          'counter_sale.read'
+        ],
+        roleCodes: ['admin']
+      }
+    });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Financeiro');
+    expect(wrapper.text()).not.toContain('Agenda e lembretes');
+    expect(wrapper.text()).not.toContain('Central executiva Premium');
+    expect(mockApiRequest).not.toHaveBeenCalledWith('/appointments');
   });
 
   it('keeps unavailable commercial reads distinct from a real zero value', async () => {

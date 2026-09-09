@@ -11,14 +11,16 @@
       "bcfdbf10-99df-4192-9a2a-fb47ae159b60"
     ],
     "current_job": "0836ac61-05c9-443d-9853-d044ac6fac39",
-    "status": "pending",
-    "preview": "384x224, 4 steps, seed 609202601"
+    "status": "completed",
+    "preview": "384x224, 4 steps, seed 609202601",
+    "checked_at_utc": "2026-09-07T03:36:46.208148+00:00",
+    "approval": "concept only; production review required"
   },
   "files": [
     {
       "path": "README.md",
-      "bytes": 4619,
-      "sha256": "7861b236cc4d1b7d6d728a88ed4542b75c328c9fee6af4b61cbfe04953efdc93"
+      "bytes": 4545,
+      "sha256": "ca1beb227f4f61c5bdcd97cfbb2c5cfe243101ec4aa8218c054814646235541c"
     },
     {
       "path": "evidence/blender-render.log",
@@ -27,8 +29,8 @@
     },
     {
       "path": "evidence/comfyui-job-status.json",
-      "bytes": 232,
-      "sha256": "868675f16060ee65990f25aae7fedc789c5a4c374847d33de51ca7d09e183f03"
+      "bytes": 311,
+      "sha256": "dd56df9ce0080c3d85c9b783c7951393c3604dc8740458f6fc4f94d0fa47772f"
     },
     {
       "path": "evidence/concept-1440-dark.png",
@@ -449,6 +451,11 @@
       "path": "workflows/cvg-pulse-material-template.json",
       "bytes": 28770,
       "sha256": "d61045c2cb84864d4f87a7fea6822103415f029334cc683651919ac0a8a59bc8"
+    },
+    {
+      "path": "images/0836ac61_000.png",
+      "bytes": 84640,
+      "sha256": "aff5a642ec2b415f3680ffac5278adc17d37ee9edb42f4b66f3f5396fa062f3d"
     }
   ]
 }

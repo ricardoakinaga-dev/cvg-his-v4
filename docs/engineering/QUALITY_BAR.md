@@ -1,7 +1,7 @@
 ---
 document_status: current
 document_kind: quality-bar
-effective_date: 2026-09-06
+effective_date: 2026-09-07
 owner: Engenharia e QA
 review_cycle: weekly
 ---
@@ -12,19 +12,27 @@ review_cycle: weekly
 **Aplicação:** consolidação sem rewrite, operação 24x7 e parity comportamental.  
 **Regra de veredicto:** ausência de evidência é `PARTIAL`/`BLOCKED`, nunca PASS.
 
-## Overlay vigente — Triplo AAA — 2026-09-06
+## Overlay vigente — Triplo AAA — 2026-09-07
 
 Este overlay acrescenta a régua executiva do programa [ERP State of Art / Triplo AAA](../2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md). Ele não reclassifica evidências históricas nem transforma `PASS_BOUNDED` em release. O selo AAA só pode ser emitido com todos os gates obrigatórios abaixo aprovados no mesmo candidato.
 
-| ID | Gate | Critério rejeitante | Meta AAA | Estado em 06/09 |
-|---|---|---|---|---|
-| AAA-ENG | Engenharia | checkout limpo, critical gate, migrações, RLS, auth, testes e contratos falham ou usam fallback/skip oculto | nota de Engenharia ≥95; zero Critical/High | `PARTIAL` |
-| AAA-PROD | Produto e paridade | jornada não persiste, não reconcilia, não recupera ou é aceita só por arquivo/mock | nota de Produto ≥95; 11/11 domínios ou exceção formal | `PARTIAL` — 4/11 |
-| AAA-INT | Providers | callback não autenticado, estado incorreto, retry/replay ou conciliação não observados em sandbox autorizado | 100% dos providers do escopo com matriz sucesso/falha/recuperação | `BLOCKED` |
-| AAA-OPS | Operação | artefato, deploy, restore, carga, alerta ou rollback não executados no target | nota de Operação ≥95; RPO/RTO/SLO atingidos | `BLOCKED` |
-| AAA-UX | UX e acessibilidade | overflow, estado ausente, foco/teclado quebrado, WCAG não verificada ou crítica independente ausente | WCAG 2.2 AA, 375/768/1440, light/dark e estados críticos | `PARTIAL` — escopo scoped |
-| AAA-GOV | Governança | evidência sem SHA/ambiente/resultado/revisor, DPO/Produto/Operação sem aceite ou risco sem owner | nota de Governança ≥95 e dossiê íntegro | `PARTIAL` |
-| AAA-SCORE | Nota de maturidade | nota composta usada para compensar uma falha obrigatória | global ≥95; cada dimensão ≥90; item crítico ≥85 | `FAIL` — 75 global |
+**Revalidação técnica:** 07/09/2026 — `pnpm test`, typecheck, lint, build,
+validadores técnicos, guards de banco/schema/RLS forçado e suítes API/SPA/worker verdes no
+worktree observado; `readiness:enterprise` permanece em 92/100 (exit 1) por
+paridade Vetus. O critical DB/process gate tem `PASS_BOUNDED` local e o recorte
+E2E SPA passou 9/9 com persistência real; target, CI remoto, providers,
+operação, matriz global a11y e aceite independente continuam
+`PARTIAL`/`BLOCKED`; o overlay não autoriza AAA.
+
+| ID        | Gate                | Critério rejeitante                                                                                          | Meta AAA                                                          | Estado no snapshot-base (06/09) |
+| --------- | ------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- | ------------------------------- |
+| AAA-ENG   | Engenharia          | checkout limpo, critical gate, migrações, RLS, auth, testes e contratos falham ou usam fallback/skip oculto  | nota de Engenharia ≥95; zero Critical/High                        | `PARTIAL`                       |
+| AAA-PROD  | Produto e paridade  | jornada não persiste, não reconcilia, não recupera ou é aceita só por arquivo/mock                           | nota de Produto ≥95; 11/11 domínios ou exceção formal             | `PARTIAL` — 4/11                |
+| AAA-INT   | Providers           | callback não autenticado, estado incorreto, retry/replay ou conciliação não observados em sandbox autorizado | 100% dos providers do escopo com matriz sucesso/falha/recuperação | `BLOCKED`                       |
+| AAA-OPS   | Operação            | artefato, deploy, restore, carga, alerta ou rollback não executados no target                                | nota de Operação ≥95; RPO/RTO/SLO atingidos                       | `BLOCKED`                       |
+| AAA-UX    | UX e acessibilidade | overflow, estado ausente, foco/teclado quebrado, WCAG não verificada ou crítica independente ausente         | WCAG 2.2 AA, 375/768/1440, light/dark e estados críticos          | `PARTIAL` — escopo scoped       |
+| AAA-GOV   | Governança          | evidência sem SHA/ambiente/resultado/revisor, DPO/Produto/Operação sem aceite ou risco sem owner             | nota de Governança ≥95 e dossiê íntegro                           | `PARTIAL`                       |
+| AAA-SCORE | Nota de maturidade  | nota composta usada para compensar uma falha obrigatória                                                     | global ≥95; cada dimensão ≥90; item crítico ≥85                   | `FAIL` — 75 global              |
 
 `PASS_BOUNDED` continua significando apenas o envelope executado. Evidência
 `NOT_RUN`, stale, simulada, sem ambiente válido ou de SHA diferente permanece
@@ -34,16 +42,16 @@ substituto dos gates.
 | ID         | Critério                                             | Evidência mínima                                                  | Estado atual                                                                                                                                                                                                                                                                     |
 | ---------- | ---------------------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | QB-ARC-01  | uma identidade de release e uma superfície de deploy | mapa sem conflito + Compose/Helm canônicos executados             | PARTIAL                                                                                                                                                                                                                                                                          |
-| QB-DB-01   | uma trilha de migration com checksum verificável     | mismatch falha antes de aplicar; migration nova aplica uma vez    | BOUNDED PASS — runner/checksum + PostgreSQL descartável + guardrails DB-001/DB-002; aplicação positiva isolada segue pendente                                                                                                                                                    |
+| QB-DB-01   | uma trilha de migration com checksum verificável     | mismatch falha antes de aplicar; migration nova aplica uma vez    | BOUNDED PASS — runner/checksum + PostgreSQL descartável + migrations 0000–0164 + guardrails DB-001/DB-002; aplicação positiva no target segue pendente                                                                                                                           |
 | QB-DB-02   | runtime role não escapa tenant/RLS                   | PostgreSQL real com `NOBYPASSRLS`, grants e cross-tenant negativo | BOUNDED PASS local — RLS 19/19, bootstrap production-like 6/6, catálogo local `FORCE RLS` 123/123 e restore representativo sob `restore_probe`; catálogo alvo pendente                                                                                                           |
-| QB-OPS-01  | API/worker iniciam, ficam ready e encerram drenando  | process tests + logs/exit code + health matrix                    | BOUNDED PASS — API/worker process tests; DB/Redis de ambiente-alvo seguem pendentes                                                                                                                                                                                              |
+| QB-OPS-01  | API/worker iniciam, ficam ready e encerram drenando  | process tests + logs/exit code + health matrix                    | BOUNDED PASS — `pnpm test:critical` passou 10/10 cenários de processo com cleanup; DB/Redis, rollout e capacidade do ambiente-alvo seguem pendentes                                                                                                                              |
 | QB-OPS-02  | backup restaura banco, globals e storage             | drill descartável com manifest, hash, TOC e tempos                | BOUNDED PASS local — perfis mínimo e representativo restaurados em PostgreSQL descartável; representativo: 176 tabelas, 3 arquivos, 19 assertions sob `restore_probe` e `28.610 s`; RTO/RPO de alvo pendentes                                                                    |
 | QB-SEC-01  | secrets, auth, tenant e audit fail closed            | secret scan + integração DB/RLS + negativos                       | PARTIAL — Vault prod-like fail-closed, ACL/audit rollback-retry, cache pending fail-closed, token-stability/coalescing, privilege outage→503→recovery e revogação protegida cross-instance passaram localmente; target, provider de secrets e homologação externa seguem abertos |
-| QB-CLIN-01 | Owner→Patient→Encounter→care→close é transacional    | jornada PostgreSQL com audit, idempotência e isolamento           | PARTIAL                                                                                                                                                                                                                                                                          |
+| QB-CLIN-01 | Owner→Patient→Encounter→care→close é transacional    | jornada PostgreSQL com audit, idempotência e isolamento           | PARTIAL — critical 594/594 e E2E scoped 9/9 passaram; provider, target e aceitação clínica completa continuam abertos                                                                                                                                                            |
 | QB-PAR-01  | parity Vetus é comportamento, não inventário         | cenário executado por domínio com fonte/resultado                 | PARTIAL — 4/11                                                                                                                                                                                                                                                                   |
 | QB-REL-01  | CI bloqueia contratos operacionais baratos           | OpenAPI, RLS, Helm, deploy, backup check e testes                 | BOUNDED PASS — job, contrato, RLS/roles e suíte local verificados; execução GitHub pendente                                                                                                                                                                                      |
 | QB-REL-02  | providers reais homologados                          | sandbox/certificado/callback/rollback por provider                | BLOCKED                                                                                                                                                                                                                                                                          |
-| QB-UX-01   | jornada SPA crítica executável e acessível           | Playwright + axe/WCAG em alvo                                     | PARTIAL                                                                                                                                                                                                                                                                          |
+| QB-UX-01   | jornada SPA crítica executável e acessível           | Playwright + axe/WCAG em alvo                                     | PARTIAL — 9/9 scoped verdes; matriz global 375/768/1440, light/dark, leitor de tela e WCAG no target continuam pendentes                                                                                                                                                         |
 | QB-ARCH-01 | módulos evoluem por fronteira e sem novo crossing    | graph/guardrail + route registry incremental                      | PARTIAL                                                                                                                                                                                                                                                                          |
 
 ## Barra do primeiro slice
@@ -56,6 +64,15 @@ O primeiro slice só é considerado verde quando:
 4. API e worker fecham listener/DB/observabilidade uma vez, sem `process.exit(0)` no caminho gracioso;
 5. os testes focados e typecheck/lint/build passam;
 6. um crítico independente revisa o diff e tenta invalidar o contrato.
+
+### Revalidação do critical gate e E2E scoped — 2026-09-07
+
+O [registro do gate](CRITICAL_GATE_2026-09-07.md) confirma `pnpm test:critical`
+com exit 0: 65 arquivos/594 testes na perna de banco/setup e 10/10 processos
+na perna distribuída. O [E2E SPA](E2E_SPA_2026-09-07.md) também passou 9/9
+contra PostgreSQL/Redis reais locais, com cleanup sem erro. O resultado é
+`PASS_BOUNDED` porque o envelope é local e scoped. Não promove CI remoto,
+target, providers, paridade, a11y global ou go/no-go.
 
 ## Evidência registrada do primeiro slice
 
@@ -293,8 +310,8 @@ menor de constantes Helm duplicadas.
 ## Correção da unidade de medição R05-010 — 06/09/2026
 
 A [reconciliação de identidades de fonte](CRITICAL_SOURCE_IDENTITY_RECONCILIATION.md)
-foi revisada por crítico I1 e aplicada:575fontes canônicas ativas e41identidades
-de cópias geradas retiradas, totalizando616registros históricos. As41fontesTS
+foi revisada por crítico I1 e aplicada: 575 fontes canônicas ativas e 41 identidades
+de cópias geradas retiradas, totalizando 616 registros históricos. As 41 fontes TS
 correspondentes já eram exigidas e permanecem com hashes/componentes intactos.
 A inclusão simultânea de originais e cópias obsoletas era um defeito do inventário.
 Não houve dispensa de domínio, comportamento, SQL/Vue especializado, shard ou

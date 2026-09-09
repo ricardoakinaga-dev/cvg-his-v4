@@ -70,7 +70,7 @@ test.describe('Busca Mestre 360 -> cockpit -> recepcao', () => {
     });
 
     const receptionSearch = page.getByRole('search');
-    await receptionSearch.getByPlaceholder(/buscar tutor ou paciente/i).fill(patientName);
+    await receptionSearch.getByLabel('Busca da recepção').fill(patientName);
     await receptionSearch.getByRole('button', { name: 'Buscar', exact: true }).click();
 
     const quickActions = page.getByLabel('Acoes rapidas contextuais da recepcao');
@@ -87,7 +87,7 @@ test.describe('Busca Mestre 360 -> cockpit -> recepcao', () => {
 
     await page.goto(`${SPA_URL}/reception`);
     await page.waitForLoadState('networkidle');
-    await receptionSearch.getByPlaceholder(/buscar tutor ou paciente/i).fill(patientName);
+    await receptionSearch.getByLabel('Busca da recepção').fill(patientName);
     await receptionSearch.getByRole('button', { name: 'Buscar', exact: true }).click();
     await expect(quickActions).toBeVisible({ timeout: 15000 });
 
@@ -169,7 +169,7 @@ test.describe('Busca Mestre 360 -> cockpit -> recepcao', () => {
     await page.waitForLoadState('networkidle');
 
     const receptionSearch = page.getByRole('search');
-    await receptionSearch.getByPlaceholder(/buscar tutor ou paciente/i).fill(patientName);
+    await receptionSearch.getByLabel('Busca da recepção').fill(patientName);
     await receptionSearch.getByRole('button', { name: 'Buscar', exact: true }).click();
 
     const quickActions = page.getByLabel('Acoes rapidas contextuais da recepcao');
@@ -252,7 +252,7 @@ test.describe('Busca Mestre 360 -> cockpit -> recepcao', () => {
     await page.waitForLoadState('networkidle');
 
     const receptionSearch = page.getByRole('search');
-    await receptionSearch.getByPlaceholder(/buscar tutor ou paciente/i).fill(patientName);
+    await receptionSearch.getByLabel('Busca da recepção').fill(patientName);
     await receptionSearch.getByRole('button', { name: 'Buscar', exact: true }).click();
 
     const quickActions = page.getByLabel('Acoes rapidas contextuais da recepcao');
@@ -346,7 +346,7 @@ test.describe('Busca Mestre 360 -> cockpit -> recepcao', () => {
     await page.waitForLoadState('networkidle');
 
     const receptionSearch = page.getByRole('search');
-    await receptionSearch.getByPlaceholder(/buscar tutor ou paciente/i).fill(patientName);
+    await receptionSearch.getByLabel('Busca da recepção').fill(patientName);
     await receptionSearch.getByRole('button', { name: 'Buscar', exact: true }).click();
 
     const quickActions = page.getByLabel('Acoes rapidas contextuais da recepcao');

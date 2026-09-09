@@ -1,0 +1,686 @@
+
+ RUN  v3.2.7 /home/ricardo/cvg-his-v4
+
+[test-setup] Initializing test environment...
+[test-setup] Using test database cvg_his_v2
+[test-setup] Database not available, skipping DB-dependent setup: connect EPERM 127.0.0.1:5432 - Local (undefined:undefined)
+ ❯ tests/unit/infra/critical-process-suite-contract.test.ts (24 tests | 1 failed) 9390ms
+   ✓ critical process proof execution contract > fails the runner when a process test is skipped or hangs 1ms
+   ✓ critical process proof execution contract > uses asynchronous owned child execution with finite timeout and failure retention 2ms
+   ✓ critical process proof execution contract > classifies timeout, spawn, signal and exit outcomes distinctly 1ms
+   ✓ critical process proof execution contract > fails closed when a Windows process-tree root identity is reused 0ms
+   ✓ critical process proof execution contract > redacts credentials and caps diagnostics 1ms
+   × critical process proof execution contract > does not embed a database credential and does not inherit the parent environment by default 40ms
+     → expected '' to be 'missing' // Object.is equality
+   ✓ critical process proof execution contract > accepts only a fully counted, target-bound Vitest report 4ms
+   ✓ critical process proof execution contract > rejects symlink and hardlink report paths without changing the external file 2ms
+   ✓ critical process proof execution contract > accepts only localhost PostgreSQL test databases 2ms
+   ✓ critical process proof execution contract > derives only the owned ephemeral database name for each manifest entry 2ms
+   ✓ critical process proof execution contract > classifies a real spawn error and preserves its failure artifact 7ms
+   ✓ critical process proof execution contract > classifies a real signal termination and preserves bounded diagnostics 27ms
+   ✓ critical process proof execution contract > classifies caller abort as interrupted and still cleans the owned process 51ms
+   ✓ critical process proof execution contract > returns a typed hook failure and reaps the owned descendants  533ms
+   ✓ critical process proof execution contract > returns a typed abort-registration failure and reaps the child  539ms
+   ✓ critical process proof execution contract > returns a typed abort-state access failure and reaps the child  593ms
+   ✓ critical process proof execution contract > sanitizes and replaces a raw Vitest report before artifact retention 3ms
+   ✓ critical process proof execution contract > preserves a sanitized artifact when an owned child times out 89ms
+   ✓ critical process proof execution contract > does not leak a credential split across diagnostic chunks  1037ms
+   ✓ critical process proof execution contract > bounds oversized report input before parsing and retention 13ms
+   ✓ critical process proof execution contract > settles a typed finalization error when the failure artifact cannot be written 82ms
+   ✓ critical process proof execution contract > terminates descendants in the owned process group on timeout  3038ms
+   ✓ critical process proof execution contract > terminates descendants after an ordinary non-zero child exit  3320ms
+   ✓ critical process proof execution contract > does not silently skip the distributed setup proof in a required run 0ms
+ ❯ tests/unit/infra/namespace-boundary.test.ts (3 tests | 1 failed) 8753ms
+   ✓ canonical package namespace guard > accepts the repository graph after canonical migration  7588ms
+   × canonical package namespace guard > reports legacy manifest and source edges in a fixture 554ms
+     → The input did not match the regular expression /manifest dependency/. Input:
+
+''
+
+   ✓ canonical package namespace guard > ignores legacy namespace text inside comments and ordinary strings  610ms
+{"level":"INFO","message":"Database initialization skipped (no DATABASE_URL provided), using in-memory repositories","timestamp":"2026-09-08T12:02:17.950Z","pid":15,"service":"bootstrap"}
+{"level":"INFO","message":"Database initialization skipped (no DATABASE_URL provided), using in-memory repositories","timestamp":"2026-09-08T12:02:18.171Z","pid":15,"service":"bootstrap"}
+{"level":"INFO","message":"Initializing database connection with retry","timestamp":"2026-09-08T12:02:18.965Z","pid":15,"service":"bootstrap","url":"postgresql://***:***@127.0.0.1:1/unavailable","maxRetries":1,"retryDelayMs":0}
+{"level":"INFO","message":"Attempting database connection","timestamp":"2026-09-08T12:02:18.966Z","pid":15,"service":"bootstrap","attempt":1,"maxRetries":1}
+{"level":"INFO","message":"Database health check failed, will retry","timestamp":"2026-09-08T12:02:18.976Z","pid":15,"service":"bootstrap","attempt":1,"detail":"connect EPERM 127.0.0.1:1 - Local (undefined:undefined)"}
+{"level":"INFO","message":"Database connection closed","timestamp":"2026-09-08T12:02:18.976Z","pid":15,"service":"bootstrap"}
+{"level":"INFO","message":"Initializing database connection with retry","timestamp":"2026-09-08T12:02:19.128Z","pid":15,"service":"bootstrap","url":"postgresql://***:***@127.0.0.1:1/unavailable","maxRetries":1,"retryDelayMs":0}
+{"level":"INFO","message":"Attempting database connection","timestamp":"2026-09-08T12:02:19.128Z","pid":15,"service":"bootstrap","attempt":1,"maxRetries":1}
+{"level":"INFO","message":"Database health check failed, will retry","timestamp":"2026-09-08T12:02:19.133Z","pid":15,"service":"bootstrap","attempt":1,"detail":"connect EPERM 127.0.0.1:1 - Local (undefined:undefined)"}
+{"level":"INFO","message":"Database connection closed","timestamp":"2026-09-08T12:02:19.133Z","pid":15,"service":"bootstrap"}
+{"level":"INFO","message":"Initializing database connection with retry","timestamp":"2026-09-08T12:02:19.311Z","pid":15,"service":"bootstrap","url":"postgresql://***:***@127.0.0.1:1/unavailable","maxRetries":1,"retryDelayMs":0}
+{"level":"INFO","message":"Attempting database connection","timestamp":"2026-09-08T12:02:19.311Z","pid":15,"service":"bootstrap","attempt":1,"maxRetries":1}
+{"level":"INFO","message":"Database health check failed, will retry","timestamp":"2026-09-08T12:02:19.316Z","pid":15,"service":"bootstrap","attempt":1,"detail":"connect EPERM 127.0.0.1:1 - Local (undefined:undefined)"}
+{"level":"INFO","message":"Database connection closed","timestamp":"2026-09-08T12:02:19.316Z","pid":15,"service":"bootstrap"}
+{"level":"INFO","message":"Initializing database connection with retry","timestamp":"2026-09-08T12:02:19.434Z","pid":15,"service":"bootstrap","url":"postgresql://***:***@127.0.0.1:1/unavailable","maxRetries":1,"retryDelayMs":0}
+{"level":"INFO","message":"Attempting database connection","timestamp":"2026-09-08T12:02:19.434Z","pid":15,"service":"bootstrap","attempt":1,"maxRetries":1}
+{"level":"INFO","message":"Database health check failed, will retry","timestamp":"2026-09-08T12:02:19.436Z","pid":15,"service":"bootstrap","attempt":1,"detail":"connect EPERM 127.0.0.1:1 - Local (undefined:undefined)"}
+{"level":"INFO","message":"Database connection closed","timestamp":"2026-09-08T12:02:19.436Z","pid":15,"service":"bootstrap"}
+{"level":"INFO","message":"Initializing database connection with retry","timestamp":"2026-09-08T12:02:20.547Z","pid":15,"service":"bootstrap","url":"postgresql://***:***@127.0.0.1:1/require_test_db_unavailable","maxRetries":1,"retryDelayMs":0}
+{"level":"INFO","message":"Attempting database connection","timestamp":"2026-09-08T12:02:20.548Z","pid":15,"service":"bootstrap","attempt":1,"maxRetries":1}
+{"level":"INFO","message":"Database health check failed, will retry","timestamp":"2026-09-08T12:02:20.549Z","pid":15,"service":"bootstrap","attempt":1,"detail":"connect EPERM 127.0.0.1:1 - Local (undefined:undefined)"}
+{"level":"INFO","message":"Database connection closed","timestamp":"2026-09-08T12:02:20.550Z","pid":15,"service":"bootstrap"}
+ ✓ tests/unit/api/bootstrap.test.ts (21 tests) 9711ms
+   ✓ bootstrap > keeps in-memory repositories when skipDatabase is enabled  6717ms
+ ❯ tests/unit/infra/restore-drill-security.test.ts (4 tests | 4 failed) 185ms
+   × restore-drill storage archive boundary > rejects a traversal archive entry before extraction 60ms
+     → spawnSync tar EPERM
+   × restore-drill storage archive boundary > rejects a symlink archive entry before extraction 53ms
+     → spawnSync tar EPERM
+   × restore-drill storage archive boundary > rejects a hardlink archive entry before extraction 35ms
+     → spawnSync tar EPERM
+   × restore-drill storage archive boundary > rejects a destination-symlink archive entry before extraction 38ms
+     → spawnSync tar EPERM
+ ✓ packages/modules/mfa/src/mfa.test.ts (63 tests) 3849ms
+ ❯ tests/unit/infra/run-tsx-file.test.ts (1 test | 1 failed) 163ms
+   × runTsxFileSync > runs a script whose path and argument contain spaces and Unicode 163ms
+     → spawnSync /home/ricardo/.nvm/versions/node/v24.20.0/bin/node EPERM
+ ❯ tests/unit/infra/compose-local-security.test.ts (6 tests | 1 failed) 33ms
+   ✓ canonical local Compose security and observability contracts > binds every published canonical service port to loopback 1ms
+   ✓ canonical local Compose security and observability contracts > fails closed instead of defaulting Grafana to admin/admin 0ms
+   × canonical local Compose security and observability contracts > declares an executable worker readiness probe and requires strict healthy status in cutover 25ms
+     → listen EPERM: operation not permitted 127.0.0.1
+   ✓ canonical local Compose security and observability contracts > scrapes API and worker through canonical Compose service DNS 6ms
+   ✓ canonical local Compose security and observability contracts > keeps the active observability README consistent with Compose networking 1ms
+   ✓ canonical local Compose security and observability contracts > gives CI a synthetic Grafana password for Compose config validation 0ms
+ ✓ tests/unit/mfa/crypto.test.ts (12 tests) 821ms
+ ✓ packages/modules/users/src/users.test.ts (13 tests) 1155ms
+ ✓ tests/unit/modules/mfa-service-coverage.test.ts (6 tests) 798ms
+   ✓ MfaService coverage guard > accepts recovery codes, consumes them and supports disabling MFA with recovery fallback  324ms
+ ✓ tests/unit/modules/users-service.test.ts (4 tests) 486ms
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService processPending marks events as completed
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.event (4032ce2a-a90c-4185-8b63-50fdeba0219e) correlation=corr_test_123 to 1 handler(s) — attempt 1/3
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService processPending marks events as completed
+[EventBus] Event test.event (4032ce2a-a90c-4185-8b63-50fdeba0219e) correlation=corr_test_123 completed — 1 handler(s) succeeded
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService subscribe calls handler when event is processed
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.event (2ffe21a0-8d45-4758-b908-1a98d2cdd037) correlation=corr_test_123 to 1 handler(s) — attempt 1/3
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService subscribe calls handler when event is processed
+[EventBus] Event test.event (2ffe21a0-8d45-4758-b908-1a98d2cdd037) correlation=corr_test_123 completed — 1 handler(s) succeeded
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService multiple handlers are all called
+[EventBus] Processing claimed event with 2 handler(s) registered
+[EventBus] Dispatching event test.event (30144775-7208-42f8-b5cb-07e108d16773) correlation=corr_test_123 to 2 handler(s) — attempt 1/3
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService multiple handlers are all called
+[EventBus] Event test.event (30144775-7208-42f8-b5cb-07e108d16773) correlation=corr_test_123 completed — 2 handler(s) succeeded
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService processPending schedules retry with backoff on failure
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.retry_event (7b28c3a7-047f-4633-a3c9-88f5650acdbf) correlation=corr_test_123 to 1 handler(s) — attempt 1/3
+
+stderr | packages/modules/event-bus/src/event-bus.test.ts > EventBusService processPending schedules retry with backoff on failure
+[EventBus] test.retry_event (7b28c3a7-047f-4633-a3c9-88f5650acdbf) correlation=corr_test_123 retry 1/3 in 1000ms: always fails
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService processPending moves event to DLQ after max attempts
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.dlq_event (aa987e79-9655-4285-adda-721812ec9cfc) correlation=corr_test_123 to 1 handler(s) — attempt 1/2
+
+stderr | packages/modules/event-bus/src/event-bus.test.ts > EventBusService processPending moves event to DLQ after max attempts
+[EventBus] test.dlq_event (aa987e79-9655-4285-adda-721812ec9cfc) correlation=corr_test_123 retry 1/2 in 1ms: always fails
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService processPending moves event to DLQ after max attempts
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.dlq_event (aa987e79-9655-4285-adda-721812ec9cfc) correlation=corr_test_123 to 1 handler(s) — attempt 2/2
+
+stderr | packages/modules/event-bus/src/event-bus.test.ts > EventBusService processPending moves event to DLQ after max attempts
+[EventBus] [DLQ] test.dlq_event (aa987e79-9655-4285-adda-721812ec9cfc) correlation=corr_test_123 moved to dead-letter queue after 2 attempts: always fails
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService getDeadLetterEvents returns failed events
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.dlq_1 (c6b57d0c-a340-49d0-9f50-2184ffb34704) correlation=corr_test_123 to 1 handler(s) — attempt 1/1
+
+stderr | packages/modules/event-bus/src/event-bus.test.ts > EventBusService getDeadLetterEvents returns failed events
+[EventBus] [DLQ] test.dlq_1 (c6b57d0c-a340-49d0-9f50-2184ffb34704) correlation=corr_test_123 moved to dead-letter queue after 1 attempts: always fails
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService getDeadLetterEvents returns failed events
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.dlq_2 (b41cf4c9-b328-43be-a371-d2a2da04af63) correlation=corr_test_123 to 1 handler(s) — attempt 1/1
+
+stderr | packages/modules/event-bus/src/event-bus.test.ts > EventBusService getDeadLetterEvents returns failed events
+[EventBus] [DLQ] test.dlq_2 (b41cf4c9-b328-43be-a371-d2a2da04af63) correlation=corr_test_123 moved to dead-letter queue after 1 attempts: always fails
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > EventBusService reprocessEvent resets failed event to pending
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.reprocess_event (c8a70dd9-8b58-413c-b80f-75db2fcb7f6f) correlation=corr_test_123 to 1 handler(s) — attempt 1/1
+
+stderr | packages/modules/event-bus/src/event-bus.test.ts > EventBusService reprocessEvent resets failed event to pending
+[EventBus] [DLQ] test.reprocess_event (c8a70dd9-8b58-413c-b80f-75db2fcb7f6f) correlation=corr_test_123 moved to dead-letter queue after 1 attempts: always fails
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > retry executes only the consumer that has no committed inbox receipt
+[EventBus] Processing claimed event with 2 handler(s) registered
+[EventBus] Dispatching event test.partial-retry (65931ebf-96e2-4ab6-8d17-7288a6126182) correlation=corr_test_123 to 2 handler(s) — attempt 1/3
+
+stderr | packages/modules/event-bus/src/event-bus.test.ts > retry executes only the consumer that has no committed inbox receipt
+[EventBus] test.partial-retry (65931ebf-96e2-4ab6-8d17-7288a6126182) correlation=corr_test_123 retry 1/3 in 1ms: retry consumer b
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > retry executes only the consumer that has no committed inbox receipt
+[EventBus] Processing claimed event with 2 handler(s) registered
+[EventBus] Dispatching event test.partial-retry (65931ebf-96e2-4ab6-8d17-7288a6126182) correlation=corr_test_123 to 2 handler(s) — attempt 2/3
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > retry executes only the consumer that has no committed inbox receipt
+[EventBus] Event test.partial-retry (65931ebf-96e2-4ab6-8d17-7288a6126182) correlation=corr_test_123 completed — 2 handler(s) succeeded
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > renews the lease while a slow consumer is running
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.slow (a1465c53-0838-4f9f-ac3b-4aad7925e780) correlation=corr_test_123 to 1 handler(s) — attempt 1/3
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > renews the lease while a slow consumer is running
+[EventBus] Event test.slow (a1465c53-0838-4f9f-ac3b-4aad7925e780) correlation=corr_test_123 completed — 1 handler(s) succeeded
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > claims one event at a time so queued leases cannot expire
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.batch-a (75f6bde7-f410-448a-b740-62280b753145) correlation=corr_test_123 to 1 handler(s) — attempt 1/3
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > claims one event at a time so queued leases cannot expire
+[EventBus] Event test.batch-a (75f6bde7-f410-448a-b740-62280b753145) correlation=corr_test_123 completed — 1 handler(s) succeeded
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > claims one event at a time so queued leases cannot expire
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.batch-b (426f59e4-067b-4876-8e3b-73495d5bec33) correlation=corr_test_123 to 1 handler(s) — attempt 1/3
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > claims one event at a time so queued leases cannot expire
+[EventBus] Event test.batch-b (426f59e4-067b-4876-8e3b-73495d5bec33) correlation=corr_test_123 completed — 1 handler(s) succeeded
+
+stdout | packages/modules/event-bus/src/event-bus.test.ts > quarantines a claimed event without canonical tenant metadata
+[EventBus] Processing claimed event with 1 handler(s) registered
+[EventBus] Dispatching event test.missing-tenant-metadata (2a78a635-a676-4201-9e23-266da50f2f4d) correlation=corr_test_123 to 1 handler(s) — attempt 1/3
+
+stderr | packages/modules/event-bus/src/event-bus.test.ts > quarantines a claimed event without canonical tenant metadata
+[EventBus] test.missing-tenant-metadata (2a78a635-a676-4201-9e23-266da50f2f4d) correlation=corr_test_123 retry 1/3 in 1000ms: Outbox payload _meta must be an object with the claimed event account
+
+ ✓ packages/modules/event-bus/src/event-bus.test.ts (24 tests) 461ms
+   ✓ renews the lease while a slow consumer is running  403ms
+ ✓ tests/unit/mfa/mfa-service.test.ts (27 tests) 493ms
+ ✓ tests/unit/auth/interactive-principal-guard.test.ts (11 tests) 362ms
+ ✓ tests/unit/infra/security-operations-certification.test.ts (3 tests) 387ms
+   ✓ security operations certification contract > generates a machine-readable index without accepting placeholder evidence  385ms
+ ✓ tests/unit/api/openapi-routes.test.ts (4 tests) 55ms
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > closes counter sale without open register and skips cash movements
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > closes counter sale with open register and records mapped cash movements
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > fails close when runtime inventory bridge cannot resolve the SKU
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > applies card settlement when encounter financial payment uses external reference type other
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > ignores unsupported external reference types when settling receivables
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > skips transaction settlement updates when external reference id is missing
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > publishes notification.sent events when queued notifications are processed
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > initializes without scoped hydrations when no bootstrap account id can be resolved
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > publishes appointment.status_changed when an appointment is cancelled
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > publishes encounter.status_changed when the encounter moves to observation
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime-operational-coverage.test.ts > runtime operational coverage > publishes patient.created when a patient is registered at runtime
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+ ✓ tests/unit/api/runtime-operational-coverage.test.ts (11 tests) 74ms
+ ✓ tests/unit/worker/pix-payment-dispatch-guards.test.ts (81 tests) 94ms
+ ✓ packages/modules/counter-sales/src/counter-sale-cancellation-report.test.ts (46 tests) 60ms
+stdout | tests/unit/api/runtime.test.ts > runtime > builds and initializes the in-memory runtime graph
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime.test.ts > runtime > enables MFA service when an encryption key is provided
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime.test.ts > runtime > schedules or skips automatic WhatsApp reminders according to the runtime flag
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event billing.record.created (6823ac5f-c3c4-46a6-a8c1-eab72be51bdd) correlation=evt_mtsmdxo1_caf1f53abf406157b1 to 3 handler(s) — attempt 1/3
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Event billing.record.created (6823ac5f-c3c4-46a6-a8c1-eab72be51bdd) correlation=evt_mtsmdxo1_caf1f53abf406157b1 completed — 3 handler(s) succeeded
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event encounter.created (a8a102f2-a84c-4f7d-9aeb-75f048308d60) correlation=evt_mtsmdxo1_d31660d1edd93cb317 to 3 handler(s) — attempt 1/3
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Event encounter.created (a8a102f2-a84c-4f7d-9aeb-75f048308d60) correlation=evt_mtsmdxo1_d31660d1edd93cb317 completed — 3 handler(s) succeeded
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event billing.status_changed (1a452893-4549-4d22-97a0-3aca96530c7a) correlation=evt_mtsmdxo1_be3b633853f6f18ed2 to 3 handler(s) — attempt 1/3
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Event billing.status_changed (1a452893-4549-4d22-97a0-3aca96530c7a) correlation=evt_mtsmdxo1_be3b633853f6f18ed2 completed — 3 handler(s) succeeded
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event payment.pix.intent.created (1271b70b-5d0c-44ab-b0ef-99b9bcee2cd9) correlation=corr_pix_financial_intent to 3 handler(s) — attempt 1/3
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[PaymentsConsumer] PIX intent created: pix_intent_runtime_1 for account acc_cvg_demo (billingRecordId: bill_mtsmdxo1_bd5f127b3b98af06b7) — amount: 150 BRL
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Event payment.pix.intent.created (1271b70b-5d0c-44ab-b0ef-99b9bcee2cd9) correlation=corr_pix_financial_intent completed — 3 handler(s) succeeded
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event payment.pix.confirmed (dc504acb-795a-4243-bde7-8ef845969073) correlation=corr_pix_financial_confirm to 3 handler(s) — attempt 1/3
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[PaymentsConsumer] Settled billing record bill_mtsmdxo1_bd5f127b3b98af06b7 after PIX confirmation (event dc504acb-795a-4243-bde7-8ef845969073)
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Event payment.pix.confirmed (dc504acb-795a-4243-bde7-8ef845969073) correlation=corr_pix_financial_confirm completed — 3 handler(s) succeeded
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event billing.status_changed (7054372b-8acc-4b61-923b-f860e56d37c9) correlation=evt_mtsmdxo6_53e52e8cfdf25b7530 to 3 handler(s) — attempt 1/3
+
+stdout | tests/unit/api/runtime.test.ts > runtime > reconciles PIX confirmations into the administrative financial summary
+[EventBus] Event billing.status_changed (7054372b-8acc-4b61-923b-f860e56d37c9) correlation=evt_mtsmdxo6_53e52e8cfdf25b7530 completed — 3 handler(s) succeeded
+
+ ✓ tests/unit/api/runtime.test.ts (4 tests) 19ms
+ ✓ tests/unit/shared-utils/utils.test.ts (9 tests) 68ms
+ ✓ packages/modules/owners/src/owners.test.ts (44 tests) 103ms
+ ✓ tests/unit/infra/deploy-surface-of-truth.test.ts (5 tests) 122ms
+ ❯ tests/unit/infra/migration-source-of-truth.test.ts (1 test | 1 failed) 143ms
+   × database migration source-of-truth guardrail > accepts only packages/db as the executable migration and seed surface 143ms
+     → expected [Function] to not throw an error but 'Error: spawnSync /home/ricardo/.nvm/v…' was thrown
+ ✓ tests/unit/api/financial-routes.test.ts (11 tests) 47ms
+ ✓ packages/db/src/password.test.ts (1 test) 193ms
+ ✓ tests/unit/infra/openapi-frontend-contract.test.ts (7 tests) 60ms
+ ✓ tests/unit/api/feature-flags.test.ts (6 tests) 5ms
+ ✓ packages/modules/scheduling/src/scheduling.test.ts (60 tests) 77ms
+ ✓ tests/unit/observability/metrics.test.ts (17 tests) 35ms
+ ✓ packages/modules/reports/src/reports.test.ts (33 tests) 63ms
+ ✓ packages/modules/fiscal/src/fiscal.test.ts (18 tests) 13ms
+ ✓ tests/unit/lgpd/lgpd-service.test.ts (30 tests) 9ms
+ ✓ tests/unit/modules/inventory-service.test.ts (7 tests) 6ms
+ ✓ tests/unit/shared/tenant-unit-of-work.test.ts (26 tests) 75ms
+ ✓ tests/unit/infra/documentation-governance.test.ts (4 tests) 79ms
+ ✓ tests/unit/db/commissions-staff-authority-migration.test.ts (2 tests) 3ms
+ ✓ tests/unit/infra/release-manifest.test.ts (2 tests) 26ms
+ ✓ packages/modules/prescription-executions/src/prescription-executions.test.ts (28 tests) 18ms
+ ✓ tests/unit/modules/diagnostics.test.ts (6 tests) 7ms
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:02:36.611Z","pid":15,"service":"auth-brute-force","identifier":"user1","attemptCount":3,"lockedUntilSeconds":60}
+ ✓ tests/unit/auth/hardening.test.ts (24 tests) 13ms
+{"level":"WARN","message":"account locked due to repeated MFA failures","timestamp":"2026-09-08T12:02:36.611Z","pid":15,"service":"auth-brute-force","identifier":"user1","attemptCount":3,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:02:36.612Z","pid":15,"service":"auth-brute-force","identifier":"user1","attemptCount":3,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:02:36.613Z","pid":15,"service":"auth-brute-force","identifier":"user1","attemptCount":3,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:02:36.613Z","pid":15,"service":"auth-brute-force","identifier":"user1","attemptCount":1,"lockedUntilSeconds":30}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:02:36.617Z","pid":15,"service":"auth-brute-force","identifier":"vet","attemptCount":2,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:02:36.617Z","pid":15,"service":"auth-brute-force","identifier":"vet","attemptCount":1,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:02:36.618Z","pid":15,"service":"auth-brute-force","identifier":"vet","attemptCount":1,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated MFA failures","timestamp":"2026-09-08T12:02:36.621Z","pid":15,"service":"auth-brute-force","identifier":"user_admin","attemptCount":2,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:02:36.622Z","pid":15,"service":"auth-brute-force","identifier":"vet","attemptCount":2,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:02:36.622Z","pid":15,"service":"auth-brute-force","identifier":"admin","attemptCount":2,"lockedUntilSeconds":60}
+ ✓ tests/unit/infra/runtime-lifecycle.test.ts (4 tests) 13ms
+ ✓ packages/modules/counter-sales/src/counter-sales.test.ts (44 tests) 28ms
+ ✓ tests/unit/modules/financial.test.ts (5 tests) 7ms
+ ✓ tests/unit/modules/fiscal-service.test.ts (8 tests) 8ms
+ ✓ packages/modules/audit/src/audit.test.ts (29 tests) 43ms
+ ✓ tests/unit/fiscal/nfse-emitter.test.ts (26 tests) 18ms
+ ✓ tests/unit/observability/logging.test.ts (10 tests) 5ms
+ ✓ tests/unit/db/advance-payment-migration.test.ts (1 test) 4ms
+ ✓ packages/modules/encounters/src/encounters.test.ts (27 tests) 10ms
+ ✓ tests/unit/api/runtime-repositories.test.ts (3 tests) 6ms
+ ✓ tests/unit/fiscal/cfop-table.test.ts (17 tests) 19ms
+ ✓ tests/unit/shared/feature-flags-shared.test.ts (9 tests) 18ms
+ ✓ tests/unit/modules/triage-service.test.ts (3 tests) 8ms
+{"level":"WARN","message":"account locked due to repeated MFA failures","timestamp":"2026-09-08T12:02:37.730Z","pid":15,"service":"auth-brute-force","identifier":"user_admin","attemptCount":1,"lockedUntilSeconds":60}
+ ✓ packages/modules/auth/src/auth.test.ts (34 tests) 63ms
+ ✓ packages/modules/quotes/src/quotes.test.ts (20 tests) 25ms
+ ✓ tests/unit/api/database-prescription.repository.test.ts (3 tests) 17ms
+ ✓ tests/unit/design-system/design-system.test.ts (41 tests) 29ms
+ ✓ tests/unit/api/pix-provider-webhook-verifier.test.ts (25 tests) 9ms
+ ✓ tests/unit/api/pix-provider-webhook-payload.test.ts (41 tests) 9ms
+ ✓ tests/unit/modules/counter-sales-service.test.ts (7 tests) 9ms
+ ✓ packages/modules/inventory/src/inventory.test.ts (33 tests) 33ms
+ ✓ tests/unit/design-system/advanced-components.test.ts (54 tests) 9ms
+ ✓ tests/unit/modules/webauthn-durable-state.test.ts (5 tests) 8ms
+ ✓ tests/unit/modules/encounters-service.test.ts (4 tests) 9ms
+ ✓ tests/unit/rls/text-based-tables-migration.test.ts (38 tests) 8ms
+ ✓ tests/unit/api/startup-secrets-runtime.test.ts (8 tests) 29ms
+ ✓ tests/unit/modules/feature-flags-provider.test.ts (3 tests) 32ms
+ ✓ tests/unit/tenant-context/context.test.ts (10 tests) 12ms
+ ✓ tests/unit/api/auth-rate-limiter-runtime.test.ts (3 tests) 7ms
+ ❯ tests/unit/infra/requirement-evidence-matrix.test.ts (2 tests | 1 failed) 20ms
+   × requirement evidence matrix contract > maps every frozen Quality Bar criterion to a single auditable row 20ms
+     → expected '`PASS_BOUNDED` local — 9/9 jornadas, …' to contain 'PARTIAL'
+   ✓ requirement evidence matrix contract > requires rejecting evidence, revision-bound references and honest status 0ms
+ ✓ tests/unit/modules/patients-service.test.ts (5 tests) 5ms
+ ✓ tests/unit/api/encounter-cash-receipt-command.test.ts (9 tests) 3ms
+ ✓ packages/modules/financial/src/financial.test.ts (19 tests) 13ms
+ ✓ packages/modules/notifications-whatsapp/src/whatsapp.test.ts (29 tests) 18ms
+ ✓ tests/unit/db/counter-sale-clinical-receipts-migration.test.ts (2 tests) 2ms
+ ✓ tests/unit/infra/restore-fixture-contract.test.ts (9 tests) 2ms
+ ✓ tests/unit/api/email-gateway-runtime.test.ts (3 tests) 8ms
+ ✓ packages/modules/webhooks/src/webhooks.test.ts (22 tests) 22ms
+ ✓ tests/unit/api/health.test.ts (11 tests) 4ms
+ ✓ tests/unit/rls/migration.test.ts (27 tests) 4ms
+ ✓ tests/unit/worker/pix-payment-dispatch-normalization.test.ts (20 tests) 7ms
+ ✓ tests/unit/infra/complexity-hotspots.test.ts (3 tests) 11ms
+ ✓ tests/unit/api/app-state.test.ts (24 tests) 3ms
+ ✓ tests/unit/modules/scheduling.test.ts (4 tests) 3ms
+ ✓ tests/unit/fiscal/tax-calculator.test.ts (27 tests) 5ms
+ ✓ tests/unit/api/pix-provider-webhook-keyring.test.ts (10 tests) 3ms
+ ✓ tests/unit/db/pix-service-principal-schema.test.ts (4 tests) 2ms
+ ✓ tests/unit/api/chaos-operational-state.test.ts (25 tests) 4ms
+ ✓ tests/unit/api/card-transaction-repository-database.test.ts (3 tests) 3ms
+ ✓ tests/unit/api/health-routes-contract.test.ts (3 tests) 6ms
+ ✓ packages/modules/access-control/src/access-control.test.ts (37 tests) 21ms
+ ✓ tests/unit/infra/runtime-role-grants.test.ts (14 tests) 7ms
+ ✓ tests/unit/api/pix-transaction-repository-database.test.ts (5 tests) 28ms
+ ✓ tests/unit/api/feature-flags-routes.test.ts (2 tests) 4ms
+ ✓ packages/modules/packages/src/packages.test.ts (5 tests) 5ms
+ ✓ tests/unit/db/commissions-payment-integrity-migration.test.ts (1 test) 21ms
+ ✓ tests/unit/modules/fiscal-database-repository.test.ts (4 tests) 12ms
+ ✓ packages/modules/event-consumers/src/payments.consumer.test.ts (10 tests) 12ms
+ ✓ tests/unit/mfa/totp.test.ts (13 tests) 4ms
+ ✓ tests/unit/modules/counter-sales.test.ts (2 tests) 1ms
+ ✓ tests/unit/worker/health-contract.test.ts (6 tests) 5ms
+ ✓ packages/modules/api-keys/src/api-keys.test.ts (13 tests) 6ms
+ ✓ tests/unit/api/slos.test.ts (29 tests) 9ms
+ ✓ packages/modules/services/src/services.test.ts (17 tests) 10ms
+ ✓ tests/unit/db/webhook-delivery-migration.test.ts (2 tests) 1ms
+ ✓ tests/unit/db/fiscal-nfse-operation-migration.test.ts (2 tests) 1ms
+ ✓ packages/modules/medical-records/src/medical-records.test.ts (23 tests) 16ms
+ ✓ tests/unit/modules/feature-flags-repository.test.ts (3 tests) 2ms
+ ✓ packages/modules/patients/src/patients.test.ts (50 tests) 32ms
+ ✓ packages/modules/attachments/src/file-storage.test.ts (3 tests) 26ms
+ ✓ tests/unit/api/raw-request-body.test.ts (5 tests) 4ms
+ ✓ tests/unit/modules/staff-service.test.ts (3 tests) 2ms
+ ✓ packages/modules/products/src/products.test.ts (16 tests) 6ms
+ ✓ tests/unit/http-command-helpers.test.ts (7 tests) 19ms
+ ✓ packages/modules/diagnostics/src/diagnostics.test.ts (32 tests) 14ms
+ ✓ tests/unit/contracts/counter-sale-cancellation-contract.test.ts (2 tests) 2ms
+ ✓ tests/unit/api/request-encounter-pix-payment-command.test.ts (25 tests) 5ms
+ ✓ packages/db/src/reconcile-runtime-roles.test.ts (11 tests) 15ms
+ ✓ tests/unit/infra/critical-soak.test.ts (3 tests) 1ms
+ ✓ tests/unit/db/finance-catalog-migration.test.ts (1 test) 0ms
+ ✓ packages/modules/commercial/src/commercial.test.ts (6 tests) 3ms
+ ✓ tests/unit/api/pix-provider-event-fingerprints.test.ts (4 tests) 1ms
+ ✓ packages/modules/prescriptions/src/prescriptions.test.ts (35 tests) 10ms
+ ✓ tests/unit/infra/release-workflow-contract.test.ts (3 tests) 1ms
+ ✓ tests/unit/infra/performance-gate-contract.test.ts (3 tests) 1ms
+ ✓ tests/unit/db/reports-schedule-claim-migration.test.ts (2 tests) 1ms
+ ✓ packages/modules/soc2/src/controls.test.ts (27 tests) 4ms
+ ✓ packages/modules/staff/src/staff.test.ts (7 tests) 4ms
+ ✓ tests/unit/api/auth-rate-limiter.test.ts (2 tests) 1ms
+ ✓ tests/unit/db/scheduling-checkin-uniqueness-migration.test.ts (1 test) 0ms
+ ✓ tests/unit/db/laboratory-provider-ingress-migration.test.ts (2 tests) 1ms
+ ✓ tests/unit/db/encounter-cash-receipt-reversal-migration.test.ts (2 tests) 1ms
+ ✓ tests/unit/infra/visual-route-stub-contract.test.ts (1 test) 0ms
+ ✓ packages/modules/marketing/src/marketing.test.ts (12 tests) 7ms
+ ✓ tests/unit/db/api-key-auth-boundary.test.ts (2 tests) 1ms
+ ✓ packages/modules/pix/src/pix.test.ts (9 tests) 2ms
+ ✓ tests/unit/observability/prometheus-alerts-slo-alignment.test.ts (5 tests) 1ms
+ ✓ tests/unit/infra/database-chaos-fail-closed-contract.test.ts (4 tests) 1ms
+ ✓ tests/unit/tenant-context/middleware.test.ts (7 tests) 1ms
+ ✓ tests/unit/infra/ci-contract.test.ts (13 tests) 2ms
+ ✓ tests/unit/modules/webauthn-service.test.ts (4 tests) 1ms
+ ✓ packages/modules/auth/src/auth-refresh-audit.test.ts (3 tests) 5ms
+ ✓ tests/unit/infra/ephemeral-game-day-contract.test.ts (3 tests) 0ms
+ ✓ tests/unit/db/scheduling-queue-transfer-receipts-migration.test.ts (3 tests) 1ms
+ ✓ packages/db/src/rls.test.ts (10 tests) 7ms
+ ✓ tests/unit/modules/counter-sales-repository.test.ts (9 tests) 3ms
+ ✓ tests/unit/api/encounter-cash-receipt-reversal-command.test.ts (8 tests) 1ms
+ ✓ packages/modules/cash/src/cash.test.ts (19 tests) 5ms
+ ✓ tests/unit/modules/owners-service.test.ts (4 tests) 1ms
+ ✓ tests/unit/infra/critical-soak-workflow-contract.test.ts (2 tests) 0ms
+ ✓ packages/modules/attachments/src/attachments.test.ts (19 tests) 5ms
+ ✓ tests/unit/db/marketing-permission-catalog.test.ts (2 tests) 1ms
+ ✓ packages/modules/lgpd/src/lgpd.test.ts (28 tests) 5ms
+ ✓ tests/unit/db/reports-delivery-lease-migration.test.ts (2 tests) 1ms
+ ✓ tests/unit/rls/user-roles-migration.test.ts (1 test) 0ms
+ ✓ tests/unit/api/database-chaos-write-guard.test.ts (19 tests) 1ms
+ ✓ tests/unit/db/staff-professions-migration.test.ts (1 test) 0ms
+ ✓ packages/modules/inpatient/src/inpatient.test.ts (18 tests) 5ms
+ ✓ packages/modules/billing/src/billing.test.ts (20 tests) 5ms
+ ✓ packages/modules/medical-records/src/medical-records.boundary-coverage.test.ts (10 tests) 6ms
+ ✓ tests/unit/database/service-principal-writer-linearization-migration.test.ts (2 tests) 0ms
+ ✓ packages/modules/owners/src/owners-report.test.ts (5 tests) 3ms
+ ✓ tests/unit/observability/metrics-slo-snapshot.test.ts (1 test) 0ms
+ ✓ tests/unit/infra/migration-source-artifact.test.ts (1 test) 0ms
+ ✓ packages/modules/ml/src/applied-ml.test.ts (10 tests) 4ms
+ ✓ packages/modules/discharges/src/discharges.test.ts (17 tests) 5ms
+ ✓ tests/unit/db/counter-sale-payment-authority-migration.test.ts (2 tests) 1ms
+ ✓ tests/unit/db/owner-patient-relationship-migration.test.ts (1 test) 0ms
+ ✓ tests/unit/infra/restore-drill-timing-contract.test.ts (1 test) 0ms
+ ✓ tests/unit/db/seed-laboratory-signer-contract.test.ts (1 test) 0ms
+ ✓ tests/unit/db/finance-operational-catalogs-migration.test.ts (2 tests) 0ms
+ ✓ tests/unit/architecture/pix-b2b-boundaries.test.ts (1 test) 0ms
+ ✓ packages/modules/commissions/src/commissions.test.ts (7 tests) 3ms
+ ✓ packages/modules/encounters/src/database-encounter.repository.test.ts (5 tests) 2ms
+ ✓ packages/modules/payments/src/card-capture-lock.test.ts (1 test) 1ms
+ ✓ packages/security/src/security.test.ts (30 tests) 4ms
+ ✓ tests/unit/infra/report-date-semantics-contract.test.ts (3 tests) 1ms
+ ✓ packages/modules/financial/src/finance-catalog-report.test.ts (4 tests) 2ms
+ ✓ packages/modules/encounters/src/clinical-handoffs.tenant-boundary.test.ts (3 tests) 1ms
+ ✓ packages/modules/counter-sales/src/counter-sale-cancellation-history.test.ts (5 tests) 2ms
+stdout | packages/modules/ml/src/smart-scheduling.test.ts > SmartSchedulingService > trainModel > processes historical data and logs statistics
+Visit type consulta: avg 32min (2 samples)
+Visit type exame: avg 50min (1 samples)
+
+ ✓ packages/modules/ml/src/smart-scheduling.test.ts (15 tests) 2ms
+ ✓ packages/modules/inventory/src/inventory-invoices-report.test.ts (4 tests) 2ms
+ ✓ packages/modules/reports/src/cancellation-report-definitions.test.ts (1 test) 2ms
+ ✓ packages/modules/triage/src/triage.test.ts (11 tests) 3ms
+ ❯ packages/modules/attachments/src/attachment-scanner.test.ts (1 test | 1 failed) 1ms
+   × ClamAvAttachmentSecurityScanner > speaks the INSTREAM protocol and preserves clean/infected verdicts 1ms
+     → listen EPERM: operation not permitted 127.0.0.1
+ ✓ packages/modules/inventory/src/inventory-movements-report.test.ts (4 tests) 2ms
+ ✓ tests/unit/db/counter-sale-number-sequence-migration.test.ts (2 tests) 1ms
+ ✓ packages/modules/commissions/src/commission-calculations-report.test.ts (4 tests) 3ms
+ ✓ packages/modules/services/src/services-report.test.ts (4 tests) 2ms
+ ✓ packages/modules/financial/src/receivables-report.test.ts (4 tests) 2ms
+ ✓ packages/modules/encounters/src/encounters.boundary-coverage.test.ts (5 tests) 2ms
+ ✓ packages/modules/inventory/src/inventory-products-report.test.ts (4 tests) 2ms
+ ✓ packages/modules/patients/src/patients-report.test.ts (5 tests) 2ms
+ ✓ packages/modules/inpatient/src/inpatient.tenant-boundary.test.ts (5 tests) 3ms
+ ✓ tests/unit/db/e2e-role-seed-contract.test.ts (3 tests) 0ms
+ ✓ packages/modules/event-bus/src/event-catalog.test.ts (1 test) 0ms
+ ✓ packages/modules/access-control/src/access-catalog.contract.test.ts (2 tests) 1ms
+ ✓ packages/modules/ml/src/ml.test.ts (12 tests) 2ms
+ ✓ packages/modules/commissions/src/commission-authority.test.ts (5 tests) 2ms
+ ✓ packages/modules/notifications/src/notifications.test.ts (10 tests) 2ms
+ ✓ packages/modules/prescriptions/src/prescriptions.boundary-coverage.test.ts (3 tests) 2ms
+ ✓ packages/modules/event-consumers/src/event-consumers.test.ts (2 tests) 1ms
+ ✓ packages/modules/medical-records/src/medical-records.canonical-coverage.test.ts (3 tests) 2ms
+ ✓ packages/db/src/migrate.test.ts (9 tests) 2ms
+ ✓ packages/modules/soc2/src/provenance.test.ts (3 tests) 2ms
+ ✓ packages/modules/surgery/src/surgery.test.ts (9 tests) 2ms
+ ✓ packages/modules/inventory/src/inventory-stock-report.test.ts (6 tests) 2ms
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:02:46.119Z","pid":15,"service":"auth-brute-force","identifier":"user1","attemptCount":3,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:02:46.119Z","pid":15,"service":"auth-brute-force","identifier":"user1","attemptCount":3,"lockedUntilSeconds":300}
+{"level":"WARN","message":"account locked due to repeated MFA failures","timestamp":"2026-09-08T12:02:46.119Z","pid":15,"service":"auth-brute-force","identifier":"user1","attemptCount":3,"lockedUntilSeconds":60}
+{"level":"WARN","message":"account locked due to repeated password failures","timestamp":"2026-09-08T12:02:46.119Z","pid":15,"service":"auth-brute-force","identifier":"userx","attemptCount":5,"lockedUntilSeconds":300}
+ ✓ packages/modules/auth/src/brute-force.test.ts (12 tests) 1ms
+ ✓ packages/modules/commissions/src/commission-payment.test.ts (2 tests) 2ms
+ ✓ packages/shared/database/src/client.test.ts (7 tests) 2ms
+ ✓ packages/modules/diagnostics/src/laboratory-result-values.test.ts (2 tests) 1ms
+ ✓ packages/tenant-context/src/index.test.ts (7 tests) 1ms
+ ✓ packages/db/src/access-control-catalog.test.ts (2 tests) 1ms
+ ✓ packages/modules/notifications/src/notifications.tenant-boundary.test.ts (2 tests) 1ms
+ ✓ packages/modules/api-keys/src/repositories/database-api-key.repository.test.ts (4 tests) 1ms
+ ✓ packages/modules/inpatient/src/inpatient-hydration.test.ts (1 test) 0ms
+ ✓ packages/modules/reports/src/report-catalog-contract.test.ts (2 tests) 1ms
+ ✓ tests/unit/db/report-engine-migration.test.ts (3 tests) 1ms
+ ✓ packages/modules/attachments/src/attachment-repository.test.ts (1 test) 1ms
+ ✓ packages/modules/financial/src/advance-payments-report.test.ts (1 test) 0ms
+ ✓ packages/db/src/migration-target.test.ts (3 tests) 1ms
+ ✓ tests/unit/db/billing-item-cascade-delete-migration.test.ts (1 test) 0ms
+ ✓ packages/modules/surgery/src/surgery-hydration.test.ts (1 test) 0ms
+ ↓ packages/modules/diagnostics/src/laboratory-postgres.integration.test.ts (1 test | 1 skipped)
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/infra/compose-local-security.test.ts > canonical local Compose security and observability contracts > declares an executable worker readiness probe and requires strict healthy status in cutover
+ FAIL  packages/modules/attachments/src/attachment-scanner.test.ts > ClamAvAttachmentSecurityScanner > speaks the INSTREAM protocol and preserves clean/infected verdicts
+Error: listen EPERM: operation not permitted 127.0.0.1
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  tests/unit/infra/critical-process-suite-contract.test.ts > critical process proof execution contract > does not embed a database credential and does not inherit the parent environment by default
+AssertionError: expected '' to be 'missing' // Object.is equality
+
+- Expected
++ Received
+
+- missing
+
+ ❯ tests/unit/infra/critical-process-suite-contract.test.ts:284:30
+    282|       const outcome = await running;
+    283|       expect(outcome.kind).toBe('success');
+    284|       expect(outcome.stdout).toBe('missing');
+       |                              ^
+    285|       expect(outcome.stdout).not.toContain(secretValue);
+    286|     } finally {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  tests/unit/infra/migration-source-of-truth.test.ts > database migration source-of-truth guardrail > accepts only packages/db as the executable migration and seed surface
+AssertionError: expected [Function] to not throw an error but 'Error: spawnSync /home/ricardo/.nvm/v…' was thrown
+
+- Expected: 
+undefined
+
++ Received: 
+"Error: spawnSync /home/ricardo/.nvm/versions/node/v24.20.0/bin/node EPERM"
+
+ ❯ tests/unit/infra/migration-source-of-truth.test.ts:17:11
+     15|         stdio: 'pipe'
+     16|       })
+     17|     ).not.toThrow();
+       |           ^
+     18|   });
+     19| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+ FAIL  tests/unit/infra/namespace-boundary.test.ts > canonical package namespace guard > reports legacy manifest and source edges in a fixture
+AssertionError: The input did not match the regular expression /manifest dependency/. Input:
+
+''
+
+
+- Expected: 
+/manifest dependency/
+
++ Received: 
+""
+
+ ❯ tests/unit/infra/namespace-boundary.test.ts:43:14
+     41|       const result = runGuard(fixture);
+     42|       assert.equal(result.status, 1, result.stdout + result.stderr);
+     43|       assert.match(result.stdout, /manifest dependency/);
+       |              ^
+     44|       assert.match(result.stdout, /source import.*legacy-side-effect/);
+     45|       assert.match(result.stdout, /source import.*legacy-contract/);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/11]⎯
+
+ FAIL  tests/unit/infra/requirement-evidence-matrix.test.ts > requirement evidence matrix contract > maps every frozen Quality Bar criterion to a single auditable row
+AssertionError: expected '`PASS_BOUNDED` local — 9/9 jornadas, …' to contain 'PARTIAL'
+
+Expected: "PARTIAL"
+Received: "`PASS_BOUNDED` local — 9/9 jornadas, visual 29/29 e auditoria master 299/299; WCAG independente, leitor de tela, browsers adicionais, target e UAT ainda não liberam."
+
+ ❯ tests/unit/infra/requirement-evidence-matrix.test.ts:57:24
+     55|           ? 'BLOCKED'
+     56|           : 'PARTIAL';
+     57|       expect(cells[5]).toContain(stateToken);
+       |                        ^
+     58|     }
+     59|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/11]⎯
+
+ FAIL  tests/unit/infra/restore-drill-security.test.ts > restore-drill storage archive boundary > rejects a traversal archive entry before extraction
+Error: spawnSync tar EPERM
+ ❯ createFixture tests/unit/infra/restore-drill-security.test.ts:61:5
+     59|   if (variant === 'traversal') {
+     60|     writeFileSync(join(archiveRoot, 'payload.txt'), 'malicious travers…
+     61|     execFileSync(
+       |     ^
+     62|       'tar',
+     63|       [
+ ❯ tests/unit/infra/restore-drill-security.test.ts:142:23
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/11]⎯
+
+ FAIL  tests/unit/infra/restore-drill-security.test.ts > restore-drill storage archive boundary > rejects a symlink archive entry before extraction
+Error: spawnSync tar EPERM
+ ❯ createFixture tests/unit/infra/restore-drill-security.test.ts:75:5
+     73|   } else if (variant === 'symlink') {
+     74|     symlinkSync('../outside-sentinel', join(archiveRoot, 'link'));
+     75|     execFileSync(
+       |     ^
+     76|       'tar',
+     77|       ['-czf', join(storageDir, 'file-storage.tar.gz'), '-C', archiveR…
+ ❯ tests/unit/infra/restore-drill-security.test.ts:142:23
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/11]⎯
+
+ FAIL  tests/unit/infra/restore-drill-security.test.ts > restore-drill storage archive boundary > rejects a hardlink archive entry before extraction
+Error: spawnSync tar EPERM
+ ❯ createFixture tests/unit/infra/restore-drill-security.test.ts:85:5
+     83|     writeFileSync(join(archiveRoot, 'file.txt'), 'hard-linked payload\…
+     84|     linkSync(join(archiveRoot, 'file.txt'), join(archiveRoot, 'file-li…
+     85|     execFileSync(
+       |     ^
+     86|       'tar',
+     87|       [
+ ❯ tests/unit/infra/restore-drill-security.test.ts:142:23
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/11]⎯
+
+ FAIL  tests/unit/infra/restore-drill-security.test.ts > restore-drill storage archive boundary > rejects a destination-symlink archive entry before extraction
+Error: spawnSync tar EPERM
+ ❯ createFixture tests/unit/infra/restore-drill-security.test.ts:100:5
+     98|     writeFileSync(join(archiveRoot, 'payload.txt'), 'destination symli…
+     99|     symlinkSync(outsideStorageDir, join(reportDir, 'storage-restored')…
+    100|     execFileSync(
+       |     ^
+    101|       'tar',
+    102|       ['-czf', join(storageDir, 'file-storage.tar.gz'), '-C', archiveR…
+ ❯ tests/unit/infra/restore-drill-security.test.ts:142:23
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/11]⎯
+
+ FAIL  tests/unit/infra/run-tsx-file.test.ts > runTsxFileSync > runs a script whose path and argument contain spaces and Unicode
+Error: spawnSync /home/ricardo/.nvm/versions/node/v24.20.0/bin/node EPERM
+ ❯ runTsxFileSync tests/helpers/run-tsx-file.ts:18:3
+     16|   options: ExecFileSyncOptions = {}
+     17| ): void {
+     18|   execFileSync(process.execPath, [TSX_CLI, scriptPath, ...args], optio…
+       |   ^
+     19| }
+     20| 
+ ❯ tests/unit/infra/run-tsx-file.test.ts:29:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯
+
+
+ Test Files  8 failed | 216 passed | 1 skipped (225)
+      Tests  11 failed | 2442 passed | 1 skipped (2454)
+   Start at  09:01:51
+   Duration  54.57s (transform 10.20s, setup 443ms, collect 12.42s, tests 39.64s, environment 578ms, prepare 69ms)
+

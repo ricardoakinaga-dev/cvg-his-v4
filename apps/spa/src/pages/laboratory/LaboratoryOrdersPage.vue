@@ -36,21 +36,21 @@
       </form>
     </section>
 
-    <p v-if="!loading && !loadFailed" class="record-count" role="status">{{ filteredOrders.length }} registro(s) encontrado(s)</p>
-    <section v-if="loadFailed && !loading" class="load-failure" role="status">
-      <strong>Não foi possível carregar os exames</strong>
-      <DsButton variant="secondary" @click="load">Tentar novamente</DsButton>
-    </section>
-
+    <p v-if="!loading && !loadFailed && !accessDenied" class="record-count" role="status">{{ filteredOrders.length }} registro(s) encontrado(s)</p>
     <DataTable
-      v-else
       :columns="columns"
       :rows="filteredOrders"
       :loading="loading"
+      :feedback="tableFeedback"
       empty-icon="🧪"
       empty-title="Nenhum registro encontrado"
       variant="hoverable"
     >
+      <template v-if="tableFeedback?.kind === 'error'" #feedbackAction>
+        <DsButton variant="secondary" :loading="loading" :disabled="loading" @click="load">
+          Tentar novamente
+        </DsButton>
+      </template>
       <template #cell-id="{ row }">
         <div class="exam-identity">
           <strong>{{ (row as LaboratoryOrderRow).examType }}</strong>
@@ -154,10 +154,10 @@
     <details class="summary-disclosure">
       <summary>Resumo dos exames</summary>
       <dl class="summary-grid" aria-label="Resumo dos exames">
-        <div><dt>Exames</dt><dd>{{ loading || loadFailed ? '—' : orders.length }}</dd></div>
-        <div><dt>Aguardando coleta</dt><dd>{{ loading || loadFailed ? '—' : requestedCount }}</dd></div>
-        <div><dt>Coletados</dt><dd>{{ loading || loadFailed ? '—' : collectedCount }}</dd></div>
-        <div><dt>Liberados</dt><dd>{{ loading || loadFailed ? '—' : resultedCount }}</dd></div>
+        <div><dt>Exames</dt><dd>{{ loading || loadFailed || accessDenied ? '—' : orders.length }}</dd></div>
+        <div><dt>Aguardando coleta</dt><dd>{{ loading || loadFailed || accessDenied ? '—' : requestedCount }}</dd></div>
+        <div><dt>Coletados</dt><dd>{{ loading || loadFailed || accessDenied ? '—' : collectedCount }}</dd></div>
+        <div><dt>Liberados</dt><dd>{{ loading || loadFailed || accessDenied ? '—' : resultedCount }}</dd></div>
       </dl>
       <p class="summary-note">Resumo dos exames carregados, antes dos filtros por cliente e animal.</p>
     </details>
@@ -208,7 +208,7 @@ import DataTable from '@/components/DataTable.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
-import type { DataTableColumn } from '@/components/DataTable.vue';
+import type { DataTableColumn, DataTableFeedback } from '@/components/DataTable.vue';
 import type { DiagnosticOrderSummary } from '@cvg-his-v2/shared-types';
 import { apiRequest } from '@/services/api';
 import { laboratoryService } from '@/services/laboratory';
@@ -255,6 +255,7 @@ const patients = ref<PatientSummary[]>([]);
 const owners = ref<OwnerSummary[]>([]);
 const loading = ref(false);
 const loadFailed = ref(false);
+const accessDenied = ref(false);
 const error = ref('');
 const successMessage = ref('');
 const collectingId = ref<string | null>(null);
@@ -263,6 +264,7 @@ const deliveringId = ref<string | null>(null);
 const resultOrder = ref<LaboratoryOrderRow | null>(null);
 const resultSummary = ref('');
 const resultSubmitting = ref(false);
+let loadGeneration = 0;
 const draftFilters = reactive({
   client: '',
   animal: '',
@@ -313,6 +315,50 @@ const filteredOrders = computed(() => {
     if (date && order.createdAt.slice(0, 10) !== date) return false;
     return true;
   });
+});
+
+const hasActiveOrderFilters = computed(() => Boolean(
+  appliedFilters.client || appliedFilters.animal || appliedFilters.date
+));
+
+const tableFeedback = computed<DataTableFeedback | null>(() => {
+  if (accessDenied.value) {
+    return {
+      kind: 'forbidden',
+      icon: '🔒',
+      title: 'Acesso aos exames negado',
+      description: 'Seu perfil não tem a permissão diagnostics.read para consultar pedidos laboratoriais.'
+    };
+  }
+
+  if (loadFailed.value) {
+    return {
+      kind: 'error',
+      icon: '⚠️',
+      title: 'Não foi possível carregar os exames',
+      description: 'A consulta ao serviço do laboratório falhou. Tente novamente para atualizar a lista.'
+    };
+  }
+
+  if (hasActiveOrderFilters.value && filteredOrders.value.length === 0) {
+    return {
+      kind: 'no-results',
+      icon: '🔎',
+      title: 'Nenhum exame corresponde aos filtros',
+      description: 'Revise cliente, animal ou data e tente novamente.'
+    };
+  }
+
+  if (orders.value.length === 0) {
+    return {
+      kind: 'empty',
+      icon: '🧪',
+      title: 'Nenhum exame encontrado',
+      description: 'Ainda não há pedidos laboratoriais para exibir.'
+    };
+  }
+
+  return null;
 });
 
 const requestedCount = computed(() => orders.value.filter((item) => item.status === 'requested').length);
@@ -556,8 +602,10 @@ async function recollectOrder(order: LaboratoryOrderRow) {
 }
 
 async function load() {
+  const generation = ++loadGeneration;
   loading.value = true;
   loadFailed.value = false;
+  accessDenied.value = false;
   error.value = '';
   try {
     const [ordersResult, patientsResult, ownersResult] = await Promise.allSettled([
@@ -569,6 +617,7 @@ async function load() {
     if (ordersResult.status === 'rejected') {
       throw ordersResult.reason;
     }
+    if (generation !== loadGeneration) return;
 
     orders.value = ordersResult.value.map(
       (order) => order as unknown as LaboratoryWorkflowOrder
@@ -576,12 +625,18 @@ async function load() {
     patients.value = patientsResult.status === 'fulfilled' ? patientsResult.value : [];
     owners.value = ownersResult.status === 'fulfilled' ? ownersResult.value : [];
   } catch (err: unknown) {
-    loadFailed.value = true;
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar exames';
+    if (generation !== loadGeneration) return;
+    accessDenied.value = isForbiddenError(err);
+    loadFailed.value = !accessDenied.value;
     orders.value = [];
   } finally {
-    loading.value = false;
+    if (generation === loadGeneration) loading.value = false;
   }
+}
+
+function isForbiddenError(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && 'status' in err &&
+    (err as { status?: unknown }).status === 403;
 }
 
 onMounted(load);
@@ -627,19 +682,6 @@ onMounted(load);
   font-variant-numeric: tabular-nums;
 }
 .record-count { margin: 0; }
-.load-failure {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-surface);
-  color: var(--color-text);
-}
-
 .filter-panel {
   padding: 16px;
   border: 1px solid var(--color-border, #e2e8f0);

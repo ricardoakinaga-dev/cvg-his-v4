@@ -513,6 +513,118 @@ test('access-control routes bound membership entries and repeated audit filters'
   );
 });
 
+test('access-control replaces a user role and both membership dimensions atomically', async () => {
+  const accessControl = new AccessControlService();
+  const handlers = createAccessHandlers(accessControl);
+  const team = await accessControl.createTeam('acc-1' as never, {
+    code: 'atomic-team',
+    name: 'Atomic team'
+  });
+  const sector = await accessControl.createSector('acc-1' as never, {
+    code: 'atomic-sector',
+    name: 'Atomic sector'
+  });
+  const response = new MockResponse();
+
+  await handleAccessControlRoutes(
+    '/access-control/users/user-a/memberships',
+    jsonRequest('POST', '/access-control/users/user-a/memberships', {
+      roleCodes: ['admin'],
+      teamIds: [team.id],
+      sectorIds: [sector.id]
+    }),
+    response as never,
+    'corr-memberships-atomic',
+    handlers
+  );
+
+  assert.deepEqual(response.bodyJson(), { ok: true });
+  assert.deepEqual(accessControl.getLegacyRoleCodes('user-a' as never), ['admin']);
+  assert.deepEqual(accessControl.listMemberships('user-a' as never), {
+    teams: [team],
+    sectors: [sector]
+  });
+});
+
+test('access-control restores prior memberships when a composite replacement fails', async () => {
+  const accessControl = new AccessControlService();
+  const handlers = createAccessHandlers(accessControl);
+  const previousTeam = await accessControl.createTeam('acc-1' as never, {
+    code: 'previous-team',
+    name: 'Previous team'
+  });
+  const previousSector = await accessControl.createSector('acc-1' as never, {
+    code: 'previous-sector',
+    name: 'Previous sector'
+  });
+  await accessControl.replaceLegacyRoles('user-a' as never, ['admin']);
+  await accessControl.replaceUserTeams('user-a' as never, [previousTeam.id]);
+  await accessControl.replaceUserSectors('user-a' as never, [previousSector.id]);
+
+  const originalReplaceUserSectors = accessControl.replaceUserSectors.bind(accessControl);
+  let sectorCalls = 0;
+  accessControl.replaceUserSectors = async (userId, sectorIds) => {
+    sectorCalls += 1;
+    if (sectorCalls === 1) throw new Error('synthetic membership failure');
+    await originalReplaceUserSectors(userId, sectorIds);
+  };
+
+  await assert.rejects(
+    handleAccessControlRoutes(
+      '/access-control/users/user-a/memberships',
+      jsonRequest('POST', '/access-control/users/user-a/memberships', {
+        roleCodes: [],
+        teamIds: [],
+        sectorIds: []
+      }),
+      new MockResponse() as never,
+      'corr-memberships-rollback',
+      handlers
+    ),
+    /synthetic membership failure/
+  );
+
+  assert.deepEqual(accessControl.getLegacyRoleCodes('user-a' as never), ['admin']);
+  assert.deepEqual(accessControl.listMemberships('user-a' as never), {
+    teams: [previousTeam],
+    sectors: [previousSector]
+  });
+});
+
+test('access-control surfaces a recovery fault when composite compensation fails', async () => {
+  const accessControl = new AccessControlService();
+  const handlers = createAccessHandlers(accessControl);
+  const team = await accessControl.createTeam('acc-1' as never, {
+    code: 'recovery-team',
+    name: 'Recovery team'
+  });
+  const originalReplaceUserTeams = accessControl.replaceUserTeams.bind(accessControl);
+  let teamCalls = 0;
+  accessControl.replaceUserTeams = async (userId, teamIds) => {
+    teamCalls += 1;
+    if (teamCalls <= 2) throw new Error('synthetic team failure');
+    await originalReplaceUserTeams(userId, teamIds);
+  };
+
+  await assert.rejects(
+    handleAccessControlRoutes(
+      '/access-control/users/user-a/memberships',
+      jsonRequest('POST', '/access-control/users/user-a/memberships', {
+        roleCodes: ['admin'],
+        teamIds: [team.id],
+        sectorIds: []
+      }),
+      new MockResponse() as never,
+      'corr-memberships-recovery-fault',
+      handlers
+    ),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.code === 'ACCESS_CONTROL_ROLLBACK_FAILED' &&
+      error.statusCode === 503
+  );
+});
+
 test('access-control audit route exposes operational coverage report and audits the read', async () => {
   const response = new MockResponse();
   const auditWrites: Array<{

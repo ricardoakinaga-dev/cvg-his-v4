@@ -123,7 +123,7 @@
         </DsCard>
 
         <div class="form-actions">
-          <DsButton type="submit" variant="primary" :disabled="submitting">
+          <DsButton type="submit" variant="primary" :disabled="submitting || successPending">
             {{ submitting ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Salvar Usuário' }}
           </DsButton>
           <DsButton variant="secondary" tag="a" to="/users">Cancelar</DsButton>
@@ -147,6 +147,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { userService } from '@/services/user';
 import type { CreateUserRequest, UpdateUserRequest, UserSummary } from '@/types/user';
 import { useFormValidation } from '@/composables/useFormValidation';
+import { useSuccessRedirect } from '@/composables/successRedirect';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
@@ -199,6 +200,8 @@ const validation = useFormValidation({
 });
 
 const { errors, formError, successMessage, submitting, validate } = validation;
+const successRedirect = useSuccessRedirect();
+const successPending = successRedirect.successPending;
 
 function getValues(): Record<string, unknown> {
   return {
@@ -212,6 +215,7 @@ function getValues(): Record<string, unknown> {
 }
 
 async function onSubmit() {
+  if (submitting.value || !successRedirect.begin()) return;
   if (!validate(getValues())) return;
 
   submitting.value = true;
@@ -237,7 +241,7 @@ async function onSubmit() {
       }
       await userService.update(userId.value, payload);
       successMessage.value = 'Usuário atualizado com sucesso!';
-      setTimeout(() => router.push(`/users/${userId.value}`), 1000);
+      successRedirect.schedule(() => router.push(`/users/${userId.value}`), successMessage.value);
     } else {
       const payload: CreateUserRequest = {
         ...basePayload,
@@ -245,7 +249,7 @@ async function onSubmit() {
       };
       const created = await userService.create(payload);
       successMessage.value = 'Usuário criado com sucesso!';
-      setTimeout(() => router.push(`/users/${created.id}`), 1000);
+      successRedirect.schedule(() => router.push(`/users/${created.id}`), successMessage.value);
     }
   } catch (err: unknown) {
     formError.value = err instanceof Error ? err.message : 'Erro ao salvar usuário';

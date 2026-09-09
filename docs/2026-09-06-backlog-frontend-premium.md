@@ -22,19 +22,19 @@ Prioridade P1: continuidade, operação e fundação necessária; P2: expansão 
 | FEA-004 | F1 | P1 | REVIEW | FE | 1–2 | 001 |
 | FEA-005 | F1 | P1 | DOING | FE/OP | 3–5 | 001,004 |
 | FEA-006 | F1 | P1 | REVIEW | FE | 2–3 | 001 |
-| FEA-007 | F1 | P1 | PROPOSTO | FE/UX | 2–4 | 004,005 |
-| FEA-008 | F1 | P1 | PROPOSTO | FE/LT | 3–5 | 001,006 |
-| FEA-009 | F2 | P1 | DOING | UX/FE | 2–4 | 002 |
-| FEA-010 | F2 | P1 | PROPOSTO | FE/UX | 2–3 | 004,009 |
+| FEA-007 | F1 | P1 | DOING | FE/UX | 2–4 | 004,005 |
+| FEA-008 | F1 | P1 | REVIEW | FE/LT | 3–5 | 001,006 |
+| FEA-009 | F2 | P1 | REVIEW | UX/FE | 2–4 | 002 |
+| FEA-010 | F2 | P1 | REVIEW | FE/UX | 2–3 | 004,009 |
 | FEA-011 | F2 | P1 | PROPOSTO | FE/UX | 2–4 | 005,009,010 |
 | FEA-012 | F2 | P1 | PROPOSTO | FE/UX | 2–3 | 006,009,010 |
-| FEA-013 | F2 | P2 | DOING | FE/UX | 2–3 | 007,009,010 |
+| FEA-013 | F2 | P2 | REVIEW | FE/UX | 2–3 | 007,009,010 |
 | FEA-014 | F2 | P1 | DOING | FE/UX | 2–4 | 002,007,009 |
-| FEA-015 | F2 | P1 | PROPOSTO | UX/OP | 1–2 | 002 |
-| FEA-016 | F2 | P2 | PROPOSTO | UX/FE | 2–4 | 009,013 |
+| FEA-015 | F2 | P1 | REVIEW | UX/OP | 1–2 | 002 |
+| FEA-016 | F2 | P2 | REVIEW | UX/FE | 2–4 | 009,013 |
 | FEA-017 | F3 | P1 | DOING | FE/UX | 3–5 | 010,012,014,015 |
 | FEA-018 | F3 | P1 | PROPOSTO | FE/UX | 3–5 | 005,011,014,015 |
-| FEA-019 | F3 | P1 | PROPOSTO | FE/UX | 5–8 | 007,008,012,014 |
+| FEA-019 | F3 | P1 | DOING | FE/UX | 5–8 | 007,008,012,014 |
 | FEA-020 | F3 | P1 | PROPOSTO | FE/UX | 3–5 | 007,014,015 |
 | FEA-021 | F3 | P2 | PROPOSTO | FE/UX | 2–4 | 012,014,015 |
 | FEA-022 | F3 | P1 | PROPOSTO | FE/LT | 3–5 | 008,014,018 |
@@ -297,3 +297,338 @@ Código e documentação coerentes; critérios específicos demonstrados; ambos 
 ## 9. Execução iniciada em 07/09/2026
 
 FEA-004/006 têm implementação e testes focados, pendentes de consolidação da prova de navegador e aceite do escopo completo. FEA-005 tem proteção local de formulário, sem promessa de rascunho durável. [ExecPlan](../.agent/plans/frontend-premium-execplan.md) e [régua congelada](frontend/implementation/quality-bar-v1.json). Nenhum ticket foi declarado DONE; FEA-002/003 e FEA-007–034 continuam requeridos.
+
+### Controles e rolagem — continuação de 07/09
+
+FEA-007 iniciou política de histórico, filtros e âncoras; 16 testes e revisão I1 aprovaram esse recorte, sem prova integral de scroll/foco no navegador. FEA-010/013 aplicaram tokens ao DsButton e estabilizaram largura durante loading, inclusive carregamento inicial e texto alterado. Regressão conjunta: 84 testes. Prova Chromium isolada em quatro combinações, com largura, nome acessível, cliques repetidos, foco por teclado, movimento reduzido e fullWidth responsivo: [report](frontend/implementation/evidence/button-material-3N7MXC/report.json). Recepção preenchida reexecutada com zero falhas e hashes estáveis: [log](frontend/implementation/button-reception-browser.log). Esses recortes não encerram os oito estados, variantes restantes, recuperação/foco transversal nem aprovação visual final.
+
+### Continuidade de foco e histórico — 07/09
+
+FEA-007 implementou orientação após navegação bem-sucedida e retorno de foco por histórico, com memória limitada à sessão. [Contrato e limites](frontend/implementation/navigation-continuity-contract.md). Navegador congelado `continuity-Jvds8h`: quatro cenários passaram, scroll e Cancelar visível restaurados sem GET de documento. Navegação cancelada mantém título/recents. FEA-007 segue DOING: ordenação de guards anteriores, retorno/filtros/seleção por módulo e conteúdo assíncrono permanecem abertos.
+
+FEA-006/012/017: busca própria da Recepção passou a proteger a intenção atual, incluindo contexto complementar, erros e loading. Edição, Limpar e unmount invalidam requisições anteriores. Revisão I1 de fonte aprovada; 17 testes da página e quatro casos Chromium com resposta atrasada passaram. [Evidências integradas](frontend/implementation/navigation-reception-evidence.json). Suíte de integração: 66 testes; typecheck exit 0. O layout foi preservado; aceites de domínio e qualificação completa seguem pendentes.
+
+### Agenda e painel de detalhes — 07/09
+
+FEA-014/019: lista cronológica padrão, sem cortar itens; dia/semana/mês mantidos; cabeçalho compacto, comandos secundários em Mais ações, filtros sob demanda. Testes verificam ordenação, itens densos/tardios, permissões e modos. Painel ganhou foco inicial, limites de Tab, Esc, prioridade de modal aninhado e retorno ao acionador. Navegador `continuity-ewerA5` passou quatro jornadas completas; primeiro compromisso em y523 mobile e y390,75 desktop, em contraste com a baseline histórica abaixo da primeira tela. Dois críticos visuais I1 preferiram a nova composição e pediram destaque para alertas e legenda contextual, tratados na revisão seguinte. Duplicação do título no shell, integração real, conflitos/remarcação e demais aceites FEA019 seguem abertos.
+
+FEA-016: ComfyUI concluiu o job de estudo; [prévia coletada](frontend/assets/images/0836ac61_000.png) inspecionada, ainda sem aprovação de produção. Open Design foi solicitado pelo usuário; duas chamadas MCP retornaram Transport closed, sem geração atribuída ao serviço.
+
+FEA-010 recebeu uma matriz de estados na Storybook, alinhamento dos tipos
+públicos com o componente Vue e 13 testes unitários do componente. Variantes,
+tamanhos, loading com largura preservada, bloqueio de ação, nome acessível,
+metadados de link e fullWidth estão cobertos; a revisão visual independente,
+rede lenta, toque e UAT ainda não encerram o ticket.
+
+FEA-016 teve uma integração candidata do poster e do loop Blender no palco de
+identidade do login, com marca separada e redução de movimento que mantém o
+poster sem montar o vídeo. Após revisão do produto em 08/09/2026, essa
+integração foi revertida porque a órbita não preservava a identidade do
+hospital. O palco voltou ao poster e loop oficiais
+`hospital-logo-poster.webp`/`hospital-logo-loop.mp4`; o estudo Blender foi
+preservado somente no caderno visual. A matriz corrente está em
+`frontend/implementation/evidence/login-assets-20260908.json`.
+
+FEA-012 também recebeu um alinhamento no consumidor analítico: a falha do
+catálogo de referências agora usa `DataTableFeedback` com estado
+`unavailable`, causa explícita, uma ação `Tentar novamente` e preservação do
+resultado estruturado. O retry é isolado da consulta principal e mantém
+registros/seleção durante pending e falha. A suíte analítica passou 24/24 e o
+`DataTable` passou 25/25; o contrato de listas continua piloto, sem autorização
+real, indisponibilidade exercitada em browser, confirmação operacional ou UAT.
+
+FEA-011/018 receberam uma revalidação adicional no harness final:
+`evidence/continuity-ty2R5x/report.json` passou 6/6 no formulário de paciente
+e `evidence/continuity-JOB4sv/report.json` passou 2/2 no formulário de tutor em
+1440×900, 390×844 e 195×422 (proxy CSS de 200% para uma tela física 390×844),
+claro/escuro, sem erro de página, overflow documental ou perda de draft. O
+recorte verifica resumo/foco do primeiro erro, loading/falha e ações sticky;
+zoom nativo, touch/teclado virtual, leitor de tela, backend/RLS e UAT continuam
+pendentes. A matriz `continuity-niDPip` passou 8/8 nos conflitos 409 de tutor e
+paciente, preservando o rascunho, oferecendo manter/abrir existente e
+respeitando a confirmação de saída. `continuity-z5FzeJ` e `continuity-8wg68C`
+preservam as falhas anteriores por seletores de CTA obsoletos.
+
+### Continuidade de paciente e Agenda — revalidação do checkpoint em 07/09
+
+FEA-005 recebeu cobertura comportamental ampliada no formulário de paciente: troca de `ownerId` com dirty state, continuar editando, descarte com hidratação do novo tutor, falha de POST mantendo campos, sucesso limpando o dirty state, desmontagem/remontagem do coordenador e logout somente após consentimento. A jornada browser sintética `evidence/continuity-ASegyY/report.json` passou em 1440×900 e 390×844, claro/escuro, com seis IDs de interação e `inputsStable=true`.
+
+FEA-007/019 recebeu a correção de ownership do título da Agenda: um único `h1` visível, contexto estrutural de data/modo/profissional, texto livre apenas em memória, retorno por histórico, Esc/foco, filtros e transição lista/dia/mês. A evidência de continuidade de navegação `evidence/continuity-s4KrKw/report.json` passou nas quatro combinações de viewport/tema, com semântica de foco/scroll, preservação de rascunho e ausência de navegação documental. A jornada específica da Agenda continua exigindo sua própria execução; todos os relatórios novos usam respostas sintéticas, sem backend, RLS, UAT, persistência, performance de campo ou aceite global.
+
+Suíte focada da fatia: 5 arquivos, 115 testes; `vue-tsc --noEmit` e `docs:validate` passaram. A crítica independente de render/source mantém o recorte como evidência condicional: a qualificação completa FEA-005/007/019, homologação com serviços reais e os demais FEA-001–004, 006, 008–018 e 020–034 continuam abertos. Nenhum ticket foi promovido a DONE.
+
+### Estados de dados nas listas laboratoriais — piloto FEA-012 em 07/09
+
+O `DataTable` recebeu um contrato aditivo de feedback para `empty`, `no-results`, `error`, `unavailable` e `forbidden`, com precedência loading → feedback → dados, ação nomeada de retry e anúncio assertivo somente para estados terminais de falha. As listas de Exames e Laudos passaram a distinguir lista intrinsecamente vazia de filtros sem correspondência e deixaram de duplicar o erro de carregamento em `DsAlert` e bloco paralelo. Suíte focada: 3 arquivos, 40 testes; typecheck da SPA passou. A regressão completa da SPA passou com 198 arquivos e 1.682 testes; mensagens de navegação do jsdom foram apenas ruído conhecido.
+
+O harness browser sintético `evidence/continuity-qIU3s3/report.json` passou em 1440×900 e 390×844, claro/escuro, nas duas rotas: loading atrasado, uma única superfície `role="alert"`, retry, vazio intrínseco, lista populada, sem resultados e ausência de erros de console; `inputsStable=true`. Capturas separadas de loading, vazio, populado e sem resultados foram geradas para as oito combinações. O hash `56ee32b423306b88b31da18af014fc244df5075497798b3621e89d8a78c4cf9d` está registrado no próprio relatório e coincide com as fontes pinadas no momento da execução. O alcance permanece piloto: indisponibilidade/permissão não foram exercitadas em rota real, confirmação de operações não é coberta por este contrato, respostas são sintéticas e não há backend, RLS, UAT, persistência ou aprovação global. FEA-012 e todos os demais tickets continuam abertos; nenhum foi promovido a DONE.
+
+O crítico fresco Nash classificou o recorte como `CONDITIONAL PASS` e o aceite integral de FEA-012 como `HOLD`, sem bloqueador visual ou funcional observado; manteve as limitações de autorização, leitor de tela real, UAT e operação. Essa revisão independente não altera o status do ticket.
+
+### Formulários progressivos e continuidade de cadastro — 07/09
+
+FEA-011/018 receberam um recorte de implementação no cadastro de paciente e tutor: resumo de erros com links focalizáveis, `aria-invalid`/descrição associada nos campos principais, foco no primeiro erro, preservação do conteúdo durante troca de tutor/falha de gravação, seções opcionais fechadas por padrão no novo tutor e barra de ações sticky posicionada no limiar inferior do viewport. Identificação e contato permanecem prioritários; documentação, endereço, observações, financeiro e dados legados seguem progressivos. A alteração é aditiva e mantém a obrigatoriedade real do contato.
+
+As matrizes Chromium sintéticas `evidence/continuity-ASegyY/report.json` (paciente), `evidence/continuity-UgP3gl/report.json` (tutor) e `evidence/continuity-s4KrKw/report.json` (histórico/navegação) passaram nas combinações 1440×900 e 390×844, claro/escuro, com `inputsStable=true` e hash de harness `56ee32b423306b88b31da18af014fc244df5075497798b3621e89d8a78c4cf9d`. O paciente registrou tutor `required`, inválido/foco, troca de tutor com continuar/descartar, falha de POST preservando campos com feedback focalizado e visível, sucesso limpando dirty, desmontagem e logout com consentimento; o tutor registrou grupo de contato `aria-required`, resumo/foco e preservação ao abrir seções. A navegação registrou retorno de scroll/foco, ausência de navegação documental, continuar/descartar e logout.
+
+O exame visual considerou os viewports de tela; as capturas de viewport não mostram ação cobrindo o primeiro erro e mantêm legibilidade nos dois temas. O feedback de falha do paciente agora aparece no viewport e recebe foco programático; capturas `fullPage` com shell fixo repetido continuam tratadas como artefato de costura, não como render de viewport. O crítico fresco Turing classificou o recorte como `PARCIAL — REVIEW REQUIRED` e os tickets integrais FEA-011/018 como `HOLD`: ainda faltam zoom real de 200%, teclado virtual/dispositivo touch, leitor de tela, backend/RLS, persistência durável, UAT, métricas humanas, jornada de duplicidade e validação browser integral de sucesso/falha do tutor. Portanto FEA-011/018 permanecem abertos e sem promoção a DONE.
+
+### Busca global com retorno contextual — piloto FEA-020 em 07/09
+
+`MasterSearchPage` preserva a pesquisa em `?q=`, atualizando a URL sem criar entrada extra no histórico, e o fluxo browser sintético cobre teclado/Enter, resultado, ida ao paciente, retorno com consulta restaurada e Limpar sem mutar registros. `evidence/continuity-VM7KKf/report.json` passou em quatro combinações 1440×900/390×844 e claro/escuro, sem erros de console e com `inputsStable=true`; o screenshot de resultados também foi gerado nos quatro casos. O hash `56ee32b423306b88b31da18af014fc244df5075497798b3621e89d8a78c4cf9d` está no relatório. O piloto não comprova permissões negativas em backend, ranking de produção ou UAT. FEA-020 permanece aberto e sem promoção a DONE.
+
+### Internação, mapa de leitos e detalhe contextual — piloto FEA-024 em 07/09
+
+As páginas de Internação, Mapa de leitos e Detalhes da Internação receberam uma fatia operacional verificável: a lista usa feedback terminal sem duplicação e diferencia falha de autorização; o mapa preserva cards e estatísticas durante atualização, anuncia os quatro estados por texto e oferece retorno à internação quando o acesso é negado; o detalhe usa `dl/dt/dd` para a ficha, mantém paciente/unidade/enfermaria/leito/status visíveis durante refresh e conserva o contexto anterior quando a atualização falha.
+
+O harness browser sintético `evidence/continuity-LeK3oR/report.json` passou em 12 combinações — 1440×900 e 390×844, claro/escuro, nas três rotas — sem erros de página, com `inputsStable=true` e hash `56ee32b423306b88b31da18af014fc244df5075497798b3621e89d8a78c4cf9d`. As interações cobriram lista preenchida/refresh `Internado → Estável`/403 sem linhas obsoletas; mapa com `Ocupado`, `Disponível`, `Manutenção` e `Bloqueado`, refresh `1/4 → 2/4` preservando cards e 403 restrito; detalhe `A-01 → A-02`, `Internado → Estável`, `aria-busy`, preservação após 403 e retry. Capturas mobile/desktop foram inspecionadas nos dois temas.
+
+O alcance permanece piloto: a matriz ainda não cobre estado vazio real, touch/teclado virtual, zoom de 200%, leitor de tela, backend/RLS, persistência, UAT, métricas de campo ou operação clínica. O teste focado das três páginas passou 70/70, a regressão da SPA passou 198 arquivos e 1.682 testes, e o typecheck da SPA/harness syntax passaram. A primeira crítica independente apontou quatro achados major; eles foram corrigidos, mas as tentativas frescas posteriores encerraram sem parecer, portanto não há confirmação independente final deste recorte. FEA-024 continua aberto e nenhum ticket foi promovido a DONE.
+
+### Atualização final da retomada — 07/09/2026
+
+Os IDs abaixo substituem os IDs históricos desta página para os recortes que
+foram alterados nesta retomada. Todos continuam bounded; nenhum encerra o FEA
+integral nem autoriza AAA ou GO:
+
+- FEA-005/011/018: `continuity-Quith7` passou 4/4 com seis interações de
+  paciente; `continuity-If2Phm` passou 4/4 com seções progressivas do tutor; a
+  navegação compartilhada foi renovada em `continuity-ubek1f` (4/4).
+- FEA-007/019: `continuity-WBhawJ` passou 4/4 no contexto profundo da Agenda e
+  `continuity-ts34l4` passou 4/4 na prioridade visual/teclado.
+- FEA-020: `continuity-gTtJmg` passou 4/4 com query, teclado, retorno
+  contextual e Limpar.
+- FEA-012/027: `continuity-wD7rbf` passou 8/8 em Exames e Laudos, cobrindo
+  loading atrasado, erro/retry, vazio intrínseco, populado e sem resultados.
+- FEA-024: `continuity-nqORvp` passou 12/12 em internação, mapa de leitos e
+  detalhe, com refresh, preservação contextual e 403.
+- FEA-025: `continuity-0rUvS1` passou 4/4; a jornada exercitou falha sem perda
+  de formulário, guarda contra duplo envio, timeout, reconsulta com a mesma
+  chave de idempotência e fechamento confirmado. A UI ainda não cobre todo o
+  ciclo de estados/reversão Pix; os testes de rota/server validam o contrato
+  bounded do runner, mas não substituem replay em banco integrado.
+- FEA-026: `continuity-ohbW3A` passou 8/8 fresco com seleção limitada à página/consulta,
+  reset de filtro e rascunho de compra explicitamente temporário.
+- FEA-028: `continuity-zUtFoO` passou 4/4; execução server-side, filtros na URL,
+  vazio/erro/retry e CSV baixado foram comparados ao fixture do servidor, com
+  indicação UTC e rolagem horizontal por teclado.
+- FEA-029: `continuity-JtZTaj` passou 4/4 com erro 403 focado, retry, tabs,
+  formulários de usuários/grupos/setores e controles da matriz.
+- FEA-003: o [baseline laboratorial](frontend/implementation/performance-lab-2026-09-07.md)
+  repetiu o build atual três vezes por rota em Chromium 145, registrando
+  artefatos, FCP/LCP de laboratório e limites explícitos; sem INP/RUM, rede
+  lenta, participantes ou aceite de campo.
+- FEA-004: o fixture browser [`button-navigation-DOcxUE`](frontend/implementation/evidence/button-navigation-DOcxUE/report.json)
+  passou 4/4 com rota interna Vue Router, Enter/Espaço, back/forward,
+  modificadores, URL externa, disabled e `type=button`; permanece prova
+  bounded, sem promoção a DONE ou aceitação global.
+- FEA-030: `continuity-MbTjs6` passou 56/56 em sete larguras, dois temas e
+  movimento reduzido; Axe reportou zero violações, com skip link, foco e
+  reflow verificados.
+- FEA-031: o [build candidato](frontend/implementation/production-build-candidate-2026-09-07.md)
+  passou; entrada inicial 93.382 B gzip contra baseline de 92.406 B (+1,06%).
+  A medição não é LCP/INP/CLS, RUM ou rede lenta.
+- FEA-032: regressão SPA passou 198 arquivos/1.696 testes; o recorte focado
+  passou 124 testes, o design system 7 arquivos/35 testes, e as verificações
+  de API cash passaram 5 testes de rota e 1 teste de server. A E2E real desta
+  retomada foi bloqueada por PostgreSQL indisponível; não contar o fallback em
+  memória.
+- FEA-033/034: UAT, ata de aceite e parecer humano final continuam pendentes.
+  O [dossiê de qualificação](frontend/implementation/frontend-premium-qualification-2026-09-07.md)
+  consolida a matriz FEA-001–034, os limites e a recomendação sem GO.
+
+Foram tentadas revisões independentes read-only frescas de FEA-024–030
+(Zeno e, depois, Wegener, em escopo estreito); ambas foram encerradas sem
+parecer final dentro do limite e portanto não contam como aprovação. Os
+pareceres efetivos de Nash e Turing continuam vinculados aos seus recortes e
+mantêm, respectivamente, FEA-012 e FEA-011/018 em HOLD integral. FEA-025,
+FEA-030–034 e todos os tickets sem prova integral permanecem abertos/HOLD
+conforme a régua congelada.
+
+### Atualização da retomada — duplicidade recuperável em FEA-018
+
+O contrato de conflito de tutor e paciente agora tem tratamento de interface
+explícito: somente `409` com `code=CONFLICT`, mensagem de duplicidade e ID em
+`details` abre o alerta warning focalizado. O formulário não é resetado nem
+marcado como limpo; o operador pode manter o rascunho ou abrir o registro
+existente, caso em que a confirmação de alterações não salvas é exigida.
+
+`evidence/continuity-niDPip/report.json` passou 8/8 em 1440×900/390×844,
+claro/escuro, nos fluxos de tutor e paciente, sem falhas. Os testes bounded
+passaram 74/74, e Maxwell classificou o recorte `PASS_WITHIN_CONTRACT` com
+severidade máxima S3. A matriz é sintética e não substitui RLS, persistência,
+leitor de tela, demais variações de 409 ou UAT; FEA-018 continua parcial/HOLD
+no aceite integral.
+
+O baseline regenerado registra 253 rotas, 249 protegidas/4 públicas, 686
+arquivos frontend rastreados, 138 arquivos-fonte alterados, 88 assets e 13
+relatórios de evidência. O estado global segue ACTIVE, sem DONE/AAA/GO.
+
+### Atualização da retomada — prancha CVG Pulse em FEA-009
+
+O Design System agora expõe uma prancha Storybook canônica para o contrato
+CVG Pulse: o story `design-system-tokens-cvg-pulse--canonical-board` renderiza
+light e dark lado a lado, com inventário legado→atual, página preenchida,
+acentos, números tabulares, materiais, motion/reduced motion e pares de
+contraste. A rebinding local dos tokens evita que um tema externo do documento
+contamine o board oposto.
+
+O capturador `frontend/implementation/cvg-pulse-tokens-browser.mjs` gerou
+`frontend/implementation/evidence/cvg-pulse-tokens-OklWS0/report.json` com
+Storybook 10.3.5, 191 módulos e 12/12 combinações Chromium em 390/768/1440,
+claro/escuro e movimento normal/reduzido. O mínimo medido foi 5,52:1 no light
+e 10,85:1 no dark; os quatro screenshots foram inspecionados. O recorte é
+`PASS_WITHIN_CONTRACT`, mas FEA-009 permanece parcial/HOLD por licença e
+disponibilidade de fonte, dispositivos reais, zoom/touch, leitor de tela, UAT e
+aceite integral; sem DONE/AAA/GO. O baseline atualizado registra 690 arquivos
+frontend rastreados, 147 arquivos-fonte alterados e 14 relatórios correntes.
+
+O crítico fresh-context Dewey confirmou `PASS_WITHIN_CONTRACT` para este
+recorte, severidade máxima S3 e nenhum S1/S2. Validou o render/index real,
+isolamento dos temas, migration/filled page/tabular-nums/acentos, 12/12,
+contraste mínimo 5,52:1 no light e 10,85:1 no dark, e ausência de overflow
+documental. A medição não cobre todos os containers internos; licença/fallback
+real de Aptos, consumidores de produção, dispositivos/zoom/touch, leitor de
+tela e UAT continuam gates, e FEA-009 segue parcial/HOLD.
+
+### Continuação — FEA-002 com roteiro sanitizado
+
+O protocolo `frontend/implementation/task-baseline-2026-09-07.json` e sua versão `.md` definem
+cinco tarefas (Recepção, Agenda, cadastro tutor/paciente, contexto clínico e PIX), cinco perfis
+operacionais, 10 sessões planejadas, massa sintética, sucesso/erro e campos de medição. Nenhum
+resultado humano foi inventado: `humanObservations` é zero e FEA-002/033 continuam HOLD até OP,
+consentimento e UAT.
+
+### Verificação da rodada
+
+A regressão SPA final passou em `209/1.802`; o build passou com `806` módulos e `483` entradas de
+precache PWA; documentação, OpenAPI (`413` paths/`518` schemas) e `git diff --check` passaram.
+O check de complexidade permanece HOLD nos dois hotspots registrados (`server.ts` 8.347/8.335;
+`ReportWorkbenchPage.vue` 3.205/3.186). O estado dos 34 FEA segue ACTIVE, sem DONE/AAA/GO.
+
+### Continuação — FEA-025 e limite de confirmação Pix
+
+O detalhe do atendimento ganhou uma conferência do recebimento em dinheiro e
+um fluxo de estorno com alerta de irreversibilidade, motivo obrigatório,
+confirmação explícita e `Idempotency-Key` própria. O relatório fresh
+`frontend/implementation/evidence/continuity-WiebZn/report.json` passou 4/4 em
+Chromium, claro/escuro e 1440/390, sem erros ou overflow documental; a suíte
+focalizada de Encounter/serviço passou 35/35 e a rota API 11/11. O retry após
+falha transitória preserva a mesma chave, o resumo financeiro é relido após o
+commit e `includeReversed=true` recupera o estado estornado após refresh/reload.
+
+Esse recorte continua bounded e sintético: não encerra replay em banco,
+provider, RLS, reconciliação, contrato PIX de confirmação/reversão ou UAT. A análise
+do contrato Pix confirmou que o SPA só dispõe de despacho/polling para
+tentativas de encounter; confirmação/reversão manual não deve ser inventada no
+frontend. FEA-025 permanece parcial/HOLD e o conjunto global segue ACTIVE, sem
+DONE/AAA/GO.
+
+### Continuação — FEA-026: escopo de seleção e compras
+
+`frontend/implementation/evidence/continuity-ohbW3A/report.json` passou 8/8 em
+Chromium, claro/escuro e 1440/390. A seleção permanece limitada à página/consulta,
+limpa ao filtrar, mantém unidades críticas legíveis e não oferece ação para
+linhas invisíveis; o rascunho de compra é explicitamente temporário e não altera
+o estoque. Mutação batch persistida, integração real, touch/zoom, leitor de tela
+e UAT continuam pendentes; FEA-026 permanece parcial/HOLD. Lagrange fez a
+crítica fresh e classificou o recorte bounded como `PASS_WITHIN_CONTRACT`, sem
+S1/S2; os testes focalizados de inventário/compras passaram 27/27 e o `DataTable`
+25/25.
+
+### Correção posterior — revisão fresh de FEA-025
+
+Depois da revisão independente, o recorte adicionou `required`/`aria-required`
+ao motivo, foco no painel estável após o modal, aviso explícito para uma releitura
+404 enquanto a reversão confirmada é mantida e breadcrumb móvel sem scroll
+interno. A captura `continuity-WiebZn` passou 4/4 com `scrollContainers=[]`;
+Encounter/serviço passou 35/35, API 11/11 e a regressão SPA 209/1.805. O HOLD
+restante é de evidência real financeira (backend/RLS/DB/replay), PIX sem contrato
+de confirmação/reversão e UAT.
+
+Avicenna classificou o recorte `PASS_WITHIN_CONTRACT`, severidade máxima S3,
+sem S1/S2, em revisão fresh-context somente leitura, confirmando os quatro
+achados acionáveis corrigidos. O veredito não promove FEA-025 ao aceite integral
+nem altera o estado global ACTIVE/HOLD.
+
+### Continuação — FEA-028: execução server-side e exportação
+
+`frontend/implementation/evidence/continuity-UAGHyE/report.json` passou 4/4
+fresh em Chromium, claro/escuro e 1440/390. O recorte preserva filtros na URL e
+no retorno, usa execução server-side, baixa CSV com indicação UTC, diferencia
+preenchido/vazio/erro e permite retry; a tabela larga responde às setas em
+rolagem local. Reconciliação financeira, browser-to-database, touch/zoom,
+leitor de tela e UAT continuam pendentes; a crítica fresh ainda está em curso.
+
+### Correção e nova evidência — FEA-027: laboratório
+
+Após a crítica fresh, o `LaboratoryAnalyticalWorkbench` passou a manter um
+estado `forbidden` explícito para 403 nos três workbenches. O fluxo `closed=false`
+exibe pedido `collected` sem valores como pendente, enquanto uma busca sem
+correspondência produz `no-results`; laudos mantêm valores estruturados,
+unidades, referências, situação e ação acessível para anexo protegido.
+
+`frontend/implementation/evidence/continuity-cFoZKq/report.json` passou 20/20
+em Pedidos, Laudos, Hemogramas, Urina e Bioquímico, nos dois temas e em 1440/390,
+com zero erros, `inputsStable=true` e Axe 0 nos estados inicial, populated,
+modal, attachment, selected, pending, no-results e forbidden. Foco, Tab, Enter,
+setas e refresh também foram observados. A crítica fresh final ainda é o gate;
+backend/RLS/persistência/permissões reais, touch/zoom, leitor de tela e UAT não
+estão cobertos.
+
+### Registro de crítica — FEA-028
+
+Hume classificou o recorte fresh como `HOLD` S2: a exportação precisa ancorar no
+`executionId` exibido, timeout precisa reconciliar/cancelar execução persistente,
+datas precisam de intervalo UTC meio-aberto, e o contrato deve uniformizar CSV,
+estado sem resultados e escopo server-side. `continuity-UAGHyE` está stale após
+as mudanças atuais e deve ser regenerado depois da correção.
+
+### Continuação — FEA-029: permissões e configurações
+
+`frontend/implementation/evidence/continuity-3NvGzS/report.json` passou 4/4 em
+1440/390 e claro/escuro, com 403 focalizado, retry, tabs, foco de edição,
+fieldsets de usuários/grupos/setores e matriz de permissões. Papéis reais,
+backend/RLS, persistência, touch/zoom, leitor de tela e UAT continuam pendentes;
+a crítica fresh independente permanece em execução.
+
+### Recertificação FEA-013 — 08/09
+
+O scheduler de sucesso agora persiste a cópia genérica antes de redirects de
+documento e aguarda a Promise de `router.push` antes de ativar o flash no shell
+em navegações SPA. Os consumidores migrados devolvem a Promise; o alerta global
+não coexiste mais com o alerta local do formulário. A fatia focused passou 11/11
+e o recorte nativo do runner oficial passou 23/23 contra PostgreSQL descartável
+com migrações 0000–0164, seed/RLS, Redis isolado e limpeza confirmada. O
+relatório sanitizado está em
+`frontend/implementation/evidence/success-redirect-e2e-20260908.json`.
+
+Isso atualiza a evidência bounded da FEA-013; não encerra o ticket. Permanecem
+cross-browser posterior ao scheduler, device/touch/zoom, leitor de tela real,
+UAT, revisão independente fresh, RUM/INP/CLS e os gates globais AAA/GO.
+
+### Atualização de implementação — FEA-007, FEA-012 e FEA-013 — 08/09/2026
+
+O recorte corrente tratou três lacunas de continuidade sem alterar o escopo:
+
+- FEA-013: flash genérico persistido antes do redirect, ativação no shell após
+  `router.push`/paint boundary, um único alerta visível, bloqueio de CTA
+  pendente, reduced motion por microtask e invalidação segura no desmontagem.
+  Browser Chromium passou 6/6 em movimento padrão e 6/6 em reduced motion; o
+  E2E nativo passou 23/23 com cleanup confirmado.
+- FEA-007: foco de retorno com identidades estruturais, rolagem local
+  `scrollLeft`/`scrollTop`, geração contra frames stale, reprocessamento
+  orientado a `MutationObserver` para conteúdo assíncrono e descarte de branch
+  forward. A suíte dedicada passou 32/32.
+- FEA-012: metadata de status/código sem alterar o contrato legado, estados
+  explícitos de erro/indisponibilidade/proibido, retry apenas quando seguro,
+  retenção de linhas confirmadas durante falha de refresh e mensagens genéricas
+  sem payload bruto. O recorte focused combinado passou 98/98.
+
+A SPA completa corrente passou 210 arquivos/1.847 testes e `vue-tsc`. Os
+recortes são bounded e não promovem tickets: autorização/RLS real,
+persistência, todos os consumidores, cross-browser após o scheduler,
+touch/zoom nativos, leitor de tela, UAT, RUM/INP/CLS e provider PIX/reversão
+continuam pendências externas. O programa permanece `ACTIVE/HOLD`, sem
+`DONE`/`AAA`/`GO`, aguardando a revisão fresh independente e os gates do
+proprietário.

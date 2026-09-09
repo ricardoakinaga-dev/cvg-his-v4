@@ -746,8 +746,8 @@ async function exportReport(format: ReportFormat): Promise<void> {
   success.value = '';
 
   try {
-    const exported = await withDownloadTimeout(() =>
-      reportsService.exportExecution(selectedExecution.value!.id, format)
+    const exported = await withDownloadTimeout((signal) =>
+      reportsService.exportExecution(selectedExecution.value!.id, format, { signal })
     );
     saveBrowserDownload(exported);
     success.value = `Exportação gerada: ${exported.filename}.`;

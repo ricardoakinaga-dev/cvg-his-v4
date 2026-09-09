@@ -230,6 +230,48 @@ test('handleReportsRoutes waits for durable report export audit before returning
   assert.equal(response.statusCode, 200);
 });
 
+test('handleReportsRoutes reconciles an existing export without starting a second artifact', async () => {
+  const reports = new ReportsService();
+  const execution = await reports.execute('acc-reports-1' as never, 'user-reports-1' as never, {
+    reportId: 'inventory-stock',
+    filters: {},
+    rows: [{ sku: 'SKU-1', name: 'Ração', quantity: 2 }]
+  });
+  let exportCommands = 0;
+  const routeHandlers = {
+    ...handlers(reports),
+    runCommand: async (input: { command: () => Promise<unknown> }) => {
+      exportCommands += 1;
+      return input.command();
+    }
+  };
+  const postResponse = new MockResponse();
+  await handleReportsRoutes(
+    `/reports/executions/${execution.id}/export`,
+    request('POST', { format: 'csv' }, `/reports/executions/${execution.id}/export`),
+    postResponse as never,
+    'corr-report-export-reconcile-post',
+    routeHandlers as never
+  );
+  const created = postResponse.bodyJson<{ id: string; content: string }>();
+
+  const getResponse = new MockResponse();
+  await handleReportsRoutes(
+    `/reports/executions/${execution.id}/export`,
+    request(
+      'GET',
+      undefined,
+      `/reports/executions/${execution.id}/export?format=csv`
+    ),
+    getResponse as never,
+    'corr-report-export-reconcile-get',
+    routeHandlers as never
+  );
+  const reconciled = getResponse.bodyJson<{ id: string; content: string }>();
+  assert.equal(exportCommands, 1);
+  assert.deepEqual(reconciled, created);
+});
+
 test('handleReportsRoutes executes and exports the persisted NFS-e service-invoice report', async () => {
   const sourceCalls: Array<{ accountId: string; filters: Record<string, unknown> }> = [];
   const fiscal = {

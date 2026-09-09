@@ -20,6 +20,12 @@ export interface AccessControlMembershipsResponse {
   userSectors: Array<{ userId: string; sectorId: string }>;
 }
 
+export interface AccessControlUserMembershipsPayload {
+  roleCodes: readonly string[];
+  teamIds: readonly string[];
+  sectorIds: readonly string[];
+}
+
 export interface AccessControlAssignmentsResponse {
   userPermissions: readonly AccessPermissionAssignmentSummary[];
   teamPermissions: readonly AccessPermissionAssignmentSummary[];
@@ -143,6 +149,19 @@ export const accessControlService = {
       method: 'POST',
       body: JSON.stringify({ sectorIds })
     });
+  },
+
+  async replaceUserMemberships(
+    userId: string,
+    payload: AccessControlUserMembershipsPayload
+  ): Promise<{ ok: true }> {
+    return apiRequest<{ ok: true }>(
+      `/access-control/users/${encodeURIComponent(userId)}/memberships`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      }
+    );
   },
 
   async getEffectivePermissions(userId: string): Promise<{

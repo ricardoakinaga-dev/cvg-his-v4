@@ -1,0 +1,1134 @@
+
+> @cvg-his-v2/api@0.1.0 test /home/ricardo/cvg-his-v4/apps/api
+> pnpm --filter @cvg-his-v2/rbac build && pnpm --filter @cvg-his-v2/module-access-control build && pnpm --filter @cvg-his-v2/shared-database build && pnpm --filter @cvg-his-v2/shared-contracts build && pnpm --filter @cvg-his-v2/shared-config build && pnpm --filter @cvg-his-v2/module-owners build && pnpm --filter @cvg-his-v2/module-patients build && pnpm --filter @cvg-his-v2/module-scheduling build && pnpm --filter @cvg-his-v2/module-encounters build && pnpm --filter @cvg-his-v2/module-billing build && pnpm --filter @cvg-his-v2/module-commercial build && pnpm --filter @cvg-his-v2/module-counter-sales build && pnpm --filter @cvg-his-v2/module-prescriptions build && pnpm --filter @cvg-his-v2/module-ml build && pnpm --filter @cvg-his-v2/module-reports build && pnpm --filter @cvg-his-v2/module-event-consumers build && tsc -p tsconfig.json && cp src/openapi.yaml dist/ && NODE_ENV=test node --test dist/health.test.js dist/payment-gateway.test.js dist/runtime.test.js dist/server.test.js dist/startup-secrets.test.js dist/setup-token.test.js dist/setup-provisioning.test.js dist/laboratory-provider-ingress.test.js dist/laboratory-provider-keyring.test.js dist/laboratory-result-import-repository.test.js dist/routes/*.test.js dist/consumers/payments.consumer.test.js
+
+
+> @cvg-his-v2/rbac@0.1.0 build /home/ricardo/cvg-his-v4/packages/rbac
+> tsc -b tsconfig.json --force
+
+
+> @cvg-his-v2/module-access-control@0.1.0 build /home/ricardo/cvg-his-v4/packages/modules/access-control
+> tsc -b tsconfig.json --force
+
+
+> @cvg-his-v2/shared-database@0.1.0 build /home/ricardo/cvg-his-v4/packages/shared/database
+> tsc -b tsconfig.json --force
+
+
+> @cvg-his-v2/shared-contracts@0.1.0 build /home/ricardo/cvg-his-v4/packages/shared/contracts
+> tsc -b tsconfig.json --force
+
+
+> @cvg-his-v2/shared-config@0.1.0 build /home/ricardo/cvg-his-v4/packages/shared/config
+> tsc -b tsconfig.json --force
+
+
+> @cvg-his-v2/module-owners@0.1.0 build /home/ricardo/cvg-his-v4/packages/modules/owners
+> tsc -b tsconfig.json --force
+
+
+> @cvg-his-v2/module-patients@0.1.0 build /home/ricardo/cvg-his-v4/packages/modules/patients
+> tsc -b tsconfig.json --force
+
+
+> @cvg-his-v2/module-scheduling@0.1.0 build /home/ricardo/cvg-his-v4/packages/modules/scheduling
+> tsc -b tsconfig.json --force
+
+
+> @cvg-his-v2/module-encounters@0.1.0 build /home/ricardo/cvg-his-v4/packages/modules/encounters
+> tsc -b tsconfig.json --force
+
+
+> @cvg-his-v2/module-billing@0.1.0 build /home/ricardo/cvg-his-v4/packages/modules/billing
+> tsc -b tsconfig.json --force
+
+
+> @cvg-his-v2/module-commercial@0.1.0 build /home/ricardo/cvg-his-v4/packages/modules/commercial
+> tsc -b tsconfig.json --force
+
+
+> @cvg-his-v2/module-counter-sales@0.1.0 build /home/ricardo/cvg-his-v4/packages/modules/counter-sales
+> tsc -b tsconfig.json --force
+
+
+> @cvg-his-v2/module-prescriptions@0.1.0 build /home/ricardo/cvg-his-v4/packages/modules/prescriptions
+> tsc -b tsconfig.json --force
+
+
+> @cvg-his-v2/module-ml@0.1.0 build /home/ricardo/cvg-his-v4/packages/modules/ml
+> tsc -b tsconfig.json --force
+
+
+> @cvg-his-v2/module-reports@0.1.0 build /home/ricardo/cvg-his-v4/packages/modules/reports
+> tsc -b tsconfig.json --force
+
+
+> @cvg-his-v2/module-event-consumers@0.1.0 build /home/ricardo/cvg-his-v4/packages/modules/event-consumers
+> tsc -b tsconfig.json --force
+
+[PaymentsConsumer] Settled billing record br_test_123 after PIX confirmation (event evt_123)
+[PaymentsConsumer] payment.pix.confirmed event evt_123 has no billingRecordId — skipping billing settlement
+[PaymentsConsumer] PIX intent created: pix_intent_new for account acc_test (billingRecordId: br_new_456) — amount: 150 BRL
+✔ PaymentsEventHandlers refuses legacy PIX confirmation without an authoritative intent (3.016204ms)
+✔ PaymentsEventHandlers rejects attempt-linked legacy PIX confirmation before mutation (0.758183ms)
+✔ PaymentsEventHandlers rejects a legacy PIX event with a mismatched envelope account before mutation (0.345234ms)
+✔ PaymentsEventHandlers validates the authoritative PIX amount before mutation (0.344563ms)
+✔ PaymentsEventHandlers refuses settlement when the authoritative status update disappears (0.699795ms)
+✔ PaymentsEventHandlers handles payment.pix.confirmed and settles billing record (1.347372ms)
+✔ PaymentsEventHandlers handles payment.pix.confirmed without billingRecordId (no-op) (1.23346ms)
+✔ PaymentsEventHandlers ignores billing.status_changed events (no-op) (0.248854ms)
+✔ PaymentsEventHandlers persists PIX intent creation without error (1.405941ms)
+✔ PaymentsEventHandlers persists card intent creation and settles billing on capture (2.591152ms)
+✔ PaymentsEventHandlers refuses card capture without an authoritative intent (0.588738ms)
+✔ PaymentsEventHandlers rejects card capture when authoritative data does not match billing (0.478272ms)
+✔ PaymentsEventHandlers rejects card capture when event billing record differs from intent (0.365602ms)
+✔ PaymentsEventHandlers rejects card capture from a different account (0.408291ms)
+✔ MFA repository readiness requires the distributed enrollment columns (2.282866ms)
+✔ createHealthResponse returns a healthy payload in in-memory mode (1.725277ms)
+✔ createHealthResponse shows unhealthy when database configured but not healthy (0.354571ms)
+✔ createHealthResponse does not expose database connection details (0.460548ms)
+✔ createHealthResponse returns ok when database is healthy and configured (0.720824ms)
+✔ createReadinessResponse includes Redis and fails closed when its probe is unhealthy (0.325147ms)
+✔ createHealthResponse returns not ok when database healthy but repositories not ready (0.731855ms)
+✔ createHealthResponse returns not ok when in-memory mode but repositories not ready (0.311481ms)
+✔ createHealthResponse reports unhealthy detail when database configured but connection failed (0.276145ms)
+✔ createReadinessResponse returns  not ready when worker dependency is degraded (0.342919ms)
+✔ resolveProductionReadiness accepts derived owner-patient link fallback with twelve repositories (0.298397ms)
+✔ resolveProductionReadiness returns not ready when a critical repository is absent (0.19853ms)
+✔ resolveProductionReadiness accepts database owner-patient link repository (0.148627ms)
+✔ production database readiness identifies every repository still backed by memory (0.248623ms)
+✔ production database readiness refuses missing repositories and unit of work (0.567047ms)
+✔ production-like environment detection includes explicit schema enforcement (0.263672ms)
+✔ createLivenessResponse returns live even before full initialization (1.985152ms)
+✔ parses an exact versioned laboratory provider payload and fingerprints semantic fields (4.917078ms)
+✔ rejects duplicate, unknown, non-string and non-canonical provider fields (2.02716ms)
+✔ verifies account-bound fresh HMAC signatures over the exact raw body (2.374528ms)
+✔ rejects short secrets, malformed signatures and unsafe timestamps (0.995025ms)
+✔ parses canonical account-bound laboratory provider keyrings without exposing JSON (2.184784ms)
+✔ rejects malformed laboratory provider keyrings and weak secrets (1.018329ms)
+✔ provider ingress persistence is immutable, atomic and replay-aware in memory (2.761629ms)
+✔ provider ingress persistence rejects a changed fingerprint without overwriting the row (0.914856ms)
+✔ provider ingress workflow updates cannot rewrite immutable provider facts (0.678395ms)
+✔ provider ingress persistence isolates the same external id by account (0.323653ms)
+✔ LocalPixPaymentGateway creates a deterministic PIX intent shape (6.496653ms)
+✔ LocalPixPaymentGateway confirmPayment rejects an unknown intent (0.361103ms)
+✔ LocalPixPaymentGateway confirmPayment carries billingRecordId from created intent (0.436604ms)
+✔ LocalPixPaymentGateway creates a local card intent for safe provider-less rollout (0.632208ms)
+✔ LocalPixPaymentGateway captures a previously authorized card intent (0.403572ms)
+✔ LocalPixPaymentGateway exposes card intents only to their owning account (0.363879ms)
+✔ PagarMe PIX intent survives adapter recreation and confirms using the provider transaction id (66.300283ms)
+✔ PagarMe card intent survives adapter recreation and captures the durable provider charge (8.214436ms)
+✔ PagarMe capture requires a consistent terminal charge and rejects replay without contacting provider (23.135038ms)
+✔ Core v5 operation_type for capture=false (0.919715ms)
+✔ Core v5 operation_type for capture=true (0.556066ms)
+✔ access-control audit route filters audit events by finance domain query params (8.834452ms)
+✔ audit events route enforces audit.read ABAC before querying the audit service (0.842982ms)
+✔ audit events route fails closed when ABAC denies before querying the audit service (0.8203ms)
+✔ audit events route fails closed before the fallback audit list when ABAC denies (0.395777ms)
+✔ access-control audit route forwards cursor pagination and returns the next cursor (2.84264ms)
+✔ access-control audit route rejects an invalid cursor before querying events (0.863791ms)
+✔ access-control routes bound membership entries and repeated audit filters (8.594064ms)
+✔ access-control replaces a user role and both membership dimensions atomically (2.409764ms)
+✔ access-control restores prior memberships when a composite replacement fails (1.961778ms)
+✔ access-control surfaces a recovery fault when composite compensation fails (2.39197ms)
+✔ access-control audit route exposes operational coverage report and audits the read (0.655903ms)
+✔ operational coverage fails closed with a sanitized 503 when the committed source is unavailable (0.509911ms)
+✔ operational coverage enforces audit ABAC before querying or auditing the durable source (0.489663ms)
+✔ operational coverage waits for the durable read audit before responding (21.828521ms)
+✔ RH-VAL-1 validates editable groups, memberships, grants and effective permission by routine (14.176393ms)
+✔ permission grant fails closed when audit persistence rejects (1.761765ms)
+✔ access-control exposes auditable RBAC module permission matrix by profile, unit and action (14.481612ms)
+✔ access-control routes reject cross-account subjects for RH governance writes (1.413295ms)
+✔ access-control mutations validate input and leave a tenant-scoped audit trail (9.112892ms)
+✔ handleAdministrativeReportsRoutes ignores unrelated routes (1.898039ms)
+✔ handleAdministrativeReportsRoutes returns aggregated administrative hubs (3.316594ms)
+✔ manual issuance is authenticated, exact-cents and delegated through the tenant command (4.101598ms)
+✔ compensation requires an idempotency key and never accepts an amount with decimals (1.39439ms)
+✔ compensation rejects malformed encoded UUID paths as validation errors (0.366684ms)
+✔ GET list uses the canonical persisted source and records a read audit (0.939882ms)
+✔ writes fail closed when the database-backed advance-payment repository is unavailable (0.332049ms)
+✔ agenda configuration persists availability and appointment types through the repository (22.866717ms)
+✔ agenda availability mutations refresh the scheduling read model (2.91743ms)
+✔ agenda configuration never exposes another tenant record (1.005104ms)
+✔ in-memory agenda seeds reference active staff records (0.571325ms)
+✔ handleAuthRoutes returns the current authenticated session payload (4.681198ms)
+✔ handleAuthRoutes returns the current user session list (0.983474ms)
+✔ handleAuthRoutes prefers the authoritative session list when available (0.578949ms)
+✔ handleAuthRoutes propagates authoritative session-list failures without stale response or audit (1.065287ms)
+✔ handleAuthRoutes ignores unrelated routes (0.548924ms)
+✔ handleAuthRoutes POST /auth/login returns a session on success (2.700846ms)
+✔ handleAuthRoutes rejects malformed and oversized login payloads before authentication (6.530577ms)
+✔ handleAuthRoutes accepts login fields at the inclusive upper bounds (0.571686ms)
+✔ login rate limiting normalizes the username and cannot be bypassed by changing IP (1.183396ms)
+✔ login rate limiting enforces an IP bucket across distinct users (0.682813ms)
+✔ MFA rate limiting uses the verified body identity instead of a caller-controlled header (1.600304ms)
+✔ MFA login rejects malformed and oversized payloads before the auth service (6.586812ms)
+✔ MFA login accepts the inclusive field limits after rate limiting (0.70802ms)
+✔ MFA login rate limits before validation without exposing token or challenge fields (0.560445ms)
+✔ public MFA enrollment delegates tenant-scoped start and confirm operations to AuthService (0.746963ms)
+✔ handleAuthRoutes POST /auth/refresh consumes the HttpOnly refresh cookie and does not expose it (0.778972ms)
+✔ handleAuthRoutes POST /auth/refresh returns session-not-found without a cookie (0.31102ms)
+✔ handleAuthRoutes POST /auth/logout revokes the cookie session and clears the cookie (0.674969ms)
+✔ handleAuthRoutes rejects cookie mutations from an untrusted browser origin (0.312011ms)
+✔ getClientIp ignores forwarded addresses from an untrusted remote peer (0.238696ms)
+✔ getClientIp walks a forwarded chain only from a trusted proxy (0.172131ms)
+✔ handleAuthRoutes POST /auth/login returns 429 when rate limited (0.363889ms)
+✔ handleAuthRoutes POST /auth/logout-all-others revokes sibling sessions (0.336327ms)
+✔ handleAuthRoutes POST /auth/sessions/:sessionId/revoke revokes a targeted sibling session (0.374819ms)
+✔ handleAuthRoutes GET /auth/oidc/login emits a stateless signed state when distributed mode is enabled (2.310839ms)
+✔ handleAuthRoutes GET /auth/oidc/callback rejects tampered stateless state (0.563791ms)
+✔ handleAuthRoutes POST /auth/mfa/webauthn/setup rejects expired registration challenge (0.80445ms)
+✔ handleAuthRoutes POST /auth/mfa/webauthn/assert rejects expired authentication challenge (0.462993ms)
+✔ handleAuthRoutes uses account-scoped durable WebAuthn challenge state (0.531641ms)
+✔ handleAuthRoutes consumes the durable assertion challenge with principal account scope (0.520731ms)
+✔ handleBillingRoutes ignores unrelated routes (2.427897ms)
+✔ handleBillingRoutes GET /billing lists billing records (1.120459ms)
+✔ handleBillingRoutes GET /billing with encounterId filter (1.451205ms)
+✔ handleBillingRoutes GET /billing/:encounterId/items lists items (0.610368ms)
+✔ handleBillingRoutes GET /billing/:encounterId returns billing record (0.561477ms)
+✔ handleBillingRoutes GET /billing/:encounterId does not create missing records (0.738677ms)
+✔ handleBillingRoutes returns a non-disclosing 404 for a foreign encounter (0.608304ms)
+✔ handleBillingRoutes POST /billing/estimate creates estimate explicitly (7.588991ms)
+✔ handleBillingRoutes POST /billing/items creates item explicitly (2.055452ms)
+✔ handleBillingRoutes PATCH /billing/:encounterId/status updates status explicitly (8.147933ms)
+✔ handleBillingRoutes forwards the authenticated account to every billing boundary (6.724999ms)
+✔ handleBillingRoutes rejects public manual settlement without tenant disclosure (4.252529ms)
+✔ handleBillingRoutes rejects reopening a settled billing record with a stable conflict (1.582631ms)
+✔ handleBillingRoutes PATCH /billing/:encounterId/status does not create missing records (2.710103ms)
+✔ handleBillingRoutes rejects billing status outside the canonical lifecycle (2.914424ms)
+✔ handleCashRoutes exposes Vetus-like drawer dashboard and controlled write flow (15.5314ms)
+✔ handleCashRoutes records deposit and exposes reconciliation (2.092823ms)
+✔ cash mutations forward stable idempotency and tenant-command envelopes (7.093176ms)
+✔ cash route keeps direct test compatibility when no tenant runner is injected (0.631307ms)
+✔ cash close can replay after the first command has already closed the register (5.846271ms)
+✔ handleCommercialRoutes ignores unrelated paths (2.103742ms)
+✔ handleCommercialRoutes exposes loyalty points balance and redemptions (2.406968ms)
+✔ handleCommercialRoutes exposes package lifecycle, consumption and renewal (5.950726ms)
+✔ handleCommercialRoutes creates, updates, archives price tables and items (3.643654ms)
+✔ handleCommercialRoutes runs POS sync jobs and writes audit events (3.503162ms)
+✔ handleCommissionRoutes ignores unrelated paths (1.724375ms)
+✔ handleCommissionRoutes exposes rule, calculation, review and payment lifecycle (11.008837ms)
+✔ company sector routes list and filter Vetus-like sectors (2.767511ms)
+✔ company sector routes create, update and archive records (2.221993ms)
+✔ counter-sale cancel route rejects a missing or blank reason before mutating state (3.982686ms)
+✔ counter-sale cancel route rejects control characters before mutating state (1.060778ms)
+✔ counter-sale cancel route passes the principal, reason and correlation to the command (1.851843ms)
+✔ counter-sale detail route exposes tenant-scoped cancellation history (0.781487ms)
+✔ counter-sale detail route can load a cold database projection through the account scope (0.881333ms)
+✔ counter-sale cancel and detail routes compose with the in-memory service (4.883906ms)
+✔ handleCounterSalesRoutes ignores unrelated routes (2.543893ms)
+✔ handleCounterSalesRoutes opens and lists counter sales (2.626748ms)
+✔ handleCounterSalesRoutes exposes the commercial dashboard (3.050839ms)
+✔ handleCounterSalesRoutes returns detail with items and payments and allows close flow (14.477424ms)
+✔ handleCounterSalesRoutes blocks invalid financial edits after payments and closure (6.041244ms)
+✔ handleCounterSalesRoutes settles the final payment and closes atomically (1.273835ms)
+✔ handleCounterSalesRoutes rejects malformed settlement payments at the boundary (1.084242ms)
+✔ handleCounterSalesRoutes forwards the payment idempotency key and validates the payload (0.967454ms)
+✔ handleCounterSalesRoutes rejects an item whose parent sale or account differs from the URL (3.0947ms)
+✔ handleCounterSalesRoutes binds add_item idempotency payload to the account and parent sale (1.644315ms)
+✔ GET /discharges requires its dedicated read permission (1.992396ms)
+✔ PATCH /discharges forwards the authenticated account to detail and update (1.148992ms)
+✔ handleEmailRoutes sends transactional email and exposes report (6.393351ms)
+✔ handleEmailRoutes retries failed transactional email (2.09672ms)
+✔ cash receipt POST requires idempotency and creates the receipt through the command (4.237211ms)
+✔ cash receipt POST executes the command through the tenant transaction runner (0.800513ms)
+✔ cash receipt POST rejects requests without an idempotency key before execution (1.157918ms)
+✔ cash receipt POST rejects non-object and unknown input fields at the boundary (1.311606ms)
+✔ cash receipt GET is tenant scoped and does not reveal a missing receipt (0.870954ms)
+✔ cash receipt GET collection recovers the unique receipt by encounter (0.738016ms)
+✔ cash receipt GET collection can recover the latest receipt including its reversal (2.915997ms)
+✔ received encounters require an explicit reversal before reopen or delete operations (1.647712ms)
+✔ cash receipt reversal POST requires billing.manage, idempotency and delegates the tenant account (1.782063ms)
+✔ cash receipt reversal POST rejects missing idempotency and unknown fields before execution (2.038642ms)
+✔ unrelated routes are ignored (0.441713ms)
+✔ expenses catalog routes fail fast on default runtime when database mode is not available (5.076696ms)
+✔ expenses catalog routes use the composed database store in configured runtime (1.444974ms)
+✔ expenses catalog routes list paginated items with server-side filters and cost center catalog endpoint (41.426262ms)
+✔ operational finance catalog routes provide validated, versioned and audited CRUD (3.208432ms)
+✔ expenses catalog routes persist to disk across runtime restart, support cost center CRUD and write audit diffs (35.636878ms)
+✔ derivePixReconciliationState requires a real non-cash receivable link (1.255361ms)
+✔ financial PIX reconciliation keeps a notes-only legacy match in attention (3.89309ms)
+✔ financial card reconciliation keeps a captured billing-bound card without a linked payment in attention (1.494306ms)
+✔ handleFinancialRoutes exposes the canonical ledger and reconciliation result (3.018999ms)
+✔ handleFinancialRoutes creates, lists and pays accounts payable records (3.265529ms)
+✔ handleFinancialRoutes returns income statement from payables ledger (1.929157ms)
+✔ handleFinancialRoutes lists and reconciles non-cash payable payments (2.821771ms)
+✔ handleFiscalRoutes serves dashboard summary from the backend fiscal service (3.849107ms)
+✔ handleFiscalRoutes filters CFOP rows using query params (0.936686ms)
+✔ handleFiscalRoutes creates and updates simple CFOP entries when enabled (2.02706ms)
+✔ handleFiscalRoutes filters simple ICMS, IPI, PIS, COFINS and NFS-e tables using real query params (2.486156ms)
+✔ handleFiscalRoutes filters and creates ICMS state matrix entries (1.738902ms)
+✔ handleFiscalRoutes creates and updates simple ICMS table entries when enabled (1.660156ms)
+✔ handleFiscalRoutes creates and updates simple IPI table entries when enabled (1.268204ms)
+✔ handleFiscalRoutes creates and updates simple PIS table entries when enabled (1.451487ms)
+✔ handleFiscalRoutes creates and updates simple COFINS table entries when enabled (1.5285ms)
+✔ handleFiscalRoutes lists, creates and updates simple IBS/CBS table entries when enabled (1.583894ms)
+✔ handleFiscalRoutes creates and updates NFS-e layouts when fiscal backoffice is enabled (6.252148ms)
+✔ handleFiscalRoutes executes complete NFSe document lifecycle (4.09743ms)
+✔ handleFiscalRoutes bounds persisted NFS-e document listing (1.114077ms)
+✔ handleFiscalRoutes returns a safe provider error after persisting an unauthorized NFS-e response (30.305587ms)
+✔ handleFiscalRoutes blocks write operations when fiscal backoffice flag is disabled (0.265826ms)
+✔ handleFiscalRoutes ignores unrelated paths (0.170638ms)
+✔ handleGoogleCalendarRoutes syncs appointment and exposes report (7.297377ms)
+✔ handleInpatientRoutes generates handover preview with latest progress and attention flags (6.591621ms)
+✔ handleInpatientRoutes propagates the principal account into stay reads (1.833469ms)
+✔ handleInpatientRoutes hides inpatient resources from another account (1.321163ms)
+✔ handleInpatientRoutes admits the patient from an existing encounter (11.876685ms)
+✔ handleInpatientRoutes executes admission through the tenant command seam (3.011816ms)
+✔ handleInpatientRoutes removes an admission cache entry after command rollback (2.058479ms)
+✔ handleInpatientRoutes appends inpatient progress to clinical record timeline (2.888937ms)
+✔ handleInpatientRoutes executes inpatient progress through the tenant command seam (2.435832ms)
+✔ handleInpatientRoutes executes inpatient bed assignment through the tenant command seam (2.650642ms)
+✔ handleInpatientRoutes executes inpatient bed transfer through the tenant command seam (3.659844ms)
+✔ handleInpatientRoutes creates and lists inpatient occurrences (2.250115ms)
+✔ handleInpatientRoutes executes inpatient occurrence through the tenant command seam (1.814373ms)
+✔ handleInpatientRoutes refreshes inpatient caches after progress and occurrence rollback (3.176353ms)
+✔ handleInpatientRoutes refreshes inpatient caches after bed and status rollback (3.20708ms)
+✔ handleInpatientRoutes creates and bills daily inpatient charges (3.21305ms)
+✔ handleInpatientRoutes restores daily-charge cache after command rollback (1.404008ms)
+✔ handleInpatientRoutes executes daily-charge creation through the tenant command seam (1.153812ms)
+✔ handleInpatientRoutes executes daily-charge billing through the tenant command seam (1.540563ms)
+✔ handleInpatientRoutes keeps billed daily-charge replays inside the tenant command seam (3.275608ms)
+✔ handleInpatientRoutes refreshes hot caches after a rolled-back daily-charge command (2.278799ms)
+✔ handleInpatientRoutes removes a rolled-back audit event from the real cache (9.431706ms)
+✔ handleInpatientRoutes treats a repeated daily-charge billing request as idempotent (8.366049ms)
+✔ handleInpatientRoutes lists inpatient daily charge worklist with totals (1.384882ms)
+✔ handleInpatientRoutes appends inpatient discharge to clinical record timeline (1.054306ms)
+✔ handleInpatientRoutes lists beds with Vetus-like filters (1.577662ms)
+✔ handleInpatientRoutes does not disclose a foreign sector-filtered bed list (1.225384ms)
+✔ internal event administration forwards principal account to every service boundary (4.576754ms)
+✔ reprocess invokes audit.write ABAC before lookup and records a metadata-only audit event (0.838012ms)
+✔ reprocess fails closed on audit.write ABAC denial before EventBus or audit access (0.826161ms)
+✔ internal read-only event routes enforce audit.read ABAC before each EventBus read (2.094616ms)
+✔ internal read-only event routes fail closed when ABAC denies before querying EventBus (1.314331ms)
+✔ internal read-only event routes all fail closed before their EventBus read when ABAC denies (0.702069ms)
+✔ internal event detail and correlation responses omit raw payloads (1.632123ms)
+✔ OpenAPI uses a metadata-only schema for internal event detail and correlation responses (4.961682ms)
+✔ internal event administration rejects invalid list limits before querying (2.574229ms)
+✔ inventory manufacturer routes list and filter Vetus-like manufacturers (2.335866ms)
+✔ inventory manufacturer routes create, update and archive records (2.248562ms)
+✔ inventory product group routes list and filter Vetus-like product groups (2.502867ms)
+✔ inventory product group routes create, update and archive records (2.296112ms)
+✔ handleInventoryRoutes creates stock adjustments and lists stock movements (6.325084ms)
+✔ handleInventoryRoutes exposes reservation, consumption, return and release lifecycle (14.177947ms)
+✔ handleInventoryRoutes closes the purchase and transfer workflow (4.834544ms)
+✔ inventory warehouse routes list and filter Vetus-like stock locations (2.66546ms)
+✔ inventory warehouse routes create, update and archive records (2.431254ms)
+✔ accepts only a signed provider payload and queues it for human review (9.118622ms)
+✔ rejects duplicate security headers, unsupported encoding and oversized bodies (3.965885ms)
+✔ replays the exact signed payload and rejects a changed payload without mutation (7.597977ms)
+✔ binds the provider signature to the API-key tenant and keeps tenants isolated (6.56959ms)
+✔ rejects legacy unsigned payloads, missing durable storage and generic permissions (5.445042ms)
+✔ reports pending review separately and never auto-releases a failed legacy record (1.487424ms)
+✔ does not acknowledge a queued result when awaited audit persistence fails (5.083388ms)
+✔ bootstrap readiness rejects configured ingress without durable storage or in production-like envs (0.506725ms)
+✔ handleLaboratoryRoutes serves persisted laboratory catalogs (16.53999ms)
+✔ handleLaboratoryRoutes keeps /diagnostics/orders as a coherent bridge (1.185801ms)
+✔ handleLaboratoryRoutes keeps legacy resulted status beside canonical reported status (1.558967ms)
+✔ handleLaboratoryRoutes accepts Vetus-like laboratory exams aliases and filters (2.670038ms)
+✔ handleLaboratoryRoutes searches structured-only laboratory values (2.464435ms)
+✔ handleLaboratoryRoutes exposes diagnostics catalog and order detail (2.0705ms)
+✔ handleLaboratoryRoutes lists resulted orders through the diagnostics bridge (0.940583ms)
+✔ handleLaboratoryRoutes releases result with authenticated user and technical signature (15.121655ms)
+✔ handleLaboratoryRoutes awaits clinical projection callbacks before responding (20.306282ms)
+✔ handleLaboratoryRoutes exposes the canonical analysis, report, recollection and delivery workflow (12.858105ms)
+✔ handleLaboratoryRoutes requires an enabled staff principal for laboratory signatures (1.165894ms)
+✔ handleLaboratoryRoutes generates printable signed laboratory report html (1.047312ms)
+✔ handleLaboratoryRoutes accepts Vetus-like laboratory report aliases and filters (0.868329ms)
+✔ handleLaboratoryRoutes exposes pending laboratory results only in the open view (0.631517ms)
+✔ handleLaboratoryRoutes exposes Vetus-like hemograms aliases filtered to HEM results (0.805572ms)
+✔ handleLaboratoryRoutes exposes Vetus-like urinalysis aliases filtered to URIN results (0.87937ms)
+✔ handleLaboratoryRoutes exposes Vetus-like biochemistry aliases filtered to BIO results (0.806735ms)
+✔ handleLaboratoryRoutes exposes Vetus-like laboratory equipment catalog with filters and write flow (1.586278ms)
+✔ handleLaboratoryRoutes exposes Vetus-like laboratory report type catalog with filters and write flow (2.0324ms)
+✔ handleLaboratoryRoutes exposes Vetus-like hemogram reference value catalog with filters and write flow (2.021028ms)
+✔ handleLaboratoryRoutes exposes Vetus-like biochemistry reference value catalog with filters and write flow (1.11525ms)
+✔ extracted legacy domain handlers preserve dispatch fall-through (4.736472ms)
+✔ handleLgpdRoutes lists all DSR requests without requiring filters (3.854837ms)
+✔ handleLgpdRoutes durably audits filtered DSR reads before responding (0.663718ms)
+✔ handleLgpdRoutes audits DSR completion and personal data export (1.001097ms)
+✔ handleLgpdRoutes rejects invalid subject and DSR values before calling the service (1.001568ms)
+✔ handleLgpdRoutes audits sensitive reads and does not return foreign-account provider rows (0.945292ms)
+✔ handleLgpdRoutes denies a cross-account DSR mutation before completion (7.570926ms)
+✔ handleMarketingRoutes ignores unrelated paths (2.1452ms)
+✔ handleMarketingRoutes persists tenant-scoped marketing consent and supports opt-in after opt-out (1.792833ms)
+✔ handleMarketingRoutes exposes campaign planning lifecycle (15.723687ms)
+✔ handleMarketingRoutes propagates delivery idempotency to the channel adapter (2.727516ms)
+✔ measurement unit routes list and filter Vetus-like units (3.445535ms)
+✔ measurement unit routes create, update and archive records (4.869459ms)
+✔ handleMlRoutes exposes OCR, demand forecasting and lab anomalies (24.218477ms)
+✔ handleMlRoutes validates demand forecasting query params against API contract (2.07523ms)
+✔ handleMlRoutes publishes operational report and anomaly review workflow (4.381319ms)
+✔ handleOpenApiRoutes serves /openapi.json as JSON (1268.276436ms)
+✔ handleOpenApiRoutes serves /api-docs contract (0.401508ms)
+✔ handleOwnersRoutes GET /owners lists filtered owners (3.945377ms)
+✔ handleOwnersRoutes GET /owners searches masked fields with unmasked query (4.377312ms)
+✔ handleOwnersRoutes POST /owners creates a new owner (5.612515ms)
+✔ handleOwnersRoutes enforces contextual sector isolation when x-sector-code is present (5.493202ms)
+✔ handleOwnersRoutes GET /owners/:id/summary returns linked patients and encounter counters (4.041206ms)
+✔ handleOwnersRoutes hides owners from another account (1.349065ms)
+✔ handlePatientsRoutes GET /master-search returns cross-registry results (4.165597ms)
+✔ handlePatientsRoutes GET /master-search requires owner-read permission before returning owners (2.505682ms)
+✔ handlePatientsRoutes GET /master-search preserves results when both read permissions are present (1.798824ms)
+✔ handlePatientsRoutes GET /master-search minimizes owner results to navigation fields (1.613077ms)
+✔ handlePatientsRoutes GET /patients searches by tutor document and phone (1.164ms)
+✔ handlePatientsRoutes GET /owner-patient-links filters links by owner (0.787127ms)
+✔ handlePatientsRoutes POST /owner-patient-links creates a new relationship (5.403526ms)
+✔ handlePatientsRoutes GET /patients/:id/summary returns owner snapshot and recent encounters (2.675178ms)
+✔ handlePatientsRoutes GET /patients/:id/owner returns the account-scoped owner snapshot (0.716556ms)
+✔ handlePatientsRoutes hides patients from another account (1.432782ms)
+✔ legacy PIX confirmation returns 410 for attempt-linked transactions before gateway or event (4.254563ms)
+✔ legacy PIX confirmation hides an attempt-linked transaction from another account (0.771839ms)
+✔ card intent creation rejects a billing record owned by another account before calling provider (1.957169ms)
+✔ card capture hides a foreign intent and never calls the provider (1.670344ms)
+✔ card capture route emits completion only for a consistent paid charge, with tenant and replay protection (101.222846ms)
+✔ concurrent card capture routes serialize provider dispatch and outbox publication (6.039381ms)
+✔ public card creation never confirms contradictory paid charges or an order without a charge (8.845713ms)
+✔ a public capture preflight error does not consume dispatch eligibility (1.272422ms)
+✔ creation publish failure leaves a pending provider anchor that can reconcile without recapture (5.484576ms)
+✔ creation replay reuses durable identity for one billing reference (1.894242ms)
+✔ PIX attempt POST derives authority from the principal and returns a safe accepted resource (11.745831ms)
+✔ PIX attempt POST requires one bounded opaque Idempotency-Key before command execution (5.568573ms)
+✔ PIX attempt POST accepts only an empty object and rejects monetary, provider and tenant spoofing (4.512494ms)
+✔ PIX attempt GET is tenant-scoped, requires billing.read and returns only public polling fields without write amplification (0.874871ms)
+✔ PIX attempt GET maps a cross-tenant miss to the same opaque 404 (0.671412ms)
+✔ PIX attempt lookup by encounter restores the latest public resource without leaking internal fields (0.588346ms)
+✔ PIX attempt lookup by encounter returns an explicit empty resource when no attempt exists (1.867202ms)
+✔ PIX attempt polling is rate limited per authenticated tenant principal before database access (0.60041ms)
+✔ PIX attempt routes validate path UUIDs before invoking their domain dependencies (0.507497ms)
+✔ PIX attempt routes authenticate before revealing UUID validation details (0.629353ms)
+✔ unrelated routes are ignored without requiring authentication (0.228436ms)
+✔ GET settlement DLQ is tenant-scoped, bounded, and sanitized (3.774999ms)
+✔ GET settlement DLQ rejects an unbounded or non-terminal state filter (1.283304ms)
+✔ POST settlement DLQ redrive is audited by the repository and returns an opaque 404 when absent (2.788389ms)
+✔ settlement DLQ routes fail closed when database repository is unavailable (0.394115ms)
+✔ GET /prescription-executions requires its dedicated read permission (4.468933ms)
+✔ GET /prescription-executions rejects an empty filtered query (1.848968ms)
+✔ POST /prescription-executions/:id/execute validates status and forwards expectedVersion (16.388688ms)
+✔ GET /prescription-executions/:id forwards principal account to the event boundary (0.764806ms)
+✔ POST suspend, resume and log routes forward principal account to service boundaries (11.24136ms)
+✔ POST /prescription-executions/:id/log validates the event boundary (3.042383ms)
+✔ does not route action paths with extra segments (0.322161ms)
+✔ handlePrescriptionRoutes creates a prescription (3.777694ms)
+✔ handlePrescriptionRoutes gets a prescription by id (1.204686ms)
+✔ handlePrescriptionRoutes lists prescriptions (0.989375ms)
+✔ handlePrescriptionRoutes updates a prescription (1.22809ms)
+✔ handlePrescriptionRoutes renders a printable prescription document (1.469069ms)
+✔ handlePrescriptionRoutes archives a prescription (1.440405ms)
+✔ handlePrescriptionRoutes returns false for non-prescription paths (0.422808ms)
+✔ handleReportsRoutes waits for durable report export audit before returning (23.716651ms)
+✔ handleReportsRoutes reconciles an existing export without starting a second artifact (9.816313ms)
+✔ handleReportsRoutes executes and exports the persisted NFS-e service-invoice report (11.613504ms)
+✔ handleReportsRoutes executes the bounded persisted inventory-products report (11.55269ms)
+✔ handleReportsRoutes executes the persisted inventory purchase-entry report with exact fields (1.915512ms)
+✔ handleReportsRoutes fails closed for non-durable inventory purchase reports and enforces source guards (111.284256ms)
+✔ handleReportsRoutes executes the bounded current persisted inventory-stock report (9.241752ms)
+✔ handleReportsRoutes executes the raw persisted inventory movement report with account scope (1.150706ms)
+✔ handleReportsRoutes fails closed for a disabled inventory movement ledger and enforces its row bound (33.936036ms)
+✔ handleReportsRoutes rejects malformed inventory movement source rows before persistence (1.160233ms)
+✔ handleReportsRoutes fails closed when inventory movement reports are not durable (1.546193ms)
+✔ handleReportsRoutes fails closed for an in-memory inventory-stock source and enforces its row bound (7.002376ms)
+✔ handleReportsRoutes rejects inventory-products reports without a database source or within the row bound (6.697227ms)
+✔ handleReportsRoutes validates the report execution body before reading a source (1.134866ms)
+✔ handleReportsRoutes validates the report export body before parsing its format (0.936436ms)
+✔ handleReportsRoutes rejects an in-memory NFS-e source and invalid/oversized report input (9.876305ms)
+✔ handleReportsRoutes ignores unrelated and legacy administrative hub routes (0.390317ms)
+✔ handleReportsRoutes exposes catalog, execution, export and schedules (14.057781ms)
+✔ handleReportsRoutes executes commission calculation report (2.697159ms)
+✔ commission report executes and exports the configured projection instead of replica memory (1.166455ms)
+✔ commission report fails closed when the configured projection fails (0.521662ms)
+✔ commission report rejects a database service without its persisted projection (0.677253ms)
+✔ commission report rejects injected projection rows without the authenticated account discriminator (0.571315ms)
+✔ commission report rejects year-zero dates before reading memory or the configured source (1.20134ms)
+✔ commission projection preserves permission, filter validation and export row limits (3.739382ms)
+✔ handleReportsRoutes keeps registry report sources account scoped (3.470231ms)
+✔ handleReportsRoutes bounds and validates the services registry report (4.511232ms)
+✔ handleReportsRoutes executes and exports the persisted supplier registry with account scope (1.32526ms)
+✔ handleReportsRoutes fails closed for supplier registry without a database source (0.416737ms)
+✔ handleReportsRoutes rejects invalid supplier periods and oversized sources (2.179022ms)
+✔ handleReportsRoutes executes and exports the persisted advance-payment report with account scope (1.609842ms)
+✔ handleReportsRoutes fails closed for advance-payment reports without a database source (0.431985ms)
+✔ handleReportsRoutes validates advance-payment filters and enforces the row bound (2.033862ms)
+✔ handleReportsRoutes refuses a services registry export without database-backed source (0.454918ms)
+✔ handleReportsRoutes executes and exports the persisted cancelled counter-sale report (1.195358ms)
+✔ handleReportsRoutes executes the persisted appointments report with account-safe filters (1.343024ms)
+✔ handleReportsRoutes fails closed for appointments reports without a database source (0.466489ms)
+✔ handleReportsRoutes validates appointments filters and source rows before persistence (1.811688ms)
+✔ handleReportsRoutes rejects the appointments report overflow sentinel (36.535733ms)
+✔ handleReportsRoutes executes the persisted professional care report with account-safe filters (1.149403ms)
+✔ handleReportsRoutes fails closed and validates professional care source rows before persistence (1.246314ms)
+✔ handleReportsRoutes executes and exports cancellation events with the same persisted facts (1.219574ms)
+✔ handleReportsRoutes rejects invalid cancellation periods and unavailable persisted sources before reading (1.178928ms)
+✔ handleReportsRoutes authorizes cancellation history before reading its source (0.37584ms)
+✔ handleReportsRoutes rechecks report permission for execution and export access (0.797818ms)
+✔ handleReportsRoutes fails closed for cancelled counter-sale reports without database source (0.408241ms)
+✔ handleReportsRoutes validates cancelled counter-sale periods, search and row bounds (3.493404ms)
+✔ handleReportsRoutes executes and exports the authoritative payable report (2.634492ms)
+✔ handleReportsRoutes executes and exports the persisted cheque-payment report (1.216669ms)
+✔ handleReportsRoutes validates payable filters before reading the source (1.005996ms)
+✔ handleReportsRoutes drains every payable source page before exporting (1.865858ms)
+✔ handleReportsRoutes keeps report execution and export opaque across accounts (0.824157ms)
+✔ handleReportsRoutes executes and exports the authoritative received report (1.306385ms)
+✔ handleReportsRoutes validates received filters before reading the source (0.631417ms)
+✔ handleReportsRoutes drains every received source page before exporting (1.086566ms)
+✔ handleSchedulingRoutes ignores unrelated routes (3.54524ms)
+✔ handleSchedulingRoutes returns overview and availability for the agenda cockpit (4.514237ms)
+✔ handleSchedulingRoutes creates, lists, reads and cancels appointments (13.676982ms)
+✔ handleSchedulingRoutes lists patient appointments across past and future dates (3.902146ms)
+✔ handleSchedulingRoutes processes the operational queue flow (12.071048ms)
+✔ handleSchedulingRoutes returns smart duration recommendation for appointment flow (1.528931ms)
+✔ handleSchedulingRoutes records smart scheduling adoption and overrides for operational telemetry (3.658952ms)
+✔ rejects passwords shorter than the policy minimum (5.740874ms)
+✔ rejects passwords built from too few character classes (0.689225ms)
+✔ accepts a password with enough length and variety (0.285282ms)
+✔ rejects an oversized administrator password (0.223988ms)
+✔ reports required and available as separate setup states (2.744177ms)
+✔ uses independent rate-limit buckets for status and mutation (7.995438ms)
+✔ fails setup closed when no bootstrap secret is configured (0.560134ms)
+✔ rejects an invalid bootstrap token before provisioning and never logs the candidate (1.739724ms)
+✔ preserves malformed and oversized body errors instead of misreporting an invalid token (5.726207ms)
+✔ confirms durable setup without returning a session or any submitted secret (195.008496ms)
+✔ derives url-safe account slugs from clinic names (0.58991ms)
+✔ falls back to a stable slug when the name has no latin characters (0.211905ms)
+✔ never emits a slug longer than the accounts.slug column (10.48509ms)
+✔ provisions the admin role the initial user is bound to (0.283188ms)
+✔ handleSmsRoutes sends transactional sms and exposes report (5.695299ms)
+✔ handleSmsRoutes retries failed transactional sms (2.216853ms)
+✔ handleSoc2Routes serves summarized ABAC policies (2.44002ms)
+✔ handleSoc2Routes calculates a security score for authenticated requests (0.60039ms)
+✔ SOC2 public responses and audit messages exclude simulated operational approval (2.490384ms)
+✔ POST /surgeries forwards the authenticated account to the service boundary (6.584157ms)
+✔ tenant command runner executes idempotent commands through the unit of work (1.854287ms)
+✔ tenant command runner requires idempotency keys in production-like environments (0.562258ms)
+✔ tenant command runner uses the tenant transaction fallback without an idempotency key or UoW (0.367815ms)
+✔ tenant command runner forwards actor and correlation metadata to transaction fallback (0.311521ms)
+✔ tenant command runner rejects oversized idempotency keys before database execution (0.291894ms)
+✔ tenant command runner maps idempotency races to stable 409 application errors (0.443788ms)
+✔ tenant command runner invokes rollback recovery after the unit of work has rolled back (0.34331ms)
+✔ tenant command runner invokes commit recovery only after the unit of work commits (0.276336ms)
+✔ user routes scope create and list operations to the authenticated account (97.726326ms)
+✔ user routes reject cross-account reads and updates (47.262854ms)
+✔ profession routes keep the master data and staff link scoped to the current account (2.160138ms)
+✔ handleVetusImportRoutes imports a Vetus owner and patient with traceability (8.857886ms)
+✔ handleVetusImportRoutes lists assisted imports for audit review (1.318849ms)
+✔ handleVetusImportRoutes links repeated Vetus IDs instead of duplicating records (1.75399ms)
+✔ handleVetusImportRoutes replays the same source reference idempotently (1.843226ms)
+✔ handleVetusImportRoutes rejects a divergent single-import source reference (2.27379ms)
+✔ handleVetusImportRoutes validates Vetus batches without creating records during dry-run (3.311535ms)
+✔ handleVetusImportRoutes replays a batch by source reference without duplicating it (2.115494ms)
+✔ handleVetusImportRoutes fingerprints the normalized batch command (1.737419ms)
+✔ handleVetusImportRoutes rejects a divergent batch source reference (1.920151ms)
+✔ handleVetusImportRoutes rejects a conflicting source reference inside a batch (1.781401ms)
+✔ handleVetusImportRoutes preserves rejected row numbers when resuming without items (2.381229ms)
+✔ handleVetusImportRoutes does not alter batch identity or resume a completed batch (1.821958ms)
+✔ handleVetusImportRoutes rejects a batch that cannot fit the transactional response budget (22.750269ms)
+✔ handleVetusImportRoutes resumes rejected Vetus rows and rolls back created records (2.918622ms)
+✔ handleWebhooksRoutes lists webhooks with Vetus-like filters and redacts secret (4.230298ms)
+✔ handleWebhooksRoutes accepts Vetus-like collection aliases (0.764245ms)
+✔ handleWhatsAppRoutes skips inbound mutations when feature flag is disabled (2.921888ms)
+✔ handleWhatsAppRoutes confirms appointment when inbound actions are enabled (0.560966ms)
+✔ handleWhatsAppRoutes rejects inbound mutations without a valid webhook secret (0.254204ms)
+✔ handleWhatsAppRoutes exposes operational report for appointment reminders (1.136419ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"Database initialization skipped (no DATABASE_URL provided), using in-memory repositories","timestamp":"2026-09-08T12:04:45.979Z","pid":1991709,"service":"bootstrap"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[EventBus] Processing claimed event with 4 handler(s) registered
+[EventBus] Dispatching event outbox.admin.a (3cf2809f-4257-4938-81ce-d990f77f9ded) correlation=outbox-admin-correlation-a to 4 handler(s) — attempt 1/1
+[EventBus] [DLQ] outbox.admin.a (3cf2809f-4257-4938-81ce-d990f77f9ded) correlation=outbox-admin-correlation-a moved to dead-letter queue after 1 attempts: outbox-admin-test-failure
+[EventBus] Processing claimed event with 4 handler(s) registered
+[EventBus] Dispatching event outbox.admin.b (4432dfca-9759-420c-ac50-11a05ada8f31) correlation=outbox-admin-correlation-b to 4 handler(s) — attempt 1/1
+[EventBus] [DLQ] outbox.admin.b (4432dfca-9759-420c-ac50-11a05ada8f31) correlation=outbox-admin-correlation-b moved to dead-letter queue after 1 attempts: outbox-admin-test-failure
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event billing.record.created (099b0523-de8f-4a2d-bf11-f371171c4aa3) correlation=evt_mtsmgsog_e14196ce8f19585f75 to 3 handler(s) — attempt 1/3
+[EventBus] Event billing.record.created (099b0523-de8f-4a2d-bf11-f371171c4aa3) correlation=evt_mtsmgsog_e14196ce8f19585f75 completed — 3 handler(s) succeeded
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event encounter.created (e8829f7e-d260-4d05-a616-d01e60ee7c5d) correlation=evt_mtsmgsog_ab71d50c4c2e6da0cd to 3 handler(s) — attempt 1/3
+[EventBus] Event encounter.created (e8829f7e-d260-4d05-a616-d01e60ee7c5d) correlation=evt_mtsmgsog_ab71d50c4c2e6da0cd completed — 3 handler(s) succeeded
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event billing.status_changed (2b3b00b3-9636-4eae-9866-f9967bbe65e8) correlation=evt_mtsmgsog_382a8f8629781301cb to 3 handler(s) — attempt 1/3
+[EventBus] Event billing.status_changed (2b3b00b3-9636-4eae-9866-f9967bbe65e8) correlation=evt_mtsmgsog_382a8f8629781301cb completed — 3 handler(s) succeeded
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event payment.pix.intent.created (dd3daf81-91a8-490d-ae96-0ce3263e7dad) correlation=corr_pix_financial_intent to 3 handler(s) — attempt 1/3
+[PaymentsConsumer] PIX intent created: pix_intent_runtime_1 for account acc_cvg_demo (billingRecordId: bill_mtsmgsog_c1a3b8304e3af609b8) — amount: 150 BRL
+[EventBus] Event payment.pix.intent.created (dd3daf81-91a8-490d-ae96-0ce3263e7dad) correlation=corr_pix_financial_intent completed — 3 handler(s) succeeded
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event payment.pix.confirmed (25edf8c1-7cae-48b1-8beb-19fe1ba52701) correlation=corr_pix_financial_confirm to 3 handler(s) — attempt 1/3
+[PaymentsConsumer] Settled billing record bill_mtsmgsog_c1a3b8304e3af609b8 after PIX confirmation (event 25edf8c1-7cae-48b1-8beb-19fe1ba52701)
+[EventBus] Event payment.pix.confirmed (25edf8c1-7cae-48b1-8beb-19fe1ba52701) correlation=corr_pix_financial_confirm completed — 3 handler(s) succeeded
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event billing.status_changed (927f7ba0-75cc-4716-963d-3c612b794d0d) correlation=evt_mtsmgsoi_ece375452dc57ebfd0 to 3 handler(s) — attempt 1/3
+[EventBus] Event billing.status_changed (927f7ba0-75cc-4716-963d-3c612b794d0d) correlation=evt_mtsmgsoi_ece375452dc57ebfd0 completed — 3 handler(s) succeeded
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event billing.record.created (d81c8c1a-148a-429a-8cf6-0bea30cd0a6a) correlation=evt_mtsmgsom_7513481f6b146c8cc4 to 3 handler(s) — attempt 1/3
+[EventBus] Event billing.record.created (d81c8c1a-148a-429a-8cf6-0bea30cd0a6a) correlation=evt_mtsmgsom_7513481f6b146c8cc4 completed — 3 handler(s) succeeded
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event encounter.created (29d358a8-e0bf-4635-939d-f8b83b4195d1) correlation=evt_mtsmgsom_0ee0b9afea24b424c5 to 3 handler(s) — attempt 1/3
+[EventBus] Event encounter.created (29d358a8-e0bf-4635-939d-f8b83b4195d1) correlation=evt_mtsmgsom_0ee0b9afea24b424c5 completed — 3 handler(s) succeeded
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event billing.status_changed (d1050aff-52ed-4982-be79-9d093340caaf) correlation=evt_mtsmgsom_41df251511d227ff3a to 3 handler(s) — attempt 1/3
+[EventBus] Event billing.status_changed (d1050aff-52ed-4982-be79-9d093340caaf) correlation=evt_mtsmgsom_41df251511d227ff3a completed — 3 handler(s) succeeded
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event payment.card.intent.created (33d3ff06-7f25-4599-b5b2-258228eb2cc6) correlation=corr_card_financial_intent to 3 handler(s) — attempt 1/3
+[EventBus] Event payment.card.intent.created (33d3ff06-7f25-4599-b5b2-258228eb2cc6) correlation=corr_card_financial_intent completed — 3 handler(s) succeeded
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event payment.card.completed (7294b570-09dc-46c0-921c-732c2e856f68) correlation=corr_card_financial_complete to 3 handler(s) — attempt 1/3
+[EventBus] Event payment.card.completed (7294b570-09dc-46c0-921c-732c2e856f68) correlation=corr_card_financial_complete completed — 3 handler(s) succeeded
+[EventBus] Processing claimed event with 3 handler(s) registered
+[EventBus] Dispatching event billing.status_changed (b8b8c5e9-8cdb-4ae3-8be3-b3f8efea83ca) correlation=evt_mtsmgsoo_700520436d101be700 to 3 handler(s) — attempt 1/3
+[EventBus] Event billing.status_changed (b8b8c5e9-8cdb-4ae3-8be3-b3f8efea83ca) correlation=evt_mtsmgsoo_700520436d101be700 completed — 3 handler(s) succeeded
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"Database initialization skipped (no DATABASE_URL provided), using in-memory repositories","timestamp":"2026-09-08T12:04:46.027Z","pid":1991709,"service":"bootstrap"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"Database initialization skipped (no DATABASE_URL provided), using in-memory repositories","timestamp":"2026-09-08T12:04:46.029Z","pid":1991709,"service":"bootstrap"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"Database initialization skipped (no DATABASE_URL provided), using in-memory repositories","timestamp":"2026-09-08T12:04:46.030Z","pid":1991709,"service":"bootstrap"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"Database initialization skipped (no DATABASE_URL provided), using in-memory repositories","timestamp":"2026-09-08T12:04:46.033Z","pid":1991709,"service":"bootstrap"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"Database initialization skipped (no DATABASE_URL provided), using in-memory repositories","timestamp":"2026-09-08T12:04:46.036Z","pid":1991709,"service":"bootstrap"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+✔ advance-payment report readiness requires tenant policies and ledger triggers (1.13205ms)
+✔ login, session refresh and audit trail work end-to-end (7.609739ms)
+✔ degraded runtime keeps clinical creation atomic in memory instead of using partial repositories (5.187031ms)
+✔ in-memory counter-sale cancellation rolls back when audit persistence fails (2.62263ms)
+✔ runtime initializes tenant-scoped repositories with the authenticated account context (2.996828ms)
+✔ runtime exposes API keys and event bus persistence for integrations (1.387457ms)
+✔ in-memory event administration is isolated by account across reads, counts and reprocess (8.213304ms)
+✔ runtime reconciles PIX confirmation into administrative financial state (6.522512ms)
+✔ runtime reconciles card capture into administrative financial state (3.341971ms)
+✔ runtime records cash withdrawal when payable is paid with cash method (2.464937ms)
+✔ runtime does not preload demo seeds when repository-backed services are configured (1.031614ms)
+✔ runtime can preserve owner and patient registry seeds with repository-backed services (0.425483ms)
+✔ backend enforcement denies audit access to a role without permission (0.758684ms)
+✔ master registry supports owner, patient, relationship and search flows (1.310253ms)
+✔ operational flow supports appointment, queue, encounter lifecycle, triage and timeline (3.757806ms)
+✔ triage can be updated while encounter is open (1.397957ms)
+✔ clinical record supports entries, prescriptions, conduct and attachments linked to encounter (1.861621ms)
+✔ advanced care keeps inpatient, surgery and diagnostics tied to the same clinical case (2.84249ms)
+✔ administrative modules keep billing, inventory and notifications linked without exposing clinical permissions (1.892048ms)
+✔ AUD-008-02: repositories persist data across runtime re-instantiation (simulated restart) (1.99506ms)
+✔ runtime initialize rehydrates session cache and encounter timeline from shared repositories (1.625741ms)
+✔ AUD-005-01: medical records, entries and timeline persist across runtime re-instantiation (2.416506ms)
+✔ AUD-010-03: notifications API creates and worker processes via shared service instance (0.769885ms)
+✔ AUD-010-03: current limitation - separate instances do NOT share state (0.744388ms)
+✔ AUD-010-03: cross-aggregate flow - encounter to billing to notifications (1.175402ms)
+✔ AUD-007-01: API writes notification to repository, worker reads and processes from shared repository (2.54234ms)
+✔ scheduling hardening: cancel appointment, time conflict, and queue transitions (1.437901ms)
+✔ runtime gates automatic WhatsApp reminders behind feature flag state (2.549374ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+✔ runtime records successful WhatsApp reminder delivery with vendor correlation metadata (20.670812ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+✔ runtime records failed WhatsApp reminder delivery when vendor dispatch throws (11.147795ms)
+✔ scheduling hardening: rejects double cancellation (1.203604ms)
+✔ scheduling hardening: time conflict blocks overlapping appointments (1.089782ms)
+✔ scheduling hardening: queue transitions enforce state machine (0.701438ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.332Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.332Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.332Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.332Z","pid":1991745,"service":"api-test"}
+✔ ABAC actor branches cannot be supplied by an HTTP request header (1.831404ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.362Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.363Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.363Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.363Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.363Z","pid":1991745,"service":"api-test"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.365Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.365Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.365Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.365Z","pid":1991745,"service":"api-test"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.367Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.367Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.367Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.367Z","pid":1991745,"service":"api-test"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.369Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.369Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.369Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.369Z","pid":1991745,"service":"api-test"}
+✔ server preserves the raw signed equipment-bridge body through HTTP dispatch (34.931201ms)
+{"level":"ERROR","message":"auth login failed","timestamp":"2026-09-08T12:04:46.374Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgsyt_d63b74234c0812124b","error":{"errorType":"AuthenticationError","message":"Invalid username or password","stack":"AuthenticationError: Invalid username or password\n    at AuthService.login (file:///home/ricardo/cvg-his-v4/packages/modules/auth/dist/index.js:86:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async handleAuthRoutes (file:///home/ricardo/cvg-his-v4/apps/api/dist/routes/auth-routes.js:440:29)\n    at async dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3237:25)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5223:17\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"AUTHENTICATION_ERROR","statusCode":401},"requestId":"api_mtsmgsyt_d63b74234c0812124b"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.375Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.375Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.375Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.375Z","pid":1991745,"service":"api-test"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.377Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgsyw_dccf65cf99dbc0a947","error":{"errorType":"AppError","message":"Authentication service unavailable","stack":"AppError: Authentication service unavailable\n    at handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3052:31)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)","code":"AUTHENTICATION_UNAVAILABLE","statusCode":503},"requestId":"api_mtsmgsyw_dccf65cf99dbc0a947"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.377Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgsyx_2b031de9147bbccb11","error":{"errorType":"AppError","message":"Authentication service unavailable","stack":"AppError: Authentication service unavailable\n    at handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3052:31)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)","code":"AUTHENTICATION_UNAVAILABLE","statusCode":503},"requestId":"api_mtsmgsyx_2b031de9147bbccb11"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.378Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgsyx_be426796c2fb4c1422","error":{"errorType":"AppError","message":"Authentication service unavailable","stack":"AppError: Authentication service unavailable\n    at handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3052:31)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)","code":"AUTHENTICATION_UNAVAILABLE","statusCode":503},"requestId":"api_mtsmgsyx_be426796c2fb4c1422"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.378Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.378Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.378Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.378Z","pid":1991745,"service":"api-test"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.395Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.395Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.395Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.395Z","pid":1991745,"service":"api-test"}
+✔ API server exposes idempotent cleanup for distributed limiter connections (1.261252ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.400Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.400Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.400Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.400Z","pid":1991745,"service":"api-test"}
+✔ CORS preflight reflects an allowed origin (1.749822ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.406Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.406Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.406Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.406Z","pid":1991745,"service":"api-test"}
+✔ serves a non-secret setup status even when bootstrap mutation is disabled (1.988858ms)
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.414Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgszx_51722ff1dfb80a4b02","error":{"errorType":"ForbiddenError","message":"Missing required permission","stack":"ForbiddenError: Missing required permission\n    at AccessControlService.assertAuthorized (file:///home/ricardo/cvg-his-v4/packages/modules/access-control/dist/index.js:647:19)\n    at requirePrincipal (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5256:23)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async runTenantCommand.beforeIdempotency (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5179:37)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:56:21\n    at async Object.execute (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.test.js:1289:17)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:45:25\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5161:43\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"FORBIDDEN","statusCode":403},"requestId":"api_mtsmgszx_51722ff1dfb80a4b02"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.414Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.414Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.414Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.414Z","pid":1991745,"service":"api-test"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.416Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgt00_213e129a69f0cb9dc3","error":{"errorType":"AuthenticationError","message":"Authentication required","stack":"AuthenticationError: Authentication required\n    at handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3169:23)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)","code":"AUTHENTICATION_ERROR","statusCode":401},"requestId":"api_mtsmgt00_213e129a69f0cb9dc3"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.417Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.417Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.417Z","pid":1991745,"service":"api-test"}
+✔ server falls back to LocalPix when PagarMe credentials are absent (1.15296ms)
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.418Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgt02_9904b058f6f44ab74e","error":{"errorType":"AppError","message":"Rate limit service unavailable","stack":"AppError: Rate limit service unavailable\n    at checkAuthAttemptRateLimit (file:///home/ricardo/cvg-his-v4/apps/api/dist/routes/auth-routes.js:345:15)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async handleAuthRoutes (file:///home/ricardo/cvg-his-v4/apps/api/dist/routes/auth-routes.js:429:31)\n    at async dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3237:25)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5223:17\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"RATE_LIMIT_UNAVAILABLE","statusCode":503},"requestId":"api_mtsmgt02_9904b058f6f44ab74e"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.419Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.419Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.419Z","pid":1991745,"service":"api-test"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.421Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.421Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.421Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.421Z","pid":1991745,"service":"api-test"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.422Z","pid":1991745,"service":"api-test","provider":"PagarMePixAdapter"}
+{"level":"INFO","message":"auth rate limiter using Redis backend","timestamp":"2026-09-08T12:04:46.422Z","pid":1991745,"service":"api-test","runtimeDistributedStateEnabled":true}
+{"level":"INFO","message":"auth rate limiter using Redis backend","timestamp":"2026-09-08T12:04:46.422Z","pid":1991745,"service":"api-test","runtimeDistributedStateEnabled":true}
+{"level":"INFO","message":"auth rate limiter using Redis backend","timestamp":"2026-09-08T12:04:46.422Z","pid":1991745,"service":"api-test","runtimeDistributedStateEnabled":true}
+✔ canonical repository-backed test runtime does not load legacy seed principals (6.148103ms)
+✔ repository-backed authentication fails closed when session synchronization is unavailable (3.81309ms)
+✔ catalog stores honor the in-memory persistence mode (15.935834ms)
+✔ tenant command envelope replays the complete HTTP response without repeating the mutation (5.253886ms)
+✔ cash drawer mutations receive the server tenant-command runner envelope (6.228503ms)
+✔ prescription execution replay rechecks authorization before returning the cached response (8.316657ms)
+✔ PIX attempt replay authenticates first and stores only a derived ledger key (2.923842ms)
+✔ auth login fails closed when the distributed rate-limit backend is unavailable (1.594784ms)
+✔ PIX attempt POST is rate limited before idempotency ledger execution (2.114573ms)
+✔ CORS rejects an origin outside the allowlist (0.994013ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.527Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.527Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.527Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.527Z","pid":1991745,"service":"api-test"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.528Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.528Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.528Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.528Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"http operational outcome","timestamp":"2026-09-08T12:04:46.529Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgt34_fe7660da9b6d9eb5de","method":"GET","route":"/health","role":"anonymous","operation":"forbidden","result":"error","statusCode":403,"durationMs":0,"requestId":"api_mtsmgt34_fe7660da9b6d9eb5de"}
+✔ HSTS is emitted only for secure production-like requests (104.786199ms)
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.531Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgt36_547ae4563ee3e57a47","error":{"errorType":"NotFoundError","message":"Report execution not found","stack":"NotFoundError: Report execution not found\n    at ReportsService.getExecution (file:///home/ricardo/cvg-his-v4/packages/modules/reports/dist/index.js:591:19)\n    at handleReportsRoutes (file:///home/ricardo/cvg-his-v4/apps/api/dist/routes/reports-routes.js:202:35)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:4034:25)\n    at async Object.command (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5209:33)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:33:30\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5161:43\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"NOT_FOUND","statusCode":404},"requestId":"api_mtsmgt36_547ae4563ee3e57a47"}
+{"level":"INFO","message":"http operational outcome","timestamp":"2026-09-08T12:04:46.531Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgt36_547ae4563ee3e57a47","method":"POST","route":"/reports/executions/:id/export","role":"admin","operation":"download","result":"error","statusCode":404,"durationMs":1,"requestId":"api_mtsmgt36_547ae4563ee3e57a47"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.535Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.535Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.535Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.535Z","pid":1991745,"service":"api-test"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.539Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using Redis backend","timestamp":"2026-09-08T12:04:46.539Z","pid":1991745,"service":"api-test","runtimeDistributedStateEnabled":true}
+{"level":"INFO","message":"auth rate limiter using Redis backend","timestamp":"2026-09-08T12:04:46.539Z","pid":1991745,"service":"api-test","runtimeDistributedStateEnabled":true}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.541Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgt3h_cce6e2ec65e287bd12","error":{"errorType":"AuthenticationError","message":"Authentication required","stack":"AuthenticationError: Authentication required\n    at requirePrincipal (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5238:19)\n    at file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3056:178\n    at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:65:14)\n    at runWithTenantContext (file:///home/ricardo/cvg-his-v4/packages/tenant-context/dist/context.js:4:16)\n    at requireEarlyPrincipal (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3056:63)\n    at handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3098:23)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)","code":"AUTHENTICATION_ERROR","statusCode":401},"requestId":"api_mtsmgt3h_cce6e2ec65e287bd12"}
+✔ production-like API refuses missing or mock providers (0.457944ms)
+✔ observability contract exposes request and trace correlation headers (0.894067ms)
+✔ operational metrics classify forbidden responses and downloads by normalized route and role (6.650149ms)
+✔ SLO endpoint exposes compliance, error budget and Prometheus gauges (3.828468ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.556Z","pid":1991745,"service":"api-test","provider":"PagarMePixAdapter"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.558Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.559Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.559Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.559Z","pid":1991745,"service":"api-test"}
+✔ chaos operations expose effective runtime state, runbooks and metrics (16.619187ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.561Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.561Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.561Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.561Z","pid":1991745,"service":"api-test"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.914Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.914Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.914Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.914Z","pid":1991745,"service":"api-test"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.916Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.917Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.917Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.917Z","pid":1991745,"service":"api-test"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.919Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.920Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.920Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.920Z","pid":1991745,"service":"api-test"}
+✔ production-like API rejects chaos mutations before executing an experiment (2.630164ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.923Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.923Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.923Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.923Z","pid":1991745,"service":"api-test"}
+✔ database-backed chaos authorization runs inside the authenticated tenant context (2.702238ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.931Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.931Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.931Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.931Z","pid":1991745,"service":"api-test"}
+✔ bootstrap serves extracted OpenAPI and docs routes over HTTP semantics (352.642129ms)
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.934Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgted_c9c4b2f849a4278629","error":{"errorType":"NotFoundError","message":"Encounter not found","stack":"NotFoundError: Encounter not found\n    at EncountersService.getOrThrow (file:///home/ricardo/cvg-his-v4/packages/modules/encounters/dist/index.js:62:19)\n    at requireEncounterForAccount (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5297:27)\n    at dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:4072:43)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5223:17\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"NOT_FOUND","statusCode":404},"requestId":"api_mtsmgted_c9c4b2f849a4278629"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.934Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.934Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.934Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.934Z","pid":1991745,"service":"api-test"}
+✔ bootstrap serves extracted owners and patients routes over HTTP semantics (2.849262ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.941Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.941Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.941Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.941Z","pid":1991745,"service":"api-test"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.943Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.944Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.944Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.944Z","pid":1991745,"service":"api-test"}
+✔ repository-backed server does not expose non-persisted owner and patient seeds by default (2.982161ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.947Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.947Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.947Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.947Z","pid":1991745,"service":"api-test"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.950Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtet_796cd0e11bae1e2241","error":{"errorType":"ConflictError","message":"Patient already has an appointment within a 30-minute window","stack":"ConflictError: Patient already has an appointment within a 30-minute window\n    at SchedulingService.createAppointment (file:///home/ricardo/cvg-his-v4/packages/modules/scheduling/dist/index.js:686:23)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async Object.command (file:///home/ricardo/cvg-his-v4/apps/api/dist/routes/scheduling-routes.js:67:33)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:33:30\n    at async handleSchedulingRoutes (file:///home/ricardo/cvg-his-v4/apps/api/dist/routes/scheduling-routes.js:59:29)\n    at async dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3319:25)\n    at async Object.command (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5209:33)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:33:30\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5161:43\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)","code":"CONFLICT","statusCode":409},"requestId":"api_mtsmgtet_796cd0e11bae1e2241"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.951Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.951Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.951Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.951Z","pid":1991745,"service":"api-test"}
+✔ bootstrap registers prescription routes over HTTP semantics (3.573623ms)
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.954Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtex_b85999b6ac2ad39f26","error":{"errorType":"ConflictError","message":"Patient already has an active encounter","stack":"ConflictError: Patient already has an active encounter\n    at EncountersService.openEncounter (file:///home/ricardo/cvg-his-v4/packages/modules/encounters/dist/index.js:162:19)\n    at EncountersService.openEncounterAuthoritatively (file:///home/ricardo/cvg-his-v4/packages/modules/encounters/dist/index.js:208:21)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3776:43)\n    at async Object.command (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5209:33)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:33:30\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5161:43\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"CONFLICT","statusCode":409},"requestId":"api_mtsmgtex_b85999b6ac2ad39f26"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.955Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.955Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.955Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.955Z","pid":1991745,"service":"api-test"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.955Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.955Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.955Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.955Z","pid":1991745,"service":"api-test"}
+✔ bootstrap serves administrative financial routes over HTTP semantics (7.891935ms)
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.959Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtf2_7fb74af51afa0aa7b0","error":{"errorType":"ConflictError","message":"Patient already has an active encounter","stack":"ConflictError: Patient already has an active encounter\n    at mapEncounterPersistenceError (file:///home/ricardo/cvg-his-v4/packages/modules/encounters/dist/repositories/database-encounter.repository.js:20:16)\n    at DatabaseEncounterRepository.create (file:///home/ricardo/cvg-his-v4/packages/modules/encounters/dist/repositories/database-encounter.repository.js:77:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///home/ricardo/cvg-his-v4/packages/modules/encounters/dist/index.js:363:21\n    at async file:///home/ricardo/cvg-his-v4/packages/modules/encounters/dist/index.js:116:17","code":"CONFLICT","statusCode":409},"requestId":"api_mtsmgtf2_7fb74af51afa0aa7b0"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.960Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.960Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.960Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.960Z","pid":1991745,"service":"api-test"}
+✔ bootstrap deletes encounters over HTTP semantics (3.109859ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.965Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.965Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.965Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.965Z","pid":1991745,"service":"api-test"}
+✔ diagnostic summaries and attachments preserve the authenticated account over HTTP (6.520197ms)
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.966Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtfa_125a72a41b1cf7b6d5","error":{"errorType":"ValidationError","message":"Field encounterId must be a non-empty string","stack":"ValidationError: Field encounterId must be a non-empty string\n    at requireNonEmptyString (file:///home/ricardo/cvg-his-v4/packages/shared/validation/dist/index.js:21:15)\n    at dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:4122:31)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5223:17\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"VALIDATION_ERROR","statusCode":400},"requestId":"api_mtsmgtfa_125a72a41b1cf7b6d5"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.967Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.967Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.967Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.967Z","pid":1991745,"service":"api-test"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.971Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtff_c8155ade704d5770c3","error":{"errorType":"NotFoundError","message":"Triage record not found","stack":"NotFoundError: Triage record not found\n    at TriageService.getOrThrow (file:///home/ricardo/cvg-his-v4/packages/modules/triage/dist/index.js:75:19)\n    at dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:4165:47)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5223:17\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"NOT_FOUND","statusCode":404},"requestId":"api_mtsmgtff_c8155ade704d5770c3"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.972Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtff_6c41bd453e0e0475d8","error":{"errorType":"NotFoundError","message":"Triage record not found","stack":"NotFoundError: Triage record not found\n    at TriageService.getOrThrow (file:///home/ricardo/cvg-his-v4/packages/modules/triage/dist/index.js:75:19)\n    at dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:4177:47)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async Object.command (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5209:33)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:33:30\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5161:43\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"NOT_FOUND","statusCode":404},"requestId":"api_mtsmgtff_6c41bd453e0e0475d8"}
+✔ bootstrap serves administrative report hubs over HTTP semantics (2.740379ms)
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.973Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtfg_e0025c247683869679","error":{"errorType":"NotFoundError","message":"Encounter not found","stack":"NotFoundError: Encounter not found\n    at EncountersService.getOrThrow (file:///home/ricardo/cvg-his-v4/packages/modules/encounters/dist/index.js:62:19)\n    at requireEncounterForAccount (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5297:27)\n    at dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:4137:50)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async Object.command (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5209:33)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:33:30\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5161:43\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"NOT_FOUND","statusCode":404},"requestId":"api_mtsmgtfg_e0025c247683869679"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.974Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.974Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.974Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.974Z","pid":1991745,"service":"api-test"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.977Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtfk_071426b1bbb262d4a3","error":{"errorType":"NotFoundError","message":"Diagnostic order not found","stack":"NotFoundError: Diagnostic order not found\n    at DiagnosticsService.getOrderForAccount (file:///home/ricardo/cvg-his-v4/packages/modules/diagnostics/dist/index.js:334:19)\n    at DiagnosticsService.getOrThrow (file:///home/ricardo/cvg-his-v4/packages/modules/diagnostics/dist/index.js:339:21)\n    at LaboratoryService.getOrder (file:///home/ricardo/cvg-his-v4/packages/modules/diagnostics/dist/laboratory.js:201:34)\n    at handleLaboratoryRoutes (file:///home/ricardo/cvg-his-v4/apps/api/dist/routes/laboratory-routes.js:533:26)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3291:25)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5223:17\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"NOT_FOUND","statusCode":404},"requestId":"api_mtsmgtfk_071426b1bbb262d4a3"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.978Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtfl_942a11138c7809be00","error":{"errorType":"NotFoundError","message":"Encounter not found","stack":"NotFoundError: Encounter not found\n    at EncountersService.getOrThrow (file:///home/ricardo/cvg-his-v4/packages/modules/encounters/dist/index.js:62:19)\n    at requireEncounterForAccount (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5297:27)\n    at dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:4072:43)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5223:17\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"NOT_FOUND","statusCode":404},"requestId":"api_mtsmgtfl_942a11138c7809be00"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.979Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtfm_383aa3ab8c59150c36","error":{"errorType":"NotFoundError","message":"Encounter not found","stack":"NotFoundError: Encounter not found\n    at EncountersService.getOrThrow (file:///home/ricardo/cvg-his-v4/packages/modules/encounters/dist/index.js:62:19)\n    at DiagnosticsService.getEncounterForAccount (file:///home/ricardo/cvg-his-v4/packages/modules/diagnostics/dist/index.js:239:44)\n    at DiagnosticsService.buildOrder (file:///home/ricardo/cvg-his-v4/packages/modules/diagnostics/dist/index.js:246:32)\n    at DiagnosticsService.createOrderAndPersist (file:///home/ricardo/cvg-his-v4/packages/modules/diagnostics/dist/index.js:281:28)\n    at DiagnosticsService.createOrderAndPersistForAccount (file:///home/ricardo/cvg-his-v4/packages/modules/diagnostics/dist/index.js:288:21)\n    at LaboratoryService.createOrderAndPersistForAccount (file:///home/ricardo/cvg-his-v4/packages/modules/diagnostics/dist/laboratory.js:246:38)\n    at handleLaboratoryRoutes (file:///home/ricardo/cvg-his-v4/apps/api/dist/routes/laboratory-routes.js:578:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3291:25)\n    at async Object.command (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5209:33)","code":"NOT_FOUND","statusCode":404},"requestId":"api_mtsmgtfm_383aa3ab8c59150c36"}
+✔ queue endpoints support check-in, list and call lifecycle over HTTP semantics (3.476512ms)
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.987Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtfn_8d17fa0ccf64c4eb3d","error":{"errorType":"NotFoundError","message":"Diagnostic order not found","stack":"NotFoundError: Diagnostic order not found\n    at DiagnosticsService.getOrderForAccount (file:///home/ricardo/cvg-his-v4/packages/modules/diagnostics/dist/index.js:334:19)\n    at DiagnosticsService.getOrThrow (file:///home/ricardo/cvg-his-v4/packages/modules/diagnostics/dist/index.js:339:21)\n    at requireAttachmentTargetForAccount (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5304:31)\n    at dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3545:31)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async Object.command (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5209:33)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:33:30\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5161:43\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"NOT_FOUND","statusCode":404},"requestId":"api_mtsmgtfn_8d17fa0ccf64c4eb3d"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.987Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.988Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.988Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.988Z","pid":1991745,"service":"api-test"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.990Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtfx_503732095c81c46167","error":{"errorType":"ValidationError","message":"Triage patientId must match encounter patientId","stack":"ValidationError: Triage patientId must match encounter patientId\n    at TriageService.createTriage (file:///home/ricardo/cvg-his-v4/packages/modules/triage/dist/index.js:100:19)\n    at dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:4138:53)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async Object.command (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5209:33)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:33:30\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5161:43\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"VALIDATION_ERROR","statusCode":400},"requestId":"api_mtsmgtfx_503732095c81c46167"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.991Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.991Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.991Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.991Z","pid":1991745,"service":"api-test"}
+✔ appointments reject duplicate time slot for the same patient over HTTP semantics (3.573313ms)
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:46.994Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtg2_342edce4ac94f22732","error":{"errorType":"ConflictError","message":"Closed encounters do not allow triage creation","stack":"ConflictError: Closed encounters do not allow triage creation\n    at TriageService.createTriage (file:///home/ricardo/cvg-his-v4/packages/modules/triage/dist/index.js:94:19)\n    at dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:4138:53)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async Object.command (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5209:33)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:33:30\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5161:43\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"CONFLICT","statusCode":409},"requestId":"api_mtsmgtg2_342edce4ac94f22732"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:46.996Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.996Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.996Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:46.996Z","pid":1991745,"service":"api-test"}
+✔ in-memory encounters expose active-patient conflicts through the stable HTTP envelope (4.02783ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.005Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.005Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.005Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.005Z","pid":1991745,"service":"api-test"}
+✔ database-origin active-patient conflicts map to HTTP 409 with safe details (5.498963ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.011Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.011Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.011Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.011Z","pid":1991745,"service":"api-test"}
+✔ triage patch updates the record and transitions encounter status over HTTP semantics (4.748855ms)
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:47.016Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtgn_f5628960f123db0239","error":{"errorType":"NotFoundError","message":"Encounter not found","stack":"NotFoundError: Encounter not found\n    at EncountersService.getOrThrow (file:///home/ricardo/cvg-his-v4/packages/modules/encounters/dist/index.js:62:19)\n    at requireEncounterForAccount (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5297:27)\n    at dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3341:29)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5223:17\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"NOT_FOUND","statusCode":404},"requestId":"api_mtsmgtgn_f5628960f123db0239"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:47.016Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtgn_033c6e43bb65965dd9","error":{"errorType":"NotFoundError","message":"Encounter not found","stack":"NotFoundError: Encounter not found\n    at EncountersService.getOrThrow (file:///home/ricardo/cvg-his-v4/packages/modules/encounters/dist/index.js:62:19)\n    at requireEncounterForAccount (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5297:27)\n    at dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3360:25)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5223:17\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"NOT_FOUND","statusCode":404},"requestId":"api_mtsmgtgn_033c6e43bb65965dd9"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:47.016Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtgn_ff9c181041739eeb42","error":{"errorType":"NotFoundError","message":"Encounter not found","stack":"NotFoundError: Encounter not found\n    at EncountersService.getOrThrow (file:///home/ricardo/cvg-his-v4/packages/modules/encounters/dist/index.js:62:19)\n    at requireEncounterForAccount (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5297:27)\n    at dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3463:25)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5223:17\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"NOT_FOUND","statusCode":404},"requestId":"api_mtsmgtgn_ff9c181041739eeb42"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:47.016Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtgn_41844a2314275ea4c5","error":{"errorType":"NotFoundError","message":"Clinical entry not found","stack":"NotFoundError: Clinical entry not found\n    at MedicalRecordsService.getEntryOrThrowAsync (file:///home/ricardo/cvg-his-v4/packages/modules/medical-records/dist/index.js:1037:27)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3428:43)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5223:17\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"NOT_FOUND","statusCode":404},"requestId":"api_mtsmgtgn_41844a2314275ea4c5"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:47.017Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtgn_d5f5c5308568d1fc7c","error":{"errorType":"NotFoundError","message":"Clinical entry not found","stack":"NotFoundError: Clinical entry not found\n    at MedicalRecordsService.getEntryOrThrowAsync (file:///home/ricardo/cvg-his-v4/packages/modules/medical-records/dist/index.js:1037:27)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3439:47)\n    at async Object.command (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5209:33)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.test.js:778:32\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:23:30\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5161:43\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"NOT_FOUND","statusCode":404},"requestId":"api_mtsmgtgn_d5f5c5308568d1fc7c"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:47.017Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtgn_84c4db381370efd3ae","error":{"errorType":"NotFoundError","message":"Clinical entry not found","stack":"NotFoundError: Clinical entry not found\n    at MedicalRecordsService.getEntryOrThrowAsync (file:///home/ricardo/cvg-his-v4/packages/modules/medical-records/dist/index.js:1037:27)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3439:47)\n    at async Object.command (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5209:33)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.test.js:778:32\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:23:30\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5161:43\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"NOT_FOUND","statusCode":404},"requestId":"api_mtsmgtgn_84c4db381370efd3ae"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.021Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.021Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.021Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.021Z","pid":1991745,"service":"api-test"}
+✔ triage rejects an explicitly empty encounter filter instead of broadening the collection (1.768437ms)
+{"level":"INFO","message":"Database initialization skipped (no DATABASE_URL provided), using in-memory repositories","timestamp":"2026-09-08T12:04:47.024Z","pid":1991745,"service":"bootstrap"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.025Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.025Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.025Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.025Z","pid":1991745,"service":"api-test"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:47.027Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtgy_1672ff213e461be669","error":{"errorType":"Error","message":"simulated tenant transaction rollback","stack":"Error: simulated tenant transaction rollback\n    at file:///home/ricardo/cvg-his-v4/apps/api/dist/server.test.js:781:27\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:23:30\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5161:43\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)"},"requestId":"api_mtsmgtgy_1672ff213e461be669"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.028Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.028Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.028Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.028Z","pid":1991745,"service":"api-test"}
+✔ triage HTTP collections and history remain isolated across authenticated accounts (6.806361ms)
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:47.030Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgth1_13c6ad7b0bc5f9cb42","error":{"errorType":"Error","message":"simulated tenant transaction rollback","stack":"Error: simulated tenant transaction rollback\n    at file:///home/ricardo/cvg-his-v4/apps/api/dist/server.test.js:781:27\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:23:30\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5161:43\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)"},"requestId":"api_mtsmgth1_13c6ad7b0bc5f9cb42"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.030Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.030Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.031Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.031Z","pid":1991745,"service":"api-test"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:47.032Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgth3_34da64046ebee0bd70","error":{"errorType":"Error","message":"simulated tenant transaction rollback","stack":"Error: simulated tenant transaction rollback\n    at file:///home/ricardo/cvg-his-v4/apps/api/dist/server.test.js:781:27\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:23:30\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5161:43\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)"},"requestId":"api_mtsmgth3_34da64046ebee0bd70"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.033Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.033Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.033Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.033Z","pid":1991745,"service":"api-test"}
+✔ diagnostic summaries, orders and attachments fail closed across authenticated accounts (13.584459ms)
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:47.037Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgth7_78146be52943778b79","error":{"errorType":"Error","message":"simulated tenant transaction rollback","stack":"Error: simulated tenant transaction rollback\n    at file:///home/ricardo/cvg-his-v4/apps/api/dist/server.test.js:781:27\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:23:30\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5161:43\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)"},"requestId":"api_mtsmgth7_78146be52943778b79"}
+✔ triage validation does not transition a reception encounter before persistence (3.823089ms)
+✔ triage creation rejects a closed encounter without speculative list or timeline state (4.364287ms)
+✔ quotes expose dedicated PDF generation over HTTP semantics (8.994611ms)
+✔ medical records expose revision history and archive semantics over HTTP (5.870636ms)
+✔ medical-record HTTP collections, timeline and mutations fail closed across accounts (10.47465ms)
+✔ medical-record attachment collections filter contaminated repository rows by account (2.477711ms)
+✔ bootstrap in-memory attachment deletes preserve the principal account scope (0.92763ms)
+✔ attachment clinical projection refreshes its cache after ambient transaction rollback (3.157487ms)
+✔ laboratory clinical projection refreshes its cache after ambient transaction rollback (2.638961ms)
+✔ laboratory aliases refresh their clinical projection after ambient transaction rollback (2.454727ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.041Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.041Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.041Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.041Z","pid":1991745,"service":"api-test"}
+✔ inpatient clinical projection refreshes its cache after ambient transaction rollback (8.310615ms)
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:47.044Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgthf_847e72d20c07a997c3","error":{"errorType":"Error","message":"simulated tenant transaction rollback","stack":"Error: simulated tenant transaction rollback\n    at file:///home/ricardo/cvg-his-v4/apps/api/dist/server.test.js:781:27\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runNextTicks (node:internal/process/task_queues:69:3)\n    at process.processImmediate (node:internal/timers:541:9)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:23:30\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5161:43\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)"},"requestId":"api_mtsmgthf_847e72d20c07a997c3"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.046Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.046Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.046Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.046Z","pid":1991745,"service":"api-test"}
+✔ medical-record HTTP mutation refreshes its cache after ambient transaction rollback (3.80781ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.066Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.066Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.066Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.066Z","pid":1991745,"service":"api-test"}
+✔ catalog endpoints respect frontend search filters over HTTP semantics (21.147069ms)
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:47.073Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgti8_af0ce949ac10a9ae35","error":{"errorType":"AuthenticationError","message":"Authentication required","stack":"AuthenticationError: Authentication required\n    at requirePrincipal (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5238:19)\n    at handleInternalEventsRoutes (file:///home/ricardo/cvg-his-v4/apps/api/dist/routes/internal-events-routes.js:146:33)\n    at dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5052:31)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runNextTicks (node:internal/process/task_queues:69:3)\n    at process.processImmediate (node:internal/timers:541:9)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5223:17\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"AUTHENTICATION_ERROR","statusCode":401},"requestId":"api_mtsmgti8_af0ce949ac10a9ae35"}
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:47.075Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtib_4e5515d2802ec3d660","error":{"errorType":"AppError","message":"Billing-linked PIX requests must use the encounter PIX attempt endpoint","stack":"AppError: Billing-linked PIX requests must use the encounter PIX attempt endpoint\n    at handlePixIntentCreate (file:///home/ricardo/cvg-his-v4/apps/api/dist/routes/payments-routes.js:83:15)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runNextTicks (node:internal/process/task_queues:69:3)\n    at process.processImmediate (node:internal/timers:541:9)\n    at async dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5077:25)\n    at async Object.command (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5209:33)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:33:30\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5161:43\n    at async withSpanContext (file:///home/ricardo/cvg-his-v4/apps/api/dist/tracing.js:98:12)\n    at async handleRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:3199:20)","code":"LEGACY_BILLING_PIX_DISABLED","statusCode":409},"requestId":"api_mtsmgtib_4e5515d2802ec3d660"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.080Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.080Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.080Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.080Z","pid":1991745,"service":"api-test"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.082Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.082Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.082Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.082Z","pid":1991745,"service":"api-test"}
+✔ API keys unlock integration catalog and PIX intent creation over HTTP semantics (13.801353ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.084Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.084Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.084Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.084Z","pid":1991745,"service":"api-test"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.088Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.088Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.088Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.088Z","pid":1991745,"service":"api-test"}
+✔ internal event inspection applies the configured audit ABAC policy to an admin principal (2.036127ms)
+{"level":"ERROR","message":"request failed","timestamp":"2026-09-08T12:04:47.090Z","pid":1991745,"service":"api-test","correlationId":"api_mtsmgtip_f2873f18c831b9eaf6","error":{"errorType":"ForbiddenError","message":"Policy 'Administrative Outbox Replay' — Deny non-admin roles from reprocessing outbox events","stack":"ForbiddenError: Policy 'Administrative Outbox Replay' — Deny non-admin roles from reprocessing outbox events\n    at AbacEngine.enforce (file:///home/ricardo/cvg-his-v4/packages/modules/access-control/dist/abac.js:722:19)\n    at enforceAbac (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:2796:20)\n    at enforceReprocessAbac (file:///home/ricardo/cvg-his-v4/apps/api/dist/routes/internal-events-routes.js:42:5)\n    at handleInternalEventsRoutes (file:///home/ricardo/cvg-his-v4/apps/api/dist/routes/internal-events-routes.js:172:9)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runNextTicks (node:internal/process/task_queues:69:3)\n    at process.processImmediate (node:internal/timers:541:9)\n    at async dispatchRequest (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5052:25)\n    at async Object.command (file:///home/ricardo/cvg-his-v4/apps/api/dist/server.js:5209:33)\n    at async file:///home/ricardo/cvg-his-v4/apps/api/dist/helpers/tenant-command.js:33:30","code":"FORBIDDEN","statusCode":403},"requestId":"api_mtsmgtip_f2873f18c831b9eaf6"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.091Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.091Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.091Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.091Z","pid":1991745,"service":"api-test"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.095Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.095Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.095Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.095Z","pid":1991745,"service":"api-test"}
+✔ audit event listing applies the configured audit ABAC policy to an admin principal (1.961928ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.098Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.098Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.098Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.098Z","pid":1991745,"service":"api-test"}
+✔ outbox reprocess applies the configured admin-only audit.write ABAC policy (3.360586ms)
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.100Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.100Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.100Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.101Z","pid":1991745,"service":"api-test"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.102Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.102Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.102Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.102Z","pid":1991745,"service":"api-test"}
+[ConsumerRegistry] Registered 3 domain consumer(s): payments, billing, webhooks
+{"level":"INFO","message":"payment gateway initialized","timestamp":"2026-09-08T12:04:47.104Z","pid":1991745,"service":"api-test","provider":"LocalPixPaymentGateway"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.104Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.104Z","pid":1991745,"service":"api-test"}
+{"level":"INFO","message":"auth rate limiter using in-memory backend","timestamp":"2026-09-08T12:04:47.104Z","pid":1991745,"service":"api-test"}
+✔ outbox reprocess denies a non-admin audit.write principal at the HTTP ABAC boundary (3.269536ms)
+✔ POST /webhooks/whatsapp/inbound confirms a scheduled appointment (3.880195ms)
+✔ POST /webhooks/whatsapp/inbound cancels a scheduled appointment (2.792266ms)
+✔ POST /webhooks/whatsapp/inbound with REMARCAR returns AGUARDANDO REMARCA (2.616418ms)
+✔ POST /webhooks/whatsapp/inbound with malformed payload returns OK (1.739684ms)
+✔ POST /webhooks/whatsapp/inbound returns CONFIRMADO even if appointment not found (fail-safe) (1.653483ms)
+✔ POST /webhooks/whatsapp/inbound CONFIRM returns CONFIRMADO (alias) (2.761649ms)
+✔ reads setup state through the global installation capability, not tenant-scoped users (1.551793ms)
+✔ passes a complete canonical access catalog to one atomic database capability (38.600052ms)
+✔ keeps the laboratory provider ingress permission in the first-run catalog (0.339073ms)
+✔ rolls back the installer capability transaction when the database rejects the probe (0.534336ms)
+✔ maps the database singleton conflict to the setup domain error (37.472229ms)
+✔ fails closed instead of generating a token when none is configured (1.594153ms)
+✔ blank configuration remains disabled on every API instance (1.184829ms)
+✔ uses a configured token verbatim (0.452664ms)
+✔ rejects a configured token that is too short to resist guessing (0.711337ms)
+✔ rejects an obviously low-entropy token even when it is long (0.462793ms)
+✔ rejects an obviously periodic token even when it has enough length and distinct characters (0.282607ms)
+✔ accepts only the exact token (0.457833ms)
+✔ never includes the configured secret in validation errors (0.296062ms)
+✔ rejects non-string candidates without throwing (1.179228ms)
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.651Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.651Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.652Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.652Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.653Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.653Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.653Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.653Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.653Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.653Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.653Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.653Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.653Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.653Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.653Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.653Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.654Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.653Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.654Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.654Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.654Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.654Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.654Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.654Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.654Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.654Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.654Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.654Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.654Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.654Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.654Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.654Z"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.658Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/mfa"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.658Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/mfa_version"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.659Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/mfa_keyring"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.659Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/redis"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.659Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/nfse"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.659Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/nfse"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.660Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/nfse"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.660Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/api_setup"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.660Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/pix_webhook"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.660Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/laboratory_provider"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.669Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.669Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.669Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.669Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.669Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.669Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.669Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.669Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.669Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.669Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.669Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.669Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.669Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.669Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.670Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.670Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.670Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.670Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.670Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.670Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.670Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.670Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.670Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.670Z"}
+{"level":"INFO","message":"Vault token renewed","timestamp":"2026-09-08T12:04:45.670Z","pid":1991806,"service":"secrets:vault","expiresAt":"2026-09-08T12:09:45.670Z"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.671Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/mfa"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.671Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/mfa_version"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.671Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/mfa_keyring"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.671Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/redis"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.671Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/nfse"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.671Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/nfse"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.671Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/nfse"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.671Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/api_setup"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.671Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/pix_webhook"}
+{"level":"WARN","message":"secret not found in Vault","timestamp":"2026-09-08T12:04:45.671Z","pid":1991806,"service":"secrets:vault","path":"secret/data/cvg-his-v2/production/laboratory_provider"}
+✔ buildApiManagedSecretDescriptors maps API secrets to environment-scoped Vault paths (2.475546ms)
+✔ resolveApiStartup resolves managed secrets from Vault before validating API config (75.721878ms)
+✔ resolveApiStartup preserves explicit env secrets instead of overriding them from Vault (5.768967ms)
+✔ resolveApiStartup fails closed when Vault is enabled without production configuration (1.452118ms)
+✔ buildSecretRotationStatusReport summarizes readiness for audited secret rotation (0.506885ms)
+ℹ tests 576
+ℹ suites 0
+ℹ pass 576
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5717.492579

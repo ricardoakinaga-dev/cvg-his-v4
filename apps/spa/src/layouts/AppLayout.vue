@@ -11,7 +11,12 @@
     <header class="topbar" aria-label="Cabeçalho do sistema">
       <div class="topbar__brand-pill">
         <span class="topbar__brand-logo">
-          <img src="/art/hospital-guarapiranga-logo.jpeg" alt="CVG Pulse · Centro Veterinário Guarapiranga" width="300" height="500" />
+          <img
+            src="/art/hospital-guarapiranga-logo.jpeg"
+            alt="CVG Pulse · Centro Veterinário Guarapiranga"
+            width="300"
+            height="500"
+          />
         </span>
         <div class="topbar__brand-copy" aria-hidden="true">
           <span class="topbar__brand-kicker">CVG PULSE</span>
@@ -52,6 +57,7 @@
 
       <div class="topbar__actions">
         <button
+          v-if="canAccessNavigationPath('/notifications', sessionPermissionCodes)"
           class="topbar__icon-btn topbar__icon-btn--notifications"
           type="button"
           aria-label="Notificações"
@@ -62,6 +68,7 @@
         </button>
 
         <button
+          v-if="canAccessNavigationPath('/notifications/whatsapp', sessionPermissionCodes)"
           class="topbar__icon-btn topbar__icon-btn--whatsapp"
           type="button"
           aria-label="WhatsApp operacional"
@@ -336,13 +343,24 @@
       @click="toggleSidebar"
     />
 
-    <main id="main-content" class="workspace" aria-label="Conteúdo principal" tabindex="-1">
+    <main
+      id="main-content"
+      class="workspace"
+      :class="{
+        'workspace--page-header': route.meta.pageOwnsHeader === true,
+        'workspace--success-flash-pending': successFlashPending || successFlashMessage
+      }"
+      aria-label="Conteúdo principal"
+      tabindex="-1"
+    >
       <div class="workspace__utility-bar">
-        <div class="workspace__context">
+        <div v-if="route.meta.pageOwnsHeader !== true" class="workspace__context">
           <span class="workspace__overline"
             >Operations OS <span aria-hidden="true">/</span> {{ currentAreaLabel }}</span
           >
-          <strong class="workspace__title">{{ currentPageTitle }}</strong>
+          <strong v-if="route.meta.pageOwnsHeader !== true" class="workspace__title">{{
+            currentPageTitle
+          }}</strong>
           <nav
             v-if="shellBreadcrumbs.length > 1"
             class="workspace__breadcrumbs"
@@ -393,12 +411,24 @@
         </div>
       </div>
 
-      <section ref="workspaceBodyEl" class="workspace__body">
+      <div v-if="successFlashMessage" class="workspace__success-flash">
+        <DsAlert variant="success" dismissible @dismiss="clearSuccessFlash">
+          {{ successFlashMessage }}
+        </DsAlert>
+      </div>
+
+      <section ref="workspaceBodyEl" class="workspace__body" :aria-label="currentPageTitle">
         <router-view />
       </section>
     </main>
 
-    <DsModal :open="commandPaletteOpen" title="Buscar rotina" size="lg" initial-focus="#command-palette-input" @close="closePalette">
+    <DsModal
+      :open="commandPaletteOpen"
+      title="Buscar rotina"
+      size="lg"
+      initial-focus="#command-palette-input"
+      @close="closePalette"
+    >
       <div class="command-palette">
         <div class="command-palette__search">
           <label class="sr-only" for="command-palette-input">Buscar módulo, rota ou ação</label>
@@ -501,11 +531,18 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
-import { createUnsavedChangesCoordinator, unsavedChangesCoordinatorKey } from '@/composables/unsavedChangesCoordinator';
+import {
+  createUnsavedChangesCoordinator,
+  unsavedChangesCoordinatorKey
+} from '@/composables/unsavedChangesCoordinator';
+import { useRouteFocus } from '@/composables/useRouteFocus';
+import { agendaContextKey } from '@/pages/appointments/agendaContext';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
 import { useAppStore } from '@/stores/app';
+import { apiRequest } from '@/services/api';
+import { canAccessNavigationItem, canAccessNavigationPath } from '@/navigation-permissions';
 import {
   enterpriseConsole,
   findMatchingNavGroup,
@@ -518,13 +555,24 @@ import {
   type AppNavSection
 } from '@/navigation';
 import IconSymbol from '@/components/IconSymbol.vue';
+import {
+  cancelPendingSuccessFlashActivation,
+  useSuccessFlash
+} from '@/composables/successRedirect';
+import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 
 const route = useRoute();
 const router = useRouter();
+provide(agendaContextKey, { current: null });
 const authStore = useAuthStore();
 const themeStore = useThemeStore();
 const appStore = useAppStore();
+const {
+  message: successFlashMessage,
+  pending: successFlashPending,
+  clear: clearSuccessFlash
+} = useSuccessFlash();
 
 const searchQuery = ref('');
 const commandPaletteOpen = ref(false);
@@ -538,12 +586,24 @@ const sidebarSearchInputEl = ref<HTMLInputElement | null>(null);
 const sidebarFocusReturnTarget = ref<HTMLElement | null>(null);
 const sidebarNavEl = ref<HTMLElement | null>(null);
 const workspaceBodyEl = ref<HTMLElement | null>(null);
+const sessionPermissionCodes = ref<string[] | null>(null);
+useRouteFocus(workspaceBodyEl);
 let navigationAnimation: Animation | undefined;
+let navigationAnimationGeneration = 0;
+let layoutMounted = false;
+let sessionLoadGeneration = 0;
 const isSidebarScrolled = ref(false);
 const isSidebarNearBottom = ref(false);
 const compactViewportQuery = window.matchMedia?.('(max-width: 860px)');
 const reducedMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
 const isCompactViewport = ref(compactViewportQuery?.matches ?? false);
+
+function motionDuration(value: string, fallback: number) {
+  const normalized = value.trim().toLowerCase();
+  const amount = Number.parseFloat(normalized);
+  if (!Number.isFinite(amount)) return fallback;
+  return normalized.endsWith('s') && !normalized.endsWith('ms') ? amount * 1000 : amount;
+}
 
 interface CommandAction {
   id: string;
@@ -551,6 +611,7 @@ interface CommandAction {
   description: string;
   icon: string;
   shortcut?: string;
+  route?: string;
   action: () => void;
 }
 
@@ -559,8 +620,28 @@ interface CommandRouteItem extends AppNavItem {
   shortcut: string;
 }
 
+interface SessionAccessResponse {
+  access?: {
+    permissionCodes?: string[];
+  };
+}
+
 const currentLocation = computed(() => findMatchingNavLocation(route.path));
 const matchingNavGroup = computed(() => findMatchingNavGroup(route.path) ?? navGroups[0]!);
+const workspaceIdentity = computed(() => {
+  const accountId = authStore.user.accountId;
+  const userId = authStore.user.id;
+  return accountId && userId ? `${accountId}:${userId}` : null;
+});
+
+watch(
+  workspaceIdentity,
+  (identity) => {
+    appStore.setWorkspaceIdentity(identity);
+    if (!identity) sessionPermissionCodes.value = [];
+  },
+  { immediate: true, flush: 'sync' }
+);
 
 const currentAreaLabel = computed(() => {
   if (currentLocation.value?.area === 'enterprise') {
@@ -622,64 +703,79 @@ const shellBreadcrumbs = computed(() => {
 const favoriteTargetPath = computed(() => currentLocation.value?.item.path ?? route.path);
 const isCurrentRouteFavorite = computed(() => appStore.isFavoriteRoute(favoriteTargetPath.value));
 
-const commandActions = computed<CommandAction[]>(() => [
-  {
-    id: 'toggle-theme',
-    label: 'Alternar tema',
-    description: themeStore.theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro',
-    icon: themeStore.theme === 'dark' ? 'sun' : 'moon',
-    shortcut: 'T',
-    action: () => themeStore.toggle()
-  },
-  {
-    id: 'toggle-sidebar',
-    label: 'Recolher/Expandir menu',
-    description: appStore.sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral',
-    icon: 'panel',
-    shortcut: 'M',
-    action: () => toggleSidebar()
-  },
-  {
-    id: 'toggle-favorite',
-    label: isCurrentRouteFavorite.value ? 'Remover favorito da rota atual' : 'Favoritar rota atual',
-    description: favoriteTargetPath.value,
-    icon: 'star',
-    shortcut: 'F',
-    action: () => toggleCurrentFavoriteRoute()
-  },
-  {
-    id: 'create-patient',
-    label: 'Novo paciente',
-    description: 'Cadastrar um novo paciente no sistema',
-    icon: 'plus',
-    shortcut: 'P',
-    action: () => navigateTo('/patients/new')
-  },
-  {
-    id: 'create-appointment',
-    label: 'Novo agendamento',
-    description: 'Criar um novo agendamento',
-    icon: 'calendar',
-    shortcut: 'A',
-    action: () => navigateTo('/appointments/new')
-  },
-  {
-    id: 'open-support',
-    label: 'Abrir suporte operacional',
-    description: 'Levar para a busca mestre e rotinas de ajuda',
-    icon: 'life-buoy',
-    shortcut: '?',
-    action: () => navigateTo('/master-search')
-  },
-  {
-    id: 'logout',
-    label: 'Sair do sistema',
-    description: 'Encerrar sessão e redirecionar para login',
-    icon: 'log-out',
-    shortcut: 'Sair',
-    action: () => handleLogout()
-  }
-]);
+const commandActions = computed<CommandAction[]>(() => {
+  const permissionCodes = sessionPermissionCodes.value;
+  if (permissionCodes === null) return [];
+
+  const actions: CommandAction[] = [
+    {
+      id: 'toggle-theme',
+      label: 'Alternar tema',
+      description: themeStore.theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro',
+      icon: themeStore.theme === 'dark' ? 'sun' : 'moon',
+      shortcut: 'T',
+      action: () => themeStore.toggle()
+    },
+    {
+      id: 'toggle-sidebar',
+      label: 'Recolher/Expandir menu',
+      description: appStore.sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral',
+      icon: 'panel',
+      shortcut: 'M',
+      action: () => toggleSidebar()
+    },
+    {
+      id: 'toggle-favorite',
+      label: isCurrentRouteFavorite.value
+        ? 'Remover favorito da rota atual'
+        : 'Favoritar rota atual',
+      description: favoriteTargetPath.value,
+      icon: 'star',
+      shortcut: 'F',
+      route: favoriteTargetPath.value,
+      action: () => toggleCurrentFavoriteRoute()
+    },
+    {
+      id: 'create-patient',
+      label: 'Novo paciente',
+      description: 'Cadastrar um novo paciente no sistema',
+      icon: 'plus',
+      shortcut: 'P',
+      route: '/patients/new',
+      action: () => navigateTo('/patients/new')
+    },
+    {
+      id: 'create-appointment',
+      label: 'Novo agendamento',
+      description: 'Criar um novo agendamento',
+      icon: 'calendar',
+      shortcut: 'A',
+      route: '/appointments/new',
+      action: () => navigateTo('/appointments/new')
+    },
+    {
+      id: 'open-support',
+      label: 'Abrir suporte operacional',
+      description: 'Levar para a busca mestre e rotinas de ajuda',
+      icon: 'life-buoy',
+      shortcut: '?',
+      route: '/master-search',
+      action: () => navigateTo('/master-search')
+    },
+    {
+      id: 'logout',
+      label: 'Sair do sistema',
+      description: 'Encerrar sessão e redirecionar para login',
+      icon: 'log-out',
+      shortcut: 'Sair',
+      action: () => handleLogout()
+    }
+  ];
+
+  return actions.filter(
+    (action) => !action.route || canAccessNavigationPath(action.route, permissionCodes)
+  );
+});
 
 function itemMatchesQuery(
   item: AppNavItem,
@@ -697,95 +793,101 @@ function itemMatchesQuery(
   );
 }
 
-function filterGroup(group: AppNavGroup, query: string): AppNavGroup | null {
-  if (!query) return group;
+function filterGroup(
+  group: AppNavGroup,
+  query: string,
+  permissionCodes: readonly string[] | null
+): AppNavGroup | null {
+  if (permissionCodes === null) return null;
 
   const groupMatches =
     group.label.toLowerCase().includes(query) || group.description.toLowerCase().includes(query);
   const nextSections = group.sections
     .map((section) => {
-      if (groupMatches || section.label.toLowerCase().includes(query)) {
-        return section;
+      const allowedItems = section.items.filter((item) =>
+        canAccessNavigationItem(item, permissionCodes)
+      );
+      if (allowedItems.length === 0) return null;
+
+      if (!query || groupMatches || section.label.toLowerCase().includes(query)) {
+        return { ...section, items: allowedItems };
       }
 
-      const items = section.items.filter((item) =>
+      const items = allowedItems.filter((item) =>
         itemMatchesQuery(item, query, group.label, section.label)
       );
       return items.length > 0 ? { ...section, items } : null;
     })
     .filter((section): section is AppNavSection => Boolean(section));
 
-  if (groupMatches) return group;
   return nextSections.length > 0 ? { ...group, sections: nextSections } : null;
 }
 
 const filteredGroups = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
+  if (sessionPermissionCodes.value === null) return [];
+
   return navGroups
-    .map((group) => filterGroup(group, query))
+    .map((group) => filterGroup(group, query, sessionPermissionCodes.value))
     .filter((group): group is AppNavGroup => Boolean(group));
 });
 
 const filteredEnterpriseSections = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
-  if (!query) {
-    return enterpriseConsole.sections;
-  }
-
-  return enterpriseConsole.sections
-    .map((section) => {
-      if (
-        enterpriseConsole.label.toLowerCase().includes(query) ||
-        section.label.toLowerCase().includes(query)
-      ) {
-        return section;
-      }
-
-      const items = section.items.filter((item) =>
-        itemMatchesQuery(item, query, enterpriseConsole.label, section.label)
-      );
-      return items.length > 0 ? { ...section, items } : null;
-    })
-    .filter((section): section is AppNavSection => Boolean(section));
+  return filterGroup(enterpriseConsole, query, sessionPermissionCodes.value)?.sections ?? [];
 });
 
 const favoriteLinks = computed(() =>
   appStore.favoriteRoutes
-    .map((path) => findNavItem(path))
+    .filter((path) => canAccessNavigationPath(path, sessionPermissionCodes.value))
+    .map((path) => findNavItem(path) ?? findMatchingNavItem(path))
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
 );
 
 const recentLinks = computed(() =>
   appStore.recentRoutes
+    .filter((routeItem) => canAccessNavigationPath(routeItem.path, sessionPermissionCodes.value))
     .map((routeItem) => {
-      const navItem = findNavItem(routeItem.path);
+      const navItem = findNavItem(routeItem.path) ?? findMatchingNavItem(routeItem.path);
       return navItem
-        ? { ...navItem, label: routeItem.label, icon: routeItem.icon ?? navItem.icon }
-        : routeItem;
+        ? {
+            ...navItem,
+            path: routeItem.path,
+            label: routeItem.label,
+            icon: routeItem.icon ?? navItem.icon
+          }
+        : null;
     })
-    .filter((item) => Boolean(item?.path))
+    .filter((item): item is NonNullable<typeof item> => Boolean(item))
 );
 
 const commandItems = computed<CommandRouteItem[]>(() => {
+  const permissionCodes = sessionPermissionCodes.value;
+  if (permissionCodes === null) return [];
+
   const mainItems = navGroups.flatMap((group) =>
     group.sections.flatMap((section) =>
-      section.items.map((item) => ({
-        ...item,
-        groupLabel: `${group.label} · ${section.label}`,
-        shortcut:
-          item.path === '/'
-            ? 'Home'
-            : (item.path.split('/').filter(Boolean).slice(-1)[0] ?? item.label)
-      }))
+      section.items
+        .filter((item) => canAccessNavigationItem(item, permissionCodes))
+        .map((item) => ({
+          ...item,
+          groupLabel: `${group.label} · ${section.label}`,
+          shortcut:
+            item.path === '/'
+              ? 'Home'
+              : (item.path.split('/').filter(Boolean).slice(-1)[0] ?? item.label)
+        }))
     )
   );
 
   const enterpriseItems = enterpriseConsole.sections.flatMap((section) =>
-    section.items.map((item) => ({
-      ...item,
-      groupLabel: `${enterpriseConsole.label} · ${section.label}`,
-      shortcut: item.path.split('/').filter(Boolean).slice(-1)[0] ?? item.label
-    }))
+    section.items
+      .filter((item) => canAccessNavigationItem(item, permissionCodes))
+      .map((item) => ({
+        ...item,
+        groupLabel: `${enterpriseConsole.label} · ${section.label}`,
+        shortcut: item.path.split('/').filter(Boolean).slice(-1)[0] ?? item.label
+      }))
   );
 
   return [...mainItems, ...enterpriseItems];
@@ -906,6 +1008,7 @@ function toggleSidebar() {
 
 function navigateTo(path: string) {
   closePalette();
+  if (!canAccessNavigationPath(path, sessionPermissionCodes.value)) return;
   void router.push(path);
 }
 
@@ -928,6 +1031,7 @@ function goForward() {
 }
 
 function executeAction(item: CommandAction) {
+  if (item.route && !canAccessNavigationPath(item.route, sessionPermissionCodes.value)) return;
   closePalette();
   item.action();
 }
@@ -959,6 +1063,7 @@ function moveSelectionDown() {
 }
 
 function toggleCurrentFavoriteRoute() {
+  if (!canAccessNavigationPath(favoriteTargetPath.value, sessionPermissionCodes.value)) return;
   appStore.toggleFavoriteRoute(favoriteTargetPath.value);
 }
 
@@ -1061,17 +1166,61 @@ function scrollActiveSidebarItemIntoView() {
   });
 }
 
+async function loadSessionPermissions() {
+  const generation = ++sessionLoadGeneration;
+  const token = authStore.accessToken;
+  if (!token) {
+    sessionPermissionCodes.value = [];
+    return;
+  }
+
+  sessionPermissionCodes.value = null;
+  try {
+    const session = await apiRequest<SessionAccessResponse>('/auth/session');
+    if (
+      !layoutMounted ||
+      generation !== sessionLoadGeneration ||
+      authStore.accessToken !== token
+    ) {
+      return;
+    }
+    sessionPermissionCodes.value = session.access?.permissionCodes ?? [];
+  } catch {
+    if (
+      layoutMounted &&
+      generation === sessionLoadGeneration &&
+      authStore.accessToken === token
+    ) {
+      // Persisted navigation is presentation state; fail closed if access cannot be confirmed.
+      sessionPermissionCodes.value = [];
+    }
+  }
+}
+
+watch(
+  () => authStore.accessToken,
+  () => {
+    if (layoutMounted) void loadSessionPermissions();
+  },
+  { flush: 'sync' }
+);
+
 onMounted(async () => {
+  layoutMounted = true;
   window.addEventListener('keydown', onKeydown);
   compactViewportQuery?.addEventListener('change', syncCompactViewport);
   sidebarNavEl.value?.addEventListener('scroll', syncSidebarScrollState, { passive: true });
   syncHistoryPosition();
+  await loadSessionPermissions();
   await nextTick();
   scrollActiveSidebarItemIntoView();
   syncSidebarScrollState();
 });
 
 onBeforeUnmount(() => {
+  layoutMounted = false;
+  sessionLoadGeneration += 1;
+  navigationAnimationGeneration += 1;
   navigationAnimation?.cancel();
   window.removeEventListener('keydown', onKeydown);
   compactViewportQuery?.removeEventListener('change', syncCompactViewport);
@@ -1098,12 +1247,24 @@ watch(totalItems, (nextTotal) => {
 watch(
   () => route.path,
   async () => {
+    const animationGeneration = ++navigationAnimationGeneration;
     navigationAnimation?.cancel();
+    navigationAnimation = undefined;
     await nextTick();
+    if (animationGeneration !== navigationAnimationGeneration) return;
     if (reducedMotionQuery?.matches) return;
-    navigationAnimation = workspaceBodyEl.value?.animate?.(
-      [{ opacity: 0.72, transform: 'translateY(4px)' }, { opacity: 1, transform: 'translateY(0)' }],
-      { duration: 180, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+    const body = workspaceBodyEl.value;
+    if (!body) return;
+    const styles = getComputedStyle(body);
+    const distance = styles.getPropertyValue('--motion-distance-route').trim() || '6px';
+    const easing =
+      styles.getPropertyValue('--motion-ease-enter').trim() || 'cubic-bezier(0.2, 0.8, 0.2, 1)';
+    navigationAnimation = body.animate?.(
+      [
+        { opacity: 0.72, transform: `translateY(${distance})` },
+        { opacity: 1, transform: 'translateY(0)' }
+      ],
+      { duration: motionDuration(styles.getPropertyValue('--motion-duration-route'), 160), easing }
     );
   }
 );
@@ -1111,6 +1272,9 @@ watch(
 watch(
   () => route.fullPath,
   async () => {
+    // A later route must revoke a success that is still waiting for the
+    // destination paint boundary; otherwise A→B→C could announce B on C.
+    cancelPendingSuccessFlashActivation();
     syncHistoryPosition();
     await nextTick();
     scrollActiveSidebarItemIntoView();
@@ -1126,7 +1290,8 @@ async function handleLogout() {
   if (logoutPending) return;
   logoutPending = true;
   try {
-    if (!await unsavedChanges.confirmAndDiscard()) return;
+    if (!(await unsavedChanges.confirmAndDiscard())) return;
+    appStore.clearWorkspaceState();
     authStore.logout();
     await router.replace('/login');
   } finally {
@@ -1820,7 +1985,7 @@ async function handleLogout() {
   box-shadow: 0 8px 18px rgba(6, 25, 38, 0.16);
 }
 
- .topbar__brand-logo img {
+.topbar__brand-logo img {
   position: absolute;
   width: 100%;
   height: auto;
@@ -2016,6 +2181,18 @@ async function handleLogout() {
   min-width: 0;
   padding: clamp(18px, 2.4vw, 32px);
   background: var(--shell-bg);
+}
+
+.workspace__success-flash {
+  padding: 16px clamp(18px, 2.4vw, 32px) 0;
+  background: var(--shell-bg);
+}
+
+/* The shell owns success announcements while a redirect is in flight or the
+ * persisted flash is visible. This keeps a form's local success alert from
+ * being announced a second time by the destination shell. */
+.workspace--success-flash-pending .workspace__body :deep(.ds-alert--success) {
+  display: none;
 }
 
 .command-palette {
@@ -2496,7 +2673,45 @@ async function handleLogout() {
   }
 }
 /* The page header owns its title; retain the utility title for headerless pages. */
-.workspace:has(.app-page-header) .workspace__title { display: none; }
-.workspace:has(.app-page-header) .workspace__utility-bar { align-items: center; padding-block: 8px; }
-.workspace:has(.app-page-header) .workspace__breadcrumbs { display: flex; }
+.workspace:has(.app-page-header) .workspace__title {
+  display: none;
+}
+.workspace:has(.app-page-header) .workspace__utility-bar {
+  align-items: center;
+  padding-block: 8px;
+}
+.workspace:has(.app-page-header) .workspace__breadcrumbs {
+  display: flex;
+}
+.workspace--page-header .workspace__title {
+  display: none;
+}
+.workspace--page-header .workspace__utility-bar {
+  align-items: center;
+  padding-block: 8px;
+}
+.workspace--page-header .workspace__breadcrumbs {
+  display: flex;
+}
+
+@media (max-width: 260px) {
+  /* At extreme zoom-proxy widths the action rail already consumes the useful
+     horizontal space. Keep the overline as the compact context and remove the
+     optional breadcrumb row instead of allowing one-character wrapping. */
+  .workspace__breadcrumbs,
+  .workspace:has(.app-page-header) .workspace__breadcrumbs,
+  .workspace--page-header .workspace__breadcrumbs {
+    display: none;
+  }
+
+  .workspace__utility-bar {
+    gap: 6px;
+    padding-inline: 8px;
+  }
+
+  .workspace__context {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
 </style>

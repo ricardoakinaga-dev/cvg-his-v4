@@ -104,8 +104,9 @@ test.describe('Relatório de entradas de compras com referência de NF', () => {
       await expect(page.getByRole('cell', { name: 'Aprovada', exact: true }).first()).toBeVisible();
       await expect(page.getByRole('cell', { name: 'Recebida', exact: true }).first()).toBeVisible();
 
-      await page.getByLabel('De', { exact: true }).fill('2026-05-01');
-      await page.getByLabel('Até', { exact: true }).fill('2026-05-31');
+      await page.getByText('Filtros da consulta', { exact: true }).click();
+      await page.getByLabel('Compras de', { exact: true }).fill('2026-05-01');
+      await page.getByLabel('Compras até', { exact: true }).fill('2026-05-31');
       await page.getByLabel('Fornecedor ou referência NF', { exact: true }).fill(purchases.search);
 
       const filteredExecutionResponse = page.waitForResponse(
@@ -170,11 +171,6 @@ test.describe('Relatório de entradas de compras com referência de NF', () => {
       ).toBe(false);
       expect(inventoryRequests).toEqual([]);
 
-      const exportExecutionResponse = page.waitForResponse(
-        (response) =>
-          response.url().endsWith('/api/reports/executions') &&
-          response.request().method() === 'POST'
-      );
       const exportResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/reports/executions/') &&
@@ -183,14 +179,13 @@ test.describe('Relatório de entradas de compras com referência de NF', () => {
       );
       const download = page.waitForEvent('download');
       await page.getByRole('button', { name: 'Exportar CSV', exact: true }).click();
-      const [exportExecution, exported, downloaded] = await Promise.all([
-        exportExecutionResponse.then((response) => response.json()),
+      const [exported, downloaded] = await Promise.all([
         exportResponse.then((response) => response.json()),
         download
       ]);
 
-      expect(exportExecution.reportId).toBe('inventory-invoices');
-      expect(exportExecution.rowCount).toBe(2);
+      expect(filteredExecution.reportId).toBe('inventory-invoices');
+      expect(filteredExecution.rowCount).toBe(2);
       expect(exported.format).toBe('csv');
       expect(exported.content).toContain(purchases.oldInvoice);
       expect(exported.content).toContain(purchases.newInvoice);

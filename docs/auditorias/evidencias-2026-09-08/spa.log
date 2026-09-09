@@ -1,0 +1,13 @@
+
+> @cvg-his-v2/spa@0.1.0 test /home/ricardo/cvg-his-v4/apps/spa
+> vitest run
+
+
+ RUN  v4.1.2 /home/ricardo/cvg-his-v4/apps/spa
+
+
+ Test Files  210 passed (210)
+      Tests  1834 passed (1834)
+   Start at  09:01:52
+   Duration  51.58s (transform 55.73s, setup 31.78s, import 63.43s, tests 279.54s, environment 301.11s)
+

@@ -136,6 +136,13 @@ interface BillingRow {
   readonly has_items: boolean;
 }
 
+interface FinancialAccountRow {
+  readonly financial_status: string;
+  readonly total_amount: string;
+  readonly paid_amount: string;
+  readonly balance_due: string;
+}
+
 interface AttemptRow {
   readonly id: string;
   readonly account_id: string;
@@ -377,6 +384,25 @@ export class DatabaseEncounterPixPaymentAttemptRepository implements EncounterPi
     });
   }
 
+  public async findLatestByEncounter(
+    accountId: string,
+    encounterId: string
+  ): Promise<EncounterPixPaymentAttemptRecord | null> {
+    return withTenantQueryExplicit(this.options.pool ?? getPool(), accountId, async (client) => {
+      const result = await client.query<AttemptRow>(
+        `SELECT ${ATTEMPT_COLUMNS}
+           FROM encounter_payment_attempts
+          WHERE account_id = $1
+            AND encounter_id = $2
+          ORDER BY created_at DESC, id DESC
+          LIMIT 1`,
+        [accountId, encounterId]
+      );
+      const attempt = result.rows[0];
+      return attempt ? mapAttempt(attempt) : null;
+    });
+  }
+
   #assertContext(
     transaction: TenantTransactionContext,
     input: RequestEncounterPixPaymentInput
@@ -414,13 +440,42 @@ export class DatabaseEncounterPixPaymentAttemptRepository implements EncounterPi
     );
     const billing = result.rows[0];
     if (!billing) fail('BILLING_RECORD_NOT_FOUND', 'Billing record not found', 404);
+
+    const financialResult = await transaction.client.query<FinancialAccountRow>(
+      `SELECT financial_status,
+              total_snapshot::text AS total_amount,
+              paid_amount::text AS paid_amount,
+              balance_due::text AS balance_due
+         FROM encounter_financial_accounts
+        WHERE account_id = $1 AND encounter_id = $2
+        FOR UPDATE`,
+      [input.accountId, input.encounterId]
+    );
+    const financial = financialResult.rows[0];
+    const billingAmountCents = Number(billing.amount_cents);
+    const financialTotal = financial ? Number(financial.total_amount) : Number.NaN;
+    const financialPaid = financial ? Number(financial.paid_amount) : Number.NaN;
+    const financialBalance = financial ? Number(financial.balance_due) : Number.NaN;
     if (
       billing.status !== 'open' ||
       billing.currency !== 'BRL' ||
-      !Number.isSafeInteger(Number(billing.amount_cents)) ||
-      Number(billing.amount_cents) <= 0
+      !Number.isSafeInteger(billingAmountCents) ||
+      billingAmountCents <= 0 ||
+      !financial ||
+      financial.financial_status !== 'pending' ||
+      !Number.isFinite(financialTotal) ||
+      !Number.isFinite(financialPaid) ||
+      !Number.isFinite(financialBalance) ||
+      financialTotal <= 0 ||
+      Math.round(financialTotal * 100) !== billingAmountCents ||
+      Math.round(financialPaid * 100) !== 0 ||
+      Math.round(financialBalance * 100) !== billingAmountCents
     ) {
-      fail('BILLING_NOT_RECEIVABLE', 'Billing must be open with a positive BRL balance', 409);
+      fail(
+        'BILLING_NOT_RECEIVABLE',
+        'Billing must be open with a full unpaid BRL financial balance',
+        409
+      );
     }
     if (!billing.has_items) {
       fail(

@@ -1,4 +1,5 @@
-import type { Meta, StoryObj } from '@storybook/vue';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
+// CSF module: the Storybook indexer resolves this file as TypeScript.
 import DsBadge from '../src/vue/DsBadge.vue';
 
 const meta: Meta<typeof DsBadge> = {

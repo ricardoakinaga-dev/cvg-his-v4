@@ -29,9 +29,20 @@
       <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
         {{ successMessage }}
       </DsAlert>
+      <DsAlert
+        v-if="clinicalSheetError"
+        variant="danger"
+        dismissible
+        @dismiss="clinicalSheetError = ''"
+      >
+        {{ clinicalSheetError }}
+      </DsAlert>
       <DsAlert v-if="contextWarnings.length" variant="info" dismissible>
         Algumas informações complementares não carregaram: {{ contextWarnings.join(', ') }}. A
         leitura clínica principal continua disponível.
+      </DsAlert>
+      <DsAlert v-if="!canWriteClinicalRecord" variant="info">
+        {{ clinicalReadOnlyMessage }}
       </DsAlert>
 
       <section v-if="clinicalAlerts.length" class="clinical-alerts" aria-label="Alertas clínicos">
@@ -92,7 +103,7 @@
                 <span class="section-heading__eyebrow">2. Relato do tutor</span>
                 <h2>Anamnese</h2>
               </div>
-              <DsButton variant="secondary" size="sm" @click="startEntry('anamnesis')"
+              <DsButton variant="secondary" size="sm" :disabled="!canWriteClinicalRecord" @click="startEntry('anamnesis')"
                 >Adicionar anamnese</DsButton
               >
             </div>
@@ -116,7 +127,7 @@
                 <span class="section-heading__eyebrow">3. Achados objetivos</span>
                 <h2>Exame físico</h2>
               </div>
-              <DsButton variant="secondary" size="sm" @click="startEntry('physical_exam')"
+              <DsButton variant="secondary" size="sm" :disabled="!canWriteClinicalRecord" @click="startEntry('physical_exam')"
                 >Registrar exame</DsButton
               >
             </div>
@@ -136,7 +147,7 @@
                 <span class="section-heading__eyebrow">4. Sinais vitais</span>
                 <h2>Parâmetros vitais</h2>
               </div>
-              <DsButton variant="secondary" size="sm" @click="startEntry('physical_exam')"
+              <DsButton variant="secondary" size="sm" :disabled="!canWriteClinicalRecord" @click="startEntry('physical_exam')"
                 >Registrar parâmetros</DsButton
               >
             </div>
@@ -161,6 +172,7 @@
               <DsButton
                 variant="secondary"
                 size="sm"
+                :disabled="!canWriteClinicalRecord"
                 tag="a"
                 :to="clinicalWorkflowPath('/diagnostics')"
               >
@@ -193,7 +205,7 @@
                 <span class="section-heading__eyebrow">6. Raciocínio clínico</span>
                 <h2>Suspeita diagnóstica / avaliação clínica</h2>
               </div>
-              <DsButton variant="secondary" size="sm" @click="startEntry('assessment')"
+              <DsButton variant="secondary" size="sm" :disabled="!canWriteClinicalRecord" @click="startEntry('assessment')"
                 >Registrar avaliação</DsButton
               >
             </div>
@@ -217,7 +229,7 @@
                 <span class="section-heading__eyebrow">7. Tratamento</span>
                 <h2>Terapêutica / plano de tratamento</h2>
               </div>
-              <DsButton variant="secondary" size="sm" @click="startEntry('plan')"
+              <DsButton variant="secondary" size="sm" :disabled="!canWriteClinicalRecord" @click="startEntry('plan')"
                 >Registrar plano</DsButton
               >
             </div>
@@ -237,7 +249,7 @@
                 <span class="section-heading__eyebrow">8. Medicações</span>
                 <h2>Prescrição / receituário</h2>
               </div>
-              <DsButton variant="secondary" size="sm" @click="startEntry('prescription')"
+              <DsButton variant="secondary" size="sm" :disabled="!canWriteClinicalRecord" @click="startEntry('prescription')"
                 >Registrar prescrição</DsButton
               >
             </div>
@@ -263,7 +275,7 @@
                 <span class="section-heading__eyebrow">9. Continuidade do cuidado</span>
                 <h2>Conduta e próximos passos</h2>
               </div>
-              <DsButton variant="secondary" size="sm" @click="startEntry('conduct')"
+              <DsButton variant="secondary" size="sm" :disabled="!canWriteClinicalRecord" @click="startEntry('conduct')"
                 >Registrar conduta</DsButton
               >
             </div>
@@ -283,7 +295,7 @@
                 <span class="section-heading__eyebrow">10. Complementos</span>
                 <h2>Observações</h2>
               </div>
-              <DsButton variant="secondary" size="sm" @click="startEntry('progress_note')"
+              <DsButton variant="secondary" size="sm" :disabled="!canWriteClinicalRecord" @click="startEntry('progress_note')"
                 >Registrar observação</DsButton
               >
             </div>
@@ -304,7 +316,7 @@
               <div class="section-heading__actions">
                 <DsButton
                   variant="secondary"
-                  :disabled="submittingClinicalSheet"
+                  :disabled="!canWriteClinicalRecord"
                   @click="clearClinicalSheet"
                 >
                   Limpar
@@ -312,13 +324,23 @@
                 <DsButton
                   variant="primary"
                   :loading="submittingClinicalSheet"
-                  :disabled="!hasClinicalSheetContent || submittingClinicalSheet"
+                  :disabled="!canWriteClinicalRecord || !hasClinicalSheetContent || submittingClinicalSheet"
                   @click="saveClinicalSheet"
                 >
                   Salvar ficha de atendimento
                 </DsButton>
               </div>
             </div>
+
+            <p
+              class="clinical-sheet__status"
+              :class="`clinical-sheet__status--${clinicalSheetStatus.tone}`"
+              data-testid="clinical-draft-state"
+              role="status"
+              aria-live="polite"
+            >
+              {{ clinicalSheetStatus.label }}
+            </p>
 
             <div class="clinical-form-grid">
               <label
@@ -332,6 +354,7 @@
                   v-model="clinicalSheet[section.key]"
                   :placeholder="section.placeholder"
                   :data-testid="`clinical-${section.key}`"
+                  :disabled="!canWriteClinicalRecord"
                   rows="5"
                 ></textarea>
               </label>
@@ -434,7 +457,7 @@
             <article class="vetus-card">
               <div class="vetus-card__header">
                 <h3>Anamneses</h3>
-                <DsButton size="sm" variant="secondary" @click="startEntry('anamnesis')">
+                <DsButton size="sm" variant="secondary" :disabled="!canWriteClinicalRecord" @click="startEntry('anamnesis')">
                   Incluir Nova Anamnese
                 </DsButton>
               </div>
@@ -558,7 +581,7 @@
             <article class="vetus-card">
               <div class="vetus-card__header">
                 <h3>Receituário</h3>
-                <DsButton size="sm" variant="secondary" @click="startEntry('prescription')">
+                <DsButton size="sm" variant="secondary" :disabled="!canWriteClinicalRecord" @click="startEntry('prescription')">
                   Incluir Nova Receita
                 </DsButton>
               </div>
@@ -609,9 +632,9 @@
               </div>
             </article>
 
-            <article class="vetus-card">
+            <article class="vetus-card" data-testid="clinical-attachments">
               <div class="vetus-card__header">
-                <h3>Imagens</h3>
+                <h3>Imagens e anexos</h3>
                 <DsButton
                   size="sm"
                   variant="secondary"
@@ -621,20 +644,88 @@
                   Incluir Imagem
                 </DsButton>
               </div>
-              <div v-if="imageEvents.length" class="record-list">
-                <div
-                  v-for="event in imageEvents.slice(0, 3)"
-                  :key="event.id"
-                  class="record-list__item"
-                >
-                  <div>
-                    <strong>{{ timelineEventTypeLabel(event.eventType) }}</strong>
-                    <p>{{ event.summary }}</p>
-                  </div>
-                  <span>{{ formatDateTime(event.occurredAt) }}</span>
-                </div>
+              <div
+                v-if="attachmentsLoading"
+                class="muted"
+                data-testid="clinical-attachments-loading"
+                role="status"
+                aria-live="polite"
+                aria-busy="true"
+              >
+                Carregando anexos do prontuário…
               </div>
-              <p v-else class="muted">Esse animal não possui imagens anexadas a este prontuário.</p>
+              <div v-else>
+                <div
+                  v-if="attachmentsError"
+                  class="clinical-inline-error"
+                  data-testid="clinical-attachments-error"
+                  role="alert"
+                >
+                  {{ attachmentsError }}
+                </div>
+                <div
+                  v-if="attachments.length"
+                  class="record-list attachment-list"
+                  role="list"
+                  aria-label="Anexos vinculados ao prontuário"
+                >
+                  <div
+                    v-for="attachment in attachments"
+                    :key="attachment.id"
+                    class="record-list__item attachment-item"
+                    role="listitem"
+                    :data-testid="`clinical-attachment-${String(attachment.id)}`"
+                  >
+                    <div class="attachment-item__details">
+                      <strong>{{ attachment.fileName }}</strong>
+                      <p>Tipo: {{ attachment.mimeType }}</p>
+                      <p>Tamanho: {{ formatAttachmentSize(attachment.sizeBytes) }}</p>
+                      <span class="attachment-item__category">
+                        {{ attachmentCategoryLabel(attachment.category) }}
+                      </span>
+                    </div>
+                    <div class="attachment-item__actions">
+                      <DsButton
+                        v-if="attachment.scanStatus === 'available'"
+                        size="sm"
+                        variant="secondary"
+                        :loading="attachmentOpeningId === String(attachment.id)"
+                        :disabled="Boolean(attachmentOpeningId)"
+                        :aria-label="`Abrir ou baixar ${attachment.fileName}`"
+                        :data-testid="`clinical-attachment-open-${String(attachment.id)}`"
+                        @click="openAttachment(attachment)"
+                      >
+                        {{
+                          attachmentOpeningId === String(attachment.id)
+                            ? 'Preparando…'
+                            : 'Abrir / baixar'
+                        }}
+                      </DsButton>
+                      <span v-else class="attachment-item__availability" role="status">
+                        {{ attachmentAvailabilityLabel(attachment.scanStatus) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <p
+                  v-else-if="!attachmentsError"
+                  class="muted"
+                  data-testid="clinical-attachments-empty"
+                >
+                  Nenhum anexo vinculado a este prontuário ou atendimento.
+                </p>
+                <p v-else class="muted" data-testid="clinical-attachments-unconfirmed">
+                  A existência de anexos não pôde ser confirmada porque a leitura falhou.
+                </p>
+                <p
+                  v-if="attachmentActionError"
+                  class="clinical-inline-error"
+                  data-testid="clinical-attachment-action-error"
+                  role="alert"
+                >
+                  {{ attachmentActionError }}
+                </p>
+              </div>
             </article>
 
             <article class="vetus-card">
@@ -705,7 +796,7 @@
             <article class="vetus-card">
               <div class="vetus-card__header">
                 <h3>Histórico Clinico</h3>
-                <DsButton size="sm" variant="secondary" @click="startEntry('progress_note')">
+                <DsButton size="sm" variant="secondary" :disabled="!canWriteClinicalRecord" @click="startEntry('progress_note')">
                   Nova Evolução
                 </DsButton>
               </div>
@@ -758,7 +849,7 @@
                     >
                     <div class="entry-card__actions">
                       <DsButton
-                        v-if="!entry.deletedAt"
+                        v-if="canWriteClinicalRecord && !entry.deletedAt"
                         size="sm"
                         variant="secondary"
                         @click="openEditEntry(entry)"
@@ -766,7 +857,7 @@
                         Editar
                       </DsButton>
                       <DsButton
-                        v-if="!entry.deletedAt"
+                        v-if="canWriteClinicalRecord && !entry.deletedAt"
                         size="sm"
                         variant="danger"
                         @click="openArchiveEntry(entry)"
@@ -846,7 +937,14 @@
         comportamento, medicações em uso e evolução percebida.
       </p>
 
-      <DsInput id="entryType" v-model="entryForm.entryType" type="select" label="Tipo" required>
+      <DsInput
+        id="entryType"
+        v-model="entryForm.entryType"
+        type="select"
+        label="Tipo"
+        :disabled="!canWriteClinicalRecord || submittingEntry"
+        required
+      >
         <option value="anamnesis">Anamnese</option>
         <option value="physical_exam">Exame Físico</option>
         <option value="progress_note">Nota de Evolução</option>
@@ -861,6 +959,7 @@
         v-model="entryForm.title"
         label="Título"
         placeholder="Título da entrada"
+        :disabled="!canWriteClinicalRecord || submittingEntry"
         required
       />
 
@@ -871,6 +970,7 @@
         label="Conteúdo"
         :placeholder="entryContentPlaceholder"
         :rows="entryForm.entryType === 'anamnesis' ? 10 : 8"
+        :disabled="!canWriteClinicalRecord || submittingEntry"
         required
       />
 
@@ -880,13 +980,14 @@
         v-model="editReason"
         label="Motivo da Edição"
         placeholder="Motivo da alteração..."
+        :disabled="!canWriteClinicalRecord || submittingEntry"
       />
 
       <template #footer>
         <DsButton variant="secondary" @click="closeEntryModal">Cancelar</DsButton>
         <DsButton
           variant="primary"
-          :disabled="!isEntryFormValid || submittingEntry"
+          :disabled="!canWriteClinicalRecord || !isEntryFormValid || submittingEntry"
           @click="handleSaveEntry"
         >
           {{ submittingEntry ? 'Salvando...' : 'Salvar' }}
@@ -907,6 +1008,7 @@
         label="Motivo"
         placeholder="Motivo do arquivamento..."
         :rows="3"
+        :disabled="!canWriteClinicalRecord || archivingEntry"
         required
       />
 
@@ -914,10 +1016,33 @@
         <DsButton variant="secondary" @click="showArchiveModal = false">Cancelar</DsButton>
         <DsButton
           variant="danger"
-          :disabled="!archiveReason.trim() || archivingEntry"
+          :disabled="!canWriteClinicalRecord || !archiveReason.trim() || archivingEntry"
           @click="handleArchiveEntry"
         >
           {{ archivingEntry ? 'Arquivando...' : 'Arquivar' }}
+        </DsButton>
+      </template>
+    </DsModal>
+
+    <DsModal
+      :open="leaveRequested"
+      title="Alterações não salvas"
+      size="sm"
+      initial-focus="#medical-record-continue-editing"
+      @close="resolveLeave(false)"
+    >
+      <p>
+        Há um rascunho clínico local neste atendimento. Continue editando para salvar ou descarte o
+        rascunho para sair sem registrá-lo.
+      </p>
+      <template #footer>
+        <DsButton variant="secondary" @click="resolveLeave(true)">Descartar e sair</DsButton>
+        <DsButton
+          id="medical-record-continue-editing"
+          variant="primary"
+          @click="resolveLeave(false)"
+        >
+          Continuar editando
         </DsButton>
       </template>
     </DsModal>
@@ -927,7 +1052,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import { attachmentService } from '@/services/attachments';
+import { apiRequest } from '@/services/api';
 import { billingService } from '@/services/billing';
+import { spaRuntimeConfig } from '@/config/runtime';
 import { diagnosticsService } from '@/services/diagnostics';
 import { encounterService } from '@/services/encounter';
 import { medicalRecordsService } from '@/services/medicalRecords';
@@ -947,8 +1075,14 @@ import type {
 } from '@/types/medicalRecords';
 import type { OwnerSummary } from '@/types/owner';
 import type { PatientSex, PatientSummary } from '@/types/patient';
+import type { AttachmentSummary } from '@cvg-his-v2/shared-types';
 import { useEntityCache } from '@/composables/useEntityCache';
-import { encounterStatusLabel, formatDateTime as formatEncounterDateTime } from '@/utils/labels';
+import { useUnsavedChanges } from '@/composables/useUnsavedChanges';
+import {
+  encounterStatusLabel,
+  formatDateTime as formatEncounterDateTime,
+  formatOwnerContact
+} from '@/utils/labels';
 import SkeletonLoader from '@/components/SkeletonLoader.vue';
 import AppPageHeader, {
   type PageAction,
@@ -985,6 +1119,11 @@ interface ClinicalAlert {
   message: string;
 }
 
+interface AttachmentDownloadUrlResponse {
+  readonly url?: unknown;
+  readonly expiresAt?: unknown;
+}
+
 const route = useRoute();
 const routeRecordId = computed(() => String(route.params.id ?? ''));
 const entityCache = useEntityCache();
@@ -999,11 +1138,16 @@ const billingRecord = ref<BillingRecordSummary | null>(null);
 const billingItems = ref<BillingItemSummary[]>([]);
 const patientPrescriptions = ref<ClinicalEntrySummary[]>([]);
 const diagnosticEntries = ref<ClinicalEntrySummary[]>([]);
+const attachments = ref<AttachmentSummary[]>([]);
 const contextWarnings = ref<string[]>([]);
 const resolvedEncounterId = ref('');
 const loading = ref(true);
 const timelineLoading = ref(false);
+const attachmentsLoading = ref(false);
 const error = ref('');
+const attachmentsError = ref('');
+const attachmentActionError = ref('');
+const attachmentOpeningId = ref<string | null>(null);
 const patientName = ref('');
 const ownerName = ref('');
 const successMessage = ref('');
@@ -1015,18 +1159,31 @@ const submittingEntry = ref(false);
 const submittingClinicalSheet = ref(false);
 const archivingEntry = ref(false);
 const entryFormError = ref('');
+const clinicalSheetError = ref('');
+const clinicalSheetSaveState = ref<'idle' | 'saved' | 'saving'>('idle');
 const editingEntry = ref<ClinicalEntrySummary | null>(null);
 const editReason = ref('');
 const archiveReason = ref('');
 const archiveTarget = ref<ClinicalEntrySummary | null>(null);
+interface StableClinicalCreateAttempt {
+  readonly payloadSignature: string;
+  readonly idempotencyKey: string;
+}
+
+const clinicalSheetCreateAttempts = new Map<ClinicalSheetKey, StableClinicalCreateAttempt>();
+const clinicalEntryUpdateAttempts = new Map<string, StableClinicalCreateAttempt>();
+const clinicalEntryArchiveAttempts = new Map<string, StableClinicalCreateAttempt>();
+let newEntryCreateAttempt: StableClinicalCreateAttempt | null = null;
 let active = true;
 let pageGeneration = 0;
+let attachmentsLoadSequence = 0;
 
 function isCurrentLoad(generation: number, id: string) {
   return active && generation === pageGeneration && routeRecordId.value === id;
 }
 
 function resetPageState() {
+  attachmentsLoadSequence += 1;
   record.value = null;
   entries.value = [];
   timeline.value = [];
@@ -1037,13 +1194,19 @@ function resetPageState() {
   billingItems.value = [];
   patientPrescriptions.value = [];
   diagnosticEntries.value = [];
+  attachments.value = [];
   contextWarnings.value = [];
   resolvedEncounterId.value = '';
   error.value = '';
+  attachmentsError.value = '';
+  attachmentActionError.value = '';
+  attachmentsLoading.value = false;
+  attachmentOpeningId.value = null;
   patientName.value = '';
   ownerName.value = '';
   successMessage.value = '';
   entryFormError.value = '';
+  clearClinicalSheet();
   showNewEntryModal.value = false;
   showEditEntryModal.value = false;
   showArchiveModal.value = false;
@@ -1051,6 +1214,9 @@ function resetPageState() {
   submittingEntry.value = false;
   submittingClinicalSheet.value = false;
   archivingEntry.value = false;
+  newEntryCreateAttempt = null;
+  clinicalEntryUpdateAttempts.clear();
+  clinicalEntryArchiveAttempts.clear();
 }
 
 const entryForm = ref({
@@ -1076,6 +1242,14 @@ const clinicalSheet = reactive<Record<ClinicalSheetKey, string>>({
   prescription: '',
   conduct: ''
 });
+
+const clinicalSheetSnapshot = () => JSON.stringify(clinicalSheet);
+const {
+  dirty: clinicalSheetDirty,
+  leaveRequested,
+  resolveLeave,
+  markClean
+} = useUnsavedChanges(clinicalSheetSnapshot);
 
 const clinicalSheetSections: ClinicalSheetSection[] = [
   {
@@ -1144,7 +1318,12 @@ const visibleClinicalSheetSections = computed(() => {
   return clinicalSheetSections.filter((section) => visibleKeys.includes(section.key));
 });
 
-const activeEntries = computed(() => entries.value.filter((entry) => !entry.deletedAt));
+const activeEntries = computed(() =>
+  sortMostRecentFirst(
+    entries.value.filter((entry) => !entry.deletedAt),
+    (entry) => entry.updatedAt || entry.createdAt
+  )
+);
 const anamnesisEntries = computed(() =>
   activeEntries.value.filter((entry) => entry.entryType === 'anamnesis')
 );
@@ -1156,22 +1335,20 @@ const preventiveEntries = computed(() =>
 const inpatientEvents = computed(() =>
   timeline.value.filter((event) => event.eventType.startsWith('inpatient_'))
 );
-const imageEvents = computed(() =>
-  timeline.value.filter((event) => event.eventType === 'attachment_added')
-);
 const prescriptionEntries = computed(() => {
   const ownEntries = activeEntries.value.filter((entry) => entry.entryType === 'prescription');
   const byId = new Map(
     [...ownEntries, ...patientPrescriptions.value].map((entry) => [entry.id, entry])
   );
-  return Array.from(byId.values()).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  return sortMostRecentFirst(
+    Array.from(byId.values()),
+    (entry) => entry.updatedAt || entry.createdAt
+  );
 });
 
 const latestEntriesByType = computed(() => {
   const grouped = new Map<ClinicalEntryType, ClinicalEntrySummary>();
-  for (const entry of [...activeEntries.value].sort((a, b) =>
-    b.updatedAt.localeCompare(a.updatedAt)
-  )) {
+  for (const entry of activeEntries.value) {
     if (!grouped.has(entry.entryType)) {
       grouped.set(entry.entryType, entry);
     }
@@ -1183,8 +1360,39 @@ const hasClinicalSheetContent = computed(() =>
   clinicalSheetSections.some((section) => clinicalSheet[section.key].trim().length > 0)
 );
 
+const clinicalSheetStatus = computed(() => {
+  if (submittingClinicalSheet.value) {
+    return { tone: 'saving', label: 'Salvando no prontuário…' } as const;
+  }
+  if (clinicalSheetError.value) {
+    return { tone: 'error', label: 'Persistência não confirmada' } as const;
+  }
+  if (clinicalSheetDirty.value) {
+    return { tone: 'draft', label: 'Rascunho local não salvo' } as const;
+  }
+  if (clinicalSheetSaveState.value === 'saved') {
+    return { tone: 'saved', label: 'Salvo no prontuário' } as const;
+  }
+  return { tone: 'idle', label: 'Nenhuma alteração pendente' } as const;
+});
+
 const displayPatientName = computed(
   () => patientName.value || patient.value?.name || 'Paciente não identificado'
+);
+
+const canWriteClinicalRecord = computed(
+  () =>
+    Boolean(
+      record.value &&
+        encounter.value &&
+        record.value.status === 'open' &&
+        encounter.value.status !== 'closed'
+    )
+);
+const clinicalReadOnlyMessage = computed(() =>
+  record.value && encounter.value
+    ? 'Este prontuário está em somente leitura porque o atendimento foi concluído ou encerrado. Novas entradas, edições e arquivamentos não estão disponíveis.'
+    : 'O contexto do atendimento não pôde ser confirmado. As ações clínicas permanecem bloqueadas até que os dados do atendimento estejam disponíveis.'
 );
 
 const medicalRecordHeaderSubtitle = computed(() => {
@@ -1235,7 +1443,7 @@ const headerContextItems = computed<PageContextItem[]>(() => [
 ]);
 
 const headerNextSteps = computed<PageNextStep[]>(() => {
-  if (!record.value) return [];
+  if (!record.value || !canWriteClinicalRecord.value) return [];
   if (!latestEntry('anamnesis')) {
     return [
       {
@@ -1267,8 +1475,9 @@ const headerNextSteps = computed<PageNextStep[]>(() => {
 const headerPrimaryAction = computed<PageAction>(() => ({
   key: 'new-clinical-entry',
   label: 'Registrar evolução',
+  disabled: !canWriteClinicalRecord.value,
   onClick: () => {
-    showNewEntryModal.value = true;
+    startEntry('progress_note');
   }
 }));
 
@@ -1402,7 +1611,7 @@ const hasVitalContext = computed(() => Boolean(patient.value?.baseWeightKg));
 const ownerPrimaryContact = computed(() => {
   const contacts = owner.value?.contacts ?? [];
   const primary = contacts.find((contact) => contact.primary) ?? contacts[0];
-  return primary ? `${primary.label}: ${primary.value}` : 'Não informado';
+  return primary ? formatOwnerContact(primary) : 'Não informado';
 });
 
 const currentWeightLabel = computed(() => {
@@ -1462,6 +1671,20 @@ const timelineEventTypeMap: Record<string, string> = {
   diagnostic_resulted: 'Resultado liberado'
 };
 
+const attachmentCategoryMap: Record<AttachmentSummary['category'], string> = {
+  image: 'Imagem',
+  lab: 'Laudo',
+  document: 'Documento',
+  prescription: 'Prescrição',
+  other: 'Outro'
+};
+
+const attachmentAvailabilityMap: Record<AttachmentSummary['scanStatus'], string> = {
+  quarantined: 'Aguardando verificação de segurança',
+  available: 'Disponível para abrir ou baixar',
+  rejected: 'Indisponível após rejeição de segurança'
+};
+
 function entryTypeLabel(type: ClinicalEntryType) {
   return entryTypeMap[type] || type;
 }
@@ -1472,6 +1695,237 @@ function latestEntry(type: ClinicalEntryType) {
 
 function timelineEventTypeLabel(type: string) {
   return timelineEventTypeMap[type] || type;
+}
+
+function sortMostRecentFirst<T extends { id: string }>(
+  items: readonly T[],
+  getTimestamp: (item: T) => string
+): T[] {
+  return [...items].sort((left, right) => {
+    const leftTimestamp = getTimestamp(left);
+    const rightTimestamp = getTimestamp(right);
+    const leftTime = Date.parse(leftTimestamp);
+    const rightTime = Date.parse(rightTimestamp);
+
+    if (Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime !== rightTime) {
+      return rightTime - leftTime;
+    }
+
+    const timestampOrder = rightTimestamp.localeCompare(leftTimestamp);
+    return timestampOrder !== 0 ? timestampOrder : left.id.localeCompare(right.id);
+  });
+}
+
+function sortClinicalTimeline(events: readonly ClinicalTimelineEventSummary[]) {
+  return sortMostRecentFirst(events, (event) => event.occurredAt);
+}
+
+function createIdempotencyKey(scope: string) {
+  const uuid = globalThis.crypto?.randomUUID?.();
+  return uuid
+    ? `medical-records-${scope}-${uuid}`
+    : `medical-records-${scope}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function payloadSignature(payload: CreateClinicalEntryRequest) {
+  return JSON.stringify(payload);
+}
+
+function getClinicalSheetCreateKey(
+  sectionKey: ClinicalSheetKey,
+  payload: CreateClinicalEntryRequest
+) {
+  const signature = payloadSignature(payload);
+  const existing = clinicalSheetCreateAttempts.get(sectionKey);
+  if (existing?.payloadSignature === signature) return existing.idempotencyKey;
+
+  const idempotencyKey = createIdempotencyKey(`sheet-${sectionKey}`);
+  clinicalSheetCreateAttempts.set(sectionKey, { payloadSignature: signature, idempotencyKey });
+  return idempotencyKey;
+}
+
+function getNewEntryCreateKey(payload: CreateClinicalEntryRequest) {
+  const signature = payloadSignature(payload);
+  if (newEntryCreateAttempt?.payloadSignature === signature) {
+    return newEntryCreateAttempt.idempotencyKey;
+  }
+
+  const idempotencyKey = createIdempotencyKey('entry');
+  newEntryCreateAttempt = { payloadSignature: signature, idempotencyKey };
+  return idempotencyKey;
+}
+
+function getStableMutationKey(
+  attempts: Map<string, StableClinicalCreateAttempt>,
+  mutationId: string,
+  scope: string,
+  payload: object
+) {
+  const signature = JSON.stringify(payload);
+  const existing = attempts.get(mutationId);
+  if (existing?.payloadSignature === signature) return existing.idempotencyKey;
+
+  const idempotencyKey = createIdempotencyKey(scope);
+  attempts.set(mutationId, { payloadSignature: signature, idempotencyKey });
+  return idempotencyKey;
+}
+
+function requireClinicalEntryResponse(value: unknown, operation: string): ClinicalEntrySummary {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    typeof (value as { id?: unknown }).id !== 'string' ||
+    !(value as { id: string }).id
+  ) {
+    throw new Error(`A API não confirmou o identificador da entrada clínica após ${operation}.`);
+  }
+  return value as ClinicalEntrySummary;
+}
+
+interface ClinicalEntryConfirmationExpectations {
+  readonly id?: string;
+  readonly encounterId?: string;
+  readonly patientId?: string;
+  readonly medicalRecordId?: string;
+  readonly entryType?: ClinicalEntryType;
+  readonly content?: string;
+  readonly title?: string;
+  readonly previousVersion?: number;
+  readonly requireArchived?: boolean;
+  readonly deleteReason?: string;
+}
+
+function isClinicalEntryConfirmed(
+  entry: ClinicalEntrySummary,
+  expected?: ClinicalEntryConfirmationExpectations,
+  source: readonly ClinicalEntrySummary[] = entries.value
+) {
+  const expectedId = expected?.id ?? entry.id;
+  if (entry.id !== expectedId) return false;
+  const currentEntry = source.find((candidate) => candidate.id === expectedId);
+  if (!currentEntry) return false;
+  if (currentEntry.id !== entry.id) return false;
+  if (expected?.encounterId !== undefined && currentEntry.encounterId !== expected.encounterId) {
+    return false;
+  }
+  if (expected?.patientId !== undefined && currentEntry.patientId !== expected.patientId) {
+    return false;
+  }
+  if (
+    expected?.medicalRecordId !== undefined &&
+    currentEntry.medicalRecordId !== expected.medicalRecordId
+  ) {
+    return false;
+  }
+  if (expected?.entryType !== undefined && currentEntry.entryType !== expected.entryType) {
+    return false;
+  }
+  if (expected?.content !== undefined && currentEntry.content !== expected.content) return false;
+  if (expected?.title !== undefined && currentEntry.title !== expected.title) return false;
+  if (
+    expected?.previousVersion !== undefined &&
+    currentEntry.version <= expected.previousVersion
+  ) {
+    return false;
+  }
+  if (expected?.requireArchived === true && !currentEntry.deletedAt) return false;
+  if (expected?.requireArchived === false && currentEntry.deletedAt) return false;
+  if (expected?.deleteReason !== undefined && currentEntry.deleteReason !== expected.deleteReason) {
+    return false;
+  }
+  return true;
+}
+
+function attachmentCategoryLabel(category: AttachmentSummary['category']) {
+  return attachmentCategoryMap[category] || category;
+}
+
+function attachmentAvailabilityLabel(scanStatus: AttachmentSummary['scanStatus']) {
+  return attachmentAvailabilityMap[scanStatus] || 'Anexo indisponível para abrir ou baixar';
+}
+
+function formatAttachmentSize(sizeBytes?: number) {
+  if (typeof sizeBytes !== 'number' || !Number.isFinite(sizeBytes) || sizeBytes < 0) {
+    return 'Tamanho não informado';
+  }
+
+  if (sizeBytes < 1024) return `${sizeBytes} B`;
+
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let value = sizeBytes / 1024;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value)} ${units[unitIndex]}`;
+}
+
+function resolveAttachmentDownloadUrl(
+  attachmentId: string,
+  response: AttachmentDownloadUrlResponse
+) {
+  const rawUrl = response.url;
+  const rawExpiresAt = response.expiresAt;
+  const expectedPath = `/attachments/${encodeURIComponent(attachmentId)}/content`;
+
+  if (typeof rawUrl !== 'string' || !rawUrl.startsWith('/')) {
+    throw new Error('A API não confirmou uma URL válida para este anexo.');
+  }
+
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(rawUrl, 'https://cvg-his.invalid');
+  } catch {
+    throw new Error('A API não confirmou uma URL válida para este anexo.');
+  }
+
+  const expiresAt = typeof rawExpiresAt === 'string' ? Date.parse(rawExpiresAt) : Number.NaN;
+  if (
+    parsedUrl.origin !== 'https://cvg-his.invalid' ||
+    parsedUrl.pathname !== expectedPath ||
+    !parsedUrl.searchParams.get('token') ||
+    !Number.isFinite(expiresAt) ||
+    expiresAt <= Date.now()
+  ) {
+    throw new Error('A API não confirmou uma URL válida e vigente para este anexo.');
+  }
+
+  return `${spaRuntimeConfig.apiBaseUrl}/api${rawUrl}`;
+}
+
+async function openAttachment(attachment: AttachmentSummary) {
+  if (attachment.scanStatus !== 'available' || attachmentOpeningId.value) return;
+
+  const attachmentId = String(attachment.id);
+  const routeId = routeRecordId.value;
+  const generation = pageGeneration;
+  attachmentOpeningId.value = attachmentId;
+  attachmentActionError.value = '';
+
+  try {
+    const response = await apiRequest<AttachmentDownloadUrlResponse>(
+      `/attachments/${encodeURIComponent(attachmentId)}/download-url`,
+      { method: 'POST' }
+    );
+    if (!isCurrentLoad(generation, routeId)) return;
+
+    const downloadUrl = resolveAttachmentDownloadUrl(attachmentId, response);
+    const openedWindow = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+    if (!openedWindow) {
+      throw new Error(
+        'O navegador bloqueou a abertura do anexo. Permita novas abas e tente novamente.'
+      );
+    }
+  } catch (err: unknown) {
+    if (isCurrentLoad(generation, routeId)) {
+      attachmentActionError.value =
+        err instanceof Error ? err.message : 'Não foi possível abrir ou baixar este anexo.';
+    }
+  } finally {
+    if (isCurrentLoad(generation, routeId)) attachmentOpeningId.value = null;
+  }
 }
 
 function sexLabel(sex: PatientSex) {
@@ -1523,6 +1977,7 @@ function formatDateTime(date: string) {
 }
 
 function startEntry(entryType: ClinicalEntryType) {
+  if (!canWriteClinicalRecord.value) return;
   const section = clinicalSheetSections.find((item) => item.entryType === entryType);
   entryForm.value = {
     entryType,
@@ -1530,6 +1985,7 @@ function startEntry(entryType: ClinicalEntryType) {
     content: ''
   };
   editingEntry.value = null;
+  newEntryCreateAttempt = null;
   editReason.value = '';
   showNewEntryModal.value = true;
 }
@@ -1549,7 +2005,9 @@ function routeEntryType(): ClinicalEntryType | null {
 }
 
 function openEditEntry(entry: ClinicalEntrySummary) {
+  if (!canWriteClinicalRecord.value || entry.deletedAt) return;
   editingEntry.value = entry;
+  newEntryCreateAttempt = null;
   entryForm.value = {
     entryType: entry.entryType,
     title: entry.title,
@@ -1560,6 +2018,7 @@ function openEditEntry(entry: ClinicalEntrySummary) {
 }
 
 function openArchiveEntry(entry: ClinicalEntrySummary) {
+  if (!canWriteClinicalRecord.value || entry.deletedAt) return;
   archiveTarget.value = entry;
   archiveReason.value = '';
   showArchiveModal.value = true;
@@ -1569,6 +2028,7 @@ function closeEntryModal() {
   showNewEntryModal.value = false;
   showEditEntryModal.value = false;
   editingEntry.value = null;
+  newEntryCreateAttempt = null;
   entryForm.value = { entryType: 'progress_note', title: '', content: '' };
   entryFormError.value = '';
   editReason.value = '';
@@ -1578,12 +2038,15 @@ function clearClinicalSheet() {
   for (const section of clinicalSheetSections) {
     clinicalSheet[section.key] = '';
   }
+  clinicalSheetError.value = '';
+  clinicalSheetSaveState.value = 'idle';
+  clinicalSheetCreateAttempts.clear();
 }
 
-async function loadRecord(id: string, generation: number) {
+async function loadRecord(id: string, generation: number, reportError = true): Promise<boolean> {
   try {
     const response = await loadRecordByRouteId(id);
-    if (!isCurrentLoad(generation, id)) return;
+    if (!isCurrentLoad(generation, id)) return false;
     if (response.record.id !== id && response.record.encounterId !== id) {
       throw new Error('O prontuário retornado não corresponde ao endereço solicitado.');
     }
@@ -1591,10 +2054,14 @@ async function loadRecord(id: string, generation: number) {
     entries.value = response.entries;
     resolvedEncounterId.value = response.record.encounterId;
     patientName.value = await entityCache.getPatientName(response.record.patientId);
-    if (!isCurrentLoad(generation, id)) return;
+    if (!isCurrentLoad(generation, id)) return false;
     await loadClinicalContext(response.record, generation, id);
+    return isCurrentLoad(generation, id);
   } catch (err: unknown) {
-    if (isCurrentLoad(generation, id)) error.value = getLoadRecordErrorMessage(err);
+    if (reportError && isCurrentLoad(generation, id)) {
+      error.value = getLoadRecordErrorMessage(err);
+    }
+    return false;
   }
 }
 
@@ -1634,7 +2101,72 @@ async function loadRecordByRouteId(id: string) {
   }
 }
 
-async function loadClinicalContext(currentRecord: MedicalRecordSummary, generation: number, routeId: string) {
+async function loadClinicalAttachments(
+  currentRecord: MedicalRecordSummary,
+  generation: number,
+  routeId: string
+) {
+  if (!isCurrentLoad(generation, routeId)) return;
+
+  const sequence = ++attachmentsLoadSequence;
+  attachmentsLoading.value = true;
+  attachmentsError.value = '';
+  attachmentActionError.value = '';
+
+  try {
+    const [recordResult, encounterResult] = await Promise.allSettled([
+      diagnosticsService.listAttachments(currentRecord.encounterId),
+      attachmentService.list('encounter', currentRecord.encounterId)
+    ]);
+    if (!isCurrentLoad(generation, routeId) || sequence !== attachmentsLoadSequence) return;
+
+    const byId = new Map<string, AttachmentSummary>();
+    let failedSources = 0;
+
+    const collect = (
+      result: PromiseSettledResult<AttachmentSummary[]>,
+      linkedEntityType: AttachmentSummary['linkedEntityType'],
+      linkedEntityId: string
+    ) => {
+      if (result.status === 'rejected') {
+        failedSources += 1;
+        return;
+      }
+
+      for (const attachment of result.value) {
+        if (
+          attachment.linkedEntityType !== linkedEntityType ||
+          attachment.linkedEntityId !== linkedEntityId
+        ) {
+          continue;
+        }
+        byId.set(String(attachment.id), attachment);
+      }
+    };
+
+    collect(recordResult, 'medical_record', currentRecord.id);
+    collect(encounterResult, 'encounter', currentRecord.encounterId);
+    attachments.value = Array.from(byId.values()).sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt)
+    );
+    attachmentsError.value =
+      failedSources === 0
+        ? ''
+        : attachments.value.length > 0
+          ? 'Alguns anexos não puderam ser carregados. Os itens exibidos foram confirmados pelo prontuário.'
+          : 'Não foi possível carregar os anexos deste prontuário ou atendimento.';
+  } finally {
+    if (isCurrentLoad(generation, routeId) && sequence === attachmentsLoadSequence) {
+      attachmentsLoading.value = false;
+    }
+  }
+}
+
+async function loadClinicalContext(
+  currentRecord: MedicalRecordSummary,
+  generation: number,
+  routeId: string
+) {
   contextWarnings.value = [];
   const [
     encounterResult,
@@ -1688,42 +2220,56 @@ async function loadClinicalContext(currentRecord: MedicalRecordSummary, generati
   diagnosticEntries.value = diagnosticsResult.status === 'fulfilled' ? diagnosticsResult.value : [];
   patientPrescriptions.value =
     prescriptionsResult.status === 'fulfilled' ? prescriptionsResult.value : [];
+  void loadClinicalAttachments(currentRecord, generation, routeId);
 }
 
-async function loadTimeline(id: string, generation: number) {
-  if (!isCurrentLoad(generation, id)) return;
+async function loadTimeline(id: string, generation: number): Promise<boolean> {
+  if (!isCurrentLoad(generation, id)) return false;
   timelineLoading.value = true;
   try {
     if (!resolvedEncounterId.value) {
       timeline.value = [];
-      return;
+      return true;
     }
 
     const nextTimeline = await medicalRecordsService.getTimeline(resolvedEncounterId.value);
-    if (isCurrentLoad(generation, id)) timeline.value = nextTimeline;
+    if (isCurrentLoad(generation, id)) timeline.value = sortClinicalTimeline(nextTimeline);
+    return isCurrentLoad(generation, id);
   } catch {
-    if (isCurrentLoad(generation, id)) timeline.value = [];
+    if (isCurrentLoad(generation, id)) {
+      timeline.value = [];
+      return false;
+    }
+    return false;
   } finally {
     if (isCurrentLoad(generation, id)) timelineLoading.value = false;
   }
 }
 
-async function refreshRecordAndTimeline() {
+async function refreshRecordAndTimeline(): Promise<boolean> {
   const id = routeRecordId.value;
   const generation = pageGeneration;
-  await loadRecord(id, generation);
-  await loadTimeline(id, generation);
+  if (!(await loadRecord(id, generation, false))) return false;
+  return loadTimeline(id, generation);
 }
 
 async function saveClinicalSheet() {
-  if (!record.value || !hasClinicalSheetContent.value) return;
+  if (!canWriteClinicalRecord.value || !record.value || !hasClinicalSheetContent.value) return;
   const routeId = routeRecordId.value;
   const generation = pageGeneration;
   const currentRecord = record.value;
+  const submittedSnapshot = clinicalSheetSnapshot();
   submittingClinicalSheet.value = true;
+  clinicalSheetSaveState.value = 'saving';
+  clinicalSheetError.value = '';
   entryFormError.value = '';
   successMessage.value = '';
 
+  let persistedClinicalSectionCount = 0;
+  const submittedClinicalEntries: Array<{
+    response: ClinicalEntrySummary;
+    payload: CreateClinicalEntryRequest;
+  }> = [];
   try {
     const payloads = clinicalSheetSections
       .map((section) => ({
@@ -1733,24 +2279,74 @@ async function saveClinicalSheet() {
       .filter((item) => item.content.length > 0);
 
     for (const item of payloads) {
-      await medicalRecordsService.createEntry({
+      const payload: CreateClinicalEntryRequest = {
         encounterId: currentRecord.encounterId,
         patientId: currentRecord.patientId,
         entryType: item.section.entryType,
         title: item.section.title,
         content: item.content
-      });
+      };
+      const createdEntry = requireClinicalEntryResponse(
+        await medicalRecordsService.createEntry(payload, {
+          idempotencyKey: getClinicalSheetCreateKey(item.section.key, payload)
+        }),
+        'salvar a ficha de atendimento'
+      );
+      submittedClinicalEntries.push({ response: createdEntry, payload });
+      persistedClinicalSectionCount += 1;
       if (!isCurrentLoad(generation, routeId)) return;
     }
 
     if (!isCurrentLoad(generation, routeId)) return;
-    clearClinicalSheet();
-    successMessage.value = 'Ficha de atendimento salva no prontuário.';
-    await refreshRecordAndTimeline();
+    const refreshed = await refreshRecordAndTimeline();
+    if (!isCurrentLoad(generation, routeId)) return;
+    if (!refreshed) {
+      clinicalSheetSaveState.value = 'idle';
+      clinicalSheetError.value =
+        'A ficha foi enviada, mas a confirmação no prontuário falhou. Preserve este rascunho e atualize a leitura antes de tentar registrar novamente.';
+      return;
+    }
+    if (
+      submittedClinicalEntries.some(
+        ({ response, payload }) =>
+          !isClinicalEntryConfirmed(response, {
+            id: response.id,
+            encounterId: payload.encounterId,
+            patientId: payload.patientId,
+            medicalRecordId: currentRecord.id,
+            entryType: payload.entryType,
+            title: payload.title,
+            content: payload.content,
+            requireArchived: false
+          })
+      )
+    ) {
+      clinicalSheetSaveState.value = 'idle';
+      clinicalSheetError.value =
+        'A ficha foi enviada, mas as entradas criadas não apareceram na releitura do prontuário. Preserve este rascunho e tente novamente após confirmar a disponibilidade da persistência.';
+      return;
+    }
+
+    const hasNewerClinicalEdits = clinicalSheetSnapshot() !== submittedSnapshot;
+    if (!hasNewerClinicalEdits) {
+      clearClinicalSheet();
+      markClean();
+    } else {
+      markClean(submittedSnapshot);
+    }
+    clinicalSheetSaveState.value = 'saved';
+    clinicalSheetCreateAttempts.clear();
+    successMessage.value = !hasNewerClinicalEdits
+      ? 'Ficha de atendimento salva no prontuário.'
+      : 'Ficha salva no prontuário. As alterações feitas durante o salvamento continuam como rascunho local.';
   } catch (err: unknown) {
     if (isCurrentLoad(generation, routeId)) {
-      entryFormError.value =
-        err instanceof Error ? err.message : 'Erro ao salvar ficha de atendimento';
+      clinicalSheetSaveState.value = 'idle';
+      const detail = err instanceof Error ? err.message : 'Erro ao salvar ficha de atendimento';
+      clinicalSheetError.value =
+        persistedClinicalSectionCount > 0
+          ? `${persistedClinicalSectionCount} bloco(s) foram enviados, mas o restante falhou. Não repita o envio antes de atualizar o prontuário. ${detail}`
+          : detail;
     }
   } finally {
     if (isCurrentLoad(generation, routeId)) submittingClinicalSheet.value = false;
@@ -1758,7 +2354,7 @@ async function saveClinicalSheet() {
 }
 
 async function handleSaveEntry() {
-  if (!record.value || !isEntryFormValid.value) return;
+  if (!canWriteClinicalRecord.value || !record.value || !isEntryFormValid.value) return;
   const routeId = routeRecordId.value;
   const generation = pageGeneration;
   const currentRecord = record.value;
@@ -1775,7 +2371,48 @@ async function handleSaveEntry() {
         reason: editReason.value.trim() || undefined,
         expectedVersion: currentEditingEntry.version
       };
-      await medicalRecordsService.updateEntry(currentEditingEntry.id, payload);
+      const updatedEntry = requireClinicalEntryResponse(
+        await medicalRecordsService.updateEntry(currentEditingEntry.id, payload, {
+          idempotencyKey: getStableMutationKey(
+            clinicalEntryUpdateAttempts,
+            currentEditingEntry.id,
+            `update-${currentEditingEntry.id}`,
+            payload
+          )
+        }),
+        'atualizar a entrada clínica'
+      );
+      if (updatedEntry.id !== currentEditingEntry.id) {
+        entryFormError.value =
+          'A API retornou outra entrada para a edição solicitada. O formulário foi preservado.';
+        return;
+      }
+      if (!isCurrentLoad(generation, routeId)) return;
+      const refreshed = await refreshRecordAndTimeline();
+      if (!isCurrentLoad(generation, routeId)) return;
+      if (
+        !refreshed ||
+        !isClinicalEntryConfirmed(updatedEntry, {
+          id: currentEditingEntry.id,
+          encounterId: currentRecord.encounterId,
+          patientId: currentRecord.patientId,
+          medicalRecordId: currentRecord.id,
+          entryType: currentEditingEntry.entryType,
+          content: payload.content,
+          title: payload.title,
+          previousVersion: currentEditingEntry.version,
+          requireArchived: false
+        })
+      ) {
+        entryFormError.value =
+          'A entrada foi enviada, mas a confirmação na releitura do prontuário falhou. Preserve o formulário e atualize a leitura antes de tentar novamente.';
+        return;
+      }
+      clinicalEntryUpdateAttempts.delete(currentEditingEntry.id);
+      newEntryCreateAttempt = null;
+      closeEntryModal();
+      successMessage.value = 'Entrada clínica salva no prontuário.';
+      return;
     } else {
       const payload: CreateClinicalEntryRequest = {
         encounterId: currentRecord.encounterId,
@@ -1784,12 +2421,37 @@ async function handleSaveEntry() {
         title: entryForm.value.title.trim(),
         content: entryForm.value.content.trim()
       };
-      await medicalRecordsService.createEntry(payload);
+      const createdEntry = requireClinicalEntryResponse(
+        await medicalRecordsService.createEntry(payload, {
+          idempotencyKey: getNewEntryCreateKey(payload)
+        }),
+        'salvar a entrada clínica'
+      );
+      if (!isCurrentLoad(generation, routeId)) return;
+      const refreshed = await refreshRecordAndTimeline();
+      if (!isCurrentLoad(generation, routeId)) return;
+      if (
+        !refreshed ||
+        !isClinicalEntryConfirmed(createdEntry, {
+          id: createdEntry.id,
+          encounterId: payload.encounterId,
+          patientId: payload.patientId,
+          medicalRecordId: currentRecord.id,
+          entryType: payload.entryType,
+          title: payload.title,
+          content: payload.content,
+          requireArchived: false
+        })
+      ) {
+        entryFormError.value =
+          'A entrada foi enviada, mas a confirmação na releitura do prontuário falhou. Preserve o formulário e atualize a leitura antes de tentar novamente.';
+        return;
+      }
+      newEntryCreateAttempt = null;
+      closeEntryModal();
+      successMessage.value = 'Entrada clínica salva no prontuário.';
+      return;
     }
-    if (!isCurrentLoad(generation, routeId)) return;
-    closeEntryModal();
-    successMessage.value = 'Entrada clínica salva no prontuário.';
-    await refreshRecordAndTimeline();
   } catch (err: unknown) {
     if (isCurrentLoad(generation, routeId)) {
       entryFormError.value = err instanceof Error ? err.message : 'Erro ao salvar entrada';
@@ -1800,27 +2462,84 @@ async function handleSaveEntry() {
 }
 
 async function handleArchiveEntry() {
-  if (!archiveTarget.value || !archiveReason.value.trim()) return;
+  if (!canWriteClinicalRecord.value || !archiveTarget.value || !archiveReason.value.trim()) return;
   const routeId = routeRecordId.value;
   const generation = pageGeneration;
   const currentArchiveTarget = archiveTarget.value;
   const reason = archiveReason.value.trim();
   archivingEntry.value = true;
+  entryFormError.value = '';
 
   try {
     const payload: ArchiveClinicalEntryRequest = {
       reason,
       expectedVersion: currentArchiveTarget.version
     };
-    await medicalRecordsService.archiveEntry(currentArchiveTarget.id, payload);
+    const archivedEntry = requireClinicalEntryResponse(
+      await medicalRecordsService.archiveEntry(currentArchiveTarget.id, payload, {
+      idempotencyKey: getStableMutationKey(
+        clinicalEntryArchiveAttempts,
+        currentArchiveTarget.id,
+        `archive-${currentArchiveTarget.id}`,
+        payload
+      )
+      }),
+      'arquivar a entrada clínica'
+    );
+    if (
+      archivedEntry.id !== currentArchiveTarget.id ||
+      !archivedEntry.deletedAt ||
+      archivedEntry.deleteReason !== reason
+    ) {
+      throw new Error(
+        'O arquivamento foi enviado, mas a API não confirmou o identificador e o estado arquivado da entrada.'
+      );
+    }
     if (!isCurrentLoad(generation, routeId)) return;
+    const refreshed = await refreshRecordAndTimeline();
+    if (!isCurrentLoad(generation, routeId)) return;
+    if (
+      !refreshed ||
+      entries.value.some((entry) => entry.id === currentArchiveTarget.id && !entry.deletedAt)
+    ) {
+      entryFormError.value =
+        'O arquivamento foi enviado, mas a confirmação no prontuário falhou. Preserve este contexto e atualize a leitura antes de tentar novamente.';
+      return;
+    }
+    const archivedEntries = await medicalRecordsService.listEntries(
+      currentArchiveTarget.encounterId,
+      { includeArchived: true }
+    );
+    if (!isCurrentLoad(generation, routeId)) return;
+    if (
+      !isClinicalEntryConfirmed(
+        archivedEntry,
+        {
+          id: currentArchiveTarget.id,
+          encounterId: currentArchiveTarget.encounterId,
+          patientId: currentArchiveTarget.patientId,
+          medicalRecordId: currentArchiveTarget.medicalRecordId,
+          entryType: currentArchiveTarget.entryType,
+          title: currentArchiveTarget.title,
+          content: currentArchiveTarget.content,
+          previousVersion: currentArchiveTarget.version,
+          requireArchived: true,
+          deleteReason: reason
+        },
+        archivedEntries
+      )
+    ) {
+      entryFormError.value =
+        'O arquivamento foi enviado, mas a leitura autoritativa não confirmou o estado arquivado. Preserve este contexto e atualize a leitura antes de tentar novamente.';
+      return;
+    }
     showArchiveModal.value = false;
     archiveTarget.value = null;
     archiveReason.value = '';
-    await refreshRecordAndTimeline();
+    clinicalEntryArchiveAttempts.delete(currentArchiveTarget.id);
   } catch (err: unknown) {
     if (isCurrentLoad(generation, routeId)) {
-      alert(err instanceof Error ? err.message : 'Erro ao arquivar entrada');
+      entryFormError.value = err instanceof Error ? err.message : 'Erro ao arquivar entrada';
     }
   } finally {
     if (isCurrentLoad(generation, routeId)) archivingEntry.value = false;
@@ -1830,6 +2549,7 @@ async function handleArchiveEntry() {
 async function loadPage(id: string) {
   const generation = ++pageGeneration;
   resetPageState();
+  markClean();
   loading.value = true;
   if (!id) {
     loading.value = false;
@@ -2239,6 +2959,26 @@ onBeforeUnmount(() => {
   padding: 16px;
 }
 
+.clinical-sheet__status {
+  margin: -4px 0 0;
+  color: var(--color-text-muted, #64748b);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.clinical-sheet__status--draft,
+.clinical-sheet__status--saving {
+  color: var(--color-warning-700, #a16207);
+}
+
+.clinical-sheet__status--error {
+  color: var(--color-danger-700, #b91c1c);
+}
+
+.clinical-sheet__status--saved {
+  color: var(--color-success-700, #15803d);
+}
+
 .anamnesis-command {
   display: flex;
   align-items: center;
@@ -2429,6 +3169,46 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   color: var(--color-text-muted, #64748b);
   font-size: 12px;
+}
+
+.clinical-inline-error {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-danger-200, #fecaca);
+  border-radius: 8px;
+  background: var(--color-danger-50, #fef2f2);
+  color: var(--color-danger-700, #b91c1c);
+  line-height: 1.45;
+}
+
+.attachment-item {
+  align-items: flex-start;
+}
+
+.attachment-item__details {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.attachment-item__details p {
+  margin: 0;
+  color: var(--color-text-secondary, #475569);
+  font-size: 13px;
+}
+
+.attachment-item__category,
+.attachment-item__availability {
+  color: var(--color-text-muted, #64748b);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.attachment-item__actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
 }
 
 .entry-card {

@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
+import { reactive } from 'vue';
+
+const mockRoute = reactive({ query: {} as Record<string, unknown> });
+const mockRouterReplace = vi.fn().mockResolvedValue(undefined);
+
+vi.mock('vue-router', () => ({
+  useRoute: () => mockRoute,
+  useRouter: () => ({ replace: mockRouterReplace })
+}));
 
 const mockPatients = [
   {
@@ -111,6 +120,8 @@ vi.mock('@/composables/useEntityCache', () => ({
 describe('PatientsListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRoute.query = {};
+    mockRouterReplace.mockResolvedValue(undefined);
     mockListFn.mockResolvedValue(mockPatients);
     mockOwnerListFn.mockResolvedValue(mockOwners);
     mockGetOwnerName.mockImplementation((id: string) =>
@@ -225,13 +236,58 @@ describe('PatientsListPage', () => {
     });
   });
 
+  it('restores and writes the complete list context through the URL', async () => {
+    mockRoute.query = {
+      ownerId: 'owner-2',
+      search: 'Mimi',
+      species: 'feline',
+      status: 'active',
+      sex: 'female',
+      sort: 'name',
+      source: 'patient-list'
+    };
+
+    const PatientsListPage = (await import('../PatientsListPage.vue')).default;
+    const wrapper = mount(PatientsListPage);
+
+    await flushPromises();
+
+    expect((wrapper.find('input[type="search"]').element as HTMLInputElement).value).toBe('Mimi');
+    const selects = wrapper.findAll('select');
+    expect((selects[0]?.element as HTMLSelectElement).value).toBe('feline');
+    expect((selects[1]?.element as HTMLSelectElement).value).toBe('active');
+    expect((selects[2]?.element as HTMLSelectElement).value).toBe('female');
+    expect((selects[3]?.element as HTMLSelectElement).value).toBe('name');
+    expect(mockListFn).toHaveBeenCalledWith({
+      search: 'Mimi',
+      ownerId: 'owner-2',
+      species: 'feline',
+      status: 'active'
+    });
+
+    await wrapper.find('form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(mockRouterReplace).toHaveBeenCalledWith({
+      query: {
+        ownerId: 'owner-2',
+        search: 'Mimi',
+        species: 'feline',
+        status: 'active',
+        sex: 'female',
+        sort: 'name',
+        source: 'patient-list'
+      }
+    });
+  });
+
   it('shows the owner disclosure block in animal cards', async () => {
     const PatientsListPage = (await import('../PatientsListPage.vue')).default;
     const wrapper = mount(PatientsListPage);
 
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Informações do cliente');
+    expect(wrapper.text()).toContain('Informações do tutor');
     expect(wrapper.text()).toContain('CPF/CNPJ');
     expect(wrapper.text()).toContain('Celular');
     expect(wrapper.text()).toContain('E-mail');

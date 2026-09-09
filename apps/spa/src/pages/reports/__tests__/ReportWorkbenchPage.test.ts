@@ -89,7 +89,8 @@ vi.mock('@/services/packages', () => ({ packagesService: { list: vi.fn() } }));
 vi.mock('@/services/reports', () => ({
   reportsService: {
     execute: vi.fn(),
-    exportExecution: vi.fn()
+    exportExecution: vi.fn(),
+    getExecutionExport: vi.fn()
   }
 }));
 
@@ -958,6 +959,17 @@ const financialReceivables = [
   }
 ] as FinancialReceivableListItem[];
 
+function expectServerExportCall(executionId: string): void {
+  expect(reportsService.exportExecution).toHaveBeenCalledWith(
+    executionId,
+    'csv',
+    expect.objectContaining({
+      idempotencyKey: `report-export:${executionId}:csv`,
+      signal: expect.any(AbortSignal)
+    })
+  );
+}
+
 describe('ReportWorkbenchPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -999,6 +1011,40 @@ describe('ReportWorkbenchPage', () => {
       };
     });
     vi.mocked(reportsService.execute).mockImplementation(async (payload) => {
+      if (payload.reportId === 'financial-receivables') {
+        const status = payload.filters?.status;
+        const rows = financialReceivables
+          .filter((item) => !status || item.status === status)
+          .map(({ id: _id, payments, ...item }) => ({ ...item, paymentCount: payments.length }));
+        return {
+          id: 'rep-exec-receivables',
+          rowCount: rows.length,
+          rows
+        } as never;
+      }
+      if (payload.reportId === 'financial-payables') {
+        const status = payload.filters?.status;
+        const rows = financialPayables
+          .filter((item) => !status || item.status === status)
+          .map(({ id: _id, ...item }) => ({
+            supplierName: item.supplierName,
+            description: item.description,
+            category: item.category,
+            issuedAt: item.issuedAt,
+            dueAt: item.dueAt,
+            totalAmount: item.totalAmount,
+            paidAmount: item.paidAmount,
+            outstandingAmount: item.outstandingAmount,
+            status: item.status,
+            paymentMethod: item.paymentMethod,
+            reconciliationStatus: item.reconciliationStatus
+          }));
+        return {
+          id: 'rep-exec-payables',
+          rowCount: rows.length,
+          rows
+        } as never;
+      }
       if (payload.reportId === 'registration-services') return servicesReportExecution;
       if (payload.reportId === 'registration-owners') return ownersReportExecution;
       if (payload.reportId === 'registration-patients') return patientsReportExecution;
@@ -1046,10 +1092,9 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Tutor Teste');
     expect(wrapper.text()).toContain('1/1');
     expect(wrapper.text()).not.toContain('Abrir financeiro');
-    expect(financialReceivablesService.list).toHaveBeenCalledWith({
-      status: 'open',
-      page: 1,
-      pageSize: 100
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'financial-receivables',
+      filters: { status: 'open' }
     });
   });
 
@@ -1069,10 +1114,9 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Parcela 1/1');
     expect(wrapper.text()).toContain('Recebido');
     expect(wrapper.text()).not.toContain('Abrir financeiro');
-    expect(financialReceivablesService.list).toHaveBeenCalledWith({
-      status: 'settled',
-      page: 1,
-      pageSize: 100
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'financial-receivables',
+      filters: { status: 'settled' }
     });
   });
 
@@ -1092,7 +1136,14 @@ describe('ReportWorkbenchPage', () => {
       reportId: 'financial-receivables',
       filters: { status: 'settled' }
     });
-    expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-payables', 'csv');
+    expect(reportsService.exportExecution).toHaveBeenCalledWith(
+      'rep-exec-receivables',
+      'csv',
+      expect.objectContaining({
+        idempotencyKey: 'report-export:rep-exec-receivables:csv',
+        signal: expect.any(AbortSignal)
+      })
+    );
   });
 
   it('renders accounts payable financial report from the authoritative payables subledger', async () => {
@@ -1111,10 +1162,9 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('NF 123');
     expect(wrapper.text()).toContain('A Pagar');
     expect(wrapper.text()).not.toContain('Abrir financeiro');
-    expect(financialPayablesService.list).toHaveBeenCalledWith({
-      status: '',
-      page: 1,
-      pageSize: 100
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'financial-payables',
+      filters: {}
     });
   });
 
@@ -1133,10 +1183,9 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).not.toContain('Fornecedor de medicamentos');
     expect(wrapper.text()).toContain('Pago');
     expect(wrapper.text()).not.toContain('Abrir financeiro');
-    expect(financialPayablesService.list).toHaveBeenCalledWith({
-      status: 'paid',
-      page: 1,
-      pageSize: 100
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'financial-payables',
+      filters: { status: 'paid' }
     });
   });
 
@@ -1161,9 +1210,16 @@ describe('ReportWorkbenchPage', () => {
         reportId: 'financial-payables',
         filters: {}
       });
-      expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-payables', 'csv');
+      expect(reportsService.exportExecution).toHaveBeenCalledWith(
+        'rep-exec-payables',
+        'csv',
+        expect.objectContaining({
+          idempotencyKey: 'report-export:rep-exec-payables:csv',
+          signal: expect.any(AbortSignal)
+        })
+      );
       expect(createObjectURL).toHaveBeenCalledOnce();
-      expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 1 linha(s).');
+      expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 2 linha(s).');
     } finally {
       vi.unstubAllGlobals();
     }
@@ -1247,7 +1303,7 @@ describe('ReportWorkbenchPage', () => {
         reportId: 'financial-cheques',
         filters: {}
       });
-      expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-cheques', 'csv');
+      expectServerExportCall('rep-exec-cheques');
       expect(createObjectURL).toHaveBeenCalledOnce();
       expect(createObjectURL.mock.calls[0]?.[0]).toBeInstanceOf(Blob);
       expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 1 linha(s).');
@@ -1382,10 +1438,7 @@ describe('ReportWorkbenchPage', () => {
         reportId: 'financial-advance-payments',
         filters: {}
       });
-      expect(reportsService.exportExecution).toHaveBeenCalledWith(
-        'rep-exec-advance-payments',
-        'csv'
-      );
+      expectServerExportCall('rep-exec-advance-payments');
       expect(createObjectURL).toHaveBeenCalledOnce();
       expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 1 linha(s).');
     } finally {
@@ -1414,7 +1467,7 @@ describe('ReportWorkbenchPage', () => {
         reportId: 'registration-owners',
         filters: {}
       });
-      expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-owners', 'csv');
+      expectServerExportCall('rep-exec-owners');
       expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 2 linha(s).');
     } finally {
       vi.unstubAllGlobals();
@@ -1626,10 +1679,7 @@ describe('ReportWorkbenchPage', () => {
         reportId: 'scheduling-professional-care',
         filters: {}
       });
-      expect(reportsService.exportExecution).toHaveBeenCalledWith(
-        'rep-exec-professional-care',
-        'csv'
-      );
+      expectServerExportCall('rep-exec-professional-care');
       expect(createObjectURL).toHaveBeenCalledOnce();
       expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 2 linha(s).');
     } finally {
@@ -1747,10 +1797,7 @@ describe('ReportWorkbenchPage', () => {
         reportId: 'fiscal-service-invoices',
         filters: {}
       });
-      expect(reportsService.exportExecution).toHaveBeenCalledWith(
-        'rep-exec-service-invoices',
-        'csv'
-      );
+      expectServerExportCall('rep-exec-service-invoices');
       expect(createObjectURL).toHaveBeenCalledOnce();
       expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 1 linha(s).');
     } finally {
@@ -1805,7 +1852,7 @@ describe('ReportWorkbenchPage', () => {
       reportId: 'registration-services',
       filters: { dateFrom: '2026-04-01', dateTo: '2026-04-30' }
     });
-    expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-services', 'csv');
+    expectServerExportCall('rep-exec-services');
   });
 
   it('rejects malformed server services rows instead of falling back to the local list', async () => {
@@ -1884,7 +1931,7 @@ describe('ReportWorkbenchPage', () => {
       .find((button) => button.text() === 'Exportar CSV');
     await exportButton?.trigger('click');
     await flushPromises();
-    expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-owners', 'csv');
+    expectServerExportCall('rep-exec-owners');
   });
 
   it('renders patients register report as a read-only legacy report', async () => {
@@ -1935,7 +1982,7 @@ describe('ReportWorkbenchPage', () => {
       .find((button) => button.text() === 'Exportar CSV');
     await exportButton?.trigger('click');
     await flushPromises();
-    expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-patients', 'csv');
+    expectServerExportCall('rep-exec-patients');
   });
 
   it('rejects malformed server owner rows without falling back to the local list', async () => {
@@ -2040,7 +2087,7 @@ describe('ReportWorkbenchPage', () => {
       reportId: 'registration-suppliers',
       filters: {}
     });
-    expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-suppliers', 'csv');
+    expectServerExportCall('rep-exec-suppliers');
   });
 
   it('opens cancellation history by default with UTC dates, actor, reason and event-time amounts', async () => {
@@ -2237,7 +2284,12 @@ describe('ReportWorkbenchPage', () => {
       await wrapper
         .get('input[placeholder="Número da comanda, motivo ou ID do responsável"]')
         .setValue('user-gerente');
-      expect(wrapper.get('.report-query-note').text()).toContain('A tabela mostra a última consulta; o CSV será gerado com os filtros atuais.');
+      expect(wrapper.get('.report-query-note').text()).toContain('A tabela mostra a última execução server-side;');
+      await wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Aplicar')
+        ?.trigger('click');
+      await flushPromises();
       await wrapper
         .findAll('button')
         .find((button) => button.text() === 'Exportar CSV')
@@ -2248,10 +2300,7 @@ describe('ReportWorkbenchPage', () => {
         reportId: 'commercial-cancellation-history',
         filters: { dateFrom: '2026-09-04', search: 'user-gerente' }
       });
-      expect(reportsService.exportExecution).toHaveBeenCalledWith(
-        'rep-exec-cancellation-history',
-        'csv'
-      );
+      expectServerExportCall('rep-exec-cancellation-history');
       expect(createObjectURL).toHaveBeenCalledOnce();
       const downloaded = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -2358,7 +2407,7 @@ describe('ReportWorkbenchPage', () => {
         reportId: 'commercial-deleted-sales',
         filters: {}
       });
-      expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-deleted-sales', 'csv');
+      expectServerExportCall('rep-exec-deleted-sales');
       expect(createObjectURL).toHaveBeenCalledOnce();
       expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 1 linha(s).');
     } finally {
@@ -2429,9 +2478,10 @@ describe('ReportWorkbenchPage', () => {
         reportId: 'inventory-stock',
         filters: {}
       });
-      expect(reportsService.exportExecution).toHaveBeenCalledWith(
-        'rep-exec-inventory-stock',
-        'csv'
+      expectServerExportCall('rep-exec-inventory-stock');
+      expect(reportsService.execute).toHaveBeenCalledTimes(1);
+      expect(wrapper.find('.report-results').attributes('data-execution-id')).toBe(
+        'rep-exec-inventory-stock'
       );
       expect(createObjectURL).toHaveBeenCalledOnce();
       expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 2 linha(s).');
@@ -2521,8 +2571,8 @@ describe('ReportWorkbenchPage', () => {
   });
 
   it.each([
-    ['inventory-stock', 'Cadastros', 'Data de cadastro dos produtos. Os saldos mostrados são atuais.', inventoryStockExecution],
-    ['inventory-products', 'Cadastros', 'Data de cadastro dos produtos. Os saldos mostrados são atuais.', inventoryProductExecution],
+    ['inventory-stock', 'Cadastros', 'Data de cadastro dos produtos (UTC). Os saldos mostrados são atuais.', inventoryStockExecution],
+    ['inventory-products', 'Cadastros', 'Data de cadastro dos produtos (UTC). Os saldos mostrados são atuais.', inventoryProductExecution],
     ['inventory-invoices', 'Compras', 'Data de criação da compra, independentemente do recebimento.', inventoryInvoiceExecution],
     ['inventory-movements', 'Movimentações', 'Data de registro da movimentação.', inventoryMovementExecution]
   ] as const)('labels %s periods by their persisted date without changing the API filters', async (reportKey, subject, hint, execution) => {
@@ -2656,10 +2706,7 @@ describe('ReportWorkbenchPage', () => {
         reportId: 'inventory-products',
         filters: {}
       });
-      expect(reportsService.exportExecution).toHaveBeenCalledWith(
-        'rep-exec-inventory-products',
-        'csv'
-      );
+      expectServerExportCall('rep-exec-inventory-products');
       expect(createObjectURL).toHaveBeenCalledOnce();
       expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 2 linha(s).');
     } finally {
@@ -2759,6 +2806,43 @@ describe('ReportWorkbenchPage', () => {
     });
   });
 
+  it('treats audit date filters as a UTC half-open interval', async () => {
+    vi.mocked(auditService.listEvents).mockResolvedValueOnce([
+      ...auditEvents,
+      {
+        ...auditEvents[0],
+        eventId: 'evt-utc-start',
+        occurredAt: '2026-04-30T00:00:00.000Z',
+        payloadSummary: 'Evento no início do dia UTC'
+      },
+      {
+        ...auditEvents[0],
+        eventId: 'evt-utc-end',
+        occurredAt: '2026-05-01T00:00:00.000Z',
+        payloadSummary: 'Evento no início do dia seguinte UTC'
+      },
+      {
+        ...auditEvents[0],
+        eventId: 'evt-utc-last-millisecond',
+        occurredAt: '2026-04-30T23:59:59.999Z',
+        payloadSummary: 'Evento no último milissegundo do dia UTC'
+      }
+    ] as unknown as AuditEventSummary[]);
+
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'audit-appointments' }
+    });
+    await flushPromises();
+    const dateInputs = wrapper.findAll('input[type="date"]');
+    await dateInputs[0]!.setValue('2026-04-30');
+    await dateInputs[1]!.setValue('2026-04-30');
+
+    expect(wrapper.findAll('tbody tr')).toHaveLength(2);
+    expect(wrapper.text()).toContain('Evento no início do dia UTC');
+    expect(wrapper.text()).toContain('Evento no último milissegundo do dia UTC');
+    expect(wrapper.text()).not.toContain('Evento no início do dia seguinte UTC');
+  });
+
   it('exports the loaded appointments report through the audited server artifact', async () => {
     const createObjectURL = vi.fn((_blob: Blob) => 'blob:report');
     const revokeObjectURL = vi.fn();
@@ -2794,7 +2878,7 @@ describe('ReportWorkbenchPage', () => {
         reportId: 'scheduling-appointments',
         filters: {}
       });
-      expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-appointments', 'csv');
+      expectServerExportCall('rep-exec-appointments');
       expect(createObjectURL).toHaveBeenCalledOnce();
       expect(createObjectURL.mock.calls[0]?.[0]).toBeInstanceOf(Blob);
       expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 3 linha(s).');
@@ -2897,15 +2981,62 @@ describe('ReportWorkbenchPage', () => {
     }
   });
 
-  it.each(['accounts-payable','accounts-receivable'] as const)('explains live filtering of loaded records in %s before exporting', async (reportKey) => {
+  it.each(['accounts-payable','accounts-receivable'] as const)('keeps the displayed financial snapshot aligned with its server execution in %s', async (reportKey) => {
     const wrapper = mount(ReportWorkbenchPage, {props:{reportKey}});
     await flushPromises();
-    expect(wrapper.findAll('tbody tr').length).toBeGreaterThan(0);
+    const initialRowCount = wrapper.findAll('tbody tr').length;
+    const executionCallCount = vi.mocked(reportsService.execute).mock.calls.length;
+    expect(initialRowCount).toBeGreaterThan(0);
     await wrapper.findAll('input[type="date"]')[0]!.setValue('2099-01-01');
-    expect(wrapper.findAll('tbody tr')).toHaveLength(0);
-    expect(wrapper.get('.report-query-note').text()).toContain('A tabela filtra os registros carregados;');
-    expect(wrapper.get('.report-query-note').text()).not.toContain('mostra a última consulta');
-    expect(reportsService.execute).not.toHaveBeenCalled();
+    expect(wrapper.findAll('tbody tr')).toHaveLength(initialRowCount);
+    expect(wrapper.get('.report-query-note').text()).toContain('A tabela mostra a última execução server-side;');
+    expect(wrapper.get('.report-query-note').text()).not.toContain('filtra os registros carregados');
+    expect(vi.mocked(reportsService.execute).mock.calls).toHaveLength(executionCallCount);
+  });
+
+  it('keeps the displayed execution pending after timeout and reconciles its artifact', async () => {
+    vi.useFakeTimers();
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:reconciled-report');
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
+    vi.mocked(reportsService.exportExecution).mockReturnValueOnce(new Promise(() => {}));
+    vi.mocked(reportsService.getExecutionExport).mockResolvedValueOnce({
+      id: 'rep-export-payables',
+      accountId: 'account-1',
+      executionId: 'rep-exec-payables',
+      format: 'csv',
+      filename: 'financial-payables-rep-exec-payables.csv',
+      contentType: 'text/csv;charset=utf-8',
+      contentEncoding: 'utf8',
+      content: 'Fornecedor,Descrição\nLaboratório parceiro,NF 123',
+      exportedByUserId: 'user-1',
+      exportedAt: '2026-05-20T00:00:00.000Z'
+    });
+
+    try {
+      const wrapper = mount(ReportWorkbenchPage, { props: { reportKey: 'accounts-payable' } });
+      await flushPromises();
+      await wrapper.findAll('button').find((button) => button.text() === 'Exportar CSV')?.trigger('click');
+      await flushPromises();
+      await vi.advanceTimersByTimeAsync(12_000);
+      await flushPromises();
+
+      expect(wrapper.text()).toContain('Exportação em reconciliação');
+      const reconcileButton = wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Verificar exportação pendente');
+      await reconcileButton?.trigger('click');
+      await flushPromises();
+      expect(reportsService.getExecutionExport).toHaveBeenCalledWith(
+        'rep-exec-payables',
+        'csv',
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
+      );
+      expect(wrapper.text()).toContain('Artefato de exportação reconciliado e baixado com segurança.');
+      expect(wrapper.text()).not.toContain('Exportação em reconciliação');
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
   });
 
 });

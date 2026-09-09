@@ -1,0 +1,83 @@
+{
+  "out": "/home/ricardo/cvg-his-v4/docs/frontend/implementation/evidence/continuity-cD1EER",
+  "failures": 0,
+  "inputsStable": true,
+  "rows": [
+    {
+      "target": "/appointments",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "documentWidth": 1440,
+      "documentHeight": 900,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "agenda-priority-list-keyboard-filter-and-grid",
+          "passed": true,
+          "firstItemY": 390.75,
+          "count": 2
+        }
+      ]
+    },
+    {
+      "target": "/appointments",
+      "theme": "light",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "documentHeight": 989,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "agenda-priority-list-keyboard-filter-and-grid",
+          "passed": true,
+          "firstItemY": 523,
+          "count": 2
+        }
+      ]
+    },
+    {
+      "target": "/appointments",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "documentWidth": 1440,
+      "documentHeight": 900,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "agenda-priority-list-keyboard-filter-and-grid",
+          "passed": true,
+          "firstItemY": 390.75,
+          "count": 2
+        }
+      ]
+    },
+    {
+      "target": "/appointments",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "documentHeight": 989,
+      "errors": [],
+      "interactions": [
+        {
+          "test": "agenda-priority-list-keyboard-filter-and-grid",
+          "passed": true,
+          "firstItemY": 523,
+          "count": 2
+        }
+      ]
+    }
+  ]
+}

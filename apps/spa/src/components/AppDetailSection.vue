@@ -1,7 +1,9 @@
 <template>
-  <DsCard class="app-detail-section" :title="title">
-    <template #title v-if="$slots.title">
-      <slot name="title"></slot>
+  <DsCard class="app-detail-section">
+    <template #header v-if="title || $slots.title">
+      <slot name="title">
+        <h2 class="ds-card__title">{{ title }}</h2>
+      </slot>
     </template>
 
     <div class="app-detail-section__content">

@@ -41,7 +41,7 @@
             <input value="BIO" disabled />
           </label>
           <div class="form-actions">
-            <DsButton variant="primary" type="submit" :loading="submitting">Salvar</DsButton>
+            <DsButton variant="primary" type="submit" :loading="submitting" :disabled="successPending">Salvar</DsButton>
             <DsButton variant="secondary" type="button" tag="a" to="/laboratory/biochemistry-reference-values">Cancelar</DsButton>
           </div>
         </form>
@@ -73,6 +73,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppPageHeader from '@/components/AppPageHeader.vue';
+import { useSuccessRedirect } from '@/composables/successRedirect';
 import { laboratoryService } from '@/services/laboratory';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
@@ -83,6 +84,8 @@ const router = useRouter();
 const referenceValueId = computed(() => route.params.id as string | undefined);
 const isEditing = computed(() => Boolean(referenceValueId.value));
 const submitting = ref(false);
+const successRedirect = useSuccessRedirect();
+const successPending = successRedirect.successPending;
 const error = ref('');
 const successMessage = ref('');
 const form = reactive({
@@ -115,6 +118,7 @@ async function loadReferenceValue() {
 }
 
 async function submitForm() {
+  if (submitting.value || !successRedirect.begin()) return;
   if (!form.parameter.trim() || !form.unit.trim()) {
     error.value = 'Parâmetro e unidade são obrigatórios';
     return;
@@ -143,7 +147,7 @@ async function submitForm() {
     }
 
     successMessage.value = 'Valor de referência salvo com sucesso.';
-    setTimeout(() => void router.push('/laboratory/biochemistry-reference-values'), 900);
+    successRedirect.schedule(() => router.push('/laboratory/biochemistry-reference-values'), successMessage.value);
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao salvar valor de referência';
   } finally {

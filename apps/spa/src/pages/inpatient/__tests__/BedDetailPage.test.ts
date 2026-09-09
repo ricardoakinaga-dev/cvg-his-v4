@@ -20,6 +20,17 @@ beforeEach(() => { vi.resetAllMocks(); route.params.id = first.id; service.getBe
 afterEach(() => { wrapper?.unmount(); vi.restoreAllMocks(); });
 
 describe('BedDetailPage confirmed identity and guarded actions', () => {
+  it.each([
+    ['available', 'success'],
+    ['occupied', 'danger'],
+    ['maintenance', 'warning'],
+    ['blocked', 'danger']
+  ] as const)('communicates %s status with the corresponding visual variant', async (status, variant) => {
+    service.getBedById.mockResolvedValueOnce({ ...first, status });
+    await render();
+    expect(wrapper.find('.ds-badge').classes()).toContain(`ds-badge--${variant}`);
+  });
+
   it('preserves the toggle contract and canonical navigation', async () => {
     await render(); await click(/^Editar$/); expect(navigation.push).toHaveBeenLastCalledWith('/beds/bed-first/edit');
     await click(/^Mapa de Leitos$/); expect(navigation.push).toHaveBeenLastCalledWith('/inpatient/board');

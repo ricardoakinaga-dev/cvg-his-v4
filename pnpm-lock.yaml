@@ -31,6 +31,7 @@ overrides:
   serialize-javascript: ^7.0.5
   vite: 6.4.3
   ws: ^8.20.1
+  vue-component-meta@2.2.12>vue-component-type-helpers: 2.2.12
   vue-component-type-helpers: 3.2.7
   ajv@6.12.6: 6.14.0
   esbuild@0.18.20: 0.25.12
@@ -566,30 +567,21 @@ importers:
       '@storybook/addon-a11y':
         specifier: ^10.3.5
         version: 10.3.5(storybook@10.3.5(@testing-library/dom@10.4.1)(prettier@3.8.1)(react-dom@19.2.5(react@18.3.1))(react@18.3.1))
-      '@storybook/addon-actions':
-        specifier: ^9.0.8
-        version: 9.0.8
-      '@storybook/addon-backgrounds':
-        specifier: ^9.0.8
-        version: 9.0.8
-      '@storybook/addon-controls':
-        specifier: ^9.0.8
-        version: 9.0.8
       '@storybook/addon-docs':
         specifier: ^10.3.5
         version: 10.3.5(@types/react@18.3.28)(esbuild@0.25.12)(rollup@4.60.4)(storybook@10.3.5(@testing-library/dom@10.4.1)(prettier@3.8.1)(react-dom@19.2.5(react@18.3.1))(react@18.3.1))(vite@6.4.3(@types/node@22.19.11)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@storybook/addon-links':
         specifier: ^10.3.5
         version: 10.3.5(react@18.3.1)(storybook@10.3.5(@testing-library/dom@10.4.1)(prettier@3.8.1)(react-dom@19.2.5(react@18.3.1))(react@18.3.1))
-      '@storybook/addon-toolbars':
-        specifier: ^9.0.8
-        version: 9.0.8
       '@storybook/vue3-vite':
         specifier: ^10.3.5
         version: 10.3.5(esbuild@0.25.12)(rollup@4.60.4)(storybook@10.3.5(@testing-library/dom@10.4.1)(prettier@3.8.1)(react-dom@19.2.5(react@18.3.1))(react@18.3.1))(vite@6.4.3(@types/node@22.19.11)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(vue@3.5.32(typescript@5.9.3))
       '@types/node':
         specifier: ^22.13.5
         version: 22.19.11
+      '@vitejs/plugin-vue':
+        specifier: ^6.0.5
+        version: 6.0.5(vite@6.4.3(@types/node@22.19.11)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(vue@3.5.32(typescript@5.9.3))
       '@vue/test-utils':
         specifier: ^2.4.6
         version: 2.4.6
@@ -3280,15 +3272,6 @@ packages:
     peerDependencies:
       storybook: ^10.3.5
 
-  '@storybook/addon-actions@9.0.8':
-    resolution: {integrity: sha512-LFePu7PPnWN0Il/uoUpmA5T0J0C7d6haJIbg0pXrjxW2MQVSYXE4S4LSUz8fOImltBDV3xAl6tLPYHFj6VcrOA==}
-
-  '@storybook/addon-backgrounds@9.0.8':
-    resolution: {integrity: sha512-4Vvr4wYHtiZ8UVWdCahK0XEMU4zNgInnNcVQ31YkUg41MVSY+aoZqtNuxOuRbFzUtjL9/aVsbY0Sg9Lp1/EJ4g==}
-
-  '@storybook/addon-controls@9.0.8':
-    resolution: {integrity: sha512-6MY9QeBv2vNmBXH+ONmbpp/Gu/odSxriN1+BAY+il9OyXZBMq3OiDsjoH7xY5V7PGr+0XhZfOLkamvx3q+lQTg==}
-
   '@storybook/addon-docs@10.3.5':
     resolution: {integrity: sha512-WuHbxia/o5TX4Rg/IFD0641K5qId/Nk0dxhmAUNoFs5L0+yfZUwh65XOBbzXqrkYmYmcVID4v7cgDRmzstQNkA==}
     peerDependencies:
@@ -3302,9 +3285,6 @@ packages:
     peerDependenciesMeta:
       react:
         optional: true
-
-  '@storybook/addon-toolbars@9.0.8':
-    resolution: {integrity: sha512-Vgr+TxEXQiaYp1SpUnO8AZamZk4um+QTbj0egQfBLuHMWPtrMRyXgtum4Xnw6Dox83TgG237YTYZHExWV/MnSQ==}
 
   '@storybook/builder-vite@10.3.5':
     resolution: {integrity: sha512-i4KwCOKbhtlbQIbhm53+Kk7bMnxa0cwTn1pxmtA/x5wm1Qu7FrrBQV0V0DNjkUqzcSKo1CjspASJV/HlY0zYlw==}
@@ -5928,6 +5908,9 @@ packages:
       typescript:
         optional: true
 
+  vue-component-type-helpers@2.2.12:
+    resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
+
   vue-component-type-helpers@3.2.7:
     resolution: {integrity: sha512-+gPp5YGmhfsj1IN+xUo7y0fb4clfnOiiUA39y07yW1VzCRjzVgwLbtmdWlghh7mXrPsEaYc7rrIir/HT6C8vYQ==}
 
@@ -7659,12 +7642,6 @@ snapshots:
       axe-core: 4.11.2
       storybook: 10.3.5(@testing-library/dom@10.4.1)(prettier@3.8.1)(react-dom@19.2.5(react@18.3.1))(react@18.3.1)
 
-  '@storybook/addon-actions@9.0.8': {}
-
-  '@storybook/addon-backgrounds@9.0.8': {}
-
-  '@storybook/addon-controls@9.0.8': {}
-
   '@storybook/addon-docs@10.3.5(@types/react@18.3.28)(esbuild@0.25.12)(rollup@4.60.4)(storybook@10.3.5(@testing-library/dom@10.4.1)(prettier@3.8.1)(react-dom@19.2.5(react@18.3.1))(react@18.3.1))(vite@6.4.3(@types/node@22.19.11)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
       '@mdx-js/react': 3.1.1(@types/react@18.3.28)(react@18.3.1)
@@ -7688,8 +7665,6 @@ snapshots:
       storybook: 10.3.5(@testing-library/dom@10.4.1)(prettier@3.8.1)(react-dom@19.2.5(react@18.3.1))(react@18.3.1)
     optionalDependencies:
       react: 18.3.1
-
-  '@storybook/addon-toolbars@9.0.8': {}
 
   '@storybook/builder-vite@10.3.5(esbuild@0.25.12)(rollup@4.60.4)(storybook@10.3.5(@testing-library/dom@10.4.1)(prettier@3.8.1)(react-dom@19.2.5(react@18.3.1))(react@18.3.1))(vite@6.4.3(@types/node@22.19.11)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
@@ -10641,9 +10616,11 @@ snapshots:
       '@volar/typescript': 2.4.15
       '@vue/language-core': 2.2.12(typescript@5.9.3)
       path-browserify: 1.0.1
-      vue-component-type-helpers: 3.2.7
+      vue-component-type-helpers: 2.2.12
     optionalDependencies:
       typescript: 5.9.3
+
+  vue-component-type-helpers@2.2.12: {}
 
   vue-component-type-helpers@3.2.7: {}
 

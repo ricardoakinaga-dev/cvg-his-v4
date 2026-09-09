@@ -104,7 +104,7 @@
               <span>{{ primaryContact(owner) }}</span>
             </div>
             <div class="fact-row">
-              <span class="fact-row__label">Animais do cliente</span>
+              <span class="fact-row__label">Animais do {{ clinicalLabels.tutor.singularLower }}</span>
               <span>{{ patientsByOwner(owner.id).length }}</span>
             </div>
             <div class="fact-row">
@@ -119,10 +119,10 @@
               <div v-if="owner.contacts.length" class="owner-contact-list">
                 <div
                   v-for="contact in owner.contacts"
-                  :key="`${owner.id}-${contact.label}-${contact.value}`"
+                  :key="`${owner.id}-${contact.type}-${contact.value}`"
                   class="fact-row"
                 >
-                  <span class="fact-row__label">{{ contact.label }}</span>
+                  <span class="fact-row__label">{{ ownerContactDisplayLabel(contact) }}</span>
                   <span>{{ contact.value }}</span>
                 </div>
               </div>
@@ -131,7 +131,7 @@
           </details>
 
           <details class="owner-card__details">
-            <summary>Animais do Cliente</summary>
+            <summary>Animais do {{ clinicalLabels.tutor.singular }}</summary>
             <div class="owner-card__detail-body">
               <div v-if="patientsByOwner(owner.id).length" class="owner-animal-list">
                 <div
@@ -204,9 +204,9 @@
 
     <DsCard v-else class="empty-state" variant="elevated">
       <div class="empty-state__icon">TU</div>
-      <h2 class="empty-state__title">Nenhum cliente encontrado</h2>
+      <h2 class="empty-state__title">Nenhum {{ clinicalLabels.tutor.singularLower }} encontrado</h2>
       <p class="empty-state__description">
-        Cadastre o primeiro cliente para vincular animais e sustentar agenda, atendimento e
+        Cadastre o primeiro {{ clinicalLabels.tutor.singularLower }} para vincular animais e sustentar agenda, atendimento e
         prontuário.
       </p>
       <div class="empty-state__actions">
@@ -223,7 +223,12 @@ import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
 import type { OwnerContact, OwnerSummary } from '@/types/owner';
 import type { PatientSummary } from '@/types/patient';
-import { formatDate, ownerStatusLabel } from '@/utils/labels';
+import {
+  clinicalLabels,
+  formatDate,
+  ownerContactDisplayLabel,
+  ownerStatusLabel
+} from '@/utils/labels';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
@@ -354,7 +359,8 @@ async function load() {
     owners.value = ownersResponse;
     patients.value = patientsResponse;
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar clientes';
+    error.value =
+      err instanceof Error ? err.message : `Erro ao carregar ${clinicalLabels.tutor.pluralLower}`;
   } finally {
     loading.value = false;
   }

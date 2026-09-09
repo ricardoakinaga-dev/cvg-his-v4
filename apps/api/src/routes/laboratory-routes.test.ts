@@ -824,6 +824,43 @@ test('handleLaboratoryRoutes accepts Vetus-like laboratory report aliases and fi
   assert.equal(codePayload.items.length, 1);
 });
 
+test('handleLaboratoryRoutes exposes pending laboratory results only in the open view', async () => {
+  const laboratory = createLaboratoryService();
+  const closedResponse = new MockResponse();
+  await handleLaboratoryRoutes(
+    '/laboratory/results',
+    { method: 'GET', url: '/laboratory/results?closed=true' } as never,
+    closedResponse as never,
+    'corr-lab-results-closed',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+  assert.equal(
+    closedResponse.bodyJson<{ items: Array<{ id: string }> }>().items.length,
+    1
+  );
+
+  const openResponse = new MockResponse();
+  await handleLaboratoryRoutes(
+    '/laboratory/results',
+    { method: 'GET', url: '/laboratory/results?closed=false' } as never,
+    openResponse as never,
+    'corr-lab-results-open',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+  const openItems = openResponse.bodyJson<{ items: Array<{ examType: string; status: string }> }>().items;
+  assert.equal(openItems.length, 1);
+  assert.equal(openItems[0].examType, 'Bioquimico');
+  assert.equal(openItems[0].status, 'requested');
+});
+
 test('handleLaboratoryRoutes exposes Vetus-like hemograms aliases filtered to HEM results', async () => {
   const laboratory = createLaboratoryService();
   const response = new MockResponse();

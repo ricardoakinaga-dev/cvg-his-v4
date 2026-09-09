@@ -78,6 +78,23 @@ describe('DsButton navigation contract', () => {
     }
   );
 
+  it('exposes typed native anchor metadata to the browser', async () => {
+    const { wrapper } = await fixture({
+      tag: 'a',
+      href: '/reports/export.csv',
+      target: '_blank',
+      rel: 'noopener',
+      download: 'export.csv'
+    });
+    const anchor = wrapper.get('a');
+    expect(anchor.attributes()).toMatchObject({
+      href: '/reports/export.csv',
+      target: '_blank',
+      rel: 'noopener',
+      download: 'export.csv'
+    });
+  });
+
   it.each(['https://example.org/report', 'mailto:clinic@example.org', '/download.csv'])(
     'keeps href %s as native navigation', async (href) => {
       const { wrapper, router } = await fixture({ href });

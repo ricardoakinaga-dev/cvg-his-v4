@@ -183,6 +183,8 @@ const mockMedicalRecordEntries = [
   }
 ];
 
+let persistedPatientClinicalEntries = [...mockMedicalRecordEntries];
+
 const mockEncounterTimeline = [
   {
     id: 'evt-1',
@@ -407,7 +409,11 @@ const mockEncounterList = vi.fn().mockResolvedValue(mockEncounters);
 const mockEncounterTimelineList = vi.fn().mockResolvedValue(mockEncounterTimeline);
 const mockAppointmentList = vi.fn().mockResolvedValue(mockAppointments);
 const mockMedicalRecordsList = vi.fn().mockResolvedValue(mockMedicalRecords);
-const mockMedicalRecordEntriesList = vi.fn().mockResolvedValue(mockMedicalRecordEntries);
+const mockMedicalRecordEntriesList = vi.fn().mockImplementation(() =>
+  Promise.resolve(persistedPatientClinicalEntries)
+);
+const mockClinicalEntryCreate = vi.fn();
+const mockClinicalEntryUpdate = vi.fn();
 const mockMedicalRecordTimelineList = vi.fn().mockResolvedValue(mockClinicalTimeline);
 const mockTriageList = vi.fn().mockResolvedValue(mockTriageRecords);
 const mockInpatientList = vi.fn().mockResolvedValue(mockInpatientStays);
@@ -527,6 +533,8 @@ vi.mock('@/services/medicalRecords', () => ({
   medicalRecordsService: {
     listAll: () => mockMedicalRecordsList(),
     listEntries: (...args: unknown[]) => mockMedicalRecordEntriesList(...args),
+    createEntry: (...args: unknown[]) => mockClinicalEntryCreate(...args),
+    updateEntry: (...args: unknown[]) => mockClinicalEntryUpdate(...args),
     getTimeline: (...args: unknown[]) => mockMedicalRecordTimelineList(...args)
   }
 }));
@@ -625,7 +633,41 @@ describe('PatientDetailPage', () => {
     mockEncounterTimelineList.mockResolvedValue(mockEncounterTimeline);
     mockAppointmentList.mockResolvedValue(mockAppointments);
     mockMedicalRecordsList.mockResolvedValue(mockMedicalRecords);
-    mockMedicalRecordEntriesList.mockResolvedValue(mockMedicalRecordEntries);
+    persistedPatientClinicalEntries = [...mockMedicalRecordEntries];
+    mockMedicalRecordEntriesList.mockImplementation(() =>
+      Promise.resolve(persistedPatientClinicalEntries)
+    );
+    mockClinicalEntryCreate.mockImplementation(
+      async (payload: Record<string, unknown>) => {
+        const created = {
+          ...mockMedicalRecordEntries[3],
+          ...payload,
+          id: 'entry-history-created',
+          medicalRecordId: 'mr-1',
+          version: 1,
+          createdAt: '2024-01-03T09:40:00Z',
+          updatedAt: '2024-01-03T09:40:00Z'
+        };
+        persistedPatientClinicalEntries = [created, ...persistedPatientClinicalEntries];
+        return created;
+      }
+    );
+    mockClinicalEntryUpdate.mockImplementation(
+      async (entryId: string, payload: Record<string, unknown>) => {
+        const current = persistedPatientClinicalEntries.find((entry) => entry.id === entryId);
+        const updated = {
+          ...(current ?? mockMedicalRecordEntries[3]),
+          ...payload,
+          id: entryId,
+          version: Number(current?.version ?? 1) + 1,
+          updatedAt: '2024-01-03T09:40:00Z'
+        };
+        persistedPatientClinicalEntries = persistedPatientClinicalEntries.map((entry) =>
+          entry.id === entryId ? updated : entry
+        );
+        return updated;
+      }
+    );
     mockMedicalRecordTimelineList.mockResolvedValue(mockClinicalTimeline);
     mockTriageList.mockResolvedValue(mockTriageRecords);
     mockInpatientList.mockResolvedValue(mockInpatientStays);
@@ -713,7 +755,7 @@ describe('PatientDetailPage', () => {
     expect(wrapper.text()).toContain('Preventivo · Vacina V10 - reforço anual');
     expect(wrapper.text()).toContain('Mensagem · Lembrete de retorno');
     expect(wrapper.text()).toContain('Mensagem · Oferta de pacote');
-    expect(wrapper.text()).toContain('Ver cadastro do cliente');
+    expect(wrapper.text()).toContain('Ver cadastro do tutor');
     expect(wrapper.text()).toContain('Editar Cadastro');
     expect(wrapper.text()).toContain('Doença Crônica');
     expect(wrapper.text()).toContain('Doenca renal cronica');
@@ -841,7 +883,7 @@ describe('PatientDetailPage', () => {
 
     const ownerLink = wrapper
       .findAll('a')
-      .find((link) => link.text().includes('Ver cadastro do cliente'));
+      .find((link) => link.text().includes('Ver cadastro do tutor'));
     expect(ownerLink?.attributes('href')).toBe('/owners/owner-1');
 
     const anamnesisLink = wrapper
@@ -1008,6 +1050,119 @@ describe('PatientDetailPage', () => {
     await expandCard('Imagens');
     expect(wrapper.text()).toContain('Nenhuma imagem anexada ao prontuário de Rex.');
     expect(hasLink('/encounters/new?patientId=pat-1&ownerId=owner-1', 'Abrir atendimento para anexos')).toBe(true);
+  });
+
+  it('confirms a newly created longitudinal history entry after rereading the encounter', async () => {
+    persistedPatientClinicalEntries = mockMedicalRecordEntries.filter(
+      (entry) => entry.entryType !== 'progress_note'
+    );
+    const PatientDetailPage = (await import('../PatientDetailPage.vue')).default;
+    const wrapper = mount(PatientDetailPage);
+    await flushPromises();
+
+    await wrapper.get('#patient-card-clinical-history-trigger').trigger('click');
+    const historyField = wrapper.get('textarea.clinical-history-field');
+    await historyField.setValue('Histórico longitudinal confirmado');
+    const saveButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Salvar Histórico Clínico'))!;
+    await saveButton.trigger('click');
+    await flushPromises();
+
+    expect(mockClinicalEntryCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        encounterId: 'enc-1',
+        patientId: 'pat-1',
+        entryType: 'progress_note',
+        content: 'Histórico longitudinal confirmado'
+      }),
+      { idempotencyKey: expect.any(String) }
+    );
+    expect(mockMedicalRecordEntriesList).toHaveBeenCalledWith('enc-1');
+    expect(wrapper.text()).toContain('Histórico clínico atualizado.');
+    expect(wrapper.text()).toContain('Histórico longitudinal confirmado');
+  });
+
+  it('keeps longitudinal history read-only when the focal encounter is closed', async () => {
+    mockEncounterList.mockResolvedValue([
+      { ...mockEncounters[0], status: 'closed' as const }
+    ]);
+    const PatientDetailPage = (await import('../PatientDetailPage.vue')).default;
+    const wrapper = mount(PatientDetailPage);
+    await flushPromises();
+
+    await wrapper.get('#patient-card-clinical-history-trigger').trigger('click');
+    const saveButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Salvar Histórico Clínico'))!;
+    expect(saveButton.attributes('disabled')).toBeDefined();
+    expect(wrapper.text()).toContain('somente para leitura');
+
+    await (wrapper.vm as unknown as { saveClinicalHistory: () => Promise<void> }).saveClinicalHistory();
+    expect(mockClinicalEntryCreate).not.toHaveBeenCalled();
+    expect(mockClinicalEntryUpdate).not.toHaveBeenCalled();
+  });
+
+  it('keeps the history draft and withholds success when reread returns stale content', async () => {
+    mockClinicalEntryUpdate.mockImplementationOnce(async (entryId: string, payload: Record<string, unknown>) => ({
+      ...mockMedicalRecordEntries[3],
+      ...payload,
+      id: entryId,
+      version: 2,
+      updatedAt: '2024-01-03T09:40:00Z'
+    }));
+    const PatientDetailPage = (await import('../PatientDetailPage.vue')).default;
+    const wrapper = mount(PatientDetailPage);
+    await flushPromises();
+
+    await wrapper.get('#patient-card-clinical-history-trigger').trigger('click');
+    const historyField = wrapper.get('textarea.clinical-history-field');
+    await historyField.setValue('Conteúdo que precisa de confirmação');
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Salvar Histórico Clínico'))!
+      .trigger('click');
+    await flushPromises();
+
+    expect(mockClinicalEntryUpdate).toHaveBeenCalledWith(
+      'entry-3',
+      expect.objectContaining({ content: 'Conteúdo que precisa de confirmação', expectedVersion: 1 }),
+      { idempotencyKey: expect.any(String) }
+    );
+    expect(wrapper.text()).toContain('não foi confirmado na releitura');
+    expect(wrapper.text()).not.toContain('Histórico clínico atualizado.');
+    expect((historyField.element as HTMLTextAreaElement).value).toBe(
+      'Conteúdo que precisa de confirmação'
+    );
+    expect(wrapper.get('button[aria-busy="false"]')).toBeTruthy();
+  });
+
+  it('clears the history spinner when the patient route changes during a save', async () => {
+    const pendingUpdate = deferred<Record<string, unknown>>();
+    mockClinicalEntryUpdate.mockReturnValueOnce(pendingUpdate.promise);
+    const PatientDetailPage = (await import('../PatientDetailPage.vue')).default;
+    const wrapper = mount(PatientDetailPage);
+    await flushPromises();
+
+    await wrapper.get('#patient-card-clinical-history-trigger').trigger('click');
+    await wrapper.get('textarea.clinical-history-field').setValue('Salvamento em andamento');
+    const saveButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Salvar Histórico Clínico'))!;
+    await saveButton.trigger('click');
+    expect(saveButton.attributes('aria-busy')).toBe('true');
+
+    mockGetPatientById.mockResolvedValue(mockPatientLuna);
+    mockRoute.params.id = 'pat-2';
+    await flushPromises();
+
+    const currentSaveButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Salvar Histórico Clínico'))!;
+    expect(currentSaveButton.attributes('aria-busy')).not.toBe('true');
+    pendingUpdate.resolve({ ...mockMedicalRecordEntries[3], id: 'entry-3', version: 2 });
+    await flushPromises();
+    expect(wrapper.text()).toContain('Luna');
   });
 
   it('ignores a late previous-patient response after the route changes', async () => {

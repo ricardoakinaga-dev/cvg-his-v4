@@ -1,0 +1,100 @@
+ M .agent/plans/frontend-premium-execplan.md
+ M .gauntlet/.writer.lock
+ M .gauntlet/progress.md
+ M .gauntlet/state.json
+ M apps/api/src/bootstrap.ts
+ M apps/spa/src/components/appointments/AppointmentDetailsDrawer.vue
+ M apps/spa/src/composables/useUnsavedChanges.ts
+ M apps/spa/src/layouts/AppLayout.vue
+ M apps/spa/src/pages/appointments/AppointmentsListPage.vue
+ M apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts
+ M apps/spa/src/pages/patients/PatientFormPage.vue
+ M apps/spa/src/pages/patients/__tests__/PatientFormPage.test.ts
+ M apps/spa/src/pages/reception/ReceptionGatewayPage.vue
+ M apps/spa/src/pages/reception/__tests__/ReceptionGatewayPage.test.ts
+ M apps/spa/src/router/index.ts
+ M apps/worker/src/bootstrap.ts
+ M docs/2026-09-06-backlog-erp-state-of-art-triplo-aaa.md
+ M docs/2026-09-06-backlog-frontend-premium.md
+ M docs/2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md
+ M docs/2026-09-06-plano-executivo-frontend-premium.md
+ M docs/2026-09-06-relatorio-estado-atual-erp-cvg-his-v4.md
+ M docs/2026-09-06-roadmap-erp-state-of-art-triplo-aaa.md
+ M docs/430-fonte-de-verdade-documental.md
+ M docs/README.md
+ M docs/document-governance.json
+ M docs/engineering/EVIDENCE_RISK_DASHBOARD.md
+ M docs/engineering/QUALITY_BAR.md
+ M docs/engineering/REQUIREMENT_EVIDENCE_MATRIX.md
+ M docs/frontend/assets/README.md
+ M docs/frontend/assets/evidence/comfyui-job-status.json
+ M docs/frontend/assets/manifest.json
+ M docs/frontend/implementation/browser-continuity.mjs
+ M packages/db/migrations/0048_report_engine.sql
+ M packages/db/migrations/0162_counter_sale_number_sequences.sql
+ M packages/design-system/src/vue/DsButton.vue
+ M packages/design-system/tsconfig.vue.tsbuildinfo
+ M tests/integration/setup/production-like-runtime-bootstrap.test.ts
+?? apps/spa/src/composables/__tests__/useRouteFocus.test.ts
+?? apps/spa/src/composables/useRouteFocus.ts
+?? apps/spa/src/pages/appointments/__tests__/agendaContext.test.ts
+?? apps/spa/src/pages/appointments/agendaContext.ts
+?? apps/spa/src/router/navigation-context.test.ts
+?? apps/spa/src/router/scroll-behavior.test.ts
+?? apps/spa/src/router/scroll-behavior.ts
+?? apps/spa/tests/unit/AppointmentDetailsDrawer.test.ts
+?? docs/frontend/README.md
+?? docs/frontend/assets/images/0836ac61_000.png
+?? docs/frontend/implementation/agenda-context-codec.log
+?? docs/frontend/implementation/agenda-focus-evidence.json
+?? docs/frontend/implementation/agenda-focus-integrated-r2.log
+?? docs/frontend/implementation/agenda-focus-integrated.log
+?? docs/frontend/implementation/agenda-focus-typecheck-final.log
+?? docs/frontend/implementation/agenda-focus-typecheck.log
+?? docs/frontend/implementation/agenda-priority-browser-r2.log
+?? docs/frontend/implementation/agenda-priority-browser-r3.log
+?? docs/frontend/implementation/agenda-priority-browser-r4.log
+?? docs/frontend/implementation/agenda-priority-browser.log
+?? docs/frontend/implementation/button-material-browser-r2.log
+?? docs/frontend/implementation/button-material-browser-r3.log
+?? docs/frontend/implementation/button-material-browser-r4.log
+?? docs/frontend/implementation/button-material-browser-r5.log
+?? docs/frontend/implementation/button-material-browser.log
+?? docs/frontend/implementation/button-material-browser.mjs
+?? docs/frontend/implementation/button-material-regression.log
+?? docs/frontend/implementation/button-reception-browser.log
+?? docs/frontend/implementation/button-scroll-regression-r2.log
+?? docs/frontend/implementation/button-scroll-typecheck-r2.log
+?? docs/frontend/implementation/button-scroll-typecheck.log
+?? docs/frontend/implementation/evidence/button-material-3N7MXC/
+?? docs/frontend/implementation/evidence/button-material-zlnc24/
+?? docs/frontend/implementation/evidence/continuity-11pldJ/
+?? docs/frontend/implementation/evidence/continuity-C8RNEL/
+?? docs/frontend/implementation/evidence/continuity-Jvds8h/
+?? docs/frontend/implementation/evidence/continuity-MAFctW/
+?? docs/frontend/implementation/evidence/continuity-Tcf06a/
+?? docs/frontend/implementation/evidence/continuity-Z9GBFS/
+?? docs/frontend/implementation/evidence/continuity-bm3xLl/
+?? docs/frontend/implementation/evidence/continuity-cD1EER/
+?? docs/frontend/implementation/evidence/continuity-ewerA5/
+?? docs/frontend/implementation/evidence/continuity-fkJDKu/
+?? docs/frontend/implementation/evidence/continuity-oLC0j2/
+?? docs/frontend/implementation/focus-ownership-browser.log
+?? docs/frontend/implementation/focus-ownership-tests-r2.log
+?? docs/frontend/implementation/focus-ownership-tests.log
+?? docs/frontend/implementation/navigation-context-regression.log
+?? docs/frontend/implementation/navigation-continuity-contract.md
+?? docs/frontend/implementation/navigation-focus-browser-r2.log
+?? docs/frontend/implementation/navigation-focus-browser-r3.log
+?? docs/frontend/implementation/navigation-focus-browser.log
+?? docs/frontend/implementation/navigation-focus-integrated-r2.log
+?? docs/frontend/implementation/navigation-focus-integrated.log
+?? docs/frontend/implementation/navigation-focus-typecheck.log
+?? docs/frontend/implementation/navigation-reception-evidence.json
+?? docs/frontend/implementation/navigation-reception-integrated.log
+?? docs/frontend/implementation/navigation-reception-typecheck.log
+?? docs/frontend/implementation/open-design-availability.json
+?? docs/frontend/implementation/reception-search-race-browser-r2.log
+?? docs/frontend/implementation/reception-search-race-browser.log
+?? tests/unit/db/counter-sale-number-sequence-migration.test.ts
+?? tests/unit/db/report-engine-migration.test.ts

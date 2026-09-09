@@ -16,6 +16,9 @@ export interface DsButtonProps {
   tag?: 'button' | 'a';
   href?: string;
   to?: string;
+  target?: string;
+  rel?: string;
+  download?: string | boolean;
   ariaLabel?: string;
   icon?: string;
 }

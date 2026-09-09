@@ -2360,6 +2360,56 @@ paths:
                 $ref: '#/components/schemas/EncounterFinancialSummary'
 
   /encounters/{encounterId}/payments/pix-attempts:
+    get:
+      operationId: getLatestEncounterPixPaymentAttempt
+      summary: Restore the latest PIX payment attempt for a closed encounter
+      description: Returns the newest tenant-scoped durable PIX dispatch attempt for the encounter, or null when no attempt has been created yet.
+      tags: [Financial, Payments]
+      parameters:
+        - name: encounterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Latest PIX payment attempt, when available
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [attempt]
+                additionalProperties: false
+                properties:
+                  attempt:
+                    allOf:
+                      - $ref: '#/components/schemas/EncounterPixPaymentAttempt'
+                    nullable: true
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Missing billing read permission
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Tenant principal exceeded the PIX attempt lookup limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: PIX attempt lookup capability is unavailable in this runtime
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
       operationId: requestEncounterPixPaymentAttempt
       summary: Request an asynchronous PIX payment for a closed encounter
@@ -2544,6 +2594,13 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: includeReversed
+          in: query
+          required: false
+          description: Include the latest receipt even when it has an immutable reversal projection.
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: Cash receipt
@@ -2552,7 +2609,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/EncounterCashReceipt'
         '404':
-          description: Cash receipt not found in the active account
+          description: Cash receipt not found in the active account (or latest account history when includeReversed is true)
           content:
             application/json:
               schema:
@@ -5749,6 +5806,33 @@ paths:
           description: Report execution not found
 
   /reports/executions/{executionId}/export:
+    get:
+      operationId: reconcileReportExecutionExport
+      summary: Reconcile a persisted report export artifact
+      description: Looks up an existing export for an execution without starting a second export job.
+      tags: [Reports]
+      parameters:
+        - name: executionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [json, csv, xlsx, pdf]
+            default: csv
+      responses:
+        '200':
+          description: Persisted report export artifact
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportExport'
+        '404':
+          description: Export artifact not available yet
     post:
       operationId: exportReportExecution
       summary: Export report execution as JSON, CSV, XLSX or PDF
@@ -5759,6 +5843,12 @@ paths:
           required: true
           schema:
             type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 255
       requestBody:
         required: false
         content:
@@ -8267,6 +8357,44 @@ paths:
       responses:
         '200':
           description: Roles replaced
+
+  /access-control/users/{userId}/memberships:
+    post:
+      operationId: replaceUserMemberships
+      summary: Replace all user access memberships
+      description: Atomically replaces legacy roles, access teams, and organizational sectors for a user.
+      tags: [Access Control]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                roleCodes:
+                  type: array
+                  items:
+                    type: string
+                teamIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                sectorIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: User memberships replaced atomically
 
   /access-control/users/{userId}/effective:
     get:

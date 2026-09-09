@@ -5,6 +5,8 @@ const API_BASE = spaRuntimeConfig.apiBaseUrl;
 
 export interface ApiRequestOptions extends RequestInit {
   skipAuth?: boolean;
+  /** Abort the request after this many milliseconds and surface an uncertain outcome. */
+  timeoutMs?: number;
 }
 
 export class ApiError extends Error {
@@ -143,7 +145,13 @@ export async function apiRequest<T = unknown>(
   path: string,
   options: ApiRequestOptions = {}
 ): Promise<T> {
-  const { skipAuth, headers: customHeaders, ...restOptions } = options;
+  const {
+    skipAuth,
+    timeoutMs: requestedTimeoutMs,
+    headers: customHeaders,
+    signal: providedSignal,
+    ...restOptions
+  } = options;
   const method = (restOptions.method ?? 'GET').toUpperCase();
   const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
 
@@ -170,11 +178,54 @@ export async function apiRequest<T = unknown>(
     }
   }
 
-  const response = await fetch(url, {
-    ...restOptions,
-    headers,
-    credentials: 'include'
-  });
+  const timeoutMs =
+    typeof requestedTimeoutMs === 'number' && Number.isFinite(requestedTimeoutMs) && requestedTimeoutMs > 0
+      ? requestedTimeoutMs
+      : 0;
+  let response: Response;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  let timedOut = false;
+  let timeoutController: AbortController | undefined;
+  let providedAbortListener: (() => void) | undefined;
+
+  try {
+    let signal = providedSignal;
+    if (timeoutMs > 0 && typeof AbortController !== 'undefined') {
+      timeoutController = new AbortController();
+      providedAbortListener = () => timeoutController?.abort(providedSignal?.reason);
+      if (providedSignal?.aborted) {
+        providedAbortListener();
+      } else {
+        providedSignal?.addEventListener('abort', providedAbortListener, { once: true });
+      }
+      timeoutId = setTimeout(() => {
+        timedOut = true;
+        timeoutController?.abort();
+      }, timeoutMs);
+      signal = timeoutController.signal;
+    }
+
+    response = await fetch(url, {
+      ...restOptions,
+      headers,
+      ...(signal ? { signal } : {}),
+      credentials: 'include'
+    });
+  } catch (error) {
+    if (timedOut) {
+      throw new ApiError(
+        'A solicitação excedeu o tempo limite; o resultado da operação pode estar pendente.',
+        408,
+        'Request Timeout'
+      );
+    }
+    throw error;
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+    if (providedSignal && providedAbortListener) {
+      providedSignal.removeEventListener('abort', providedAbortListener);
+    }
+  }
 
   if (!response.ok) {
     let body: unknown;

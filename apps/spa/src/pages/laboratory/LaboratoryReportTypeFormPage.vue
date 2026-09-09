@@ -49,7 +49,7 @@
             />
           </label>
           <div class="form-actions">
-            <DsButton variant="primary" type="submit" :loading="submitting">Salvar</DsButton>
+            <DsButton variant="primary" type="submit" :loading="submitting" :disabled="successPending">Salvar</DsButton>
             <DsButton variant="secondary" type="button" tag="a" to="/laboratory/report-types">Cancelar</DsButton>
           </div>
         </form>
@@ -82,6 +82,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppPageHeader from '@/components/AppPageHeader.vue';
+import { useSuccessRedirect } from '@/composables/successRedirect';
 import { laboratoryService } from '@/services/laboratory';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
@@ -92,6 +93,8 @@ const router = useRouter();
 const reportTypeId = computed(() => route.params.id as string | undefined);
 const isEditing = computed(() => Boolean(reportTypeId.value));
 const submitting = ref(false);
+const successRedirect = useSuccessRedirect();
+const successPending = successRedirect.successPending;
 const error = ref('');
 const successMessage = ref('');
 const form = reactive({
@@ -120,6 +123,7 @@ async function loadReportType() {
 }
 
 async function submitForm() {
+  if (submitting.value || !successRedirect.begin()) return;
   if (!form.name.trim() || !form.code.trim() || !form.category.trim() || !form.description.trim()) {
     error.value = 'Descrição, código, categoria e modelo são obrigatórios';
     return;
@@ -144,7 +148,7 @@ async function submitForm() {
     }
 
     successMessage.value = 'Tipo de laudo salvo com sucesso.';
-    setTimeout(() => void router.push('/laboratory/report-types'), 900);
+    successRedirect.schedule(() => router.push('/laboratory/report-types'), successMessage.value);
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao salvar tipo de laudo';
   } finally {

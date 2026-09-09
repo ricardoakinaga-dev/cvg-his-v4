@@ -1,0 +1,6 @@
+{
+  "syntheticOnly": true,
+  "contextPasswordNotRedacted": true,
+  "nestedTokenNotRedacted": true,
+  "messageNotRedacted": true
+}

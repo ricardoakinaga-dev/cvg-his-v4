@@ -39,4 +39,13 @@ describe('DsCard.vue', () => {
     expect(wrapper.find('.ds-card__header').exists()).toBe(true);
     expect(wrapper.find('.ds-card__header').text()).toBe('Custom title');
   });
+
+  it('supports an explicit heading level for page sections', () => {
+    const wrapper = mount(DsCard, {
+      props: { title: 'Section title', titleTag: 'h2' }
+    });
+
+    expect(wrapper.find('h2.ds-card__title').text()).toBe('Section title');
+    expect(wrapper.find('h3.ds-card__title').exists()).toBe(false);
+  });
 });

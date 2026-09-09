@@ -33,25 +33,63 @@
     </div>
 
     <EmptyState
-      v-else-if="rows.length === 0"
+      v-else-if="feedback && !feedbackWithRows"
+      class="data-table-feedback"
+      :class="`data-table-feedback--${feedback.kind}`"
+      :icon="feedback.icon ?? defaultFeedbackIcon(feedback.kind)"
+      :title="feedback.title"
+      :description="feedback.description"
+      :heading-level="2"
+      :role="feedbackRole"
+      :aria-live="feedbackLive"
+      data-testid="data-table-feedback"
+    >
+      <template v-if="$slots.feedbackAction" #action>
+        <slot name="feedbackAction" />
+      </template>
+    </EmptyState>
+
+    <EmptyState
+      v-else-if="!feedback && rows.length === 0"
       :icon="emptyIcon"
       :title="emptyTitle"
       :description="emptyDescription"
+      :heading-level="2"
     >
       <template v-if="$slots.emptyAction" #action>
         <slot name="emptyAction" />
       </template>
     </EmptyState>
 
+    <EmptyState
+      v-if="!loading && feedbackWithRows"
+      class="data-table-feedback data-table-feedback--with-rows"
+      :class="`data-table-feedback--${feedback?.kind ?? 'error'}`"
+      :icon="feedback?.icon ?? defaultFeedbackIcon(feedback?.kind ?? 'error')"
+      :title="feedback?.title ?? ''"
+      :description="feedback?.description"
+      size="sm"
+      :heading-level="3"
+      :role="feedbackRole"
+      :aria-live="feedbackLive"
+      data-testid="data-table-feedback"
+    >
+      <template v-if="$slots.feedbackAction" #action>
+        <slot name="feedbackAction" />
+      </template>
+    </EmptyState>
+
     <div
-      v-else
+      v-if="!loading && rows.length > 0 && (!feedback || feedbackWithRows)"
       ref="scrollRegion"
       class="table-wrapper"
       role="region"
       :aria-label="caption || 'Tabela de dados'"
       :aria-describedby="hasHorizontalOverflow ? scrollHintId : undefined"
       data-scroll-container="local"
+      :data-scroll-key="scrollKey || caption || undefined"
       tabindex="0"
+      @keydown="handleScrollKeydown"
     >
       <div v-if="hasHorizontalOverflow" class="table-wrapper__scroll-cue" aria-hidden="true">
         <span class="table-wrapper__scroll-cue-label">Rolagem local</span>
@@ -85,7 +123,12 @@
         </thead>
         <tbody>
           <tr v-for="(row, rowIndex) in rows" :key="rowKey(row, rowIndex)">
-            <td v-for="col in columns" :key="col.key" :class="col.class">
+              <td
+                v-for="col in columns"
+                :key="col.key"
+                :class="col.class"
+                :data-label="col.label"
+              >
               <slot :name="`cell-${col.key}`" :row="row" :value="row[col.key]" :index="rowIndex">
                 {{ formatValue(row[col.key], col, row) }}
               </slot>
@@ -112,10 +155,26 @@ export interface DataTableColumn {
 
 export type DataTableRow = Record<string, unknown>;
 
+export type DataTableFeedbackKind =
+  | 'empty'
+  | 'no-results'
+  | 'error'
+  | 'unavailable'
+  | 'forbidden';
+
+export interface DataTableFeedback {
+  kind: DataTableFeedbackKind;
+  title: string;
+  description?: string;
+  icon?: string;
+}
+
 interface Props {
   columns: readonly DataTableColumn[];
   rows: readonly any[];
   caption?: string;
+  /** Stable identity used by route focus/scroll restoration when a page has multiple tables. */
+  scrollKey?: string;
   loading?: boolean;
   emptyIcon?: string;
   emptyTitle?: string;
@@ -123,17 +182,20 @@ interface Props {
   compact?: boolean;
   variant?: 'default' | 'striped' | 'hoverable';
   rowKeyField?: string;
+  feedback?: DataTableFeedback | null;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   caption: '',
+  scrollKey: '',
   loading: false,
   emptyIcon: '📋',
   emptyTitle: 'Nenhum registro encontrado',
   emptyDescription: '',
   compact: false,
   variant: 'default',
-  rowKeyField: 'id'
+  rowKeyField: 'id',
+  feedback: null
 });
 
 const scrollHintId = `data-table-scroll-hint-${useId()}`;
@@ -150,6 +212,19 @@ function measureOverflow() {
   // Measure the table itself: the instruction must never create its own overflow.
   hasHorizontalOverflow.value = !!(region && table && table.scrollWidth > region.clientWidth + 1);
 }
+
+function handleScrollKeydown(event: KeyboardEvent): void {
+  const region = scrollRegion.value;
+  if (!region || !hasHorizontalOverflow.value) return;
+  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+  event.preventDefault();
+  const distance = Math.max(160, region.clientWidth * 0.8);
+  region.scrollLeft = Math.max(
+    0,
+    region.scrollLeft + (event.key === 'ArrowRight' ? distance : -distance)
+  );
+}
+
 function scheduleMeasurement() {
   if (measurementFrame !== undefined) return;
   measurementFrame = requestAnimationFrame(() => {
@@ -186,6 +261,30 @@ const tableClass = computed(() => {
 });
 
 const loadingRows = computed(() => [0, 1, 2, 3]);
+
+const feedbackRole = computed(() => {
+  const kind = props.feedback?.kind;
+  return kind === 'error' || kind === 'unavailable' || kind === 'forbidden'
+    ? 'alert'
+    : undefined;
+});
+
+const feedbackLive = computed(() => feedbackRole.value ? 'assertive' : undefined);
+
+const feedbackWithRows = computed(() =>
+  props.rows.length > 0 &&
+  (props.feedback?.kind === 'error' || props.feedback?.kind === 'unavailable')
+);
+
+function defaultFeedbackIcon(kind: DataTableFeedbackKind): string {
+  return {
+    empty: '📋',
+    'no-results': '🔎',
+    error: '⚠️',
+    unavailable: 'clock',
+    forbidden: '🔒'
+  }[kind];
+}
 
 function formatValue(
   value: unknown,
@@ -249,6 +348,27 @@ function columnAccessibleName(columnKey: string): string {
   grid-auto-flow: column;
   grid-auto-columns: minmax(120px, 1fr);
   gap: 12px;
+}
+
+.data-table-feedback {
+  margin-block: 2px 4px;
+}
+
+.data-table-feedback--with-rows {
+  text-align: left;
+}
+
+.data-table-feedback--error,
+.data-table-feedback--unavailable,
+.data-table-feedback--forbidden {
+  border-color: var(--color-danger-200, #f8bebc);
+  background: var(--color-danger-50, #fff0ef);
+}
+
+.data-table-feedback--error :deep(.empty-state__title),
+.data-table-feedback--unavailable :deep(.empty-state__title),
+.data-table-feedback--forbidden :deep(.empty-state__title) {
+  color: var(--color-danger-800, #823037);
 }
 
 .data-table-loading__body {

@@ -88,7 +88,7 @@
               type="button"
               class="workflow-tab"
               :class="{ 'workflow-tab--active': activeWorkflowStep === step.key }"
-              @click="activeWorkflowStep = step.key"
+              @click="selectWorkflowStep(step.key)"
             >
               <span>{{ step.index }}</span>
               <strong>{{ step.label }}</strong>
@@ -214,6 +214,11 @@
                   <span>{{ formatMoney(financialSummary?.balanceDue ?? 0) }}</span>
                 </div>
               </div>
+              <EncounterPixPaymentPanel
+                :encounter-id="encounter.id"
+                :encounter-status="encounter.status"
+                :financial-eligible="canRequestPix"
+              />
             </template>
 
             <template v-else>
@@ -265,6 +270,84 @@
               <p v-else class="muted">
                 Revise cobrança, exames, receituário e prontuário antes de fechar o caso.
               </p>
+              <section
+                ref="cashReceiptReviewRef"
+                class="cash-receipt-review"
+                aria-labelledby="cash-receipt-review-title"
+                tabindex="-1"
+              >
+                <div class="cash-receipt-review__header">
+                  <div>
+                    <span class="workflow-panel__eyebrow">Recebimento em dinheiro</span>
+                    <h3 id="cash-receipt-review-title">Conferência do caixa</h3>
+                  </div>
+                  <DsButton
+                    variant="ghost"
+                    size="sm"
+                    :loading="cashReceiptLoading"
+                    @click="loadCashReceipt()"
+                  >
+                    Atualizar recebimento
+                  </DsButton>
+                </div>
+                <div v-if="cashReceiptLoading" class="muted">Consultando recebimento confirmado...</div>
+                <DsAlert v-else-if="cashReceiptError" variant="danger" title="Recebimento não consultado">
+                  <p class="alert-copy">{{ cashReceiptError }}</p>
+                  <DsButton variant="secondary" size="sm" @click="loadCashReceipt()">
+                    Tentar consultar novamente
+                  </DsButton>
+                </DsAlert>
+                <div v-else-if="cashReceipt" class="cash-receipt-review__body">
+                  <div class="detail-grid">
+                    <div class="detail-row">
+                      <span class="detail-row__label">Estado</span>
+                      <strong>{{ cashReceiptReversed ? 'Estornado' : 'Recebimento confirmado' }}</strong>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-row__label">Valor</span>
+                      <strong>{{ formatMoney(cashReceipt.amount) }}</strong>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-row__label">Recebimento</span>
+                      <code>{{ cashReceipt.id }}</code>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-row__label">Data</span>
+                      <span>{{ formatDateTime(cashReceipt.receivedAt) }}</span>
+                    </div>
+                  </div>
+                  <DsAlert
+                    v-if="cashReceiptRefreshWarning"
+                    variant="warning"
+                    title="Última confirmação mantida"
+                  >
+                    <p class="alert-copy">{{ cashReceiptRefreshWarning }}</p>
+                  </DsAlert>
+                  <DsAlert v-if="cashReceiptReversed" variant="success" title="Estorno confirmado">
+                    <p class="alert-copy">
+                      <strong>Estorno confirmado.</strong> O estorno foi registrado no livro
+                      financeiro. Nenhum novo recebimento foi criado.
+                    </p>
+                    <p class="alert-copy">Motivo: {{ cashReversalDisplayReason }}</p>
+                  </DsAlert>
+                  <div v-else class="cash-receipt-review__actions">
+                    <p class="muted">
+                      Um estorno exige motivo, confirmação explícita e chave de idempotência própria.
+                      Ele não altera o histórico do recebimento original.
+                    </p>
+                    <DsButton
+                      variant="danger"
+                      :disabled="reversingCash"
+                      @click="showCashReversalModal = true"
+                    >
+                      Solicitar estorno
+                    </DsButton>
+                  </div>
+                </div>
+                <p v-else class="muted">
+                  Nenhum recebimento em dinheiro confirmado para este atendimento.
+                </p>
+              </section>
               <section class="pre-handoff" aria-labelledby="pre-handoff-title">
                 <div class="pre-handoff__header">
                   <div>
@@ -539,6 +622,58 @@
     </DsModal>
 
     <DsModal
+      :open="showCashReversalModal"
+      :teleport="false"
+      title="Solicitar estorno do recebimento"
+      size="md"
+      @close="showCashReversalModal = false"
+    >
+      <DsAlert variant="warning" title="Ação financeira irreversível">
+        O recebimento de {{ formatMoney(cashReceipt?.amount ?? 0) }} será estornado no caixa e no
+        contas a receber. Confira o atendimento e informe um motivo antes de confirmar.
+      </DsAlert>
+      <div v-if="cashReceipt" class="detail-grid">
+        <div class="detail-row">
+          <span class="detail-row__label">Recebimento</span>
+          <code>{{ cashReceipt.id }}</code>
+        </div>
+        <div class="detail-row">
+          <span class="detail-row__label">Atendimento</span>
+          <code>{{ cashReceipt.encounterId }}</code>
+        </div>
+      </div>
+      <div class="form-field">
+        <label for="cashReversalReason" class="form-field__label">Motivo do estorno *</label>
+        <DsInput
+          id="cashReversalReason"
+          v-model="cashReversalReason"
+          type="textarea"
+          :rows="3"
+          :maxlength="500"
+          required
+          placeholder="Descreva o motivo operacional"
+        />
+      </div>
+      <DsAlert v-if="cashReversalError" variant="danger" title="Estorno não confirmado">
+        <p class="alert-copy">{{ cashReversalError }}</p>
+        <p class="alert-copy">A mesma chave será reaproveitada ao tentar novamente.</p>
+      </DsAlert>
+      <template #footer>
+        <DsButton
+          variant="danger"
+          :loading="reversingCash"
+          :disabled="!cashReversalReason.trim() || !cashReceipt"
+          @click="handleCashReversal"
+        >
+          {{ reversingCash ? 'Estornando...' : 'Confirmar estorno' }}
+        </DsButton>
+        <DsButton variant="ghost" :disabled="reversingCash" @click="showCashReversalModal = false">
+          Cancelar
+        </DsButton>
+      </template>
+    </DsModal>
+
+    <DsModal
       :open="showCloseModal"
       :teleport="false"
       title="Fechar Atendimento"
@@ -566,13 +701,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { encounterService } from '@/services/encounter';
+import type { EncounterCashReceipt, EncounterCashReceiptReversal } from '@/services/encounter';
 import { cashService } from '@/services/cash';
 import { billingService } from '@/services/billing';
 import { clinicalHandoffService } from '@/services/clinicalHandoff';
 import { attachmentService } from '@/services/attachments';
+import EncounterPixPaymentPanel from '@/components/finance/EncounterPixPaymentPanel.vue';
 import type {
   EncounterSummary,
   EncounterTimelineEventSummary,
@@ -616,6 +753,7 @@ const clinicalHandoffError = ref('');
 const showTransitionModal = ref(false);
 const showFinancialCloseModal = ref(false);
 const showCashReceiptModal = ref(false);
+const showCashReversalModal = ref(false);
 const showCloseModal = ref(false);
 const closeReason = ref('');
 const closing = ref(false);
@@ -626,6 +764,16 @@ const receivingCash = ref(false);
 const cashReceiptRegisterId = ref('');
 const cashReceiptNotes = ref('');
 const cashReceiptAttempt = ref<{ readonly fingerprint: string; readonly key: string } | null>(null);
+const cashReceipt = ref<EncounterCashReceipt | null>(null);
+const cashReceiptLoading = ref(false);
+const cashReceiptError = ref('');
+const cashReceiptRefreshWarning = ref('');
+const cashReversal = ref<EncounterCashReceiptReversal | null>(null);
+const cashReversalReason = ref('');
+const cashReversalError = ref('');
+const cashReversalAttempt = ref<{ readonly fingerprint: string; readonly key: string } | null>(null);
+const reversingCash = ref(false);
+const cashReceiptReviewRef = ref<HTMLElement | null>(null);
 const entityCache = useEntityCache();
 const attachments = ref<any[]>([]);
 const attachmentsLoading = ref(false);
@@ -637,6 +785,7 @@ const ownerName = ref('');
 const financialSummary = ref<EncounterFinancialSummary | null>(null);
 const encounterSummary = ref<EncounterSummaryResponse | null>(null);
 const billingStatus = ref<BillingStatus | null>(null);
+const billingItemCount = ref<number | null>(null);
 const hasFullUnpaidBalance = computed(() => {
   const summary = financialSummary.value;
   return Boolean(
@@ -648,6 +797,17 @@ const hasFullUnpaidBalance = computed(() => {
   );
 });
 const canReceiveCash = computed(() => hasFullUnpaidBalance.value && billingStatus.value === 'open');
+const canRequestPix = computed(() =>
+  hasFullUnpaidBalance.value
+  && billingStatus.value === 'open'
+  && (billingItemCount.value ?? 0) > 0
+);
+const cashReceiptReversed = computed(() =>
+  Boolean(cashReversal.value || cashReceipt.value?.reversalId)
+);
+const cashReversalDisplayReason = computed(() =>
+  cashReversal.value?.reason || cashReceipt.value?.reversalReason || 'Motivo registrado no livro financeiro.'
+);
 const requiresOpenBilling = computed(() =>
   hasFullUnpaidBalance.value
   && billingStatus.value !== null
@@ -682,6 +842,7 @@ function resetPageState() {
   financialSummary.value = null;
   encounterSummary.value = null;
   billingStatus.value = null;
+  billingItemCount.value = null;
   attachments.value = [];
   clinicalHandoff.value = null;
   clinicalHandoffError.value = '';
@@ -696,8 +857,18 @@ function resetPageState() {
   showTransitionModal.value = false;
   showFinancialCloseModal.value = false;
   showCashReceiptModal.value = false;
+  showCashReversalModal.value = false;
   showCloseModal.value = false;
   cashReceiptAttempt.value = null;
+  cashReceipt.value = null;
+  cashReceiptLoading.value = false;
+  cashReceiptError.value = '';
+  cashReceiptRefreshWarning.value = '';
+  cashReversal.value = null;
+  cashReversalReason.value = '';
+  cashReversalError.value = '';
+  cashReversalAttempt.value = null;
+  reversingCash.value = false;
   financialLoading.value = false;
   timelineLoading.value = false;
   attachmentsLoading.value = false;
@@ -865,6 +1036,11 @@ const workflowSteps = computed(() => [
     hint: encounter.value?.status === 'closed' ? 'Finalizado' : 'Em aberto'
   }
 ]);
+
+function selectWorkflowStep(step: string): void {
+  activeWorkflowStep.value = step;
+  if (step === 'close') void loadCashReceipt();
+}
 
 const workflowQuery = computed(() => {
   if (!encounter.value) return '';
@@ -1079,6 +1255,7 @@ async function refreshEnterpriseSummary(
 ) {
   if (!encounterId || !isCurrentLoad(generation, routeId)) return;
   financialLoading.value = true;
+  billingItemCount.value = null;
   try {
     const summary = await encounterService.getSummary(encounterId);
     if (!isCurrentLoad(generation, routeId)) return;
@@ -1098,11 +1275,17 @@ async function refreshEnterpriseSummary(
   } finally {
     if (!isCurrentLoad(generation, routeId)) return;
     try {
-      billingStatus.value = (await billingService.getByEncounter(encounterId)).status;
+      const billingRecord = await billingService.getByEncounter(encounterId);
+      if (!isCurrentLoad(generation, routeId)) return;
+      billingStatus.value = billingRecord.status;
+      const billingItems = await billingService.listItems(encounterId);
+      if (!isCurrentLoad(generation, routeId)) return;
+      billingItemCount.value = billingItems.length;
     } catch {
       if (isCurrentLoad(generation, routeId)) {
         billingStatus.value = null;
-        pushContextWarning('status de cobrança');
+        billingItemCount.value = null;
+        pushContextWarning('status/itens de cobrança');
       }
     }
     if (isCurrentLoad(generation, routeId)) financialLoading.value = false;
@@ -1159,6 +1342,48 @@ async function prepareCashReceipt() {
   }
 }
 
+function getErrorStatus(error: unknown): number | undefined {
+  if (!error || typeof error !== 'object') return undefined;
+  const status = (error as { readonly status?: unknown }).status;
+  return typeof status === 'number' ? status : undefined;
+}
+
+async function loadCashReceipt(
+  generation = pageGeneration,
+  routeId = routeEncounterId.value,
+  encounterId = encounter.value?.id
+) {
+  if (!encounterId || !isCurrentLoad(generation, routeId)) return;
+  cashReceiptLoading.value = true;
+  cashReceiptError.value = '';
+  cashReceiptRefreshWarning.value = '';
+  try {
+    const receipt = await encounterService.getCashReceiptForEncounter(encounterId, {
+      includeReversed: true
+    });
+    if (!isCurrentLoad(generation, routeId)) return;
+    cashReceipt.value = receipt;
+    cashReceiptRefreshWarning.value = '';
+  } catch (error: unknown) {
+    if (!isCurrentLoad(generation, routeId)) return;
+    if (getErrorStatus(error) === 404) {
+      if (!cashReceiptReversed.value) {
+        cashReceipt.value = null;
+        cashReversal.value = null;
+        cashReceiptRefreshWarning.value = '';
+      } else {
+        cashReceiptRefreshWarning.value =
+          'Não foi possível reler o recebimento agora. O estorno confirmado permanece visível, mas consulte novamente para confirmar os metadados no servidor.';
+      }
+      return;
+    }
+    cashReceiptError.value =
+      error instanceof Error ? error.message : 'Não foi possível consultar o recebimento em dinheiro.';
+  } finally {
+    if (isCurrentLoad(generation, routeId)) cashReceiptLoading.value = false;
+  }
+}
+
 function createCashReceiptIdempotencyKey(): string {
   return globalThis.crypto?.randomUUID?.()
     ?? `cash-receipt-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -1182,12 +1407,15 @@ async function handleCashReceipt() {
   cashReceiptAttempt.value = attempt;
   receivingCash.value = true;
   try {
-    await encounterService.createCashReceipt(
+    const createdReceipt = await encounterService.createCashReceipt(
       currentEncounter.id,
       payload,
       attempt.key
     );
     if (!isCurrentLoad(generation, routeId)) return;
+    cashReceipt.value = createdReceipt;
+    cashReversal.value = null;
+    cashReceiptError.value = '';
     cashReceiptAttempt.value = null;
     showCashReceiptModal.value = false;
     cashReceiptNotes.value = '';
@@ -1198,6 +1426,55 @@ async function handleCashReceipt() {
     }
   } finally {
     if (isCurrentLoad(generation, routeId)) receivingCash.value = false;
+  }
+}
+
+function createCashReversalIdempotencyKey(): string {
+  return globalThis.crypto?.randomUUID?.()
+    ?? `cash-reversal-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+async function handleCashReversal() {
+  const receipt = cashReceipt.value;
+  const reason = cashReversalReason.value.trim();
+  if (!encounter.value || !receipt || !reason || cashReceiptReversed.value || reversingCash.value) return;
+
+  const routeId = routeEncounterId.value;
+  const generation = pageGeneration;
+  const fingerprint = JSON.stringify({
+    encounterId: encounter.value.id,
+    receiptId: receipt.id,
+    reason
+  });
+  const attempt = cashReversalAttempt.value?.fingerprint === fingerprint
+    ? cashReversalAttempt.value
+    : { fingerprint, key: createCashReversalIdempotencyKey() };
+  cashReversalAttempt.value = attempt;
+  reversingCash.value = true;
+  cashReversalError.value = '';
+
+  try {
+    const reversal = await encounterService.reverseCashReceipt(
+      encounter.value.id,
+      receipt.id,
+      reason,
+      attempt.key
+    );
+    if (!isCurrentLoad(generation, routeId)) return;
+    cashReversal.value = reversal;
+    cashReversalAttempt.value = null;
+    cashReversalReason.value = '';
+    showCashReversalModal.value = false;
+    await nextTick();
+    cashReceiptReviewRef.value?.focus({ preventScroll: true });
+    await refreshEnterpriseSummary(generation, routeId, encounter.value.id);
+  } catch (error: unknown) {
+    if (isCurrentLoad(generation, routeId)) {
+      cashReversalError.value =
+        error instanceof Error ? error.message : 'Não foi possível confirmar o estorno.';
+    }
+  } finally {
+    if (isCurrentLoad(generation, routeId)) reversingCash.value = false;
   }
 }
 
@@ -1718,6 +1995,38 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 
+.cash-receipt-review {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border, #d5e2e6);
+  border-radius: var(--radius-lg, 0.75rem);
+  background: var(--color-bg-subtle, #f5f9fa);
+}
+
+.cash-receipt-review__header,
+.cash-receipt-review__actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cash-receipt-review__header h3 {
+  margin: 0.2rem 0 0;
+  color: var(--color-text, #112530);
+  font-size: var(--font-size-lg, 1.125rem);
+}
+
+.cash-receipt-review__actions {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.cash-receipt-review code {
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 960px) {
   .encounter-cockpit,
   .support-grid {
@@ -1746,6 +2055,11 @@ onBeforeUnmount(() => {
 
   .attachment-upload {
     grid-template-columns: 1fr;
+  }
+
+  .cash-receipt-review__header,
+  .cash-receipt-review__actions {
+    flex-direction: column;
   }
 }
 

@@ -75,4 +75,78 @@ describe('LoginPage', () => {
       query: { next: '/notifications' }
     });
   });
+
+  it('uses the hospital logo poster and loop on the identity stage', async () => {
+    const LoginPage = (await import('../../LoginPage.vue')).default;
+    const wrapper = mount(LoginPage);
+
+    expect(wrapper.get('.login-stage__media').attributes('data-visual-asset')).toBe('hospital-logo');
+    expect(wrapper.get('.login-stage__poster').attributes('src')).toBe('/art/hospital-logo-poster.webp');
+    expect(wrapper.get('.login-stage__video').attributes('src')).toBe('/art/hospital-logo-loop.mp4');
+    expect(wrapper.get('.login-stage__video').attributes('poster')).toBe('/art/hospital-logo-poster.webp');
+    expect(wrapper.get('.login-stage__video').attributes('preload')).toBe('metadata');
+  });
+
+  it('keeps the poster-only identity stage on constrained networks', async () => {
+    const originalConnection = Object.getOwnPropertyDescriptor(window.navigator, 'connection');
+    Object.defineProperty(window.navigator, 'connection', {
+      configurable: true,
+      value: {
+        saveData: true,
+        effectiveType: '4g',
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn()
+      }
+    });
+    vi.resetModules();
+
+    try {
+      const LoginPage = (await import('../../LoginPage.vue')).default;
+      const wrapper = mount(LoginPage);
+
+      expect(wrapper.find('.login-stage__poster').exists()).toBe(true);
+      expect(wrapper.find('.login-stage__video').exists()).toBe(false);
+      expect(wrapper.find('button[aria-label="Reproduzir animação"]').exists()).toBe(false);
+      expect(wrapper.get('.login-stage__interaction').attributes('disabled')).toBeDefined();
+    } finally {
+      if (originalConnection) Object.defineProperty(window.navigator, 'connection', originalConnection);
+      else delete (window.navigator as Navigator & { connection?: unknown }).connection;
+    }
+  });
+
+  it('localizes a rate-limit response and keeps the alert actionable', async () => {
+    mockApiRequest.mockRejectedValue(
+      Object.assign(new Error('Too many requests. Please try again later.'), {
+        status: 429,
+        body: { code: 'RATE_LIMIT_EXCEEDED' }
+      })
+    );
+
+    const LoginPage = (await import('../../LoginPage.vue')).default;
+    const wrapper = mount(LoginPage);
+
+    await wrapper.find('#email').setValue('admin');
+    await wrapper.find('#password').setValue('secret');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Muitas tentativas de acesso. Aguarde um instante e tente novamente.');
+    expect(wrapper.text()).not.toContain('Too many requests');
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+  });
+
+  it('localizes a network failure without exposing the browser message', async () => {
+    mockApiRequest.mockRejectedValue(new TypeError('Failed to fetch'));
+
+    const LoginPage = (await import('../../LoginPage.vue')).default;
+    const wrapper = mount(LoginPage);
+
+    await wrapper.find('#email').setValue('admin');
+    await wrapper.find('#password').setValue('secret');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Não foi possível conectar ao serviço de acesso. Verifique a conexão e tente novamente.');
+    expect(wrapper.text()).not.toContain('Failed to fetch');
+  });
 });

@@ -1,7 +1,7 @@
 <template>
   <div class="empty-state" :class="`empty-state--${size}`">
     <div class="empty-state__icon" aria-hidden="true"><DsIcon :name="icon" size="xl" /></div>
-    <h3 class="empty-state__title">{{ title }}</h3>
+    <component :is="`h${headingLevel}`" class="empty-state__title">{{ title }}</component>
     <p v-if="description" class="empty-state__desc">{{ description }}</p>
     <slot name="action" />
   </div>
@@ -15,11 +15,13 @@ interface Props {
   title: string;
   description?: string;
   size?: 'sm' | 'md' | 'lg';
+  headingLevel?: 2 | 3 | 4;
 }
 
 withDefaults(defineProps<Props>(), {
   description: undefined,
-  size: 'md'
+  size: 'md',
+  headingLevel: 3
 });
 </script>
 

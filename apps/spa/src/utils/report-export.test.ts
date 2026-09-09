@@ -17,9 +17,9 @@ describe('buildReportCsv', () => {
     ];
 
     expect(buildReportCsv(columns, rows)).toBe(
-      '\uFEFFID;Descrição;Valor\r\n' +
-        'row-1;"Consulta; retorno";180.5\r\n' +
-        'row-2;"Linha ""com quebra\nde linha""";\r\n'
+      '\uFEFFID,Descrição,Valor\n' +
+        'row-1,Consulta; retorno,180.5\n' +
+        'row-2,"Linha ""com quebra\nde linha""",'
     );
   });
 
@@ -30,9 +30,9 @@ describe('buildReportCsv', () => {
     ];
 
     expect(buildReportCsv(columns, formulaRows)).toContain(
-      'formula;"\'=HYPERLINK(""https://evil.test"")";-12.5'
+      'formula,"\'=HYPERLINK(""https://evil.test"")",-12.5'
     );
-    expect(buildReportCsv(columns, formulaRows)).toContain("text-number;'-1+2;'+55");
+    expect(buildReportCsv(columns, formulaRows)).toContain("text-number,'-1+2,'+55");
   });
 
   it('serializes object values and preserves empty cells', () => {
@@ -41,7 +41,7 @@ describe('buildReportCsv', () => {
     ];
 
     expect(buildReportCsv(columns, rows)).toBe(
-      '\uFEFFID;Descrição;Valor\r\nrow-1;"{""source"":""audit"",""count"":2}";\r\n'
+      '\uFEFFID,Descrição,Valor\nrow-1,"{""source"":""audit"",""count"":2}",'
     );
   });
 });

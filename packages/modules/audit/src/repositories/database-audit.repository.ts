@@ -1,6 +1,10 @@
 import { and, desc, eq, ilike, isNull, lt, or, sql } from 'drizzle-orm';
-import type { DatabaseClient } from '@cvg-his-v2/shared-database';
-import { auditEvents } from '@cvg-his-v2/shared-database';
+import {
+  auditEvents,
+  createScopedDatabaseClient,
+  getDatabaseTransactionScope,
+  type DatabaseClient
+} from '@cvg-his-v2/shared-database';
 import type { AccountId, AuditEventId, AuditEventSummary } from '@cvg-his-v2/shared-types';
 import type {
   AuditListPageQuery,
@@ -21,7 +25,18 @@ export class DatabaseAuditRepository implements AuditRepository {
     const actorUserId = normalizeUuid(event.actorId);
     const accountId = normalizeUuid(event.accountId);
 
-    await this.#db.insert(auditEvents).values({
+    // Audit writes may be awaited by a route while the canonical tenant UoW
+    // is still holding row locks (for example, report actor integrity locks).
+    // The repository receives a pool-backed Drizzle client at bootstrap, but
+    // using it here can acquire a second connection. Rebind to the ambient
+    // transaction client whenever one exists so the audit row participates in
+    // the same commit/rollback boundary and cannot deadlock its caller.
+    const transactionScope = getDatabaseTransactionScope();
+    const database = transactionScope
+      ? createScopedDatabaseClient(transactionScope.client)
+      : this.#db;
+
+    await database.insert(auditEvents).values({
       id: event.eventId,
       accountId,
       actorUserId,

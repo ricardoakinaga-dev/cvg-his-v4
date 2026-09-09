@@ -1,13 +1,15 @@
 import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
 
-const CSV_SEPARATOR = ';';
-const CSV_LINE_ENDING = '\r\n';
+// The server report endpoint uses RFC 4180-style comma-separated CSV. Keep
+// browser-side snapshots on the same delimiter so consumers see one contract.
+const CSV_SEPARATOR = ',';
+const CSV_LINE_ENDING = '\n';
 const FORMULA_PREFIX = "'";
 
 /**
  * Builds a deterministic CSV snapshot from the rows currently shown in a report.
- * The UTF-8 BOM and semicolon separator keep the file friendly to Brazilian Excel
- * installations without depending on a server-side export job.
+ * The UTF-8 BOM and comma separator keep local snapshots aligned with the
+ * server-side report artifact contract without depending on an export job.
  */
 export function buildReportCsv(
   columns: readonly DataTableColumn[],
@@ -18,7 +20,7 @@ export function buildReportCsv(
     columns.map((column) => escapeCsvCell(serializeCell(column, row))).join(CSV_SEPARATOR)
   );
 
-  return `\uFEFF${[header, ...body].join(CSV_LINE_ENDING)}${CSV_LINE_ENDING}`;
+  return `\uFEFF${[header, ...body].join(CSV_LINE_ENDING)}`;
 }
 
 function serializeCell(column: DataTableColumn, row: DataTableRow): string {
@@ -53,6 +55,6 @@ function isFormulaLike(value: string): boolean {
 }
 
 function escapeCsvCell(value: string): string {
-  if (!/[";\r\n]/.test(value)) return value;
+  if (!/[",\r\n]/.test(value)) return value;
   return `"${value.replaceAll('"', '""')}"`;
 }

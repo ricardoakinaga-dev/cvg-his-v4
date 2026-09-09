@@ -43,4 +43,36 @@ describe('encounterService financial mutations', () => {
       })
     });
   });
+
+  it('reverses a cash receipt with a caller-owned idempotency key and reason', async () => {
+    mockApiRequest.mockResolvedValue({ id: 'reversal-1' });
+    const { encounterService } = await import('../encounter');
+
+    await encounterService.reverseCashReceipt(
+      'enc-1',
+      'receipt-1',
+      'Correção autorizada',
+      'reversal-request-1'
+    );
+
+    expect(mockApiRequest).toHaveBeenCalledWith(
+      '/encounters/enc-1/cash-receipts/receipt-1/reverse',
+      {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'reversal-request-1' },
+        body: JSON.stringify({ reason: 'Correção autorizada' })
+      }
+    );
+  });
+
+  it('recovers the latest cash receipt with its durable reversal projection', async () => {
+    mockApiRequest.mockResolvedValue({ id: 'receipt-1', reversalId: 'reversal-1' });
+    const { encounterService } = await import('../encounter');
+
+    await encounterService.getCashReceiptForEncounter('enc-1', { includeReversed: true });
+
+    expect(mockApiRequest).toHaveBeenCalledWith(
+      '/encounters/enc-1/cash-receipts?includeReversed=true'
+    );
+  });
 });

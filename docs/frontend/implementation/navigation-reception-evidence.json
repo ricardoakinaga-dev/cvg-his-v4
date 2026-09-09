@@ -1,0 +1,58 @@
+{
+  "status": "PARTIAL; full 34-ticket objective remains active",
+  "source_sha256": {
+    "apps/spa/src/composables/useRouteFocus.ts": "21cb2cff54bc35ba178b32058d874b111c699d0ecb6775c0750f4a7c7f3eeb58",
+    "apps/spa/src/composables/__tests__/useRouteFocus.test.ts": "26a504523bceaef2eba52833354d7563c90d62197023b9f045e5e1852518efbe",
+    "apps/spa/src/layouts/AppLayout.vue": "b4b36c730e2953911fb3a9cbc32a1bed2a2cee1c534dfcbc8b58e95a87c2f10c",
+    "apps/spa/src/router/index.ts": "1ae05e4a740cfcb3289071ac5b29e6524336e002f56d293aaeefdb3c3b59e23f",
+    "apps/spa/src/router/navigation-context.test.ts": "73f91cc211ca2d340bd7ed0de2b5b9d4148a74bb8b727b6ab5386fab93ee67f2",
+    "apps/spa/src/pages/reception/ReceptionGatewayPage.vue": "f45bc54f424b6efc9a0747785a6b3b6835762d85f445178e9013f609999e7dd7",
+    "apps/spa/src/pages/reception/__tests__/ReceptionGatewayPage.test.ts": "fcbddb55a61cd046064fad3e5b955a4318839d0b719697984f5c31df5bf680ab"
+  },
+  "tests": {
+    "command": "pnpm --filter @cvg-his-v2/spa exec vitest run [focus, navigation-context, scroll, unsaved, reception] --maxWorkers=1",
+    "passed": 66,
+    "log": "navigation-reception-integrated.log"
+  },
+  "typecheck": {
+    "exit_code": 0,
+    "log": "navigation-reception-typecheck.log"
+  },
+  "browser_history": {
+    "report": "evidence/continuity-Jvds8h/report.json",
+    "cases": 4,
+    "failures": 0,
+    "stable_inputs": true,
+    "scope": "Chromium synthetic API; restored visible Cancel and native scroll; no document reload"
+  },
+  "reviews": [
+    {
+      "role": "history_focus_critic",
+      "independence": "I1 fresh read-only, rework review",
+      "verdict": "bounded source accepted; earlier guard ordering still open"
+    },
+    {
+      "role": "reception_race_critic",
+      "independence": "I1 fresh read-only",
+      "verdict": "bounded race source accepted"
+    }
+  ],
+  "remaining": [
+    "Earlier guard focus ordering",
+    "Asynchronously inserted return targets",
+    "Per-module filters and selection",
+    "Full browser/accessibility/UAT/performance scope",
+    "All other incomplete backlog criteria"
+  ],
+  "browser_reception": {
+    "report": "evidence/continuity-11pldJ/report.json",
+    "cases": 4,
+    "failures": 0,
+    "stable_inputs": true,
+    "scope": "latest query survives delayed obsolete owner response, clear removes results; populated queue/search; synthetic API Chromium"
+  },
+  "superseded_runs": {
+    "continuity-Tcf06a": "source drift and one failed return-focus case",
+    "continuity-fkJDKu": "four harness timeouts: wrong owner query parameter search instead of q; terminal observed and corrected"
+  }
+}

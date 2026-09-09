@@ -352,7 +352,6 @@ async function writeAuditArtifact(): Promise<void> {
 for (const mode of ['desktop', 'mobile'] as const) {
   test.describe(`Auditoria master de usabilidade - ${mode}`, () => {
     let context: BrowserContext;
-    let auditPage: Page;
 
     test.beforeAll(async ({ browser }) => {
       context = await browser.newContext({
@@ -361,13 +360,23 @@ for (const mode of ['desktop', 'mobile'] as const) {
         viewport: VIEWPORTS[mode]
       });
       auditMetadata.browserVersion = browser.version();
-      auditPage = await context.newPage();
-      await login(auditPage);
+      const authenticatedPage = await context.newPage();
+      await login(authenticatedPage);
+      await authenticatedPage.close();
     });
 
     for (const route of navRoutes) {
       test(`${route.title} (${route.path})`, async () => {
-        await auditRoute(auditPage, mode, route);
+        // Keep each route isolated in a fresh page. Reusing one renderer for
+        // hundreds of navigations can accumulate app/DOM resources and make
+        // the audit fail because Chromium closes the page, not because the
+        // route is invalid.
+        const routePage = await context.newPage();
+        try {
+          await auditRoute(routePage, mode, route);
+        } finally {
+          await routePage.close().catch(() => undefined);
+        }
       });
     }
 

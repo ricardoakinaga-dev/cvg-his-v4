@@ -8,6 +8,7 @@ import {
   createInventory,
   configFingerprint,
   hash,
+  navigation,
   sourceState,
   validateEvidence,
   VIEWPORTS
@@ -173,6 +174,14 @@ test('generator refuses omitted enterprise route cases before any execution', ()
     /complete navigation discovery/
   );
 });
+test('navigation inventory loads the permission catalog from the source tree', async () => {
+  const routes = await navigation(process.cwd());
+  assert.ok(routes.length > 0);
+  assert.deepEqual(routes.find(({ path }) => path === '/access-control'), {
+    path: '/access-control',
+    title: 'Grupos de Acesso'
+  });
+});
 test('environment expected count cannot bypass frozen inventory', () => {
   assert.throws(
     () =>
@@ -188,7 +197,8 @@ test('source fingerprint excludes generated evidence trees', async () => {
   const state = await sourceState(process.cwd());
   assert.equal(
     Object.keys(state.files).some((path) =>
-      /^(tmp|artifacts|playwright-report|test-results|coverage|coverage-boundary|legado)\//.test(path)
+      /^(tmp|artifacts|playwright-report|test-results|coverage|coverage-boundary|legado)\//.test(path) ||
+        path.startsWith('docs/frontend/implementation/evidence/')
     ),
     false
   );

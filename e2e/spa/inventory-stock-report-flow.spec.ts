@@ -103,8 +103,9 @@ test.describe('Relatório de estoque atual', () => {
       await expect(page.getByText('Abaixo do mínimo', { exact: true }).first()).toBeVisible();
       await expect(page.getByRole('cell', { name: 'Adequado', exact: true }).first()).toBeVisible();
 
-      await page.getByLabel('De', { exact: true }).fill('2026-05-01');
-      await page.getByLabel('Até', { exact: true }).fill('2026-05-31');
+      await page.getByText('Filtros da consulta', { exact: true }).click();
+      await page.getByLabel('Cadastros de', { exact: true }).fill('2026-05-01');
+      await page.getByLabel('Cadastros até', { exact: true }).fill('2026-05-31');
       await page.getByLabel('Código ou produto', { exact: true }).fill(items.search);
 
       const filteredExecutionResponse = page.waitForResponse(
@@ -148,11 +149,6 @@ test.describe('Relatório de estoque atual', () => {
       ]);
       expect(inventoryRequests).toEqual([]);
 
-      const exportExecutionResponse = page.waitForResponse(
-        (response) =>
-          response.url().endsWith('/api/reports/executions') &&
-          response.request().method() === 'POST'
-      );
       const exportResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/reports/executions/') &&
@@ -161,14 +157,13 @@ test.describe('Relatório de estoque atual', () => {
       );
       const download = page.waitForEvent('download');
       await page.getByRole('button', { name: 'Exportar CSV', exact: true }).click();
-      const [exportExecution, exported, downloaded] = await Promise.all([
-        exportExecutionResponse.then((response) => response.json()),
+      const [exported, downloaded] = await Promise.all([
         exportResponse.then((response) => response.json()),
         download
       ]);
 
-      expect(exportExecution.reportId).toBe('inventory-stock');
-      expect(exportExecution.rowCount).toBe(2);
+      expect(filteredExecution.reportId).toBe('inventory-stock');
+      expect(filteredExecution.rowCount).toBe(2);
       expect(exported.format).toBe('csv');
       expect(exported.content).toContain(items.firstSku);
       expect(exported.content).toContain(items.secondSku);

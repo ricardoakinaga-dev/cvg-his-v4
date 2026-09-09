@@ -71,7 +71,7 @@
           </div>
 
           <div class="form-actions">
-            <DsButton type="submit" variant="primary" :loading="submitting">
+            <DsButton type="submit" variant="primary" :loading="submitting" :disabled="successPending">
               {{ submitting ? 'Salvando...' : 'Salvar Agendamento' }}
             </DsButton>
             <DsButton variant="secondary" tag="a" to="/scheduling">Cancelar</DsButton>
@@ -101,6 +101,7 @@ import { patientService } from '@/services/patient';
 import type { CreateAppointmentRequest } from '@/types/appointment';
 import type { PatientSummary } from '@/types/patient';
 import { useFormValidation } from '@/composables/useFormValidation';
+import { useSuccessRedirect } from '@/composables/successRedirect';
 import { speciesLabel } from '@/utils/labels';
 import SearchSelect from '@/components/SearchSelect.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
@@ -137,6 +138,8 @@ const validation = useFormValidation({
 });
 
 const { errors, formError, successMessage, submitting, validate } = validation;
+const successRedirect = useSuccessRedirect();
+const successPending = successRedirect.successPending;
 
 function getValues(): Record<string, unknown> {
   return {
@@ -157,6 +160,7 @@ function onPatientChange(option: { label: string; value: string } | null) {
 }
 
 async function onSubmit() {
+  if (submitting.value || !successRedirect.begin()) return;
   if (!validate(getValues())) return;
 
   submitting.value = true;
@@ -173,7 +177,7 @@ async function onSubmit() {
     };
     const created = await appointmentService.create(payload);
     successMessage.value = 'Agendamento criado com sucesso!';
-    setTimeout(() => router.push(`/appointments/${created.id}`), 1000);
+    successRedirect.schedule(() => router.push(`/appointments/${created.id}`), successMessage.value);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Erro ao criar agendamento';
     formError.value = message;

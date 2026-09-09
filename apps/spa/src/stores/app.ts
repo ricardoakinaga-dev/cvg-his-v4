@@ -12,6 +12,18 @@ const STORAGE_KEYS = {
   FAVORITE_ROUTES: 'cvg-his-v2:spa:favorite-routes'
 } as const;
 
+function workspaceStorageKey(key: string, identity: string | null): string {
+  return identity ? `${key}:workspace:${encodeURIComponent(identity)}` : key;
+}
+
+function hasStorageValue(key: string): boolean {
+  try {
+    return localStorage.getItem(key) !== null;
+  } catch {
+    return false;
+  }
+}
+
 function readJson<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key);
@@ -44,8 +56,9 @@ export const useAppStore = defineStore('app', {
     })(),
     loading: false,
     pageTitle: '',
-    recentRoutes: readJson<RecentRoute[]>(STORAGE_KEYS.RECENT_ROUTES, []),
-    favoriteRoutes: readJson<string[]>(STORAGE_KEYS.FAVORITE_ROUTES, [])
+    workspaceIdentity: null as string | null,
+    recentRoutes: [] as RecentRoute[],
+    favoriteRoutes: [] as string[]
   }),
 
   actions: {
@@ -66,13 +79,59 @@ export const useAppStore = defineStore('app', {
       this.pageTitle = title;
     },
 
+    setWorkspaceIdentity(identity: string | null) {
+      if (this.workspaceIdentity === identity) return;
+      this.workspaceIdentity = identity;
+
+      if (!identity) {
+        this.recentRoutes = [];
+        this.favoriteRoutes = [];
+        return;
+      }
+
+      const recentKey = workspaceStorageKey(STORAGE_KEYS.RECENT_ROUTES, identity);
+      const favoriteKey = workspaceStorageKey(STORAGE_KEYS.FAVORITE_ROUTES, identity);
+      const hasScopedRecent = hasStorageValue(recentKey);
+      const hasScopedFavorites = hasStorageValue(favoriteKey);
+      const legacyRecent = readJson<RecentRoute[]>(STORAGE_KEYS.RECENT_ROUTES, []);
+      const legacyFavorites = readJson<string[]>(STORAGE_KEYS.FAVORITE_ROUTES, []);
+
+      this.recentRoutes = hasScopedRecent
+        ? readJson<RecentRoute[]>(recentKey, [])
+        : legacyRecent;
+      this.favoriteRoutes = hasScopedFavorites
+        ? readJson<string[]>(favoriteKey, [])
+        : legacyFavorites;
+
+      // One-time migration from the pre-workspace global keys. Removing the
+      // legacy copy prevents a later user on the same browser from inheriting
+      // the previous user's route identifiers.
+      if (!hasScopedRecent && legacyRecent.length > 0) writeJson(recentKey, legacyRecent);
+      if (!hasScopedFavorites && legacyFavorites.length > 0) {
+        writeJson(favoriteKey, legacyFavorites);
+      }
+      if (!hasScopedRecent || !hasScopedFavorites) {
+        try {
+          localStorage.removeItem(STORAGE_KEYS.RECENT_ROUTES);
+          localStorage.removeItem(STORAGE_KEYS.FAVORITE_ROUTES);
+        } catch {
+          /* noop */
+        }
+      }
+    },
+
+    clearWorkspaceState() {
+      this.recentRoutes = [];
+      this.favoriteRoutes = [];
+    },
+
     addRecentRoute(route: RecentRoute) {
       const next = [route, ...this.recentRoutes.filter((item) => item.path !== route.path)].slice(
         0,
         6
       );
       this.recentRoutes = next;
-      writeJson(STORAGE_KEYS.RECENT_ROUTES, next);
+      writeJson(workspaceStorageKey(STORAGE_KEYS.RECENT_ROUTES, this.workspaceIdentity), next);
     },
 
     toggleFavoriteRoute(path: string) {
@@ -81,7 +140,10 @@ export const useAppStore = defineStore('app', {
       } else {
         this.favoriteRoutes = [path, ...this.favoriteRoutes];
       }
-      writeJson(STORAGE_KEYS.FAVORITE_ROUTES, this.favoriteRoutes);
+      writeJson(
+        workspaceStorageKey(STORAGE_KEYS.FAVORITE_ROUTES, this.workspaceIdentity),
+        this.favoriteRoutes
+      );
     },
 
     isFavoriteRoute(path: string) {
@@ -90,7 +152,7 @@ export const useAppStore = defineStore('app', {
 
     clearRecentRoutes() {
       this.recentRoutes = [];
-      writeJson(STORAGE_KEYS.RECENT_ROUTES, []);
+      writeJson(workspaceStorageKey(STORAGE_KEYS.RECENT_ROUTES, this.workspaceIdentity), []);
     }
   }
 });

@@ -129,6 +129,7 @@ test.describe('Relatório de NFS-e de serviços prestados', () => {
         page.getByRole('heading', { name: 'Relatório de NF de Serviços Prestados', exact: true })
       ).toBeVisible();
 
+      await page.getByText('Filtros da consulta', { exact: true }).click();
       await page.getByLabel('De', { exact: true }).fill('2026-05-01');
       await page.getByLabel('Até', { exact: true }).fill('2026-05-31');
       await page.getByLabel('Cliente, serviço ou código', { exact: true }).fill(document.marker);
@@ -173,11 +174,6 @@ test.describe('Relatório de NFS-e de serviços prestados', () => {
       await expect(reportRow).toBeVisible();
       await expect(reportRow.getByText('Rascunho', { exact: true })).toBeVisible();
 
-      const exportExecutionResponse = page.waitForResponse(
-        (response) =>
-          response.url().endsWith('/api/reports/executions') &&
-          response.request().method() === 'POST'
-      );
       const exportResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/reports/executions/') &&
@@ -186,14 +182,13 @@ test.describe('Relatório de NFS-e de serviços prestados', () => {
       );
       const download = page.waitForEvent('download');
       await page.getByRole('button', { name: 'Exportar CSV', exact: true }).click();
-      const [exportExecution, exported, downloaded] = await Promise.all([
-        exportExecutionResponse.then((response) => response.json()),
+      const [exported, downloaded] = await Promise.all([
         exportResponse.then((response) => response.json()),
         download
       ]);
 
-      expect(exportExecution.reportId).toBe('fiscal-service-invoices');
-      expect(exportExecution.rowCount).toBe(1);
+      expect(execution.reportId).toBe('fiscal-service-invoices');
+      expect(execution.rowCount).toBe(1);
       expect(exported.format).toBe('csv');
       expect(exported.content).toContain(document.marker);
       expect(exported.content).toContain('2026-05-15');

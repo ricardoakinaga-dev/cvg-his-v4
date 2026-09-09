@@ -55,6 +55,96 @@ describe('DataTable', () => {
     expect(wrapper.find('.empty-state__title').text()).toBe('Vazio');
   });
 
+  it('renders an explicit no-results feedback without an assertive announcement', () => {
+    const wrapper = mount(DataTable, {
+      props: {
+        columns,
+        rows,
+        feedback: {
+          kind: 'no-results',
+          title: 'Nenhum resultado corresponde aos filtros',
+          description: 'Revise os filtros e tente novamente.'
+        }
+      },
+      slots: {
+        feedbackAction: '<button type="button" class="retry-button">Limpar filtros</button>'
+      }
+    });
+
+    expect(wrapper.get('[data-testid="data-table-feedback"] .empty-state__title').text())
+      .toBe('Nenhum resultado corresponde aos filtros');
+    expect(wrapper.get('.retry-button').text()).toBe('Limpar filtros');
+    expect(wrapper.find('table').exists()).toBe(false);
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    expect(wrapper.find('[aria-live]').exists()).toBe(false);
+  });
+
+  it('announces terminal feedback once and keeps loading as the highest-priority state', async () => {
+    const wrapper = mount(DataTable, {
+      props: {
+        columns,
+        rows: [],
+        loading: false,
+        feedback: {
+          kind: 'error',
+          title: 'Não foi possível carregar',
+          description: 'Tente novamente.'
+        }
+      },
+      slots: {
+        feedbackAction: '<button type="button">Tentar novamente</button>'
+      }
+    });
+
+    expect(wrapper.findAll('[role="alert"]')).toHaveLength(1);
+    expect(wrapper.get('[role="alert"]').attributes('aria-live')).toBe('assertive');
+    expect(wrapper.findAll('[aria-live="assertive"]')).toHaveLength(1);
+
+    await wrapper.setProps({ loading: true });
+    expect(wrapper.find('.data-table-loading').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="data-table-feedback"]').exists()).toBe(false);
+    expect(wrapper.findAll('[role="alert"]')).toHaveLength(0);
+  });
+
+  it('uses a registered clock icon for unavailable data instead of an emoji fallback', () => {
+    const wrapper = mount(DataTable, {
+      props: {
+        columns,
+        rows: [],
+        feedback: {
+          kind: 'unavailable',
+          title: 'Catálogo indisponível'
+        }
+      }
+    });
+
+    expect(wrapper.get('[data-testid="data-table-feedback"] [data-icon="clock"]')).toBeDefined();
+    expect(wrapper.get('[role="alert"]').attributes('aria-live')).toBe('assertive');
+  });
+
+  it('keeps confirmed rows visible beside a recoverable terminal feedback', () => {
+    const wrapper = mount(DataTable, {
+      props: {
+        columns,
+        rows,
+        feedback: {
+          kind: 'unavailable',
+          title: 'Catálogo indisponível',
+          description: 'Tente novamente.'
+        }
+      },
+      slots: {
+        feedbackAction: '<button type="button">Atualizar</button>'
+      }
+    });
+
+    expect(wrapper.get('[data-testid="data-table-feedback"]').classes()).toContain(
+      'data-table-feedback--with-rows'
+    );
+    expect(wrapper.findAll('tbody tr')).toHaveLength(rows.length);
+    expect(wrapper.findAll('[role="alert"]')).toHaveLength(1);
+  });
+
   it('renders custom cell content via slots', () => {
     const wrapper = mount(DataTable, {
       props: { columns, rows },
@@ -102,6 +192,7 @@ describe('DataTable', () => {
   it('keeps the named region but does not announce unmeasured overflow', () => {
     const wrapper = mount(DataTable, {props:{columns,rows,caption:'Lista de usuários'}});
     expect(wrapper.get('.table-wrapper').attributes('data-scroll-container')).toBe('local');
+    expect(wrapper.get('.table-wrapper').attributes('data-scroll-key')).toBe('Lista de usuários');
     expect(wrapper.get('.table-wrapper').attributes('aria-describedby')).toBeUndefined();
     expect(wrapper.find('.table-wrapper__scroll-cue').exists()).toBe(false);
     expect(wrapper.get('th').attributes('scope')).toBe('col');
@@ -206,6 +297,9 @@ describe('DataTable measured overflow', () => {
     const id = wrapper.get('.table-wrapper').attributes('aria-describedby');
     expect(wrapper.get(`#${id}`).text()).toContain('rolagem horizontal local');
     expect(wrapper.get('.table-wrapper__scroll-cue').text()).toContain('Rolagem local');
+    region.scrollLeft = 0;
+    await wrapper.get('.table-wrapper').trigger('keydown', { key: 'ArrowRight' });
+    expect(region.scrollLeft).toBeGreaterThan(0);
     expect(browser.observers[0].observe).toHaveBeenCalledWith(region);
     expect(browser.observers[0].observe).toHaveBeenCalledWith(table);
     regionWidth = 800;

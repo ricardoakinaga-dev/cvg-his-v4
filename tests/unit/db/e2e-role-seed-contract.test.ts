@@ -21,4 +21,10 @@ describe('E2E role matrix seed contract', () => {
     expect(compose).toContain('POSTGRES_API_USER');
     expect(compose).toContain('POSTGRES_WORKER_USER');
   });
+
+  it('forwards an explicitly supplied Redis endpoint in the external database harness', () => {
+    expect(runner).toContain('REDIS_URL_E2E="${E2E_REDIS_URL:-redis://127.0.0.1:6381}"');
+    expect(runner).toContain('E2E_REDIS_URL="$REDIS_URL_E2E"');
+    expect(runner).not.toContain('E2E_REDIS_URL="redis://127.0.0.1:6381"');
+  });
 });

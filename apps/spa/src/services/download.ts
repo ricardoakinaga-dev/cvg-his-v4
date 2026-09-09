@@ -1,25 +1,31 @@
 export const DEFAULT_DOWNLOAD_TIMEOUT_MS = 12_000;
 
 export class DownloadTimeoutError extends Error {
+  readonly operationMayStillBePending = true;
+
   constructor(timeoutMs: number) {
     super(
-      `A exportação excedeu ${Math.ceil(timeoutMs / 1000)} segundos. Verifique os filtros e tente novamente.`
+      `A exportação excedeu ${Math.ceil(timeoutMs / 1000)} segundos; o servidor pode continuar processando o artefato. Recarregue o relatório e tente novamente somente depois.`
     );
     this.name = 'DownloadTimeoutError';
   }
 }
 
 export async function withDownloadTimeout<T>(
-  operation: () => Promise<T>,
+  operation: (signal?: AbortSignal) => Promise<T>,
   timeoutMs = DEFAULT_DOWNLOAD_TIMEOUT_MS
 ): Promise<T> {
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_resolve, reject) => {
-    timeoutId = setTimeout(() => reject(new DownloadTimeoutError(timeoutMs)), timeoutMs);
+    timeoutId = setTimeout(() => {
+      controller?.abort();
+      reject(new DownloadTimeoutError(timeoutMs));
+    }, timeoutMs);
   });
 
   try {
-    return await Promise.race([operation(), timeout]);
+    return await Promise.race([operation(controller?.signal), timeout]);
   } finally {
     if (timeoutId !== undefined) clearTimeout(timeoutId);
   }

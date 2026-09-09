@@ -27,6 +27,20 @@ describe('Inpatient detail exact context and truthful collections', () => {
   it('does not retain old chart actions when the next stay is unavailable', async () => {
     await render(); service.list.mockResolvedValueOnce([first]); route.params.id = second.id; await flushPromises(); expect(wrapper!.text()).toContain('Internação não encontrada'); expect(wrapper!.text()).not.toContain('Rex'); expect(wrapper!.findAll('button').some(b => /^Dar Alta$/.test(b.text()))).toBe(false);
   });
+  it('closes and clears a discharge draft before switching to another stay', async () => {
+    await render();
+    await action(/^Dar Alta$/).trigger('click');
+    await wrapper!.find('#dischargeReason').setValue('Alta clínica da primeira internação');
+
+    route.params.id = second.id;
+    await flushPromises();
+
+    expect(wrapper!.text()).toContain('Luna');
+    expect(wrapper!.text()).toContain('B02');
+    expect(wrapper!.find('#dischargeReason').exists()).toBe(false);
+    expect(wrapper!.text()).not.toContain('Alta clínica da primeira internação');
+    expect(service.updateStatus).not.toHaveBeenCalled();
+  });
   it('renders collection errors instead of successful empty clinical and financial records', async () => {
     service.listProgress.mockRejectedValueOnce(new Error('Evoluções indisponíveis')); service.listOccurrences.mockRejectedValueOnce(new Error('Ocorrências indisponíveis')); service.listDailyCharges.mockRejectedValueOnce(new Error('Diárias indisponíveis')); await render();
     expect(wrapper!.text()).toContain('Evoluções indisponíveis'); expect(wrapper!.text()).toContain('Ocorrências indisponíveis'); expect(wrapper!.text()).toContain('Diárias indisponíveis'); expect(wrapper!.text()).not.toContain('Nenhuma evolução registrada'); expect(wrapper!.text()).not.toContain('Nenhuma ocorrência registrada'); expect(wrapper!.text()).not.toContain('Nenhuma diária lançada'); expect(wrapper!.text()).not.toMatch(/R\$\s*0,00/);

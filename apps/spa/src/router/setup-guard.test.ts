@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { getSanitizedRoute, resolveSetupRedirect } from './index';
+import {
+  getSanitizedRoute,
+  resolveNavigationPermissionRedirect,
+  resolveSetupRedirect
+} from './index';
 
 describe('setup navigation guard', () => {
   it('sends an unauthenticated visitor to setup when installation requires it', () => {
@@ -81,5 +85,14 @@ describe('setup navigation guard', () => {
         hash: '#access_token=secret'
       })
     ).toEqual({ path: '/setup', query: { source: 'operator' }, hash: '' });
+  });
+
+  it('denies an unresolved private route and allows a route with its session permission', () => {
+    expect(resolveNavigationPermissionRedirect({ path: '/appointments' }, null)).toEqual({
+      path: '/'
+    });
+    expect(
+      resolveNavigationPermissionRedirect({ path: '/appointments' }, ['scheduling.read'])
+    ).toBe(undefined);
   });
 });

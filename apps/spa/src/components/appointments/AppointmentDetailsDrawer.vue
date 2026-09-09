@@ -3,11 +3,14 @@
     <button
       type="button"
       class="appointment-details-drawer__backdrop"
+      tabindex="-1"
       aria-label="Fechar detalhes do agendamento"
       @click="emit('close')"
     />
 
     <aside
+      ref="panel"
+      tabindex="-1"
       class="appointment-details-drawer__panel"
       role="dialog"
       aria-modal="true"
@@ -34,9 +37,6 @@
         </template>
 
         <div class="appointment-details-card__stack">
-          <div class="appointment-details-card__origin-badge">
-            Aberto a partir da grade da agenda
-          </div>
           <div class="appointment-details-card__headline">
             <span class="status-pill" :class="`status-pill--${appointment.operational.stage}`">
               {{ appointment.operational.label }}
@@ -157,7 +157,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import type { SchedulingCockpitAppointmentSummary } from '@/types/appointment';
@@ -192,6 +192,78 @@ const emit = defineEmits<{
   'no-show': [appointment: SchedulingCockpitAppointmentSummary];
   'open-encounter': [appointment: SchedulingCockpitAppointmentSummary];
 }>();
+
+const panel = ref<HTMLElement | null>(null);
+let returnFocusTarget: HTMLElement | null = null;
+let disposed = false;
+
+function restoreFocus() {
+  const target = returnFocusTarget;
+  returnFocusTarget = null;
+  if (target?.isConnected) target.focus({ preventScroll: true });
+}
+
+function handleKeydown(event: KeyboardEvent) {
+  if (!props.appointment || !panel.value || event.defaultPrevented) return;
+  // A confirmation or command dialog above the drawer owns its own keyboard events.
+  const target = event.target instanceof Element ? event.target : document.activeElement;
+  const activeDialog = target?.closest('[role="dialog"], [role="alertdialog"], dialog');
+  if (activeDialog && activeDialog !== panel.value) return;
+
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    event.stopPropagation();
+    emit('close');
+    return;
+  }
+  if (event.key !== 'Tab') return;
+
+  const focusable = [...panel.value.querySelectorAll<HTMLElement>(
+    'button, a[href], input, select, textarea, [tabindex]'
+  )].filter((element) => element.tabIndex >= 0
+    && !element.matches(':disabled, [aria-disabled="true"]')
+    && !element.closest('[hidden], [inert]')
+    && getComputedStyle(element).display !== 'none'
+    && getComputedStyle(element).visibility !== 'hidden');
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const active = document.activeElement;
+  if (!first || !last) {
+    event.preventDefault();
+    panel.value.focus();
+  } else if (!panel.value.contains(active) || active === panel.value
+    || (event.shiftKey && active === first) || (!event.shiftKey && active === last)) {
+    event.preventDefault();
+    (event.shiftKey ? last : first).focus();
+  }
+}
+
+watch(
+  () => Boolean(props.appointment),
+  async (open, _previous, onCleanup) => {
+    let cancelled = false;
+    onCleanup(() => { cancelled = true; });
+    if (open) {
+      returnFocusTarget = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      document.addEventListener('keydown', handleKeydown);
+      await nextTick();
+      if (!cancelled && !disposed) {
+        panel.value?.querySelector<HTMLElement>('.appointment-details-card__close')?.focus();
+      }
+    } else {
+      document.removeEventListener('keydown', handleKeydown);
+      await nextTick();
+      if (!cancelled && !disposed) restoreFocus();
+    }
+  },
+  { immediate: true }
+);
+
+onBeforeUnmount(() => {
+  disposed = true;
+  document.removeEventListener('keydown', handleKeydown);
+  restoreFocus();
+});
 
 const canOpenEncounter = computed(() => Boolean(props.appointment?.operational.encounterId));
 const encounterLabel = computed(() =>
@@ -288,27 +360,14 @@ const editHref = computed(() => {
   border: 1px solid var(--color-border, #cbd5e1);
   background: var(--color-surface, #fff);
   border-radius: 999px;
-  width: 32px;
-  height: 32px;
+  min-width: 44px;
+  min-height: 44px;
   cursor: pointer;
 }
 
 .appointment-details-card__stack {
   display: grid;
   gap: 16px;
-}
-
-.appointment-details-card__origin-badge {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: var(--color-primary-subtle, #eaf3ff);
-  color: var(--color-primary-700, #1d4ed8);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
 }
 
 .appointment-details-card__headline {
@@ -381,35 +440,35 @@ const editHref = computed(() => {
 }
 
 .status-pill--scheduled {
-  background: rgba(37, 99, 235, 0.1);
-  color: #1d4ed8;
+  background: var(--color-info-bg, rgba(37, 99, 235, 0.1));
+  color: var(--color-info-text, #1d4ed8);
 }
 
 .status-pill--checked_in,
 .status-pill--called {
-  background: rgba(245, 158, 11, 0.12);
-  color: #b45309;
+  background: var(--color-warning-bg, rgba(245, 158, 11, 0.12));
+  color: var(--color-warning-text, #b45309);
 }
 
 .status-pill--in_triage {
-  background: rgba(14, 165, 233, 0.12);
-  color: #0369a1;
+  background: var(--color-info-bg, rgba(14, 165, 233, 0.12));
+  color: var(--color-info-text, #0369a1);
 }
 
 .status-pill--in_care,
 .status-pill--observation {
-  background: rgba(16, 185, 129, 0.12);
-  color: #047857;
+  background: var(--color-success-bg, rgba(16, 185, 129, 0.12));
+  color: var(--color-success-text, #047857);
 }
 
 .status-pill--completed {
-  background: rgba(22, 163, 74, 0.12);
-  color: #15803d;
+  background: var(--color-success-bg, rgba(22, 163, 74, 0.12));
+  color: var(--color-success-text, #15803d);
 }
 
 .status-pill--cancelled {
-  background: rgba(148, 163, 184, 0.12);
-  color: #64748b;
+  background: var(--color-neutral-100, rgba(148, 163, 184, 0.12));
+  color: var(--color-neutral-700, #64748b);
 }
 
 @media (max-width: 720px) {

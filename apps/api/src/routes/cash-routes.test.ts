@@ -6,6 +6,7 @@ import { CashService } from '@cvg-his-v2/module-cash';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
 import { handleCashRoutes } from './cash-routes.js';
+import type { TenantCommandInput } from '../helpers/tenant-command.js';
 
 class MockResponse extends Writable {
   public statusCode = 200;
@@ -80,6 +81,16 @@ function createAudit() {
   return {
     write: () => {}
   };
+}
+
+function jsonRequest(body: unknown, idempotencyKey?: string): never {
+  return {
+    method: 'POST',
+    headers: idempotencyKey === undefined ? {} : { 'idempotency-key': idempotencyKey },
+    [Symbol.asyncIterator]: async function* () {
+      yield Buffer.from(JSON.stringify(body));
+    }
+  } as never;
 }
 
 test('handleCashRoutes exposes Vetus-like drawer dashboard and controlled write flow', async () => {
@@ -207,4 +218,146 @@ test('handleCashRoutes records deposit and exposes reconciliation', async () => 
   const reconciliation = reconciliationResponse.bodyJson<{ expectedAmount: number; totalOut: number }>();
   assert.equal(reconciliation.expectedAmount, 75);
   assert.equal(reconciliation.totalOut, 25);
+});
+
+test('cash mutations forward stable idempotency and tenant-command envelopes', async () => {
+  const cash = new CashService();
+  const runnerCalls: Array<{
+    operation: string;
+    idempotencyKey: string | undefined;
+    payload: unknown;
+  }> = [];
+  const handlers = {
+    cash,
+    audit: createAudit() as never,
+    requirePrincipal: () => createPrincipal(),
+    runCommand: async <T>(input: TenantCommandInput<T>): Promise<T> => {
+      runnerCalls.push({
+        operation: input.operation,
+        idempotencyKey: input.idempotencyKey,
+        payload: input.payload
+      });
+      return input.command();
+    }
+  };
+
+  const openResponse = new MockResponse();
+  await handleCashRoutes(
+    '/cash-register/open',
+    jsonRequest({ openingAmount: 100, notes: 'Abertura' }, '  cash-open-1  '),
+    openResponse as never,
+    'corr-cash-command-open',
+    handlers
+  );
+
+  const movementResponse = new MockResponse();
+  await handleCashRoutes(
+    '/cash-register/movements',
+    jsonRequest({ movementType: 'supply', amount: 20, reference: 'REF-1' }, 'cash-movement-1'),
+    movementResponse as never,
+    'corr-cash-command-movement',
+    handlers
+  );
+
+  const closeResponse = new MockResponse();
+  await handleCashRoutes(
+    '/cash-register/close',
+    jsonRequest({ closingAmount: 120, notes: 'Conferido' }, 'cash-close-1'),
+    closeResponse as never,
+    'corr-cash-command-close',
+    handlers
+  );
+
+  assert.deepEqual(runnerCalls[0], {
+    operation: 'cash.register.open',
+    idempotencyKey: 'cash-open-1',
+    payload: { openingAmount: 100, notes: 'Abertura' }
+  });
+  assert.deepEqual(runnerCalls[1], {
+    operation: 'cash.movement.create',
+    idempotencyKey: 'cash-movement-1',
+    payload: {
+      movementType: 'supply',
+      amount: 20,
+      reference: 'REF-1'
+    }
+  });
+  assert.deepEqual(runnerCalls[2], {
+    operation: 'cash.register.close',
+    idempotencyKey: 'cash-close-1',
+    payload: {
+      closingAmount: 120,
+      notes: 'Conferido'
+    }
+  });
+  assert.equal(runnerCalls.length, 3);
+  assert.equal(openResponse.statusCode, 201);
+  assert.equal(movementResponse.statusCode, 201);
+  assert.equal(closeResponse.statusCode, 200);
+});
+
+test('cash route keeps direct test compatibility when no tenant runner is injected', async () => {
+  const cash = new CashService();
+  const handlers = {
+    cash,
+    audit: createAudit() as never,
+    requirePrincipal: () => createPrincipal()
+  };
+
+  const response = new MockResponse();
+  await handleCashRoutes(
+    '/cash-register/open',
+    jsonRequest({ openingAmount: 50 }),
+    response as never,
+    'corr-cash-direct-compatible',
+    handlers
+  );
+
+  assert.equal(response.statusCode, 201);
+});
+
+test('cash close can replay after the first command has already closed the register', async () => {
+  const cash = new CashService();
+  const commandResults = new Map<string, unknown>();
+  const handlers = {
+    cash,
+    audit: createAudit() as never,
+    requirePrincipal: () => createPrincipal(),
+    runCommand: async <T>(input: TenantCommandInput<T>): Promise<T> => {
+      const cacheKey = `${input.operation}:${input.idempotencyKey}`;
+      if (commandResults.has(cacheKey)) return commandResults.get(cacheKey) as T;
+      const result = await input.command();
+      commandResults.set(cacheKey, result);
+      return result;
+    }
+  };
+
+  await handleCashRoutes(
+    '/cash-register/open',
+    jsonRequest({ openingAmount: 100 }, 'cash-replay-open'),
+    new MockResponse() as never,
+    'corr-cash-replay-open',
+    handlers
+  );
+
+  const firstClose = new MockResponse();
+  await handleCashRoutes(
+    '/cash-register/close',
+    jsonRequest({ closingAmount: 100 }, 'cash-replay-close'),
+    firstClose as never,
+    'corr-cash-replay-close-first',
+    handlers
+  );
+  const secondClose = new MockResponse();
+  await handleCashRoutes(
+    '/cash-register/close',
+    jsonRequest({ closingAmount: 100 }, 'cash-replay-close'),
+    secondClose as never,
+    'corr-cash-replay-close-second',
+    handlers
+  );
+
+  assert.equal(firstClose.statusCode, 200);
+  assert.equal(secondClose.statusCode, 200);
+  assert.deepEqual(secondClose.bodyJson(), firstClose.bodyJson());
 });

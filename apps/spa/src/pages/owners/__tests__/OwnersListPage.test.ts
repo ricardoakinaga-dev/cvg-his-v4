@@ -141,7 +141,7 @@ describe('OwnersListPage', () => {
     const wrapper = mount(OwnersListPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Nenhum cliente encontrado');
+    expect(wrapper.text()).toContain('Nenhum tutor encontrado');
   });
 
   it('renders owner data in cards', async () => {
@@ -276,7 +276,7 @@ describe('OwnersListPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Informações de Contato');
-    expect(wrapper.text()).toContain('Animais do Cliente');
+    expect(wrapper.text()).toContain('Animais do Tutor');
     expect(wrapper.text()).toContain('Abrir cadastro');
     expect(wrapper.text()).toContain('Criar agendamento');
   });
