@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "quality_bar_id": "CVG-HIS-TRIPLE-A-V1",
+  "frozen_at": "2026-09-09T00:00:00-03:00",
+  "source_prompt": "docs/triple-a/MASTER_PROMPT.md",
+  "source_prompt_sha256": "95270384800c87fcbe7e823a41a7b57834ddaac274914226745f7fdc5137197a",
+  "repository_head": "696d7dd5",
+  "minimum_total_score": 97,
+  "minimum_critical_score": 95,
+  "maximum_open_p0": 0,
+  "required_release_state": "main_green",
+  "forbidden_claim_without_evidence": "TRIPLE-A VERIFIED",
+  "criteria": [
+    {"id":"BASE-001","area":"baseline","priority":"P0","description":"Prompt is preserved byte-for-byte and hash-verified.","required_evidence":"hash comparison and repository file","status":"PASS"},
+    {"id":"BASE-002","area":"baseline","priority":"P0","description":"Current HEAD, working tree, architecture, gaps and limitations are recorded.","required_evidence":"docs/engineering/TRIPLE_A_BASELINE.md and docs/triple-a/00-baseline.md","status":"IN_PROGRESS"},
+    {"id":"MAIN-001","area":"main","priority":"P0","description":"Required checks are explicit, reproducible and green on the candidate commit.","required_evidence":"fresh CI run and local verification ledger","status":"NOT_EVALUATED"},
+    {"id":"MAIN-002","area":"main","priority":"P0","description":"Green Main policy maps required checks, ownership and blocking behavior.","required_evidence":"docs/engineering/GREEN_MAIN_POLICY.md and workflow evidence","status":"NOT_EVALUATED"},
+    {"id":"SUPPLY-001","area":"supply-chain","priority":"P1","description":"Actions, dependencies, images, SBOMs, provenance and signatures are verifiable.","required_evidence":"workflow/action policy, scanner results, digest and signature verification","status":"NOT_EVALUATED"},
+    {"id":"RELEASE-001","area":"release","priority":"P0","description":"One release gate aggregates security, tests, recovery, performance, docs and manifest evidence.","required_evidence":"pnpm release:triple-a and artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json","status":"NOT_EVALUATED"},
+    {"id":"CLIN-001","area":"clinical","priority":"P0","description":"P0 clinical paths have criticality, safety invariants, negative tests and ownership.","required_evidence":"clinical matrix, invariants and executable tests","status":"NOT_EVALUATED"},
+    {"id":"WORKER-001","area":"worker","priority":"P0","description":"Jobs are idempotent and have bounded retry, DLQ, lease and replay evidence.","required_evidence":"worker policy, tests and current run evidence","status":"NOT_EVALUATED"},
+    {"id":"DATA-001","area":"data","priority":"P0","description":"Tenant isolation, RLS, immutable audit and migration safety are verified.","required_evidence":"runtime DB/RLS evidence, audit tests and migration checks","status":"PARTIAL"},
+    {"id":"REC-001","area":"recovery","priority":"P1","description":"Backup, restore, corruption and migration-mismatch drills meet declared RPO/RTO.","required_evidence":"timed drill artifacts and docs/operations policies","status":"NOT_EVALUATED"},
+    {"id":"OPS-001","area":"operations","priority":"P1","description":"SLOs, error budget, alerts, tracing, retention and on-call routing are proven.","required_evidence":"SLO policy, alert delivery and observability evidence","status":"NOT_EVALUATED"},
+    {"id":"PERF-001","area":"performance","priority":"P1","description":"Critical API, DB, Redis, worker and storage capacity has current target certification.","required_evidence":"k6/soak evidence, thresholds and sign-off","status":"NOT_EVALUATED"},
+    {"id":"UX-001","area":"frontend","priority":"P1","description":"Critical clinical flows pass responsive, accessibility, visual and usability review.","required_evidence":"real renders, automated checks, independent visual critic and UAT record","status":"NOT_EVALUATED"},
+    {"id":"ARCH-001","area":"architecture","priority":"P1","description":"Module boundaries, dependency direction and composition root remain enforceable.","required_evidence":"architecture evidence and boundary tests","status":"NOT_EVALUATED"},
+    {"id":"DOC-001","area":"governance","priority":"P1","description":"Required policies, ADRs, runbooks, scorecard and execution log are synchronized with code.","required_evidence":"docs/triple-a/00-baseline.md through 13-final-scorecard.md and required policies","status":"IN_PROGRESS"},
+    {"id":"FINAL-001","area":"certification","priority":"P0","description":"Final score is objective, no P0 remains, limitations are explicit and no unsupported verified claim is made.","required_evidence":"final scorecard, release evidence, fresh critics and authority record","status":"NOT_EVALUATED"}
+  ]
+}

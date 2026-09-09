@@ -7,6 +7,7 @@ import type { OutboxRepository } from '@cvg-his-v2/module-event-bus';
 import type { WebhooksService } from '@cvg-his-v2/module-webhooks';
 import type { CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
 
+import { runWorkerAccounts } from './account-job-runner.js';
 import {
   createWorkerNotifications,
   createWorkerEventBus,
@@ -37,6 +38,89 @@ const mockContext: WorkerTickContext = {
   databaseHealthy: true,
   databaseDetail: 'connected'
 };
+
+test('runWorkerAccounts isolates a failed tenant job without starving later jobs or tenants', async () => {
+  const calls: string[] = [];
+  const failures = await runWorkerAccounts(
+    mockLogger,
+    ['account-a', 'account-b', 'account-c', 'account-d'],
+    (accountId) => [
+      {
+        name: 'notifications',
+        run: async () => {
+          calls.push(`${accountId}:notifications`);
+          if (accountId === 'account-a') throw new Error('account A notification failure');
+        }
+      },
+      {
+        name: 'event_bus',
+        run: async () => {
+          calls.push(`${accountId}:event_bus`);
+          if (accountId === 'account-b') throw new Error('account B event bus failure');
+        }
+      },
+      {
+        name: 'webhook_deliveries',
+        run: async () => {
+          calls.push(`${accountId}:webhook_deliveries`);
+          if (accountId === 'account-c') throw new Error('account C webhook failure');
+        }
+      }
+    ]
+  );
+
+  assert.deepEqual(calls, [
+    'account-a:notifications',
+    'account-a:event_bus',
+    'account-a:webhook_deliveries',
+    'account-b:notifications',
+    'account-b:event_bus',
+    'account-b:webhook_deliveries',
+    'account-c:notifications',
+    'account-c:event_bus',
+    'account-c:webhook_deliveries',
+    'account-d:notifications',
+    'account-d:event_bus',
+    'account-d:webhook_deliveries'
+  ]);
+  assert.deepEqual(failures, [
+    {
+      accountId: 'account-a',
+      jobName: 'notifications',
+      error: 'account A notification failure'
+    },
+    {
+      accountId: 'account-b',
+      jobName: 'event_bus',
+      error: 'account B event bus failure'
+    },
+    {
+      accountId: 'account-c',
+      jobName: 'webhook_deliveries',
+      error: 'account C webhook failure'
+    }
+  ]);
+});
+
+test('runWorkerAccounts contains account setup failures and continues with the next tenant', async () => {
+  const calls: string[] = [];
+  const failures = await runWorkerAccounts(mockLogger, ['account-a', 'account-b'], (accountId) => {
+    if (accountId === 'account-a') throw new Error('account setup failure');
+    return [
+      {
+        name: 'event_bus',
+        run: async () => {
+          calls.push(accountId);
+        }
+      }
+    ];
+  });
+
+  assert.deepEqual(calls, ['account-b']);
+  assert.deepEqual(failures, [
+    { accountId: 'account-a', jobName: 'account_setup', error: 'account setup failure' }
+  ]);
+});
 
 function createMockNotificationRepository(
   overrides: Partial<NotificationRepository> = {}

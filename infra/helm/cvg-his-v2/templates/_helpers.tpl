@@ -104,9 +104,33 @@ app.kubernetes.io/component: spa
 {{- end -}}
 {{- end }}
 
+{{- define "cvg-his-v2.api.image" -}}
+{{- if .Values.api.image.sha -}}
+{{- printf "%s/%s@%s" .Values.api.image.registry .Values.api.image.repository .Values.api.image.sha -}}
+{{- else -}}
+{{- printf "%s/%s:%s" .Values.api.image.registry .Values.api.image.repository (.Values.api.image.tag | default .Chart.AppVersion) -}}
+{{- end -}}
+{{- end }}
+
+{{- define "cvg-his-v2.worker.image" -}}
+{{- if .Values.worker.image.sha -}}
+{{- printf "%s/%s@%s" .Values.worker.image.registry .Values.worker.image.repository .Values.worker.image.sha -}}
+{{- else -}}
+{{- printf "%s/%s:%s" .Values.worker.image.registry .Values.worker.image.repository (.Values.worker.image.tag | default .Chart.AppVersion) -}}
+{{- end -}}
+{{- end }}
+
+{{- define "cvg-his-v2.spa.image" -}}
+{{- if .Values.spa.image.sha -}}
+{{- printf "%s/%s@%s" .Values.spa.image.registry .Values.spa.image.repository .Values.spa.image.sha -}}
+{{- else -}}
+{{- printf "%s/%s:%s" .Values.spa.image.registry .Values.spa.image.repository (.Values.spa.image.tag | default .Chart.AppVersion) -}}
+{{- end -}}
+{{- end }}
+
 {{- define "cvg-his-v2.databaseMaintenance.initContainers" -}}
 - name: migrate-database
-  image: {{ .Values.api.image.registry }}/{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}
+  image: {{ include "cvg-his-v2.api.image" . }}
   imagePullPolicy: {{ .Values.api.image.pullPolicy }}
   command: ["node", "packages/db/dist/migrate.js"]
   securityContext:
@@ -118,7 +142,7 @@ app.kubernetes.io/component: spa
           name: {{ include "cvg-his-v2.postgres.secretName" . }}
           key: {{ .Values.postgresql.secretKeys.url }}
 - name: reconcile-runtime-roles
-  image: {{ .Values.api.image.registry }}/{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}
+  image: {{ include "cvg-his-v2.api.image" . }}
   imagePullPolicy: {{ .Values.api.image.pullPolicy }}
   command: ["node", "packages/db/dist/reconcile-runtime-roles.js"]
   securityContext:

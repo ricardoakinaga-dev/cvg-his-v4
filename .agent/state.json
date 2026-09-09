@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "project": "cvg-his-v4",
+  "goal": "Implementar as melhorias do prompt Triple-A no ERP CVG HIS preservando o monólito modular e produzir evidência objetiva de qualidade.",
+  "project_profile": "BROWNFIELD",
+  "work_mode": "NORMAL",
+  "work_mode_overlays": ["FEATURE", "REFACTOR", "MIGRATION"],
+  "lifecycle_stage": "BUILD",
+  "active_activity": "VERIFY",
+  "engineering_tier": "T4_CRITICAL",
+  "risk_level": "CRITICAL",
+  "blast_radius": "CROSS_SYSTEM",
+  "status": "IN_PROGRESS",
+  "active_execplan": ".agent/plans/triple-a-execplan.md",
+  "active_task": "TRIPLE-A-RELEASE-CONTROL",
+  "verification_state": "PARTIAL",
+  "repository_state": "main@696d7dd5; release candidate prepared pending final commit; untracked legacy/generated evidence preserved",
+  "instruction_scope_refs": [
+    ".agent/plans/triple-a-execplan.md",
+    "docs/triple-a/MASTER_PROMPT.md",
+    "/home/ricardo/.codex/skills/gauntlet-loop/SKILL.md",
+    "/home/ricardo/.codex/skills/orchestrate/SKILL.md",
+    "/home/ricardo/.agents/skills/engineering-framework/SKILL.md",
+    "/home/ricardo/.codex/skills/design-director/SKILL.md"
+  ],
+  "last_gate_record": {"decision": "FAIL", "mode": "advisory", "score": 28, "critical_score": 18, "open_p0": 30, "reason": "Worktree and required external evidence are not release-ready."},
+  "last_event_id": "EVT-TRIPLE-A-RELEASE-CONTROL-VERIFY",
+  "state_revision": 3,
+  "next_gate": "CANDIDATE_VERIFY_AND_COMMIT",
+  "active_action_id": "TRIPLE-A-RELEASE-CONTROL-VERIFY",
+  "blocked_by": [],
+  "human_approval_required": [
+    "production deployment or rollback",
+    "branch protection and organization-level required checks",
+    "real external credentials, PIX, webhooks or patient/PHI data",
+    "destructive backup/restore/chaos drills on shared infrastructure",
+    "final release authority and Triple-A certification"
+  ],
+  "updated_at": "2026-09-09T09:21:00-03:00"
+}

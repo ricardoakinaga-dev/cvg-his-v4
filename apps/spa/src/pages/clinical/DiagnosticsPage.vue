@@ -21,10 +21,13 @@
     <DsCard title="Atendimento selecionado">
       <DsInput v-model="selectedEncounterId" type="select" label="Atendimento" :disabled="loading || loadFailed || submittingRequest || submittingAttachment">
         <option value="">{{ loading ? 'Carregando atendimentos…' : encounters.length ? 'Selecione um atendimento' : 'Nenhum atendimento disponível' }}</option>
-        <option v-for="enc in encounters" :key="enc.id" :value="enc.id">{{ enc.id.slice(0, 8) }} • {{ enc.reason || 'Sem descrição' }}</option>
+        <option v-for="enc in encounters" :key="enc.id" :value="enc.id">
+          {{ shortId(enc.id) }} • {{ enc.reason || 'Sem descrição' }} • {{ enc.patientId }}
+        </option>
       </DsInput>
       <div v-if="selectedEncounter && !loading && !loadFailed" class="summary-list">
         <strong v-if="hasWorkflowContext">Contexto do atendimento clínico</strong>
+        <div><strong>Atendimento:</strong> {{ shortId(selectedEncounter.id) }} · {{ formatDateTime(selectedEncounter.openedAt) }}</div>
         <div><strong>Paciente:</strong> {{ selectedEncounter.patientId }}</div>
         <div><strong>Status:</strong> {{ encounterStatusLabel(selectedEncounter.status) }}</div>
         <div><strong>Motivo:</strong> {{ selectedEncounter.reason }}</div>
@@ -34,7 +37,7 @@
         <DsButton variant="secondary" @click="loadData">Tentar novamente</DsButton>
       </div>
       <div v-else-if="!loading && !selectedEncounter" class="context-state" role="status">
-        <p>{{ explicitContext ? 'Contexto solicitado indisponível. Verifique o atendimento ou paciente informado.' : encounters.length ? 'Selecione um atendimento para consultar exames e laudos.' : 'Nenhum atendimento aberto disponível para diagnóstico.' }}</p>
+        <p>{{ explicitContext && !encounters.length ? 'Contexto solicitado indisponível. Verifique o atendimento ou paciente informado.' : encounters.length ? 'Selecione um atendimento para consultar exames e laudos.' : 'Nenhum atendimento aberto disponível para diagnóstico.' }}</p>
         <DsButton variant="secondary" tag="a" to="/encounters">Ver atendimentos</DsButton>
       </div>
       <p v-else-if="loading || contextState === 'loading'" class="muted" role="status">Carregando contexto diagnóstico…</p>
@@ -102,6 +105,15 @@
             <option value="image">Imagem</option>
             <option value="other">Outro</option>
           </DsInput>
+          <label class="file-field">
+            <span>Arquivo binário (opcional)</span>
+            <input
+              type="file"
+              accept="application/pdf,image/*,text/plain"
+              @change="onAttachmentFileChange"
+            />
+            <small>{{ attachmentFile?.name || 'Sem arquivo: o resultado ficará em quarentena até o conteúdo ser anexado.' }}</small>
+          </label>
           <div class="form-actions">
             <DsButton type="submit" variant="primary" :loading="submittingAttachment"
               >Enviar resultado</DsButton
@@ -230,6 +242,7 @@ import type {
   LaboratoryReportTypeSummary
 } from '@cvg-his-v2/shared-types';
 import { encounterStatusLabel, formatDateTime } from '@/utils/labels';
+import { fileToBase64 } from '@/utils/file-to-base64';
 
 const encounters = ref<EncounterSummary[]>([]);
 const diagnosticRequests = ref<ClinicalEntrySummary[]>([]);
@@ -293,6 +306,7 @@ const attachmentForm = ref({
   checksum: '',
   category: 'lab' as AttachmentSummary['category']
 });
+const attachmentFile = ref<File | null>(null);
 
 function createStableIdempotencyKey(prefix: string): string {
   const uuid = globalThis.crypto?.randomUUID?.();
@@ -453,6 +467,7 @@ function statusVariant(
     case 'collected':
       return 'default';
     case 'in_analysis':
+      return 'warning';
     case 'resulted':
     case 'reported':
     case 'delivered':
@@ -504,6 +519,15 @@ function resetAttachmentForm() {
     checksum: '',
     category: 'lab'
   };
+  attachmentFile.value = null;
+}
+
+function onAttachmentFileChange(event: Event): void {
+  const file = (event.target as HTMLInputElement).files?.[0] ?? null;
+  attachmentFile.value = file;
+  if (!file) return;
+  attachmentForm.value.fileName = file.name;
+  attachmentForm.value.mimeType = file.type || attachmentForm.value.mimeType;
 }
 
 function clearContext() {
@@ -557,9 +581,13 @@ async function loadData() {
           : encounter.status !== 'closed'
     );
     reportTypes.value = loadedReportTypes;
-    if (!selectedEncounter.value) {
-      selectedEncounterId.value = encounters.value.find((encounter) => encounter.status !== 'closed')?.id
-        ?? encounters.value[0]?.id ?? '';
+    const hadSelectedEncounter = Boolean(selectedEncounterId.value);
+    if (hadSelectedEncounter && !selectedEncounter.value) {
+      // Do not replace a context that disappeared during refresh with another encounter.
+      selectedEncounterId.value = '';
+    } else if (!hadSelectedEncounter && encounters.value.length === 1) {
+      // A single candidate is unambiguous; multiple candidates require an explicit choice.
+      selectedEncounterId.value = encounters.value[0].id;
     }
     if (!selectedReportType.value) requestForm.value.reportTypeId = reportTypes.value[0]?.id ?? '';
     await refreshContext();
@@ -777,7 +805,8 @@ async function submitAttachment() {
       fileName: draft.fileName.trim(),
       mimeType: draft.mimeType.trim(),
       checksum: draft.checksum.trim(),
-      category: draft.category
+      category: draft.category,
+      ...(attachmentFile.value ? { contentBase64: await fileToBase64(attachmentFile.value) } : {})
     };
     const attachmentPayloadSignature = JSON.stringify({ encounterId, ...attachmentPayload });
     diagnosticAttachmentUploadAttempt = ensureStableAttempt(
@@ -989,6 +1018,29 @@ function readWorkflowContext() {
   gap: 6px;
   margin-top: 12px;
   color: var(--color-text-secondary, #475569);
+}
+
+.file-field {
+  display: grid;
+  gap: 6px;
+  color: var(--color-text-secondary, #475569);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.file-field input {
+  min-height: 44px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  border: 1px solid var(--color-border, #cbd5e1);
+  border-radius: 8px;
+  background: var(--color-surface, #fff);
+  color: inherit;
+}
+
+.file-field small {
+  font-weight: 400;
 }
 
 </style>

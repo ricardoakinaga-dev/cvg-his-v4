@@ -37,7 +37,7 @@
       "esbuild@0.18.20": "0.25.12",
       "esbuild@0.19.12": "0.25.12",
       "esbuild@0.27.3": "0.28.1",
-      "js-yaml": "^4.3.1",
+      "js-yaml": "^4.3.2",
       "nanoid@<3.3.18": "3.3.18",
       "undici": "^7.29.0"
     }
@@ -108,6 +108,8 @@
     "security:evidence": "node scripts/generate-security-evidence.mjs",
     "security:operations:index": "node scripts/generate-security-operations-index.mjs",
     "release:manifest": "node scripts/generate-release-manifest.mjs",
+    "release:attestation-evidence": "node scripts/generate-image-attestation-evidence.mjs",
+    "release:triple-a": "node scripts/run-triple-a-release-gate.mjs",
     "cutover:check": "node infra/scripts/check-cutover-readiness.mjs",
     "deploy:check": "node infra/scripts/check-cutover-readiness.mjs",
     "deploy:rehearsal:local": "node infra/scripts/cutover-rehearsal-local.mjs",
@@ -118,6 +120,7 @@
     "validate:rls": "tsx scripts/validate-rls-coverage.ts",
     "validate:helm": "node infra/scripts/validate-helm.mjs",
     "validate:deploy-surface": "node scripts/check-deploy-surface-of-truth.mjs",
+    "validate:supply-chain": "node scripts/validate-supply-chain.mjs",
     "docs:validate": "node scripts/validate-documentation.mjs",
     "external:check": "node scripts/check-external-dependencies.mjs",
     "evidence:check": "node scripts/check-evidence-cadence.mjs",
@@ -130,7 +133,8 @@
     "vetus:parity:test": "node --test scripts/vetus-parity-audit.test.mjs",
     "vetus:clinical-parity": "node scripts/check-vetus-clinical-parity.mjs",
     "rc:evidence": "node scripts/generate-enterprise-rc-evidence.mjs",
-    "rc:evidence:strict": "node scripts/generate-enterprise-rc-evidence.mjs --strict"
+    "rc:evidence:strict": "node scripts/generate-enterprise-rc-evidence.mjs --strict",
+    "rc:evidence:triple-a": "node scripts/run-triple-a-release-gate.mjs --advisory"
   },
   "description": "Monorepo CVG-HIS V4 — HIS veterinário Enterprise; namespaces V2 permanecem compatibilidade de runtime.",
   "main": "index.js",

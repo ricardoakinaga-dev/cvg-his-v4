@@ -394,9 +394,15 @@
                       >
                         + Novo agendamento
                       </button>
-                      <span v-if="appointmentsByDay(day.date).length > 5" class="month-item__more">
+                      <button
+                        v-if="appointmentsByDay(day.date).length > 5"
+                        type="button"
+                        class="month-item__more month-item__more--action"
+                        :aria-label="`Ver os ${appointmentsByDay(day.date).length - 5} compromissos adicionais de ${day.date}`"
+                        @click="setViewMode('list')"
+                      >
                         +{{ appointmentsByDay(day.date).length - 5 }} compromissos
-                      </span>
+                      </button>
                     </div>
                   </DsCard>
                 </div>
@@ -407,6 +413,8 @@
               <section class="week-board">
                 <div
                   class="time-matrix"
+                  role="grid"
+                  aria-label="Grade semanal de agendamentos"
                   :style="{
                     gridTemplateColumns: `72px repeat(${visibleDays.length}, minmax(150px, 1fr))`
                   }"
@@ -502,12 +510,15 @@
                           </span>
                           </button>
                         </div>
-                        <span
+                        <button
                           v-if="hiddenWeekSlotCount(day.date, hour) > 0"
-                          class="timeline-slot-summary"
+                          type="button"
+                          class="timeline-slot-summary timeline-slot-summary--action"
+                          :aria-label="`Ver ${hiddenWeekSlotCount(day.date, hour)} agendamentos adicionais`"
+                          @click="setViewMode('list')"
                         >
                           +{{ hiddenWeekSlotCount(day.date, hour) }} adicionais
-                        </span>
+                        </button>
                       </div>
 
                       <button
@@ -571,6 +582,8 @@
 
                 <div
                   class="time-matrix"
+                  role="grid"
+                  aria-label="Grade diária de agendamentos"
                   :style="{
                     gridTemplateColumns: `72px repeat(${columnCount}, minmax(180px, 1fr))`
                   }"
@@ -743,12 +756,15 @@
                             </DsButton>
                           </div>
                         </div>
-                        <span
+                        <button
                           v-if="hiddenSlotCount(day.date, column.id, hour) > 0"
-                          class="timeline-slot-summary"
+                          type="button"
+                          class="timeline-slot-summary timeline-slot-summary--action"
+                          :aria-label="`Ver ${hiddenSlotCount(day.date, column.id, hour)} agendamentos adicionais`"
+                          @click="setViewMode('list')"
                         >
                           +{{ hiddenSlotCount(day.date, column.id, hour) }} adicionais
-                        </span>
+                        </button>
                       </div>
 
                       <button
@@ -835,6 +851,7 @@
 
 <script setup lang="ts">
 import { computed, inject, onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import './AppointmentsListPage.css';
 import { startOfMonth, buildVisibleDays, buildMonthCalendar } from './appointmentCalendar';
 import {
   timeLabel,
@@ -2123,6 +2140,27 @@ onMounted(async () => {
   font-weight: 700;
 }
 
+.timeline-slot-summary--action,
+.month-item__more--action {
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.month-item__more--action {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.timeline-slot-summary--action:hover,
+.timeline-slot-summary--action:focus-visible,
+.month-item__more--action:hover,
+.month-item__more--action:focus-visible {
+  color: var(--color-primary-700, #1d4ed8);
+  text-decoration: underline;
+}
+
 .month-cell__empty-surface {
   width: 100%;
   max-width: 100%;
@@ -3041,176 +3079,4 @@ onMounted(async () => {
   box-shadow: none;
 }
 */
-</style>
-<style>
-:root[data-theme='dark'] .appointments-cockpit {
-  color: var(--color-text);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .sidebar-card,
-:root[data-theme='dark'] .appointments-cockpit .board-toolbar,
-:root[data-theme='dark'] .appointments-cockpit .agenda-summary-disclosure,
-:root[data-theme='dark'] .appointments-cockpit .agenda-grid-summary > div,
-:root[data-theme='dark'] .appointments-cockpit .month-cell,
-:root[data-theme='dark'] .appointments-cockpit .appointments-legend {
-  border-color: var(--color-border);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-sm);
-  color: var(--color-text);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .agenda-summary-disclosure__meta {
-  color: var(--color-text-muted);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .mini-calendar,
-:root[data-theme='dark'] .appointments-cockpit .agenda-filter-block,
-:root[data-theme='dark'] .appointments-cockpit .timeline-item__ops {
-  border-color: var(--color-border);
-  background: var(--color-surface-subtle);
-  color: var(--color-text);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .mini-calendar__day,
-:root[data-theme='dark'] .appointments-cockpit .status-chip,
-:root[data-theme='dark'] .appointments-cockpit .view-toggle {
-  border-color: var(--color-border);
-  background: var(--color-surface-elevated);
-  color: var(--color-text-secondary);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .mini-calendar__day:hover,
-:root[data-theme='dark'] .appointments-cockpit .status-chip:hover,
-:root[data-theme='dark'] .appointments-cockpit .view-toggle__button:hover,
-:root[data-theme='dark'] .appointments-cockpit .month-item:hover,
-:root[data-theme='dark'] .appointments-cockpit .timeline-item:hover {
-  border-color: var(--color-primary-400);
-  background: var(--color-surface-hover);
-  color: var(--color-text);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .mini-calendar__day--selected,
-:root[data-theme='dark'] .appointments-cockpit .view-toggle__button--active,
-:root[data-theme='dark'] .appointments-cockpit .month-create-slot:hover,
-:root[data-theme='dark'] .appointments-cockpit .time-matrix__empty-button:hover {
-  border-color: var(--color-warning-400);
-  background: var(--color-warning-50);
-  color: var(--pulse-sand);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .status-chip--active {
-  border-color: var(--color-info-400);
-  background: var(--color-info-50);
-  color: var(--pulse-cyan-strong);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .month-cell__availability,
-:root[data-theme='dark'] .appointments-cockpit .time-matrix__hour--all-day,
-:root[data-theme='dark'] .appointments-cockpit .time-matrix__slot--all-day {
-  border-color: var(--color-success-400);
-  background: var(--color-success-50);
-  color: var(--pulse-mint);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .timeline-slot-summary,
-:root[data-theme='dark'] .appointments-cockpit .month-cell__empty-surface,
-:root[data-theme='dark'] .appointments-cockpit .month-create-slot,
-:root[data-theme='dark'] .appointments-cockpit .time-matrix__empty-button {
-  border-color: var(--color-border);
-  background: var(--color-surface-subtle);
-  color: var(--color-text-muted);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .month-cell__empty-surface:hover,
-:root[data-theme='dark'] .appointments-cockpit .month-cell__empty-surface:focus-visible {
-  border-color: var(--color-primary-400);
-  background: var(--color-primary-subtle);
-  color: var(--pulse-cyan-strong);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .month-item,
-:root[data-theme='dark'] .appointments-cockpit .timeline-item,
-:root[data-theme='dark'] .appointments-cockpit .time-matrix__corner,
-:root[data-theme='dark'] .appointments-cockpit .time-matrix__column-title,
-:root[data-theme='dark'] .appointments-cockpit .time-matrix__hour,
-:root[data-theme='dark'] .appointments-cockpit .time-matrix__slot {
-  border-color: var(--color-border);
-  background: var(--color-surface-elevated);
-  color: var(--color-text);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .time-matrix {
-  background: var(--color-border-subtle);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .timeline-block {
-  background: var(--color-warning-50);
-  color: var(--pulse-sand);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .timeline-item__ops span,
-:root[data-theme='dark'] .appointments-cockpit .appointments-legend__hint {
-  color: var(--color-text-secondary);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .timeline-item__ops strong,
-:root[data-theme='dark'] .appointments-cockpit .month-item__next {
-  color: var(--color-text);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .timeline-item__conflicts {
-  color: var(--pulse-coral);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .status-pill--scheduled,
-:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--scheduled {
-  background: var(--color-primary-50);
-  color: var(--pulse-cyan-strong);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .status-pill--checked_in,
-:root[data-theme='dark'] .appointments-cockpit .status-pill--called,
-:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--checked_in {
-  background: var(--color-warning-50);
-  color: var(--pulse-sand);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .status-pill--in_triage {
-  background: var(--color-info-50);
-  color: var(--pulse-cyan-strong);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .status-pill--in_care,
-:root[data-theme='dark'] .appointments-cockpit .status-pill--observation,
-:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--completed {
-  background: var(--color-success-50);
-  color: var(--pulse-mint);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .status-pill--cancelled,
-:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--time_off {
-  background: var(--color-neutral-100);
-  color: var(--pulse-muted-strong);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--cancelled {
-  background: var(--color-danger-50);
-  border-color: var(--color-danger-400);
-  color: var(--pulse-coral);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--no_show,
-:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--marker {
-  background: var(--color-warning-50);
-  border-color: var(--color-warning-400);
-  color: var(--pulse-sand);
-}
-
-:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--vaccine,
-:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--deworming,
-:root[data-theme='dark'] .appointments-cockpit .appointments-legend__pill--return {
-  background: var(--color-primary-50);
-  border-color: var(--color-primary-400);
-  color: var(--pulse-cyan-strong);
-}
 </style>

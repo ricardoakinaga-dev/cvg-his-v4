@@ -7,6 +7,15 @@ const root = process.cwd();
 const outputDir = process.env.SECURITY_EVIDENCE_DIR ?? 'artifacts/security';
 const outputPath = resolve(root, outputDir);
 
+function currentCommit() {
+  const result = spawnSync('git', ['rev-parse', 'HEAD'], {
+    cwd: root,
+    encoding: 'utf8',
+    shell: false,
+  });
+  return result.status === 0 ? result.stdout.trim() : null;
+}
+
 function readJson(path) {
   return JSON.parse(readFileSync(join(root, path), 'utf8'));
 }
@@ -116,12 +125,12 @@ function validateSemgrepCi() {
   const sastJob = ci.match(/  sast:\n[\s\S]*?(?=\n  [a-zA-Z0-9_-]+:|\n$)/)?.[0] ?? '';
   const checks = [
     ['job sast existe', Boolean(sastJob)],
-    ['usa semgrep action', /returntocorp\/semgrep-action@v1/.test(sastJob)],
+    ['usa semgrep action pinned by SHA', /returntocorp\/semgrep-action@[0-9a-f]{40}(?:\s|#|$)/.test(sastJob)],
     ['usa security-extended', /p\/security-extended/.test(sastJob)],
     ['usa nodejs/typescript rules', /p\/nodejs/.test(sastJob) && /p\/typescript/.test(sastJob)],
     ['gera JSON', /output:\s*semgrep\.json/.test(sastJob)],
     ['gera SARIF', /sarif:\s*semgrep\.sarif/.test(sastJob)],
-    ['faz upload SARIF', /upload-sarif@v3/.test(sastJob)],
+    ['faz upload SARIF pinned by SHA', /upload-sarif@[0-9a-f]{40}(?:\s|#|$)/.test(sastJob)],
     ['nao usa continue-on-error no SAST', !/continue-on-error:\s*true/.test(sastJob)]
   ];
 
@@ -131,7 +140,10 @@ function validateSemgrepCi() {
 mkdirSync(outputPath, { recursive: true });
 
 console.log('Running enterprise security audit...');
-run('pnpm', ['security:enterprise']);
+const securityAuditResult = run('pnpm', ['security:enterprise'], { capture: true, allowFailure: true });
+if (securityAuditResult.status !== 0) {
+  console.error('Enterprise security audit failed; security evidence will be marked FAIL.');
+}
 
 const semgrepChecks = validateSemgrepCi();
 const semgrepFailures = semgrepChecks.filter((check) => check.status === 'FAIL');
@@ -158,8 +170,10 @@ writeFileSync(sbomPath, `${JSON.stringify(sbom, null, 2)}\n`);
 
 const report = {
   generatedAt: new Date().toISOString(),
-  status: semgrepFailures.length === 0 ? 'PASS' : 'FAIL',
-  securityAudit: 'PASS',
+  commit_sha: currentCommit(),
+  status: semgrepFailures.length === 0 && securityAuditResult.status === 0 ? 'PASS' : 'FAIL',
+  securityAudit: securityAuditResult.status === 0 ? 'PASS' : 'FAIL',
+  securityAuditExitCode: securityAuditResult.status ?? 1,
   semgrepCi: semgrepChecks,
   sbom: {
     path: relative(root, sbomPath),
@@ -182,6 +196,6 @@ for (const check of semgrepChecks) {
   console.log(`| ${check.label} | ${check.status} |`);
 }
 
-if (semgrepFailures.length > 0) {
+if (semgrepFailures.length > 0 || securityAuditResult.status !== 0) {
   process.exit(1);
 }

@@ -58,16 +58,22 @@
 
       <section class="clinical-record-layout" aria-label="Prontuário clínico estruturado">
         <div class="clinical-record-main">
-          <nav class="clinical-step-tabs" aria-label="Etapas do prontuário">
+          <nav class="clinical-step-tabs" role="tablist" aria-label="Etapas do prontuário">
             <button
               v-for="step in clinicalSteps"
               :key="step.key"
+              :id="clinicalStepTabId(step.key)"
               type="button"
               :class="{ 'clinical-step-tab--active': activeClinicalStep === step.key }"
+              role="tab"
+              :aria-selected="activeClinicalStep === step.key"
+              :aria-controls="activeClinicalStep === step.key ? clinicalStepPanelId(step.key) : undefined"
+              :tabindex="activeClinicalStep === step.key ? 0 : -1"
               :data-testid="`clinical-step-${step.key}`"
-              @click="activeClinicalStep = step.key"
+              @keydown="handleClinicalStepKey($event, step.key)"
+              @click="selectClinicalStep(step.key)"
             >
-              <span>{{ step.number }}</span>
+              <span aria-hidden="true">{{ step.number }}</span>
               {{ step.label }}
             </button>
           </nav>
@@ -93,6 +99,12 @@
             <p v-else class="empty-clinical-state">Nenhuma queixa principal registrada.</p>
           </section>
 
+          <div
+            :id="clinicalStepPanelId(activeClinicalStep)"
+            class="clinical-step-panel"
+            role="tabpanel"
+            :aria-labelledby="clinicalStepTabId(activeClinicalStep)"
+          >
           <section
             v-if="activeClinicalStep === 'anamnesis'"
             class="clinical-section"
@@ -360,6 +372,7 @@
               </label>
             </div>
           </section>
+          </div>
         </div>
 
         <aside class="clinical-record-aside" aria-label="Resumo do paciente e tutor">
@@ -614,11 +627,9 @@
                 </DsButton>
               </div>
               <div class="weight-card">
-                <div class="weight-card__chart" aria-hidden="true">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
+                <p class="muted">
+                  Histórico longitudinal de peso não está disponível neste prontuário; o valor abaixo representa apenas o cadastro atual.
+                </p>
                 <dl class="detail-list">
                   <div>
                     <dt>Peso atual</dt>
@@ -881,6 +892,12 @@
           <section class="clinical-history-grid">
             <AppDetailSection title="Timeline Clínica">
               <div v-if="timelineLoading" class="muted">Carregando timeline...</div>
+              <div v-else-if="timelineError" class="clinical-inline-error" role="alert">
+                <p>{{ timelineError }}</p>
+                <DsButton variant="secondary" size="sm" @click="refreshRecordAndTimeline">
+                  Tentar novamente
+                </DsButton>
+              </div>
               <div v-else-if="timeline.length === 0" class="muted">
                 Nenhum evento registrado ainda neste prontuário.
               </div>
@@ -1050,7 +1067,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { attachmentService } from '@/services/attachments';
 import { apiRequest } from '@/services/api';
@@ -1143,6 +1160,7 @@ const contextWarnings = ref<string[]>([]);
 const resolvedEncounterId = ref('');
 const loading = ref(true);
 const timelineLoading = ref(false);
+const timelineError = ref('');
 const attachmentsLoading = ref(false);
 const error = ref('');
 const attachmentsError = ref('');
@@ -1187,6 +1205,8 @@ function resetPageState() {
   record.value = null;
   entries.value = [];
   timeline.value = [];
+  timelineError.value = '';
+  activeClinicalStep.value = 'anamnesis';
   encounter.value = null;
   patient.value = null;
   owner.value = null;
@@ -1233,6 +1253,42 @@ const clinicalSteps: ReadonlyArray<{ key: ClinicalStepKey; number: number; label
   { key: 'assessment', number: 3, label: 'Avaliação' },
   { key: 'plan', number: 4, label: 'Plano' }
 ];
+
+function clinicalStepTabId(step: ClinicalStepKey): string {
+  return `medical-record-step-tab-${step}`;
+}
+
+function clinicalStepPanelId(step: ClinicalStepKey): string {
+  return `medical-record-step-panel-${step}`;
+}
+
+function selectClinicalStep(step: ClinicalStepKey): void {
+  activeClinicalStep.value = step;
+}
+
+function handleClinicalStepKey(event: KeyboardEvent, step: ClinicalStepKey): void {
+  const index = clinicalSteps.findIndex((item) => item.key === step);
+  if (
+    index < 0 ||
+    !['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(event.key)
+  ) {
+    return;
+  }
+  event.preventDefault();
+  const nextIndex =
+    event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? clinicalSteps.length - 1
+        : (index +
+            (event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1) +
+            clinicalSteps.length) %
+          clinicalSteps.length;
+  const nextStep = clinicalSteps[nextIndex]?.key;
+  if (!nextStep) return;
+  selectClinicalStep(nextStep);
+  void nextTick(() => document.getElementById(clinicalStepTabId(nextStep))?.focus());
+}
 
 const clinicalSheet = reactive<Record<ClinicalSheetKey, string>>({
   anamnesis: '',
@@ -2226,6 +2282,7 @@ async function loadClinicalContext(
 async function loadTimeline(id: string, generation: number): Promise<boolean> {
   if (!isCurrentLoad(generation, id)) return false;
   timelineLoading.value = true;
+  timelineError.value = '';
   try {
     if (!resolvedEncounterId.value) {
       timeline.value = [];
@@ -2238,6 +2295,7 @@ async function loadTimeline(id: string, generation: number): Promise<boolean> {
   } catch {
     if (isCurrentLoad(generation, id)) {
       timeline.value = [];
+      timelineError.value = 'Não foi possível carregar a timeline clínica.';
       return false;
     }
     return false;
@@ -2604,6 +2662,12 @@ onBeforeUnmount(() => {
 }
 
 .clinical-record-main {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.clinical-step-panel {
   display: grid;
   gap: 14px;
   min-width: 0;

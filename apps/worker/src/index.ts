@@ -7,6 +7,7 @@ import { createServer } from 'node:http';
 
 import { bootstrapWorkerServices, shutdownWorkerServices } from './bootstrap.js';
 import { startWorkerObservability, withWorkerSpan } from './observability.js';
+import { runWorkerAccounts } from './account-job-runner.js';
 import { createWorkerNotifications, createWorkerEventBus, createWorkerReports } from './runner.js';
 import {
   runWorkerTick,
@@ -366,184 +367,225 @@ async function main() {
         databaseDetail: 'connected'
       };
 
-      for (const accountId of workerAccountIds) {
-        const tenantContext = { tenantId: accountId, accountId, correlationId };
-        const pixPaymentDispatch = bootstrap.pixPaymentDispatch;
-        if (pixPaymentDispatch) {
-          await withWorkerSpan(
-            'worker.pix_payment.dispatch.tick',
-            {
-              'worker.correlation_id': correlationId,
-              'worker.account_id': accountId,
-              'worker.persistence_mode': workerState.persistenceMode,
-              'worker.database_healthy': workerState.databaseHealthy
-            },
-            async () => {
-              const [outcome] = await runPixPaymentDispatchTick(pixPaymentDispatch.dispatcher, [
-                accountId
-              ]);
-              if (!outcome || outcome.status === 'failed') {
-                const error = outcome?.error;
-                isolatedTickError = error instanceof Error ? error.message : String(error);
-                workerState.errors++;
-                logger.error('worker PIX payment dispatch tick failed', {
-                  accountId,
-                  error: isolatedTickError
-                });
-                return;
-              }
-              const result = outcome.result;
-              logger.info('worker PIX payment dispatch tick complete', {
-                accountId,
-                status: result?.status ?? 'idle',
-                attemptId: result && 'attemptId' in result ? result.attemptId : undefined
-              });
-            }
-          );
-        }
-        const pixProviderSettlement = bootstrap.pixProviderSettlement;
-        if (pixProviderSettlement) {
-          await withWorkerSpan(
-            'worker.pix_provider.settlement.tick',
-            {
-              'worker.correlation_id': correlationId,
-              'worker.account_id': accountId,
-              'worker.persistence_mode': workerState.persistenceMode,
-              'worker.database_healthy': workerState.databaseHealthy
-            },
-            async () => {
-              const [outcome] = await runPixProviderSettlementTick(pixProviderSettlement.consumer, [
-                accountId
-              ]);
-              if (!outcome || outcome.error) {
-                isolatedTickError = outcome?.error?.message ?? 'PIX settlement tick failed';
-                workerState.errors++;
-                logger.error('worker PIX provider settlement tick failed', {
-                  accountId,
-                  error: isolatedTickError
-                });
-                return;
-              }
-              logger.info('worker PIX provider settlement tick complete', {
-                event: 'pix_provider_settlement.delivery_outcome',
-                accountId,
-                status: outcome.result?.status ?? 'idle',
-                deliveryId:
-                  outcome.result && 'deliveryId' in outcome.result
-                    ? outcome.result.deliveryId
-                    : undefined,
-                failureClass:
-                  outcome.result && 'failureClass' in outcome.result
-                    ? outcome.result.failureClass
-                    : undefined,
-                failureCode:
-                  outcome.result && 'failureCode' in outcome.result
-                    ? outcome.result.failureCode
-                    : undefined,
-                reconciliationRequiredPromotions:
-                  outcome.result && outcome.result.reconciliationRequiredPromotions
-                    ? outcome.result.reconciliationRequiredPromotions
-                    : undefined
-              });
-            }
-          );
-        }
-        await withWorkerSpan(
-          'worker.notifications.tick',
-          {
-            'worker.correlation_id': correlationId,
-            'worker.account_id': accountId,
-            'worker.persistence_mode': workerState.persistenceMode,
-            'worker.database_healthy': workerState.databaseHealthy
-          },
-          () =>
-            runWithTenantContext(tenantContext, () =>
-              runWorkerTick(
-                logger,
-                { ...tickContext, accountId: accountId as never },
-                notifications
-              )
-            )
-        );
+      const accountJobFailures = await runWorkerAccounts(
+        logger,
+        workerAccountIds,
+        (accountId) => {
+          const tenantContext = { tenantId: accountId, accountId, correlationId };
+          const pixPaymentDispatch = bootstrap.pixPaymentDispatch;
+          const pixProviderSettlement = bootstrap.pixProviderSettlement;
+          const webhookDeliveryExecutor = bootstrap.webhookDeliveryExecutor;
 
-        await withWorkerSpan(
-          'worker.event_bus.tick',
-          {
-            'worker.correlation_id': correlationId,
-            'worker.account_id': accountId,
-            'worker.persistence_mode': workerState.persistenceMode,
-            'worker.database_healthy': workerState.databaseHealthy
-          },
-          () =>
-            runWithTenantContext(tenantContext, () =>
-              runEventBusTick(logger, tickContext, eventBus)
-            )
-        );
-
-        const webhookDeliveryExecutor = bootstrap.webhookDeliveryExecutor;
-        if (webhookDeliveryExecutor) {
-          await withWorkerSpan(
-            'worker.webhook_delivery.tick',
+          return [
+            ...(pixPaymentDispatch
+              ? [
+                  {
+                    name: 'pix_payment_dispatch',
+                    run: async () =>
+                      withWorkerSpan(
+                        'worker.pix_payment.dispatch.tick',
+                        {
+                          'worker.correlation_id': correlationId,
+                          'worker.account_id': accountId,
+                          'worker.persistence_mode': workerState.persistenceMode,
+                          'worker.database_healthy': workerState.databaseHealthy
+                        },
+                        async () => {
+                          const [outcome] = await runPixPaymentDispatchTick(
+                            pixPaymentDispatch.dispatcher,
+                            [accountId]
+                          );
+                          if (!outcome || outcome.status === 'failed') {
+                            const error = outcome?.error;
+                            isolatedTickError = error instanceof Error ? error.message : String(error);
+                            workerState.errors++;
+                            logger.error('worker PIX payment dispatch tick failed', {
+                              accountId,
+                              error: isolatedTickError
+                            });
+                            return;
+                          }
+                          const result = outcome.result;
+                          logger.info('worker PIX payment dispatch tick complete', {
+                            accountId,
+                            status: result?.status ?? 'idle',
+                            attemptId: result && 'attemptId' in result ? result.attemptId : undefined
+                          });
+                        }
+                      )
+                  }
+                ]
+              : []),
+            ...(pixProviderSettlement
+              ? [
+                  {
+                    name: 'pix_provider_settlement',
+                    run: async () =>
+                      withWorkerSpan(
+                        'worker.pix_provider.settlement.tick',
+                        {
+                          'worker.correlation_id': correlationId,
+                          'worker.account_id': accountId,
+                          'worker.persistence_mode': workerState.persistenceMode,
+                          'worker.database_healthy': workerState.databaseHealthy
+                        },
+                        async () => {
+                          const [outcome] = await runPixProviderSettlementTick(
+                            pixProviderSettlement.consumer,
+                            [accountId]
+                          );
+                          if (!outcome || outcome.error) {
+                            isolatedTickError = outcome?.error?.message ?? 'PIX settlement tick failed';
+                            workerState.errors++;
+                            logger.error('worker PIX provider settlement tick failed', {
+                              accountId,
+                              error: isolatedTickError
+                            });
+                            return;
+                          }
+                          logger.info('worker PIX provider settlement tick complete', {
+                            event: 'pix_provider_settlement.delivery_outcome',
+                            accountId,
+                            status: outcome.result?.status ?? 'idle',
+                            deliveryId:
+                              outcome.result && 'deliveryId' in outcome.result
+                                ? outcome.result.deliveryId
+                                : undefined,
+                            failureClass:
+                              outcome.result && 'failureClass' in outcome.result
+                                ? outcome.result.failureClass
+                                : undefined,
+                            failureCode:
+                              outcome.result && 'failureCode' in outcome.result
+                                ? outcome.result.failureCode
+                                : undefined,
+                            reconciliationRequiredPromotions:
+                              outcome.result && outcome.result.reconciliationRequiredPromotions
+                                ? outcome.result.reconciliationRequiredPromotions
+                                : undefined
+                          });
+                        }
+                      )
+                  }
+                ]
+              : []),
             {
-              'worker.correlation_id': correlationId,
-              'worker.account_id': accountId,
-              'worker.persistence_mode': workerState.persistenceMode,
-              'worker.database_healthy': workerState.databaseHealthy
-            },
-            () =>
-              runWithTenantContext(tenantContext, () =>
-                runWebhookDeliveriesTick(
-                  logger,
-                  { ...tickContext, accountId: accountId as never },
-                  webhookDeliveryExecutor,
-                  webhookWorkerId
+              name: 'notifications',
+              run: () =>
+                withWorkerSpan(
+                  'worker.notifications.tick',
+                  {
+                    'worker.correlation_id': correlationId,
+                    'worker.account_id': accountId,
+                    'worker.persistence_mode': workerState.persistenceMode,
+                    'worker.database_healthy': workerState.databaseHealthy
+                  },
+                  () =>
+                    runWithTenantContext(tenantContext, () =>
+                      runWorkerTick(
+                        logger,
+                        { ...tickContext, accountId: accountId as never },
+                        notifications
+                      )
+                    )
                 )
-              )
-          );
-        }
-
-        await withWorkerSpan(
-          'worker.reports.scheduled.tick',
-          {
-            'worker.correlation_id': correlationId,
-            'worker.persistence_mode': workerState.persistenceMode,
-            'worker.database_healthy': workerState.databaseHealthy
-          },
-          async () => {
-            try {
-              const workerReportsUserId = await resolveWorkerReportServicePrincipal(
-                accountId,
-                configuredWorkerReportsUserId
-              );
-              await runWithTenantContext(
-                {
-                  tenantId: accountId,
-                  accountId,
-                  correlationId
-                },
-                () =>
-                  runScheduledReportsTick(
-                    logger,
-                    {
-                      ...tickContext,
-                      accountId: accountId as never,
-                      runAsUserId: workerReportsUserId
-                    },
-                    reports,
-                    bootstrap.reportSources,
-                    bootstrap.audit
-                  )
-              );
-            } catch (error) {
-              isolatedTickError = error instanceof Error ? error.message : String(error);
-              workerState.errors++;
-              logger.error('worker scheduled report tick failed', {
-                accountId,
-                error: isolatedTickError
-              });
+            },
+            {
+              name: 'event_bus',
+              run: () =>
+                withWorkerSpan(
+                  'worker.event_bus.tick',
+                  {
+                    'worker.correlation_id': correlationId,
+                    'worker.account_id': accountId,
+                    'worker.persistence_mode': workerState.persistenceMode,
+                    'worker.database_healthy': workerState.databaseHealthy
+                  },
+                  () =>
+                    runWithTenantContext(tenantContext, () =>
+                      runEventBusTick(logger, tickContext, eventBus)
+                    )
+                )
+            },
+            ...(webhookDeliveryExecutor
+              ? [
+                  {
+                    name: 'webhook_deliveries',
+                    run: async () => {
+                      await withWorkerSpan(
+                        'worker.webhook_delivery.tick',
+                        {
+                          'worker.correlation_id': correlationId,
+                          'worker.account_id': accountId,
+                          'worker.persistence_mode': workerState.persistenceMode,
+                          'worker.database_healthy': workerState.databaseHealthy
+                        },
+                        () =>
+                          runWithTenantContext(tenantContext, () =>
+                            runWebhookDeliveriesTick(
+                              logger,
+                              { ...tickContext, accountId: accountId as never },
+                              webhookDeliveryExecutor,
+                              webhookWorkerId
+                            )
+                          )
+                      );
+                    }
+                  }
+                ]
+              : []),
+            {
+              name: 'scheduled_reports',
+              run: () =>
+                withWorkerSpan(
+                  'worker.reports.scheduled.tick',
+                  {
+                    'worker.correlation_id': correlationId,
+                    'worker.persistence_mode': workerState.persistenceMode,
+                    'worker.database_healthy': workerState.databaseHealthy
+                  },
+                  async () => {
+                    try {
+                      const workerReportsUserId = await resolveWorkerReportServicePrincipal(
+                        accountId,
+                        configuredWorkerReportsUserId
+                      );
+                      await runWithTenantContext(
+                        {
+                          tenantId: accountId,
+                          accountId,
+                          correlationId
+                        },
+                        () =>
+                          runScheduledReportsTick(
+                            logger,
+                            {
+                              ...tickContext,
+                              accountId: accountId as never,
+                              runAsUserId: workerReportsUserId
+                            },
+                            reports,
+                            bootstrap.reportSources,
+                            bootstrap.audit
+                          )
+                      );
+                    } catch (error) {
+                      isolatedTickError = error instanceof Error ? error.message : String(error);
+                      workerState.errors++;
+                      logger.error('worker scheduled report tick failed', {
+                        accountId,
+                        error: isolatedTickError
+                      });
+                    }
+                  }
+                )
             }
-          }
-        );
+          ];
+        }
+      );
+      for (const failure of accountJobFailures) {
+        isolatedTickError = failure.error;
+        workerState.errors++;
       }
 
       workerState.ticksCompleted++;

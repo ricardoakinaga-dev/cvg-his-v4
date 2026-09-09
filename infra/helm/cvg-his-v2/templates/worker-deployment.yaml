@@ -54,7 +54,7 @@ spec:
       {{- end }}
       containers:
         - name: worker
-          image: {{ .Values.worker.image.registry }}/{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag | default .Chart.AppVersion }}
+          image: {{ include "cvg-his-v2.worker.image" . }}
           imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
           ports:
             - name: http-health

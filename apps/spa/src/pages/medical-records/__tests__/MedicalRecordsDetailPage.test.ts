@@ -526,6 +526,33 @@ describe('MedicalRecordsDetailPage', () => {
     expect(wrapper.text()).toContain('Timeline técnica e IDs');
   });
 
+  it('exposes medical-record steps as an accessible tab sequence', async () => {
+    const MedicalRecordsDetailPage = (await import('../MedicalRecordsDetailPage.vue')).default;
+    const wrapper = mount(MedicalRecordsDetailPage);
+
+    await flushPromises();
+
+    const tabs = wrapper.findAll('[role="tab"]');
+    expect(wrapper.get('[role="tablist"]').attributes('aria-label')).toBe('Etapas do prontuário');
+    expect(tabs).toHaveLength(4);
+    expect(tabs[0].attributes('aria-selected')).toBe('true');
+    expect(tabs[0].attributes('aria-controls')).toBe('medical-record-step-panel-anamnesis');
+    expect(tabs[0].attributes('tabindex')).toBe('0');
+    expect(tabs[1].attributes('tabindex')).toBe('-1');
+    expect(wrapper.get('.clinical-step-panel').attributes('aria-labelledby')).toBe(
+      'medical-record-step-tab-anamnesis'
+    );
+
+    await tabs[0].trigger('keydown', { key: 'ArrowRight' });
+    expect(wrapper.find('[role="tab"][aria-selected="true"]').text()).toContain('Exame');
+    expect(wrapper.get('.clinical-step-panel').attributes('aria-labelledby')).toBe(
+      'medical-record-step-tab-exam'
+    );
+
+    await wrapper.find('[role="tab"][aria-selected="true"]').trigger('keydown', { key: 'End' });
+    expect(wrapper.find('[role="tab"][aria-selected="true"]').text()).toContain('Plano');
+  });
+
   it('links clinical support actions with the current encounter context', async () => {
     const MedicalRecordsDetailPage = (await import('../MedicalRecordsDetailPage.vue')).default;
     const wrapper = mount(MedicalRecordsDetailPage, {

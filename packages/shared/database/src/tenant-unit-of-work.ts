@@ -83,6 +83,7 @@ export interface TenantUnitOfWork {
 
 interface IdempotencyRow {
   readonly request_hash: string;
+  readonly actor_user_id: string | null;
   readonly status: 'processing' | 'completed';
   readonly response_body: JsonValue | null;
 }
@@ -108,6 +109,15 @@ export class IdempotencyInProgressError extends Error {
   public constructor() {
     super('Idempotent request is still processing');
     this.name = 'IdempotencyInProgressError';
+  }
+}
+
+export class IdempotencyActorConflictError extends Error {
+  public readonly code = 'IDEMPOTENCY_ACTOR_CONFLICT';
+
+  public constructor() {
+    super('Idempotency key is bound to a different authenticated actor');
+    this.name = 'IdempotencyActorConflictError';
   }
 }
 
@@ -427,17 +437,23 @@ export function createTenantUnitOfWork(pool: Pool): TenantUnitOfWork {
 
           const inserted = await client.query<IdempotencyRow>(
             `INSERT INTO idempotency_requests
-             (account_id, operation, idempotency_key, request_hash, status)
-           VALUES ($1, $2, $3, $4, 'processing')
+             (account_id, operation, idempotency_key, actor_user_id, request_hash, status)
+           VALUES ($1, $2, $3, $4, $5, 'processing')
            ON CONFLICT (account_id, operation, idempotency_key) DO NOTHING
-           RETURNING request_hash, status, response_body`,
-            [context.accountId, context.operation, context.idempotencyKey, requestHash]
+           RETURNING request_hash, actor_user_id, status, response_body`,
+            [
+              context.accountId,
+              context.operation,
+              context.idempotencyKey,
+              context.actorUserId,
+              requestHash
+            ]
           );
 
           let record = inserted.rows[0];
           if (!record) {
             const existing = await client.query<IdempotencyRow>(
-              `SELECT request_hash, status, response_body
+              `SELECT request_hash, actor_user_id, status, response_body
              FROM idempotency_requests
              WHERE account_id = $1 AND operation = $2 AND idempotency_key = $3
              FOR UPDATE`,
@@ -448,6 +464,9 @@ export function createTenantUnitOfWork(pool: Pool): TenantUnitOfWork {
           if (!record) throw new Error('Idempotency record could not be acquired');
           if (record.request_hash !== requestHash) throw new IdempotencyConflictError();
           if (record.status === 'completed') {
+            if (!record.actor_user_id || record.actor_user_id !== context.actorUserId) {
+              throw new IdempotencyActorConflictError();
+            }
             return { value: record.response_body as T, replayed: true };
           }
           if (inserted.rowCount !== 1) throw new IdempotencyInProgressError();

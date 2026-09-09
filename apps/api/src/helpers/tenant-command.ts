@@ -2,6 +2,7 @@ import type { IncomingMessage } from 'node:http';
 
 import {
   getDatabaseTransactionScope,
+  IdempotencyActorConflictError,
   IdempotencyConflictError,
   IdempotencyInProgressError,
   type JsonValue,
@@ -109,6 +110,7 @@ export function createTenantCommandRunner(options: {
     } catch (error) {
       await runRollbackRecovery(input);
       if (
+        error instanceof IdempotencyActorConflictError ||
         error instanceof IdempotencyConflictError ||
         error instanceof IdempotencyInProgressError
       ) {

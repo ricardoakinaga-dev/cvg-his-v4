@@ -322,6 +322,20 @@ describe('DiagnosticsPage', () => {
     expect(mockDiagnosticsCreate).not.toHaveBeenCalled();
   });
 
+  it('does not choose the first encounter when the route has no clinical context', async () => {
+    mockEncounterList.mockResolvedValue(encounterPair);
+
+    const DiagnosticsPage = (await import('../DiagnosticsPage.vue')).default;
+    const wrapper = mount(DiagnosticsPage);
+    await flushPromises();
+
+    expect((wrapper.get('select').element as HTMLSelectElement).value).toBe('');
+    expect(wrapper.text()).toContain('Selecione um atendimento para consultar exames e laudos');
+    expect(wrapper.find('form').exists()).toBe(false);
+    expect(mockRecord).not.toHaveBeenCalled();
+    expectNoWrites();
+  });
+
   it('registers a real laboratory order and releases a result attachment', async () => {
     const DiagnosticsPage = (await import('../DiagnosticsPage.vue')).default;
     const wrapper = mount(DiagnosticsPage);
@@ -419,6 +433,8 @@ describe('DiagnosticsPage', () => {
     mockEncounterList.mockResolvedValue(encounterPair);
     mockDiagnosticsList.mockResolvedValue([note('A')]);
     const wrapper = await mountPage();
+    await flushPromises();
+    await wrapper.get('select').setValue('enc-A');
     await flushPromises();
     await wrapper.get('textarea').setValue('Justificativa privada A');
     const attachmentInputs = wrapper.findAll('form')[1].findAll('input');
@@ -588,6 +604,8 @@ describe('DiagnosticsPage', () => {
     mockEncounterList.mockResolvedValue(encounterPair);
     const wrapper = await mountPage();
     await flushPromises();
+    await wrapper.get('select').setValue('enc-A');
+    await flushPromises();
     const pendingCreate = deferred<unknown>();
     mockLaboratoryCreateOrder.mockReturnValueOnce(pendingCreate.promise);
     await wrapper.get('textarea').setValue('Justificativa A');
@@ -615,6 +633,8 @@ describe('DiagnosticsPage', () => {
   it('keeps the original linked order and result summary through an in-flight attachment upload', async () => {
     mockEncounterList.mockResolvedValue(encounterPair);
     const wrapper = await mountPage();
+    await flushPromises();
+    await wrapper.get('select').setValue('enc-A');
     await flushPromises();
     const linkedId = (wrapper.findAll('select')[2].element as HTMLSelectElement).value;
     const pendingUpload = deferred<unknown>();
@@ -646,6 +666,8 @@ describe('DiagnosticsPage', () => {
       .mockReturnValueOnce(currentRequest.promise);
 
     const wrapper = await mountPage();
+    await flushPromises();
+    await wrapper.get('select').setValue('enc-A');
     await flushPromises();
     await wrapper.get('textarea').setValue('Solicitação do atendimento A');
     await wrapper.findAll('form')[0].trigger('submit');

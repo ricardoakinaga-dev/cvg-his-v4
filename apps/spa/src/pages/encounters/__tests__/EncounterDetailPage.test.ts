@@ -214,6 +214,33 @@ describe('EncounterDetailPage', () => {
     expect(wrapper.text()).toContain('Animal com febre e letargia');
   });
 
+  it('exposes encounter workflow steps as an accessible tab sequence', async () => {
+    const EncounterDetailPage = (await import('../EncounterDetailPage.vue')).default;
+    const wrapper = mount(EncounterDetailPage);
+
+    await flushPromises();
+
+    const tabs = wrapper.findAll('[role="tab"]');
+    expect(wrapper.get('[role="tablist"]').attributes('aria-label')).toBe('Etapas do atendimento');
+    expect(tabs).toHaveLength(6);
+    expect(tabs[0].attributes('aria-selected')).toBe('true');
+    expect(tabs[0].attributes('aria-controls')).toBe('encounter-workflow-panel-summary');
+    expect(tabs[0].attributes('tabindex')).toBe('0');
+    expect(tabs[1].attributes('tabindex')).toBe('-1');
+    expect(wrapper.get('[role="tabpanel"]').attributes('aria-labelledby')).toBe(
+      'encounter-workflow-tab-summary'
+    );
+
+    await tabs[0].trigger('keydown', { key: 'ArrowRight' });
+    expect(wrapper.find('[role="tab"][aria-selected="true"]').text()).toContain('Orçamento');
+    expect(wrapper.get('[role="tabpanel"]').attributes('aria-labelledby')).toBe(
+      'encounter-workflow-tab-quote'
+    );
+
+    await wrapper.find('[role="tab"][aria-selected="true"]').trigger('keydown', { key: 'Home' });
+    expect(wrapper.find('[role="tab"][aria-selected="true"]').text()).toContain('Resumo');
+  });
+
   it('keeps the clinical record as the primary encounter action', async () => {
     const EncounterDetailPage = (await import('../EncounterDetailPage.vue')).default;
     const wrapper = mount(EncounterDetailPage, {

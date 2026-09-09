@@ -6,6 +6,7 @@ import {
   createTenantUnitOfWork,
   getTenantTransactionContext,
   hashIdempotencyPayload,
+  IdempotencyActorConflictError,
   runInTenantTransaction
 } from '@cvg-his-v2/shared-database';
 
@@ -35,12 +36,13 @@ function createPoolDouble(options?: {
       return queryResult([{ matches: options?.verificationMatches ?? true }]);
     }
     if (text.includes('INSERT INTO idempotency_requests')) {
-      lastRequestHash = values?.[3];
+      lastRequestHash = values?.[4];
       if (options?.idempotencyMode && options.idempotencyMode !== 'inserted') {
         return queryResult();
       }
       return queryResult([{
-        request_hash: values?.[3],
+        request_hash: values?.[4],
+        actor_user_id: values?.[3],
         status: 'processing',
         response_body: null
       }]);
@@ -49,6 +51,7 @@ function createPoolDouble(options?: {
       if (options?.idempotencyMode === 'completed') {
         return queryResult([{
           request_hash: lastRequestHash,
+          actor_user_id: '11111111-1111-1111-1111-111111111111',
           status: 'completed',
           response_body: { replayed: true }
         }]);
@@ -56,6 +59,7 @@ function createPoolDouble(options?: {
       if (options?.idempotencyMode === 'conflict') {
         return queryResult([{
           request_hash: 'different-request-hash',
+          actor_user_id: '11111111-1111-1111-1111-111111111111',
           status: 'processing',
           response_body: null
         }]);
@@ -63,6 +67,7 @@ function createPoolDouble(options?: {
       if (options?.idempotencyMode === 'in_progress') {
         return queryResult([{
           request_hash: lastRequestHash,
+          actor_user_id: '11111111-1111-1111-1111-111111111111',
           status: 'processing',
           response_body: null
         }]);
@@ -370,6 +375,18 @@ describe('TenantUnitOfWork validation and idempotency branches', () => {
     const missing = createTenantUnitOfWork(createPoolDouble({ idempotencyMode: 'missing' }).pool);
     await expect(missing.execute(baseContext, {}, async () => ({ ok: true })))
       .rejects.toThrow('could not be acquired');
+  });
+
+  it('fails closed when a completed replay belongs to another actor', async () => {
+    const { pool } = createPoolDouble({ idempotencyMode: 'completed' });
+    const unitOfWork = createTenantUnitOfWork(pool);
+    await expect(
+      unitOfWork.execute(
+        { ...baseContext, actorUserId: '22222222-2222-2222-2222-222222222222' },
+        {},
+        async () => ({ ok: true })
+      )
+    ).rejects.toBeInstanceOf(IdempotencyActorConflictError);
   });
 
   it('executes transactional outbox, inbox and audit contracts with explicit metadata', async () => {

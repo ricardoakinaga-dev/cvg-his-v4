@@ -8,6 +8,7 @@ export interface CreateAttachmentRequest {
   fileName: string;
   mimeType: string;
   checksum: string;
+  contentBase64?: string;
 }
 
 export interface AttachmentMutationOptions {

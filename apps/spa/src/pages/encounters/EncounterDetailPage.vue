@@ -81,22 +81,33 @@
         </aside>
 
         <div class="workflow-shell">
-          <nav class="workflow-tabs" aria-label="Etapas do atendimento">
+          <nav class="workflow-tabs" role="tablist" aria-label="Etapas do atendimento">
             <button
               v-for="step in workflowSteps"
               :key="step.key"
+              :id="workflowTabId(step.key)"
               type="button"
               class="workflow-tab"
               :class="{ 'workflow-tab--active': activeWorkflowStep === step.key }"
+              role="tab"
+              :aria-selected="activeWorkflowStep === step.key"
+              :aria-controls="activeWorkflowStep === step.key ? workflowPanelId(step.key) : undefined"
+              :tabindex="activeWorkflowStep === step.key ? 0 : -1"
+              @keydown="handleWorkflowTabKey($event, step.key)"
               @click="selectWorkflowStep(step.key)"
             >
-              <span>{{ step.index }}</span>
+              <span aria-hidden="true">{{ step.index }}</span>
               <strong>{{ step.label }}</strong>
               <small>{{ step.hint }}</small>
             </button>
           </nav>
 
-          <section class="workflow-panel">
+          <section
+            :id="workflowPanelId(activeWorkflowStep)"
+            class="workflow-panel"
+            role="tabpanel"
+            :aria-labelledby="workflowTabId(activeWorkflowStep)"
+          >
             <template v-if="activeWorkflowStep === 'summary'">
               <div class="workflow-panel__header">
                 <div>
@@ -525,9 +536,18 @@
             </div>
           </div>
           <div class="attachment-upload">
-            <DsInput v-model="newAttachment.fileName" label="" placeholder="Nome do arquivo" />
-            <DsInput v-model="newAttachment.mimeType" label="" placeholder="MIME type" />
-            <DsInput v-model="newAttachment.checksum" label="" placeholder="Checksum" />
+            <DsInput v-model="newAttachment.fileName" label="Nome do arquivo" placeholder="Nome do arquivo" />
+            <DsInput v-model="newAttachment.mimeType" label="MIME type" placeholder="MIME type" />
+            <DsInput v-model="newAttachment.checksum" label="Checksum" placeholder="Checksum" />
+            <label class="file-field">
+              <span>Arquivo binário (opcional)</span>
+              <input
+                type="file"
+                accept="application/pdf,image/*,text/plain"
+                @change="onAttachmentFileChange"
+              />
+              <small>{{ attachmentFile?.name || 'Sem arquivo: o anexo ficará em quarentena.' }}</small>
+            </label>
             <DsButton
               variant="secondary"
               size="sm"
@@ -709,6 +729,7 @@ import { cashService } from '@/services/cash';
 import { billingService } from '@/services/billing';
 import { clinicalHandoffService } from '@/services/clinicalHandoff';
 import { attachmentService } from '@/services/attachments';
+import { fileToBase64 } from '@/utils/file-to-base64';
 import EncounterPixPaymentPanel from '@/components/finance/EncounterPixPaymentPanel.vue';
 import type {
   EncounterSummary,
@@ -779,6 +800,7 @@ const attachments = ref<any[]>([]);
 const attachmentsLoading = ref(false);
 const uploadingAttachment = ref(false);
 const newAttachment = ref({ fileName: '', mimeType: 'application/pdf', checksum: '' });
+const attachmentFile = ref<File | null>(null);
 
 const patientName = ref('');
 const ownerName = ref('');
@@ -814,7 +836,9 @@ const requiresOpenBilling = computed(() =>
   && billingStatus.value !== 'open'
   && billingStatus.value !== 'settled'
 );
-const activeWorkflowStep = ref('summary');
+type WorkflowStepKey = 'summary' | 'quote' | 'exams' | 'medications' | 'billing' | 'close';
+type WorkflowStep = { key: WorkflowStepKey; index: string; label: string; hint: string };
+const activeWorkflowStep = ref<WorkflowStepKey>('summary');
 const clinicalHandoff = ref<ClinicalHandoffSummary | null>(null);
 const clinicalHandoffLoading = ref(false);
 const sendingClinicalHandoff = ref(false);
@@ -836,6 +860,7 @@ function isCurrentLoad(generation: number, id: string) {
 
 function resetPageState() {
   encounter.value = null;
+  activeWorkflowStep.value = 'summary';
   timeline.value = [];
   patientName.value = '';
   ownerName.value = '';
@@ -883,10 +908,19 @@ function resetPageState() {
   cashReceiptRegisterId.value = '';
   cashReceiptNotes.value = '';
   newAttachment.value = { fileName: '', mimeType: 'application/pdf', checksum: '' };
+  attachmentFile.value = null;
 }
 
 function pushContextWarning(label: string) {
   if (!contextWarnings.value.includes(label)) contextWarnings.value.push(label);
+}
+
+function onAttachmentFileChange(event: Event): void {
+  const file = (event.target as HTMLInputElement).files?.[0] ?? null;
+  attachmentFile.value = file;
+  if (!file) return;
+  newAttachment.value.fileName = file.name;
+  newAttachment.value.mimeType = file.type || newAttachment.value.mimeType;
 }
 
 const summaryCards = computed(() => [
@@ -1008,7 +1042,7 @@ const headerSecondaryActions = computed<PageAction[]>(() => {
   ];
 });
 
-const workflowSteps = computed(() => [
+const workflowSteps = computed<WorkflowStep[]>(() => [
   {
     key: 'summary',
     index: '1',
@@ -1037,9 +1071,41 @@ const workflowSteps = computed(() => [
   }
 ]);
 
-function selectWorkflowStep(step: string): void {
+function workflowTabId(step: WorkflowStepKey): string {
+  return `encounter-workflow-tab-${step}`;
+}
+
+function workflowPanelId(step: WorkflowStepKey): string {
+  return `encounter-workflow-panel-${step}`;
+}
+
+function selectWorkflowStep(step: WorkflowStepKey): void {
   activeWorkflowStep.value = step;
   if (step === 'close') void loadCashReceipt();
+}
+
+function handleWorkflowTabKey(event: KeyboardEvent, step: WorkflowStepKey): void {
+  const index = workflowSteps.value.findIndex((item) => item.key === step);
+  if (
+    index < 0 ||
+    !['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(event.key)
+  ) {
+    return;
+  }
+  event.preventDefault();
+  const nextIndex =
+    event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? workflowSteps.value.length - 1
+        : (index +
+            (event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1) +
+            workflowSteps.value.length) %
+          workflowSteps.value.length;
+  const nextStep = workflowSteps.value[nextIndex]?.key;
+  if (!nextStep) return;
+  selectWorkflowStep(nextStep);
+  void nextTick(() => document.getElementById(workflowTabId(nextStep))?.focus());
 }
 
 const workflowQuery = computed(() => {
@@ -1514,13 +1580,14 @@ async function uploadAttachment() {
       category: 'document',
       fileName: newAttachment.value.fileName.trim(),
       mimeType: newAttachment.value.mimeType.trim() || 'application/pdf',
-      checksum: newAttachment.value.checksum.trim()
+      checksum: newAttachment.value.checksum.trim(),
+      ...(attachmentFile.value ? { contentBase64: await fileToBase64(attachmentFile.value) } : {})
     });
     if (!isCurrentLoad(generation, routeId)) return;
     newAttachment.value = { fileName: '', mimeType: 'application/pdf', checksum: '' };
     await loadAttachments(generation, routeId, currentEncounter.id);
   } catch {
-    // Upload failure is non-critical
+    if (isCurrentLoad(generation, routeId)) pushContextWarning('falha ao anexar arquivo');
   } finally {
     if (isCurrentLoad(generation, routeId)) uploadingAttachment.value = false;
   }
@@ -1993,6 +2060,30 @@ onBeforeUnmount(() => {
 
 .attachment-upload > * {
   min-width: 0;
+}
+
+.file-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--color-text-secondary, #475569);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.file-field input {
+  min-height: 44px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  border: 1px solid var(--color-border, #cbd5e1);
+  border-radius: 8px;
+  background: var(--color-surface, #fff);
+  color: inherit;
+}
+
+.file-field small {
+  font-weight: 400;
 }
 
 .cash-receipt-review {

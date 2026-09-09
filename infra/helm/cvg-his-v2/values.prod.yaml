@@ -3,8 +3,11 @@ api:
   replicaCount: 3
   revisionHistoryLimit: 10
   image:
+    registry: ghcr.io
+    repository: ricardoakinaga-dev/cvg-his-v4-api
     pullPolicy: Always
-    tag: ""   # use git-sha tag from CI
+    tag: ""   # CI may use this only for publication; deploys must set sha
+    sha: ""   # release authority injects the immutable manifest digest
   probes:
     enabled: true
     livenessDelay: 10
@@ -38,7 +41,11 @@ worker:
   replicaCount: 2
   revisionHistoryLimit: 5
   image:
+    registry: ghcr.io
+    repository: ricardoakinaga-dev/cvg-his-v4-worker
     pullPolicy: Always
+    tag: ""
+    sha: ""   # release authority injects the immutable manifest digest
   accountIds:
     existingSecret: cvg-his-v2-prod-worker-secrets
     secretKey: WORKER_ACCOUNT_IDS
@@ -52,7 +59,11 @@ spa:
   replicaCount: 3
   revisionHistoryLimit: 10
   image:
+    registry: ghcr.io
+    repository: ricardoakinaga-dev/cvg-his-v4-spa
     pullPolicy: Always
+    tag: ""
+    sha: ""   # release authority injects the immutable manifest digest
   env:
     VITE_API_BASE_URL: https://api.cvg-his-v2.com
 

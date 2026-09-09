@@ -200,6 +200,13 @@ import {
 import { InMemoryGoogleCalendarSyncRepository } from './google-calendar-sync-repository.js';
 import { InMemoryLaboratoryResultImportRepository } from './laboratory-result-import-repository.js';
 import { createTenantCommandRunner } from './helpers/tenant-command.js';
+import {
+  idempotencyAuthorizationPermissions,
+  isDischargeMutationPath,
+  isInpatientMutationPath,
+  isMedicalRecordsMutationPath,
+  isPrescriptionExecutionMutationPath
+} from './helpers/idempotency-authorization.js';
 import { createVetusCacheRefresher } from './helpers/vetus-cache-recovery.js';
 import { readJsonBody, readJsonBodyOrEmpty } from './helpers/request-body.js';
 import {
@@ -3629,51 +3636,6 @@ function shouldUseTenantCommand(pathname: string, method: string | undefined): b
     return false;
   }
   return true;
-}
-
-function isDischargeMutationPath(pathname: string, method: string | undefined): boolean {
-  return (
-    (method === 'POST' && pathname === '/discharges') ||
-    (method === 'PATCH' && pathname.startsWith('/discharges/'))
-  );
-}
-
-function isMedicalRecordsMutationPath(pathname: string, method: string | undefined): boolean {
-  return (
-    (method === 'POST' && pathname === '/medical-records/entries') ||
-    (method === 'PATCH' && pathname.startsWith('/medical-records/entries/')) ||
-    (method === 'DELETE' && pathname.startsWith('/medical-records/entries/')) ||
-    (method === 'POST' && pathname === '/attachments') ||
-    (method === 'POST' &&
-      (pathname === '/laboratory/orders' ||
-        pathname === '/laboratory/exams' ||
-        pathname === '/laboratorio/exames' ||
-        pathname === '/laboratorio/atendimentos/exames' ||
-        pathname === '/diagnostics/orders' ||
-        pathname === '/exam-orders' ||
-        /^\/encounters\/[^/]+\/exam-orders$/.test(pathname) ||
-        /^\/(?:laboratory|diagnostics)\/orders\/[^/]+\/result$/.test(pathname) ||
-        /^\/laboratory\/orders\/[^/]+\/(?:recollect|deliver)$/.test(pathname))) ||
-    (method === 'PATCH' && pathname.startsWith('/exam-results/'))
-  );
-}
-
-function isInpatientMutationPath(pathname: string, method: string | undefined): boolean {
-  return Boolean(
-    method &&
-    !['GET', 'HEAD', 'OPTIONS'].includes(method) &&
-    (pathname === '/inpatient' || pathname.startsWith('/inpatient/'))
-  );
-}
-
-function isPrescriptionExecutionMutationPath(
-  pathname: string,
-  method: string | undefined
-): boolean {
-  return (
-    method === 'POST' &&
-    (pathname === '/prescription-executions' || pathname.startsWith('/prescription-executions/'))
-  );
 }
 
 function sendDatabasePersistenceUnavailable(response: ServerResponse, correlationId: string): void {
@@ -8018,6 +7980,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           };
 
           if (shouldUseTenantCommand(pathname, request.method) && tenantCtx.accountId) {
+            const replayPermissions = idempotencyAuthorizationPermissions(pathname, request.method);
+            const replayApiKeyPrincipal = replayPermissions?.includes('payments.manage')
+              ? await requireApiKey(request, 'payments.manage')
+              : undefined;
             const pixAttemptPrincipal = isPixPaymentAttemptCreate(pathname, request.method)
               ? await requirePrincipal(request, 'billing.manage')
               : undefined;
@@ -8053,6 +8019,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                   : {}),
                 accountId: tenantCtx.accountId,
                 actorUserId:
+                  replayApiKeyPrincipal?.apiKey.id ??
                   pixAttemptPrincipal?.user.id ??
                   tenantCtx.userId ??
                   `api-key:${tenantCtx.accountId}`,
@@ -8063,9 +8030,15 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 // transaction before idempotency replay can return a cached
                 // clinical response to a principal whose permission was
                 // revoked after the original command completed.
-                beforeIdempotency: isPrescriptionExecutionMutationPath(pathname, request.method)
+                beforeIdempotency: replayPermissions
                   ? async () => {
-                      await requirePrincipal(request, 'prescription-executions.manage');
+                      for (const permission of replayPermissions) {
+                        if (permission === 'payments.manage') {
+                          await requireApiKey(request, permission);
+                        } else {
+                          await requirePrincipal(request, permission);
+                        }
+                      }
                     }
                   : undefined,
                 onRollback: isPrescriptionExecutionMutationPath(pathname, request.method)

@@ -19,6 +19,7 @@ export const idempotencyRequests = pgTable(
     accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
     operation: varchar('operation', { length: 128 }).notNull(),
     idempotencyKey: varchar('idempotency_key', { length: 255 }).notNull(),
+    actorUserId: varchar('actor_user_id', { length: 255 }),
     requestHash: char('request_hash', { length: 64 }).notNull(),
     status: varchar('status', { length: 20 }).notNull().default('processing'),
     responseBody: jsonb('response_body'),

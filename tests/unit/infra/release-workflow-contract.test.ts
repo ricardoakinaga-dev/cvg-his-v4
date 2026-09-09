@@ -20,7 +20,7 @@ describe('immutable release workflow contract', () => {
     expect(workflow.match(/cvg-his-v4-(api|worker|spa):\$\{\{ github\.event\.workflow_run\.head_sha \}\}/g)).toHaveLength(3);
     expect(workflow.match(/provenance: mode=max/g)).toHaveLength(3);
     expect(workflow.match(/sbom: true/g)).toHaveLength(3);
-    expect(workflow.match(/actions\/attest-build-provenance@v2/g)).toHaveLength(3);
+    expect(workflow.match(/actions\/attest-build-provenance@[0-9a-f]{40}/g)).toHaveLength(3);
   });
 
   it('emits an auditable bundle, manifest and checksums', () => {
@@ -30,5 +30,14 @@ describe('immutable release workflow contract', () => {
     expect(workflow).toContain('run: pnpm release:manifest');
     expect(workflow).toContain('path: artifacts/release/');
     expect(workflow).toContain('if-no-files-found: error');
+  });
+
+  it('records image attestations before the blocking release gate', () => {
+    const attestationIndex = workflow.indexOf('actions/attest-build-provenance@');
+    const gateIndex = workflow.indexOf('name: Run blocking Triple-A release gate');
+    expect(attestationIndex).toBeGreaterThan(-1);
+    expect(workflow).toContain('run: pnpm release:attestation-evidence');
+    expect(workflow).toContain('TRIPLE_A_IMAGE_ATTESTATION_EVIDENCE: artifacts/release/image-attestation-evidence.json');
+    expect(gateIndex).toBeGreaterThan(attestationIndex);
   });
 });

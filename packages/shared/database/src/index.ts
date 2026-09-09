@@ -35,6 +35,7 @@ export {
   createTenantUnitOfWork,
   getTenantTransactionContext,
   hashIdempotencyPayload,
+  IdempotencyActorConflictError,
   IdempotencyConflictError,
   IdempotencyInProgressError,
   runInTenantTransaction,

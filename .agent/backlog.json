@@ -1,0 +1,100 @@
+{
+  "schema_version": 2,
+  "items": [
+    {
+      "id": "TRIPLE-A-BASELINE",
+      "title": "Consolidar baseline T4 e quality bar Triple-A",
+      "stage": "AUDIT",
+      "priority": "P0",
+      "status": "VERIFY",
+      "origin": "MASTER_PROMPT_FASE_0",
+      "dependencies": [],
+      "owner": "lead",
+      "acceptance_summary": "Baseline atual, quality bar, evidência e classificação P0/P1/P2 publicados sem alegações não comprovadas.",
+      "evidence_refs": ["docs/triple-a/00-baseline.md", "docs/engineering/TRIPLE_A_BASELINE.md"],
+      "next_action": {
+        "id": "TRIPLE-A-BASELINE-VERIFY",
+        "kind": "VERIFY",
+        "summary": "Revisar o baseline contra os artefatos atuais e confirmar que toda limitação permanece explícita.",
+        "target": "docs/engineering/TRIPLE_A_BASELINE.md; .agent/verification.jsonl",
+        "completion_signal": "Baseline, verification ledger e quality bar apontam para o mesmo commit e nenhum claim não provado permanece."
+      }
+    },
+    {
+      "id": "TRIPLE-A-RELEASE-CONTROL",
+      "title": "Construir gate agregador de release e manifest imutável",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "VERIFY",
+      "origin": "MASTER_PROMPT_FASES_1_2_8_9",
+      "dependencies": ["TRIPLE-A-BASELINE"],
+      "owner": "lead",
+      "acceptance_summary": "release:triple-a e rc:evidence:triple-a agregam checks atuais, vinculam commit/digests e falham sem evidência obrigatória.",
+      "evidence_refs": ["scripts/run-triple-a-release-gate.mjs", "scripts/generate-image-attestation-evidence.mjs", "tests/unit/infra/triple-a-release-gate.test.ts", "docs/triple-a/12-release-gate.md"],
+      "next_action": {
+        "id": "TRIPLE-A-RELEASE-CONTROL-VERIFY",
+        "kind": "IMPLEMENT",
+        "summary": "Executar a verificação final no candidato limpo, registrar o bloqueio honesto e integrar o commit.",
+        "target": "package.json; scripts; .github/workflows; .agent/verification.jsonl",
+        "completion_signal": "Gate, testes, build e validators têm resultado capturado no candidato; push só ocorre sem artefatos gerados ou segredos."
+      }
+    },
+    {
+      "id": "TRIPLE-A-SUPPLY-CHAIN",
+      "title": "Fechar supply chain, imagens e deploy por digest",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "VERIFY",
+      "origin": "MASTER_PROMPT_FASE_2",
+      "dependencies": ["TRIPLE-A-RELEASE-CONTROL"],
+      "owner": "lead",
+      "acceptance_summary": "Ações e imagens são verificáveis por digest, workflows têm permissões mínimas e scanners alimentam a evidência do release.",
+      "evidence_refs": ["scripts/validate-supply-chain.mjs", ".github/workflows", "infra/helm/cvg-his-v2/values.prod.yaml", "docs/security/SUPPLY_CHAIN_POLICY.md"],
+      "next_action": {
+        "id": "TRIPLE-A-SUPPLY-CHAIN-INSPECT",
+        "kind": "INSPECT",
+        "summary": "Mapear ações, bases, tags, permissões e scanners existentes por workflow e imagem.",
+        "target": ".github/workflows; Dockerfiles; Helm; Compose",
+        "completion_signal": "Inventário completo com cada exceção vinculada a uma correção ou decisão de risco."
+      }
+    },
+    {
+      "id": "TRIPLE-A-CLINICAL-DATA",
+      "title": "Formalizar criticidade clínica, invariantes e proteção de dados",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "VERIFY",
+      "origin": "MASTER_PROMPT_FASES_3_4_5_6_7",
+      "dependencies": ["TRIPLE-A-BASELINE"],
+      "owner": "lead",
+      "acceptance_summary": "Fluxos P0 possuem matriz de criticidade, invariantes, testes de não regressão, tenant/RLS/auditoria e evidência atual.",
+      "evidence_refs": ["docs/clinical/CLINICAL_CRITICALITY_MATRIX.md", "docs/clinical/CLINICAL_SAFETY_INVARIANTS.md", "packages/db/migrations/0165_idempotency_actor_binding.sql", "tests/unit/api/idempotency-authorization.test.ts"],
+      "next_action": {
+        "id": "TRIPLE-A-CLINICAL-DATA-CRITICALITY",
+        "kind": "DESIGN",
+        "summary": "Derivar a matriz de criticidade a partir dos módulos e fluxos reais.",
+        "target": "docs/clinical/CLINICAL_CRITICALITY_MATRIX.md",
+        "completion_signal": "Matriz cobre fluxo, risco, invariantes, teste e owner sem lacunas P0 desconhecidas."
+      }
+    },
+    {
+      "id": "TRIPLE-A-OPERATIONS",
+      "title": "Certificar worker, recuperação, observabilidade e performance",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "READY",
+      "origin": "MASTER_PROMPT_FASES_8_10_11_12",
+      "dependencies": ["TRIPLE-A-RELEASE-CONTROL"],
+      "owner": "lead",
+      "acceptance_summary": "Retry/DLQ, RPO/RTO, restore, game-day, SLO/error budget e performance possuem execução e evidência acopladas ao candidato.",
+      "evidence_refs": [],
+      "next_action": {
+        "id": "TRIPLE-A-OPERATIONS-POLICY",
+        "kind": "DESIGN",
+        "summary": "Definir políticas executáveis de retry/DLQ, SLO, DR e RPO/RTO antes dos drills.",
+        "target": "docs/operations; apps/worker; infra/scripts",
+        "completion_signal": "Políticas têm owner, thresholds, comandos, evidência esperada e critérios de bloqueio."
+      }
+    }
+  ]
+}

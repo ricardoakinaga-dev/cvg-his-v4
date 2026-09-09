@@ -33,18 +33,18 @@ jobs:
       SPA_IMAGE: ghcr.io/${{ github.repository_owner }}/cvg-his-v4-spa:${{ github.event.workflow_run.head_sha }}
     steps:
       - name: Checkout the exact CI-tested commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ env.RELEASE_SHA }}
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
         with:
           version: 10
           run_install: false
@@ -67,10 +67,10 @@ jobs:
           SECURITY_EVIDENCE_DIR=artifacts/release pnpm security:evidence
 
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -78,7 +78,7 @@ jobs:
 
       - name: Build and publish API image
         id: api
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
           file: apps/api/Dockerfile
@@ -90,7 +90,7 @@ jobs:
 
       - name: Build and publish worker image
         id: worker
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
           file: apps/worker/Dockerfile
@@ -102,7 +102,7 @@ jobs:
 
       - name: Build and publish SPA image
         id: spa
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
           file: apps/spa/Dockerfile
@@ -121,28 +121,51 @@ jobs:
         run: pnpm release:manifest
 
       - name: Attest API image
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
         with:
           subject-name: ghcr.io/${{ github.repository_owner }}/cvg-his-v4-api
           subject-digest: ${{ steps.api.outputs.digest }}
           push-to-registry: true
 
       - name: Attest worker image
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
         with:
           subject-name: ghcr.io/${{ github.repository_owner }}/cvg-his-v4-worker
           subject-digest: ${{ steps.worker.outputs.digest }}
           push-to-registry: true
 
       - name: Attest SPA image
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
         with:
           subject-name: ghcr.io/${{ github.repository_owner }}/cvg-his-v4-spa
           subject-digest: ${{ steps.spa.outputs.digest }}
           push-to-registry: true
 
+      - name: Record image attestation evidence
+        env:
+          RELEASE_OUTPUT_DIR: artifacts/release
+          RELEASE_SHA: ${{ env.RELEASE_SHA }}
+          API_IMAGE: ${{ env.API_IMAGE }}
+          WORKER_IMAGE: ${{ env.WORKER_IMAGE }}
+          SPA_IMAGE: ${{ env.SPA_IMAGE }}
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          WORKER_DIGEST: ${{ steps.worker.outputs.digest }}
+          SPA_DIGEST: ${{ steps.spa.outputs.digest }}
+        run: pnpm release:attestation-evidence
+
+      - name: Run blocking Triple-A release gate
+        env:
+          TRIPLE_A_RELEASE_OUTPUT_DIR: artifacts/release
+          TRIPLE_A_EVIDENCE_COMMIT_SHA: ${{ env.RELEASE_SHA }}
+          TRIPLE_A_CI_URL: ${{ env.RELEASE_PIPELINE_URL }}
+          TRIPLE_A_TEST_EVIDENCE: ${{ env.RELEASE_PIPELINE_URL }}
+          TRIPLE_A_CRITICAL_EVIDENCE: ${{ env.RELEASE_PIPELINE_URL }}
+          TRIPLE_A_E2E_EVIDENCE: ${{ env.RELEASE_PIPELINE_URL }}
+          TRIPLE_A_IMAGE_ATTESTATION_EVIDENCE: artifacts/release/image-attestation-evidence.json
+        run: pnpm release:triple-a
+
       - name: Upload release evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-${{ env.RELEASE_SHA }}
           path: artifacts/release/
