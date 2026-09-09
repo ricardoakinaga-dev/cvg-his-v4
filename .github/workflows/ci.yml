@@ -274,7 +274,7 @@ jobs:
       - name: Start isolated PostgreSQL
         run: pnpm test:db:start
 
-      - name: Validate repository, deployment and recovery contracts
+      - name: Validate repository source contracts
         run: |
           pnpm validate:openapi
           pnpm validate:namespaces
@@ -284,10 +284,21 @@ jobs:
           pnpm validate:dependencies
           pnpm docs:validate
           pnpm complexity:check
-          HELM_BIN=/usr/local/bin/helm REQUIRE_HELM=1 pnpm validate:helm
+
+      - name: Validate Helm chart
+        run: HELM_BIN=/usr/local/bin/helm REQUIRE_HELM=1 pnpm validate:helm
+
+      - name: Validate deployment and backup contracts
+        run: |
+          pnpm validate:deploy-surface
           pnpm deploy:check
           pnpm ops:backup:check
-          INSTALL_UPGRADE_REPORT_DIR=artifacts/operations/install-upgrade pnpm ops:install-upgrade:drill
+
+      - name: Run install and upgrade drill
+        run: INSTALL_UPGRADE_REPORT_DIR=artifacts/operations/install-upgrade pnpm ops:install-upgrade:drill
+
+      - name: Validate static and process contracts
+        run: |
           REQUIRE_TEST_DB=1 pnpm vitest run tests/unit/infra/requirement-evidence-matrix.test.ts --config vitest.config.ts
           node --test tests/unit/infra/gauntlet-subcriteria-evidence.test.mjs
           node --test scripts/database-source-resolution.test.mjs
@@ -296,11 +307,19 @@ jobs:
           node --test scripts/build-source-map-contract.test.mjs
           node --test scripts/process-reexport-coverage.test.mjs scripts/source-metric-presence.test.mjs scripts/check-critical-coverage.test.mjs
           pnpm vetus:parity:test
-          pnpm vitest run tests/integration/process/runtime-lifecycle.test.ts --config vitest.integration.config.ts
+
+      - name: Validate process runtime contracts
+        run: pnpm vitest run tests/integration/process/runtime-lifecycle.test.ts --config vitest.integration.config.ts
+
+      - name: Validate database runtime contracts
+        run: |
           REQUIRE_TEST_DB=1 pnpm vitest run tests/integration/database/migration-integrity-runtime.test.ts --config vitest.integration.config.ts
           REQUIRE_TEST_DB=1 pnpm vitest run tests/integration/rls/force-rls-catalog.test.ts tests/integration/rls/rls-isolation.test.ts tests/integration/rls/rls-access-governance.test.ts tests/integration/rls/runtime-role-sensitive-acl.test.ts --config vitest.integration.config.ts
           REQUIRE_TEST_DB=1 pnpm vitest run tests/integration/setup/production-like-runtime-bootstrap.test.ts --config vitest.integration.config.ts
           REQUIRE_TEST_DB=1 pnpm vitest run tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts --config vitest.integration.config.ts
+
+      - name: Validate canonical compose configuration
+        run: |
           GRAFANA_ADMIN_PASSWORD="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-compose-validation" docker compose --env-file .env.v2.example -f docker-compose.v2.yml config --quiet
 
       - name: Stop isolated PostgreSQL
