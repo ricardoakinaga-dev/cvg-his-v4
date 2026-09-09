@@ -249,8 +249,12 @@ jobs:
         run: |
           set -euo pipefail
           helm_archive="helm-${CVG_HELM_VERSION#v}-linux-amd64.tar.gz"
-          helm_url="https://get.helm.sh/${helm_archive}?download=1"
-          curl --fail --silent --show-error --location --retry 5 --retry-delay 2 --retry-all-errors "${helm_url}" --output "/tmp/${helm_archive}"
+          helm_url="https://get.helm.sh/${helm_archive}"
+          helm_fallback_url="https://get-helm-front-door-cdn-c9drhfggd8ewfzck.z03.azurefd.net/${helm_archive}"
+          if ! curl --fail --silent --show-error --location --retry 5 --retry-delay 2 --retry-all-errors "${helm_url}" --output "/tmp/${helm_archive}"; then
+            echo "Primary Helm download endpoint failed; retrying the official Azure Front Door endpoint."
+            curl --fail --silent --show-error --location --retry 5 --retry-delay 2 --retry-all-errors "${helm_fallback_url}" --output "/tmp/${helm_archive}"
+          fi
           echo "${CVG_HELM_SHA256}  /tmp/${helm_archive}" | sha256sum --check -
           tar -xzf "/tmp/${helm_archive}" -C /tmp
           sudo install "/tmp/linux-amd64/helm" /usr/local/bin/helm
