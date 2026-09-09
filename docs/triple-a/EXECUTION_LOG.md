@@ -41,3 +41,11 @@ Cada nova rodada deve registrar commit, comando ou observação, resultado, limi
 - Validação integral: `pnpm test` PASS (68 projetos; SPA 1.867 testes; API 580), `pnpm build` PASS, `pnpm lint` PASS, `pnpm typecheck` PASS; schema clínico, migration source, RLS, OpenAPI, dependências, supply chain, documentação e complexidade PASS.
 - Gate strict em `e793345a`: `BLOCKED`, score `38`, critical score `25`, `open_p0=21`, claim `NOT PROVEN`, `publication_allowed=false`. Artefato: `artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json` (gerado/ignorado).
 - Limitações não inferidas como PASS: CI remoto, branch protection, PostgreSQL/RLS runtime, E2E/UAT, browser visual, performance/soak, backup/restore/RPO-RTO, deploy/rollback, attestations publicadas e autoridade humana.
+
+## 2026-09-09 — Fase 0 / external assurance closure
+
+- O novo prompt foi salvo byte-a-byte em `docs/triple-a/MASTER_PROMPT_EXTERNAL_CLOSURE.md`; SHA-256 `d89a249f9b0b13e0da6fb9e4ee3c0e4728c11760fd435d325d48a9b8d1b5ed59`. O prompt histórico e o quality bar congelado não foram sobrescritos.
+- Baseline fresco do candidato `b5ac8bf994000994a8bbcc7208433772122fa3db`: gate strict `BLOCKED`, score `38`, critical `25`, `open_p0=21`, claim `NOT PROVEN`.
+- A API pública do GitHub mostrou os runs `34363819676` (CI) e `34363823720` (usability) falhando antes de jobs/check-runs; as anotações identificaram uso inválido do contexto `runner` no nível `jobs.<job>.env`.
+- Corrigidos os contextos de cache/artefatos em `.github/workflows/ci.yml` e `.github/workflows/usability-certification.yml`; commit `0e8fd5d1325c419eaffedc98cfa1952c5b2779a5` foi publicado em `main`. A execução remota desse novo SHA ainda precisa ser observada.
+- Criados baseline externo e contrato de governança de branch. Probes públicos retornaram `401` para branch protection e `200` com lista de rulesets vazia; ambos permanecem `NOT PROVEN`, não PASS.
