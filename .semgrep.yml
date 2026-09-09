@@ -147,9 +147,10 @@ rules:
       owasp: "A01:2021 - Broken Access Control"
 
   - id: typescript.security.detect-cookie-no-secure
-    pattern: |
-      cookie: $NAME
-      Set-Cookie: $NAME=...
+    pattern-either:
+      - pattern: $RESPONSE.setHeader("Set-Cookie", $VALUE)
+      - pattern: $RESPONSE.set("Set-Cookie", $VALUE)
+      - pattern: $RESPONSE.header("Set-Cookie", $VALUE)
     message: Cookie should include the Secure flag to prevent transmission over HTTP.
     languages:
       - typescript
@@ -160,11 +161,11 @@ rules:
       owasp: "A05:2021 - Security Misconfiguration"
 
   - id: typescript.security.detect-missing-rate-limit
-    patterns:
-      - pattern: |
-          async function $FUNC(..., request, ...) { ... }
-      - pattern-not: |
-          async function $FUNC(..., request, ...) { ... requirePrincipal(...) ... }
+    pattern-either:
+      - pattern: $APP.get($PATH, $HANDLER)
+      - pattern: $APP.post($PATH, $HANDLER)
+      - pattern: $ROUTER.get($PATH, $HANDLER)
+      - pattern: $ROUTER.post($PATH, $HANDLER)
     message: Endpoint may be missing rate limiting. Consider adding RateLimiter middleware.
     languages:
       - typescript

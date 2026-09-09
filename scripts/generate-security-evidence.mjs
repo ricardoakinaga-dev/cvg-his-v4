@@ -127,7 +127,7 @@ function validateSemgrepCi() {
     ['job sast existe', Boolean(sastJob)],
     ['usa semgrep container pinned by digest', /container:\s*\n\s+image:\s*semgrep\/semgrep@sha256:[0-9a-f]{64}(?:\s|$)/.test(sastJob)],
     ['executa semgrep scan', /semgrep\s+scan/.test(sastJob)],
-    ['usa regras locais e oficiais', /--config\s+\.semgrep\.yml/.test(sastJob) && /p\/security-extended/.test(sastJob) && /p\/nodejs/.test(sastJob) && /p\/typescript/.test(sastJob)],
+    ['usa regras locais e oficiais', /--config\s+\.semgrep\.yml/.test(sastJob) && /p\/security-audit/.test(sastJob) && /p\/nodejs/.test(sastJob) && /p\/typescript/.test(sastJob)],
     ['gera JSON', /--json-output\s+semgrep\.json/.test(sastJob)],
     ['gera SARIF', /--sarif-output\s+semgrep\.sarif/.test(sastJob)],
     ['faz upload SARIF pinned by SHA', /upload-sarif@[0-9a-f]{40}(?:\s|#|$)/.test(sastJob)],
