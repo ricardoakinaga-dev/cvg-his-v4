@@ -5,9 +5,10 @@ assurance. **Verdict:** `BLOCKED / NOT PROVEN`.
 
 ## Fresh observations
 
-- CI workflow planning defects were corrected and the next remote run reached
-  jobs. The following run exposed clean-clone typecheck and legacy Semgrep
-  wrapper defects; both fixes are now in the local candidate.
+- CI workflow planning defects were corrected and remote jobs reached
+  execution. Run `34403741057` exposed the clean-clone typecheck defect and a
+  Semgrep Registry/permission defect; the typecheck fix and the Semgrep repair
+  are now published in candidate `b429e1bb`.
 - Backup/restore, RPO/RTO, SLO/SLI, deploy and rollback policies exist as
   contracts and explicitly distinguish targets from measured drills.
 - Generated release evidence remains ignored and is bound to the exact SHA;
@@ -15,8 +16,8 @@ assurance. **Verdict:** `BLOCKED / NOT PROVEN`.
 
 ## Blocking findings
 
-1. A fresh remote run for the current unpushed candidate is still required;
-   older run failures cannot be reused.
+1. The fresh remote run `34404434195` for candidate `b429e1bb` is still
+   pending; older run failures cannot be reused as current proof.
 2. No target backup/restore drill, corrupt-backup drill, 24/72-hour soak,
    hospital-load result, deploy rehearsal or rollback rehearsal is attached to
    the current SHA.

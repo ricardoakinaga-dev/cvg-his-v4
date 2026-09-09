@@ -16,3 +16,11 @@
 | Release gate strict | BLOCKED — score 38, critical 25, 21 P0 abertos |
 
 Os thresholds de 97/95/zero P0 permanecem congelados em [`QUALITY_BAR_V1.json`](./QUALITY_BAR_V1.json). Este scorecard não contém claim de certificação.
+
+## Candidato de fechamento externo publicado
+
+`b429e1bb410bb8d374f4b8a043308461497b7bca` — `BLOCKED / NOT PROVEN`; gate
+strict `score=43`, `critical_score=23`, `open_p0=27`. A execução CI pública
+`34404434195` estava pendente no momento da atualização. O incremento do score
+reflete contratos/documentação e não substitui execução de PostgreSQL, browser,
+UAT humano, recovery, performance, deploy, branch governance ou autoridade.

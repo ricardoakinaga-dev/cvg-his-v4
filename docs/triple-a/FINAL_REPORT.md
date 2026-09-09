@@ -36,3 +36,20 @@ O artefato detalhado é gerado em
 `artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json` e permanece ignorado por
 ser evidência gerada. O gate deve ser reexecutado no ambiente de release com
 o SHA publicado e todos os envelopes externos independentes.
+
+## Atualização do candidato de fechamento externo — 2026-09-09
+
+- Candidato publicado: `b429e1bb410bb8d374f4b8a043308461497b7bca`.
+- O prompt externo permanece preservado em
+  [`MASTER_PROMPT_EXTERNAL_CLOSURE.md`](./MASTER_PROMPT_EXTERNAL_CLOSURE.md),
+  SHA-256 `d89a249f9b0b13e0da6fb9e4ee3c0e4728c11760fd435d325d48a9b8d1b5ed59`.
+- Foram adicionados contratos verificáveis para PostgreSQL/RLS/concurrency,
+  crash recovery/fencing, roles de banco, UAT hospitalar, críticos finais e
+  gate fail-closed; o CI SAST foi corrigido após a execução pública expor o
+  ruleset Registry inexistente e a permissão SARIF ausente.
+- Gate strict no SHA publicado: `BLOCKED`, score `43`, critical `23`,
+  `open_p0=27`, claim `NOT PROVEN`. O UAT gerado está `NOT_PROVEN/no-go`.
+- A execução CI `34404434195` foi disparada para esse SHA e estava pendente no
+  fechamento deste relatório. Runtime PostgreSQL, E2E/UAT humano, DR,
+  performance, deploy/rollback, branch protection e autoridade humana não são
+  inferidos a partir dos artefatos locais.

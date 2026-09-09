@@ -49,3 +49,12 @@ Cada nova rodada deve registrar commit, comando ou observação, resultado, limi
 - A API pública do GitHub mostrou os runs `34363819676` (CI) e `34363823720` (usability) falhando antes de jobs/check-runs; as anotações identificaram uso inválido do contexto `runner` no nível `jobs.<job>.env`.
 - Corrigidos os contextos de cache/artefatos em `.github/workflows/ci.yml` e `.github/workflows/usability-certification.yml`; commit `0e8fd5d1325c419eaffedc98cfa1952c5b2779a5` foi publicado em `main`. A execução remota desse novo SHA ainda precisa ser observada.
 - Criados baseline externo e contrato de governança de branch. Probes públicos retornaram `401` para branch protection e `200` com lista de rulesets vazia; ambos permanecem `NOT PROVEN`, não PASS.
+
+## 2026-09-09 — Fase 1 / publicação e reparo do CI SAST
+
+- O candidato `6de50ae37318ca511f7127d006d66433479a99d6` foi commitado e publicado em `main` com migration/event-governance, testes PostgreSQL/processo, matriz de roles, protocolo UAT, críticos independentes, gate externo e contrato de workflow.
+- A nova execução pública `34403741057` confirmou que o planejamento de jobs e o typecheck avançaram; `Secret Scan` e `Dependency Audit` passaram, mas `SAST (Semgrep)` falhou. A reprodução local mostrou que `p/security-extended` retornava HTTP 404/código 7 no Registry atual; também havia duas regras customizadas com `PatternParseError` e o upload SARIF não tinha a permissão explícita `security-events: write`.
+- Corrigidos o ruleset para `p/security-audit`, as duas regras customizadas inválidas, a permissão mínima do job SAST e o skip seguro do upload quando o SARIF não existe. Validação local do Semgrep (configuração, regras, JSON/SARIF) e `node scripts/generate-security-evidence.mjs`: PASS.
+- O reparo foi publicado em `b429e1bb410bb8d374f4b8a043308461497b7bca`. O gate strict regenerado nesse SHA é `BLOCKED`, score `43`, critical `23`, `open_p0=27`, claim `NOT PROVEN`; o esqueleto UAT está vinculado ao mesmo SHA com `NOT_PROVEN/no-go`.
+- A nova execução pública `34404434195` foi disparada para `b429e1bb` e estava em andamento no momento do registro. Nenhum resultado remoto posterior foi inferido como PASS.
+- Limitações mantidas: PostgreSQL/RLS/roles em runtime, processo após `SIGKILL`, E2E clínico/negativo, browser/UAT humano, backup/restore, performance/soak, deploy/rollback, attestations, branch protection autenticada e autoridade de release continuam `NOT PROVEN`.

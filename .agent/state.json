@@ -6,15 +6,15 @@
   "work_mode": "NORMAL",
   "work_mode_overlays": ["FEATURE", "REFACTOR", "MIGRATION"],
   "lifecycle_stage": "BUILD",
-  "active_activity": "BASELINE_AND_CI",
+  "active_activity": "REMOTE_CI_OBSERVATION",
   "engineering_tier": "T4_CRITICAL",
   "risk_level": "CRITICAL",
   "blast_radius": "CROSS_SYSTEM",
   "status": "IN_PROGRESS",
   "active_execplan": ".agent/plans/external-assurance-closure-execplan.md",
   "active_task": "TRIPLE-A-EXTERNAL-ASSURANCE-CLOSURE",
-  "verification_state": "PARTIAL_REMOTE_CI_PENDING",
-  "repository_state": "main@0e8fd5d1325c419eaffedc98cfa1952c5b2779a5; closure prompt persisted; workflow planning repair pushed; fresh remote execution pending",
+  "verification_state": "REMOTE_CI_PENDING_AFTER_SEMGREP_REPAIR",
+  "repository_state": "main@b429e1bb410bb8d374f4b8a043308461497b7bca; closure prompt persisted; workflow, event-governance and Semgrep repairs pushed; fresh remote execution pending",
   "instruction_scope_refs": [
     ".agent/plans/external-assurance-closure-execplan.md",
     "docs/triple-a/MASTER_PROMPT_EXTERNAL_CLOSURE.md",
@@ -26,9 +26,9 @@
     "/home/ricardo/.agents/skills/engineering-framework/SKILL.md",
     "/home/ricardo/.codex/skills/design-director/SKILL.md"
   ],
-  "last_gate_record": {"decision": "BLOCKED", "mode": "strict", "gate_stage": "postpublication", "commit_sha": "b5ac8bf994000994a8bbcc7208433772122fa3db", "score": 38, "critical_score": 25, "open_p0": 21, "claim": "NOT PROVEN", "publication_allowed": false, "reason": "Fresh closure baseline retained the prior gate result; remote CI and runtime/external proof remain open."},
+  "last_gate_record": {"decision": "BLOCKED", "mode": "strict", "gate_stage": "postpublication", "commit_sha": "b429e1bb410bb8d374f4b8a043308461497b7bca", "score": 43, "critical_score": 23, "open_p0": 27, "claim": "NOT PROVEN", "publication_allowed": false, "reason": "Local gate reflects the published candidate; remote CI is pending after the Semgrep registry/permission repair and runtime/external proof remains open."},
   "last_event_id": "EVT-TRIPLE-A-EXTERNAL-ASSURANCE-BASELINE",
-  "state_revision": 4,
+  "state_revision": 5,
   "next_gate": "OBSERVE_REMOTE_CI_AND_RUN_RUNTIME_ASSURANCE",
   "active_action_id": "TRIPLE-A-EXTERNAL-ASSURANCE-BASELINE",
   "blocked_by": [],
@@ -39,5 +39,5 @@
     "destructive backup/restore/chaos drills on shared infrastructure",
     "final release authority and Triple-A certification"
   ],
-  "updated_at": "2026-09-09T11:45:00-03:00"
+  "updated_at": "2026-09-09T18:02:18-03:00"
 }
