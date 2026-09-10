@@ -107,13 +107,6 @@ function resolveWindowsPackageManagerCommand() {
   return PACKAGE_MANAGER_COMMAND;
 }
 
-function quoteWindowsCommandArgument(argument) {
-  const value = String(argument);
-  if (/^[A-Za-z0-9_./\\:@=+,-]+$/.test(value)) return value;
-  const escaped = value.replace(/([()%!^&|<>])/g, '^$1').replace(/"/g, '""');
-  return `"${escaped}"`;
-}
-
 function resolveDefaultTestDatabaseUrl() {
   const url = new URL('postgres://localhost:5433/cvg_his_v2_test');
   url.username = 'postgres';
@@ -201,14 +194,12 @@ export function resolvePackageManagerInvocation(args) {
     return { command: PACKAGE_MANAGER_COMMAND, args };
   }
 
-  // cmd.exe receives one /c command string. Keeping the command line whole
-  // lets its parser preserve quoting for a pnpm.cmd path with spaces.
-  const commandLine = [resolveWindowsPackageManagerCommand(), ...args]
-    .map(quoteWindowsCommandArgument)
-    .join(' ');
+  // pnpm.cmd is a batch file. Invoke it through CALL and keep the command
+  // and arguments as separate argv entries so Node does not add a second
+  // quoting layer around a path that may contain spaces.
   return {
     command: process.env.ComSpec || process.env.COMSPEC || 'cmd.exe',
-    args: ['/d', '/c', commandLine]
+    args: ['/d', '/c', 'call', resolveWindowsPackageManagerCommand(), ...args]
   };
 }
 
