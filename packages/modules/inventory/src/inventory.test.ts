@@ -801,6 +801,78 @@ test('InventoryService waits for item persistence before resolving create', asyn
   );
 });
 
+test('InventoryService installs a new item without rewriting existing lot state', async () => {
+  const service = createService();
+  const existingLots = service
+    .listLots('acc_cvg_demo' as never)
+    .filter((lot) => lot.inventoryItemId === ('inv_dipyrone' as never));
+
+  const created = await service.createItem('acc_cvg_demo' as never, {
+    sku: 'SKU-NEW',
+    name: 'New item',
+    unit: 'unidade',
+    onHandQuantity: 4,
+    reorderLevel: 1,
+    unitCostAmount: 2
+  });
+
+  assert.equal(service.getItemOrThrow(created.id, 'acc_cvg_demo' as never).id, created.id);
+  assert.deepEqual(
+    service
+      .listLots('acc_cvg_demo' as never)
+      .filter((lot) => lot.inventoryItemId === created.id)
+      .map((lot) => lot.reservedQuantity),
+    [0]
+  );
+  assert.deepEqual(
+    service
+      .listLots('acc_cvg_demo' as never)
+      .filter((lot) => lot.inventoryItemId === ('inv_dipyrone' as never)),
+    existingLots
+  );
+});
+
+test('InventoryService does not cache a new item when lot persistence fails', async () => {
+  const service = new InventoryService({ getOrThrow() {} } as never, [], {
+    repository: {
+      async createItem() {},
+      async upsertLots() {
+        throw new Error('lot persistence failed');
+      },
+      async updateItem() {},
+      async findItemById() {
+        return null;
+      },
+      async findAllItems() {
+        return [];
+      },
+      async createConsumption() {},
+      async findConsumptions() {
+        return [];
+      },
+      async createStockMovement() {},
+      async findStockMovements() {
+        return [];
+      }
+    }
+  });
+
+  await assert.rejects(
+    () =>
+      service.createItem('account_a' as never, {
+        sku: 'SKU-LOT-FAIL',
+        name: 'Lot failure',
+        unit: 'unidade',
+        onHandQuantity: 1,
+        reorderLevel: 0,
+        unitCostAmount: 1
+      }),
+    /lot persistence failed/
+  );
+  assert.deepEqual(service.listItems('account_a' as never), []);
+  assert.deepEqual(service.listLots('account_a' as never), []);
+});
+
 test('InventoryService hides an item from another account', () => {
   const service = createService();
   assert.throws(

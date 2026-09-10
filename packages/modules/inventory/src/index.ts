@@ -528,6 +528,30 @@ export class InventoryService {
     }
   }
 
+  /**
+   * Installs the state for an item whose identifier was just allocated.
+   * Creation cannot have reservations yet, so avoid scanning every cached lot
+   * while the benchmark (or a busy tenant) adds new inventory items.
+   */
+  private installNewItem(
+    item: InventoryItemSummary,
+    lots: readonly InventoryLotSummary[]
+  ): void {
+    if (this.#items.has(item.id) || lots.some((lot) => this.#lots.has(lot.id))) {
+      throw new ConflictError('Inventory item identifier already exists', {
+        inventoryItemId: item.id
+      });
+    }
+
+    this.#items.set(item.id, item);
+    for (const lot of lots) {
+      this.#lots.set(lot.id, {
+        ...lot,
+        reservedQuantity: lot.reservedQuantity ?? 0
+      });
+    }
+  }
+
   private drainLots(inventoryItemId: InventoryItemId, quantity: number): void {
     let remaining = quantity;
     const candidateLots = Array.from(this.#lots.values())
@@ -1464,14 +1488,19 @@ export class InventoryService {
       createdAt: now,
       updatedAt: now
     };
+    const generatedLots = buildLotsForItem(item);
+    if (this.#items.has(item.id) || generatedLots.some((lot) => this.#lots.has(lot.id))) {
+      throw new ConflictError('Inventory item identifier already exists', {
+        inventoryItemId: item.id
+      });
+    }
 
     if (this.#repository) {
       await this.#repository.createItem(item);
-      await this.#repository.upsertLots?.(buildLotsForItem(item));
+      await this.#repository.upsertLots?.(generatedLots);
     }
 
-    this.#items.set(item.id, item);
-    this.replaceLotsForItem(item);
+    this.installNewItem(item, generatedLots);
 
     return item;
   }
