@@ -855,7 +855,7 @@
     },
     {
       "path": "apps/api/src/routes/openapi-routes.ts",
-      "sha256": "9a6d404dad988cdf94155aeba39991864439f494790942db21b91b360194fdca",
+      "sha256": "da2a5f2faabcd69dd16d44130057fa381236a5d6167031696ed64e77ab0303e8",
       "components": [
         "http-routes"
       ],
@@ -1063,7 +1063,7 @@
     },
     {
       "path": "apps/api/src/server.ts",
-      "sha256": "aa9c6d4c809ed85c630c217fdeb556c4a92e9838764f1fe5ce987aa37993b8a6",
+      "sha256": "a3509eaa3b015c6adf0d673a037cd454b13bec29fa00da31e6161f17acf45d09",
       "components": [
         "http-routes"
       ],
