@@ -37,6 +37,12 @@ const queryLatency = new Trend('query_latency_ms');
 const writeLatency = new Trend('write_latency_ms');
 const billingLatency = new Trend('billing_latency_ms');
 const inventoryLatency = new Trend('inventory_latency_ms');
+// Endpoint-level diagnostics keep the blocking aggregate SLOs comparable while
+// making a tail attributable to a concrete read or write path.
+const queryPatientsListLatency = new Trend('query_patients_list_latency_ms');
+const queryPatientDetailLatency = new Trend('query_patient_detail_latency_ms');
+const inventoryReadLatency = new Trend('inventory_read_latency_ms');
+const inventoryCreateLatency = new Trend('inventory_create_latency_ms');
 
 // Test configuration
 const BASE_URL = __ENV.TARGET ?? 'http://localhost:3001';
@@ -163,7 +169,9 @@ export default function (data) {
   // Patient detail
   group('Patients - Detail', () => {
     const start = Date.now();
+    const listStart = Date.now();
     const listRes = http.get(`${BASE_URL}/patients?page=1&limit=1`, { headers });
+    queryPatientsListLatency.add(Date.now() - listStart);
     if (listRes.status === 200) {
       try {
         const body = JSON.parse(listRes.body);
@@ -175,8 +183,10 @@ export default function (data) {
       } catch {}
     }
 
+    const detailStart = Date.now();
     const res = http.get(`${BASE_URL}/patients/${patientId}`, { headers });
 
+    queryPatientDetailLatency.add(Date.now() - detailStart);
     queryLatency.add(Date.now() - start);
     apiLatency.add(res.timings.duration);
     errorRate.add(res.status !== 200);
@@ -278,6 +288,7 @@ export default function (data) {
 
     queryLatency.add(Date.now() - start);
     inventoryLatency.add(res.timings.duration);
+    inventoryReadLatency.add(res.timings.duration);
     apiLatency.add(res.timings.duration);
     errorRate.add(res.status !== 200);
 
@@ -304,6 +315,7 @@ export default function (data) {
 
     writeLatency.add(Date.now() - start);
     inventoryLatency.add(res.timings.duration);
+    inventoryCreateLatency.add(res.timings.duration);
     apiLatency.add(res.timings.duration);
     errorRate.add(res.status !== 201);
 

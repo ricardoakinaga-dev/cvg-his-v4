@@ -52,6 +52,10 @@ describe('performance and SLO gate', () => {
     expect(benchmark).toContain("direction: 'gte'");
     expect(benchmark).toContain('evaluateThreshold(config.actual, config.target, config.direction)');
     expect(benchmark).toContain('authLatency.add(loginRes.timings.duration)');
+    expect(benchmark).toContain("new Trend('query_patients_list_latency_ms')");
+    expect(benchmark).toContain("new Trend('query_patient_detail_latency_ms')");
+    expect(benchmark).toContain("new Trend('inventory_read_latency_ms')");
+    expect(benchmark).toContain("new Trend('inventory_create_latency_ms')");
     expect(benchmark).not.toContain("group('Auth - Login'");
     expect(benchmark).toContain('${BASE_URL}/appointments?startAt=');
     expect(benchmark).not.toContain('/scheduling/appointments');
