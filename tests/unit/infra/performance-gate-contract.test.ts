@@ -10,6 +10,10 @@ const certification = readFileSync(
   'utf8'
 );
 const benchmark = readFileSync(resolve(root, 'benchmarks/k6/api-benchmark.js'), 'utf8');
+const benchmarkSeed = readFileSync(
+  resolve(root, 'benchmarks/k6/seed-benchmark-fixtures.ts'),
+  'utf8'
+);
 const catalog = JSON.parse(readFileSync(resolve(root, 'benchmarks/k6/slos.json'), 'utf8'));
 
 function job(source: string, name: string) {
@@ -45,10 +49,34 @@ describe('performance and SLO gate', () => {
     expect(benchmark).toContain("http_req_failed: ['rate<0.005']");
     expect(benchmark).toContain('api_availability:');
     expect(benchmark).toContain("data.metrics['http_req_failed']");
+    expect(benchmark).toContain("direction: 'gte'");
+    expect(benchmark).toContain('evaluateThreshold(config.actual, config.target, config.direction)');
+    expect(benchmark).toContain('authLatency.add(loginRes.timings.duration)');
+    expect(benchmark).not.toContain("group('Auth - Login'");
+    expect(benchmark).toContain('${BASE_URL}/appointments?startAt=');
+    expect(benchmark).not.toContain('/scheduling/appointments');
+    expect(benchmark).toContain('/medical-records/entries?encounterId=');
+    expect(benchmark).not.toContain('/medical-records/entries?page=1&limit=10');
     expect(catalog.loadProfiles.map((profile: { id: string }) => profile.id)).toEqual([
       'operational-minimum-v1',
       'endurance-2h-v1'
     ]);
+  });
+
+  it('seeds valid UUID domain rows for detail and encounter-scoped workload paths', () => {
+    expect(benchmarkSeed).toContain(
+      "const BENCHMARK_OWNER_ID = '00000000-0000-4000-8000-000000000401'"
+    );
+    expect(benchmarkSeed).toContain(
+      "const BENCHMARK_PATIENT_ID = '00000000-0000-4000-8000-000000000402'"
+    );
+    expect(benchmarkSeed).toContain(
+      "const BENCHMARK_ENCOUNTER_ID = '00000000-0000-4000-8000-000000000403'"
+    );
+    expect(benchmarkSeed).toContain('INSERT INTO owners');
+    expect(benchmarkSeed).toContain('INSERT INTO patients');
+    expect(benchmarkSeed).toContain('INSERT INTO encounters');
+    expect(benchmarkSeed).toContain("status: 'active'");
   });
 
   it('protects target endurance behind approval, HTTPS and explicit disposable-target confirmation', () => {

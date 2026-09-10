@@ -20,6 +20,7 @@
 import http from 'k6/http';
 import { check, sleep, group } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
+import { evaluateThreshold } from './slo-evaluator.js';
 
 const SLO_CATALOG = JSON.parse(open('./slos.json'));
 const LOAD_PROFILE_ID = __ENV.LOAD_PROFILE ?? 'operational-minimum-v1';
@@ -48,6 +49,14 @@ const TEST_USER = {
   role: 'admin'
 };
 
+// The performance seed creates these rows in the disposable tenant. Keeping the
+// IDs deterministic lets every VU exercise detail and encounter-scoped routes
+// without manufacturing a not-found response that would fail http_req_failed.
+const BENCHMARK_PATIENT_ID =
+  __ENV.BENCHMARK_PATIENT_ID ?? '00000000-0000-4000-8000-000000000402';
+const BENCHMARK_ENCOUNTER_ID =
+  __ENV.BENCHMARK_ENCOUNTER_ID ?? '00000000-0000-4000-8000-000000000403';
+
 // SLO thresholds from slos.json
 export const options = {
   stages: LOAD_PROFILE.stages,
@@ -64,27 +73,27 @@ export const options = {
   }
 };
 
-let authToken = '';
-let testUser = TEST_USER;
-
 export function setup() {
-  testUser = TEST_USER;
   const loginRes = http.post(
     `${BASE_URL}/auth/login`,
     JSON.stringify({
-      username: testUser.username,
-      password: testUser.password
+      username: TEST_USER.username,
+      password: TEST_USER.password
     }),
     {
       headers: { 'Content-Type': 'application/json' }
     }
   );
 
+  // Authentication is measured once here. Repeating login from every VU and
+  // iteration self-triggers the production-equivalent IP rate limiter.
+  authLatency.add(loginRes.timings.duration);
+
   if (loginRes.status === 200) {
     const body = JSON.parse(loginRes.body);
-    authToken = body.accessToken ?? '';
+    const token = body.accessToken ?? '';
     const accountId = body.principal?.user?.accountId ?? FALLBACK_ACCOUNT_ID;
-    return { token: authToken, testUser, accountId };
+    return { token, testUser: TEST_USER, accountId };
   }
 
   throw new Error(`Benchmark login failed closed with HTTP ${loginRes.status}`);
@@ -95,6 +104,8 @@ export function setup() {
 export default function (data) {
   const token = data.token;
   const accountId = data.accountId ?? FALLBACK_ACCOUNT_ID;
+  let patientId = BENCHMARK_PATIENT_ID;
+  let encounterId = BENCHMARK_ENCOUNTER_ID;
   const headers = {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${token}`,
@@ -113,28 +124,6 @@ export default function (data) {
     errorRate.add(res.status !== 200);
   });
 
-  // Authentication flows
-  group('Auth - Login', () => {
-    const start = Date.now();
-    const res = http.post(
-      `${BASE_URL}/auth/login`,
-      JSON.stringify({
-        username: testUser.username,
-        password: testUser.password
-      }),
-      {
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
-
-    authLatency.add(Date.now() - start);
-    check(res, {
-      'login returns 200 or 401': (r) => r.status === 200 || r.status === 401,
-      'login has reasonable latency': (r) => r.timings.duration < 500
-    });
-    errorRate.add(res.status === 500 || res.status === 502);
-  });
-
   // Owners (read)
   group('Owners - List', () => {
     const start = Date.now();
@@ -142,7 +131,7 @@ export default function (data) {
 
     queryLatency.add(Date.now() - start);
     apiLatency.add(res.timings.duration);
-    errorRate.add(res.status !== 200 && res.status !== 404);
+    errorRate.add(res.status !== 200);
 
     check(res, {
       'owners returns 200': (r) => r.status === 200,
@@ -175,8 +164,6 @@ export default function (data) {
   group('Patients - Detail', () => {
     const start = Date.now();
     const listRes = http.get(`${BASE_URL}/patients?page=1&limit=1`, { headers });
-    let patientId = 'pat_demo_001';
-
     if (listRes.status === 200) {
       try {
         const body = JSON.parse(listRes.body);
@@ -192,10 +179,10 @@ export default function (data) {
 
     queryLatency.add(Date.now() - start);
     apiLatency.add(res.timings.duration);
-    errorRate.add(res.status !== 200 && res.status !== 404);
+    errorRate.add(res.status !== 200);
 
     check(res, {
-      'patient detail returns 200 or 404': (r) => r.status === 200 || r.status === 404
+      'patient detail returns 200': (r) => r.status === 200
     });
   });
 
@@ -230,8 +217,12 @@ export default function (data) {
   // Scheduling
   group('Scheduling - Appointments', () => {
     const start = Date.now();
-    const today = new Date().toISOString().split('T')[0];
-    const res = http.get(`${BASE_URL}/scheduling/appointments?date=${today}`, { headers });
+    const startAt = new Date();
+    const endAt = new Date(startAt.getTime() + 24 * 60 * 60 * 1000);
+    const res = http.get(
+      `${BASE_URL}/appointments?startAt=${encodeURIComponent(startAt.toISOString())}&endAt=${encodeURIComponent(endAt.toISOString())}`,
+      { headers }
+    );
 
     queryLatency.add(Date.now() - start);
     apiLatency.add(res.timings.duration);
@@ -247,8 +238,6 @@ export default function (data) {
     const start = Date.now();
     // First find an encounter to bill
     const encRes = http.get(`${BASE_URL}/encounters?page=1&limit=1`, { headers });
-    let encounterId = 'enc_demo_001';
-
     if (encRes.status === 200) {
       try {
         const body = JSON.parse(encRes.body);
@@ -268,11 +257,10 @@ export default function (data) {
 
     billingLatency.add(Date.now() - start);
     apiLatency.add(res.timings.duration);
-    errorRate.add(res.status !== 200 && res.status !== 409 && res.status !== 404);
+    errorRate.add(res.status !== 200);
 
     check(res, {
-      'billing estimate returns 200/409/404': (r) =>
-        r.status === 200 || r.status === 409 || r.status === 404
+      'billing estimate returns 200': (r) => r.status === 200
     });
   });
 
@@ -297,8 +285,8 @@ export default function (data) {
     const res = http.post(
       `${BASE_URL}/inventory`,
       JSON.stringify({
-        sku: `k6-sku-${Date.now()}-${__VU}`,
-        name: `k6 benchmark item ${Date.now()}`,
+        sku: `k6-sku-${Date.now()}-${__VU}-${__ITER}`,
+        name: `k6 benchmark item ${Date.now()}-${__VU}-${__ITER}`,
         unit: 'unidade',
         onHandQuantity: 100,
         reorderLevel: 10,
@@ -310,25 +298,27 @@ export default function (data) {
     writeLatency.add(Date.now() - start);
     inventoryLatency.add(res.timings.duration);
     apiLatency.add(res.timings.duration);
-    errorRate.add(res.status !== 201 && res.status !== 400 && res.status !== 409);
+    errorRate.add(res.status !== 201);
 
     check(res, {
-      'inventory create returns 201/400/409': (r) =>
-        r.status === 201 || r.status === 400 || r.status === 409
+      'inventory create returns 201': (r) => r.status === 201
     });
   });
 
   // Medical records entries
   group('Medical Records - List Entries', () => {
     const start = Date.now();
-    const res = http.get(`${BASE_URL}/medical-records/entries?page=1&limit=10`, { headers });
+    const res = http.get(
+      `${BASE_URL}/medical-records/entries?encounterId=${encodeURIComponent(encounterId)}`,
+      { headers }
+    );
 
     queryLatency.add(Date.now() - start);
     apiLatency.add(res.timings.duration);
-    errorRate.add(res.status !== 200 && res.status !== 404);
+    errorRate.add(res.status !== 200);
 
     check(res, {
-      'medical records returns 200 or 404': (r) => r.status === 200 || r.status === 404
+      'medical records returns 200': (r) => r.status === 200
     });
   });
 
@@ -439,6 +429,7 @@ function evaluateSLOs(data) {
     api_availability: {
       percent: {
         target: 99.5,
+        direction: 'gte',
         actual:
           data.metrics['http_req_failed']?.values?.rate === undefined
             ? 0
@@ -454,12 +445,13 @@ function evaluateSLOs(data) {
   for (const [key, criterion] of Object.entries(thresholds)) {
     results[key] = {};
     for (const [metric, config] of Object.entries(criterion)) {
-      const passed = config.actual < config.target;
+      const passed = evaluateThreshold(config.actual, config.target, config.direction);
       if (passed) totalPassed++;
       totalEvaluated++;
       results[key][metric] = {
         target: config.target,
         actual: parseFloat(config.actual.toFixed(2)),
+        direction: config.direction ?? 'lt',
         passed
       };
     }
@@ -504,7 +496,7 @@ function textSummary(data, opts) {
   const requestFailures = data.metrics['http_req_failed']?.values;
   if (requestFailures) {
     const availability = (1 - requestFailures.rate) * 100;
-    out += `${indent}Availability: ${availability.toFixed(3)}%  ${availability > 99.5 ? '✅' : '❌'}\n\n`;
+    out += `${indent}Availability: ${availability.toFixed(3)}%  ${availability >= 99.5 ? '✅' : '❌'}\n\n`;
   }
 
   const auth = data.metrics['auth_latency_ms']?.values;

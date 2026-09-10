@@ -104,6 +104,10 @@ const users = [
   }
 ] as const;
 
+const BENCHMARK_OWNER_ID = '00000000-0000-4000-8000-000000000401';
+const BENCHMARK_PATIENT_ID = '00000000-0000-4000-8000-000000000402';
+const BENCHMARK_ENCOUNTER_ID = '00000000-0000-4000-8000-000000000403';
+
 async function ensurePermissions(client: InstanceType<typeof Client>) {
   for (const permission of permissions) {
     await client.query(
@@ -161,7 +165,9 @@ async function ensureRoles(client: InstanceType<typeof Client>) {
   }
 }
 
-async function ensureUsers(client: InstanceType<typeof Client>) {
+async function ensureUsers(
+  client: InstanceType<typeof Client>
+): Promise<{ accountId: string; adminUserId: string }> {
   const accountRow = await client.query<{ id: string }>(
     'SELECT id FROM accounts WHERE is_active = true ORDER BY created_at ASC LIMIT 1'
   );
@@ -211,6 +217,124 @@ async function ensureUsers(client: InstanceType<typeof Client>) {
       [userId, roleId]
     );
   }
+
+  const adminUser = await client.query<{ id: string }>(
+    'SELECT id FROM users WHERE account_id = $1 AND email = $2',
+    [accountId, 'admin@cvg-his.local']
+  );
+  const adminUserId = adminUser.rows[0]?.id;
+  if (!adminUserId) {
+    throw new Error('Benchmark admin user not found after fixture upsert');
+  }
+
+  return { accountId, adminUserId };
+}
+
+async function ensureDomainFixtures(
+  client: InstanceType<typeof Client>,
+  accountId: string,
+  adminUserId: string
+) {
+  await client.query(
+    `
+      INSERT INTO owners (
+        id, account_id, full_name, document, email, phone_main, address_json, created_at, updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, NOW(), NOW())
+      ON CONFLICT (id) DO UPDATE SET
+        account_id = EXCLUDED.account_id,
+        full_name = EXCLUDED.full_name,
+        document = EXCLUDED.document,
+        email = EXCLUDED.email,
+        phone_main = EXCLUDED.phone_main,
+        address_json = EXCLUDED.address_json,
+        updated_at = NOW()
+    `,
+    [
+      BENCHMARK_OWNER_ID,
+      accountId,
+      'Tutor Benchmark',
+      '00000000000',
+      'benchmark.owner@cvg-his.local',
+      '+55 11 90000-0401',
+      JSON.stringify({
+        version: 2,
+        contacts: [
+          {
+            label: 'Email',
+            value: 'benchmark.owner@cvg-his.local',
+            type: 'email',
+            primary: true
+          }
+        ],
+        status: 'active',
+        financialResponsible: true
+      })
+    ]
+  );
+
+  await client.query(
+    `
+      INSERT INTO patients (
+        id, account_id, owner_id, name, species, breed, sex, birth_date, weight_kg,
+        alerts_json, created_at, updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, NOW(), NOW())
+      ON CONFLICT (id) DO UPDATE SET
+        account_id = EXCLUDED.account_id,
+        owner_id = EXCLUDED.owner_id,
+        name = EXCLUDED.name,
+        species = EXCLUDED.species,
+        breed = EXCLUDED.breed,
+        sex = EXCLUDED.sex,
+        birth_date = EXCLUDED.birth_date,
+        weight_kg = EXCLUDED.weight_kg,
+        alerts_json = EXCLUDED.alerts_json,
+        updated_at = NOW()
+    `,
+    [
+      BENCHMARK_PATIENT_ID,
+      accountId,
+      BENCHMARK_OWNER_ID,
+      'Paciente Benchmark',
+      'canine',
+      'SRD',
+      'female',
+      '2020-01-01',
+      '18.500',
+      JSON.stringify({ version: 2, status: 'active', size: 'medium' })
+    ]
+  );
+
+  await client.query(
+    `
+      INSERT INTO encounters (
+        id, account_id, patient_id, owner_id, status, opened_by_user_id,
+        opened_at, reason, created_at, updated_at
+      )
+      VALUES ($1, $2, $3, $4, 'open', $5, NOW(), $6, NOW(), NOW())
+      ON CONFLICT (id) DO UPDATE SET
+        account_id = EXCLUDED.account_id,
+        patient_id = EXCLUDED.patient_id,
+        owner_id = EXCLUDED.owner_id,
+        status = 'open',
+        opened_by_user_id = EXCLUDED.opened_by_user_id,
+        closed_by_user_id = NULL,
+        opened_at = EXCLUDED.opened_at,
+        closed_at = NULL,
+        close_reason = NULL,
+        reason = EXCLUDED.reason,
+        updated_at = NOW()
+    `,
+    [
+      BENCHMARK_ENCOUNTER_ID,
+      accountId,
+      BENCHMARK_PATIENT_ID,
+      BENCHMARK_OWNER_ID,
+      adminUserId,
+      'Benchmark clinical encounter'
+    ]
+  );
 }
 
 async function main() {
@@ -221,7 +345,8 @@ async function main() {
     await client.query('BEGIN');
     await ensurePermissions(client);
     await ensureRoles(client);
-    await ensureUsers(client);
+    const { accountId, adminUserId } = await ensureUsers(client);
+    await ensureDomainFixtures(client, accountId, adminUserId);
     await client.query('COMMIT');
     console.log('Benchmark fixtures ready');
   } catch (error) {
