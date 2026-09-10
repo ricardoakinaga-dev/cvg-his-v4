@@ -11,7 +11,7 @@
       "dependencies": [],
       "owner": "lead",
       "acceptance_summary": "Baseline atual, quality bar, evidência e classificação P0/P1/P2 publicados sem alegações não comprovadas.",
-      "evidence_refs": ["docs/triple-a/00-baseline.md", "docs/engineering/TRIPLE_A_BASELINE.md", ".agent/verification.jsonl#VER-TRIPLE-A-BASELINE-20260909-CURRENT", ".agent/verification.jsonl#VER-TRIPLE-A-BASELINE-20260909-CURRENT-888-FINAL"],
+      "evidence_refs": ["docs/triple-a/00-baseline.md", "docs/engineering/TRIPLE_A_BASELINE.md", ".agent/verification.jsonl#VER-TRIPLE-A-BASELINE-20260910-CURRENT-CD7399-FINAL"],
       "next_action": {
         "id": "TRIPLE-A-BASELINE:REOPEN",
         "kind": "REOPEN",
@@ -32,11 +32,11 @@
       "acceptance_summary": "release:triple-a e rc:evidence:triple-a agregam checks atuais, vinculam commit/digests e falham sem evidência obrigatória.",
       "evidence_refs": ["scripts/run-triple-a-release-gate.mjs", "scripts/generate-image-attestation-evidence.mjs", "tests/unit/infra/triple-a-release-gate.test.ts", "docs/triple-a/12-release-gate.md"],
       "next_action": {
-        "id": "TRIPLE-A-RELEASE-CONTROL:OBSERVE-CI-48",
-        "kind": "WAIT",
-        "summary": "Observar o CI #48 no SHA candidato até o estado terminal e registrar cada conclusão sem reutilizar os runs anteriores.",
-        "target": "https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34431046431; .agent/verification.jsonl",
-        "completion_signal": "Run #48 terminou, seus jobs foram reconciliados e o gate estrito foi reexecutado no mesmo SHA."
+        "id": "TRIPLE-A-RELEASE-CONTROL:REPRODUCE-CI49-FAILURES",
+        "kind": "REPRODUCE",
+        "summary": "Reproduzir e corrigir os failures terminais do CI #49 antes de qualquer nova decisão de release.",
+        "target": "https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34431492523; .agent/verification.jsonl",
+        "completion_signal": "Unit, Performance, Visual, E2E SPA e Windows contract passam em um run terminal no SHA candidato, seguido de novo gate estrito."
       }
     },
     {

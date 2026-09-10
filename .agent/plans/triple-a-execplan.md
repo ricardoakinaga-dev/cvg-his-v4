@@ -1,6 +1,6 @@
 # ExecPlan — CVG HIS Triple-A
 
-<!-- engineering-framework: active_action_id=TRIPLE-A-RELEASE-CONTROL:OBSERVE-CI-48 -->
+<!-- engineering-framework: active_action_id=TRIPLE-A-RELEASE-CONTROL:REPRODUCE-CI49-FAILURES -->
 
 ## Purpose / Big Picture
 
@@ -10,6 +10,7 @@ Elevar o ERP CVG HIS existente a um padrão operacional, clínico, de segurança
 
 - [x] (2026-09-09T23:38:05-03:00) Reconciliar o plano com o candidato `main@9d7c43cec4e5d4068c1f92f2a0ed6ceda3d092a6`, preservar `BLOCKED / NOT PROVEN` e aguardar o CI #47.
 - [x] (2026-09-09T23:56:00-03:00) Reconciliar o baseline e o controle de release com o candidato `main@88857282027370aae003c62426c8b5a2aa9df8c5`; o CI #48 permanece não terminal e o estado segue `BLOCKED / NOT PROVEN`.
+- [x] (2026-09-10T00:35:15-03:00) Reconciliar o baseline com `main@cd7399f91bf3c3eda53e4598443acdbc9ff6d3b1`; o CI #49 terminou com failures em Unit, Performance, Visual, E2E SPA e Windows contract; o gate permanece `BLOCKED / NOT PROVEN`.
 
 - 2026-09-09: prompt recebido e salvo integralmente em `docs/triple-a/MASTER_PROMPT.md`; hash SHA-256 conferido contra o anexo.
 - 2026-09-09: repositório inspecionado em `main@696d7dd5`; nenhum arquivo rastreado modificado antes desta execução, mas há artefatos frontend não rastreados e histórico `.gauntlet` antigo.
@@ -110,7 +111,7 @@ O trabalho segue BUILD → RUN → CRITIQUE → FIX → RETEST → INTEGRATE. Ca
 
 ## Concrete Steps
 
-1. [TRIPLE-A-RELEASE-CONTROL:OBSERVE-CI-48] Observar o CI #48 até o estado terminal no SHA candidato, registrar o resultado e então reexecutar o gate estrito com evidência fresca.
+1. [TRIPLE-A-RELEASE-CONTROL:REPRODUCE-CI49-FAILURES] Reproduzir e corrigir os failures terminais do CI #49, registrar evidência por job e então reexecutar o gate estrito.
 2. Confirmar a resolução da Baseline Fase 0 com evidência fresca e manter `NOT PROVEN` enquanto P0s operacionais estiverem abertos.
 3. Corrigir os bloqueios P0 de main/release e atualizar `GREEN_MAIN_POLICY.md` com critérios executáveis.
 4. Fechar hardening de runtime, digest de imagem, permissões de workflow e verificação de artefatos.

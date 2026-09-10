@@ -12,24 +12,21 @@ historical [`MASTER_PROMPT.md`](./MASTER_PROMPT.md) and frozen
 original provenance. Evidence from the historical candidate is not reused as
 proof for this candidate.
 
-## Current candidate reconciliation — 2026-09-09T23:56:15-03:00
+## Current candidate reconciliation — 2026-09-10T00:35:15-03:00
 
-The code candidate under verification is `88857282027370aae003c62426c8b5a2aa9df8c5`;
-the current evidence/control-plane reconciliation is versioned with this
-candidate. CI run #48 is still executing at
-[`34431046431`](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34431046431);
-therefore `main` is not yet classified as green. Prior runs #46 and #47 and every
-artifact bound to `1decbe1b` or earlier are stale for this candidate. The local
-strict gate must be rerun after CI completion, and the external obligations
-listed below remain open.
+The current candidate is `cd7399f91bf3c3eda53e4598443acdbc9ff6d3b1`, with a
+clean worktree and matching `origin/main`. CI run #49 terminated with failures;
+therefore `main` is not green. Prior runs #46 through #48 and every artifact
+bound to an earlier SHA are historical for this candidate. The local gate is
+fresh but returns `PASS_WITH_CONDITIONS`, not release authorization.
 
 ## Candidate integrity
 
 | Probe | Result | Evidence |
 |---|---|---|
-| Code candidate SHA | PASS | `88857282027370aae003c62426c8b5a2aa9df8c5` |
-| Evidence/control-plane reconciliation | PASS | Files are bound to the code candidate and validated by `.agent/verification.jsonl#VER-TRIPLE-A-BASELINE-20260909-CURRENT-888-FINAL`. |
-| Local strict release gate | BLOCKED / NOT PROVEN | `artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json`: `score=43`, `critical_score=23`, `open_p0=27`, `publication_allowed=false`. |
+| Code candidate SHA | PASS | `cd7399f91bf3c3eda53e4598443acdbc9ff6d3b1` |
+| Evidence/control-plane reconciliation | PASS | Files are bound to the candidate and validated by `.agent/verification.jsonl#VER-TRIPLE-A-BASELINE-20260910-CURRENT-CD7399-FINAL`. |
+| Local strict release gate | PASS_WITH_CONDITIONS / NOT AUTHORIZED | `TRIPLE_A_RELEASE_EVIDENCE.json`: `score=43`, `critical_score=23`, `open_p0=27`, `publication_allowed=false`. |
 | Prompt byte identity | PASS | `cmp` and SHA-256 against the supplied attachment. |
 
 ## Remote GitHub state
@@ -40,7 +37,7 @@ observed without authenticated logs:
 
 | Workflow | Run | Result | Public evidence |
 |---|---:|---|---|
-| CI | `34431046431` / run 48 | `IN_PROGRESS`; terminal conclusion and all required checks are not yet available | [run](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34431046431) |
+| CI | `34431492523` / run 49 | `FAILURE`; Unit, Performance, Visual, E2E SPA and Windows contract failed; Integration passed | [run](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34431492523) |
 
 The earlier pre-fix run identified a concrete defect, which is now addressed by
 the current candidate:
@@ -50,9 +47,9 @@ Invalid workflow file: .github/workflows/ci.yml#L1
 Unrecognized named-value: 'runner' in jobs.<job>.env at lines 515, 841 and 1065.
 ```
 
-The current run must complete before `main` can be classified as green. A
-running job is not evidence of a successful check, and no required check is
-considered satisfied yet.
+The terminal run is not green. Public logs are unavailable without
+authentication; failed job names and check annotations are recorded in the
+current verification record, and must be reproduced before release evaluation.
 
 ## Branch governance probe
 
@@ -87,8 +84,7 @@ this snapshot the following required runtime/external proofs remain open:
 
 ## Ordered next action
 
-1. Observe CI run 48 to completion; do not call it green until jobs/checks have
-   completed successfully on the exact new SHA.
+1. Reproduce and correct the five failing CI #49 jobs before another release decision.
 2. Reconcile branch governance with authenticated evidence or retain
    `NOT PROVEN`.
 3. Execute the disposable PostgreSQL/runtime assurance lanes and bind every

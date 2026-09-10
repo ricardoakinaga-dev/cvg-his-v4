@@ -14,7 +14,7 @@
   "active_execplan": ".agent/plans/triple-a-execplan.md",
   "active_task": "TRIPLE-A-RELEASE-CONTROL",
   "verification_state": "BLOCKED",
-  "repository_state": "main@88857282027370aae003c62426c8b5a2aa9df8c5 code candidate; current evidence/control-plane reconciliation is versioned with this candidate; CI run #48 is non-terminal; strict gate for this SHA is pending",
+  "repository_state": "main@cd7399f91bf3c3eda53e4598443acdbc9ff6d3b1; worktree clean; CI run #49 terminal failure; strict gate is PASS_WITH_CONDITIONS with score 43, critical 23 and 27 open P0",
   "instruction_scope_refs": [
     ".agent/plans/external-assurance-closure-execplan.md",
     "docs/triple-a/MASTER_PROMPT_EXTERNAL_CLOSURE.md",
@@ -26,12 +26,13 @@
     "docs/clinical/CLINICAL_SAFETY_INVARIANTS.md"
   ],
   "last_gate_record": null,
-  "last_event_id": "EVT-TRIPLE-A-RELEASE-CONTROL-OBSERVE-CI48-20260909",
-  "state_revision": 7,
+  "last_event_id": "EVT-TRIPLE-A-RELEASE-CONTROL-OBSERVE-CI49-20260910",
+  "state_revision": 8,
   "next_gate": "VERIFIED",
-  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:OBSERVE-CI-48",
+  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:REPRODUCE-CI49-FAILURES",
   "blocked_by": [
-    "CI #48 (run 34431046431) for code candidate 88857282027370aae003c62426c8b5a2aa9df8c5 is still non-terminal",
+    "CI #49 (run 34431492523) failed on Unit Tests, Performance (k6 SLOs), Visual Regression, E2E Tests (SPA) and Critical Process Runner (Windows contract)",
+    "Strict gate is below the required thresholds: score 43, critical 23 and 27 open P0",
     "Branch governance, target deployment, runtime clinical/operations drills, image attestations and release authority remain unproven"
   ],
   "human_approval_required": [
@@ -41,5 +42,5 @@
     "destructive backup/restore/chaos drills on shared infrastructure",
     "final release authority and Triple-A certification"
   ],
-  "updated_at": "2026-09-09T23:56:15-03:00"
+  "updated_at": "2026-09-10T00:35:15-03:00"
 }

@@ -6,13 +6,13 @@
 **Prompt fonte:** [`docs/triple-a/MASTER_PROMPT.md`](../triple-a/MASTER_PROMPT.md)
 **Quality bar:** [`docs/triple-a/QUALITY_BAR_V1.json`](../triple-a/QUALITY_BAR_V1.json)
 
-## Reconciliação do candidato atual — 2026-09-09T23:56:15-03:00
+## Reconciliação do candidato atual — 2026-09-10T00:35:15-03:00
 
-- **Código candidato:** `main@88857282027370aae003c62426c8b5a2aa9df8c5`; a reconciliação documental/control-plane desta fotografia está versionada com o candidato.
+- **Código candidato:** `main@cd7399f91bf3c3eda53e4598443acdbc9ff6d3b1`; worktree limpo e `origin/main` coincidente.
 - **Estado:** `BLOCKED / NOT PROVEN`. Nenhum claim `TRIPLE-A VERIFIED` é emitido.
-- **CI:** run #48 está em andamento no SHA atual; os runs #46 e #47 não são evidência do candidato atual.
+- **CI:** run #49 terminou com failure em Unit, Performance/k6, Visual Regression, E2E SPA e Windows contract; main não é green.
 - **Evidência corrente:** os checks locais e o PostgreSQL descartável são úteis para os seus escopos, mas não fecham branch governance, HTTP/RLS autenticado, jornada clínica completa, UAT, restore/RPO/RTO, soak, target deploy ou autoridade de release.
-- **Gate:** o último agregado disponível é anterior ao SHA atual (`score=43`, `critical_score=23`, `open_p0=27`) e está stale; deve ser reexecutado somente depois do CI #48.
+- **Gate:** execução local atual retornou `PASS_WITH_CONDITIONS`, `score=43`, `critical_score=23`, `open_p0=27` e `publication_allowed=false`.
 
 As seções abaixo preservam a fotografia histórica da Fase 0. Seus números e SHAs não devem ser interpretados como prova do candidato atual sem uma nova execução registrada no ledger.
 
