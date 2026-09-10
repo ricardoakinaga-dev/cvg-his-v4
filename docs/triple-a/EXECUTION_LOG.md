@@ -79,3 +79,30 @@ Cada nova rodada deve registrar commit, comando ou observação, resultado, limi
   crash recovery, E2E/UAT, DR, performance/soak, deploy/rollback, attestations,
   branch protection autenticada e autoridade de release não foram inferidos
   como PASS.
+
+## 2026-09-10 — Fase 1 / contenção de runtime e validação de performance
+
+- `0559f498` isolou a persistência de auditoria por escopo transacional e em
+  oito lanes fora de transação, além de manter o OpenAPI YAML/spec em cache
+  para remover parsing síncrono por requisição. O perfil curto local (20 VUs,
+  20 s) passou 9/9 SLOs: API p95 `41,51 ms`, p99 `73,24 ms`, disponibilidade
+  `100%`, erros `0%`.
+- `15624c6f` adicionou locks de autorização compartilhado/exclusivo para
+  leitura comum versus mutações de access-control e fez o cliente de banco
+  respeitar `POSTGRES_MAX_CONNECTIONS`, `POSTGRES_POOL_MIN` e timeouts.
+- Validação local: API `581/581`, worker `64/64`, auditoria `30/30`, locks/
+  cliente de banco `37/37`, OpenAPI/locks Node `8/8`, lint, typecheck e builds
+  direcionados: PASS. O perfil operacional escalonado até 60 VUs completou
+  sem deadlock, erros ou indisponibilidade; API p95 `133,20 ms` e p99
+  `229,79 ms` passaram, enquanto `query_latency_ms` (`166 ms`) e
+  `billing_latency_ms` (`289 ms`) ficaram acima dos alvos locais de `150` e
+  `250 ms`, respectivamente. O resultado local não substitui o CI pinned.
+- O run remoto `34435619252` do SHA anterior permaneceu aberto apenas pelo
+  job `E2E Tests (SPA)`; jobs concluídos registraram falha em Visual, Unit,
+  Performance e Windows. Nenhum resultado desse run foi inferido como PASS;
+  push posterior deve aguardar o estado terminal por causa do cancelamento de
+  concorrência do workflow.
+- Limitações mantidas: PostgreSQL/RLS/roles em runtime de release, E2E/UAT,
+  browser visual, performance pinned em CI, backup/restore, deploy/rollback,
+  attestations, branch protection autenticada e autoridade humana continuam
+  `BLOCKED / NOT PROVEN`.
