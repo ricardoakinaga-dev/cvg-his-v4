@@ -1014,6 +1014,7 @@ jobs:
           REDIS_URL: redis://localhost:6380
           RUNTIME_DISTRIBUTED_STATE_ENABLED: '1'
           AUTH_SECRET: e2e-ci-secret-key-do-not-use-in-production-12345678
+          AUTH_RATE_LIMIT_MAX_REQUESTS: '200'
           API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
           PORT: '3001'
           NODE_ENV: test
@@ -1237,6 +1238,7 @@ jobs:
           REDIS_URL: redis://localhost:6380
           RUNTIME_DISTRIBUTED_STATE_ENABLED: '1'
           AUTH_SECRET: e2e-ci-secret-key-do-not-use-in-production-12345678
+          AUTH_RATE_LIMIT_MAX_REQUESTS: '200'
           PORT: '3001'
           NODE_ENV: test
         run: |

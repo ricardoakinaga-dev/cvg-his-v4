@@ -67,6 +67,19 @@ describe('CI repository guardrails', () => {
     expect(visualJob).toContain('path: test-results/');
   });
 
+  it('gives SPA and visual CI servers a bounded test-only auth budget', () => {
+    for (const jobName of ['test-e2e-spa', 'test-visual']) {
+      const jobStart = workflow.indexOf(`  ${jobName}:`);
+      expect(jobStart).toBeGreaterThan(-1);
+      const nextJobOffset = workflow.slice(jobStart + 3).search(/\n {2}[a-z0-9-]+:\n/);
+      const job = workflow.slice(
+        jobStart,
+        nextJobOffset === -1 ? undefined : jobStart + 3 + nextJobOffset
+      );
+      expect(job).toContain("AUTH_RATE_LIMIT_MAX_REQUESTS: '200'");
+    }
+  });
+
   it('runs the complete PostgreSQL usability gate and retains auditable evidence', () => {
     const jobStart = workflow.indexOf('  test-e2e-spa:');
     expect(jobStart).toBeGreaterThan(-1);
