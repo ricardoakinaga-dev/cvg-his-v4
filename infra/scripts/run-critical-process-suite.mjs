@@ -208,7 +208,7 @@ export function resolvePackageManagerInvocation(args) {
     .join(' ');
   return {
     command: process.env.ComSpec || process.env.COMSPEC || 'cmd.exe',
-    args: ['/d', '/s', '/c', commandLine]
+    args: ['/d', '/c', commandLine]
   };
 }
 
