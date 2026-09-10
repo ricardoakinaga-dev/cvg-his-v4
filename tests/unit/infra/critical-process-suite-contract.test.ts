@@ -68,6 +68,8 @@ describe('critical process proof execution contract', () => {
     expect(runtime).toContain('ownedWindowsRootIdentityPromises');
     expect(runtime).toContain('isWindowsProcessTreeOwned');
     expect(runtime).toContain('runWindowsIdentityTermination(identity, deadline)');
+    expect(runtime).toContain('terminateWindowsSupervisorFallback');
+    expect(runtime).toContain("terminateOwnedProcess(child, 'SIGKILL')");
     expect(runtime).toContain('spawnOwnedProcess');
     expect(runtime).toContain('WINDOWS_POWERSHELL_PATH');
     expect(runtime).not.toMatch(/runWindowsHelper\(\s*'powershell\.exe'/);

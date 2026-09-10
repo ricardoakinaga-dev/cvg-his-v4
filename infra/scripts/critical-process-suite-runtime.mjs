@@ -450,6 +450,46 @@ async function terminateWindowsProcessTree(child, deadline, expectedRootIdentity
   return !childIsAlive || child.exitCode !== null || child.signalCode !== null;
 }
 
+async function terminateWindowsSupervisorFallback(child, deadline, expectedRootIdentity) {
+  const childIsAlive = child.exitCode === null && child.signalCode === null;
+  if (
+    !childIsAlive ||
+    !expectedRootIdentity ||
+    expectedRootIdentity.pid !== child.pid ||
+    remainingMilliseconds(deadline) <= 0
+  ) {
+    return false;
+  }
+
+  // The supervisor is the process we created directly. Validate its creation
+  // identity before using the handle-backed kill fallback, so a reused PID
+  // can never widen cleanup to an unrelated process.
+  if (!(await validateWindowsProcessIdentities([expectedRootIdentity], deadline))) return false;
+
+  try {
+    terminateOwnedProcess(child, 'SIGKILL');
+  } catch {
+    return false;
+  }
+
+  while (
+    child.exitCode === null &&
+    child.signalCode === null &&
+    remainingMilliseconds(deadline) > 0
+  ) {
+    await delay(Math.min(GROUP_CLEANUP_POLL_MS, remainingMilliseconds(deadline)));
+  }
+  if (child.exitCode === null && child.signalCode === null) return false;
+  if (remainingMilliseconds(deadline) <= 0) return false;
+
+  const remainingTree = await collectWindowsDescendantPids(child, deadline);
+  return Boolean(
+    remainingTree &&
+    isWindowsProcessTreeOwned(remainingTree, expectedRootIdentity, false) &&
+    remainingTree.descendants.length === 0
+  );
+}
+
 async function cleanupOwnedProcessGroup(child, signal = 'SIGTERM') {
   if (process.platform === 'win32') {
     const deadline = Date.now() + WINDOWS_TREE_CLEANUP_BUDGET_MS;
@@ -465,6 +505,12 @@ async function cleanupOwnedProcessGroup(child, signal = 'SIGTERM') {
       expectedRootIdentity
     );
     if (gracefulTreeTermination) return true;
+    const supervisorFallback = await terminateWindowsSupervisorFallback(
+      child,
+      deadline,
+      expectedRootIdentity
+    );
+    if (supervisorFallback) return true;
     return terminateWindowsProcessTree(child, deadline, expectedRootIdentity);
   }
 
