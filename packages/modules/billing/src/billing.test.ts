@@ -248,6 +248,41 @@ test('BillingService createEstimate explicitly creates repository record', async
   assert.equal(record.status, 'estimated');
 });
 
+test('BillingService replays an unchanged estimate without taking another write lock', async () => {
+  let updates = 0;
+  const service = new BillingService(
+    {
+      getOrThrow(_accountId: string, encounterId: string) {
+        return {
+          id: encounterId,
+          accountId: 'acc_test',
+          patientId: 'patient_1',
+          ownerId: 'owner_1'
+        };
+      }
+    } as never,
+    {
+      repository: createRepository({
+        async updateRecord() {
+          updates += 1;
+        }
+      })
+    }
+  );
+
+  await service.createEstimate('acc_test' as never, {
+    encounterId: 'encounter_1',
+    administrativeNotes: 'Estimativa idempotente'
+  });
+  const replay = await service.createEstimate('acc_test' as never, {
+    encounterId: 'encounter_1',
+    administrativeNotes: 'Estimativa idempotente'
+  });
+
+  assert.equal(replay.status, 'estimated');
+  assert.equal(updates, 1);
+});
+
 test('BillingService addItem recalculates subtotal', async () => {
   const service = createService();
 

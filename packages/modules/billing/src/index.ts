@@ -558,11 +558,22 @@ export class BillingService {
         requestedStatus: payload.status
       });
     }
+    const administrativeNotes = payload.administrativeNotes?.trim() || record.administrativeNotes;
+    const subtotalAmount = sumItems(this.#items.get(record.id) ?? []);
+    if (
+      payload.status === previousStatus &&
+      administrativeNotes === record.administrativeNotes &&
+      subtotalAmount === record.subtotalAmount
+    ) {
+      // Replaying an already-applied estimate is a valid idempotent operation.
+      // Avoid taking a billing-record row lock for every concurrent retry.
+      return record;
+    }
     const updated: BillingRecordSummary = {
       ...record,
       status: payload.status,
-      administrativeNotes: payload.administrativeNotes?.trim() || record.administrativeNotes,
-      subtotalAmount: sumItems(this.#items.get(record.id) ?? []),
+      administrativeNotes,
+      subtotalAmount,
       updatedAt: nowIso()
     };
     if (this.#repository) {

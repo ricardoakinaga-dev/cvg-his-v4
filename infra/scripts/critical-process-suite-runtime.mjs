@@ -382,27 +382,28 @@ function validateWindowsProcessIdentities(identities, deadline) {
 }
 
 function runWindowsIdentityTermination(identity, deadline) {
-  return validateWindowsProcessIdentities([identity], deadline).then((valid) => {
-    if (!valid) return false;
-    return runWindowsHelper(
-      WINDOWS_POWERSHELL_PATH,
-      [
-        '-NoLogo',
-        '-NoProfile',
-        '-NonInteractive',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-File',
-        WINDOWS_IDENTITY_TERMINATOR_PATH
-      ],
-      buildWindowsHelperEnvironment({
-        CVG_CRITICAL_TERMINATE_PID: String(identity.pid),
-        CVG_CRITICAL_TERMINATE_CREATION_TIME: identity.creationTime
-      }),
-      false,
-      deadline
-    ).then(({ status, closed }) => status === 0 && closed === true);
-  });
+  // The terminator performs the handle-backed creation-time validation itself.
+  // Avoid a separate WMI round-trip here: hosted Windows runners can stall
+  // Get-CimInstance under load even though OpenProcess/GetProcessTimes is
+  // available immediately for the owned supervisor.
+  return runWindowsHelper(
+    WINDOWS_POWERSHELL_PATH,
+    [
+      '-NoLogo',
+      '-NoProfile',
+      '-NonInteractive',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-File',
+      WINDOWS_IDENTITY_TERMINATOR_PATH
+    ],
+    buildWindowsHelperEnvironment({
+      CVG_CRITICAL_TERMINATE_PID: String(identity.pid),
+      CVG_CRITICAL_TERMINATE_CREATION_TIME: identity.creationTime
+    }),
+    false,
+    deadline
+  ).then(({ status, closed }) => status === 0 && closed === true);
 }
 
 async function terminateWindowsProcessTree(child, deadline, expectedRootIdentity) {
@@ -453,7 +454,6 @@ async function terminateWindowsProcessTree(child, deadline, expectedRootIdentity
 async function terminateWindowsSupervisorFallback(child, deadline, expectedRootIdentity) {
   const childIsAlive = child.exitCode === null && child.signalCode === null;
   if (
-    !childIsAlive ||
     !expectedRootIdentity ||
     expectedRootIdentity.pid !== child.pid ||
     remainingMilliseconds(deadline) <= 0
@@ -461,13 +461,17 @@ async function terminateWindowsSupervisorFallback(child, deadline, expectedRootI
     return false;
   }
 
+  // A completed supervisor has already executed TerminateJobObject before
+  // returning, so its owned target tree has been reaped by the supervisor's
+  // Job Object. No WMI scan is needed after a successful supervisor close.
+  if (!childIsAlive) return true;
+
   // The supervisor is the process we created directly. Validate its creation
-  // identity before using the handle-backed kill fallback, so a reused PID
-  // can never widen cleanup to an unrelated process.
-  if (!(await validateWindowsProcessIdentities([expectedRootIdentity], deadline))) return false;
+  // identity in the handle-backed terminator, so a reused PID can never widen
+  // cleanup to an unrelated process.
 
   try {
-    terminateOwnedProcess(child, 'SIGKILL');
+    if (!(await runWindowsIdentityTermination(expectedRootIdentity, deadline))) return false;
   } catch {
     return false;
   }
@@ -493,12 +497,19 @@ async function terminateWindowsSupervisorFallback(child, deadline, expectedRootI
 async function cleanupOwnedProcessGroup(child, signal = 'SIGTERM') {
   if (process.platform === 'win32') {
     const deadline = Date.now() + WINDOWS_TREE_CLEANUP_BUDGET_MS;
-    const gracefulDeadline = deadline - WINDOWS_FORCE_RESERVE_MS;
     const expectedRootIdentity = await resolveOwnedWindowsRootIdentity(
       child,
       ownedWindowsIdentityFilePaths.get(child),
       deadline
     );
+    const supervisorTermination = await terminateWindowsSupervisorFallback(
+      child,
+      deadline,
+      expectedRootIdentity
+    );
+    if (supervisorTermination) return true;
+
+    const gracefulDeadline = deadline - WINDOWS_FORCE_RESERVE_MS;
     const gracefulTreeTermination = await terminateWindowsProcessTree(
       child,
       gracefulDeadline,
