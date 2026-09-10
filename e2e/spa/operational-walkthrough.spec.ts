@@ -117,7 +117,7 @@ test.describe('Walkthrough operacional principal', () => {
     expect(encounterId).toBeTruthy();
     cleanup.track({ type: 'encounter', id: encounterId ?? '' });
 
-    await page.getByRole('button', { name: /Fechamento/ }).click();
+    await page.getByRole('tab', { name: /Fechamento/ }).click();
     await expect(page.getByRole('heading', { name: 'Pré-handoff para recepção' })).toBeVisible({
       timeout: 15000
     });
@@ -158,7 +158,7 @@ test.describe('Walkthrough operacional principal', () => {
 
     await page.goto(`${SPA_URL}/encounters/${encounterId}`);
     await page.waitForLoadState('networkidle');
-    await page.getByRole('button', { name: /Fechamento/ }).click();
+    await page.getByRole('tab', { name: /Fechamento/ }).click();
     await expect(page.getByText('Recebido pela recepcao')).toBeVisible({ timeout: 15000 });
 
     await page
