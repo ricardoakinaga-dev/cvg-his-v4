@@ -2,6 +2,7 @@
 
 import {
   constants as fsConstants,
+  existsSync,
   chmodSync,
   closeSync,
   fstatSync,
@@ -30,10 +31,9 @@ const GROUP_CLEANUP_HARD_GRACE_MS = 1_000;
 const WINDOWS_TREE_COMMAND_TIMEOUT_MS = 5_000;
 const WINDOWS_HELPER_CLOSE_GRACE_MS = 100;
 const WINDOWS_FORCE_RESERVE_MS = WINDOWS_TREE_COMMAND_TIMEOUT_MS * 2;
-// Windows PowerShell has a measurable cold-start cost on hosted runners. Keep
-// the child timeout finite while allowing the owned supervisor to bootstrap
-// before the timer starts judging the target process.
-const WINDOWS_SUPERVISOR_STARTUP_GRACE_MS = 1_000;
+// PowerShell must start and compile the native supervisor before the target
+// can run. Bound that phase separately; it must not consume the child budget.
+export const WINDOWS_SUPERVISOR_STARTUP_TIMEOUT_MS = 10_000;
 const WINDOWS_TREE_CLEANUP_BUDGET_MS =
   TERMINATION_GRACE_MS + GROUP_CLEANUP_HARD_GRACE_MS + WINDOWS_FORCE_RESERVE_MS;
 const MAX_WINDOWS_TREE_PIDS = 256;
@@ -314,7 +314,7 @@ async function collectWindowsDescendantPids(child, deadline) {
 }
 
 async function captureWindowsRootIdentity(child, identityFilePath, deadline) {
-  if (process.platform !== 'win32' || !Number.isInteger(child?.pid)) return null;
+  if (!Number.isInteger(child?.pid)) return null;
   if (typeof identityFilePath !== 'string' || remainingMilliseconds(deadline) <= 0) return null;
 
   while (remainingMilliseconds(deadline) > 0) {
@@ -334,6 +334,7 @@ async function captureWindowsRootIdentity(child, identityFilePath, deadline) {
       if (identity) return null;
     } catch (error) {
       if (!['ENOENT', 'ENOTDIR', 'EACCES', 'EPERM'].includes(errorCode(error))) return null;
+      if (child.exitCode != null || child.signalCode != null) return null;
     } finally {
       if (descriptor !== undefined) closeSync(descriptor);
     }
@@ -458,27 +459,22 @@ async function terminateWindowsProcessTree(child, deadline, expectedRootIdentity
 async function terminateWindowsSupervisorFallback(child, deadline, expectedRootIdentity) {
   const childIsAlive = child.exitCode === null && child.signalCode === null;
   if (
-    !expectedRootIdentity ||
-    expectedRootIdentity.pid !== child.pid ||
+    !ownedWindowsSupervisors.has(child) ||
+    (expectedRootIdentity && expectedRootIdentity.pid !== child.pid) ||
     remainingMilliseconds(deadline) <= 0
   ) {
     return false;
   }
 
-  // A completed supervisor has already executed TerminateJobObject before
-  // returning, so its owned target tree has been reaped by the supervisor's
-  // Job Object. No WMI scan is needed after a successful supervisor close.
-  if (!childIsAlive) return true;
-
-  // The supervisor is the process we created directly. Its PID is accepted
-  // only after the supervisor wrote the creation-time identity file and the
-  // PID matches the child returned by spawn(). Killing that owned supervisor
-  // closes its Job Object handle, whose KILL_ON_JOB_CLOSE limit reaps the
-  // target and every descendant without another PowerShell cold start.
-  try {
-    if (!terminateOwnedProcess(child, 'SIGTERM')) return false;
-  } catch {
-    return false;
+  // This exact ChildProcess is registered when we spawn the supervisor. Its
+  // retained native handle also works before the identity file is published.
+  // Killing it closes its Job Object and prevents any delayed target launch.
+  if (childIsAlive) {
+    try {
+      if (!terminateOwnedWindowsSupervisor(child, 'SIGTERM')) return false;
+    } catch {
+      return false;
+    }
   }
 
   while (
@@ -491,6 +487,8 @@ async function terminateWindowsSupervisorFallback(child, deadline, expectedRootI
   if (child.exitCode === null && child.signalCode === null) return false;
   if (remainingMilliseconds(deadline) <= 0) return false;
 
+  // Verify even if an earlier attempt already stopped the supervisor; a
+  // failed tree check must not become success merely because the root exited.
   const remainingTree = await collectWindowsDescendantPids(child, deadline);
   return Boolean(
     remainingTree &&
@@ -502,10 +500,13 @@ async function terminateWindowsSupervisorFallback(child, deadline, expectedRootI
 async function cleanupOwnedProcessGroup(child, signal = 'SIGTERM') {
   if (process.platform === 'win32') {
     const deadline = Date.now() + WINDOWS_TREE_CLEANUP_BUDGET_MS;
+    // Stop the known supervisor first: waiting for identity must not leave a
+    // stalled PowerShell free to launch its target after bootstrap timed out.
+    if (await terminateWindowsSupervisorFallback(child, deadline, null)) return true;
     const expectedRootIdentity = await resolveOwnedWindowsRootIdentity(
       child,
       ownedWindowsIdentityFilePaths.get(child),
-      deadline
+      deadline - WINDOWS_FORCE_RESERVE_MS
     );
     const supervisorTermination = await terminateWindowsSupervisorFallback(
       child,
@@ -559,18 +560,26 @@ async function cleanupOwnedProcessGroup(child, signal = 'SIGTERM') {
 }
 
 const ownedCleanupPromises = new WeakMap();
+const ownedWindowsSupervisors = new WeakSet();
 const ownedWindowsRootIdentityPromises = new WeakMap();
 const ownedWindowsIdentityFilePaths = new WeakMap();
 
-function resolveOwnedWindowsRootIdentity(child, identityFilePath, deadline) {
-  if (process.platform !== 'win32' || !child?.pid || typeof identityFilePath !== 'string') {
+export function resolveOwnedWindowsRootIdentity(child, identityFilePath, deadline) {
+  if (!child?.pid || typeof identityFilePath !== 'string') {
     return Promise.resolve(null);
   }
   const existingPromise = ownedWindowsRootIdentityPromises.get(child);
-  const identityPromise =
-    existingPromise ??
-    captureWindowsRootIdentity(child, identityFilePath, deadline).catch(() => null);
-  if (!existingPromise) ownedWindowsRootIdentityPromises.set(child, identityPromise);
+  const capture = () => {
+    const pending = captureWindowsRootIdentity(child, identityFilePath, deadline).catch(() => null);
+    ownedWindowsRootIdentityPromises.set(child, pending);
+    return pending;
+  };
+  // A bootstrap attempt can expire before PowerShell writes its identity.
+  // Preserve a verified identity, but retry a missing one within the caller's
+  // remaining acquisition budget. Cleanup reserves time for termination.
+  const identityPromise = existingPromise
+    ? existingPromise.then((identity) => identity ?? capture())
+    : capture();
   const availableMs = remainingMilliseconds(deadline);
   if (availableMs <= 0) return Promise.resolve(null);
   let timeoutHandle;
@@ -943,13 +952,22 @@ export function terminateOwnedProcess(child, signal = 'SIGTERM') {
     if (process.platform !== 'win32') {
       process.kill(-child.pid, signal);
     } else {
-      child.kill(signal);
+      return child.kill(signal) === true;
     }
     return true;
   } catch (error) {
     if (errorCode(error) === 'ESRCH') return false;
     throw error;
   }
+}
+
+export function terminateOwnedWindowsSupervisor(child, signal = 'SIGTERM') {
+  if (!ownedWindowsSupervisors.has(child)) return false;
+  if (child.exitCode !== null || child.signalCode !== null) return false;
+  // Node v22.23.2: lib/internal/child_process.js:498 -> src/process_wrap.cc:394
+  // -> deps/uv/src/win/process.c:1364 uses the retained CreateProcess HANDLE,
+  // unlike PID-based uv_kill. Never accept an unregistered lookalike here.
+  return child.kill(signal) === true;
 }
 
 export function preserveFailureArtifact({
@@ -1065,7 +1083,7 @@ function createDiagnosticChannel(writer) {
   return { append, flush };
 }
 
-function spawnOwnedProcess({ command, args, cwd, env, identityFilePath }) {
+function spawnOwnedProcess({ command, args, cwd, env, identityFilePath, readyFilePath }) {
   if (process.platform !== 'win32') {
     return spawn(command, args, {
       cwd,
@@ -1084,9 +1102,10 @@ function spawnOwnedProcess({ command, args, cwd, env, identityFilePath }) {
     CVG_CRITICAL_SUPERVISOR_TARGET_ARGS_JSON: JSON.stringify(args),
     CVG_CRITICAL_SUPERVISOR_TARGET_CWD: cwd,
     CVG_CRITICAL_SUPERVISOR_TARGET_KEYS_JSON: JSON.stringify(Object.keys(env)),
-    CVG_CRITICAL_SUPERVISOR_IDENTITY_FILE: identityFilePath
+    CVG_CRITICAL_SUPERVISOR_IDENTITY_FILE: identityFilePath,
+    CVG_CRITICAL_SUPERVISOR_READY_FILE: readyFilePath
   };
-  return spawn(
+  const supervisor = spawn(
     WINDOWS_POWERSHELL_PATH,
     [
       '-NoLogo',
@@ -1105,6 +1124,8 @@ function spawnOwnedProcess({ command, args, cwd, env, identityFilePath }) {
       stdio: ['ignore', 'pipe', 'pipe']
     }
   );
+  ownedWindowsSupervisors.add(supervisor);
+  return supervisor;
 }
 
 export function runOwnedProcess({
@@ -1141,8 +1162,13 @@ export function runOwnedProcess({
   let child;
   const identityFilePath =
     process.platform === 'win32' ? join(artifactDirectory, 'windows-supervisor.identity') : null;
+  const readyFilePath =
+    process.platform === 'win32' ? join(artifactDirectory, 'windows-supervisor.ready') : null;
   try {
-    child = spawnOwnedProcess({ command, args, cwd, env, identityFilePath });
+    if (readyFilePath && existsSync(readyFilePath)) {
+      throw new Error('Windows supervisor readiness file already exists');
+    }
+    child = spawnOwnedProcess({ command, args, cwd, env, identityFilePath, readyFilePath });
   } catch (error) {
     const outcome = classifyProcessOutcome({
       status: null,
@@ -1179,7 +1205,7 @@ export function runOwnedProcess({
       captureWindowsRootIdentity(
         child,
         identityFilePath,
-        Date.now() + WINDOWS_TREE_COMMAND_TIMEOUT_MS
+        startedAt + WINDOWS_SUPERVISOR_STARTUP_TIMEOUT_MS
       ).catch(() => null)
     );
   }
@@ -1256,9 +1282,23 @@ export function runOwnedProcess({
         });
     };
 
-    const effectiveTimeoutMs =
-      process.platform === 'win32' ? timeoutMs + WINDOWS_SUPERVISOR_STARTUP_GRACE_MS : timeoutMs;
-    timeoutHandle = setTimeout(() => requestCleanup('timeout', 'SIGKILL'), effectiveTimeoutMs);
+    if (readyFilePath) {
+      const startupDeadline = startedAt + WINDOWS_SUPERVISOR_STARTUP_TIMEOUT_MS;
+      const awaitTargetStart = () => {
+        if (settled || finalizing || cleanupPromise) return;
+        if (existsSync(readyFilePath)) {
+          timeoutHandle = setTimeout(() => requestCleanup('timeout', 'SIGKILL'), timeoutMs);
+        } else if (Date.now() >= startupDeadline) {
+          runnerError = new Error('Windows supervisor exceeded its finite startup timeout');
+          requestCleanup('runner_error', 'SIGKILL');
+        } else {
+          timeoutHandle = setTimeout(awaitTargetStart, GROUP_CLEANUP_POLL_MS);
+        }
+      };
+      awaitTargetStart();
+    } else {
+      timeoutHandle = setTimeout(() => requestCleanup('timeout', 'SIGKILL'), timeoutMs);
+    }
 
     try {
       onChildSpawn?.(child);

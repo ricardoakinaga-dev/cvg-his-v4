@@ -6,12 +6,16 @@ import { join, resolve } from 'node:path';
 import test from 'node:test';
 
 import { resolvePackageManagerInvocation } from '../../../infra/scripts/run-critical-process-suite.mjs';
-import { runOwnedProcess } from '../../../infra/scripts/critical-process-suite-runtime.mjs';
+import {
+  runOwnedProcess,
+  terminateOwnedWindowsSupervisor,
+  WINDOWS_SUPERVISOR_STARTUP_TIMEOUT_MS
+} from '../../../infra/scripts/critical-process-suite-runtime.mjs';
 
 const ciArtifactRoot = process.env.CRITICAL_PROCESS_ARTIFACT_DIR
   ? resolve(process.env.CRITICAL_PROCESS_ARTIFACT_DIR)
   : null;
-const windowsSupervisorStartupTimeoutMs = 1_000;
+const windowsSupervisorStartupTimeoutMs = WINDOWS_SUPERVISOR_STARTUP_TIMEOUT_MS + 1_000;
 
 function createContractArtifactDirectory(prefix) {
   if (!ciArtifactRoot) return mkdtempSync(join(tmpdir(), prefix));
@@ -22,6 +26,45 @@ function createContractArtifactDirectory(prefix) {
 function cleanupContractArtifactDirectory(artifactDirectory, passed) {
   if (!ciArtifactRoot || passed) rmSync(artifactDirectory, { recursive: true, force: true });
 }
+
+test(
+  'Windows supervisor abort before identity prevents a delayed target launch',
+  { skip: process.platform !== 'win32' },
+  async () => {
+    const artifactDirectory = createContractArtifactDirectory('cvg-runner-windows-bootstrap-abort-');
+    const markerPath = join(artifactDirectory, 'target-started');
+    const controller = new AbortController();
+    let passed = false;
+    try {
+      const outcome = await runOwnedProcess({
+        command: process.execPath,
+        args: ['-e', "require('node:fs').writeFileSync(process.env.RUNNER_MARKER, 'started')"],
+        env: { RUNNER_MARKER: markerPath },
+        timeoutMs: 1_000,
+        artifactDirectory,
+        abortSignal: controller.signal,
+        onChildSpawn(child) {
+          assert.equal(existsSync(join(artifactDirectory, 'windows-supervisor.identity')), false);
+          const originalKill = child.kill;
+          try {
+            child.kill = () => false;
+            assert.equal(terminateOwnedWindowsSupervisor(child), false);
+          } finally {
+            child.kill = originalKill;
+          }
+          controller.abort();
+        }
+      });
+      assert.equal(outcome.kind, 'interrupted');
+      assert.equal(outcome.cleanupComplete, true);
+      await new Promise((resolve) => setTimeout(resolve, 1_000));
+      assert.equal(existsSync(markerPath), false);
+      passed = true;
+    } finally {
+      cleanupContractArtifactDirectory(artifactDirectory, passed);
+    }
+  }
+);
 
 test(
   'Windows package-manager invocation is executable without shell=true',

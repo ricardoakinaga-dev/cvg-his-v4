@@ -22,6 +22,7 @@ try {
 
 Add-Type -TypeDefinition @'
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -186,7 +187,8 @@ public static class CvgWindowsOwnedProcessSupervisor
         string applicationName,
         string commandLine,
         string currentDirectory,
-        string environment)
+        string environment,
+        string readyFile)
     {
         var job = CreateJobObject(IntPtr.Zero, null);
         if (job == IntPtr.Zero) throw LastWin32Error("CreateJobObject");
@@ -269,6 +271,13 @@ public static class CvgWindowsOwnedProcessSupervisor
             }
             targetCreated = true;
 
+            // The target is still suspended and already belongs to our Job
+            // Object. Publish readiness only after compilation and creation,
+            // so the parent can begin the unchanged target timeout now.
+            using (var readyStream = new FileStream(readyFile, FileMode.CreateNew, FileAccess.Write, FileShare.Read))
+            {
+                readyStream.WriteByte(1);
+            }
             if (ResumeThread(processInformation.hThread) == 0xFFFFFFFF)
                 throw LastWin32Error("ResumeThread");
 
@@ -405,7 +414,8 @@ try {
         $applicationName,
         $commandLine,
         $targetWorkingDirectory,
-        $environmentBlock
+        $environmentBlock,
+        [string]$env:CVG_CRITICAL_SUPERVISOR_READY_FILE
     )
     exit $exitCode
 }

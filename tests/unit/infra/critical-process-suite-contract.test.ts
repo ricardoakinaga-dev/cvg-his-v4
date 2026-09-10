@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -8,9 +9,11 @@ import {
   isWindowsProcessTreeOwned,
   preserveFailureArtifact,
   readBoundedReportText,
+  resolveOwnedWindowsRootIdentity,
   runOwnedProcess,
   sanitizeDiagnostic,
-  terminateOwnedProcess
+  terminateOwnedProcess,
+  terminateOwnedWindowsSupervisor
 } from '../../../infra/scripts/critical-process-suite-runtime.mjs';
 import {
   resolveCriticalTestDatabaseName,
@@ -31,6 +34,48 @@ const setupProcessTest = readFileSync(
 );
 
 describe('critical process proof execution contract', () => {
+  it('does not terminate an unregistered supervisor lookalike', () => {
+    let killed = false;
+    expect(terminateOwnedWindowsSupervisor({
+      pid: 45678,
+      exitCode: null,
+      signalCode: null,
+      kill: () => { killed = true; return true; }
+    })).toBe(false);
+    expect(killed).toBe(false);
+  });
+
+  it('acquires a delayed supervisor identity after the initial acquisition expires', async () => {
+    const directory = mkdtempSync(resolve(tmpdir(), 'cvg-delayed-windows-identity-'));
+    const identityFile = resolve(directory, 'supervisor.identity');
+    const child = { pid: 45678 };
+    let publication;
+    try {
+      expect(await resolveOwnedWindowsRootIdentity(child, identityFile, Date.now() + 30)).toBeNull();
+      publication = setTimeout(() => writeFileSync(identityFile, '45678@134335360222141986'), 40);
+      expect(await resolveOwnedWindowsRootIdentity(child, identityFile, Date.now() + 500)).toEqual({
+        pid: 45678,
+        creationTime: '134335360222141986'
+      });
+    } finally {
+      clearTimeout(publication);
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a different PID published after an expired identity attempt', async () => {
+    const directory = mkdtempSync(resolve(tmpdir(), 'cvg-wrong-windows-identity-'));
+    const identityFile = resolve(directory, 'supervisor.identity');
+    const child = { pid: 45678 };
+    try {
+      expect(await resolveOwnedWindowsRootIdentity(child, identityFile, Date.now() + 30)).toBeNull();
+      writeFileSync(identityFile, '45679@134335360222141986');
+      expect(await resolveOwnedWindowsRootIdentity(child, identityFile, Date.now() + 500)).toBeNull();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it('fails the runner when a process test is skipped or hangs', () => {
     expect(runner).toContain('numPendingTests !== 0');
     expect(runner).toContain('numTodoTests !== 0');
