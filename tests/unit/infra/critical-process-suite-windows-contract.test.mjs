@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
@@ -26,6 +26,44 @@ function createContractArtifactDirectory(prefix) {
 function cleanupContractArtifactDirectory(artifactDirectory, passed) {
   if (!ciArtifactRoot || passed) rmSync(artifactDirectory, { recursive: true, force: true });
 }
+
+test(
+  'Windows supervisor loads system Utility instead of a caller module with the same name',
+  { skip: process.platform !== 'win32' },
+  async () => {
+    const artifactDirectory = createContractArtifactDirectory('cvg-runner-windows-module-');
+    const moduleRoot = join(artifactDirectory, 'modules');
+    const moduleDirectory = join(moduleRoot, 'Microsoft.PowerShell.Utility');
+    const marker = join(artifactDirectory, 'unexpected-module-loaded');
+    mkdirSync(moduleDirectory, { recursive: true });
+    writeFileSync(
+      join(moduleDirectory, 'Microsoft.PowerShell.Utility.psd1'),
+      "@{ RootModule = 'Microsoft.PowerShell.Utility.psm1'; ModuleVersion = '1.0.0'; FunctionsToExport = @('Add-Type') }"
+    );
+    writeFileSync(
+      join(moduleDirectory, 'Microsoft.PowerShell.Utility.psm1'),
+      "[System.IO.File]::WriteAllText($env:RUNNER_MODULE_MARKER, 'loaded')\nfunction Add-Type { throw 'unexpected module' }\nExport-ModuleMember -Function Add-Type"
+    );
+    let passed = false;
+    try {
+      const outcome = await runOwnedProcess({
+        command: process.execPath,
+        args: ['-e', 'process.exit(17)'],
+        env: { PSModulePath: moduleRoot, RUNNER_MODULE_MARKER: marker },
+        timeoutMs: 1_000,
+        artifactDirectory,
+        label: 'windows-trusted-module-contract'
+      });
+      assert.equal(outcome.kind, 'exit');
+      assert.equal(outcome.status, 17);
+      assert.equal(outcome.cleanupComplete, true);
+      assert.equal(existsSync(marker), false);
+      passed = true;
+    } finally {
+      cleanupContractArtifactDirectory(artifactDirectory, passed);
+    }
+  }
+);
 
 test(
   'Windows target receives an explicitly supplied lowercase host-path override',

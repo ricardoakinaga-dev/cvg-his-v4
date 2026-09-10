@@ -1,4 +1,6 @@
 $ErrorActionPreference = 'Stop'
+$PSModuleAutoLoadingPreference = 'None'
+Import-Module -Name "$PSHOME\Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1" -ErrorAction Stop
 
 Add-Type -TypeDefinition @'
 using System;

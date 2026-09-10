@@ -54,8 +54,17 @@ const WINDOWS_POWERSHELL_PATH = (() => {
       : 'C:\\Windows';
   return win32.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
 })();
+const WINDOWS_QUERY_MODULE_BOOTSTRAP = [
+  '$PSModuleAutoLoadingPreference = "None"',
+  '[Console]::Error.WriteLine("cvg-helper:utility-import-started")',
+  'Import-Module -Name "$PSHOME\\Modules\\Microsoft.PowerShell.Utility\\Microsoft.PowerShell.Utility.psd1" -ErrorAction Stop',
+  '[Console]::Error.WriteLine("cvg-helper:cim-import-started")',
+  'Import-Module -Name "$PSHOME\\Modules\\CimCmdlets\\CimCmdlets.psd1" -ErrorAction Stop',
+  '[Console]::Error.WriteLine("cvg-helper:cim-query-started")'
+];
 const WINDOWS_TREE_QUERY = [
   '$ErrorActionPreference = "Stop"',
+  ...WINDOWS_QUERY_MODULE_BOOTSTRAP,
   '$root = [int]$env:CVG_CRITICAL_ROOT_PID',
   '$processes = @(Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, CreationDate)',
   '$rootProcess = $processes | Where-Object { [int]$_.ProcessId -eq $root } | Select-Object -First 1',
@@ -79,6 +88,7 @@ const WINDOWS_TREE_QUERY = [
 ].join(';');
 const WINDOWS_IDENTITY_QUERY = [
   '$ErrorActionPreference = "Stop"',
+  ...WINDOWS_QUERY_MODULE_BOOTSTRAP,
   '$expected = @{}',
   'foreach ($identity in ($env:CVG_CRITICAL_PROCESS_IDENTITIES -split ",")) {',
   '  if ($identity -notmatch "^(\\d+)@(\\d+)$") { exit 4 }',

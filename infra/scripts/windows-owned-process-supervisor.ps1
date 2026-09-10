@@ -22,6 +22,11 @@ try {
 
 [System.IO.File]::WriteAllText(($env:CVG_CRITICAL_SUPERVISOR_READY_FILE + '.phase'), 'identity-published')
 
+$PSModuleAutoLoadingPreference = 'None'
+[System.IO.File]::WriteAllText(($env:CVG_CRITICAL_SUPERVISOR_READY_FILE + '.phase'), 'utility-import-started')
+Import-Module -Name "$PSHOME\Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1" -ErrorAction Stop
+[System.IO.File]::WriteAllText(($env:CVG_CRITICAL_SUPERVISOR_READY_FILE + '.phase'), 'compile-started')
+
 Add-Type -TypeDefinition @'
 using System;
 using System.IO;
@@ -313,6 +318,7 @@ public static class CvgWindowsOwnedProcessSupervisor
 }
 '@
 [System.IO.File]::WriteAllText(($env:CVG_CRITICAL_SUPERVISOR_READY_FILE + '.phase'), 'compiled')
+Import-Module -Name "$PSHOME\Modules\Microsoft.PowerShell.Management\Microsoft.PowerShell.Management.psd1" -ErrorAction Stop
 
 function ConvertTo-NativeCommandLineArgument {
     param([AllowEmptyString()][string]$Value)
