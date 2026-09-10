@@ -610,8 +610,8 @@ async function load() {
   try {
     const [ordersResult, patientsResult, ownersResult] = await Promise.allSettled([
       laboratoryService.listOrders({ date: appliedFilters.date || undefined }),
-      patientService.list({ pageSize: 500 }),
-      ownerService.list({ pageSize: 500 })
+      patientService.list({ pageSize: 200 }),
+      ownerService.list({ pageSize: 200 })
     ]);
 
     if (ordersResult.status === 'rejected') {

@@ -44,14 +44,6 @@ export function createTenantCommandRunner(options: {
   ) => Promise<T>;
 }): TenantCommandRunner {
   return async <T>(input: TenantCommandInput<T>): Promise<T> => {
-    // Route-specific wrappers can be used by direct route tests and by the
-    // HTTP dispatcher. Once the dispatcher owns the transaction, do not try
-    // to acquire a second idempotency record on the same connection.
-    if (getDatabaseTransactionScope()) {
-      await input.beforeIdempotency?.();
-      return input.command();
-    }
-
     const idempotencyKey = input.idempotencyKey ?? readIdempotencyKey(input.request);
     if (idempotencyKey && idempotencyKey.length > 255) {
       throw new ValidationError('Idempotency-Key header must contain at most 255 characters');
@@ -59,6 +51,15 @@ export function createTenantCommandRunner(options: {
     if (isProductionLikeEnvironment(options.environment) && !idempotencyKey) {
       throw new ValidationError('Idempotency-Key header is required for mutating commands');
     }
+
+    // Route-specific wrappers can be used by direct route tests and by the
+    // HTTP dispatcher. Once the dispatcher owns the transaction, do not try
+    // to acquire a second idempotency record on the same connection.
+    if (getDatabaseTransactionScope()) {
+      if (idempotencyKey) await input.beforeIdempotency?.();
+      return input.command();
+    }
+
     if (!options.unitOfWork || !idempotencyKey) {
       let result: T;
       try {
@@ -66,7 +67,7 @@ export function createTenantCommandRunner(options: {
           result = await options.transaction(
             input.accountId,
             async () => {
-              await input.beforeIdempotency?.();
+              if (idempotencyKey) await input.beforeIdempotency?.();
               return input.command();
             },
             {
@@ -75,7 +76,7 @@ export function createTenantCommandRunner(options: {
             }
           );
         } else {
-          await input.beforeIdempotency?.();
+          if (idempotencyKey) await input.beforeIdempotency?.();
           result = await input.command();
         }
       } catch (error) {

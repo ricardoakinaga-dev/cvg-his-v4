@@ -115,6 +115,58 @@ test('tenant command runner forwards actor and correlation metadata to transacti
   });
 });
 
+test('tenant command runner keeps route authorization in the command for non-idempotent development requests', async () => {
+  const phases: string[] = [];
+  const runner = createTenantCommandRunner({
+    environment: 'test',
+    transaction: async (_accountId, command) => command()
+  });
+
+  await runner({
+    request: request(),
+    accountId: '00000000-0000-0000-0000-000000000001',
+    actorUserId: '00000000-0000-0000-0000-000000000002',
+    correlationId: 'corr-no-idempotency-authorization',
+    operation: 'billing.estimate',
+    payload: {},
+    beforeIdempotency: async () => {
+      phases.push('before-idempotency');
+    },
+    command: async () => {
+      phases.push('command');
+      return 'authorized-by-route';
+    }
+  });
+
+  assert.deepEqual(phases, ['command']);
+});
+
+test('tenant command runner still authorizes keyed fallback commands before execution', async () => {
+  const phases: string[] = [];
+  const runner = createTenantCommandRunner({
+    environment: 'test',
+    transaction: async (_accountId, command) => command()
+  });
+
+  await runner({
+    request: request({ 'idempotency-key': 'request-keyed-fallback' }),
+    accountId: '00000000-0000-0000-0000-000000000001',
+    actorUserId: '00000000-0000-0000-0000-000000000002',
+    correlationId: 'corr-keyed-fallback-authorization',
+    operation: 'billing.estimate',
+    payload: {},
+    beforeIdempotency: async () => {
+      phases.push('before-idempotency');
+    },
+    command: async () => {
+      phases.push('command');
+      return 'committed';
+    }
+  });
+
+  assert.deepEqual(phases, ['before-idempotency', 'command']);
+});
+
 test('tenant command runner rejects oversized idempotency keys before database execution', async () => {
   let executed = false;
   const runner = createTenantCommandRunner({

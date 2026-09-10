@@ -515,7 +515,7 @@ async function load() {
         species: filters.species || undefined,
         status: filters.status
       }),
-      ownerService.list({ pageSize: 500, status: 'all' })
+      ownerService.list({ pageSize: 200, status: 'all' })
     ]);
 
     patients.value = patientItems;

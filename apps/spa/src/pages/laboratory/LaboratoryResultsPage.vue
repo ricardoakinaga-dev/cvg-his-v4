@@ -464,8 +464,8 @@ async function load() {
         body: appliedFilters.body || undefined,
         closed: appliedFilters.closed
       }),
-      patientService.list({ pageSize: 500 }),
-      ownerService.list({ pageSize: 500 }),
+      patientService.list({ pageSize: 200 }),
+      ownerService.list({ pageSize: 200 }),
       mlService.getLabAnomalies({ examType: undefined }).catch(() => null)
     ]);
 

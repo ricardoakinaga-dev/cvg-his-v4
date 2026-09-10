@@ -283,7 +283,7 @@ async function load() {
     const [result, referenceResult, patientResult, ownerResult] = await Promise.allSettled([
       laboratoryService[method]({ code: query.code || undefined, finalizedAt: query.finalizedAt || undefined,
         enteredAt: query.enteredAt || undefined, body: query.body || undefined, closed: query.closed }),
-      laboratoryService.listReferenceValues(examType), patientService.list({ pageSize: 500 }), ownerService.list({ pageSize: 500 })
+      laboratoryService.listReferenceValues(examType), patientService.list({ pageSize: 200 }), ownerService.list({ pageSize: 200 })
     ]);
     if (generation !== requestId) return;
     if (result.status === 'rejected') throw result.reason;
