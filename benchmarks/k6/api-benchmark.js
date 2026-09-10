@@ -45,7 +45,7 @@ const FALLBACK_ACCOUNT_ID = __ENV.ACCOUNT_ID ?? 'acc_cvg_demo';
 const TEST_USER = {
   username: __ENV.TEST_USERNAME ?? 'admin@cvg-his.local',
   password: __ENV.TEST_PASSWORD ?? 'seed_admin',
-  role: 'admin',
+  role: 'admin'
 };
 
 // SLO thresholds from slos.json
@@ -53,14 +53,15 @@ export const options = {
   stages: LOAD_PROFILE.stages,
   summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(50)', 'p(90)', 'p(95)', 'p(99)'],
   thresholds: {
-    'api_latency_ms':    ['p(95)<200', 'p(99)<500'],
-    'api_errors':       ['rate<0.001'],          // SLO: 0.1% error rate
-    'auth_latency_ms':  ['p(95)<300'],
-    'query_latency_ms': ['p(95)<150'],
-    'write_latency_ms': ['p(95)<300'],
-    'billing_latency_ms': ['p(95)<250'],
-    'inventory_latency_ms': ['p(95)<200'],
-  },
+    api_latency_ms: ['p(95)<200', 'p(99)<500'],
+    api_errors: ['rate<0.001'], // SLO: 0.1% error rate
+    http_req_failed: ['rate<0.005'], // SLO: availability > 99.5%
+    auth_latency_ms: ['p(95)<300'],
+    query_latency_ms: ['p(95)<150'],
+    write_latency_ms: ['p(95)<300'],
+    billing_latency_ms: ['p(95)<250'],
+    inventory_latency_ms: ['p(95)<200']
+  }
 };
 
 let authToken = '';
@@ -68,12 +69,16 @@ let testUser = TEST_USER;
 
 export function setup() {
   testUser = TEST_USER;
-  const loginRes = http.post(`${BASE_URL}/auth/login`, JSON.stringify({
-    username: testUser.username,
-    password: testUser.password
-  }), {
-    headers: { 'Content-Type': 'application/json' },
-  });
+  const loginRes = http.post(
+    `${BASE_URL}/auth/login`,
+    JSON.stringify({
+      username: testUser.username,
+      password: testUser.password
+    }),
+    {
+      headers: { 'Content-Type': 'application/json' }
+    }
+  );
 
   if (loginRes.status === 200) {
     const body = JSON.parse(loginRes.body);
@@ -92,9 +97,9 @@ export default function (data) {
   const accountId = data.accountId ?? FALLBACK_ACCOUNT_ID;
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
+    Authorization: `Bearer ${token}`,
     'x-account-id': accountId,
-    'X-Correlation-Id': `k6-${__VU}-${__ITER}`,
+    'X-Correlation-Id': `k6-${__VU}-${__ITER}`
   };
 
   // Health check
@@ -102,7 +107,7 @@ export default function (data) {
     const res = http.get(`${BASE_URL}/health`);
     check(res, {
       'health returns 200': (r) => r.status === 200,
-      'health latency < 50ms': (r) => r.timings.duration < 50,
+      'health latency < 50ms': (r) => r.timings.duration < 50
     });
     apiLatency.add(res.timings.duration);
     errorRate.add(res.status !== 200);
@@ -111,17 +116,21 @@ export default function (data) {
   // Authentication flows
   group('Auth - Login', () => {
     const start = Date.now();
-    const res = http.post(`${BASE_URL}/auth/login`, JSON.stringify({
-      username: testUser.username,
-      password: testUser.password
-    }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    const res = http.post(
+      `${BASE_URL}/auth/login`,
+      JSON.stringify({
+        username: testUser.username,
+        password: testUser.password
+      }),
+      {
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
 
     authLatency.add(Date.now() - start);
     check(res, {
       'login returns 200 or 401': (r) => r.status === 200 || r.status === 401,
-      'login has reasonable latency': (r) => r.timings.duration < 500,
+      'login has reasonable latency': (r) => r.timings.duration < 500
     });
     errorRate.add(res.status === 500 || res.status === 502);
   });
@@ -138,8 +147,13 @@ export default function (data) {
     check(res, {
       'owners returns 200': (r) => r.status === 200,
       'owners has valid JSON': (r) => {
-        try { JSON.parse(r.body); return true; } catch { return false; }
-      },
+        try {
+          JSON.parse(r.body);
+          return true;
+        } catch {
+          return false;
+        }
+      }
     });
   });
 
@@ -153,7 +167,7 @@ export default function (data) {
     errorRate.add(res.status !== 200);
 
     check(res, {
-      'patients returns 200': (r) => r.status === 200,
+      'patients returns 200': (r) => r.status === 200
     });
   });
 
@@ -181,7 +195,7 @@ export default function (data) {
     errorRate.add(res.status !== 200 && res.status !== 404);
 
     check(res, {
-      'patient detail returns 200 or 404': (r) => r.status === 200 || r.status === 404,
+      'patient detail returns 200 or 404': (r) => r.status === 200 || r.status === 404
     });
   });
 
@@ -195,7 +209,7 @@ export default function (data) {
     errorRate.add(res.status !== 200);
 
     check(res, {
-      'staff returns 200': (r) => r.status === 200,
+      'staff returns 200': (r) => r.status === 200
     });
   });
 
@@ -209,7 +223,7 @@ export default function (data) {
     errorRate.add(res.status !== 200);
 
     check(res, {
-      'encounters returns 200': (r) => r.status === 200,
+      'encounters returns 200': (r) => r.status === 200
     });
   });
 
@@ -224,7 +238,7 @@ export default function (data) {
     errorRate.add(res.status !== 200);
 
     check(res, {
-      'appointments returns 200': (r) => r.status === 200,
+      'appointments returns 200': (r) => r.status === 200
     });
   });
 
@@ -243,17 +257,22 @@ export default function (data) {
       } catch {}
     }
 
-    const res = http.post(`${BASE_URL}/billing/estimate`, JSON.stringify({
-      encounterId,
-      administrativeNotes: 'k6 benchmark billing estimate'
-    }), { headers });
+    const res = http.post(
+      `${BASE_URL}/billing/estimate`,
+      JSON.stringify({
+        encounterId,
+        administrativeNotes: 'k6 benchmark billing estimate'
+      }),
+      { headers }
+    );
 
     billingLatency.add(Date.now() - start);
     apiLatency.add(res.timings.duration);
     errorRate.add(res.status !== 200 && res.status !== 409 && res.status !== 404);
 
     check(res, {
-      'billing estimate returns 200/409/404': (r) => r.status === 200 || r.status === 409 || r.status === 404,
+      'billing estimate returns 200/409/404': (r) =>
+        r.status === 200 || r.status === 409 || r.status === 404
     });
   });
 
@@ -268,21 +287,25 @@ export default function (data) {
     errorRate.add(res.status !== 200);
 
     check(res, {
-      'inventory returns 200': (r) => r.status === 200,
+      'inventory returns 200': (r) => r.status === 200
     });
   });
 
   // Inventory item creation (write scenario)
   group('Inventory - Create Item', () => {
     const start = Date.now();
-    const res = http.post(`${BASE_URL}/inventory`, JSON.stringify({
-      sku: `k6-sku-${Date.now()}-${__VU}`,
-      name: `k6 benchmark item ${Date.now()}`,
-      unit: 'unidade',
-      onHandQuantity: 100,
-      reorderLevel: 10,
-      unitCostAmount: 5.50
-    }), { headers });
+    const res = http.post(
+      `${BASE_URL}/inventory`,
+      JSON.stringify({
+        sku: `k6-sku-${Date.now()}-${__VU}`,
+        name: `k6 benchmark item ${Date.now()}`,
+        unit: 'unidade',
+        onHandQuantity: 100,
+        reorderLevel: 10,
+        unitCostAmount: 5.5
+      }),
+      { headers }
+    );
 
     writeLatency.add(Date.now() - start);
     inventoryLatency.add(res.timings.duration);
@@ -290,7 +313,8 @@ export default function (data) {
     errorRate.add(res.status !== 201 && res.status !== 400 && res.status !== 409);
 
     check(res, {
-      'inventory create returns 201/400/409': (r) => r.status === 201 || r.status === 400 || r.status === 409,
+      'inventory create returns 201/400/409': (r) =>
+        r.status === 201 || r.status === 400 || r.status === 409
     });
   });
 
@@ -304,7 +328,7 @@ export default function (data) {
     errorRate.add(res.status !== 200 && res.status !== 404);
 
     check(res, {
-      'medical records returns 200 or 404': (r) => r.status === 200 || r.status === 404,
+      'medical records returns 200 or 404': (r) => r.status === 200 || r.status === 404
     });
   });
 
@@ -322,8 +346,10 @@ export default function (data) {
         try {
           const body = JSON.parse(r.body);
           return body.paths && Object.keys(body.paths).length > 0;
-        } catch { return false; }
-      },
+        } catch {
+          return false;
+        }
+      }
     });
   });
 
@@ -335,17 +361,25 @@ export default function (data) {
 export function handleSummary(data) {
   const sloResults = evaluateSLOs(data);
   return {
-    'stdout': textSummary(data, { indent: ' ', enableColors: true }) + '\n\n### SLO Results\n' + sloSummaryText(sloResults) + '\n',
-    'benchmarks/k6/results/performance-report.json': JSON.stringify({
-      timestamp: new Date().toISOString(),
-      version: '1.0',
-      baseUrl: BASE_URL,
-      profile: LOAD_PROFILE,
-      stages: options.stages,
-      metrics: extractMetrics(data),
-      slo: sloResults,
-      thresholds: options.thresholds,
-    }, null, 2),
+    stdout:
+      textSummary(data, { indent: ' ', enableColors: true }) +
+      '\n\n### SLO Results\n' +
+      sloSummaryText(sloResults) +
+      '\n',
+    'benchmarks/k6/results/performance-report.json': JSON.stringify(
+      {
+        timestamp: new Date().toISOString(),
+        version: '1.0',
+        baseUrl: BASE_URL,
+        profile: LOAD_PROFILE,
+        stages: options.stages,
+        metrics: extractMetrics(data),
+        slo: sloResults,
+        thresholds: options.thresholds
+      },
+      null,
+      2
+    )
   };
 }
 
@@ -355,19 +389,20 @@ function extractMetrics(data) {
     if (value.type === 'trend') {
       const p50 = value.values['p(50)'] ?? value.values.med ?? value.values.avg;
       const p95 = value.values['p(95)'] ?? value.values['p(90)'] ?? value.values.avg;
-      const p99 = value.values['p(99)'] ?? value.values['p(95)'] ?? value.values['p(90)'] ?? value.values.max;
+      const p99 =
+        value.values['p(99)'] ?? value.values['p(95)'] ?? value.values['p(90)'] ?? value.values.max;
       metrics[key] = {
         avg: parseFloat(value.values.avg.toFixed(2)),
         p50: parseFloat(p50.toFixed(2)),
         p95: parseFloat(p95.toFixed(2)),
         p99: parseFloat(p99.toFixed(2)),
-        max: parseFloat(value.values.max.toFixed(2)),
+        max: parseFloat(value.values.max.toFixed(2))
       };
     } else if (value.type === 'rate') {
       metrics[key] = {
         rate: parseFloat(value.values.rate.toFixed(4)),
         passes: value.values.passes,
-        fails: value.values.fails,
+        fails: value.values.fails
       };
     }
   }
@@ -376,28 +411,40 @@ function extractMetrics(data) {
 
 function evaluateSLOs(data) {
   const thresholds = {
-    'api_latency_ms': {
+    api_latency_ms: {
       p95: { target: 200, actual: data.metrics['api_latency_ms']?.values['p(95)'] ?? Infinity },
-      p99: { target: 500, actual: data.metrics['api_latency_ms']?.values['p(99)'] ?? Infinity },
+      p99: { target: 500, actual: data.metrics['api_latency_ms']?.values['p(99)'] ?? Infinity }
     },
-    'auth_latency_ms': {
-      p95: { target: 300, actual: data.metrics['auth_latency_ms']?.values['p(95)'] ?? Infinity },
+    auth_latency_ms: {
+      p95: { target: 300, actual: data.metrics['auth_latency_ms']?.values['p(95)'] ?? Infinity }
     },
-    'query_latency_ms': {
-      p95: { target: 150, actual: data.metrics['query_latency_ms']?.values['p(95)'] ?? Infinity },
+    query_latency_ms: {
+      p95: { target: 150, actual: data.metrics['query_latency_ms']?.values['p(95)'] ?? Infinity }
     },
-    'write_latency_ms': {
-      p95: { target: 300, actual: data.metrics['write_latency_ms']?.values['p(95)'] ?? Infinity },
+    write_latency_ms: {
+      p95: { target: 300, actual: data.metrics['write_latency_ms']?.values['p(95)'] ?? Infinity }
     },
-    'billing_latency_ms': {
-      p95: { target: 250, actual: data.metrics['billing_latency_ms']?.values['p(95)'] ?? Infinity },
+    billing_latency_ms: {
+      p95: { target: 250, actual: data.metrics['billing_latency_ms']?.values['p(95)'] ?? Infinity }
     },
-    'inventory_latency_ms': {
-      p95: { target: 200, actual: data.metrics['inventory_latency_ms']?.values['p(95)'] ?? Infinity },
+    inventory_latency_ms: {
+      p95: {
+        target: 200,
+        actual: data.metrics['inventory_latency_ms']?.values['p(95)'] ?? Infinity
+      }
     },
-    'api_errors': {
-      rate: { target: 0.001, actual: data.metrics['api_errors']?.values.rate ?? 1 },
+    api_errors: {
+      rate: { target: 0.001, actual: data.metrics['api_errors']?.values.rate ?? 1 }
     },
+    api_availability: {
+      percent: {
+        target: 99.5,
+        actual:
+          data.metrics['http_req_failed']?.values?.rate === undefined
+            ? 0
+            : (1 - data.metrics['http_req_failed'].values.rate) * 100
+      }
+    }
   };
 
   const results = {};
@@ -413,7 +460,7 @@ function evaluateSLOs(data) {
       results[key][metric] = {
         target: config.target,
         actual: parseFloat(config.actual.toFixed(2)),
-        passed,
+        passed
       };
     }
   }
@@ -422,7 +469,7 @@ function evaluateSLOs(data) {
     total: totalEvaluated,
     passed: totalPassed,
     failed: totalEvaluated - totalPassed,
-    allPassed: totalPassed === totalEvaluated,
+    allPassed: totalPassed === totalEvaluated
   };
 
   return results;
@@ -431,7 +478,7 @@ function evaluateSLOs(data) {
 function textSummary(data, opts) {
   const indent = opts.indent ?? '';
   let out = `${indent}k6 Load Test Results — CVG-HIS-V2\n`;
-  out += `${indent}${ '═'.repeat(50) }\n\n`;
+  out += `${indent}${'═'.repeat(50)}\n\n`;
 
   const latency = data.metrics['api_latency_ms']?.values;
   const errors = data.metrics['api_errors']?.values;
@@ -454,6 +501,12 @@ function textSummary(data, opts) {
     out += `${indent}  passes: ${errors.passes} | fails: ${errors.fails}\n\n`;
   }
 
+  const requestFailures = data.metrics['http_req_failed']?.values;
+  if (requestFailures) {
+    const availability = (1 - requestFailures.rate) * 100;
+    out += `${indent}Availability: ${availability.toFixed(3)}%  ${availability > 99.5 ? '✅' : '❌'}\n\n`;
+  }
+
   const auth = data.metrics['auth_latency_ms']?.values;
   if (auth) {
     const authP95 = auth['p(95)'] ?? auth['p(90)'] ?? auth.avg;
@@ -473,9 +526,7 @@ function sloSummaryText(sloResults) {
   let out = '';
   const summary = sloResults._summary;
   out += `SLO Summary: ${summary.passed}/${summary.total} passed\n`;
-  out += summary.allPassed
-    ? '✅ All SLOs met\n'
-    : `❌ ${summary.failed} SLO(s) missed:\n`;
+  out += summary.allPassed ? '✅ All SLOs met\n' : `❌ ${summary.failed} SLO(s) missed:\n`;
 
   for (const [key, metrics] of Object.entries(sloResults)) {
     if (key === '_summary') continue;

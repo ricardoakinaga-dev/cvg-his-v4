@@ -94,7 +94,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"cvg-api\"}[5m])) * 1000)",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"cvg-api\"}[5m])) by (le)) * 1000",
           "legendFormat": "P95 Latency",
           "refId": "A"
         }
@@ -160,7 +160,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(http_requests_total{job=\"cvg-api\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"cvg-api\"}[5m])) * 100",
+          "expr": "sum(rate(http_requests_total{job=\"cvg-api\",status_code=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"cvg-api\"}[5m])) * 100",
           "legendFormat": "Error Rate",
           "refId": "A"
         }
@@ -226,7 +226,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(1 - sum(rate(http_requests_total{job=\"cvg-api\",status=~\"5..\"}[1h])) / sum(rate(http_requests_total{job=\"cvg-api\"}[1h]))) * 100",
+          "expr": "(1 - sum(rate(http_requests_total{job=\"cvg-api\",status_code=~\"5..\"}[1h])) / sum(rate(http_requests_total{job=\"cvg-api\"}[1h]))) * 100",
           "legendFormat": "Availability",
           "refId": "A"
         }
@@ -420,8 +420,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(http_requests_total{job=\"cvg-api\"}[5m])) by (status)",
-          "legendFormat": "{{status}}",
+          "expr": "sum(rate(http_requests_total{job=\"cvg-api\"}[5m])) by (status_code)",
+          "legendFormat": "{{status_code}}",
           "refId": "A"
         }
       ],
@@ -610,7 +610,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "(1 - sum(rate(http_requests_total{job=\"cvg-api\",status=~\"5..\"}[30d])) / sum(rate(http_requests_total{job=\"cvg-api\"}[30d]))) * 100",
+          "expr": "(1 - sum(rate(http_requests_total{job=\"cvg-api\",status_code=~\"5..\"}[30d])) / sum(rate(http_requests_total{job=\"cvg-api\"}[30d]))) * 100",
           "legendFormat": "Error Budget %",
           "refId": "A"
         }
@@ -655,7 +655,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum(rate(http_requests_total{job=\"cvg-api\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"cvg-api\"}[5m])) / 0.001",
+          "expr": "sum(rate(http_requests_total{job=\"cvg-api\",status_code=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"cvg-api\"}[5m])) / 0.001",
           "legendFormat": "Burn Rate",
           "refId": "A"
         }

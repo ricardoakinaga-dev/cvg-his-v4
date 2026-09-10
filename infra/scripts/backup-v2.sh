@@ -137,7 +137,8 @@ backup_storage() {
 
   docker_compose exec -T "$BACKUP_STORAGE_SERVICE" sh -lc \
     'storage_path="${FILE_STORAGE_PATH:-/srv/cvg-his-v2/storage}"; find "$storage_path" -maxdepth 5 -type f | sed "s#^$storage_path/##" | sort' \
-    > "$listing_file" || true
+    > "$listing_file"
+  [[ -f "$listing_file" ]] || die "storage listing was not created: $listing_file"
 }
 
 write_manifest() {

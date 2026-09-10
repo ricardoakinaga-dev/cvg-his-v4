@@ -42,6 +42,9 @@ describe('performance and SLO gate', () => {
     expect(benchmark).toContain(
       'throw new Error(`Benchmark login failed closed with HTTP ${loginRes.status}`)'
     );
+    expect(benchmark).toContain("http_req_failed: ['rate<0.005']");
+    expect(benchmark).toContain('api_availability:');
+    expect(benchmark).toContain("data.metrics['http_req_failed']");
     expect(catalog.loadProfiles.map((profile: { id: string }) => profile.id)).toEqual([
       'operational-minimum-v1',
       'endurance-2h-v1'

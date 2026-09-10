@@ -5,7 +5,8 @@
  * Based on the SLO definitions in benchmarks/k6/slos.json.
  *
  * Error budget formula:
- *   budget_remaining = target - (observed_error_rate / target) * 100
+ *   availability_budget_remaining =
+ *     ((observed_availability - target) / (100 - target)) * 100
  *   burn_rate = actual_error_rate / target_error_rate
  *
  * A burn rate > 1 means the error budget is being consumed faster than expected.
@@ -14,9 +15,9 @@
 export interface SLOConfig {
   id: string;
   name: string;
-  target: number;      // e.g. 99.5 for 99.5%
-  unit: string;        // 'percent' | 'ms'
-  window: string;      // e.g. '1h', '1d', '30d'
+  target: number; // e.g. 99.5 for 99.5%
+  unit: string; // 'percent' | 'ms'
+  window: string; // e.g. '1h', '1d', '30d'
   alertThreshold: number;
   criticalThreshold: number;
   category: 'performance' | 'availability' | 'reliability';
@@ -30,8 +31,8 @@ export interface SLOStatus {
   target: number;
   unit: string;
   status: 'healthy' | 'alert' | 'critical';
-  errorBudgetPercent: number;  // 0-100, 100 = full budget remaining
-  burnRate: number;           // >1 = burning budget
+  errorBudgetPercent: number; // 0-100, 100 = full budget remaining
+  burnRate: number; // >1 = burning budget
   lastUpdated: Date;
 }
 
@@ -86,7 +87,7 @@ export function getSLOConfigs(): SLOConfig[] {
 }
 
 export function getSLOConfig(id: string): SLOConfig | undefined {
-  return SLO_CONFIGS.find(s => s.id === id);
+  return SLO_CONFIGS.find((s) => s.id === id);
 }
 
 /**
@@ -101,32 +102,19 @@ export function getSLOConfig(id: string): SLOConfig | undefined {
 export function calculateErrorBudget(config: SLOConfig): number {
   if (config.category !== 'availability') return 100;
 
-  const windowMinutes = windowToMinutes(config.window);
   const allowedErrorsPercent = 100 - config.target;
-  const totalMinutesIn30d = (BUDGET_WINDOW_MS / 60000);
-  const allowedDowntimeMinutes = (allowedErrorsPercent / 100) * totalMinutesIn30d * (windowMinutes / totalMinutesIn30d);
-
-  // For a 30-day budget window
-  const budgetMinutes = (allowedErrorsPercent / 100) * (BUDGET_WINDOW_MS / 60000);
-  return budgetMinutes;
-}
-
-function windowToMinutes(window: string): number {
-  const match = /^(\d+)([mhd])$/.exec(window);
-  if (!match) return 60;
-  const value = parseInt(match[1], 10);
-  switch (match[2]) {
-    case 'm': return value;
-    case 'h': return value * 60;
-    case 'd': return value * 1440;
-    default: return 60;
-  }
+  // The configured objective window describes measurement cadence; the
+  // declared error-budget accounting window is fixed at 30 days.
+  return (allowedErrorsPercent / 100) * (BUDGET_WINDOW_MS / 60000);
 }
 
 /**
  * Determine SLO status from current measurement against thresholds.
  */
-export function getSLOStatus(config: SLOConfig, currentValue: number): 'healthy' | 'alert' | 'critical' {
+export function getSLOStatus(
+  config: SLOConfig,
+  currentValue: number
+): 'healthy' | 'alert' | 'critical' {
   if (config.category === 'availability') {
     // For availability, lower is worse
     if (currentValue < config.criticalThreshold) return 'critical';
@@ -144,12 +132,14 @@ export function getSLOStatus(config: SLOConfig, currentValue: number): 'healthy'
  * Calculate error budget percentage remaining.
  * Returns 100 when full budget available, 0 when exhausted.
  *
- * For availability: budget = (observed_availability - (1 - target)) / target * 100
+ * For availability: budget = (observed_availability - target) / (100 - target) * 100
  * For error rate: budget = (target - observed_error_rate) / target * 100
  */
 export function calculateBudgetRemaining(config: SLOConfig, currentValue: number): number {
   if (config.category === 'availability') {
-    const budget = ((currentValue - (100 - config.target)) / config.target) * 100;
+    const allowedErrorRate = 100 - config.target;
+    if (allowedErrorRate <= 0) return currentValue >= config.target ? 100 : 0;
+    const budget = ((currentValue - config.target) / allowedErrorRate) * 100;
     return Math.max(0, Math.min(100, budget));
   } else {
     const budget = ((config.target - currentValue) / config.target) * 100;
@@ -248,9 +238,9 @@ export function generateSLOReport(metrics: {
     }
   ];
 
-  const hasCritical = statuses.some(s => s.status === 'critical');
-  const hasAlert = statuses.some(s => s.status === 'alert');
-  const exhaustedBudget = statuses.some(s => s.errorBudgetPercent <= 0);
+  const hasCritical = statuses.some((s) => s.status === 'critical');
+  const hasAlert = statuses.some((s) => s.status === 'alert');
+  const exhaustedBudget = statuses.some((s) => s.errorBudgetPercent <= 0);
 
   return {
     generatedAt: now,

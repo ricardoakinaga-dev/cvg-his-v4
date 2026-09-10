@@ -890,7 +890,7 @@ jobs:
       - name: Check SLO results
         if: always()
         run: |
-          node benchmarks/k6/parse-results.js benchmarks/k6/results/performance-report.json --markdown >> $GITHUB_STEP_SUMMARY || true
+          node benchmarks/k6/parse-results.js benchmarks/k6/results/performance-report.json --markdown >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload performance report
         if: always()

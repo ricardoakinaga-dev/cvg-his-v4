@@ -41,12 +41,38 @@ describe('Prometheus alerts and SLO catalog stay aligned', () => {
     );
     const dashboard = JSON.parse(
       readFileSync('infra/observability/grafana/cvg-his-v2-api-dashboard.json', 'utf8')
-    ) as { readonly panels?: readonly { readonly targets?: readonly { readonly expr?: string }[] }[] };
+    ) as {
+      readonly panels?: readonly { readonly targets?: readonly { readonly expr?: string }[] }[];
+    };
     const pixPanel = dashboard.panels?.find((panel) =>
-      panel.targets?.some((target) => target.expr?.includes('worker_pix_provider_settlement_reconciliation_required'))
+      panel.targets?.some((target) =>
+        target.expr?.includes('worker_pix_provider_settlement_reconciliation_required')
+      )
     );
     expect(pixPanel?.targets?.[0]?.expr).toBe(
       'max(worker_pix_provider_settlement_reconciliation_required)'
     );
+  });
+
+  it('uses the labels emitted by the API metrics registry in the Grafana dashboard', () => {
+    const dashboard = JSON.parse(
+      readFileSync('infra/observability/grafana/cvg-his-v2-api-dashboard.json', 'utf8')
+    ) as {
+      readonly panels?: readonly {
+        readonly targets?: readonly { readonly expr?: string; readonly legendFormat?: string }[];
+      }[];
+    };
+    const targets = dashboard.panels?.flatMap((panel) => panel.targets ?? []) ?? [];
+    const expressions = targets.map((target) => target.expr ?? '');
+
+    expect(expressions.some((expr) => expr.includes('status=~'))).toBe(false);
+    expect(expressions.some((expr) => expr.includes('status_code=~"5.."'))).toBe(true);
+    expect(
+      expressions.some(
+        (expr) => expr.includes('histogram_quantile(0.95, sum(rate(') && expr.includes(') by (le))')
+      )
+    ).toBe(true);
+    expect(targets.some((target) => target.legendFormat === '{{status}}')).toBe(false);
+    expect(targets.some((target) => target.legendFormat === '{{status_code}}')).toBe(true);
   });
 });

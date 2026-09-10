@@ -78,6 +78,57 @@ function isSafeEvidencePath(rootDir, candidate) {
   }
 }
 
+function validateCycloneDxSbom(rootDir, relativePath) {
+  if (!isSafeEvidencePath(rootDir, relativePath)) {
+    return { valid: false, reason: 'SBOM path is missing, outside the repository, or symlinked.' };
+  }
+
+  try {
+    const sbom = readJson(resolve(rootDir, relativePath));
+    const components = sbom?.components;
+    const bomRefs = Array.isArray(components)
+      ? components.map((component) => component?.['bom-ref']).filter((ref) => typeof ref === 'string')
+      : [];
+    const uniqueBomRefs = new Set(bomRefs);
+    const valid = sbom?.bomFormat === 'CycloneDX'
+      && typeof sbom.specVersion === 'string'
+      && /^1\.[0-9]+$/.test(sbom.specVersion)
+      && typeof sbom.serialNumber === 'string'
+      && sbom.serialNumber.startsWith('urn:uuid:')
+      && Number.isInteger(sbom.version)
+      && sbom.version >= 1
+      && sbom.metadata?.component?.type === 'application'
+      && typeof sbom.metadata.component.name === 'string'
+      && sbom.metadata.component.name.length > 0
+      && Array.isArray(components)
+      && components.length > 0
+      && components.every((component) =>
+        component
+        && typeof component.type === 'string'
+        && typeof component.name === 'string'
+        && component.name.length > 0
+        && typeof component.version === 'string'
+        && component.version.length > 0
+        && typeof component['bom-ref'] === 'string'
+        && component['bom-ref'].length > 0
+      )
+      && bomRefs.length === components.length
+      && uniqueBomRefs.size === components.length;
+
+    return {
+      valid,
+      reason: valid
+        ? 'CycloneDX SBOM structure and component references are valid.'
+        : 'SBOM is not a valid non-empty CycloneDX document with unique component references.'
+    };
+  } catch (error) {
+    return {
+      valid: false,
+      reason: `SBOM JSON could not be parsed: ${error instanceof Error ? error.message : String(error)}`
+    };
+  }
+}
+
 export function validateExternalEvidenceEnvelope({ rootDir, value, artifact, commitSha }) {
   const producer = artifact?.producer;
   const verification = artifact?.verification;
@@ -450,14 +501,25 @@ export function verifyReleaseManifest({ rootDir, outputDir, commitSha }) {
         typeof image.immutable_reference === 'string' &&
         image.immutable_reference.endsWith(`@${image.digest}`)
       );
-    const sbomExists = typeof manifest.sbom === 'string' && existsSync(resolve(rootDir, manifest.sbom));
-    const valid = manifest.commit_sha === commitSha && completeImages && sbomExists;
+    const sbomPath = manifest.sbom;
+    const sbom = typeof sbomPath === 'string'
+      ? validateCycloneDxSbom(rootDir, sbomPath)
+      : { valid: false, reason: 'Manifest does not reference a SBOM.' };
+    const sbomFile = typeof sbomPath === 'string'
+      ? manifest.files?.find((file) => file?.path === sbomPath)
+      : undefined;
+    const sbomDigestMatches = typeof sbomPath === 'string'
+      && sbomFile?.sha256 === sha256(resolve(rootDir, sbomPath));
+    const valid = manifest.commit_sha === commitSha
+      && completeImages
+      && sbom.valid
+      && sbomDigestMatches;
     return {
       area: 'Release identity',
       status: valid ? 'PASS' : 'FAIL',
       evidence: valid
-        ? 'Manifest vinculado ao commit atual, com três imagens por digest e SBOM.'
-        : 'Manifest existe, mas não está completo, não prova SBOM ou não está vinculado ao commit atual.',
+        ? 'Manifest vinculado ao commit atual, com três imagens por digest e SBOM CycloneDX íntegro.'
+        : `Manifest existe, mas não está completo, não prova SBOM CycloneDX íntegro (${sbom.reason}), ou não está vinculado ao commit atual.`,
       artifacts: [relative(rootDir, manifestPath)],
     };
   } catch (error) {
@@ -486,18 +548,21 @@ export function verifySecurityEvidence({ rootDir, outputDir, commitSha }) {
       && report.semgrepCi.length > 0
       && report.semgrepCi.every((check) => check.status === 'PASS');
     const sbomPath = report.sbom?.path;
+    const sbom = typeof sbomPath === 'string'
+      ? validateCycloneDxSbom(rootDir, sbomPath)
+      : { valid: false, reason: 'Security report does not reference a SBOM.' };
     const valid = report.status === 'PASS'
       && report.securityAudit === 'PASS'
       && semgrepPass
       && report.commit_sha === commitSha
-      && typeof sbomPath === 'string'
-      && existsSync(resolve(rootDir, sbomPath));
+      && sbom.valid
+      && report.sbom.components === readJson(resolve(rootDir, sbomPath)).components.length;
     return {
       area: 'Security evidence',
       status: valid ? 'PASS' : 'FAIL',
       evidence: valid
-        ? 'Security audit, SAST/SBOM e commit estão vinculados ao candidato.'
-        : 'Security evidence existe, mas não prova checks PASS, SBOM presente ou vínculo ao commit atual.',
+        ? 'Security audit, SAST/SBOM CycloneDX íntegro e commit estão vinculados ao candidato.'
+        : `Security evidence existe, mas não prova checks PASS, SBOM CycloneDX íntegro (${sbom.reason}) ou vínculo ao commit atual.`,
       artifacts: [relative(rootDir, evidencePath)],
     };
   } catch (error) {

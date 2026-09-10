@@ -1,8 +1,8 @@
 # Triple-A External Assurance — Baseline 2026-09-09
 
-**Snapshot:** `2026-09-09T20:48:09-03:00` (America/Sao_Paulo)
+**Snapshot histórico:** `2026-09-09T20:48:09-03:00` (America/Sao_Paulo)
 **Repository:** `ricardoakinaga-dev/cvg-his-v4`  
-**Observed candidate:** `dcb731a196b499db246c5c53884c40547ec9e028`
+**Observed candidate histórico:** `dcb731a196b499db246c5c53884c40547ec9e028`
 **Closure prompt:** [`MASTER_PROMPT_EXTERNAL_CLOSURE.md`](./MASTER_PROMPT_EXTERNAL_CLOSURE.md)  
 **Closure prompt SHA-256:** `d89a249f9b0b13e0da6fb9e4ee3c0e4728c11760fd435d325d48a9b8d1b5ed59`
 
@@ -11,6 +11,16 @@ historical [`MASTER_PROMPT.md`](./MASTER_PROMPT.md) and frozen
 [`QUALITY_BAR_V1.json`](./QUALITY_BAR_V1.json) remain unchanged and retain their
 original provenance. Evidence from the historical candidate is not reused as
 proof for this candidate.
+
+## Current candidate reconciliation — 2026-09-09T23:38:05-03:00
+
+The current candidate is `9d7c43cec4e5d4068c1f92f2a0ed6ceda3d092a6`, with a
+clean worktree and matching `origin/main`. CI run #47 is still executing at
+[`34429888900`](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34429888900);
+therefore `main` is not yet classified as green. The prior run #46 and every
+artifact bound to `1decbe1b` or earlier are stale for this candidate. The local
+strict gate must be rerun after CI completion, and the external obligations
+listed below remain open.
 
 ## Candidate integrity
 

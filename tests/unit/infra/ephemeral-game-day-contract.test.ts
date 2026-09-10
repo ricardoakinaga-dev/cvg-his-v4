@@ -26,6 +26,9 @@ describe('ephemeral game-day contract', () => {
     expect(runner).toContain("rateLimiterMode !== 'fail-closed'");
     expect(runner).toContain("persistenceMode !== 'unavailable'");
     expect(runner).toContain('workerReady !== false');
+    expect(runner).toContain('chaos_experiment_active{experiment=');
+    expect(runner).toContain('runtimeStateDuring');
+    expect(runner).toContain('metricsAfter');
   });
 
   it('covers every runbook fault family and emits machine-readable evidence', () => {

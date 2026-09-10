@@ -1,12 +1,14 @@
 # ExecPlan — CVG HIS Triple-A
 
-<!-- engineering-framework: active_action_id=TRIPLE-A-RELEASE-CONTROL-IMPLEMENT -->
+<!-- engineering-framework: active_action_id=TRIPLE-A-RELEASE-CONTROL:OBSERVE-CI-47 -->
 
 ## Purpose / Big Picture
 
 Elevar o ERP CVG HIS existente a um padrão operacional, clínico, de segurança, UX e entrega compatível com o quality bar Triple-A definido pelo prompt do usuário, preservando o monólito modular, a topologia atual de `apps/api`, `apps/spa`, `apps/worker` e os trilhos canônicos de deploy. Cada afirmação de qualidade deverá estar ligada a código, teste, execução ou artefato atual; documentação legada não é evidência por si só.
 
 ## Progress
+
+- [x] (2026-09-09T23:38:05-03:00) Reconciliar o plano com o candidato `main@9d7c43cec4e5d4068c1f92f2a0ed6ceda3d092a6`, preservar `BLOCKED / NOT PROVEN` e aguardar o CI #47.
 
 - 2026-09-09: prompt recebido e salvo integralmente em `docs/triple-a/MASTER_PROMPT.md`; hash SHA-256 conferido contra o anexo.
 - 2026-09-09: repositório inspecionado em `main@696d7dd5`; nenhum arquivo rastreado modificado antes desta execução, mas há artefatos frontend não rastreados e histórico `.gauntlet` antigo.
@@ -77,12 +79,29 @@ Interfaces críticas a preservar: contratos OpenAPI, migrations canônicas em `p
 
 ## Milestones
 
-1. **M0 — Baseline e controle:** concluir Fase 0, classificar P0/P1/P2 e congelar quality bar.
-2. **M1 — Main/release/supply chain:** gate Triple-A, manifest/evidence, ações pinadas, scanners, imagens e deploy por digest.
-3. **M2 — Clinical/data/worker assurance:** matriz de criticidade, invariantes, idempotência, retry/DLQ, tenant/RLS/auditoria.
-4. **M3 — Recovery/observability/performance:** RPO/RTO, drills, game day, SLO/error budget, capacidade e soak.
-5. **M4 — UX/design/frontend:** fluxos críticos, Patient 360, acessibilidade, responsividade, visual QA e limite de complexidade.
-6. **M5 — Verify/certify:** critics independentes, regressão completa, scorecard, relatório e decisão de release.
+### M0 — Baseline e controle
+
+Concluir Fase 0, classificar P0/P1/P2 e manter o quality bar congelado.
+
+### M1 — Main/release/supply chain
+
+Gate Triple-A, manifest/evidence, ações pinadas, scanners, imagens e deploy por digest.
+
+### M2 — Clinical/data/worker assurance
+
+Matriz de criticidade, invariantes, idempotência, retry/DLQ, tenant/RLS/auditoria.
+
+### M3 — Recovery/observability/performance
+
+RPO/RTO, drills, game day, SLO/error budget, capacidade e soak.
+
+### M4 — UX/design/frontend
+
+Fluxos críticos, Patient 360, acessibilidade, responsividade, visual QA e limite de complexidade.
+
+### M5 — Verify/certify
+
+Críticos independentes, regressão completa, scorecard, relatório e decisão de release.
 
 ## Plan of Work
 
@@ -90,7 +109,7 @@ O trabalho segue BUILD → RUN → CRITIQUE → FIX → RETEST → INTEGRATE. Ca
 
 ## Concrete Steps
 
-1. **[TRIPLE-A-RELEASE-CONTROL-IMPLEMENT]** Integrar e validar o gate `release:triple-a`, a evidência JSON e os checks de supply chain no candidato atual.
+1. [TRIPLE-A-RELEASE-CONTROL:OBSERVE-CI-47] Observar o CI #47 até o estado terminal no SHA atual, registrar o resultado e então reexecutar o gate estrito com evidência fresca.
 2. Confirmar a resolução da Baseline Fase 0 com evidência fresca e manter `NOT PROVEN` enquanto P0s operacionais estiverem abertos.
 3. Corrigir os bloqueios P0 de main/release e atualizar `GREEN_MAIN_POLICY.md` com critérios executáveis.
 4. Fechar hardening de runtime, digest de imagem, permissões de workflow e verificação de artefatos.

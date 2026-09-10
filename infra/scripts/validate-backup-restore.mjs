@@ -43,7 +43,9 @@ const checks = [
   {
     label: 'backup cria bundle com database, storage e meta',
     ok:
-      files.backup?.includes('mkdir -p "$BACKUP_DIR/database" "$BACKUP_DIR/storage" "$BACKUP_DIR/meta"') &&
+      files.backup?.includes(
+        'mkdir -p "$BACKUP_DIR/database" "$BACKUP_DIR/storage" "$BACKUP_DIR/meta"'
+      ) &&
       files.backup?.includes('capture_metadata') &&
       files.backup?.includes('write_manifest')
   },
@@ -63,6 +65,13 @@ const checks = [
       files.backup?.includes('restore-hints.txt') &&
       files.backup?.includes('SHA256SUMS') &&
       files.backup?.includes('sha256sum')
+  },
+  {
+    label: 'backup falha se o inventario de anexos nao puder ser capturado',
+    ok:
+      files.backup?.includes('> "$listing_file"') &&
+      !files.backup?.includes('> "$listing_file" || true') &&
+      files.backup?.includes('storage listing was not created')
   },
   {
     label: 'backup aplica politica de retencao configuravel',

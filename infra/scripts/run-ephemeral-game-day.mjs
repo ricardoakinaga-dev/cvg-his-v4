@@ -69,7 +69,7 @@ async function request(path, { token, method = 'GET', body, expected = [200] } =
   if (!expected.includes(response.status)) {
     throw new Error(`${method} ${path} returned ${response.status}: ${raw.slice(0, 500)}`);
   }
-  return { status: response.status, payload, elapsedMs };
+  return { status: response.status, payload, raw, elapsedMs };
 }
 
 function activeExperiment(snapshot, id) {
@@ -92,6 +92,17 @@ function assertRuntimeImpact(id, snapshot) {
   }
   if (id === 'provider-failure' && snapshot.runtimeState?.externalProvidersHealthy !== false) {
     throw new Error('provider-failure did not expose externalProvidersHealthy=false');
+  }
+}
+
+function assertMetricState(id, metricsResponse, expectedValue) {
+  const metrics = metricsResponse.payload?.raw;
+  const expected = `chaos_experiment_active{experiment="${id}"} ${expectedValue}`;
+  if (
+    typeof metrics !== 'string' ||
+    !metrics.split('\n').some((line) => line.trim() === expected)
+  ) {
+    throw new Error(`${id} did not expose ${expected} on /metrics`);
   }
 }
 
@@ -156,6 +167,8 @@ async function main() {
         });
         const snapshot = await request('/chaos/experiments', { token });
         assertRuntimeImpact(experiment.id, snapshot.payload);
+        const metricsDuring = await request('/metrics');
+        assertMetricState(experiment.id, metricsDuring, 1);
 
         let readinessStatus = 200;
         if (experiment.id === 'database-failure' || experiment.id === 'provider-failure') {
@@ -169,6 +182,8 @@ async function main() {
         });
         stopped = true;
         const recovered = await request('/chaos/experiments', { token });
+        const metricsAfter = await request('/metrics');
+        assertMetricState(experiment.id, metricsAfter, 0);
         if (activeExperiment(recovered.payload, experiment.id)) {
           throw new Error(`${experiment.id} remained active after stop`);
         }
@@ -181,7 +196,11 @@ async function main() {
           startStatus: start.status,
           stopStatus: stop.status,
           readinessStatus,
-          detectionMs: snapshot.elapsedMs
+          detectionMs: snapshot.elapsedMs,
+          runtimeStateDuring: snapshot.payload.runtimeState,
+          runtimeStateAfter: recovered.payload.runtimeState,
+          metricsDuring: metricsDuring.payload.raw,
+          metricsAfter: metricsAfter.payload.raw
         });
       } finally {
         if (!stopped) {

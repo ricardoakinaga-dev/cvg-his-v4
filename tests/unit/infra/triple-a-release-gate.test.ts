@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -10,7 +10,9 @@ import {
   scoreCriteria,
   validateExternalEvidenceEnvelope,
   verifyPublishedImageAttestations,
-  verifyCleanWorktree
+  verifyCleanWorktree,
+  verifyReleaseManifest,
+  verifySecurityEvidence
 } from '../../../scripts/run-triple-a-release-gate.mjs';
 
 describe('Triple-A release gate scoring', () => {
@@ -19,7 +21,7 @@ describe('Triple-A release gate scoring', () => {
       { id: 'p0-pass', priority: 'P0', status: 'PASS' },
       { id: 'p0-partial', priority: 'P0', status: 'PARTIAL' },
       { id: 'p1-pass', priority: 'P1', status: 'PASS' },
-      { id: 'p1-missing', priority: 'P1', status: 'NOT_RUN' },
+      { id: 'p1-missing', priority: 'P1', status: 'NOT_RUN' }
     ]);
 
     expect(result.score).toBe(63);
@@ -30,7 +32,7 @@ describe('Triple-A release gate scoring', () => {
   it('does not award score to missing or failed evidence', () => {
     const result = scoreCriteria([
       { id: 'p0-fail', priority: 'P0', status: 'FAIL' },
-      { id: 'p1-missing', priority: 'P1', status: 'NOT_RUN' },
+      { id: 'p1-missing', priority: 'P1', status: 'NOT_RUN' }
     ]);
 
     expect(result.score).toBe(0);
@@ -116,6 +118,81 @@ describe('Triple-A release gate scoring', () => {
     } finally {
       if (previous === undefined) delete process.env.TRIPLE_A_VERIFY_ATTESTATIONS;
       else process.env.TRIPLE_A_VERIFY_ATTESTATIONS = previous;
+    }
+  });
+
+  it('fails release identity when the referenced SBOM is not valid CycloneDX', () => {
+    const root = mkdtempSync(join(tmpdir(), 'cvg-triple-a-sbom-'));
+    try {
+      const outputDir = join(root, 'artifacts', 'release');
+      mkdirSync(outputDir, { recursive: true });
+      const sbomContent = '{}\n';
+      writeFileSync(join(outputDir, 'sbom.cyclonedx.json'), sbomContent);
+      const digest = `sha256:${'a'.repeat(64)}`;
+      writeFileSync(
+        join(outputDir, 'release-manifest.json'),
+        JSON.stringify({
+          commit_sha: 'd'.repeat(40),
+          images: ['api', 'worker', 'spa'].map((component) => ({
+            component,
+            digest,
+            immutable_reference: `ghcr.io/example/cvg-his-v4-${component}@${digest}`
+          })),
+          files: [
+            {
+              path: 'artifacts/release/sbom.cyclonedx.json',
+              sha256: createHash('sha256').update(sbomContent).digest('hex')
+            }
+          ],
+          sbom: 'artifacts/release/sbom.cyclonedx.json'
+        })
+      );
+
+      const result = verifyReleaseManifest({ rootDir: root, outputDir, commitSha: 'd'.repeat(40) });
+
+      expect(result.status).toBe('FAIL');
+      expect(result.evidence).toContain('CycloneDX');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('requires security evidence to point at a valid CycloneDX SBOM with matching component count', () => {
+    const root = mkdtempSync(join(tmpdir(), 'cvg-triple-a-security-'));
+    try {
+      const outputDir = join(root, 'artifacts', 'security');
+      mkdirSync(outputDir, { recursive: true });
+      const sbom = {
+        bomFormat: 'CycloneDX',
+        specVersion: '1.5',
+        serialNumber: 'urn:uuid:test',
+        version: 1,
+        metadata: { component: { type: 'application', name: 'cvg-his-v4' } },
+        components: [
+          { type: 'library', name: 'example', version: '1.0.0', 'bom-ref': 'example@1.0.0' }
+        ]
+      };
+      writeFileSync(join(outputDir, 'sbom.cyclonedx.json'), `${JSON.stringify(sbom)}\n`);
+      writeFileSync(
+        join(outputDir, 'security-evidence.json'),
+        JSON.stringify({
+          status: 'PASS',
+          securityAudit: 'PASS',
+          commit_sha: 'e'.repeat(40),
+          semgrepCi: [{ status: 'PASS' }],
+          sbom: { path: 'artifacts/security/sbom.cyclonedx.json', components: 1 }
+        })
+      );
+
+      const result = verifySecurityEvidence({
+        rootDir: root,
+        outputDir,
+        commitSha: 'e'.repeat(40)
+      });
+
+      expect(result.status).toBe('PASS');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
   });
 });

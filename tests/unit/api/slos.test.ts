@@ -93,17 +93,23 @@ describe('slos', () => {
       expect(calculateBudgetRemaining(config, 300)).toBeLessThanOrEqual(0);
     });
 
-    it('for availability: returns ~99.5 when at target', () => {
+    it('for availability: returns 0 when at target', () => {
       const config = getSLOConfig('api-availability')!;
-      // budget = (currentValue - (100 - target)) / target * 100
-      // At 99.5% with 99.5% target: (99.5 - 0.5) / 99.5 * 100 ≈ 99.5
-      expect(calculateBudgetRemaining(config, 99.5)).toBeCloseTo(99.5, 1);
+      // At the objective, the allowed 0.5% error budget is fully consumed.
+      expect(calculateBudgetRemaining(config, 99.5)).toBe(0);
+    });
+
+    it('for availability: returns the proportional budget above target', () => {
+      const config = getSLOConfig('api-availability')!;
+      // 99.9% availability leaves 0.4 percentage points of a 0.5 point budget.
+      expect(calculateBudgetRemaining(config, 99.9)).toBeCloseTo(80, 5);
+      expect(calculateBudgetRemaining(config, 100)).toBe(100);
     });
 
     it('for availability: returns 0 when below allowed minimum', () => {
       const config = getSLOConfig('api-availability')!;
-      // Below 99.5% availability means error budget exhausted
-      expect(calculateBudgetRemaining(config, 99.0)).toBeLessThan(100);
+      // Below 99.5% availability means the error budget is exhausted.
+      expect(calculateBudgetRemaining(config, 99.0)).toBe(0);
     });
 
     it('for error rate: returns 0 when at target', () => {
