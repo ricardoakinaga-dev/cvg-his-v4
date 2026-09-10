@@ -5089,7 +5089,31 @@ paths:
       operationId: listInventoryItems
       summary: List inventory items
       tags: [Inventory]
+      description: >-
+        Lists authorized tenant items, optionally filtered by search. Without
+        page and limit, returns the full matching list for compatibility.
+        Supplying either pagination parameter enables pagination after filtering;
+        omitted page defaults to 1 and omitted limit defaults to 20.
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 9007199254740991
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
       responses:
+        '400':
+          description: Invalid pagination parameters
         '200':
           description: Inventory items
           content:

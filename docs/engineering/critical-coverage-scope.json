@@ -775,7 +775,7 @@
     },
     {
       "path": "apps/api/src/routes/inventory-routes.ts",
-      "sha256": "f6fcc15721ca35ac508a940cec82b3308b82880cd65e3b60e0b381e99041b68a",
+      "sha256": "d2ee7cc046f181db1b6b20fdf83eac565de9b0d56a057bab9aafd4df317384eb",
       "components": [
         "http-routes"
       ],

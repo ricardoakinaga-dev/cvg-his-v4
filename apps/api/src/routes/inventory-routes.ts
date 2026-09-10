@@ -29,7 +29,7 @@ import {
   runWithoutDatabaseTransactionScope,
   type JsonValue
 } from '@cvg-his-v2/shared-database';
-import { AppError, NotFoundError } from '@cvg-his-v2/shared-errors';
+import { AppError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type { ResourceAttributes } from '@cvg-his-v2/module-access-control';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
@@ -56,6 +56,21 @@ export interface InventoryRoutesHandlers {
     request: IncomingMessage
   ) => void;
   runCommand?: TenantCommandRunner;
+}
+
+function inventoryPagination(
+  searchParams: URLSearchParams
+): { page: number; limit: number } | undefined {
+  if (!searchParams.has('page') && !searchParams.has('limit')) return undefined;
+  const page = Number(searchParams.get('page') ?? '1');
+  const limit = Number(searchParams.get('limit') ?? '20');
+  if (!Number.isSafeInteger(page) || page < 1) {
+    throw new ValidationError('page must be a positive safe integer');
+  }
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+    throw new ValidationError('limit must be an integer between 1 and 100');
+  }
+  return { page, limit };
 }
 
 /**
@@ -664,7 +679,12 @@ export async function handleInventoryRoutes(
     const principal = await rp(request, 'inventory.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const search = url.searchParams.get('search') ?? undefined;
-    const items = inventory.listItems(principal.user.accountId as never, { search });
+    const pagination = inventoryPagination(url.searchParams);
+    const matchingItems = inventory.listItems(principal.user.accountId as never, { search });
+    const offset = pagination ? (pagination.page - 1) * pagination.limit : 0;
+    const items = pagination
+      ? matchingItems.slice(offset, offset + pagination.limit)
+      : matchingItems;
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,

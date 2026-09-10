@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import { InventoryService, ProcurementService } from '@cvg-his-v2/module-inventory';
+import { ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, AuthenticatedPrincipal, UserId } from '@cvg-his-v2/shared-types';
 
 import { handleInventoryRoutes } from './inventory-routes.js';
@@ -83,6 +84,83 @@ function handlers(inventory = new InventoryService({ getOrThrow() { throw new Er
     enforceAbac() {}
   };
 }
+
+test('handleInventoryRoutes paginates inventory after tenant and search filtering', async () => {
+  const template = handlers().inventory.listItems(ACCOUNT)[0]!;
+  const items = Array.from({ length: 45 }, (_, index) => ({
+    ...template,
+    id: `inventory-page-${index}` as typeof template.id,
+    sku: `PAGE-${index}`,
+    name: index % 2 === 0 ? 'Matching item' : 'Other item'
+  }));
+  const foreignItem = {
+    ...template,
+    id: 'foreign-item' as typeof template.id,
+    accountId: 'other-account' as AccountId,
+    name: 'Matching item'
+  };
+  const routeHandlers = handlers(new InventoryService({} as never, [foreignItem, ...items]));
+  for (const [query, expected] of [
+    ['?page=1&limit=20', items.slice(0, 20)],
+    ['?page=2&limit=20', items.slice(20, 40)],
+    ['?page=3&limit=20', items.slice(40)],
+    ['?page=4&limit=20', []],
+    ['?page=9007199254740991&limit=100', []],
+    ['?limit=20', items.slice(0, 20)],
+    ['?limit=100', items],
+    ['?page=2', items.slice(20, 40)],
+    ['?search=MATCHING&page=2&limit=10', items.filter((_, index) => index % 2 === 0).slice(10, 20)],
+    ['', items],
+    ['?search=MATCHING', items.filter((_, index) => index % 2 === 0)]
+  ] as const) {
+    const response = new MockResponse();
+    await handleInventoryRoutes(
+      '/inventory',
+      request('GET', undefined, `/inventory${query}`),
+      response as never,
+      'corr-pagination',
+      routeHandlers
+    );
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.bodyJson(), { items: expected }, query);
+  }
+});
+
+test('handleInventoryRoutes authorizes inventory reads before listing or pagination validation', async () => {
+  const routeHandlers = handlers();
+  const denied = new Error('Inventory read denied');
+  routeHandlers.requirePrincipal = () => { throw denied; };
+  routeHandlers.inventory.listItems = () => { throw new Error('Must not list unauthorized items'); };
+  await assert.rejects(
+    handleInventoryRoutes(
+      '/inventory',
+      request('GET', undefined, '/inventory?page=0&limit=101'),
+      new MockResponse() as never,
+      'corr-pagination-denied',
+      routeHandlers
+    ),
+    (error) => error === denied
+  );
+});
+
+test('handleInventoryRoutes rejects invalid inventory pagination', async () => {
+  for (const query of [
+    'page=0', 'page=-1', 'page=1.5', 'page=abc', 'page=', 'page=9007199254740992',
+    'limit=0', 'limit=-1', 'limit=1.5', 'limit=abc', 'limit=', 'limit=101'
+  ]) {
+    await assert.rejects(
+      handleInventoryRoutes(
+        '/inventory',
+        request('GET', undefined, `/inventory?${query}`),
+        new MockResponse() as never,
+        'corr-pagination-invalid',
+        handlers()
+      ),
+      ValidationError,
+      query
+    );
+  }
+});
 
 test('handleInventoryRoutes creates stock adjustments and lists stock movements', async () => {
   const routeHandlers = handlers();
