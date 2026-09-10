@@ -5,6 +5,7 @@ import type {
   FeatureFlagErrorMetrics,
   FeatureFlagFallbackMetrics
 } from '@cvg-his-v2/shared-feature-flags';
+import type { Logger } from '@cvg-his-v2/shared-logging';
 
 // ============================================================================
 // Prometheus Registry
@@ -168,7 +169,9 @@ function requireClinicalMetricCount(value: number, metricName: string): number {
 export function updateClinicalOperationalMetrics(
   snapshot: ClinicalOperationalMetricsSnapshot
 ): void {
-  cvgActiveInpatients.set(requireClinicalMetricCount(snapshot.activeInpatients, 'activeInpatients'));
+  cvgActiveInpatients.set(
+    requireClinicalMetricCount(snapshot.activeInpatients, 'activeInpatients')
+  );
   cvgOpenEncounters.set(requireClinicalMetricCount(snapshot.openEncounters, 'openEncounters'));
   cvgPendingWorkflowTasks.set(
     requireClinicalMetricCount(snapshot.pendingWorkflowTasks, 'pendingWorkflowTasks')
@@ -183,6 +186,20 @@ export function updateClinicalOperationalMetrics(
     requireClinicalMetricCount(snapshot.pendingDiagnostics, 'pendingDiagnostics')
   );
   cvgHandoverPending.set(requireClinicalMetricCount(snapshot.handoverPending, 'handoverPending'));
+}
+
+export async function refreshClinicalOperationalMetrics(
+  provider: (() => Promise<ClinicalOperationalMetricsSnapshot>) | undefined,
+  logger: Logger
+): Promise<void> {
+  if (!provider) return;
+  try {
+    updateClinicalOperationalMetrics(await provider());
+  } catch (error: unknown) {
+    logger.warn('Clinical operational metrics refresh failed', {
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
 }
 
 export function resetClinicalOperationalMetrics(): void {

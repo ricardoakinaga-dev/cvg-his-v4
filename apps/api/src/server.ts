@@ -230,7 +230,7 @@ import {
   incrementActiveRequests,
   recordRequestSloObservation,
   updateAppMetrics,
-  updateClinicalOperationalMetrics,
+  refreshClinicalOperationalMetrics,
   type ClinicalOperationalMetricsSnapshot,
   createFeatureFlagMetricsCollector
 } from './metrics.js';
@@ -342,11 +342,6 @@ export interface ApiServerOptions {
   readonly repositories?: RuntimeRepositories;
   /** Durable clinical workflow/reminder control plane. Tests may inject an in-memory service. */
   readonly workflowTaskService?: WorkflowTaskService;
-  /**
-   * Optional authoritative aggregate source for hospital-level Prometheus
-   * gauges. The provider must not return patient/tenant labels or synthetic
-   * zeroes when its source is unavailable.
-   */
   readonly clinicalOperationalMetricsProvider?: () => Promise<ClinicalOperationalMetricsSnapshot>;
   readonly fileStorage?: FileStorage;
   readonly attachmentScanner?: AttachmentSecurityScanner;
@@ -4351,28 +4346,15 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       }
 
       if (request.url === '/metrics' && request.method === 'GET') {
-        if (options.clinicalOperationalMetricsProvider) {
-          try {
-            updateClinicalOperationalMetrics(
-              await options.clinicalOperationalMetricsProvider()
-            );
-          } catch (error: unknown) {
-            logger.warn('Clinical operational metrics refresh failed', {
-              error: error instanceof Error ? error.message : String(error)
-            });
-          }
-        }
+        await refreshClinicalOperationalMetrics(options.clinicalOperationalMetricsProvider, logger);
         const appState = getAppState();
-        const activeExperimentIds = chaos
-          .listActiveExperiments()
-          .map((experiment) => experiment.id);
         const redisHealth = await resolveRedisHealthStatus(
           healthRouteOptions,
           effectiveRuntimeDistributedStateEnabled
         );
         const operationalState = resolveOperationalRuntimeState({
           appState,
-          activeExperimentIds,
+          activeExperimentIds: chaos.listActiveExperiments().map((experiment) => experiment.id),
           runtimeDistributedStateEnabled: effectiveRuntimeDistributedStateEnabled,
           redisUrl: options.redisUrl,
           redisHealth
