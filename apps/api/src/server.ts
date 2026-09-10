@@ -5678,9 +5678,9 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               response.end(JSON.stringify(handoff));
               return;
             }
-
             if (pathname === '/encounters' && request.method === 'GET') {
               const principal = await requirePrincipal(request, 'encounters.read');
+              const encounterItems = paginateList(encounters.listAll(principal.user.accountId), url);
               appendAudit(
                 principal.user.id,
                 principal.user.accountId,
@@ -5695,7 +5695,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               response.statusCode = 200;
               response.end(
                 JSON.stringify({
-                  items: paginateList(encounters.listAll(principal.user.accountId), url)
+                  items: encounterItems
                 })
               );
               return;
