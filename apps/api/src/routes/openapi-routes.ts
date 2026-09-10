@@ -44,12 +44,35 @@ const API_DOCS_RESPONSE = {
   }
 };
 
+let cachedOpenApiYaml: string | undefined;
+let cachedOpenApiSpec: unknown | undefined;
+
 function loadOpenApiYaml(): string {
-  try {
-    return readFileSync(new URL('./openapi.yaml', import.meta.url), 'utf8');
-  } catch {
-    return readFileSync(new URL('../openapi.yaml', import.meta.url), 'utf8');
+  if (cachedOpenApiYaml !== undefined) {
+    return cachedOpenApiYaml;
   }
+
+  try {
+    cachedOpenApiYaml = readFileSync(new URL('./openapi.yaml', import.meta.url), 'utf8');
+  } catch {
+    cachedOpenApiYaml = readFileSync(new URL('../openapi.yaml', import.meta.url), 'utf8');
+  }
+
+  return cachedOpenApiYaml;
+}
+
+function loadOpenApiSpec(): unknown {
+  if (cachedOpenApiSpec !== undefined) {
+    return cachedOpenApiSpec;
+  }
+
+  try {
+    cachedOpenApiSpec = parseYaml(loadOpenApiYaml());
+  } catch {
+    cachedOpenApiSpec = FALLBACK_OPENAPI_SPEC;
+  }
+
+  return cachedOpenApiSpec;
 }
 
 function sendJson(response: ServerResponse, statusCode: number, payload: unknown): true {
@@ -68,12 +91,7 @@ export function handleOpenApiRoutes(
   }
 
   if (request.url === '/openapi.json') {
-    try {
-      const openApiSpec = parseYaml(loadOpenApiYaml());
-      return sendJson(response, 200, openApiSpec);
-    } catch {
-      return sendJson(response, 200, FALLBACK_OPENAPI_SPEC);
-    }
+    return sendJson(response, 200, loadOpenApiSpec());
   }
 
   if (request.url === '/openapi.yaml') {

@@ -1,4 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import {
+  runWithDatabaseTransactionScope,
+  type DatabaseTransactionScope
+} from '@cvg-his-v2/shared-database';
 import type { AccountId, AuditEventId, AuditEventSummary } from '@cvg-his-v2/shared-types';
 import {
   AuditService,
@@ -478,6 +482,71 @@ describe('AuditService with repository', () => {
     ).rejects.toThrow('audit-store-down');
 
     expect(failingService.list()).toEqual([]);
+  });
+
+  it('does not make a tenant transaction wait for an unrelated unscoped audit queue', async () => {
+    let releaseUnscoped!: () => void;
+    let unscopedStarted = false;
+    const persisted: AuditEventSummary[] = [];
+    const unscopedBlock = new Promise<void>((resolve) => {
+      releaseUnscoped = resolve;
+    });
+    const repository = {
+      async create(event: AuditEventSummary): Promise<void> {
+        if (event.module === 'unscoped-read') {
+          unscopedStarted = true;
+          await unscopedBlock;
+        }
+        persisted.push(event);
+      },
+      async list(): Promise<readonly AuditEventSummary[]> {
+        return persisted;
+      },
+      async findById(): Promise<AuditEventSummary | null> {
+        return null;
+      }
+    };
+    const auditService = new AuditService({ auditRepository: repository });
+    const transactionScope: DatabaseTransactionScope = {
+      accountId: '00000000-0000-4000-8000-000000000001',
+      pool: {} as never,
+      client: {} as never,
+      isActive: () => true
+    };
+
+    auditService.write({
+      actorId: 'user_1',
+      accountId: 'acc_1' as AccountId,
+      module: 'unscoped-read',
+      action: 'read',
+      entityType: 'owner',
+      entityId: 'owner_1',
+      payloadSummary: 'Unscoped read',
+      riskLevel: 'low'
+    });
+    await Promise.resolve();
+    expect(unscopedStarted).toBe(true);
+
+    const tenantEvent = await runWithDatabaseTransactionScope(transactionScope, async () => {
+      const event = auditService.write({
+        actorId: 'user_1',
+        accountId: 'acc_1' as AccountId,
+        module: 'tenant-write',
+        action: 'update',
+        entityType: 'owner',
+        entityId: 'owner_1',
+        payloadSummary: 'Tenant write',
+        riskLevel: 'high'
+      });
+      await auditService.waitForPersistence();
+      return event;
+    });
+
+    expect(persisted).toEqual([tenantEvent]);
+
+    releaseUnscoped();
+    await auditService.waitForPersistence();
+    expect(persisted).toHaveLength(2);
   });
 
   it('does not let a previous persistence failure poison the next synchronous write', async () => {

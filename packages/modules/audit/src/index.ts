@@ -1,6 +1,10 @@
 import { Buffer } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
 
+import {
+  getDatabaseTransactionScope,
+  type DatabaseTransactionScope
+} from '@cvg-his-v2/shared-database';
 import type { AccountId, AuditEventId, AuditEventSummary } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 
@@ -222,12 +226,27 @@ export const DEFAULT_OPERATIONAL_AUDIT_REQUIREMENTS: readonly OperationalAuditRe
   }
 ];
 
+const UNSCOPED_AUDIT_PERSISTENCE_CONCURRENCY = 8;
+
 export class AuditService {
   #events: AuditEventSummary[] = [];
   readonly #auditRepository?: AuditRepository;
   #persistenceQueue: Promise<void> = Promise.resolve();
+  #persistenceLanes: Promise<void>[] = Array.from(
+    { length: UNSCOPED_AUDIT_PERSISTENCE_CONCURRENCY },
+    () => Promise.resolve()
+  );
+  #nextPersistenceLane = 0;
   #persistenceError?: { readonly eventId: AuditEventId; readonly error: unknown };
   readonly #persistencePromises = new WeakMap<AuditEventSummary, Promise<void>>();
+  readonly #transactionPersistenceQueues = new WeakMap<
+    DatabaseTransactionScope,
+    Promise<void>
+  >();
+  readonly #transactionPersistenceErrors = new WeakMap<
+    DatabaseTransactionScope,
+    { readonly eventId: AuditEventId; readonly error: unknown }
+  >();
 
   public constructor(options: AuditServiceOptions = {}) {
     this.#auditRepository = options.auditRepository;
@@ -252,24 +271,55 @@ export class AuditService {
 
     // Persist to database if repository is available
     if (this.#auditRepository) {
-      const persist = this.#persistenceQueue.then(async () => {
+      const transactionScope = getDatabaseTransactionScope();
+      const previous = transactionScope
+        ? (this.#transactionPersistenceQueues.get(transactionScope) ?? Promise.resolve())
+        : this.#persistenceLanes[this.#nextPersistenceLane] ?? Promise.resolve();
+      const persist = previous.then(async () => {
         await this.#auditRepository!.create(event);
       });
       this.#persistencePromises.set(event, persist);
-      this.#persistenceQueue = persist.catch((error: unknown) => {
-        this.#persistenceError = { eventId: event.eventId, error };
-      });
-      void this.#persistenceQueue;
+      if (transactionScope) {
+        const settled = persist.catch((error: unknown) => {
+          this.#transactionPersistenceErrors.set(transactionScope, {
+            eventId: event.eventId,
+            error
+          });
+        });
+        this.#transactionPersistenceQueues.set(transactionScope, settled);
+        void settled;
+      } else {
+        const laneIndex = this.#nextPersistenceLane;
+        this.#nextPersistenceLane =
+          (this.#nextPersistenceLane + 1) % UNSCOPED_AUDIT_PERSISTENCE_CONCURRENCY;
+        this.#persistenceLanes[laneIndex] = persist.catch((error: unknown) => {
+          this.#persistenceError = { eventId: event.eventId, error };
+        });
+        this.#persistenceQueue = Promise.all(this.#persistenceLanes).then(() => undefined);
+        void this.#persistenceQueue;
+      }
     }
 
     return event;
   }
 
   public async waitForPersistence(): Promise<void> {
-    await this.#persistenceQueue;
-    if (this.#persistenceError !== undefined) {
-      const { error } = this.#persistenceError;
-      this.#persistenceError = undefined;
+    const transactionScope = getDatabaseTransactionScope();
+    const queue = transactionScope
+      ? this.#transactionPersistenceQueues.get(transactionScope)
+      : this.#persistenceQueue;
+    await queue;
+
+    const persistenceError = transactionScope
+      ? this.#transactionPersistenceErrors.get(transactionScope)
+      : this.#persistenceError;
+    if (persistenceError !== undefined) {
+      const { error } = persistenceError;
+      if (transactionScope) {
+        this.#transactionPersistenceErrors.delete(transactionScope);
+      } else {
+        this.#persistenceError = undefined;
+      }
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
@@ -288,6 +338,13 @@ export class AuditService {
       this.removeFromCache(event.eventId);
       if (this.#persistenceError?.eventId === event.eventId) {
         this.#persistenceError = undefined;
+      }
+      const transactionScope = getDatabaseTransactionScope();
+      if (
+        transactionScope &&
+        this.#transactionPersistenceErrors.get(transactionScope)?.eventId === event.eventId
+      ) {
+        this.#transactionPersistenceErrors.delete(transactionScope);
       }
       throw error;
     }
