@@ -184,7 +184,22 @@ export function createDatabaseClient(connectionString: string) {
     return db;
   }
 
-  const basePool = scopePoolQueries(new Pool({ connectionString }));
+  const poolMaxConnections = parseInt(process.env.POSTGRES_MAX_CONNECTIONS ?? '20', 10);
+  const poolMinConnections = parseInt(process.env.POSTGRES_POOL_MIN ?? '2', 10);
+  const poolIdleTimeoutMs = parseInt(process.env.POSTGRES_IDLE_TIMEOUT_MS ?? '30000', 10);
+  const poolConnectionTimeoutMs = parseInt(
+    process.env.POSTGRES_CONNECTION_TIMEOUT_MS ?? '5000',
+    10
+  );
+  const basePool = scopePoolQueries(
+    new Pool({
+      connectionString,
+      max: poolMaxConnections,
+      min: poolMinConnections,
+      idleTimeoutMillis: poolIdleTimeoutMs,
+      connectionTimeoutMillis: poolConnectionTimeoutMs
+    })
+  );
   const otelEnabled = process.env.OTEL_ENABLED === 'true' || process.env.OTEL_ENABLED === '1';
   pool = otelEnabled ? instrumentPool(basePool) : basePool;
   db = drizzle(pool, { schema });

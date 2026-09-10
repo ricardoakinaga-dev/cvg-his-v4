@@ -3,7 +3,8 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { URL } from 'node:url';
 
 import {
-  acquireTenantAuthorizationLock,
+  acquireTenantAuthorizationMutationLock,
+  acquireTenantAuthorizationSharedLock,
   getDatabaseTransactionScope,
   getPool,
   getTenantTransactionContext,
@@ -3647,6 +3648,14 @@ function shouldUseTenantCommand(pathname: string, method: string | undefined): b
     return false;
   }
   return true;
+}
+
+function isAccessControlMutationRequest(request: IncomingMessage): boolean {
+  const method = request.method?.toUpperCase();
+  if (!method || ['GET', 'HEAD', 'OPTIONS'].includes(method)) return false;
+
+  const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
+  return pathname.startsWith('/access-control/') || pathname.startsWith('/api/access-control/');
 }
 
 function sendDatabasePersistenceUnavailable(response: ServerResponse, correlationId: string): void {
@@ -8142,7 +8151,14 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       requestCorrelationIds.get(request) ?? createCorrelationId('auth-guard')
     );
     if (getDatabaseTransactionScope()) {
-      await acquireTenantAuthorizationLock(session.accountId);
+      // Normal commands share the barrier so they do not serialize one
+      // tenant's entire workload. Access-control mutations take the exclusive
+      // side before this authorization decision, preventing a revocation from
+      // committing concurrently with a command that was already authorized.
+      const acquireAuthorizationLock = isAccessControlMutationRequest(request)
+        ? acquireTenantAuthorizationMutationLock
+        : acquireTenantAuthorizationSharedLock;
+      await acquireAuthorizationLock(session.accountId);
     }
     await accessControl.ensureFreshForRequest(session.accountId);
     const principal = auth.authenticateAccessToken(accessToken);

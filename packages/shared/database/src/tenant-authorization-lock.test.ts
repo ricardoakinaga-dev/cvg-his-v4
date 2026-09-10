@@ -5,6 +5,8 @@ import type { Pool, PoolClient } from 'pg';
 
 import {
   acquireTenantAuthorizationLock,
+  acquireTenantAuthorizationMutationLock,
+  acquireTenantAuthorizationSharedLock,
   runWithDatabaseTransactionScope,
   type DatabaseTransactionScope
 } from './transaction-scope.js';
@@ -70,6 +72,36 @@ test('acquireTenantAuthorizationLock uses the active transaction client', async 
 
   await runWithDatabaseTransactionScope(harness.scope, () =>
     acquireTenantAuthorizationLock(accountId)
+  );
+
+  assert.deepEqual(harness.queries, [
+    {
+      text: 'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+      params: [accountId]
+    }
+  ]);
+});
+
+test('acquireTenantAuthorizationSharedLock allows ordinary commands to share the barrier', async () => {
+  const harness = createHarness();
+
+  await runWithDatabaseTransactionScope(harness.scope, () =>
+    acquireTenantAuthorizationSharedLock(accountId)
+  );
+
+  assert.deepEqual(harness.queries, [
+    {
+      text: 'SELECT pg_advisory_xact_lock_shared(hashtextextended($1, 0))',
+      params: [accountId]
+    }
+  ]);
+});
+
+test('acquireTenantAuthorizationMutationLock keeps the exclusive writer contract', async () => {
+  const harness = createHarness();
+
+  await runWithDatabaseTransactionScope(harness.scope, () =>
+    acquireTenantAuthorizationMutationLock(accountId)
   );
 
   assert.deepEqual(harness.queries, [

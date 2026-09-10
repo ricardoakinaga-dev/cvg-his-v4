@@ -51,6 +51,8 @@ export {
 } from './tenant-unit-of-work.js';
 export {
   acquireTenantAuthorizationLock,
+  acquireTenantAuthorizationMutationLock,
+  acquireTenantAuthorizationSharedLock,
   getDatabaseTransactionScope,
   runWithoutDatabaseTransactionScope,
   runWithDatabaseTransactionScope,

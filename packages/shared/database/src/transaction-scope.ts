@@ -20,6 +20,35 @@ export function getDatabaseTransactionScope(): DatabaseTransactionScope | undefi
  * rollback, so callers must already be inside the canonical tenant UoW.
  */
 export async function acquireTenantAuthorizationLock(accountId: string): Promise<void> {
+  const scope = requireActiveAuthorizationScope(accountId);
+  await scope.client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [accountId]);
+}
+
+/**
+ * Acquires the shared side of the authorization linearization barrier.
+ *
+ * Ordinary tenant commands only need to be ordered against access-control
+ * mutations, not against each other. PostgreSQL shared transaction advisory
+ * locks let concurrent commands keep their own transaction while an access
+ * control mutation takes the exclusive lock below.
+ */
+export async function acquireTenantAuthorizationSharedLock(accountId: string): Promise<void> {
+  const scope = requireActiveAuthorizationScope(accountId);
+  await scope.client.query('SELECT pg_advisory_xact_lock_shared(hashtextextended($1, 0))', [
+    accountId
+  ]);
+}
+
+/**
+ * Explicit name for the exclusive lock used by access-control and other
+ * authorization writers. The legacy export remains exclusive for existing
+ * worker/repository callers that depend on that contract.
+ */
+export async function acquireTenantAuthorizationMutationLock(accountId: string): Promise<void> {
+  return acquireTenantAuthorizationLock(accountId);
+}
+
+function requireActiveAuthorizationScope(accountId: string): DatabaseTransactionScope {
   const scope = getDatabaseTransactionScope();
   if (!scope || !scope.isActive()) {
     throw new Error('Tenant authorization linearization requires an active database transaction');
@@ -27,8 +56,7 @@ export async function acquireTenantAuthorizationLock(accountId: string): Promise
   if (scope.accountId !== accountId) {
     throw new Error('Tenant authorization linearization account mismatch');
   }
-
-  await scope.client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [accountId]);
+  return scope;
 }
 
 export function runWithDatabaseTransactionScope<T>(
