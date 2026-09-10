@@ -116,6 +116,8 @@ test.describe('Relatório de movimentações de estoque', () => {
     apiCall
   }) => {
     const movements = await seedPersistedInventoryMovements(apiCall);
+    // Unload the login dashboard before observing the entire report lifecycle.
+    await page.goto('about:blank');
     const inventoryRequests: string[] = [];
     page.on('request', (request) => {
       if (request.url().includes('/api/inventory')) inventoryRequests.push(request.url());

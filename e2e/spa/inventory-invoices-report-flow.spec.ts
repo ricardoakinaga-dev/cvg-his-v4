@@ -91,6 +91,8 @@ test.describe('Relatório de entradas de compras com referência de NF', () => {
     apiCall
   }) => {
     const purchases = await seedPersistedInventoryPurchases(apiCall);
+    // Unload the fixture dashboard so the initial report load is also covered.
+    await page.goto('about:blank');
     const inventoryRequests: string[] = [];
     page.on('request', (request) => {
       if (request.url().includes('/api/inventory')) inventoryRequests.push(request.url());
@@ -103,10 +105,6 @@ test.describe('Relatório de entradas de compras com referência de NF', () => {
       await expect(page.getByText(purchases.newInvoice, { exact: true })).toBeVisible();
       await expect(page.getByRole('cell', { name: 'Aprovada', exact: true }).first()).toBeVisible();
       await expect(page.getByRole('cell', { name: 'Recebida', exact: true }).first()).toBeVisible();
-      // The authenticated fixture may still be cancelling dashboard requests
-      // from the pre-navigation route. The report contract starts here: all
-      // subsequent filtering and export traffic must stay server-side.
-      inventoryRequests.length = 0;
 
       await page.getByText('Filtros da consulta', { exact: true }).click();
       await page.getByLabel('Compras de', { exact: true }).fill('2026-05-01');

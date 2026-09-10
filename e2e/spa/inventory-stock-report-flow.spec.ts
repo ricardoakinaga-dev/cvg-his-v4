@@ -90,6 +90,9 @@ test.describe('Relatório de estoque atual', () => {
     apiCall
   }) => {
     const items = await seedPersistedInventoryItems(apiCall);
+    // Unload the login dashboard before observing report traffic. Its pending
+    // requests must not race the report's initial load, filtering or export.
+    await page.goto('about:blank');
     const inventoryRequests: string[] = [];
     page.on('request', (request) => {
       if (request.url().includes('/api/inventory')) inventoryRequests.push(request.url());

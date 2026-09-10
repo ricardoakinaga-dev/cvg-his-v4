@@ -96,6 +96,9 @@ test.describe('Relatório de produtos de estoque', () => {
     apiCall
   }) => {
     const items = await seedPersistedInventoryItems(apiCall);
+    // Observe initial report load as well as filtering/export, after unloading
+    // the fixture's dashboard and cancelling its pending requests.
+    await page.goto('about:blank');
     const inventoryRequests: string[] = [];
     page.on('request', (request) => {
       if (request.url().includes('/api/inventory')) {
