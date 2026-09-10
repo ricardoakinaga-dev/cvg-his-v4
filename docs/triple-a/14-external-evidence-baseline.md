@@ -132,3 +132,71 @@ The E2E job produced 422 tests with `387 passed` and `35 failed`: five functiona
 The local candidate `0dc4809b3e06c8334667f39bf51c33e33c3c0f9` also contains the timezone, concurrent billing, Windows argument-boundary, and performance-capacity corrections. Its strict local gate is `BLOCKED`, score `68`, critical score `54`, `open_p0=16`, `claim=NOT PROVEN`, and `publication_allowed=false`. These local changes are not external proof until a new SHA-bound CI run executes them.
 
 **Updated external baseline verdict:** `BLOCKED / NOT PROVEN`. No `TRIPLE-A VERIFIED` claim is permitted.
+
+## Terminal reconciliation — candidate `5470b4f5` / CI run `34542095726`
+
+The current branch candidate is the exact source SHA
+`5470b4f5891da6bbf3d80e03bc736f40c88c2895` (`perf(inventory): avoid global lot
+scan for new items`). `origin/main` remains
+`b85b03ea029b9ffe2186dc0021ddf7f6c65e37f3`; this branch has not been merged to
+main. GitHub Actions run
+[`34542095726`](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34542095726)
+reached a terminal `failure` with 15/16 jobs successful. The failure is the
+Performance (k6 SLOs) job; Typecheck, SAST, Secret Scan, Dependency Audit, Lint,
+OpenAPI, Repository Guards, Coverage, Build, API Contract, Unit, Windows,
+Integration, E2E SPA and Visual Regression all completed successfully.
+
+The public job records for this run are:
+
+| Job | GitHub job ID | Result |
+| --- | ---: | --- |
+| Typecheck | 103087020407 | success |
+| SAST | 103087020668 | success |
+| Secret Scan | 103087020616 | success |
+| Dependency Audit | 103087020625 | success |
+| Lint | 103088449974 | success |
+| Validate OpenAPI | 103088449972 | success |
+| Repository Guards | 103088450037 | success |
+| Coverage | 103088449975 | success |
+| Build | 103089362590 | success |
+| API Contract Tests | 103089953995 | success |
+| Unit Tests | 103089954012 | success |
+| Critical Process Runner (Windows) | 103089953911 | success |
+| Integration Tests | 103089953936 | success |
+| Performance (k6 SLOs) | 103089953902 | failure |
+| E2E Tests (SPA) | 103089954107 | success |
+| Visual Regression | 103089954022 | success |
+
+The performance artifact is `performance-k6-report`, ID `10178201156`, with
+download digest
+`sha256:09dbb0ff889fffd5b224e6292bc66532b7896e2a1e196d99c819378ec45a0762`.
+The 60-VU profile produced 5/9 SLOs: API p95 215.98 ms (target <200), query
+p95 231 ms (<150), write p95 273.25 ms (<300), billing p95 259 ms (<250),
+inventory p95 245.30 ms (<200), auth p95 26.02 ms (<300), API errors 0 and
+availability 100%. Endpoint diagnostics recorded inventory create/read p95
+272.63/184.34 ms and patient list/detail p95 193.25/187.25 ms. The aggregate
+metrics and thresholds were retained; no SLO threshold or load profile was
+relaxed.
+
+The E2E artifact is `e2e-spa-ed9592d6eb6595c3f8925fddde637184af718ad0`, ID
+`10178424097`, digest
+`sha256:4fcfd0c156c7ecce3846f66e59841d1f24268c2755144def446b899dc39a5add`.
+Its metadata records merge-context SHA
+`ed9592d6eb6595c3f8925fddde637184af718ad0` for source SHA
+`5470b4f5891da6bbf3d80e03bc736f40c88c2895`, run `ci-34542095726`, environment
+`ci-postgresql`, Chromium `145.0.7632.6`, Playwright `1.58.2`, locale `pt-BR`,
+timezone `America/Sao_Paulo`, 422 expected tests, zero skipped, zero unexpected,
+zero flaky, 151 routes and 302 navigations. The inventory digest in the E2E
+metadata is `f6be367578dba828d11e3366d5262f0b2d7168f797d3682239a66215f82558df`.
+
+The E2E enterprise report is explicitly advisory: `PASS: 10 | WARN: 2 | FAIL:
+2`. Readiness is 92/100 and Vetus parity is not verified. The real backup and
+real deploy rows remain WARN because no external evidence was supplied. The
+advisory command now exits zero for collection while retaining these FAIL rows;
+the strict command remains fail-closed. This CI run therefore binds execution
+evidence to the candidate, but it does not prove the 97/95/zero-P0 quality bar,
+runtime RLS, worker crash/recovery, clinical golden path, soak, human UAT,
+restore, target deploy, image attestation, branch governance or release
+authority.
+
+**Terminal verdict for this candidate:** `BLOCKED / NOT PROVEN`.
