@@ -734,7 +734,7 @@
     },
     {
       "path": "apps/api/src/routes/inpatient-routes.ts",
-      "sha256": "b9891f4b699335f2d80961979d14d1ea065ddc367b41fec1ab85cd133c555b23",
+      "sha256": "7a2fdbdc7124ff0ccb0a4d6f6d26fe03a3505c4bc4da0ae2b3ddb7bdeb68c1cd",
       "components": [
         "inpatient",
         "http-routes"
@@ -4450,7 +4450,7 @@
     },
     {
       "path": "packages/modules/access-control/src/index.ts",
-      "sha256": "228aa7e3aad8b504dc3144c2bad46df71622f139a1ab858de37e6173434160ad",
+      "sha256": "51b016f1c8c33130ab4e7ec07dadfdcd7a7fe3808cc1a8cc2a39a8109b544eec",
       "components": [
         "roles-rls"
       ],
@@ -4926,7 +4926,7 @@
     },
     {
       "path": "packages/modules/inpatient/src/index.ts",
-      "sha256": "5e1e0c974c87da70ed36c14b7b0a4f42ec98a174be508d4cd8feb5e2b9d3bddd",
+      "sha256": "30c3d2f609d12706efad6df707ef953d7c58f46e1e1602b8e0c29a94d2d17019",
       "components": [
         "inpatient"
       ],
@@ -4936,7 +4936,7 @@
     },
     {
       "path": "packages/modules/inpatient/src/repositories/database-inpatient.repository.ts",
-      "sha256": "14bb2f18935e13aabe858093c5af80f953e2d3628bc74cd4492326aa02091fb5",
+      "sha256": "651a2c34fc05e7dc5c1cbca96bd58e268e0c4ac978843f12e1e55a51bf45e759",
       "components": [
         "inpatient",
         "repositories"
