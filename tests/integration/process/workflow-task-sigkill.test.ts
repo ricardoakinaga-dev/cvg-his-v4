@@ -40,14 +40,15 @@ interface WorkflowProcess {
 }
 
 const activeProcesses = new Set<WorkflowProcess>();
+const apiPool = new Pool({ connectionString: runtimeDatabaseUrl(apiRole) });
 
 function quoteIdentifier(identifier: string): string {
   return `"${identifier.replaceAll('"', '""')}"`;
 }
 
-function workerDatabaseUrl(): string {
+function runtimeDatabaseUrl(role: string): string {
   const url = new URL(TEST_DB_URL);
-  url.username = workerRole;
+  url.username = role;
   url.password = rolePassword;
   return url.toString();
 }
@@ -62,7 +63,7 @@ function startWorkflowProcess(
     env: {
       ...process.env,
       NODE_ENV: 'test',
-      DATABASE_URL: workerDatabaseUrl(),
+      DATABASE_URL: runtimeDatabaseUrl(workerRole),
       WORKFLOW_PROCESS_ACCOUNT_ID: accountId,
       WORKFLOW_PROCESS_TASK_ID: taskId,
       WORKFLOW_PROCESS_WORKER_ID: workerId,
@@ -166,7 +167,7 @@ async function createLoginRole(pool: Pool, role: string): Promise<void> {
 }
 
 async function createTask(key: string): Promise<string> {
-  const service = new WorkflowTaskService({ repository: new DatabaseWorkflowTaskRepository(getTestPool()) });
+  const service = new WorkflowTaskService({ repository: new DatabaseWorkflowTaskRepository(apiPool) });
   const task = await service.create(accountId as never, userId as never, {
     taskType: 'clinical.workflow.process-proof',
     title: 'Process proof task',
@@ -220,6 +221,7 @@ describe('workflow task independent-process crash and fencing proof', () => {
 
   afterAll(async () => {
     await Promise.all([...activeProcesses].map((processHandle) => processHandle.kill('SIGKILL').catch(() => undefined)));
+    await apiPool.end();
     await getTestPool().query('DELETE FROM accounts WHERE id = $1', [accountId]).catch(() => undefined);
     await getTestPool().query(`REASSIGN OWNED BY ${quoteIdentifier(apiRole)}, ${quoteIdentifier(workerRole)} TO CURRENT_USER`).catch(() => undefined);
     await getTestPool().query(`DROP OWNED BY ${quoteIdentifier(apiRole)}, ${quoteIdentifier(workerRole)}`).catch(() => undefined);
@@ -228,6 +230,8 @@ describe('workflow task independent-process crash and fencing proof', () => {
   }, 30_000);
 
   it('recovers after SIGKILL, then rejects a stale fencing token after takeover', async () => {
+    const apiIdentity = await apiPool.query('SELECT current_user AS role');
+    expect(apiIdentity.rows[0]?.role).toBe(apiRole);
     const crashedTaskId = await createTask('workflow-process-crash');
     const first = startWorkflowProcess(crashedTaskId, `workflow-process-a-${suffix}`, 'claim-and-wait');
     const firstReady = await first.waitFor('WORKFLOW_READY');

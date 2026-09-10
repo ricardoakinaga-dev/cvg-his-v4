@@ -5,6 +5,8 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildWindowsHelperEnvironment,
+  mergeWindowsEnvironment,
   classifyProcessOutcome,
   isWindowsProcessTreeOwned,
   preserveFailureArtifact,
@@ -34,14 +36,110 @@ const setupProcessTest = readFileSync(
 );
 
 describe('critical process proof execution contract', () => {
+  it('replaces Windows environment names case-insensitively with the last layer', () => {
+    const helper = buildWindowsHelperEnvironment(
+      { userprofile: 'explicit-profile', path: 'explicit-path' },
+      { USERPROFILE: 'inherited-profile', Path: 'inherited-path', API_TOKEN: 'excluded' }
+    );
+    expect(helper).toEqual({ userprofile: 'explicit-profile', path: 'explicit-path' });
+    const supervisor = mergeWindowsEnvironment(
+      helper,
+      {
+        UserProfile: 'caller-profile',
+        cvg_critical_supervisor_target_command: 'spoofed'
+      },
+      { CVG_CRITICAL_SUPERVISOR_TARGET_COMMAND: 'real-command' }
+    );
+    expect(supervisor).toEqual({
+      UserProfile: 'caller-profile',
+      path: 'explicit-path',
+      CVG_CRITICAL_SUPERVISOR_TARGET_COMMAND: 'real-command'
+    });
+    expect(new Set(Object.keys(supervisor).map((key) => key.toLowerCase())).size).toBe(
+      Object.keys(supervisor).length
+    );
+  });
+  it('bounds and sanitizes Windows helper failure diagnostics', () => {
+    const directory = mkdtempSync(resolve(tmpdir(), 'windows-helper-diagnostics-'));
+    try {
+      const artifactPath = preserveFailureArtifact({
+        artifactDirectory: directory,
+        label: 'helper',
+        command: 'node',
+        args: [],
+        elapsedMs: 1,
+        outcome: {
+          kind: 'cleanup_error',
+          windowsHelperDiagnostics: Array.from({ length: 12 }, () => ({
+            operation: 'collect-descendants',
+            status: null,
+            closed: false,
+            validResponse: false,
+            stderr: `API_TOKEN=must-never-persist\n${'x'.repeat(5_000)}`,
+            unexpected: 'discard-me'
+          }))
+        }
+      });
+      const text = readFileSync(artifactPath, 'utf8');
+      const artifact = JSON.parse(text);
+      expect(artifact.windowsHelperDiagnostics).toHaveLength(8);
+      expect(
+        artifact.windowsHelperDiagnostics.every(
+          (entry: { stderr: string }) => entry.stderr.length <= 1_000
+        )
+      ).toBe(true);
+      expect(text).not.toContain('must-never-persist');
+      expect(text).not.toContain('discard-me');
+      expect(text).toContain('[REDACTED]');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+  it('retains case-insensitive Windows host paths without inheriting secrets or module overrides', () => {
+    expect(
+      buildWindowsHelperEnvironment(
+        { CVG_CRITICAL_ROOT_PID: '123' },
+        {
+          Path: 'C:\\Windows',
+          systemroot: 'C:\\Windows',
+          USERPROFILE: 'C:\\Users\\runner',
+          LOCALAPPDATA: 'C:\\Users\\runner\\AppData\\Local',
+          APPDATA: 'C:\\Users\\runner\\AppData\\Roaming',
+          ProgramFiles: 'C:\\Program Files',
+          'ProgramFiles(x86)': 'C:\\Program Files (x86)',
+          ProgramW6432: 'C:\\Program Files',
+          SystemDrive: 'C:',
+          DATABASE_URL: 'postgres://private',
+          API_TOKEN: 'private',
+          PSModulePath: 'untrusted-modules'
+        }
+      )
+    ).toEqual({
+      Path: 'C:\\Windows',
+      systemroot: 'C:\\Windows',
+      USERPROFILE: 'C:\\Users\\runner',
+      LOCALAPPDATA: 'C:\\Users\\runner\\AppData\\Local',
+      APPDATA: 'C:\\Users\\runner\\AppData\\Roaming',
+      ProgramFiles: 'C:\\Program Files',
+      'ProgramFiles(x86)': 'C:\\Program Files (x86)',
+      ProgramW6432: 'C:\\Program Files',
+      SystemDrive: 'C:',
+      CVG_CRITICAL_ROOT_PID: '123'
+    });
+  });
   it('does not terminate an unregistered supervisor lookalike', () => {
     let killed = false;
-    expect(terminateOwnedWindowsSupervisor({
-      pid: 45678,
-      exitCode: null,
-      signalCode: null,
-      kill: () => { killed = true; return true; }
-    })).toBe(false);
+    expect(
+      terminateOwnedWindowsSupervisor({
+        pid: 45678,
+        exitCode: null,
+        signalCode: null,
+        kill: () => {
+          killed = true;
+          return true;
+        }
+      })
+    ).toBe(false);
     expect(killed).toBe(false);
   });
 
@@ -51,7 +149,9 @@ describe('critical process proof execution contract', () => {
     const child = { pid: 45678 };
     let publication;
     try {
-      expect(await resolveOwnedWindowsRootIdentity(child, identityFile, Date.now() + 30)).toBeNull();
+      expect(
+        await resolveOwnedWindowsRootIdentity(child, identityFile, Date.now() + 30)
+      ).toBeNull();
       publication = setTimeout(() => writeFileSync(identityFile, '45678@134335360222141986'), 40);
       expect(await resolveOwnedWindowsRootIdentity(child, identityFile, Date.now() + 500)).toEqual({
         pid: 45678,
@@ -68,9 +168,13 @@ describe('critical process proof execution contract', () => {
     const identityFile = resolve(directory, 'supervisor.identity');
     const child = { pid: 45678 };
     try {
-      expect(await resolveOwnedWindowsRootIdentity(child, identityFile, Date.now() + 30)).toBeNull();
+      expect(
+        await resolveOwnedWindowsRootIdentity(child, identityFile, Date.now() + 30)
+      ).toBeNull();
       writeFileSync(identityFile, '45679@134335360222141986');
-      expect(await resolveOwnedWindowsRootIdentity(child, identityFile, Date.now() + 500)).toBeNull();
+      expect(
+        await resolveOwnedWindowsRootIdentity(child, identityFile, Date.now() + 500)
+      ).toBeNull();
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

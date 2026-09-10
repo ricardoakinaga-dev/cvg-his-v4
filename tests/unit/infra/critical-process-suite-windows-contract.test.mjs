@@ -28,10 +28,69 @@ function cleanupContractArtifactDirectory(artifactDirectory, passed) {
 }
 
 test(
+  'Windows target receives an explicitly supplied lowercase host-path override',
+  { skip: process.platform !== 'win32' },
+  async () => {
+    const artifactDirectory = createContractArtifactDirectory('cvg-runner-windows-override-');
+    let passed = false;
+    try {
+      const outcome = await runOwnedProcess({
+        command: process.execPath,
+        args: [
+          '-e',
+          'process.exit(process.env.USERPROFILE === process.argv[1] ? 0 : 9)',
+          artifactDirectory
+        ],
+        env: { userprofile: artifactDirectory },
+        timeoutMs: 1_000,
+        artifactDirectory,
+        label: 'windows-environment-override-contract'
+      });
+      assert.equal(outcome.kind, 'success');
+      assert.equal(outcome.status, 0);
+      assert.equal(outcome.cleanupComplete, true);
+      passed = true;
+    } finally {
+      cleanupContractArtifactDirectory(artifactDirectory, passed);
+    }
+  }
+);
+
+test(
+  'Windows helper host paths do not widen the target environment',
+  { skip: process.platform !== 'win32' },
+  async () => {
+    const artifactDirectory = createContractArtifactDirectory('cvg-runner-windows-environment-');
+    let passed = false;
+    try {
+      const outcome = await runOwnedProcess({
+        command: process.execPath,
+        args: [
+          '-e',
+          "const extra = ['USERPROFILE','LOCALAPPDATA','APPDATA','ProgramFiles','ProgramFiles(x86)','ProgramW6432','SystemDrive']; process.exit(extra.some(key => process.env[key] !== undefined) ? 9 : 0)"
+        ],
+        env: {},
+        timeoutMs: 1_000,
+        artifactDirectory,
+        label: 'windows-environment-contract'
+      });
+      assert.equal(outcome.kind, 'success');
+      assert.equal(outcome.status, 0);
+      assert.equal(outcome.cleanupComplete, true);
+      passed = true;
+    } finally {
+      cleanupContractArtifactDirectory(artifactDirectory, passed);
+    }
+  }
+);
+
+test(
   'Windows supervisor abort before identity prevents a delayed target launch',
   { skip: process.platform !== 'win32' },
   async () => {
-    const artifactDirectory = createContractArtifactDirectory('cvg-runner-windows-bootstrap-abort-');
+    const artifactDirectory = createContractArtifactDirectory(
+      'cvg-runner-windows-bootstrap-abort-'
+    );
     const markerPath = join(artifactDirectory, 'target-started');
     const controller = new AbortController();
     let passed = false;

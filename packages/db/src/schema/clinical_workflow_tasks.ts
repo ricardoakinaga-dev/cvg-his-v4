@@ -8,6 +8,7 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
   varchar
@@ -38,7 +39,10 @@ export const clinicalWorkflowTasks = pgTable(
     dueAt: timestamp('due_at', { withTimezone: true }).notNull(),
     idempotencyKey: varchar('idempotency_key', { length: 255 }).notNull(),
     fingerprint: varchar('fingerprint', { length: 64 }).notNull(),
-    metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    metadata: jsonb('metadata')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     attempts: integer('attempts').notNull().default(0),
     maxAttempts: integer('max_attempts').notNull().default(5),
     nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).notNull(),
@@ -120,16 +124,25 @@ export const clinicalWorkflowTaskEvents = pgTable(
     taskId: uuid('task_id')
       .notNull()
       .references(() => clinicalWorkflowTasks.id, { onDelete: 'cascade' }),
+    taskRevision: integer('task_revision'),
     eventType: varchar('event_type', { length: 48 }).notNull(),
     schemaVersion: integer('schema_version').notNull().default(1),
     source: varchar('source', { length: 80 }).notNull().default('clinical-workflow'),
     actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
     correlationId: varchar('correlation_id', { length: 255 }).notNull(),
     causationId: varchar('causation_id', { length: 255 }),
-    payload: jsonb('payload').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    payload: jsonb('payload')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({
+    revisionUnique: unique('clinical_workflow_task_events_revision_unique').on(
+      table.accountId,
+      table.taskId,
+      table.taskRevision
+    ),
     accountTaskIdx: index('idx_clinical_workflow_task_events_account_task').on(
       table.accountId,
       table.taskId,

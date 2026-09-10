@@ -199,6 +199,7 @@ function runWindowsHelper(
 
     let settled = false;
     let output = '';
+    const stderrChannel = createDiagnosticChannel(() => {});
     let timeoutHandle;
     let killWaitHandle;
     let helperClosed = false;
@@ -207,7 +208,7 @@ function runWindowsHelper(
       settled = true;
       clearTimeout(timeoutHandle);
       clearTimeout(killWaitHandle);
-      resolveHelper({ status, output, closed });
+      resolveHelper({ status, output, closed, stderr: stderrChannel.flush() });
     };
 
     let helper;
@@ -216,7 +217,7 @@ function runWindowsHelper(
         env,
         shell: false,
         windowsHide: true,
-        stdio: captureOutput ? ['ignore', 'pipe', 'ignore'] : 'ignore'
+        stdio: ['ignore', captureOutput ? 'pipe' : 'ignore', 'pipe']
       });
     } catch {
       settle(null, false);
@@ -229,6 +230,8 @@ function runWindowsHelper(
         if (output.length < 8_192) output += String(chunk).slice(0, 8_192 - output.length);
       });
     }
+    helper.stderr?.setEncoding('utf8');
+    helper.stderr?.on('data', (chunk) => stderrChannel.append(String(chunk)));
     helper.once('error', () => {
       if (helperClosed) settle(null, true);
     });
@@ -252,22 +255,39 @@ function runWindowsHelper(
   });
 }
 
-function buildWindowsHelperEnvironment(overrides = {}) {
+export function mergeWindowsEnvironment(...layers) {
+  const entries = new Map();
+  for (const layer of layers) {
+    for (const [key, value] of Object.entries(layer)) {
+      entries.set(key.toLowerCase(), [key, value]);
+    }
+  }
+  return Object.fromEntries(entries.values());
+}
+
+export function buildWindowsHelperEnvironment(overrides = {}, inherited = process.env) {
   const allowedKeys = new Set([
-    'ComSpec',
-    'PATH',
-    'PATHEXT',
-    'SystemRoot',
-    'TEMP',
-    'TMP',
-    'WINDIR'
+    'comspec',
+    'path',
+    'pathext',
+    'systemroot',
+    'temp',
+    'tmp',
+    'windir',
+    'userprofile',
+    'localappdata',
+    'appdata',
+    'programfiles',
+    'programfiles(x86)',
+    'programw6432',
+    'systemdrive'
   ]);
   const inheritedEnvironment = Object.fromEntries(
-    Object.entries(process.env).filter(
-      ([key, value]) => allowedKeys.has(key) && typeof value === 'string'
+    Object.entries(inherited).filter(
+      ([key, value]) => allowedKeys.has(key.toLowerCase()) && typeof value === 'string'
     )
   );
-  return { ...inheritedEnvironment, ...overrides };
+  return mergeWindowsEnvironment(inheritedEnvironment, overrides);
 }
 
 function parseWindowsProcessIdentity(value) {
@@ -289,6 +309,17 @@ async function collectWindowsDescendantPids(child, deadline) {
     true,
     deadline
   );
+  const diagnostics = ownedWindowsHelperDiagnostics.get(child) ?? [];
+  if (diagnostics.length < 8) {
+    diagnostics.push({
+      operation: 'collect-descendants',
+      status: result.status,
+      closed: result.closed,
+      stderr: sanitizeDiagnostic(result.stderr ?? '', 1_000),
+      validResponse: result.output.trim().startsWith('CVG_CRITICAL_TREE_OK:')
+    });
+    ownedWindowsHelperDiagnostics.set(child, diagnostics);
+  }
   if (result.status !== 0 || result.closed !== true || result.output.length >= 8_192) return null;
   const lines = result.output
     .split(/\r?\n/)
@@ -563,6 +594,7 @@ const ownedCleanupPromises = new WeakMap();
 const ownedWindowsSupervisors = new WeakSet();
 const ownedWindowsRootIdentityPromises = new WeakMap();
 const ownedWindowsIdentityFilePaths = new WeakMap();
+const ownedWindowsHelperDiagnostics = new WeakMap();
 
 export function resolveOwnedWindowsRootIdentity(child, identityFilePath, deadline) {
   if (!child?.pid || typeof identityFilePath !== 'string') {
@@ -796,11 +828,7 @@ function serializeSanitizedReport(reportPath, reportDirectory = null, requireCom
   } else {
     try {
       const report = JSON.parse(reportContent.content);
-      serializedReport = JSON.stringify(
-        sanitizeReportValue(report, sanitization),
-        null,
-        2
-      );
+      serializedReport = JSON.stringify(sanitizeReportValue(report, sanitization), null, 2);
     } catch {
       serializedReport = JSON.stringify(
         {
@@ -813,7 +841,12 @@ function serializeSanitizedReport(reportPath, reportDirectory = null, requireCom
     }
   }
 
-  if (requireComplete && (reportContent.truncated || sanitization.truncated || Buffer.byteLength(serializedReport, 'utf8') > MAX_SANITIZED_REPORT_BYTES)) {
+  if (
+    requireComplete &&
+    (reportContent.truncated ||
+      sanitization.truncated ||
+      Buffer.byteLength(serializedReport, 'utf8') > MAX_SANITIZED_REPORT_BYTES)
+  ) {
     throw new Error('successful report sanitization would truncate evidence');
   }
   if (Buffer.byteLength(serializedReport, 'utf8') > MAX_SANITIZED_REPORT_BYTES) {
@@ -864,10 +897,18 @@ function writeSanitizedReport(reportPath, serializedReport, reportDirectory = nu
   }
 }
 
-export function sanitizeReportInPlace(reportPath, reportDirectory = null, { requireComplete = false } = {}) {
+export function sanitizeReportInPlace(
+  reportPath,
+  reportDirectory = null,
+  { requireComplete = false } = {}
+) {
   const report = resolveExistingReport(reportPath, reportDirectory);
   if (!report) return null;
-  const serializedReport = serializeSanitizedReport(report.reportPath, report.reportDirectory, requireComplete);
+  const serializedReport = serializeSanitizedReport(
+    report.reportPath,
+    report.reportDirectory,
+    requireComplete
+  );
   writeSanitizedReport(report.reportPath, serializedReport, report.reportDirectory);
   return reportPath;
 }
@@ -1003,6 +1044,17 @@ export function preserveFailureArtifact({
       cleanupComplete: outcome.cleanupComplete ?? null,
       cleanupError: sanitizeDiagnostic(outcome.cleanupError ?? '', 1_000)
     },
+    ...(Array.isArray(outcome.windowsHelperDiagnostics)
+      ? {
+          windowsHelperDiagnostics: outcome.windowsHelperDiagnostics.slice(0, 8).map((entry) => ({
+            operation: sanitizeDiagnostic(String(entry.operation ?? ''), 80),
+            status: Number.isInteger(entry.status) ? entry.status : null,
+            closed: entry.closed === true,
+            validResponse: entry.validResponse === true,
+            stderr: sanitizeDiagnostic(String(entry.stderr ?? ''), 1_000)
+          }))
+        }
+      : {}),
     elapsedMs,
     reportPath: sanitizedReportPath ? sanitizeDiagnostic(sanitizedReportPath, 500) : null,
     stdout: sanitizeDiagnostic(stdout),
@@ -1095,16 +1147,14 @@ function spawnOwnedProcess({ command, args, cwd, env, identityFilePath, readyFil
     });
   }
 
-  const supervisorEnvironment = {
-    ...buildWindowsHelperEnvironment(),
-    ...env,
+  const supervisorEnvironment = mergeWindowsEnvironment(buildWindowsHelperEnvironment(), env, {
     CVG_CRITICAL_SUPERVISOR_TARGET_COMMAND: command,
     CVG_CRITICAL_SUPERVISOR_TARGET_ARGS_JSON: JSON.stringify(args),
     CVG_CRITICAL_SUPERVISOR_TARGET_CWD: cwd,
     CVG_CRITICAL_SUPERVISOR_TARGET_KEYS_JSON: JSON.stringify(Object.keys(env)),
     CVG_CRITICAL_SUPERVISOR_IDENTITY_FILE: identityFilePath,
     CVG_CRITICAL_SUPERVISOR_READY_FILE: readyFilePath
-  };
+  });
   const supervisor = spawn(
     WINDOWS_POWERSHELL_PATH,
     [
@@ -1409,6 +1459,9 @@ export function runOwnedProcess({
         interrupted,
         runnerError
       });
+      if (process.platform === 'win32') {
+        outcome.windowsHelperDiagnostics = ownedWindowsHelperDiagnostics.get(child) ?? [];
+      }
       if (!cleanupComplete) {
         outcome.cleanupComplete = false;
         outcome.cleanupError = 'owned process group did not exit after bounded termination';

@@ -20,6 +20,8 @@ try {
     $currentProcess.Dispose()
 }
 
+[System.IO.File]::WriteAllText(($env:CVG_CRITICAL_SUPERVISOR_READY_FILE + '.phase'), 'identity-published')
+
 Add-Type -TypeDefinition @'
 using System;
 using System.IO;
@@ -270,6 +272,7 @@ public static class CvgWindowsOwnedProcessSupervisor
                 throw LastWin32Error("CreateProcess");
             }
             targetCreated = true;
+            File.WriteAllText(readyFile + ".phase", "target-created");
 
             // The target is still suspended and already belongs to our Job
             // Object. Publish readiness only after compilation and creation,
@@ -280,6 +283,7 @@ public static class CvgWindowsOwnedProcessSupervisor
             }
             if (ResumeThread(processInformation.hThread) == 0xFFFFFFFF)
                 throw LastWin32Error("ResumeThread");
+            File.WriteAllText(readyFile + ".phase", "target-resumed");
 
             if (WaitForSingleObject(processInformation.hProcess, INFINITE) != WAIT_OBJECT_0)
                 throw LastWin32Error("WaitForSingleObject");
@@ -308,6 +312,7 @@ public static class CvgWindowsOwnedProcessSupervisor
     }
 }
 '@
+[System.IO.File]::WriteAllText(($env:CVG_CRITICAL_SUPERVISOR_READY_FILE + '.phase'), 'compiled')
 
 function ConvertTo-NativeCommandLineArgument {
     param([AllowEmptyString()][string]$Value)

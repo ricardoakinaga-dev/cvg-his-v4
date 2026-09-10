@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 
 import { expect, describe, beforeAll, afterAll, afterEach, it } from 'vitest';
 
@@ -195,6 +196,139 @@ describe('clinical workflow control plane — PostgreSQL assurance', () => {
       tasks_force_rls: true,
       events_force_rls: true
     });
+  });
+
+  it('preserves causal history when the producer clock moves backwards', async () => {
+    const repository = new DatabaseWorkflowTaskRepository(pool);
+    const service = new WorkflowTaskService({ repository, now: () => nowAt });
+    const task = await createTask(service, fixture.accountA, fixture.userA, 'clock-regression');
+    const claimAt = '2026-09-09T09:59:59.000Z';
+    const completeAt = '2026-09-09T09:59:58.000Z';
+    const [claim] = await repository.claimDue({
+      accountId: fixture.accountA,
+      workerId: 'clock-regression-worker',
+      correlationId: correlation('clock-claim'),
+      now: claimAt,
+      limit: 1,
+      leaseMs: 10_000
+    });
+    expect(claim?.task.id).toBe(task.id);
+    expect(
+      await repository.completeClaim(claim!, {
+        eventType: 'completed',
+        schemaVersion: 1,
+        source: 'clinical-workflow',
+        correlationId: correlation('clock-complete'),
+        occurredAt: completeAt
+      })
+    ).toBe(true);
+    const events = await service.events(fixture.accountA, task.id);
+    expect(events.map((event) => event.eventType)).toEqual(['created', 'claimed', 'completed']);
+    expect(events.map((event) => event.occurredAt)).toEqual([nowAt, claimAt, completeAt]);
+    expect(
+      (await repository.listEvents(fixture.accountA, task.id, 2)).map((event) => event.eventType)
+    ).toEqual(['created', 'claimed']);
+  });
+
+  it('upgrades legacy history without rewriting it and stamps old-style inserts under RLS', async () => {
+    const repository = new DatabaseWorkflowTaskRepository(pool);
+    const service = new WorkflowTaskService({ repository, now: () => nowAt });
+    const task = await createTask(service, fixture.accountA, fixture.userA, 'event-order-upgrade');
+    const original = await service.events(fixture.accountA, task.id);
+    const migration = await readFile(
+      'packages/db/migrations/0169_clinical_workflow_event_order.sql',
+      'utf8'
+    );
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      // Reconstruct the immediately preceding schema inside the owned test DB,
+      // then apply the real migration with an existing immutable event.
+      await client.query(
+        'DROP TRIGGER clinical_workflow_task_events_revision_trigger ON clinical_workflow_task_events'
+      );
+      await client.query(
+        'ALTER TABLE clinical_workflow_task_events DROP CONSTRAINT clinical_workflow_task_events_revision_unique, DROP COLUMN task_revision'
+      );
+      await client.query('DROP FUNCTION app.stamp_clinical_workflow_event_revision()');
+      await client.query(migration);
+      await activateRlsRole(client);
+      await setAccountContext(client, fixture.accountA);
+      const legacy = await client.query(
+        'SELECT task_revision FROM clinical_workflow_task_events WHERE task_id=$1',
+        [task.id]
+      );
+      expect(legacy.rows).toEqual([{ task_revision: null }]);
+      // Deliberately reverse UUID order at identical timestamps. These are
+      // controlled SQL fixtures exercising the real trigger and reader.
+      for (const [id, type, suppliedRevision] of [
+        ['ffffffff-ffff-4fff-8fff-ffffffffffff', 'claimed', 999],
+        ['00000000-0000-4000-8000-000000000001', 'completed', null]
+      ] as const) {
+        await client.query('UPDATE clinical_workflow_tasks SET revision=revision+1 WHERE id=$1', [
+          task.id
+        ]);
+        await client.query(
+          `INSERT INTO clinical_workflow_task_events
+          (id, account_id, task_id, event_type, correlation_id, occurred_at, task_revision)
+          VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [id, fixture.accountA, task.id, type, correlation(type), nowAt, suppliedRevision]
+        );
+      }
+      await client.query('UPDATE clinical_workflow_tasks SET revision=revision+1 WHERE id=$1', [
+        task.id
+      ]);
+      await client.query(
+        `INSERT INTO clinical_workflow_task_events
+        (account_id, task_id, event_type, correlation_id, occurred_at)
+        VALUES ($1,$2,'replayed',$3,$4)`,
+        [fixture.accountA, task.id, correlation('old-writer'), nowAt]
+      );
+      const revisions = await client.query(
+        'SELECT task_revision FROM clinical_workflow_task_events WHERE task_id=$1 ORDER BY task_revision NULLS FIRST',
+        [task.id]
+      );
+      expect(revisions.rows.map((row) => row.task_revision)).toEqual([null, 1, 2, 3]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    expect(await checkWorkflowTaskSchemaReadiness()).toBe(true);
+    const events = await service.events(fixture.accountA, task.id);
+    expect(events[0]).toEqual(original[0]);
+    expect(events.map((event) => event.eventType)).toEqual([
+      'created',
+      'claimed',
+      'completed',
+      'replayed'
+    ]);
+
+    const before = await repository.findById(fixture.accountA, task.id);
+    const duplicate = await pool.connect();
+    try {
+      await duplicate.query('BEGIN');
+      await activateRlsRole(duplicate);
+      await setAccountContext(duplicate, fixture.accountA);
+      await duplicate.query('UPDATE clinical_workflow_tasks SET revision=revision+1 WHERE id=$1', [
+        task.id
+      ]);
+      const append = () =>
+        duplicate.query(
+          `INSERT INTO clinical_workflow_task_events
+        (account_id,task_id,event_type,correlation_id) VALUES ($1,$2,'claimed',$3)`,
+          [fixture.accountA, task.id, correlation('duplicate')]
+        );
+      await append();
+      await expect(append()).rejects.toMatchObject({ code: '23505' });
+    } finally {
+      await duplicate.query('ROLLBACK');
+      duplicate.release();
+    }
+    expect(await repository.findById(fixture.accountA, task.id)).toEqual(before);
+    expect(await service.events(fixture.accountA, task.id)).toEqual(events);
   });
 
   it('linearizes concurrent creation and rejects idempotency payload drift', async () => {

@@ -17,7 +17,6 @@ import type {
   WorkflowTaskClaim,
   WorkflowTaskEventSummary,
   WorkflowTaskEventType,
-  WorkflowTaskExecutionMode,
   WorkflowTaskId,
   WorkflowTaskListFilters,
   WorkflowTaskStatus,
@@ -63,6 +62,22 @@ export async function checkWorkflowTaskSchemaReadiness(): Promise<boolean> {
             AND trigger_info.tgname = 'clinical_workflow_task_events_immutability_trigger'
             AND trigger_info.tgenabled <> 'D'
        )
+       AND EXISTS (
+         SELECT 1 FROM pg_trigger AS t
+         JOIN pg_class AS c ON c.oid = t.tgrelid
+         JOIN pg_namespace AS n ON n.oid = c.relnamespace
+         WHERE n.nspname = 'public' AND c.relname = 'clinical_workflow_task_events'
+           AND t.tgname = 'clinical_workflow_task_events_revision_trigger'
+           AND t.tgenabled IN ('O', 'A')
+       )
+       AND EXISTS (
+         SELECT 1 FROM pg_constraint AS c
+         JOIN pg_class AS r ON r.oid = c.conrelid
+         JOIN pg_namespace AS n ON n.oid = r.relnamespace
+         WHERE n.nspname = 'public' AND r.relname = 'clinical_workflow_task_events'
+           AND c.conname = 'clinical_workflow_task_events_revision_unique'
+           AND c.contype = 'u' AND c.convalidated
+       )
        AND (
          SELECT COUNT(*) = 24
            FROM information_schema.columns
@@ -77,13 +92,13 @@ export async function checkWorkflowTaskSchemaReadiness(): Promise<boolean> {
             ])
        )
        AND (
-         SELECT COUNT(*) = 11
+         SELECT COUNT(*) = 12
            FROM information_schema.columns
           WHERE table_schema = 'public'
             AND table_name = 'clinical_workflow_task_events'
             AND column_name = ANY(ARRAY[
               'id', 'account_id', 'task_id', 'event_type', 'actor_user_id', 'correlation_id',
-              'causation_id', 'payload', 'occurred_at', 'schema_version', 'source'
+              'causation_id', 'payload', 'occurred_at', 'schema_version', 'source', 'task_revision'
             ])
        )
        AND (
@@ -706,7 +721,7 @@ export class DatabaseWorkflowTaskRepository implements WorkflowTaskRepository {
   ): Promise<readonly WorkflowTaskEventSummary[]> {
     return withTenantQueryExplicit(this.pool(), accountId, async (client) => {
       const result = await client.query(
-        'SELECT * FROM clinical_workflow_task_events WHERE account_id = $1 AND task_id = $2 ORDER BY occurred_at ASC, id ASC LIMIT $3',
+        'SELECT * FROM clinical_workflow_task_events WHERE account_id = $1 AND task_id = $2 ORDER BY task_revision ASC NULLS FIRST, occurred_at ASC, id ASC LIMIT $3',
         [accountId, taskId, boundedEventLimit(limit)]
       );
       return result.rows.map((row: DbRow) => ({

@@ -9,6 +9,7 @@ const REQUIRED_FILES = [
   'packages/db/migrations/0166_clinical_workflow_tasks.sql',
   'packages/db/migrations/0167_clinical_workflow_permissions.sql',
   'packages/db/migrations/0168_clinical_workflow_event_governance.sql',
+  'packages/db/migrations/0169_clinical_workflow_event_order.sql',
   'packages/db/src/schema/clinical_workflow_tasks.ts',
   'packages/modules/workflows/src/types.ts',
   'packages/modules/workflows/src/index.ts',
@@ -65,10 +66,21 @@ export function inspectClinicalWorkflowSchema(rootDirectory = root) {
     if (/\bDROP\s+TABLE\b/i.test(source)) failures.push('0168 migration must be append-only; DROP TABLE is forbidden');
   }
 
+  const eventOrderPath = resolve(rootDirectory, 'packages/db/migrations/0169_clinical_workflow_event_order.sql');
+  if (existsSync(eventOrderPath)) {
+    const source = readFileSync(eventOrderPath, 'utf8');
+    for (const marker of ['ADD COLUMN task_revision INTEGER', 'SECURITY INVOKER',
+      'clinical_workflow_task_events_revision_trigger', 'clinical_workflow_task_events_revision_unique',
+      'FOR UPDATE', 'UNIQUE (account_id, task_id, task_revision)']) {
+      if (!source.includes(marker)) failures.push(`0169 migration is missing marker: ${marker}`);
+    }
+    if (/\bDROP\s+TABLE\b/i.test(source)) failures.push('0169 migration must be append-only; DROP TABLE is forbidden');
+  }
+
   const schemaPath = resolve(rootDirectory, 'packages/db/src/schema/clinical_workflow_tasks.ts');
   if (existsSync(schemaPath)) {
     const source = readFileSync(schemaPath, 'utf8');
-    for (const marker of ["schemaVersion: integer('schema_version')", "source: varchar('source'"]) {
+    for (const marker of ["taskRevision: integer('task_revision')", "schemaVersion: integer('schema_version')", "source: varchar('source'"]) {
       if (!source.includes(marker)) failures.push(`Drizzle schema is missing event governance marker: ${marker}`);
     }
   }
