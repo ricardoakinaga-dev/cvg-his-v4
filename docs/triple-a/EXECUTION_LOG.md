@@ -106,3 +106,6 @@ Cada nova rodada deve registrar commit, comando ou observação, resultado, limi
   browser visual, performance pinned em CI, backup/restore, deploy/rollback,
   attestations, branch protection autenticada e autoridade humana continuam
   `BLOCKED / NOT PROVEN`.
+- `TRIPLE_A_SKIP_EXECUTION=1 pnpm release:triple-a` no candidato corrente
+  permaneceu `BLOCKED`, score `43`, critical `23`, `open_p0=27`; a execução
+  externa foi explicitamente pulada e nenhum P0 foi convertido em PASS.
