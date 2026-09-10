@@ -4531,7 +4531,7 @@
     },
     {
       "path": "packages/modules/auth/src/index.ts",
-      "sha256": "3d5a6329865b7a6a8524d53903851181b709a6b3601d3cb2e2dc27b7d4b0699f",
+      "sha256": "4540b9eab96d46b6ea26aa8256ba7b957c83f80c9fe2f4e2f132a39d8df64102",
       "components": [
         "auth"
       ],

@@ -28,10 +28,12 @@ import type {
 import { createCorrelationId, createSecureId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 import { runWithTenantContext } from '@cvg-his-v2/tenant-context';
+import { getPool, runInTenantTransaction } from '@cvg-his-v2/shared-database';
 import type {
   PersistedSessionRecord,
   SessionRepository
 } from './repositories/session.repository.js';
+import { DatabaseSessionRepository } from './repositories/database-session.repository.js';
 import type {
   MfaLoginChallengeKey,
   MfaLoginChallengeRepository
@@ -767,42 +769,59 @@ export class AuthService {
       return { session, user };
     }
 
-    const session = await this.#runAsTokenPayload(payload, correlationId, () =>
-      this.#sessionRepository!.findById(payload.session_id as SessionId)
-    );
-    if (!session) {
-      throw new AuthenticationError('Session is not active');
-    }
-
-    this.#assertTokenSessionMatch(payload, session);
-    if (!session.active || session.revokedAt) {
-      this.#sessions.set(session.sessionId, session);
-      throw new AuthenticationError('Session is not active');
-    }
-
-    const expiry = tokenType === 'refresh' ? session.refreshExpiresAt : session.expiresAt;
-    if (new Date(expiry).getTime() <= Date.now()) {
-      const expiredSession: SessionRecord = {
-        ...session,
-        active: false,
-        revokedAt: nowIso()
-      };
-      await this.#runAsTokenPayload(payload, correlationId, () =>
-        this.#sessionRepository!.update(expiredSession)
+    const loadFromRepository = async (): Promise<{
+      readonly session: SessionRecord;
+      readonly user: UserRecord;
+    }> => {
+      const session = await this.#runAsTokenPayload(payload, correlationId, () =>
+        this.#sessionRepository!.findById(payload.session_id as SessionId)
       );
-      this.#sessions.set(expiredSession.sessionId, expiredSession);
-      throw new AuthenticationError('Session expired');
+      if (!session) {
+        throw new AuthenticationError('Session is not active');
+      }
+
+      this.#assertTokenSessionMatch(payload, session);
+      if (!session.active || session.revokedAt) {
+        this.#sessions.set(session.sessionId, session);
+        throw new AuthenticationError('Session is not active');
+      }
+
+      const expiry = tokenType === 'refresh' ? session.refreshExpiresAt : session.expiresAt;
+      if (new Date(expiry).getTime() <= Date.now()) {
+        const expiredSession: SessionRecord = {
+          ...session,
+          active: false,
+          revokedAt: nowIso()
+        };
+        await this.#runAsTokenPayload(payload, correlationId, () =>
+          this.#sessionRepository!.update(expiredSession)
+        );
+        this.#sessions.set(expiredSession.sessionId, expiredSession);
+        throw new AuthenticationError('Session expired');
+      }
+
+      const user = await this.#runAsTokenPayload(payload, correlationId, () =>
+        this.#resolveCurrentUser(session.userId, session.accountId)
+      );
+      if (!user || !isInteractiveHumanUser(user)) {
+        throw new AuthenticationError('Session is not active');
+      }
+
+      this.#sessions.set(session.sessionId, session);
+      return { session, user };
+    };
+
+    // Database repositories already honor the active transaction scope. Keep
+    // session, user and role reads on one tenant-scoped connection to avoid
+    // repeated BEGIN/SET/COMMIT cycles while preserving the final guard's
+    // authoritative re-read on every protected request.
+    if (this.#sessionRepository instanceof DatabaseSessionRepository) {
+      return this.#runAsTokenPayload(payload, correlationId, () =>
+        runInTenantTransaction(getPool(), payload.account_id, loadFromRepository)
+      );
     }
 
-    const user = await this.#runAsTokenPayload(payload, correlationId, () =>
-      this.#resolveCurrentUser(session.userId, session.accountId)
-    );
-    if (!user || !isInteractiveHumanUser(user)) {
-      throw new AuthenticationError('Session is not active');
-    }
-
-    this.#sessions.set(session.sessionId, session);
-    return { session, user };
+    return loadFromRepository();
   }
 
   async #loadCurrentSessionForMutation(
