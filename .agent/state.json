@@ -1,20 +1,24 @@
 {
   "schema_version": 2,
   "project": "cvg-his-v4",
-  "goal": "Executar o fechamento de garantia externa do prompt Triple-A no ERP CVG HIS, preservando o monólito modular e sem alegações não comprovadas.",
+  "goal": "Implementar integralmente MASTER_PROMPT_STATE_OF_ART.md preservando a arquitetura e provar qualidade Triple-A 97/95/zero P0; não fabricar evidência.",
   "project_profile": "BROWNFIELD",
   "work_mode": "NORMAL",
-  "work_mode_overlays": ["FEATURE", "REFACTOR", "MIGRATION"],
+  "work_mode_overlays": [
+    "FEATURE",
+    "REFACTOR",
+    "MIGRATION"
+  ],
   "lifecycle_stage": "BUILD",
   "active_activity": "VERIFY",
   "engineering_tier": "T4_CRITICAL",
   "risk_level": "CRITICAL",
   "blast_radius": "CROSS_SYSTEM",
   "status": "BLOCKED",
-  "active_execplan": ".agent/plans/triple-a-execplan.md",
+  "active_execplan": ".agent/plans/external-assurance-closure-execplan.md",
   "active_task": "TRIPLE-A-RELEASE-CONTROL",
-  "verification_state": "BLOCKED",
-  "repository_state": "main@1434514c4e0ce88bc29d0feda28b09a61a08670f; worktree clean; CI run #70 (34490757429) is in progress; Release Artifacts run #50 (34490858211) is skipped pending green CI; strict gate remains BLOCKED with score 42, critical 20 and 28 open P0",
+  "verification_state": "PARTIAL",
+  "repository_state": "fix/state-of-art-ci-assurance source@3cfe8b33a23a2f46988abb572fc5b1ba08a88376; source changes committed, documentation checkpoint pending; remote main b85b03ea CI34509025262 failed; next candidate CI not run",
   "instruction_scope_refs": [
     ".agent/plans/external-assurance-closure-execplan.md",
     "docs/triple-a/MASTER_PROMPT_EXTERNAL_CLOSURE.md",
@@ -23,17 +27,19 @@
     "docs/engineering/BRANCH_GOVERNANCE.md",
     "docs/engineering/GREEN_MAIN_POLICY.md",
     "docs/clinical/CLINICAL_CRITICALITY_MATRIX.md",
-    "docs/clinical/CLINICAL_SAFETY_INVARIANTS.md"
+    "docs/clinical/CLINICAL_SAFETY_INVARIANTS.md",
+    "docs/triple-a/MASTER_PROMPT_STATE_OF_ART.md",
+    "docs/triple-a/15-current-baseline.md",
+    "docs/triple-a/16-requirement-traceability.md"
   ],
   "last_gate_record": null,
-  "last_event_id": "EVT-TRIPLE-A-RELEASE-CONTROL-OBSERVE-CI70-20260910",
-  "state_revision": 9,
+  "last_event_id": "EVT-STATE-OF-ART-RECOVERY-20260910",
+  "state_revision": 10,
   "next_gate": "VERIFIED",
-  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:OBSERVE-CI-1434514C",
+  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:INTEGRATE-CI-REPAIRS",
   "blocked_by": [
-    "CI #70 (run 34490757429) for the candidate 1434514c4e0ce88bc29d0feda28b09a61a08670f is still in_progress; main is not green until all required jobs are terminal and successful",
-    "Strict gate is below the required thresholds: score 42, critical 20 and 28 open P0",
-    "Branch governance, target deployment, runtime clinical/operations drills, image attestations and release authority remain unproven"
+    "Release blocked: remote main CI34509025262 failed Windows/E2E/performance; local repairs being verified",
+    "Current target evidence, UAT, soak24/72h, branch governance, image attestations and release authority not proven"
   ],
   "human_approval_required": [
     "production deployment or rollback",
@@ -42,5 +48,5 @@
     "destructive backup/restore/chaos drills on shared infrastructure",
     "final release authority and Triple-A certification"
   ],
-  "updated_at": "2026-09-10T11:47:12-03:00"
+  "updated_at": "2026-09-10T18:46:33.857715+00:00"
 }

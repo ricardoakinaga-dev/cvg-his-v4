@@ -76,3 +76,43 @@ After any interruption, read in order: `.agent/state.json`, this plan,
 fresh baseline, and the current strict-gate artifact. Recompute `git status`,
 `git rev-parse HEAD`, and prompt SHA before resuming. Never trust an old
 candidate identity or silently rewrite a prior outcome.
+
+
+## Recovery and scope extension — 2026-09-10T18:37:15.844018+00:00
+
+The live user attachment is now preserved in
+`docs/triple-a/MASTER_PROMPT_STATE_OF_ART.md`, SHA-256
+`872014ed989fa4b565bbab5293009c13ef6437104204cbf39c876e64a593f745`.
+All phases 0–75 and mandatory order are authoritative additions to this plan;
+existing frozen thresholds and architecture remain unchanged. Track completion
+against each phase's required artifacts and executed boundaries, not prior scores.
+Current Git is `b85b03ea029b9ffe2186dc0021ddf7f6c65e37f3`; remote CI 34509025262 is terminal failure (13/16 jobs green).
+The prior CI #70 next action is stale. Fresh baseline is
+`docs/triple-a/15-current-baseline.md`. Main-red stop-the-line is active.
+
+Ready bounded work: inventory report E2E isolation (parent), Windows process
+bootstrap (builder), inventory request pagination (builder). Disjoint ownership:
+four E2E specs / Windows runtime+supervisor+contract / inventory route+test.
+Read-only fresh critics review changes; no descendants; 4 host slots maximum.
+Native PostgreSQL uses private socket/data directory and owned shutdown; Docker
+socket inaccessible. Windows runtime and full performance rerun remain unproven.
+
+P0 sequencing remains: main/CI → determinism → governance → PostgreSQL workflow,
+concurrency, fencing, crash, RLS, billing → clinical positive/negative paths →
+security. Then supply chain, performance, browser/a11y, recovery/RPO/RTO,
+deploy/rollback, 24h/72h soak, human UAT, independent critics, evidence and gate.
+Every skipped/unavailable/failed requirement remains open; no scope reduction.
+
+## Next executable action
+
+1. `TRIPLE-A-RELEASE-CONTROL:INTEGRATE-CI-REPAIRS` — fechar revisão/regressão e preparar candidato para CI completo.
+
+Acceptance mapping: `docs/triple-a/16-requirement-traceability.md` retains every
+phase 0–75. Current partial evidence: `VER-STATE-OF-ART-INVENTORY-20260910`.
+
+### Reviewed source checkpoint
+
+Source commit `3cfe8b33a23a2f46988abb572fc5b1ba08a88376` on `fix/state-of-art-ci-assurance`. Three bounded changes
+committed separately, scoped fresh I1 critics accepted source; Linux27, API71,
+inventory E2E4 pass. Windows native and unchanged k6 require new CI. Global
+status remains NOT PROVEN; do not transfer precommit results as exact-SHA envelopes.

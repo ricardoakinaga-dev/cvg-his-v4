@@ -184,3 +184,61 @@ Cada nova rodada deve registrar commit, comando ou observação, resultado, limi
 **Estado:** `BLOCKED / NOT PROVEN`. Próxima ação: observar a conclusão do CI
 #70, registrar os jobs no ledger e executar a próxima rodada de críticos/runtime
 sem transformar documentação ou teste local em prova externa.
+
+
+## 2026-09-10T18:45:25.542905+00:00 — State of Art: baseline fresco e correções do CI
+
+- SHA base: `b85b03ea029b9ffe2186dc0021ddf7f6c65e37f3`, confirmado em
+  HEAD/main/origin/main e `git ls-remote`; worktree inicialmente limpo.
+- Novo prompt: cópia exata `MASTER_PROMPT_STATE_OF_ART.md`, SHA-256
+  `872014ed989fa4b565bbab5293009c13ef6437104204cbf39c876e64a593f745`.
+  Mantidos os prompts anteriores e `QUALITY_BAR_V1.json` sem relaxamento.
+- Problema: estado durável/scorecard apontavam CI #70 e misturavam candidatos.
+  Causa: atualizações históricas acumuladas sem substituir a fotografia atual.
+  `15-current-baseline.md`, scorecard e relatório foram reconciliados; histórico
+  preservado em `scorecard-history/`. `16-requirement-traceability.md` retém
+  todas as fases 0–75 sem convertê-las em PASS.
+- CI atual: run `34509025262`, terminal failure, 13/16 jobs aprovados.
+  Falhas: Windows, E2E SPA e k6. Visual Regression e Integration aprovados.
+- E2E: 420/422; ambos os failures capturavam `/api/inventory` do dashboard
+  anterior, com referer `/` e `net::ERR_ABORTED` nos traces remotos.
+  Os quatro specs de relatórios agora descarregam essa página antes de instalar
+  o observer. A cobertura da carga inicial foi preservada e o reset que
+  ocultava tráfego inicial do relatório NF foi removido.
+- Validação E2E: primeiro teste local 4/4 em 13,2s; o fixture reportou papel de
+  setup ausente. Reteste integrado com reconciliador canônico de roles: 4/4,
+  11,7s, Chromium/PostgreSQL16 privado; shutdown exit0. Crítico I1 independente
+  `inventory_e2e_critic` aprovou a alteração delimitada, sem aprovar release.
+- Performance: `/inventory?page=1&limit=20` ignorava os parâmetros. Corrigida
+  paginação opcional após tenant/search, sem mudar `{ items }` ou a chamada
+  sem parâmetros. Seis testes de rota passaram, incluindo limites, filtro,
+  tenant e autorização; crítico I1 `inventory_api_critic` executou 6/6 e aprovou.
+  OpenAPI e identidade do source crítico sincronizados. Listagem ainda O(n).
+  Quatro SLOs remotos continuam falhos até benchmark novo, sem threshold alterado.
+- Windows: timeout incluía startup do PowerShell/Add-Type. Separados bootstrap
+  finito e budget original do target por readiness no Job Object suspenso.
+  Duas críticas rejeitaram lacunas de captura tardia de identidade; corrigidas
+  com recaptura limitada e término pelo HANDLE original do supervisor registrado
+  em WeakSet. Fallback por PID continua exigindo identidade de criação.
+  Contratos Linux 27/27; seis contratos Windows não executados nesta plataforma.
+  Revisão final delimitada em andamento; não há proof nativa Windows.
+- Outros checks: build API, lint workspace, docs, OpenAPI, complexidade e
+  identidade dos sources críticos aprovados. API server/rota compilados:
+  70/70 antes da última compilação de testes. Ledger atualizado por procedimento.
+- Evidência local: `artifacts/release/baseline-b85b03ea/`, com manifest/hashes;
+  diagnósticos remotos obtidos do run público, sem alteração de ambientes externos.
+- Risco restante: CI completo do próximo candidato, Windows nativo, SLOs,
+  governança, workflows/RLS/crash/billing/clínica no boundary exigido, supply chain,
+  recovery/deploy/soak/UAT e autoridade. Todos permanecem obrigatórios.
+- Resultado global: **BLOCKED / NOT PROVEN**. Correções locais não certificam
+  main nem o ambiente alvo; o objetivo integral permanece aberto.
+
+### Fechamento delimitado — 2026-09-10T18:46:33.857715+00:00
+
+Crítico I1 fresco `windows_handle_critic`: aceita source das quatro alterações,
+27/27 contratos Linux; Windows nativo permanece NOT RUN (6 skips na plataforma).
+Fingerprints conferidos pelo lead. Regressão API final em Node22: **71/71**;
+OpenAPI, docs, lint, complexidade e source identity aprovados.
+Commits: `97fe88d8` E2E, `1a448d15` paginação, `3cfe8b33` supervisor Windows.
+Branch `fix/state-of-art-ci-assurance`; nenhum merge/deploy foi feito.
+Próxima prova: CI completo do novo candidato; source acceptance não fecha runtime.

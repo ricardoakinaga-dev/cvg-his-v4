@@ -11,7 +11,11 @@
       "dependencies": [],
       "owner": "lead",
       "acceptance_summary": "Baseline atual, quality bar, evidência e classificação P0/P1/P2 publicados sem alegações não comprovadas.",
-      "evidence_refs": ["docs/triple-a/00-baseline.md", "docs/engineering/TRIPLE_A_BASELINE.md", ".agent/verification.jsonl#VER-TRIPLE-A-BASELINE-20260910-CURRENT-CD7399-FINAL"],
+      "evidence_refs": [
+        "docs/triple-a/00-baseline.md",
+        "docs/engineering/TRIPLE_A_BASELINE.md",
+        ".agent/verification.jsonl#VER-TRIPLE-A-BASELINE-20260910-CURRENT-CD7399-FINAL"
+      ],
       "next_action": {
         "id": "TRIPLE-A-BASELINE:REOPEN",
         "kind": "REOPEN",
@@ -27,16 +31,25 @@
       "priority": "P0",
       "status": "BLOCKED",
       "origin": "MASTER_PROMPT_FASES_1_2_8_9",
-      "dependencies": ["TRIPLE-A-BASELINE"],
+      "dependencies": [
+        "TRIPLE-A-BASELINE"
+      ],
       "owner": "lead",
       "acceptance_summary": "release:triple-a e rc:evidence:triple-a agregam checks atuais, vinculam commit/digests e falham sem evidência obrigatória.",
-      "evidence_refs": ["scripts/run-triple-a-release-gate.mjs", "scripts/generate-image-attestation-evidence.mjs", "tests/unit/infra/triple-a-release-gate.test.ts", "docs/triple-a/12-release-gate.md"],
+      "evidence_refs": [
+        "scripts/run-triple-a-release-gate.mjs",
+        "scripts/generate-image-attestation-evidence.mjs",
+        "tests/unit/infra/triple-a-release-gate.test.ts",
+        "docs/triple-a/12-release-gate.md",
+        "docs/triple-a/15-current-baseline.md",
+        "docs/triple-a/16-requirement-traceability.md"
+      ],
       "next_action": {
-        "id": "TRIPLE-A-RELEASE-CONTROL:OBSERVE-CI-1434514C",
+        "id": "TRIPLE-A-RELEASE-CONTROL:INTEGRATE-CI-REPAIRS",
         "kind": "VERIFY",
-        "summary": "Observar o CI #70 do candidato 1434514c e só então reconciliar o gate estrito; o run de Release Artifacts foi corretamente pulado enquanto CI não está verde.",
-        "target": "https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34490757429; .agent/verification.jsonl",
-        "completion_signal": "Os 16 jobs obrigatórios terminam com sucesso no mesmo SHA, a evidência CI tipada é gerada, e o gate estrito reexecutado sem evidência externa stale."
+        "summary": "Fechar revisão e regressão das correções Windows, inventário e E2E; preparar candidato para CI completo sem reduzir thresholds.",
+        "target": "infra/scripts/critical-process-suite-runtime.mjs; apps/api/src/routes/inventory-routes.ts; e2e/spa/inventory-*-report-flow.spec.ts",
+        "completion_signal": "Correções aprovadas em revisão independente, testes integrados atuais, novo CI completo observado e todos os 16 jobs aprovados no mesmo SHA."
       }
     },
     {
@@ -46,10 +59,17 @@
       "priority": "P1",
       "status": "READY",
       "origin": "MASTER_PROMPT_FASE_2",
-      "dependencies": ["TRIPLE-A-RELEASE-CONTROL"],
+      "dependencies": [
+        "TRIPLE-A-RELEASE-CONTROL"
+      ],
       "owner": "lead",
       "acceptance_summary": "Ações e imagens são verificáveis por digest, workflows têm permissões mínimas e scanners alimentam a evidência do release.",
-      "evidence_refs": ["scripts/validate-supply-chain.mjs", ".github/workflows", "infra/helm/cvg-his-v2/values.prod.yaml", "docs/security/SUPPLY_CHAIN_POLICY.md"],
+      "evidence_refs": [
+        "scripts/validate-supply-chain.mjs",
+        ".github/workflows",
+        "infra/helm/cvg-his-v2/values.prod.yaml",
+        "docs/security/SUPPLY_CHAIN_POLICY.md"
+      ],
       "next_action": {
         "id": "TRIPLE-A-SUPPLY-CHAIN:INSPECT",
         "kind": "INSPECT",
@@ -65,10 +85,17 @@
       "priority": "P0",
       "status": "READY",
       "origin": "MASTER_PROMPT_FASES_3_4_5_6_7",
-      "dependencies": ["TRIPLE-A-BASELINE"],
+      "dependencies": [
+        "TRIPLE-A-BASELINE"
+      ],
       "owner": "lead",
       "acceptance_summary": "Fluxos P0 possuem matriz de criticidade, invariantes, testes de não regressão, tenant/RLS/auditoria e evidência atual.",
-      "evidence_refs": ["docs/clinical/CLINICAL_CRITICALITY_MATRIX.md", "docs/clinical/CLINICAL_SAFETY_INVARIANTS.md", "packages/db/migrations/0165_idempotency_actor_binding.sql", "tests/unit/api/idempotency-authorization.test.ts"],
+      "evidence_refs": [
+        "docs/clinical/CLINICAL_CRITICALITY_MATRIX.md",
+        "docs/clinical/CLINICAL_SAFETY_INVARIANTS.md",
+        "packages/db/migrations/0165_idempotency_actor_binding.sql",
+        "tests/unit/api/idempotency-authorization.test.ts"
+      ],
       "next_action": {
         "id": "TRIPLE-A-CLINICAL-DATA:CRITICALITY",
         "kind": "DESIGN",
@@ -84,7 +111,9 @@
       "priority": "P1",
       "status": "READY",
       "origin": "MASTER_PROMPT_FASES_8_10_11_12",
-      "dependencies": ["TRIPLE-A-RELEASE-CONTROL"],
+      "dependencies": [
+        "TRIPLE-A-RELEASE-CONTROL"
+      ],
       "owner": "lead",
       "acceptance_summary": "Retry/DLQ, RPO/RTO, restore, game-day, SLO/error budget e performance possuem execução e evidência acopladas ao candidato.",
       "evidence_refs": [],
