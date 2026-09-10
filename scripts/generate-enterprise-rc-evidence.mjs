@@ -154,6 +154,10 @@ for (const result of results) {
   );
 }
 
-if ((totals.FAIL ?? 0) > 0) {
+// Advisory evidence is a collection/reporting pass. It must preserve every
+// FAIL row in the markdown output without turning an informational report into
+// a test-job failure. Release automation uses rc:evidence:strict (or the
+// Triple-A gate) when a non-zero exit is required.
+if (strictMode && (totals.FAIL ?? 0) > 0) {
   process.exit(1);
 }
