@@ -1062,6 +1062,7 @@ test('repository-backed authentication fails closed when session synchronization
   const userId = '5c2b3750-783b-4cd7-bf8d-4ce982c1dabb' as never;
   const sessions = new Map<string, PersistedSessionRecord>();
   let sessionReadsAvailable = true;
+  let sessionFindByIdReads = 0;
   const sessionRepository: SessionRepository = {
     async create(session) {
       sessions.set(session.sessionId, { ...session });
@@ -1091,6 +1092,7 @@ test('repository-backed authentication fails closed when session synchronization
       return rotated;
     },
     async findById(id) {
+      sessionFindByIdReads += 1;
       if (!sessionReadsAvailable) throw new Error('session repository unavailable');
       const session = sessions.get(id);
       return session ? { ...session } : null;
@@ -1172,6 +1174,15 @@ test('repository-backed authentication fails closed when session synchronization
   });
   await server.ready;
   const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const readsBeforeAuthenticatedRequest = sessionFindByIdReads;
+  const authenticatedResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/auth/session',
+    headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
+  });
+  assert.equal(authenticatedResponse.statusCode, 200);
+  assert.equal(sessionFindByIdReads - readsBeforeAuthenticatedRequest, 1);
 
   sessionReadsAvailable = false;
   const response = await performRequest(server, {

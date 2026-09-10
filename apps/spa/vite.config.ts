@@ -160,7 +160,7 @@ export default defineConfig(({ mode }) => {
         'hi.centroveterinarioguarapiranga.com'
       ],
       proxy: {
-        '/api': {
+        '/api/': {
           target: runtimeConfig.proxyApiTarget,
           changeOrigin: true,
           ...(proxyAccountId

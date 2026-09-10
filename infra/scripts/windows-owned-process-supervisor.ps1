@@ -351,7 +351,31 @@ try {
         }
     )
     $targetWorkingDirectory = [string]$env:CVG_CRITICAL_SUPERVISOR_TARGET_CWD
-    $targetEnvironmentKeys = @($env:CVG_CRITICAL_SUPERVISOR_TARGET_KEYS_JSON | ConvertFrom-Json)
+    # A Windows process needs the OS/runtime baseline even when the caller
+    # intentionally supplies no inherited environment. In particular,
+    # Node's startup and crypto provider require SystemRoot; these keys are
+    # already restricted by buildWindowsHelperEnvironment() on the parent
+    # side and do not widen the secret boundary.
+    $targetEnvironmentKeys = @(
+        'ComSpec'
+        'PATH'
+        'PATHEXT'
+        'SystemRoot'
+        'TEMP'
+        'TMP'
+        'WINDIR'
+    )
+    $decodedEnvironmentKeys = ConvertFrom-Json -InputObject ([string]$env:CVG_CRITICAL_SUPERVISOR_TARGET_KEYS_JSON)
+    if ($decodedEnvironmentKeys -is [System.Array]) {
+        $targetEnvironmentKeys += @($decodedEnvironmentKeys | ForEach-Object { [string]$_ })
+    } else {
+        $targetEnvironmentKeys += [string]$decodedEnvironmentKeys
+    }
+    $targetEnvironmentKeys = @(
+        $targetEnvironmentKeys |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Select-Object -Unique
+    )
 
     if ([string]::IsNullOrWhiteSpace($targetCommand) -or [string]::IsNullOrWhiteSpace($targetWorkingDirectory)) {
         throw 'owned-process supervisor received an incomplete target descriptor'

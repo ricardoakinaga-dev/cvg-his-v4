@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 const mockApiRequest = vi.fn();
 const mockRouterPush = vi.fn();
+const mockRouterReplace = vi.fn();
 const mockRoute = { query: { next: '/notifications' } };
 const mockAuthStore = {
   setTokens: vi.fn(),
@@ -24,7 +25,8 @@ vi.mock('@/stores/auth', () => ({
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({
-    push: mockRouterPush
+    push: mockRouterPush,
+    replace: mockRouterReplace
   }),
   useRoute: () => mockRoute
 }));
@@ -35,6 +37,7 @@ describe('LoginPage', () => {
     vi.clearAllMocks();
     mockApiRequest.mockReset();
     mockRouterPush.mockReset();
+    mockRouterReplace.mockReset();
   });
 
   it('redirects to MFA when backend requires a second factor', async () => {
@@ -85,6 +88,22 @@ describe('LoginPage', () => {
     expect(wrapper.get('.login-stage__video').attributes('src')).toBe('/art/hospital-logo-loop.mp4');
     expect(wrapper.get('.login-stage__video').attributes('poster')).toBe('/art/hospital-logo-poster.webp');
     expect(wrapper.get('.login-stage__video').attributes('preload')).toBe('metadata');
+  });
+
+  it('routes in the SPA after a successful login without reloading the document', async () => {
+    mockApiRequest.mockResolvedValue({ accessToken: 'access-token' });
+
+    const LoginPage = (await import('../../LoginPage.vue')).default;
+    const wrapper = mount(LoginPage);
+
+    await wrapper.find('#email').setValue('admin');
+    await wrapper.find('#password').setValue('secret');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(mockAuthStore.setTokens).toHaveBeenCalledWith('access-token');
+    expect(mockRouterReplace).toHaveBeenCalledWith('/notifications');
+    expect(window.location.pathname).not.toBe('/notifications');
   });
 
   it('keeps the poster-only identity stage on constrained networks', async () => {

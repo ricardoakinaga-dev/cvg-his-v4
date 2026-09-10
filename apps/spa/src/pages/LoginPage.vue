@@ -242,8 +242,10 @@ async function handleLogin() {
     authStore.setTokens(response.accessToken);
     authStore.clearMfaChallenge();
 
-    // Full page reload to ensure auth state is fresh
-    window.location.href = window.location.origin + nextPath.value;
+    // Keep the in-memory access token alive while routing. A full reload starts
+    // the cookie refresh flow again and can race the refresh-token rotation
+    // when the caller navigates immediately after login.
+    await router.replace(nextPath.value);
   } catch (err: unknown) {
     error.value = getLoginErrorMessage(err);
   } finally {
