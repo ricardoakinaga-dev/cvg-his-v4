@@ -78,3 +78,10 @@ o SHA publicado e todos os envelopes externos independentes.
   foi atualizado para esse SHA. PostgreSQL/RLS runtime, browser/E2E/UAT,
   recovery, performance/soak, deploy/rollback, attestations, governança de
   branch e autoridade humana continuam sem evidência externa suficiente.
+
+## Atualização terminal — CI #58 e candidato local `0dc4809b`
+
+- O run [34454422885](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34454422885), no SHA `a4a5658aa66200a70be709e986152fe61ffc0fe5`, terminou `failure`. Passaram Typecheck, Dependency Audit, Secret Scan, SAST, Coverage, Repository Guards, Lint, OpenAPI, Build e API Contract; falharam Unit, E2E, Visual, Integration, Windows Critical Process Runner e Performance.
+- O E2E finalizou `387 passed / 35 failed` em 422 testes. O detalhamento está no `EXECUTION_LOG.md`; inclui cinco falhas funcionais e 29 snapshots visuais. A validação de evidência de usabilidade também falhou com `invalid result totals`, corretamente, porque houve resultados inesperados.
+- O candidato local `0dc4809b3e06c8334667f39bf51c33e33c3c0f9` agrega as correções de timezone, concorrência de billing, argumentos Windows, baselines visuais reais e capacidade do pool de performance. As correções funcionais do E2E ainda estão em integração.
+- Gate strict local: `BLOCKED`, score `68`, crítico `54`, `open_p0=16`, `claim=NOT PROVEN`, `publication_allowed=false`. O relatório não declara `TRIPLE-A VERIFIED`, não autoriza deploy e não trata o CI #58 como verde.

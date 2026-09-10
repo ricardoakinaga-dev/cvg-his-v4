@@ -55,3 +55,17 @@ O programa segue para implementação controlada. Não há autorização nem evi
 - CI #58 (`https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34454422885`) está em execução para o SHA corrente. O run #57 foi cancelado quando esse push mais novo o substituiu; seus failures parciais não são evidência do candidato atual.
 - O gate estrito com execução externa explicitamente pulada retornou `BLOCKED`, `score=43`, `critical_score=23`, `open_p0=27`, `claim=NOT PROVEN` e `publication_allowed=false`. A execução pulada não autoriza release.
 - Permanecem não provados: governança remota de `main`, restore/RPO/RTO, soak/performance alvo, observabilidade entregue, deploy/rollback, imagem assinada, UAT clínico e certificação visual corrente.
+
+## Reconciliação terminal do CI #58 e candidato local — 2026-09-10T08:53:47Z
+
+- O candidato local corrente é `0dc4809b3e06c8334667f39bf51c33e33c3c0f9`, quatro commits à frente de `origin/main` (`a4a5658aa66200a70be709e986152fe61ffc0fe5`). A documentação desta reconciliação ainda não foi publicada remotamente.
+- O CI #58 ([run 34454422885](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34454422885)), vinculado ao SHA `a4a5658aa66200a70be709e986152fe61ffc0fe5`, terminou não verde: Typecheck, Dependency Audit, Secret Scan, SAST, Coverage, Repository Guards, Lint, Validate OpenAPI, Build e API Contract Tests passaram; Unit Tests, E2E, Visual Regression, Integration Tests, Windows Critical Process Runner e Performance falharam.
+- Unit Tests falhou em duas datas da página de loyalty por formatação dependente de UTC; a correção local fixa `America/Sao_Paulo`.
+- Integration Tests executou `65 passed, 1 failed` e `606 passed, 1 failed`; a falha foi a resposta concorrente de billing com `updatedAt` divergente. A correção local torna a atualização condicional e relê a linha autoritativa antes da resposta HTTP.
+- O contrato do package manager Windows passou, mas quatro testes do supervisor de processo falharam porque o alvo Node recebeu `-e` e o script como um único argumento. A correção local preserva os limites dos argumentos no PowerShell.
+- Visual Regression falhou em 29 snapshots coerentes com a UI consolidada; os 29 `actual.png` do artefato real foram inspecionados e promovidos localmente como baselines versionados para a próxima execução.
+- Performance teve disponibilidade 100%, erros HTTP 0% e quatro SLOs de latência acima do alvo; o candidato local explicita pool de PostgreSQL de 60 conexões e mínimo 8 para o perfil de 60 VUs, sem relaxar thresholds.
+- E2E SPA executou 422 testes: `387 passed` e `35 failed`. As cinco falhas funcionais foram registradas para correção: três controles/formulários nas personas hospitalares, uma permissão efetiva de diagnóstico, a auditoria master de `/api-keys` e `/api-client` retornando 401, e o botão `Fechamento` no walkthrough; as outras 29 falhas foram visuais.
+- O gate local estrito no SHA `0dc4809b` terminou `BLOCKED`, `score=68`, `critical_score=54`, `open_p0=16`, `claim=NOT PROVEN` e `publication_allowed=false`. O Docker local continua indisponível por permissão no socket; nenhum resultado de PostgreSQL local bloqueado foi promovido a PASS.
+
+Nenhum desses resultados autoriza `TRIPLE-A VERIFIED`, release ou deploy. O próximo candidato só será avaliado após os fixes funcionais e uma execução remota nova, vinculada ao SHA publicado.

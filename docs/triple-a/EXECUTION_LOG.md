@@ -116,3 +116,12 @@ Cada nova rodada deve registrar commit, comando ou observação, resultado, limi
 - `pnpm test` com PostgreSQL descartável não foi promovido a PASS: a preparação local falhou com `permission denied for table tenants/accounts`. A limitação foi registrada sem mascarar a falha como evidência de integração.
 - O CI #58 ([run 34454422885](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34454422885)) foi disparado para este SHA e estava em execução no momento do registro. O run #57 foi cancelado quando o candidato novo entrou na fila; seus failures parciais não foram atribuídos ao SHA atual.
 - O gate estrito com execução externa pulada retornou `BLOCKED`, `score=43`, `critical_score=23`, `open_p0=27`, `claim=NOT PROVEN` e `publication_allowed=false`.
+
+## 2026-09-10 — Fechamento terminal do CI #58 e correções do candidato `0dc4809b`
+
+- O CI #58 ([run 34454422885](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34454422885)) terminou não verde no SHA `a4a5658aa66200a70be709e986152fe61ffc0fe5`: dez jobs passaram; Unit, E2E, Visual, Integration, Windows Critical Process Runner e Performance falharam.
+- O E2E executou 422 testes, com `387 passed` e `35 failed`. As falhas funcionais exatas foram: recepcionista aguardando mutação em `hospital-personas-routines.spec.ts:235`; patologista sem o campo `Descrição` em `:513`; ultrassonografista com label `Arquivo` ambígua em `:644`; administrador com `diagnosticsRead.effective=false` em `:782`; auditoria master com HTTP 401 em `/api-keys` e `/api-client`; e walkthrough sem botão `Fechamento` em `operational-walkthrough.spec.ts:120`. As 29 restantes foram snapshots visuais.
+- Os quatro testes do supervisor Windows falharam por colapso de `-e` + script em um argumento; o package-manager contract passou. A correção local preserva os limites no PowerShell.
+- A falha de integração foi a divergência de `updatedAt` entre duas respostas concorrentes equivalentes. A rota agora relê a linha autoritativa e a persistência só atualiza uma cobrança ainda `pending`.
+- Unit revelou duas datas de loyalty deslocadas por UTC; a renderização local agora usa `America/Sao_Paulo`. A capacidade do benchmark CI também foi explicitada como pool 60/min 8 para o perfil de 60 VUs.
+- O gate local após as correções, no SHA `0dc4809b3e06c8334667f39bf51c33e33c3c0f9`, terminou `BLOCKED`, score `68`, crítico `54`, `open_p0=16`, `claim=NOT PROVEN`; Docker local permaneceu bloqueado por permissão no socket.

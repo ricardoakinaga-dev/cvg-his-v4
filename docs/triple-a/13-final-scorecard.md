@@ -27,6 +27,20 @@ O CI #58 ([run 34454422885](https://github.com/ricardoakinaga-dev/cvg-his-v4/act
 
 Os thresholds de 97/95/zero P0 permanecem congelados em [`QUALITY_BAR_V1.json`](./QUALITY_BAR_V1.json). Este scorecard não contém claim de certificação.
 
+## Reconciliação terminal — CI #58 / candidato local `0dc4809b`
+
+O run [34454422885](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34454422885) terminou `failure` para o SHA anterior `a4a5658aa66200a70be709e986152fe61ffc0fe5`. Dez jobs passaram; falharam Unit, E2E, Visual Regression, Integration, Windows Critical Process Runner e Performance.
+
+| Evidência | Resultado terminal | Tratamento no candidato local |
+|---|---|---|
+| Unit | 2 datas de loyalty divergentes por timezone | Corrigido com timezone explícito de São Paulo |
+| Integration | 2 falhas em concorrência de billing (`updatedAt`) | Corrigido com update condicional e releitura autoritativa |
+| Windows runner | 4 falhas de limite de argumentos; package-manager contract passou | Corrigido no supervisor PowerShell |
+| E2E SPA | 387/422 pass; 35 falhas (5 funcionais + 29 visuais) | Funcionais em correção; baselines visuais reais promovidos |
+| Performance | 100% disponibilidade, 0% erros, 4 SLOs de latência falhos | Capacidade do pool explicitada; precisa de CI novo |
+
+O gate strict local no SHA `0dc4809b3e06c8334667f39bf51c33e33c3c0f9` permanece `BLOCKED / NOT PROVEN`, score `68`, crítico `54`, `open_p0=16`, sem autorização de publicação. Portanto este scorecard não contém claim de certificação.
+
 ## Candidato de fechamento externo publicado
 
 `b429e1bb410bb8d374f4b8a043308461497b7bca` — `BLOCKED / NOT PROVEN`; gate

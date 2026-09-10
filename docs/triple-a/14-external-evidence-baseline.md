@@ -112,3 +112,13 @@ this snapshot the following required runtime/external proofs remain open:
 
 **Baseline verdict:** `BLOCKED / NOT PROVEN`.  
 **Claim permitted:** none. `TRIPLE-A VERIFIED` is not asserted.
+
+## Terminal reconciliation — CI #58 / local candidate
+
+Run [34454422885](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34454422885) reached a terminal `failure` for head SHA `a4a5658aa66200a70be709e986152fe61ffc0fe5`. The ten foundational jobs passed, while Unit Tests, E2E SPA, Visual Regression, Integration Tests, the Windows critical-process runner, and Performance failed.
+
+The E2E job produced 422 tests with `387 passed` and `35 failed`: five functional failures (three hospital-persona controls/forms, one effective diagnostics permission, the master audit receiving 401 for `/api-keys` and `/api-client`, and the operational `Fechamento` control) plus 29 visual snapshot mismatches. The visual job's actual screenshots were inspected from the real artifact and promoted as local baselines; the functional fixes and all claims still require a fresh remote run.
+
+The local candidate `0dc4809b3e06c8334667f39bf51c33e33c3c0f9` also contains the timezone, concurrent billing, Windows argument-boundary, and performance-capacity corrections. Its strict local gate is `BLOCKED`, score `68`, critical score `54`, `open_p0=16`, `claim=NOT PROVEN`, and `publication_allowed=false`. These local changes are not external proof until a new SHA-bound CI run executes them.
+
+**Updated external baseline verdict:** `BLOCKED / NOT PROVEN`. No `TRIPLE-A VERIFIED` claim is permitted.
