@@ -291,19 +291,23 @@ async function loginViaUI(page: Page) {
 
   await page.fill('#email', username);
   await page.fill('#password', password);
-  const refreshAfterLogin = page.waitForResponse(
+  const loginResponsePromise = page.waitForResponse(
     (response) => {
       const pathname = new URL(response.url()).pathname;
-      return pathname.endsWith('/auth/refresh') && response.request().method() === 'POST';
+      return pathname.endsWith('/auth/login') && response.request().method() === 'POST';
     },
     { timeout: 15000 }
   );
   await page.click('button[type="submit"]');
 
-  const refreshResponse = await refreshAfterLogin;
-  if (!refreshResponse.ok()) {
-    throw new Error(`Browser login did not establish an HttpOnly session: ${refreshResponse.status()}`);
+  const loginResponse = await loginResponsePromise;
+  if (!loginResponse.ok()) {
+    throw new Error(`Browser login failed: ${loginResponse.status()}`);
   }
+  const browserCookies = await page.context().cookies(`${SPA_URL}/api/auth/refresh`);
+  expect(
+    browserCookies.some((cookie) => cookie.name === 'cvg_his_refresh' && cookie.path === '/api')
+  ).toBe(true);
   await page.waitForLoadState('networkidle');
   await expect(page).not.toHaveURL(/\/login/, { timeout: 15000 });
 }
@@ -327,17 +331,17 @@ export async function loginViaToken(page: Page, session?: AuthSessionResponse) {
 
     await page.fill('#email', username);
     await page.fill('#password', password);
-    const refreshAfterLogin = page.waitForResponse(
+    const loginResponsePromise = page.waitForResponse(
       (response) => {
         const pathname = new URL(response.url()).pathname;
-        return pathname.endsWith('/auth/refresh') && response.request().method() === 'POST';
+        return pathname.endsWith('/auth/login') && response.request().method() === 'POST';
       },
       { timeout: 15000 }
     );
     await page.click('button[type="submit"]');
-    const refreshResponse = await refreshAfterLogin;
-    if (!refreshResponse.ok()) {
-      throw new Error(`Browser login did not establish an HttpOnly session: ${refreshResponse.status()}`);
+    const loginResponse = await loginResponsePromise;
+    if (!loginResponse.ok()) {
+      throw new Error(`Browser login failed: ${loginResponse.status()}`);
     }
     const browserCookies = await page.context().cookies(`${SPA_URL}/api/auth/refresh`);
     expect(
