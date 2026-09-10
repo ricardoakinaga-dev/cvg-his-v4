@@ -728,6 +728,41 @@ test('InventoryService preserves account A state after hydrating account B', asy
   assert.equal(service.listStockMovements('account_a' as never).length, 1);
 });
 
+test('InventoryService applies tenant, search and page bounds in insertion order', () => {
+  const rows = [
+    ['inv-page-1', 'SKU-1', 'Alpha'],
+    ['inv-page-2', 'SKU-2', 'Beta'],
+    ['inv-page-3', 'SKU-3', 'Gamma'],
+    ['inv-page-4', 'SKU-4', 'Delta']
+  ] as const;
+  const service = new InventoryService(
+    { getOrThrow() {} } as never,
+    rows.map(([id, sku, name]) => ({
+      id: id as never,
+      accountId: 'acc-page' as never,
+      sku,
+      name,
+      unit: 'un',
+      onHandQuantity: 1,
+      reorderLevel: 0,
+      unitCostAmount: 1,
+      createdAt: '2026-09-10T00:00:00.000Z',
+      updatedAt: '2026-09-10T00:00:00.000Z'
+    }))
+  );
+
+  assert.deepEqual(
+    service.listItems('acc-page' as never, { offset: 1, limit: 2 }).map((item) => item.id),
+    ['inv-page-2', 'inv-page-3']
+  );
+  assert.deepEqual(
+    service
+      .listItems('acc-page' as never, { search: 'ta', offset: 0, limit: 1 })
+      .map((item) => item.id),
+    ['inv-page-2']
+  );
+});
+
 test('InventoryService waits for item persistence before resolving create', async () => {
   const service = new InventoryService({ getOrThrow() {} } as never, [], {
     repository: {

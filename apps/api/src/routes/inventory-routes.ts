@@ -680,11 +680,11 @@ export async function handleInventoryRoutes(
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const search = url.searchParams.get('search') ?? undefined;
     const pagination = inventoryPagination(url.searchParams);
-    const matchingItems = inventory.listItems(principal.user.accountId as never, { search });
     const offset = pagination ? (pagination.page - 1) * pagination.limit : 0;
-    const items = pagination
-      ? matchingItems.slice(offset, offset + pagination.limit)
-      : matchingItems;
+    const items = inventory.listItems(principal.user.accountId as never, {
+      search,
+      ...(pagination ? { offset, limit: pagination.limit } : {})
+    });
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,

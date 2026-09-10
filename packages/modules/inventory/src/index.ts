@@ -617,18 +617,36 @@ export class InventoryService {
 
   public listItems(
     accountId?: AccountId,
-    filters?: { readonly search?: string }
+    filters?: {
+      readonly search?: string;
+      /** Number of matching rows to skip before collecting a page. */
+      readonly offset?: number;
+      /** Maximum number of matching rows to collect. */
+      readonly limit?: number;
+    }
   ): readonly InventoryItemSummary[] {
-    let items = Array.from(this.#items.values()).filter(
-      (item) => !accountId || item.accountId === accountId
-    );
+    const search = filters?.search?.toLowerCase();
+    const offset = filters?.offset ?? 0;
+    const limit = filters?.limit;
+    const items: InventoryItemSummary[] = [];
+    let matched = 0;
 
-    if (filters?.search) {
-      const search = filters.search.toLowerCase();
-      items = items.filter(
-        (item) =>
-          item.name.toLowerCase().includes(search) || item.sku.toLowerCase().includes(search)
-      );
+    for (const item of this.#items.values()) {
+      if (accountId && item.accountId !== accountId) continue;
+      if (
+        search &&
+        !item.name.toLowerCase().includes(search) &&
+        !item.sku.toLowerCase().includes(search)
+      ) {
+        continue;
+      }
+      if (matched < offset) {
+        matched += 1;
+        continue;
+      }
+      matched += 1;
+      items.push(item);
+      if (limit !== undefined && items.length >= limit) break;
     }
 
     return items;
