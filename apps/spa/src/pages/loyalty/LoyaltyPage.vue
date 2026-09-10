@@ -453,7 +453,10 @@ async function submitRedemption() {
 function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('pt-BR').format(date);
+  // Redemption timestamps are persisted as instants at midnight in the
+  // clinic's calendar. Keep the business date stable across CI and browser
+  // machines instead of letting the host timezone move it by one day.
+  return new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo' }).format(date);
 }
 
 function statusLabel(status: LoyaltyRedemptionSummary['status']) {

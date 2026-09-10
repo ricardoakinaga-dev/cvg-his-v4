@@ -847,6 +847,11 @@ jobs:
           REDIS_URL: redis://localhost:6380
           RUNTIME_DISTRIBUTED_STATE_ENABLED: '1'
           API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
+          # The frozen 60-VU profile must not serialize requests behind the
+          # default 20-connection pool. Keep the CI capacity model explicit
+          # and below PostgreSQL's default max_connections.
+          POSTGRES_MAX_CONNECTIONS: '60'
+          POSTGRES_POOL_MIN: '8'
         run: |
           pnpm --filter @cvg-his-v2/api run build
           pnpm --filter @cvg-his-v2/api run dev &
