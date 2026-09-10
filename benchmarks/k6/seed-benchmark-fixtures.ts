@@ -72,6 +72,7 @@ const roles = [
 const users = [
   {
     id: '00000000-0000-4000-8000-000000000301',
+    username: 'admin@cvg-his.local',
     email: 'admin@cvg-his.local',
     passwordHash: 'cvg-his-v2-seed-salt-v1:seed_admin',
     fullName: 'Admin Benchmark',
@@ -79,6 +80,7 @@ const users = [
   },
   {
     id: '00000000-0000-4000-8000-000000000302',
+    username: 'vet@cvg-his.local',
     email: 'vet@cvg-his.local',
     passwordHash: 'cvg-his-v2-seed-salt-v1:seed_vet',
     fullName: 'Vet Benchmark',
@@ -86,6 +88,7 @@ const users = [
   },
   {
     id: '00000000-0000-4000-8000-000000000303',
+    username: 'finance@cvg-his.local',
     email: 'finance@cvg-his.local',
     passwordHash: 'cvg-his-v2-seed-salt-v1:seed_finance',
     fullName: 'Finance Benchmark',
@@ -93,6 +96,7 @@ const users = [
   },
   {
     id: '00000000-0000-4000-8000-000000000304',
+    username: 'inventory@cvg-his.local',
     email: 'inventory@cvg-his.local',
     passwordHash: 'cvg-his-v2-seed-salt-v1:seed_inventory',
     fullName: 'Inventory Benchmark',
@@ -170,15 +174,16 @@ async function ensureUsers(client: InstanceType<typeof Client>) {
   for (const user of users) {
     await client.query(
       `
-        INSERT INTO users (id, account_id, email, password_hash, full_name, is_active, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, true, NOW(), NOW())
+        INSERT INTO users (id, account_id, username, email, password_hash, full_name, is_active, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, true, NOW(), NOW())
         ON CONFLICT (account_id, email) DO UPDATE
         SET password_hash = EXCLUDED.password_hash,
+            username = EXCLUDED.username,
             full_name = EXCLUDED.full_name,
             is_active = true,
             updated_at = NOW()
       `,
-      [user.id, accountId, user.email, user.passwordHash, user.fullName]
+      [user.id, accountId, user.username, user.email, user.passwordHash, user.fullName]
     );
 
     const persistedUser = await client.query<{ id: string }>(

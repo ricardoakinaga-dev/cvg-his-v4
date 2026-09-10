@@ -11,6 +11,10 @@ const usabilityCertificationWorkflow = readFileSync(
 );
 const playwrightApiConfig = readFileSync(resolve(root, 'playwright.config.ts'), 'utf8');
 const playwrightConfig = readFileSync(resolve(root, 'playwright-spa.config.ts'), 'utf8');
+const benchmarkSeed = readFileSync(
+  resolve(root, 'benchmarks/k6/seed-benchmark-fixtures.ts'),
+  'utf8'
+);
 const packageManifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')) as {
   readonly scripts?: Readonly<Record<string, string>>;
 };
@@ -239,5 +243,24 @@ describe('CI repository guardrails', () => {
 
     expect(job).toContain('run: pnpm exec tsx packages/db/src/migrate.ts');
     expect(job).not.toContain('run: node packages/db/src/migrate.ts');
+  });
+
+  it('runs the API OpenAPI contract through the integration test configuration', () => {
+    const jobStart = workflow.indexOf('  api-contract-tests:');
+    expect(jobStart).toBeGreaterThan(-1);
+    const nextJobOffset = workflow.slice(jobStart + 3).search(/\n {2}[a-z0-9-]+:\n/);
+    const job = workflow.slice(
+      jobStart,
+      nextJobOffset === -1 ? undefined : jobStart + 3 + nextJobOffset
+    );
+
+    expect(job).toContain(
+      'run: pnpm vitest run tests/integration/openapi-runtime.test.ts --config vitest.integration.config.ts'
+    );
+  });
+
+  it('keeps benchmark users compatible with the non-null username identity', () => {
+    expect(benchmarkSeed).toContain('id, account_id, username, email, password_hash');
+    expect(benchmarkSeed).toContain('user.username');
   });
 });

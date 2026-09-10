@@ -450,7 +450,7 @@ jobs:
           DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
           DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
           API_RUNTIME_URL: http://localhost:3001
-        run: pnpm vitest run tests/integration/openapi-runtime.test.ts --config vitest.config.ts
+        run: pnpm vitest run tests/integration/openapi-runtime.test.ts --config vitest.integration.config.ts
 
       - name: Run API keys tests
         run: pnpm --filter @cvg-his-v2/module-api-keys run test
