@@ -43,6 +43,16 @@ export interface BillingRepository {
     accountId: AccountId,
     encounterId: EncounterId
   ): Promise<BillingRecordSummary | null>;
+  /**
+   * Reads an encounter's billing record and its items on one tenant-scoped
+   * connection. The combined read keeps both authoritative reads in one
+   * tenant-scoped transaction while avoiding a second transaction setup for
+   * read-heavy API paths.
+   */
+  findRecordWithItemsByEncounter?(accountId: AccountId, encounterId: EncounterId): Promise<{
+    readonly record: BillingRecordSummary | null;
+    readonly items: readonly BillingItemSummary[];
+  }>;
   findRecordsByAccountId(accountId: AccountId): Promise<readonly BillingRecordSummary[]>;
   createItem(item: BillingItemSummary): Promise<void>;
   findItemBySource?(
@@ -149,6 +159,37 @@ export class DatabaseBillingRepository implements BillingRepository {
       );
       if (result.rows.length === 0) return null;
       return this.mapRecord(result.rows[0]);
+    });
+  }
+
+  async findRecordWithItemsByEncounter(
+    accountId: AccountId,
+    encounterId: EncounterId
+  ): Promise<{
+    readonly record: BillingRecordSummary | null;
+    readonly items: readonly BillingItemSummary[];
+  }> {
+    return withTenantQuery(getPool(), async (client) => {
+      const recordResult = await client.query(
+        `SELECT * FROM billing_records
+         WHERE account_id = $1 AND encounter_id = $2
+         LIMIT 1`,
+        [accountId, encounterId]
+      );
+      const row = recordResult.rows[0] as Record<string, unknown> | undefined;
+      if (!row) return { record: null, items: [] };
+
+      const record = this.mapRecord(row);
+      const itemResult = await client.query(
+        `SELECT * FROM billing_items
+         WHERE account_id = $1 AND billing_record_id = $2
+         ORDER BY created_at`,
+        [accountId, record.id]
+      );
+      return {
+        record,
+        items: itemResult.rows.map((item: Record<string, unknown>) => this.mapItem(item))
+      };
     });
   }
 

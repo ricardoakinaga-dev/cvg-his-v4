@@ -158,14 +158,25 @@ export class BillingService {
     const encounter = this.getEncounterForAccount(accountId, encounterId);
 
     if (this.#repository) {
-      const record = await this.#repository.findRecordByEncounter(encounter.accountId, encounterId);
+      const persisted = this.#repository.findRecordWithItemsByEncounter
+        ? await this.#repository.findRecordWithItemsByEncounter(encounter.accountId, encounterId)
+        : {
+            record: await this.#repository.findRecordByEncounter(
+              encounter.accountId,
+              encounterId
+            ),
+            items: undefined
+          };
+      const record = persisted.record;
       if (record) {
         if (record.accountId !== accountId) {
           throw new NotFoundError('Billing record not found', { encounterId });
         }
         this.#records.set(record.id, record);
         this.#recordByEncounterId.set(encounterId, record.id);
-        const items = await this.#repository.findItemsByRecord(record.accountId, record.id);
+        const items =
+          persisted.items ??
+          (await this.#repository.findItemsByRecord(record.accountId, record.id));
         this.#items.set(record.id, this.filterItemsForRecord(record, items));
         return record;
       }
@@ -495,13 +506,6 @@ export class BillingService {
   ): Promise<readonly BillingItemSummary[]> {
     const record = await this.findByEncounter(accountId, encounterId);
     if (!record) return [];
-
-    if (this.#repository) {
-      const dbItems = await this.#repository.findItemsByRecord(record.accountId, record.id);
-      const scopedItems = this.filterItemsForRecord(record, dbItems);
-      this.#items.set(record.id, scopedItems);
-      return scopedItems;
-    }
 
     return [...(this.#items.get(record.id) ?? [])];
   }

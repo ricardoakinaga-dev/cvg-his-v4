@@ -215,6 +215,73 @@ test('BillingService read methods do not create billing records', async () => {
   assert.equal(created, 0);
 });
 
+test('BillingService uses the combined authoritative billing read when available', async () => {
+  let combinedReads = 0;
+  let recordReads = 0;
+  let itemReads = 0;
+  const record = {
+    id: 'bill_combined_read' as never,
+    accountId: 'acc_test' as never,
+    encounterId: 'encounter_1' as never,
+    patientId: 'patient_1' as never,
+    ownerId: 'owner_1' as never,
+    status: 'estimated' as const,
+    subtotalAmount: 25,
+    currency: 'BRL' as const,
+    createdAt: '2026-04-13T00:00:00.000Z',
+    updatedAt: '2026-04-13T00:00:00.000Z'
+  };
+  const item = {
+    id: 'item_combined_read' as never,
+    billingRecordId: record.id,
+    accountId: record.accountId,
+    encounterId: record.encounterId,
+    itemType: 'service' as const,
+    description: 'Consulta',
+    quantity: 1,
+    unitPriceAmount: 25,
+    totalAmount: 25,
+    createdByUserId: 'user_1' as never,
+    createdAt: '2026-04-13T00:00:00.000Z'
+  };
+  const repository = createRepository({
+    async findRecordByEncounter() {
+      recordReads += 1;
+      return record;
+    },
+    async findItemsByRecord() {
+      itemReads += 1;
+      return [item];
+    },
+  });
+  repository.findRecordWithItemsByEncounter = async () => {
+    combinedReads += 1;
+    return { record, items: [item] };
+  };
+  const service = new BillingService(
+    {
+      getOrThrow(_accountId: string, encounterId: string) {
+        return {
+          id: encounterId,
+          accountId: 'acc_test',
+          patientId: 'patient_1',
+          ownerId: 'owner_1'
+        };
+      }
+    } as never,
+    { repository }
+  );
+
+  assert.equal(
+    (await service.findByEncounter(record.accountId, record.encounterId))?.id,
+    record.id
+  );
+  assert.deepEqual(await service.listItems(record.accountId, record.encounterId), [item]);
+  assert.equal(combinedReads, 2);
+  assert.equal(recordReads, 0);
+  assert.equal(itemReads, 0);
+});
+
 test('BillingService createEstimate explicitly creates repository record', async () => {
   let created = 0;
   const service = new BillingService(
@@ -683,6 +750,7 @@ test('BillingService never resurrects cached items after the repository becomes 
     { repository }
   );
 
+  await service.findByEncounter('acc_test' as never, 'encounter_rollback' as never);
   assert.deepEqual(await service.listItems('acc_test' as never, 'encounter_rollback' as never), []);
 });
 
