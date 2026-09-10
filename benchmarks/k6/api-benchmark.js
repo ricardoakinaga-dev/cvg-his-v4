@@ -235,9 +235,10 @@ export default function (data) {
 
   // Billing estimate (write scenario)
   group('Billing - Create Estimate', () => {
-    const start = Date.now();
     // First find an encounter to bill
+    const encounterStart = Date.now();
     const encRes = http.get(`${BASE_URL}/encounters?page=1&limit=1`, { headers });
+    queryLatency.add(Date.now() - encounterStart);
     if (encRes.status === 200) {
       try {
         const body = JSON.parse(encRes.body);
@@ -246,6 +247,8 @@ export default function (data) {
       } catch {}
     }
 
+    // Keep the lookup in the query SLO; the billing metric covers the mutation only.
+    const billingStart = Date.now();
     const res = http.post(
       `${BASE_URL}/billing/estimate`,
       JSON.stringify({
@@ -255,7 +258,7 @@ export default function (data) {
       { headers }
     );
 
-    billingLatency.add(Date.now() - start);
+    billingLatency.add(Date.now() - billingStart);
     apiLatency.add(res.timings.duration);
     errorRate.add(res.status !== 200);
 
