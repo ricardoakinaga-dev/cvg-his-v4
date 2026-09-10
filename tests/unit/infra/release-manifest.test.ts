@@ -1,16 +1,17 @@
-import { readFileSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 import { generateReleaseManifest } from '../../../scripts/generate-release-manifest.mjs';
+import { verifyReleaseManifest } from '../../../scripts/run-triple-a-release-gate.mjs';
 
 describe('release manifest', () => {
   it('binds files, SBOM and three image digests to a full commit SHA', () => {
     const rootDir = mkdtempSync(resolve(tmpdir(), 'cvg-release-manifest-'));
     mkdirSync(resolve(rootDir, 'artifacts/release'), { recursive: true });
-    writeFileSync(resolve(rootDir, 'artifacts/release/source.tar.gz'), 'source');
+    writeFileSync(resolve(rootDir, 'artifacts/release/source-1111111111111111111111111111111111111111.tar.gz'), 'source');
     writeFileSync(resolve(rootDir, 'artifacts/release/sbom.cyclonedx.json'), '{}\n');
     const digest = `sha256:${'a'.repeat(64)}`;
 
@@ -31,6 +32,9 @@ describe('release manifest', () => {
     expect(result.manifest.images).toHaveLength(3);
     expect(result.manifest.images[0].immutable_reference).toBe(`ghcr.io/cvg/api@${digest}`);
     expect(result.manifest.sbom).toBe('artifacts/release/sbom.cyclonedx.json');
+    expect(result.manifest.source_hash).toBeTruthy();
+    expect(result.manifest.migration_state.runner).toBe('packages/db/src/migrate.ts');
+    expect(result.manifest.attestation_references).toEqual([]);
     expect(readFileSync(result.checksumsPath, 'utf8')).toContain('release-manifest.json');
   });
 
@@ -47,5 +51,48 @@ describe('release manifest', () => {
         images: [],
       })
     ).toThrow('release estrito exige digests de API, worker e SPA');
+  });
+
+  it('verifies source, migration and attestation references in a complete manifest', () => {
+    const rootDir = mkdtempSync(resolve(tmpdir(), 'cvg-release-manifest-'));
+    const outputDir = resolve(rootDir, 'artifacts/release');
+    mkdirSync(outputDir, { recursive: true });
+    mkdirSync(resolve(rootDir, 'packages/db/migrations'), { recursive: true });
+    writeFileSync(resolve(rootDir, 'packages/db/migrations/0000_init.sql'), 'create table test(id int);\n');
+    writeFileSync(resolve(outputDir, `source-${'3'.repeat(40)}.tar.gz`), 'source');
+    writeFileSync(
+      resolve(outputDir, 'sbom.cyclonedx.json'),
+      JSON.stringify({
+        bomFormat: 'CycloneDX',
+        specVersion: '1.5',
+        serialNumber: 'urn:uuid:test',
+        version: 1,
+        metadata: { component: { type: 'application', name: 'cvg-his-v4' } },
+        components: [{ type: 'library', name: 'example', version: '1.0.0', 'bom-ref': 'example@1.0.0' }]
+      })
+    );
+    for (const component of ['api', 'worker', 'spa']) {
+      writeFileSync(resolve(outputDir, `${component}-attestation-verification.json`), '{}\n');
+    }
+    writeFileSync(resolve(outputDir, 'security-evidence.json'), '{}\n');
+    const digest = `sha256:${'b'.repeat(64)}`;
+
+    try {
+      generateReleaseManifest({
+        rootDir,
+        outputDir,
+        commitSha: '3'.repeat(40),
+        requireImageDigests: true,
+        images: ['api', 'worker', 'spa'].map((component) => ({
+          component,
+          reference: `ghcr.io/cvg/${component}:sha`,
+          digest,
+        })),
+      });
+
+      expect(verifyReleaseManifest({ rootDir, outputDir, commitSha: '3'.repeat(40) }).status).toBe('PASS');
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
   });
 });

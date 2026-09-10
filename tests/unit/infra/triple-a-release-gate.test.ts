@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   scoreCriteria,
+  validateCiEvidenceEnvelope,
   validateExternalEvidenceEnvelope,
   verifyPublishedImageAttestations,
   verifyCleanWorktree,
@@ -99,6 +100,70 @@ describe('Triple-A release gate scoring', () => {
       });
 
       expect(result.status).toBe('PASS');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('does not accept a CI envelope with an incomplete required-job set', () => {
+    const root = mkdtempSync(join(tmpdir(), 'cvg-triple-a-ci-evidence-'));
+    try {
+      const artifactRelativePath = 'ci-input.txt';
+      const artifactPath = join(root, artifactRelativePath);
+      const artifactPayload = 'ci evidence input\n';
+      writeFileSync(artifactPath, artifactPayload);
+      const digest = createHash('sha256').update(artifactPayload).digest('hex');
+      const commitSha = 'f'.repeat(40);
+      const jobs = [
+        'Secret Scan',
+        'Dependency Audit (CVE Scan)',
+        'SAST (Semgrep)',
+        'Typecheck',
+        'Coverage',
+        'Validate OpenAPI',
+        'Lint',
+        'Repository Guards',
+        'Build',
+        'E2E Tests (SPA)',
+        'API Contract Tests',
+        'Performance (k6 SLOs)',
+        'Integration Tests',
+        'Critical Process Runner (Windows contract)',
+        'Unit Tests'
+      ].map((name) => ({ name, status: 'completed', conclusion: 'success' }));
+      const result = validateCiEvidenceEnvelope({
+        rootDir: root,
+        value: 'ci-evidence.json',
+        commitSha,
+        artifact: {
+          schema_version: 1,
+          evidence_type: 'cvg-his-ci-evidence',
+          commit_sha: commitSha,
+          status: 'PASS',
+          observed_at: '2026-09-09T12:00:00.000Z',
+          producer: { kind: 'github-actions-workflow-run', run_id: '12345' },
+          verification: {
+            verified: true,
+            method: 'github-api-workflow-run',
+            verifier_id: 'release-ci-run-verifier',
+            verified_at: '2026-09-09T12:01:00.000Z'
+          },
+          run: {
+            id: 12345,
+            name: 'CI',
+            event: 'push',
+            head_branch: 'main',
+            head_sha: commitSha,
+            status: 'completed',
+            conclusion: 'success'
+          },
+          jobs,
+          artifacts: [{ path: artifactRelativePath, sha256: `sha256:${digest}` }]
+        }
+      });
+
+      expect(result.status).toBe('FAIL');
+      expect(result.reason).toContain('Visual Regression');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

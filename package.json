@@ -109,6 +109,7 @@
     "security:operations:index": "node scripts/generate-security-operations-index.mjs",
     "evidence:uat:skeleton": "node scripts/generate-hospital-uat-evidence.mjs",
     "release:manifest": "node scripts/generate-release-manifest.mjs",
+    "release:ci-evidence": "node scripts/generate-ci-evidence.mjs",
     "release:attestation-evidence": "node scripts/generate-image-attestation-evidence.mjs",
     "release:triple-a": "node scripts/run-triple-a-release-gate.mjs",
     "cutover:check": "node infra/scripts/check-cutover-readiness.mjs",

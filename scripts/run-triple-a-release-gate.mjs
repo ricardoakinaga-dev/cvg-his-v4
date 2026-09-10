@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { relative, resolve, sep } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
@@ -129,12 +129,18 @@ function validateCycloneDxSbom(rootDir, relativePath) {
   }
 }
 
-export function validateExternalEvidenceEnvelope({ rootDir, value, artifact, commitSha }) {
+export function validateExternalEvidenceEnvelope({
+  rootDir,
+  value,
+  artifact,
+  commitSha,
+  expectedEvidenceType = 'cvg-his-external-evidence',
+}) {
   const producer = artifact?.producer;
   const verification = artifact?.verification;
   const artifactRefs = artifact?.artifacts;
   const validShape = artifact?.schema_version === 1
-    && artifact?.evidence_type === 'cvg-his-external-evidence'
+    && artifact?.evidence_type === expectedEvidenceType
     && artifact?.commit_sha === commitSha
     && artifact?.status === 'PASS'
     && isIsoTimestamp(artifact?.observed_at)
@@ -274,6 +280,24 @@ function skippedCheck(area, command, reason) {
 }
 
 const RELEASE_IMAGE_COMPONENTS = ['api', 'worker', 'spa'];
+const REQUIRED_CI_JOB_NAMES = [
+  'Secret Scan',
+  'Dependency Audit (CVE Scan)',
+  'SAST (Semgrep)',
+  'Typecheck',
+  'Coverage',
+  'Validate OpenAPI',
+  'Lint',
+  'Repository Guards',
+  'Build',
+  'E2E Tests (SPA)',
+  'API Contract Tests',
+  'Performance (k6 SLOs)',
+  'Integration Tests',
+  'Critical Process Runner (Windows contract)',
+  'Unit Tests',
+  'Visual Regression',
+];
 
 function imageManifestByComponent(manifest) {
   return new Map(
@@ -456,6 +480,9 @@ function envEvidence(rootDir, name, commitSha, outputDir) {
   if (!existsSync(path)) return { status: 'FAIL', path: value, reason: 'Caminho informado não existe.' };
   try {
     const artifact = readJson(path);
+    if (name === 'TRIPLE_A_CI_EVIDENCE') {
+      return validateCiEvidenceEnvelope({ rootDir, value, artifact, commitSha });
+    }
     if (name === 'TRIPLE_A_IMAGE_ATTESTATION_EVIDENCE') {
       return validateImageAttestationEnvelope({ rootDir, outputDir, value, artifact, commitSha });
     }
@@ -476,6 +503,127 @@ function envEvidence(rootDir, name, commitSha, outputDir) {
           reason: `Artefato não-JSON sem vínculo verificável; informe ${name}_COMMIT_SHA ou TRIPLE_A_EVIDENCE_COMMIT_SHA.`,
         };
   }
+}
+
+function runGhJson(rootDir, args) {
+  const result = spawnSync('gh', ['api', ...args], {
+    cwd: rootDir,
+    encoding: 'utf8',
+    shell: false,
+    env: { ...process.env, GH_TOKEN: process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN },
+    maxBuffer: 16 * 1024 * 1024,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  if (result.status !== 0) {
+    return {
+      value: null,
+      reason: `${result.stderr ?? ''} ${result.error?.message ?? ''}`.trim() || `gh exited ${result.status}`,
+    };
+  }
+  try {
+    return { value: JSON.parse(result.stdout ?? ''), reason: null };
+  } catch (error) {
+    return { value: null, reason: `gh retornou JSON inválido: ${error.message}` };
+  }
+}
+
+export function validateCiEvidenceEnvelope({ rootDir, value, artifact, commitSha }) {
+  const base = validateExternalEvidenceEnvelope({
+    rootDir,
+    value,
+    artifact,
+    commitSha,
+    expectedEvidenceType: 'cvg-his-ci-evidence',
+  });
+  if (base.status !== 'PASS') return base;
+
+  if (artifact.verification.method !== 'github-api-workflow-run'
+    || artifact.verification.verifier_id !== 'release-ci-run-verifier') {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: 'Envelope CI não declara o verificador GitHub API obrigatório.'
+    };
+  }
+
+  const jobs = Array.isArray(artifact.jobs) ? artifact.jobs : [];
+  const jobsByName = new Map(jobs.map((job) => [job?.name, job]));
+  const missing = REQUIRED_CI_JOB_NAMES.filter((name) => !jobsByName.has(name));
+  const unsuccessful = REQUIRED_CI_JOB_NAMES
+    .map((name) => jobsByName.get(name))
+    .filter((job) => job?.status !== 'completed' || job?.conclusion !== 'success');
+  const runShapeIsValid = artifact.run
+    && artifact.run.id?.toString() === artifact.producer.run_id
+    && artifact.run.name === 'CI'
+    && artifact.run.event === 'push'
+    && artifact.run.head_branch === 'main'
+    && artifact.run.head_sha === commitSha
+    && artifact.run.status === 'completed'
+    && artifact.run.conclusion === 'success';
+  const expectedRunId = process.env.TRIPLE_A_CI_RUN_ID;
+  if (!runShapeIsValid || (expectedRunId && expectedRunId !== artifact.producer.run_id) || missing.length || unsuccessful.length) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Envelope CI inválido: run=${runShapeIsValid ? 'ok' : 'invalid'}; expected_run=${expectedRunId ?? 'none'}; actual_run=${artifact.producer.run_id}; missing=${missing.join(',') || 'none'}; unsuccessful=${unsuccessful.map((job) => `${job?.name ?? 'missing'}:${job?.conclusion ?? job?.status ?? 'absent'}`).join(',') || 'none'}.`
+    };
+  }
+
+  if (process.env.TRIPLE_A_VERIFY_CI_EVIDENCE !== '1') {
+    return {
+      status: 'PARTIAL',
+      path: value,
+      reason: 'Envelope CI e jobs conferem, mas a execução remota precisa ser reconsultada pelo verificador gh neste ambiente.'
+    };
+  }
+  const repository = process.env.GITHUB_REPOSITORY;
+  const runId = artifact.producer.run_id;
+  const ghToken = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
+  if (!repository || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || !ghToken || !/^\d+$/.test(runId)) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: 'GITHUB_REPOSITORY, GH_TOKEN e run_id numérico são obrigatórios para verificar o CI remoto.'
+    };
+  }
+  const remoteRun = runGhJson(rootDir, [
+    `repos/${repository}/actions/runs/${runId}`,
+    '--header',
+    'Accept: application/vnd.github+json',
+  ]);
+  const remoteJobs = runGhJson(rootDir, [
+    `repos/${repository}/actions/runs/${runId}/jobs?per_page=100`,
+    '--header',
+    'Accept: application/vnd.github+json',
+  ]);
+  const remoteJobList = Array.isArray(remoteJobs.value)
+    ? remoteJobs.value.flatMap((page) => Array.isArray(page?.jobs) ? page.jobs : [])
+    : remoteJobs.value?.jobs ?? [];
+  const remoteJobsByName = new Map(remoteJobList.map((job) => [job?.name, job]));
+  const remoteMatches = remoteRun.value
+    && remoteRun.value.id?.toString() === runId
+    && remoteRun.value.name === 'CI'
+    && remoteRun.value.event === 'push'
+    && remoteRun.value.head_branch === 'main'
+    && remoteRun.value.head_sha === commitSha
+    && remoteRun.value.status === 'completed'
+    && remoteRun.value.conclusion === 'success'
+    && REQUIRED_CI_JOB_NAMES.every((name) => {
+      const job = remoteJobsByName.get(name);
+      return job?.status === 'completed' && job?.conclusion === 'success';
+    });
+  if (!remoteMatches) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `A verificação gh do CI remoto falhou: ${remoteRun.reason ?? remoteJobs.reason ?? 'run ou jobs não correspondem ao candidato.'}`
+    };
+  }
+  return {
+    status: 'PASS',
+    path: value,
+    reason: 'CI remoto reconsultado pelo GitHub CLI: run, SHA, branch, evento e todos os jobs obrigatórios conferem.'
+  };
 }
 
 export function verifyReleaseManifest({ rootDir, outputDir, commitSha }) {
@@ -509,17 +657,76 @@ export function verifyReleaseManifest({ rootDir, outputDir, commitSha }) {
       ? manifest.files?.find((file) => file?.path === sbomPath)
       : undefined;
     const sbomDigestMatches = typeof sbomPath === 'string'
+      && isSafeEvidencePath(rootDir, sbomPath)
+      && Boolean(sbomFile)
       && sbomFile?.sha256 === sha256(resolve(rootDir, sbomPath));
+    const sourcePath = manifest.source?.path;
+    const sourceFile = typeof sourcePath === 'string'
+      ? manifest.files?.find((file) => file?.path === sourcePath)
+      : undefined;
+    const sourceDigestMatches = typeof sourcePath === 'string'
+      && isSafeEvidencePath(rootDir, sourcePath)
+      && Boolean(sourceFile)
+      && sourceFile?.sha256 === sha256(resolve(rootDir, sourcePath))
+      && manifest.source?.sha256 === sourceFile.sha256
+      && manifest.source_hash === sourceFile.sha256;
+    const migrationFiles = Array.isArray(manifest.migration_state?.files)
+      ? manifest.migration_state.files
+      : [];
+    const migrationDirectory = resolve(rootDir, 'packages/db/migrations');
+    const actualMigrationNames = existsSync(migrationDirectory)
+      ? readdirSync(migrationDirectory, { withFileTypes: true })
+          .filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
+          .map((entry) => entry.name)
+          .sort()
+      : [];
+    const declaredMigrationNames = migrationFiles.map((file) => file?.name).sort();
+    const migrationHashesValid = migrationFiles.every((file) => {
+      const migrationPath = `packages/db/migrations/${file?.name ?? ''}`;
+      return typeof file?.name === 'string'
+        && isSafeEvidencePath(rootDir, migrationPath)
+        && /^[0-9a-f]{64}$/.test(file.sha256 ?? '')
+        && sha256(resolve(rootDir, migrationPath)) === file.sha256;
+    });
+    const migrationSourceHash = createHash('sha256')
+      .update(migrationFiles.map((file) => `${file.name}:${file.sha256}`).join('\n'))
+      .digest('hex');
+    const migrationStateValid = manifest.migration_state?.runner === 'packages/db/src/migrate.ts'
+      && manifest.migration_state?.source_directory === 'packages/db/migrations'
+      && manifest.migration_state?.count === migrationFiles.length
+      && manifest.migration_state?.count === actualMigrationNames.length
+      && JSON.stringify(declaredMigrationNames) === JSON.stringify(actualMigrationNames)
+      && manifest.migration_state?.latest === actualMigrationNames.at(-1)
+      && manifest.migration_state?.source_sha256 === migrationSourceHash
+      && migrationHashesValid;
+    const manifestFilesByPath = new Map((manifest.files ?? []).map((file) => [file?.path, file]));
+    const attestationReferencesValid = Array.isArray(manifest.attestation_references)
+      && manifest.attestation_references.length === RELEASE_IMAGE_COMPONENTS.length
+      && manifest.attestation_references.every((reference) =>
+        isSafeEvidencePath(rootDir, reference?.path)
+        && manifestFilesByPath.get(reference.path)?.sha256 === reference.sha256
+        && /^[0-9a-f]{64}$/.test(reference.sha256 ?? '')
+      );
+    const evidenceReferencesValid = Array.isArray(manifest.evidence_references)
+      && manifest.evidence_references.every((reference) =>
+        isSafeEvidencePath(rootDir, reference?.path)
+        && manifestFilesByPath.get(reference.path)?.sha256 === reference.sha256
+        && /^[0-9a-f]{64}$/.test(reference.sha256 ?? '')
+      );
     const valid = manifest.commit_sha === commitSha
       && completeImages
       && sbom.valid
-      && sbomDigestMatches;
+      && sbomDigestMatches
+      && sourceDigestMatches
+      && migrationStateValid
+      && attestationReferencesValid
+      && evidenceReferencesValid;
     return {
       area: 'Release identity',
       status: valid ? 'PASS' : 'FAIL',
       evidence: valid
         ? 'Manifest vinculado ao commit atual, com três imagens por digest e SBOM CycloneDX íntegro.'
-        : `Manifest existe, mas não está completo, não prova SBOM CycloneDX íntegro (${sbom.reason}), ou não está vinculado ao commit atual.`,
+        : `Manifest existe, mas não está completo, não prova SBOM CycloneDX íntegro (${sbom.reason}), source/migration/evidências não conferem, ou não está vinculado ao commit atual.`,
       artifacts: [relative(rootDir, manifestPath)],
     };
   } catch (error) {
@@ -615,10 +822,10 @@ export function buildReleaseEvidence({
       : skippedCheck(area, `${command} ${args.join(' ')}`, 'Build checks não executados nesta coleta.'));
   }
   const testEvidence = envEvidence(rootDir, 'TRIPLE_A_TEST_EVIDENCE', commitSha, outputDir);
-  checks.push(testEvidence
-    ? { area: 'Unit tests', command: 'TRIPLE_A_TEST_EVIDENCE', status: testEvidence.status, exit_code: null, evidence: testEvidence.reason, limitation: null }
-    : executeTests
-      ? runCheck({ rootDir, area: 'Unit tests', command: 'pnpm', args: ['test'], timeoutMs: 45 * 60 * 1000 })
+  checks.push(executeTests
+    ? runCheck({ rootDir, area: 'Unit tests', command: 'pnpm', args: ['test'], timeoutMs: 45 * 60 * 1000 })
+    : testEvidence
+      ? { area: 'Unit tests', command: 'TRIPLE_A_TEST_EVIDENCE', status: testEvidence.status, exit_code: null, evidence: testEvidence.reason, limitation: null }
       : skippedCheck('Unit tests', 'pnpm test', 'Defina TRIPLE_A_RUN_TESTS=1 ou TRIPLE_A_TEST_EVIDENCE para vincular a suíte completa.'));
 
   const manifest = verifyReleaseManifest({ rootDir, outputDir, commitSha });
@@ -656,7 +863,7 @@ export function buildReleaseEvidence({
   for (const [id, area, priority, name, envName] of [
     ['BACKUP-DRILL', 'Recovery', 'P0', 'Backup/restore drill atual', 'TRIPLE_A_BACKUP_EVIDENCE'],
     ['PERFORMANCE', 'Performance', 'P1', 'Performance/soak certification atual', 'TRIPLE_A_PERFORMANCE_EVIDENCE'],
-    ['CI-REMOTE', 'CI', 'P0', 'CI remoto verde do commit candidato', 'TRIPLE_A_CI_URL'],
+    ['CI-REMOTE', 'CI', 'P0', 'CI remoto verde do commit candidato', 'TRIPLE_A_CI_EVIDENCE'],
     ['CRITICAL-TESTS', 'Critical tests', 'P0', 'Testes críticos de banco/processo atuais', 'TRIPLE_A_CRITICAL_EVIDENCE'],
     ['E2E', 'E2E', 'P0', 'E2E/accessibility/visual atuais', 'TRIPLE_A_E2E_EVIDENCE'],
     ['WORKFLOW-POSTGRES', 'Clinical workflow', 'P0', 'Integração PostgreSQL do workflow clínico atual', 'TRIPLE_A_WORKFLOW_POSTGRES_EVIDENCE'],

@@ -26,6 +26,8 @@ describe('immutable release workflow contract', () => {
   it('emits an auditable bundle, manifest and checksums', () => {
     expect(workflow).toContain('git archive --format=tar.gz');
     expect(workflow).toContain('SECURITY_EVIDENCE_DIR=artifacts/release pnpm security:evidence');
+    expect(workflow).toContain('run: pnpm release:ci-evidence');
+    expect(workflow).toContain('CI_RUN_ID: ${{ github.event.workflow_run.id }}');
     expect(workflow).toContain("RELEASE_REQUIRE_IMAGE_DIGESTS: '1'");
     expect(workflow).toContain('run: pnpm release:manifest');
     expect(workflow).toContain('path: artifacts/release/');
@@ -47,6 +49,18 @@ describe('immutable release workflow contract', () => {
     expect(workflow.match(/--signer-workflow "\$\{SIGNER_WORKFLOW\}"/g)).toHaveLength(3);
     expect(workflow.match(/--source-ref main --source-digest "\$\{RELEASE_SHA\}"/g)).toHaveLength(3);
     expect(workflow).toContain('GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}');
+  });
+
+  it('generates the manifest after attestation verification and binds the CI envelope', () => {
+    const verificationIndex = workflow.indexOf('name: Verify image attestations');
+    const manifestIndex = workflow.indexOf('name: Generate release manifest and checksums');
+    const gateIndex = workflow.indexOf('name: Run blocking Triple-A release gate');
+
+    expect(manifestIndex).toBeGreaterThan(verificationIndex);
+    expect(gateIndex).toBeGreaterThan(manifestIndex);
+    expect(workflow).toContain('TRIPLE_A_CI_EVIDENCE: artifacts/release/ci-evidence.json');
+    expect(workflow).toContain("TRIPLE_A_VERIFY_CI_EVIDENCE: '1'");
+    expect(workflow).not.toContain('TRIPLE_A_CI_URL:');
   });
 
   it('runs a blocking candidate assurance before publishing any image', () => {

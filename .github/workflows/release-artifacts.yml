@@ -6,6 +6,7 @@ on:
     types: [completed]
 
 permissions:
+  actions: read
   contents: read
   packages: write
   id-token: write
@@ -66,6 +67,14 @@ jobs:
           git archive --format=tar.gz --prefix="cvg-his-v4-${RELEASE_SHA}/" --output="artifacts/release/source-${RELEASE_SHA}.tar.gz" "${RELEASE_SHA}"
           SECURITY_EVIDENCE_DIR=artifacts/release pnpm security:evidence
 
+      - name: Verify and record the exact CI run
+        env:
+          CI_EVIDENCE_OUTPUT_DIR: artifacts/release
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+          CI_COMMIT_SHA: ${{ env.RELEASE_SHA }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm release:ci-evidence
+
       - name: Run pre-publication candidate assurance
         env:
           TRIPLE_A_RELEASE_OUTPUT_DIR: artifacts/release
@@ -119,14 +128,6 @@ jobs:
           provenance: mode=max
           sbom: true
 
-      - name: Generate release manifest and checksums
-        env:
-          API_DIGEST: ${{ steps.api.outputs.digest }}
-          WORKER_DIGEST: ${{ steps.worker.outputs.digest }}
-          SPA_DIGEST: ${{ steps.spa.outputs.digest }}
-          RELEASE_REQUIRE_IMAGE_DIGESTS: '1'
-        run: pnpm release:manifest
-
       - name: Attest API image
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
         with:
@@ -162,6 +163,14 @@ jobs:
           gh attestation verify "oci://ghcr.io/${{ github.repository_owner }}/cvg-his-v4-worker@${WORKER_DIGEST}" --repo "${GITHUB_REPOSITORY}" --signer-workflow "${SIGNER_WORKFLOW}" --source-ref main --source-digest "${RELEASE_SHA}" --format json > artifacts/release/worker-attestation-verification.json
           gh attestation verify "oci://ghcr.io/${{ github.repository_owner }}/cvg-his-v4-spa@${SPA_DIGEST}" --repo "${GITHUB_REPOSITORY}" --signer-workflow "${SIGNER_WORKFLOW}" --source-ref main --source-digest "${RELEASE_SHA}" --format json > artifacts/release/spa-attestation-verification.json
 
+      - name: Generate release manifest and checksums
+        env:
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          WORKER_DIGEST: ${{ steps.worker.outputs.digest }}
+          SPA_DIGEST: ${{ steps.spa.outputs.digest }}
+          RELEASE_REQUIRE_IMAGE_DIGESTS: '1'
+        run: pnpm release:manifest
+
       - name: Record image attestation evidence
         env:
           RELEASE_OUTPUT_DIR: artifacts/release
@@ -178,11 +187,12 @@ jobs:
         env:
           TRIPLE_A_RELEASE_OUTPUT_DIR: artifacts/release
           TRIPLE_A_EVIDENCE_COMMIT_SHA: ${{ env.RELEASE_SHA }}
-          TRIPLE_A_CI_URL: ${{ env.RELEASE_PIPELINE_URL }}
-          TRIPLE_A_TEST_EVIDENCE: ${{ env.RELEASE_PIPELINE_URL }}
-          TRIPLE_A_CRITICAL_EVIDENCE: ${{ env.RELEASE_PIPELINE_URL }}
-          TRIPLE_A_E2E_EVIDENCE: ${{ env.RELEASE_PIPELINE_URL }}
+          TRIPLE_A_CI_EVIDENCE: artifacts/release/ci-evidence.json
+          TRIPLE_A_CI_RUN_ID: ${{ github.event.workflow_run.id }}
+          TRIPLE_A_RUN_TESTS: '1'
           TRIPLE_A_IMAGE_ATTESTATION_EVIDENCE: artifacts/release/image-attestation-evidence.json
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TRIPLE_A_VERIFY_CI_EVIDENCE: '1'
           TRIPLE_A_VERIFY_ATTESTATIONS: '1'
         run: pnpm release:triple-a
 

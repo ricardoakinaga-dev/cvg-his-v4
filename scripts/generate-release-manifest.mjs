@@ -15,6 +15,38 @@ function sha256(path) {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
 }
 
+function migrationState(rootDir) {
+  const migrationDirectory = resolve(rootDir, 'packages/db/migrations');
+  if (!existsSync(migrationDirectory)) {
+    return {
+      runner: 'packages/db/src/migrate.ts',
+      source_directory: 'packages/db/migrations',
+      count: 0,
+      latest: null,
+      source_sha256: null,
+      files: [],
+    };
+  }
+  const files = readdirSync(migrationDirectory, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
+    .map((entry) => ({
+      name: entry.name,
+      sha256: sha256(resolve(migrationDirectory, entry.name)),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const sourceSha = createHash('sha256')
+    .update(files.map((file) => `${file.name}:${file.sha256}`).join('\n'))
+    .digest('hex');
+  return {
+    runner: 'packages/db/src/migrate.ts',
+    source_directory: 'packages/db/migrations',
+    count: files.length,
+    latest: files.at(-1)?.name ?? null,
+    source_sha256: sourceSha,
+    files,
+  };
+}
+
 function git(rootDir, args) {
   const result = spawnSync('git', args, {
     cwd: rootDir,
@@ -80,6 +112,14 @@ export function generateReleaseManifest({
 
   const sbom = files.find((file) => basename(file.path) === 'sbom.cyclonedx.json');
   if (requireImageDigests && !sbom) throw new Error('release estrito exige sbom.cyclonedx.json');
+  const sourceBundle = files.find((file) => /^source-[0-9a-f]{40}\.tar\.gz$/.test(basename(file.path)));
+  const migrations = migrationState(rootDir);
+  const attestationReferences = files
+    .filter((file) => basename(file.path).endsWith('-attestation-verification.json'))
+    .map((file) => ({ path: file.path, sha256: file.sha256 }));
+  const evidenceReferences = files
+    .filter((file) => /(?:security-evidence|ci-evidence|TRIPLE_A_RELEASE_EVIDENCE)\.json$/.test(basename(file.path)))
+    .map((file) => ({ path: file.path, sha256: file.sha256 }));
 
   let committedAt = null;
   try {
@@ -96,9 +136,16 @@ export function generateReleaseManifest({
     commit_sha: resolvedSha,
     committed_at: committedAt,
     pipeline_url: pipelineUrl,
+    source: sourceBundle
+      ? { path: sourceBundle.path, sha256: sourceBundle.sha256 }
+      : null,
+    source_hash: sourceBundle?.sha256 ?? null,
+    migration_state: migrations,
     images: normalizedImages,
     files,
     sbom: sbom?.path ?? null,
+    attestation_references: attestationReferences,
+    evidence_references: evidenceReferences,
   };
 
   const manifestPath = resolve(resolvedOutputDir, 'release-manifest.json');
