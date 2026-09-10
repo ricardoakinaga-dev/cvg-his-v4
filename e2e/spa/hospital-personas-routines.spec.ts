@@ -656,7 +656,7 @@ test.describe('Rotinas hospitalares completas por persona', () => {
     await page
       .getByLabel('Resumo do laudo')
       .fill(`Fígado com dimensões preservadas; sem líquido livre. Conclusão ${run}.`);
-    await page.getByLabel('Nome do arquivo', { exact: true }).fill(`laudo-ultrassom-${run}.pdf`);
+    await page.getByRole('textbox', { name: 'Nome do arquivo', exact: true }).fill(`laudo-ultrassom-${run}.pdf`);
     await page.getByLabel('MIME type').fill('application/pdf');
     await page.getByLabel('Checksum').fill(`sha256-${run}`);
     await page.getByLabel('Categoria').selectOption('image');
