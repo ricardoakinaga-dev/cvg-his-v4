@@ -12,6 +12,13 @@ Também foram fechados os controles de release: política de dependências,
 pinagem imutável de actions/bases, gate pré-publicação bloqueante, manifest por
 digest e verificação independente das três imagens com `gh attestation verify`.
 
+## Atualização do candidato corrente — 2026-09-10T08:23:05Z
+
+- Candidato: `a4a5658aa66200a70be709e986152fe61ffc0fe5`; `origin/main` coincide e o worktree estava limpo antes desta atualização documental.
+- O contrato crítico local passou `24/24` e `pnpm lint` passou. A execução local completa de `pnpm test` não foi promovida a PASS porque o banco descartável falhou na preparação de permissões (`permission denied for table tenants/accounts`).
+- CI #58 ([run 34454422885](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34454422885)) permanece em execução. O run #57 foi cancelado pela concorrência após este candidato ser publicado, portanto seus failures parciais não são evidência do SHA atual.
+- O gate estrito com execução externa pulada permanece `BLOCKED / NOT PROVEN`, com `score=43`, `critical_score=23`, `open_p0=27` e `publication_allowed=false`.
+
 ## Verificação do candidato
 
 - Código candidato: `e793345ab71441298bdb2cb2de2755dc5921b115`

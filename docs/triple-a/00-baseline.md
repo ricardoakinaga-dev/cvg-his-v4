@@ -46,4 +46,12 @@ O programa segue para implementação controlada. Não há autorização nem evi
 - A suíte PostgreSQL descartável do workflow clínico passou `9/9`, mas os críticos atuais confirmam que isso não prova HTTP autenticado com roles canônicas, RLS em runtime, auditoria genérica ou a jornada clínica completa.
 - CI #49 (`https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34431492523`) terminou com failures em Unit, Performance/k6, Visual Regression, E2E SPA e Windows contract; main não é green.
 - O gate local atual retornou `PASS_WITH_CONDITIONS`, com `score=43`, `critical_score=23`, `open_p0=27` e `publication_allowed=false`.
+
+## Atualização do candidato corrente — 2026-09-10T08:23:05Z
+
+- `HEAD` e `origin/main` coincidem em `a4a5658aa66200a70be709e986152fe61ffc0fe5`, com worktree limpo antes desta atualização documental.
+- O candidato corrige a invocação Windows do `pnpm.cmd` no runner (`cmd /d /c call` com argumentos separados). O contrato crítico Linux passou `24/24` e `pnpm lint` passou localmente.
+- A execução local de `pnpm test` com PostgreSQL descartável não foi classificada como PASS: falhou na preparação de permissões do banco (`permission denied for table tenants/accounts`). Isso não substitui a execução CI nem prova o workflow PostgreSQL de release.
+- CI #58 (`https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34454422885`) está em execução para o SHA corrente. O run #57 foi cancelado quando esse push mais novo o substituiu; seus failures parciais não são evidência do candidato atual.
+- O gate estrito com execução externa explicitamente pulada retornou `BLOCKED`, `score=43`, `critical_score=23`, `open_p0=27`, `claim=NOT PROVEN` e `publication_allowed=false`. A execução pulada não autoriza release.
 - Permanecem não provados: governança remota de `main`, restore/RPO/RTO, soak/performance alvo, observabilidade entregue, deploy/rollback, imagem assinada, UAT clínico e certificação visual corrente.

@@ -109,3 +109,10 @@ Cada nova rodada deve registrar commit, comando ou observação, resultado, limi
 - `TRIPLE_A_SKIP_EXECUTION=1 pnpm release:triple-a` no candidato corrente
   permaneceu `BLOCKED`, score `43`, critical `23`, `open_p0=27`; a execução
   externa foi explicitamente pulada e nenhum P0 foi convertido em PASS.
+
+## 2026-09-10 — Candidato `a4a5658a`
+
+- Corrigida a invocação Windows do `pnpm.cmd` em `infra/scripts/run-critical-process-suite.mjs`, usando `cmd /d /c call` e argumentos separados. O contrato crítico Linux passou `24/24`; `pnpm lint` também passou.
+- `pnpm test` com PostgreSQL descartável não foi promovido a PASS: a preparação local falhou com `permission denied for table tenants/accounts`. A limitação foi registrada sem mascarar a falha como evidência de integração.
+- O CI #58 ([run 34454422885](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34454422885)) foi disparado para este SHA e estava em execução no momento do registro. O run #57 foi cancelado quando o candidato novo entrou na fila; seus failures parciais não foram atribuídos ao SHA atual.
+- O gate estrito com execução externa pulada retornou `BLOCKED`, `score=43`, `critical_score=23`, `open_p0=27`, `claim=NOT PROVEN` e `publication_allowed=false`.

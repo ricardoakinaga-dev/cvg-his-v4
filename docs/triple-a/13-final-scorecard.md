@@ -4,6 +4,16 @@
 
 **Decisão atual:** `BLOCKED / NOT PROVEN`
 
+## Candidato corrente — 2026-09-10T08:23:05Z
+
+`a4a5658aa66200a70be709e986152fe61ffc0fe5` é o SHA corrente publicado em
+`main`, com `origin/main` coincidente. O contrato crítico Linux passou `24/24`
+e `pnpm lint` passou localmente. A execução completa local de `pnpm test` não
+foi classificada como PASS por falha de permissões no banco descartável
+(`permission denied for table tenants/accounts`).
+
+O CI #58 ([run 34454422885](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34454422885)) ainda está em execução; o run #57 foi cancelado pela concorrência e não fornece evidência do SHA atual. O gate estrito com execução externa pulada permanece `BLOCKED / NOT PROVEN`, `score=43`, `critical=23`, `open_p0=27`, `publication_allowed=false`.
+
 | Critério | Estado atual |
 |---|---|
 | Código, contratos e checks locais | PASS |

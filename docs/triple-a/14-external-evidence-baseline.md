@@ -20,6 +20,24 @@ therefore `main` is not green. Prior runs #46 through #48 and every artifact
 bound to an earlier SHA are historical for this candidate. The local gate is
 fresh but returns `PASS_WITH_CONDITIONS`, not release authorization.
 
+## Latest candidate reconciliation — 2026-09-10T08:23:05Z
+
+The latest candidate is `a4a5658aa66200a70be709e986152fe61ffc0fe5`, with a
+clean worktree and matching `origin/main`. The candidate contains the Windows
+package-manager invocation fix from commit `a4a5658a`; the Linux contract
+suite and repository lint were re-run locally with exit 0.
+
+CI run #58 is currently executing for this SHA:
+[`34454422885`](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34454422885).
+Run #57 was cancelled by GitHub when this newer push superseded it; its
+partially executed failures are not evidence for the new candidate. Until run
+#58 reaches a terminal green state, `main` remains `NOT GREEN / NOT PROVEN`.
+
+The strict local aggregation was intentionally run with external execution
+skipped and returned `BLOCKED`, `score=43`, `critical_score=23`,
+`open_p0=27`, `claim=NOT PROVEN`, `publication_allowed=false`. This is a
+fail-closed observation, not release authorization.
+
 ## Candidate integrity
 
 | Probe | Result | Evidence |
