@@ -125,3 +125,23 @@ Cada nova rodada deve registrar commit, comando ou observação, resultado, limi
 - A falha de integração foi a divergência de `updatedAt` entre duas respostas concorrentes equivalentes. A rota agora relê a linha autoritativa e a persistência só atualiza uma cobrança ainda `pending`.
 - Unit revelou duas datas de loyalty deslocadas por UTC; a renderização local agora usa `America/Sao_Paulo`. A capacidade do benchmark CI também foi explicitada como pool 60/min 8 para o perfil de 60 VUs.
 - O gate local após as correções, no SHA `0dc4809b3e06c8334667f39bf51c33e33c3c0f9`, terminou `BLOCKED`, score `68`, crítico `54`, `open_p0=16`, `claim=NOT PROVEN`; Docker local permaneceu bloqueado por permissão no socket.
+
+## 2026-09-10 — Candidato `a09cf7f4`
+
+- O commit `a09cf7f4` consolidou as leituras autoritativas de sessão e ACL no
+  mesmo tenant transaction em modo PostgreSQL. O contexto inicial agora lê
+  somente a sessão necessária para resolver o tenant; o guard final continua
+  relendo usuário, roles e token de mudança do ACL. A estimativa de billing
+  reutiliza o registro já carregado antes da transição de status.
+- Validação do candidato: `pnpm --filter @cvg-his-v2/module-auth run build`,
+  `pnpm --filter @cvg-his-v2/api run build`, `pnpm --filter
+  @cvg-his-v2/module-auth run test` (`49/49`), `pnpm --filter
+  @cvg-his-v2/module-billing run test` (`20/20`) e
+  `NODE_ENV=test node --test apps/api/dist/server.test.js` (`65/65`): PASS.
+- Checks de repositório: `pnpm typecheck`, `pnpm lint`,
+  `pnpm complexity:check`, `node --test
+  scripts/critical-source-manifest.test.mjs` e `git diff --check`: PASS.
+- Limitação: a aceitação de performance continua dependente do k6 pinned no
+  GitHub Actions. O resultado local não é promovido a evidência externa, e o
+  candidato ainda precisa de push e de um run remoto terminal para confirmar
+  Performance, Integration, E2E e Windows.
