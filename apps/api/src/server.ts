@@ -4393,11 +4393,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             const session = await auth.getSession(accessToken, correlationId);
             accountId = session.accountId;
             userId = session.userId;
-            // The request-level synchronization already validated the signed
-            // access token against the durable session and refreshed the
-            // authoritative user cache. Reuse that snapshot at the final
-            // authorization guard instead of issuing the same session and user
-            // queries twice for every authenticated request.
+            // Reuse the request's authoritative session snapshot at the final guard.
             requestAuthoritativeSessions.set(request, session);
           } catch (error) {
             accessTokenSynchronizationErrors.set(
@@ -8140,12 +8136,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       throw synchronizationError;
     }
 
-    // The request-level synchronization above already loaded the
-    // authoritative session and user before tenant resolution. Reusing that
-    // request snapshot keeps the final guard fail-closed without issuing a
-    // duplicate session/user read for every authenticated request. Full
-    // handler-wide linearization still belongs to the database
-    // transaction/policy layer.
+    // Reuse the synchronized snapshot; fallback remains fail-closed. Full
+    // handler-wide linearization still belongs to the database transaction/policy layer.
     const session =
       requestAuthoritativeSessions.get(request) ??
       (await auth.getSession(
