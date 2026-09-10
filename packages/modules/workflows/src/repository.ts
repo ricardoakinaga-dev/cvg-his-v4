@@ -11,10 +11,7 @@ import type {
 } from '@cvg-his-v2/shared-types';
 import { withTenantQueryExplicit } from '@cvg-his-v2/tenant-context';
 
-import {
-  WORKFLOW_TASK_EVENT_SCHEMA_VERSION,
-  WORKFLOW_TASK_EVENT_SOURCE
-} from './types.js';
+import { WORKFLOW_TASK_EVENT_SCHEMA_VERSION, WORKFLOW_TASK_EVENT_SOURCE } from './types.js';
 
 import type {
   WorkflowTaskClaim,
@@ -123,7 +120,10 @@ export interface WorkflowTaskRepository {
     accountId: AccountId,
     idempotencyKey: string
   ): Promise<WorkflowTaskSummary | null>;
-  list(accountId: AccountId, filters?: WorkflowTaskListFilters): Promise<readonly WorkflowTaskSummary[]>;
+  list(
+    accountId: AccountId,
+    filters?: WorkflowTaskListFilters
+  ): Promise<readonly WorkflowTaskSummary[]>;
   listEvents(
     accountId: AccountId,
     taskId: WorkflowTaskId,
@@ -144,10 +144,7 @@ export interface WorkflowTaskRepository {
     readonly limit: number;
     readonly leaseMs: number;
   }): Promise<readonly WorkflowTaskClaim[]>;
-  completeClaim(
-    claim: WorkflowTaskClaim,
-    event: WorkflowTaskTransitionEvent
-  ): Promise<boolean>;
+  completeClaim(claim: WorkflowTaskClaim, event: WorkflowTaskTransitionEvent): Promise<boolean>;
   retryClaim(
     claim: WorkflowTaskClaim,
     nextAttemptAt: string,
@@ -230,9 +227,12 @@ export class InMemoryWorkflowTaskRepository implements WorkflowTaskRepository {
       const existing = await this.findByIdempotencyKey(task.accountId, task.idempotencyKey);
       if (existing) {
         if (existing.fingerprint !== task.fingerprint) {
-          throw new ConflictError('Workflow task idempotency key was reused with a different payload', {
-            idempotencyKey: task.idempotencyKey
-          });
+          throw new ConflictError(
+            'Workflow task idempotency key was reused with a different payload',
+            {
+              idempotencyKey: task.idempotencyKey
+            }
+          );
         }
         return { task: existing, created: false };
       }
@@ -245,7 +245,10 @@ export class InMemoryWorkflowTaskRepository implements WorkflowTaskRepository {
     }
   }
 
-  public async findById(accountId: AccountId, taskId: WorkflowTaskId): Promise<WorkflowTaskSummary | null> {
+  public async findById(
+    accountId: AccountId,
+    taskId: WorkflowTaskId
+  ): Promise<WorkflowTaskSummary | null> {
     const task = this.#tasks.get(taskId);
     return task && task.accountId === accountId ? cloneTask(task) : null;
   }
@@ -262,7 +265,10 @@ export class InMemoryWorkflowTaskRepository implements WorkflowTaskRepository {
     return null;
   }
 
-  public async list(accountId: AccountId, filters: WorkflowTaskListFilters = {}): Promise<readonly WorkflowTaskSummary[]> {
+  public async list(
+    accountId: AccountId,
+    filters: WorkflowTaskListFilters = {}
+  ): Promise<readonly WorkflowTaskSummary[]> {
     const limit = Math.max(1, Math.min(500, filters.limit ?? 100));
     return [...this.#tasks.values()]
       .filter((task) => task.accountId === accountId)
@@ -276,7 +282,11 @@ export class InMemoryWorkflowTaskRepository implements WorkflowTaskRepository {
       .map(cloneTask);
   }
 
-  public async listEvents(accountId: AccountId, taskId: WorkflowTaskId, limit?: number): Promise<readonly WorkflowTaskEventSummary[]> {
+  public async listEvents(
+    accountId: AccountId,
+    taskId: WorkflowTaskId,
+    limit?: number
+  ): Promise<readonly WorkflowTaskEventSummary[]> {
     const task = await this.findById(accountId, taskId);
     if (!task) return [];
     return (this.#events.get(taskId) ?? []).slice(0, boundedEventLimit(limit)).map(cloneEvent);
@@ -306,12 +316,15 @@ export class InMemoryWorkflowTaskRepository implements WorkflowTaskRepository {
     const now = Date.parse(input.now);
     const claims: WorkflowTaskClaim[] = [];
     for (const task of [...this.#tasks.values()].sort((a, b) => a.dueAt.localeCompare(b.dueAt))) {
-      const leaseExpired = task.status === 'processing' && (!task.leaseExpiresAt || Date.parse(task.leaseExpiresAt) <= now);
+      const leaseExpired =
+        task.status === 'processing' &&
+        (!task.leaseExpiresAt || Date.parse(task.leaseExpiresAt) <= now);
       if (task.accountId === input.accountId && leaseExpired && task.attempts >= task.maxAttempts) {
         const deadLettered: WorkflowTaskSummary = {
           ...task,
           status: 'dlq',
-          lastError: task.lastError ?? 'Lease expired after the maximum attempt budget was exhausted',
+          lastError:
+            task.lastError ?? 'Lease expired after the maximum attempt budget was exhausted',
           leaseOwner: undefined,
           leaseToken: undefined,
           leaseExpiresAt: undefined,
@@ -319,21 +332,24 @@ export class InMemoryWorkflowTaskRepository implements WorkflowTaskRepository {
           updatedAt: input.now
         };
         this.#tasks.set(task.id, deadLettered);
-        this.#events.get(task.id)?.push(toEvent(deadLettered, {
-          eventType: 'dead_lettered',
-          schemaVersion: WORKFLOW_TASK_EVENT_SCHEMA_VERSION,
-          source: WORKFLOW_TASK_EVENT_SOURCE,
-          actorUserId: input.actorUserId,
-          correlationId: input.correlationId,
-          occurredAt: input.now,
-          payload: { reason: 'lease_expired', attempt: task.attempts }
-        }));
+        this.#events.get(task.id)?.push(
+          toEvent(deadLettered, {
+            eventType: 'dead_lettered',
+            schemaVersion: WORKFLOW_TASK_EVENT_SCHEMA_VERSION,
+            source: WORKFLOW_TASK_EVENT_SOURCE,
+            actorUserId: input.actorUserId,
+            correlationId: input.correlationId,
+            occurredAt: input.now,
+            payload: { reason: 'lease_expired', attempt: task.attempts }
+          })
+        );
         continue;
       }
-      const eligible = (task.status === 'pending' || task.status === 'retrying' || leaseExpired)
-        && task.executionMode === 'worker'
-        && Date.parse(task.nextAttemptAt) <= now
-        && task.attempts < task.maxAttempts;
+      const eligible =
+        (task.status === 'pending' || task.status === 'retrying' || leaseExpired) &&
+        task.executionMode === 'worker' &&
+        Date.parse(task.nextAttemptAt) <= now &&
+        task.attempts < task.maxAttempts;
       if (task.accountId !== input.accountId || !eligible || claims.length >= input.limit) continue;
       const leaseToken = randomUUID();
       const leaseExpiresAt = new Date(now + input.leaseMs).toISOString();
@@ -350,16 +366,24 @@ export class InMemoryWorkflowTaskRepository implements WorkflowTaskRepository {
         updatedAt: input.now
       };
       this.#tasks.set(task.id, claimed);
-      this.#events.get(task.id)?.push(toEvent(claimed, {
-        eventType: 'claimed',
-        schemaVersion: WORKFLOW_TASK_EVENT_SCHEMA_VERSION,
-        source: WORKFLOW_TASK_EVENT_SOURCE,
-        actorUserId: input.actorUserId,
-        correlationId: input.correlationId,
-        occurredAt: input.now,
-        payload: { workerId: input.workerId, attempt: claimed.attempts }
-      }));
-      claims.push({ task: cloneTask(claimed), leaseOwner: input.workerId, leaseToken, leaseVersion: claimed.leaseVersion, leaseExpiresAt });
+      this.#events.get(task.id)?.push(
+        toEvent(claimed, {
+          eventType: 'claimed',
+          schemaVersion: WORKFLOW_TASK_EVENT_SCHEMA_VERSION,
+          source: WORKFLOW_TASK_EVENT_SOURCE,
+          actorUserId: input.actorUserId,
+          correlationId: input.correlationId,
+          occurredAt: input.now,
+          payload: { workerId: input.workerId, attempt: claimed.attempts }
+        })
+      );
+      claims.push({
+        task: cloneTask(claimed),
+        leaseOwner: input.workerId,
+        leaseToken,
+        leaseVersion: claimed.leaseVersion,
+        leaseExpiresAt
+      });
     }
     return claims;
   }
@@ -388,7 +412,10 @@ export class InMemoryWorkflowTaskRepository implements WorkflowTaskRepository {
     };
   }
 
-  public async completeClaim(claim: WorkflowTaskClaim, event: WorkflowTaskTransitionEvent): Promise<boolean> {
+  public async completeClaim(
+    claim: WorkflowTaskClaim,
+    event: WorkflowTaskTransitionEvent
+  ): Promise<boolean> {
     const current = this.#tasks.get(claim.task.id);
     if (!claimMatches(current, claim, event.occurredAt)) return false;
     const completed: WorkflowTaskSummary = {
@@ -406,24 +433,63 @@ export class InMemoryWorkflowTaskRepository implements WorkflowTaskRepository {
     return true;
   }
 
-  public async retryClaim(claim: WorkflowTaskClaim, nextAttemptAt: string, error: string, event: WorkflowTaskTransitionEvent): Promise<boolean> {
+  public async retryClaim(
+    claim: WorkflowTaskClaim,
+    nextAttemptAt: string,
+    error: string,
+    event: WorkflowTaskTransitionEvent
+  ): Promise<boolean> {
     const current = this.#tasks.get(claim.task.id);
     if (!claimMatches(current, claim, event.occurredAt)) return false;
-    await this.save({ ...current, status: 'retrying', nextAttemptAt, lastError: error, leaseOwner: undefined, leaseToken: undefined, leaseExpiresAt: undefined, revision: current.revision + 1, updatedAt: event.occurredAt }, event);
+    await this.save(
+      {
+        ...current,
+        status: 'retrying',
+        nextAttemptAt,
+        lastError: error,
+        leaseOwner: undefined,
+        leaseToken: undefined,
+        leaseExpiresAt: undefined,
+        revision: current.revision + 1,
+        updatedAt: event.occurredAt
+      },
+      event
+    );
     return true;
   }
 
-  public async moveToDeadLetter(claim: WorkflowTaskClaim, error: string, event: WorkflowTaskTransitionEvent): Promise<boolean> {
+  public async moveToDeadLetter(
+    claim: WorkflowTaskClaim,
+    error: string,
+    event: WorkflowTaskTransitionEvent
+  ): Promise<boolean> {
     const current = this.#tasks.get(claim.task.id);
     if (!claimMatches(current, claim, event.occurredAt)) return false;
-    await this.save({ ...current, status: 'dlq', lastError: error, leaseOwner: undefined, leaseToken: undefined, leaseExpiresAt: undefined, revision: current.revision + 1, updatedAt: event.occurredAt }, event);
+    await this.save(
+      {
+        ...current,
+        status: 'dlq',
+        lastError: error,
+        leaseOwner: undefined,
+        leaseToken: undefined,
+        leaseExpiresAt: undefined,
+        revision: current.revision + 1,
+        updatedAt: event.occurredAt
+      },
+      event
+    );
     return true;
   }
 
-  public async replay(accountId: AccountId, taskId: WorkflowTaskId, event: WorkflowTaskTransitionEvent): Promise<WorkflowTaskSummary> {
+  public async replay(
+    accountId: AccountId,
+    taskId: WorkflowTaskId,
+    event: WorkflowTaskTransitionEvent
+  ): Promise<WorkflowTaskSummary> {
     const current = await this.findById(accountId, taskId);
     if (!current) throw new NotFoundError('Workflow task not found', { taskId });
-    if (current.status !== 'dlq') throw new ConflictError('Only dead-lettered workflow tasks can be replayed');
+    if (current.status !== 'dlq')
+      throw new ConflictError('Only dead-lettered workflow tasks can be replayed');
     const replayed: WorkflowTaskSummary = {
       ...current,
       status: 'pending',
@@ -494,9 +560,17 @@ function mapRow(row: DbRow): WorkflowTaskSummary {
 
 function eventValues(task: WorkflowTaskSummary, event: WorkflowTaskTransitionEvent): unknown[] {
   return [
-    randomUUID(), task.accountId, task.id, event.eventType, event.actorUserId ?? null,
-    event.correlationId, event.causationId ?? null, JSON.stringify(event.payload ?? {}),
-    new Date(event.occurredAt), event.schemaVersion, event.source
+    randomUUID(),
+    task.accountId,
+    task.id,
+    event.eventType,
+    event.actorUserId ?? null,
+    event.correlationId,
+    event.causationId ?? null,
+    JSON.stringify(event.payload ?? {}),
+    new Date(event.occurredAt),
+    event.schemaVersion,
+    event.source
   ];
 }
 
@@ -511,7 +585,10 @@ export class DatabaseWorkflowTaskRepository implements WorkflowTaskRepository {
     return this.#pool ?? getPool();
   }
 
-  public async createOrGet(task: WorkflowTaskSummary, event: WorkflowTaskTransitionEvent): Promise<{ readonly task: WorkflowTaskSummary; readonly created: boolean }> {
+  public async createOrGet(
+    task: WorkflowTaskSummary,
+    event: WorkflowTaskTransitionEvent
+  ): Promise<{ readonly task: WorkflowTaskSummary; readonly created: boolean }> {
     return withTenantQueryExplicit(this.pool(), task.accountId, async (client) => {
       const inserted = await client.query(
         `INSERT INTO clinical_workflow_tasks (
@@ -521,12 +598,32 @@ export class DatabaseWorkflowTaskRepository implements WorkflowTaskRepository {
           created_by_user_id, created_at, updated_at
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
         ON CONFLICT (account_id, idempotency_key) DO NOTHING RETURNING *`,
-        [task.id, task.accountId, task.taskType, task.status, task.executionMode, task.priority, task.title,
-          task.description ?? null, task.patientId ?? null, task.encounterId ?? null,
-          task.ownerType ?? null, task.ownerId ?? null, new Date(task.dueAt), task.idempotencyKey,
-          task.fingerprint, JSON.stringify(task.metadata), task.attempts, task.maxAttempts,
-          new Date(task.nextAttemptAt), task.correlationId, task.causationId ?? null,
-          task.createdByUserId ?? null, new Date(task.createdAt), new Date(task.updatedAt)]
+        [
+          task.id,
+          task.accountId,
+          task.taskType,
+          task.status,
+          task.executionMode,
+          task.priority,
+          task.title,
+          task.description ?? null,
+          task.patientId ?? null,
+          task.encounterId ?? null,
+          task.ownerType ?? null,
+          task.ownerId ?? null,
+          new Date(task.dueAt),
+          task.idempotencyKey,
+          task.fingerprint,
+          JSON.stringify(task.metadata),
+          task.attempts,
+          task.maxAttempts,
+          new Date(task.nextAttemptAt),
+          task.correlationId,
+          task.causationId ?? null,
+          task.createdByUserId ?? null,
+          new Date(task.createdAt),
+          new Date(task.updatedAt)
+        ]
       );
       if (inserted.rows.length > 0) {
         await client.query(
@@ -535,33 +632,58 @@ export class DatabaseWorkflowTaskRepository implements WorkflowTaskRepository {
         );
         return { task: mapRow(inserted.rows[0]), created: true };
       }
-      const existing = await client.query('SELECT * FROM clinical_workflow_tasks WHERE account_id = $1 AND idempotency_key = $2 LIMIT 1', [task.accountId, task.idempotencyKey]);
-      if (existing.rows.length === 0) throw new NotFoundError('Workflow task could not be recovered after idempotent insert');
+      const existing = await client.query(
+        'SELECT * FROM clinical_workflow_tasks WHERE account_id = $1 AND idempotency_key = $2 LIMIT 1',
+        [task.accountId, task.idempotencyKey]
+      );
+      if (existing.rows.length === 0)
+        throw new NotFoundError('Workflow task could not be recovered after idempotent insert');
       const recovered = mapRow(existing.rows[0]);
-      if (recovered.fingerprint !== task.fingerprint) throw new ConflictError('Workflow task idempotency key was reused with a different payload');
+      if (recovered.fingerprint !== task.fingerprint)
+        throw new ConflictError(
+          'Workflow task idempotency key was reused with a different payload'
+        );
       return { task: recovered, created: false };
     });
   }
 
-  public async findById(accountId: AccountId, taskId: WorkflowTaskId): Promise<WorkflowTaskSummary | null> {
+  public async findById(
+    accountId: AccountId,
+    taskId: WorkflowTaskId
+  ): Promise<WorkflowTaskSummary | null> {
     return withTenantQueryExplicit(this.pool(), accountId, async (client) => {
-      const result = await client.query('SELECT * FROM clinical_workflow_tasks WHERE account_id = $1 AND id = $2 LIMIT 1', [accountId, taskId]);
+      const result = await client.query(
+        'SELECT * FROM clinical_workflow_tasks WHERE account_id = $1 AND id = $2 LIMIT 1',
+        [accountId, taskId]
+      );
       return result.rows[0] ? mapRow(result.rows[0]) : null;
     });
   }
 
-  public async findByIdempotencyKey(accountId: AccountId, idempotencyKey: string): Promise<WorkflowTaskSummary | null> {
+  public async findByIdempotencyKey(
+    accountId: AccountId,
+    idempotencyKey: string
+  ): Promise<WorkflowTaskSummary | null> {
     return withTenantQueryExplicit(this.pool(), accountId, async (client) => {
-      const result = await client.query('SELECT * FROM clinical_workflow_tasks WHERE account_id = $1 AND idempotency_key = $2 LIMIT 1', [accountId, idempotencyKey]);
+      const result = await client.query(
+        'SELECT * FROM clinical_workflow_tasks WHERE account_id = $1 AND idempotency_key = $2 LIMIT 1',
+        [accountId, idempotencyKey]
+      );
       return result.rows[0] ? mapRow(result.rows[0]) : null;
     });
   }
 
-  public async list(accountId: AccountId, filters: WorkflowTaskListFilters = {}): Promise<readonly WorkflowTaskSummary[]> {
+  public async list(
+    accountId: AccountId,
+    filters: WorkflowTaskListFilters = {}
+  ): Promise<readonly WorkflowTaskSummary[]> {
     return withTenantQueryExplicit(this.pool(), accountId, async (client) => {
       const params: unknown[] = [accountId];
       const conditions = ['account_id = $1'];
-      const add = (condition: string, value: unknown) => { params.push(value); conditions.push(condition.replace('?', `$${params.length}`)); };
+      const add = (condition: string, value: unknown) => {
+        params.push(value);
+        conditions.push(condition.replace('?', `$${params.length}`));
+      };
       if (filters.status) add('status = ?', filters.status);
       if (filters.taskType) add('task_type = ?', filters.taskType);
       if (filters.patientId) add('patient_id = ?', filters.patientId);
@@ -569,22 +691,39 @@ export class DatabaseWorkflowTaskRepository implements WorkflowTaskRepository {
       if (filters.dueBefore) add('due_at <= ?', new Date(filters.dueBefore));
       const limit = Math.max(1, Math.min(500, filters.limit ?? 100));
       params.push(limit);
-      const result = await client.query(`SELECT * FROM clinical_workflow_tasks WHERE ${conditions.join(' AND ')} ORDER BY due_at ASC, id ASC LIMIT $${params.length}`, params);
+      const result = await client.query(
+        `SELECT * FROM clinical_workflow_tasks WHERE ${conditions.join(' AND ')} ORDER BY due_at ASC, id ASC LIMIT $${params.length}`,
+        params
+      );
       return result.rows.map((row: DbRow) => mapRow(row));
     });
   }
 
-  public async listEvents(accountId: AccountId, taskId: WorkflowTaskId, limit?: number): Promise<readonly WorkflowTaskEventSummary[]> {
+  public async listEvents(
+    accountId: AccountId,
+    taskId: WorkflowTaskId,
+    limit?: number
+  ): Promise<readonly WorkflowTaskEventSummary[]> {
     return withTenantQueryExplicit(this.pool(), accountId, async (client) => {
-      const result = await client.query('SELECT * FROM clinical_workflow_task_events WHERE account_id = $1 AND task_id = $2 ORDER BY occurred_at ASC, id ASC LIMIT $3', [accountId, taskId, boundedEventLimit(limit)]);
+      const result = await client.query(
+        'SELECT * FROM clinical_workflow_task_events WHERE account_id = $1 AND task_id = $2 ORDER BY occurred_at ASC, id ASC LIMIT $3',
+        [accountId, taskId, boundedEventLimit(limit)]
+      );
       return result.rows.map((row: DbRow) => ({
-        id: row.id as WorkflowTaskEventSummary['id'], accountId: row.account_id as AccountId, taskId: row.task_id as WorkflowTaskId,
+        id: row.id as WorkflowTaskEventSummary['id'],
+        accountId: row.account_id as AccountId,
+        taskId: row.task_id as WorkflowTaskId,
         eventType: row.event_type as WorkflowTaskEventType,
-        schemaVersion: Number(row.schema_version ?? WORKFLOW_TASK_EVENT_SCHEMA_VERSION) as WorkflowTaskEventSummary['schemaVersion'],
-        source: (row.source as WorkflowTaskEventSummary['source'] | null) ?? WORKFLOW_TASK_EVENT_SOURCE,
+        schemaVersion: Number(
+          row.schema_version ?? WORKFLOW_TASK_EVENT_SCHEMA_VERSION
+        ) as WorkflowTaskEventSummary['schemaVersion'],
+        source:
+          (row.source as WorkflowTaskEventSummary['source'] | null) ?? WORKFLOW_TASK_EVENT_SOURCE,
         actorUserId: (row.actor_user_id as UserId | null) ?? undefined,
-        correlationId: row.correlation_id as CorrelationId, causationId: (row.causation_id as string | null) ?? undefined,
-        payload: (row.payload as Record<string, unknown>) ?? {}, occurredAt: new Date(row.occurred_at as string | Date).toISOString()
+        correlationId: row.correlation_id as CorrelationId,
+        causationId: (row.causation_id as string | null) ?? undefined,
+        payload: (row.payload as Record<string, unknown>) ?? {},
+        occurredAt: new Date(row.occurred_at as string | Date).toISOString()
       }));
     });
   }
@@ -593,14 +732,60 @@ export class DatabaseWorkflowTaskRepository implements WorkflowTaskRepository {
     await withTenantQueryExplicit(this.pool(), task.accountId, async (client) => {
       const result = await client.query(
         `UPDATE clinical_workflow_tasks SET status=$3, execution_mode=$4, priority=$5, title=$6, description=$7, owner_type=$8, owner_id=$9, due_at=$10, metadata=$11, attempts=$12, max_attempts=$13, next_attempt_at=$14, lease_owner=$15, lease_token=$16, lease_version=$17, revision=$18, lease_expires_at=$19, last_attempt_at=$20, last_error=$21, acknowledged_by_user_id=$22, acknowledged_at=$23, completed_by_user_id=$24, completed_at=$25, cancelled_by_user_id=$26, cancelled_at=$27, cancellation_reason=$28, escalation_level=$29, last_escalated_at=$30, updated_at=$31, fingerprint=$33 WHERE account_id=$1 AND id=$2 AND revision=$32`,
-        [task.accountId, task.id, task.status, task.executionMode, task.priority, task.title, task.description ?? null, task.ownerType ?? null, task.ownerId ?? null, new Date(task.dueAt), JSON.stringify(task.metadata), task.attempts, task.maxAttempts, new Date(task.nextAttemptAt), task.leaseOwner ?? null, task.leaseToken ?? null, task.leaseVersion, task.revision, task.leaseExpiresAt ? new Date(task.leaseExpiresAt) : null, task.lastAttemptAt ? new Date(task.lastAttemptAt) : null, task.lastError ?? null, task.acknowledgedByUserId ?? null, task.acknowledgedAt ? new Date(task.acknowledgedAt) : null, task.completedByUserId ?? null, task.completedAt ? new Date(task.completedAt) : null, task.cancelledByUserId ?? null, task.cancelledAt ? new Date(task.cancelledAt) : null, task.cancellationReason ?? null, task.escalationLevel, task.lastEscalatedAt ? new Date(task.lastEscalatedAt) : null, new Date(task.updatedAt), task.revision - 1, task.fingerprint]
+        [
+          task.accountId,
+          task.id,
+          task.status,
+          task.executionMode,
+          task.priority,
+          task.title,
+          task.description ?? null,
+          task.ownerType ?? null,
+          task.ownerId ?? null,
+          new Date(task.dueAt),
+          JSON.stringify(task.metadata),
+          task.attempts,
+          task.maxAttempts,
+          new Date(task.nextAttemptAt),
+          task.leaseOwner ?? null,
+          task.leaseToken ?? null,
+          task.leaseVersion,
+          task.revision,
+          task.leaseExpiresAt ? new Date(task.leaseExpiresAt) : null,
+          task.lastAttemptAt ? new Date(task.lastAttemptAt) : null,
+          task.lastError ?? null,
+          task.acknowledgedByUserId ?? null,
+          task.acknowledgedAt ? new Date(task.acknowledgedAt) : null,
+          task.completedByUserId ?? null,
+          task.completedAt ? new Date(task.completedAt) : null,
+          task.cancelledByUserId ?? null,
+          task.cancelledAt ? new Date(task.cancelledAt) : null,
+          task.cancellationReason ?? null,
+          task.escalationLevel,
+          task.lastEscalatedAt ? new Date(task.lastEscalatedAt) : null,
+          new Date(task.updatedAt),
+          task.revision - 1,
+          task.fingerprint
+        ]
       );
-      if (result.rowCount !== 1) throw new ConflictError('Workflow task revision mismatch', { taskId: task.id });
-      await client.query('INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at, schema_version, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)', eventValues(task, event));
+      if (result.rowCount !== 1)
+        throw new ConflictError('Workflow task revision mismatch', { taskId: task.id });
+      await client.query(
+        'INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at, schema_version, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+        eventValues(task, event)
+      );
     });
   }
 
-  public async claimDue(input: { readonly accountId: AccountId; readonly workerId: string; readonly actorUserId?: UserId; readonly correlationId: CorrelationId; readonly now: string; readonly limit: number; readonly leaseMs: number }): Promise<readonly WorkflowTaskClaim[]> {
+  public async claimDue(input: {
+    readonly accountId: AccountId;
+    readonly workerId: string;
+    readonly actorUserId?: UserId;
+    readonly correlationId: CorrelationId;
+    readonly now: string;
+    readonly limit: number;
+    readonly leaseMs: number;
+  }): Promise<readonly WorkflowTaskClaim[]> {
     return withTenantQueryExplicit(this.pool(), input.accountId, async (client) => {
       const leaseExpiresAt = new Date(Date.parse(input.now) + input.leaseMs);
       const expiredFinalAttempts = await client.query(
@@ -630,7 +815,10 @@ export class DatabaseWorkflowTaskRepository implements WorkflowTaskRepository {
           occurredAt: input.now,
           payload: { reason: 'lease_expired', attempt: task.attempts }
         };
-        await client.query('INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at, schema_version, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)', eventValues(task, event));
+        await client.query(
+          'INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at, schema_version, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+          eventValues(task, event)
+        );
       }
       const result = await client.query(
         `WITH candidates AS (
@@ -648,9 +836,26 @@ export class DatabaseWorkflowTaskRepository implements WorkflowTaskRepository {
       const claims: WorkflowTaskClaim[] = [];
       for (const row of result.rows as DbRow[]) {
         const task = mapRow(row);
-        const event: WorkflowTaskTransitionEvent = { eventType: 'claimed', schemaVersion: WORKFLOW_TASK_EVENT_SCHEMA_VERSION, source: WORKFLOW_TASK_EVENT_SOURCE, actorUserId: input.actorUserId, correlationId: input.correlationId, occurredAt: input.now, payload: { workerId: input.workerId, attempt: task.attempts } };
-        await client.query('INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at, schema_version, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)', eventValues(task, event));
-        claims.push({ task, leaseOwner: input.workerId, leaseToken: task.leaseToken!, leaseVersion: task.leaseVersion, leaseExpiresAt: task.leaseExpiresAt! });
+        const event: WorkflowTaskTransitionEvent = {
+          eventType: 'claimed',
+          schemaVersion: WORKFLOW_TASK_EVENT_SCHEMA_VERSION,
+          source: WORKFLOW_TASK_EVENT_SOURCE,
+          actorUserId: input.actorUserId,
+          correlationId: input.correlationId,
+          occurredAt: input.now,
+          payload: { workerId: input.workerId, attempt: task.attempts }
+        };
+        await client.query(
+          'INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at, schema_version, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+          eventValues(task, event)
+        );
+        claims.push({
+          task,
+          leaseOwner: input.workerId,
+          leaseToken: task.leaseToken!,
+          leaseVersion: task.leaseVersion,
+          leaseExpiresAt: task.leaseExpiresAt!
+        });
       }
       return claims;
     });
@@ -670,8 +875,16 @@ export class DatabaseWorkflowTaskRepository implements WorkflowTaskRepository {
             AND lease_version=$6 AND revision=$7 AND status='processing'
             AND lease_expires_at > $8
           RETURNING *`,
-        [claim.task.accountId, claim.task.id, claim.leaseToken, leaseExpiresAt,
-          claim.leaseOwner, claim.leaseVersion, claim.task.revision, new Date(now)]
+        [
+          claim.task.accountId,
+          claim.task.id,
+          claim.leaseToken,
+          leaseExpiresAt,
+          claim.leaseOwner,
+          claim.leaseVersion,
+          claim.task.revision,
+          new Date(now)
+        ]
       );
       if (result.rows.length === 0) return null;
       const task = mapRow(result.rows[0]);
@@ -685,35 +898,82 @@ export class DatabaseWorkflowTaskRepository implements WorkflowTaskRepository {
     });
   }
 
-  private async updateClaim(claim: WorkflowTaskClaim, status: WorkflowTaskStatus, event: WorkflowTaskTransitionEvent, extra: { readonly nextAttemptAt?: string; readonly lastError?: string } = {}): Promise<boolean> {
+  private async updateClaim(
+    claim: WorkflowTaskClaim,
+    status: WorkflowTaskStatus,
+    event: WorkflowTaskTransitionEvent,
+    extra: { readonly nextAttemptAt?: string; readonly lastError?: string } = {}
+  ): Promise<boolean> {
     return withTenantQueryExplicit(this.pool(), claim.task.accountId, async (client) => {
       const result = await client.query(
-        `UPDATE clinical_workflow_tasks SET status=$4, next_attempt_at=COALESCE($5,next_attempt_at), last_error=$6, lease_owner=NULL, lease_token=NULL, lease_expires_at=NULL, revision=revision+1, completed_by_user_id=CASE WHEN $4='completed' THEN $8 ELSE completed_by_user_id END, completed_at=CASE WHEN $4='completed' THEN $9 ELSE completed_at END, updated_at=$9 WHERE account_id=$1 AND id=$2 AND lease_token=$3 AND lease_version=$7 AND lease_owner=$10 AND revision=$11 AND status='processing' AND lease_expires_at > $12`,
-        [claim.task.accountId, claim.task.id, claim.leaseToken, status, extra.nextAttemptAt ? new Date(extra.nextAttemptAt) : null, extra.lastError ?? null, claim.leaseVersion, event.actorUserId ?? null, new Date(event.occurredAt), claim.leaseOwner, claim.task.revision, new Date(event.occurredAt)]
+        `UPDATE clinical_workflow_tasks SET status=$4::varchar, next_attempt_at=COALESCE($5,next_attempt_at), last_error=$6, lease_owner=NULL, lease_token=NULL, lease_expires_at=NULL, revision=revision+1, completed_by_user_id=CASE WHEN $4::text='completed' THEN $8 ELSE completed_by_user_id END, completed_at=CASE WHEN $4::text='completed' THEN $9 ELSE completed_at END, updated_at=$9 WHERE account_id=$1 AND id=$2 AND lease_token=$3 AND lease_version=$7 AND lease_owner=$10 AND revision=$11 AND status='processing' AND lease_expires_at > $12`,
+        [
+          claim.task.accountId,
+          claim.task.id,
+          claim.leaseToken,
+          status,
+          extra.nextAttemptAt ? new Date(extra.nextAttemptAt) : null,
+          extra.lastError ?? null,
+          claim.leaseVersion,
+          event.actorUserId ?? null,
+          new Date(event.occurredAt),
+          claim.leaseOwner,
+          claim.task.revision,
+          new Date(event.occurredAt)
+        ]
       );
       if (result.rowCount !== 1) return false;
-      const updated = await client.query('SELECT * FROM clinical_workflow_tasks WHERE account_id=$1 AND id=$2', [claim.task.accountId, claim.task.id]);
-      await client.query('INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at, schema_version, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)', eventValues(mapRow(updated.rows[0]), event));
+      const updated = await client.query(
+        'SELECT * FROM clinical_workflow_tasks WHERE account_id=$1 AND id=$2',
+        [claim.task.accountId, claim.task.id]
+      );
+      await client.query(
+        'INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at, schema_version, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+        eventValues(mapRow(updated.rows[0]), event)
+      );
       return true;
     });
   }
 
-  public completeClaim(claim: WorkflowTaskClaim, event: WorkflowTaskTransitionEvent): Promise<boolean> {
+  public completeClaim(
+    claim: WorkflowTaskClaim,
+    event: WorkflowTaskTransitionEvent
+  ): Promise<boolean> {
     return this.updateClaim(claim, 'completed', event);
   }
-  public retryClaim(claim: WorkflowTaskClaim, nextAttemptAt: string, error: string, event: WorkflowTaskTransitionEvent): Promise<boolean> {
+  public retryClaim(
+    claim: WorkflowTaskClaim,
+    nextAttemptAt: string,
+    error: string,
+    event: WorkflowTaskTransitionEvent
+  ): Promise<boolean> {
     return this.updateClaim(claim, 'retrying', event, { nextAttemptAt, lastError: error });
   }
-  public moveToDeadLetter(claim: WorkflowTaskClaim, error: string, event: WorkflowTaskTransitionEvent): Promise<boolean> {
+  public moveToDeadLetter(
+    claim: WorkflowTaskClaim,
+    error: string,
+    event: WorkflowTaskTransitionEvent
+  ): Promise<boolean> {
     return this.updateClaim(claim, 'dlq', event, { lastError: error });
   }
 
-  public async replay(accountId: AccountId, taskId: WorkflowTaskId, event: WorkflowTaskTransitionEvent): Promise<WorkflowTaskSummary> {
+  public async replay(
+    accountId: AccountId,
+    taskId: WorkflowTaskId,
+    event: WorkflowTaskTransitionEvent
+  ): Promise<WorkflowTaskSummary> {
     return withTenantQueryExplicit(this.pool(), accountId, async (client) => {
-      const result = await client.query(`UPDATE clinical_workflow_tasks SET status='pending', attempts=0, next_attempt_at=$3, last_error=NULL, lease_owner=NULL, lease_token=NULL, lease_expires_at=NULL, revision=revision+1, updated_at=$3 WHERE account_id=$1 AND id=$2 AND status='dlq' RETURNING *`, [accountId, taskId, new Date(event.occurredAt)]);
-      if (result.rows.length === 0) throw new ConflictError('Only dead-lettered workflow tasks can be replayed');
+      const result = await client.query(
+        `UPDATE clinical_workflow_tasks SET status='pending', attempts=0, next_attempt_at=$3, last_error=NULL, lease_owner=NULL, lease_token=NULL, lease_expires_at=NULL, revision=revision+1, updated_at=$3 WHERE account_id=$1 AND id=$2 AND status='dlq' RETURNING *`,
+        [accountId, taskId, new Date(event.occurredAt)]
+      );
+      if (result.rows.length === 0)
+        throw new ConflictError('Only dead-lettered workflow tasks can be replayed');
       const task = mapRow(result.rows[0]);
-      await client.query('INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at, schema_version, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)', eventValues(task, event));
+      await client.query(
+        'INSERT INTO clinical_workflow_task_events (id, account_id, task_id, event_type, actor_user_id, correlation_id, causation_id, payload, occurred_at, schema_version, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+        eventValues(task, event)
+      );
       return task;
     });
   }

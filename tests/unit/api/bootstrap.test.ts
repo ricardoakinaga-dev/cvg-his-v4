@@ -88,7 +88,7 @@ describe('bootstrap', () => {
     }
   );
 
-  it.each(['DATABASE_REQUIRE_RLS_ROLE', 'DATABASE_REQUIRE_SCHEMA', 'REQUIRE_TEST_DB'] as const)(
+  it.each(['DATABASE_REQUIRE_RLS_ROLE', 'DATABASE_REQUIRE_SCHEMA'] as const)(
     'fails closed when %s is enabled without a database',
     async (flag) => {
       const previousRlsRole = process.env.DATABASE_REQUIRE_RLS_ROLE;
@@ -114,6 +114,39 @@ describe('bootstrap', () => {
       }
     }
   );
+
+  it('allows an explicit in-memory test mode when REQUIRE_TEST_DB is enabled', async () => {
+    const previousRequireTestDb = process.env.REQUIRE_TEST_DB;
+    process.env.REQUIRE_TEST_DB = '1';
+
+    const { bootstrapServices } = await import('../../../apps/api/src/bootstrap.ts');
+
+    try {
+      const result = await bootstrapServices({ environment: 'development', skipDatabase: true });
+
+      expect(result.repositoriesUseDatabase).toBe(false);
+      expect(result.databaseDetail).toContain('in-memory');
+    } finally {
+      if (previousRequireTestDb === undefined) delete process.env.REQUIRE_TEST_DB;
+      else process.env.REQUIRE_TEST_DB = previousRequireTestDb;
+    }
+  });
+
+  it('fails closed when REQUIRE_TEST_DB is enabled without an explicit test mode', async () => {
+    const previousRequireTestDb = process.env.REQUIRE_TEST_DB;
+    process.env.REQUIRE_TEST_DB = '1';
+
+    const { bootstrapServices } = await import('../../../apps/api/src/bootstrap.ts');
+
+    try {
+      await expect(bootstrapServices({ environment: 'development' })).rejects.toThrow(
+        /production-like|DATABASE_URL|in-memory/i
+      );
+    } finally {
+      if (previousRequireTestDb === undefined) delete process.env.REQUIRE_TEST_DB;
+      else process.env.REQUIRE_TEST_DB = previousRequireTestDb;
+    }
+  });
 
   it('fails closed instead of using in-memory repositories when REQUIRE_TEST_DB rejects the database', async () => {
     const previousRequireTestDb = process.env.REQUIRE_TEST_DB;

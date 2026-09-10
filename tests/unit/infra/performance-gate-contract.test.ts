@@ -30,6 +30,7 @@ describe('performance and SLO gate', () => {
     expect(performanceJob).toContain('curl -fsS http://localhost:3001/ready');
     expect(performanceJob).not.toContain('curl -fsS http://localhost:3001/health');
     expect(performanceJob).toContain('LOAD_PROFILE: operational-minimum-v1');
+    expect(performanceJob).toContain('mkdir -p benchmarks/k6/results');
     expect(performanceJob).not.toContain('continue-on-error: true');
     expect(performanceJob).toContain(
       '47a43a8dbb4c1f5d5bd7b8ed6a1b8c83b35546acf989b78400b4e6ce3adaf628'
@@ -53,6 +54,7 @@ describe('performance and SLO gate', () => {
     expect(certification).toContain("grep -Eq '^https://");
     expect(certification).toContain('git merge-base --is-ancestor');
     expect(certification).toContain('TEST_PASSWORD: ${{ secrets.PERF_PASSWORD }}');
+    expect(certification).toContain('mkdir -p benchmarks/k6/results');
     expect(certification).toContain('if-no-files-found: error');
   });
 });

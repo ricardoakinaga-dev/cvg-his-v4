@@ -91,7 +91,9 @@ jobs:
           TEST_USERNAME: ${{ secrets.PERF_USERNAME }}
           TEST_PASSWORD: ${{ secrets.PERF_PASSWORD }}
           ACCOUNT_ID: ${{ secrets.PERF_ACCOUNT_ID }}
-        run: k6 run benchmarks/k6/api-benchmark.js
+        run: |
+          mkdir -p benchmarks/k6/results
+          k6 run benchmarks/k6/api-benchmark.js
 
       - name: Upload performance evidence
         if: always()

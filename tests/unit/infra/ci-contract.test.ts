@@ -46,6 +46,10 @@ describe('CI repository guardrails', () => {
     );
     expect(job).toContain('name: Visual Regression');
     expect(job).toContain('Run visual regression tests');
+    expect(job).toContain(
+      'run: npx playwright test --config playwright-spa.config.ts e2e/spa/visual/visual-regression.spec.ts'
+    );
+    expect(job).not.toContain('-g "Visual"');
     expect(job).toContain('node scripts/assert-clean-checkout.mjs');
     expect(job).not.toContain('continue-on-error: true');
   });

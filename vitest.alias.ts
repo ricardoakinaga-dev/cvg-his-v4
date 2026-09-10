@@ -41,6 +41,7 @@ export function createWorkspaceAliases(root: string): Record<string, string> {
     '@cvg-his-v2/module-triage': from('packages/modules/triage/src/index.ts'),
     '@cvg-his-v2/module-users': from('packages/modules/users/src/index.ts'),
     '@cvg-his-v2/module-webhooks': from('packages/modules/webhooks/src/index.ts'),
+    '@cvg-his-v2/module-workflows': from('packages/modules/workflows/src/index.ts'),
     '@cvg-his-v2/module-fiscal': from('packages/modules/fiscal/src/index.ts'),
     '@cvg-his-v2/module-prescriptions': from('packages/modules/prescriptions/src/index.ts'),
     '@cvg-his-v2/module-mfa': from('packages/modules/mfa/src/index.ts'),

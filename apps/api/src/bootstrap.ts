@@ -1142,7 +1142,11 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
   };
 
   if (options.skipDatabase || !options.databaseUrl) {
-    if (databaseRequired) {
+    // `skipDatabase` is an explicit unit-test/degraded-mode choice. Keep the
+    // fail-closed guard for production-like callers, while allowing the
+    // in-memory contract tests to run under REQUIRE_TEST_DB=1 alongside the
+    // database-backed suites in CI.
+    if (productionLike || (!options.skipDatabase && databaseRequired)) {
       throw new Error(
         'Production-like database runtime requires DATABASE_URL; refusing in-memory fallback'
       );

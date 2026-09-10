@@ -883,7 +883,9 @@ jobs:
         env:
           TARGET: http://localhost:3001
           LOAD_PROFILE: operational-minimum-v1
-        run: k6 run benchmarks/k6/api-benchmark.js
+        run: |
+          mkdir -p benchmarks/k6/results
+          k6 run benchmarks/k6/api-benchmark.js
 
       - name: Check SLO results
         if: always()
@@ -1289,7 +1291,7 @@ jobs:
           E2E_REDIS_URL: redis://localhost:6380
           E2E_DATABASE_MODE: '1'
           API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
-        run: npx playwright test --config playwright-spa.config.ts -g "Visual"
+        run: npx playwright test --config playwright-spa.config.ts e2e/spa/visual/visual-regression.spec.ts
 
       - name: Upload visual regression report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -1309,9 +1311,9 @@ jobs:
         with:
           name: visual-regression-diffs
           path: |
-            e2e/spa/snapshots/**/*.diff.png
-            e2e/spa/snapshots/**/*.actual.png
-            e2e/spa/snapshots/**/*.expected.png
+            test-results/**/*-diff.png
+            test-results/**/*-actual.png
+            test-results/**/*-expected.png
           retention-days: 14
 
       - name: Upload visual test-results

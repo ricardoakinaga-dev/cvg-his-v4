@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { expect, describe, beforeAll, afterAll, it } from 'vitest';
+import { expect, describe, beforeAll, afterAll, afterEach, it } from 'vitest';
 
 import {
   DatabaseWorkflowTaskRepository,
@@ -12,6 +12,7 @@ import type { AccountId, CorrelationId, UserId } from '@cvg-his-v2/shared-types'
 
 import { activateRlsRole, setAccountContext } from '../../helpers/rls-helpers.js';
 import { getTestPool } from '../../db/db-admin.js';
+import { createDatabaseClient } from '@cvg-his-v2/shared-database';
 
 const nowAt = '2026-09-09T10:00:00.000Z';
 const laterAt = '2026-09-09T10:00:02.000Z';
@@ -53,10 +54,15 @@ function correlation(label: string): CorrelationId {
 
 function serviceWithClock(repository: DatabaseWorkflowTaskRepository) {
   let now = nowAt;
+  let tick = 0;
   return {
-    service: new WorkflowTaskService({ repository, now: () => now }),
+    service: new WorkflowTaskService({
+      repository,
+      now: () => new Date(Date.parse(now) + tick++).toISOString()
+    }),
     setNow(value: string) {
       now = value;
+      tick = 0;
     }
   };
 }
@@ -73,6 +79,7 @@ async function createTask(
 
 describe('clinical workflow control plane — PostgreSQL assurance', () => {
   beforeAll(async () => {
+    createDatabaseClient(process.env.DATABASE_URL_TEST ?? process.env.DATABASE_URL!);
     const tenantId = randomUUID();
     const accountA = randomUUID() as AccountId;
     const accountB = randomUUID() as AccountId;
@@ -109,6 +116,27 @@ describe('clinical workflow control plane — PostgreSQL assurance', () => {
 
   afterAll(async () => {
     await pool.query('DELETE FROM tenants WHERE id = $1', [fixture.tenantId]);
+  });
+
+  afterEach(async () => {
+    if (!fixture) return;
+
+    // The event table is intentionally append-only for application roles. The
+    // privileged test pool may remove only this fixture's rows between cases,
+    // restoring the trigger immediately so the next assertion still exercises
+    // the production immutability contract.
+    await pool.query(
+      'ALTER TABLE clinical_workflow_task_events DISABLE TRIGGER clinical_workflow_task_events_immutability_trigger'
+    );
+    try {
+      await pool.query('DELETE FROM clinical_workflow_tasks WHERE account_id = ANY($1::uuid[])', [
+        [fixture.accountA, fixture.accountB]
+      ]);
+    } finally {
+      await pool.query(
+        'ALTER TABLE clinical_workflow_task_events ENABLE TRIGGER clinical_workflow_task_events_immutability_trigger'
+      );
+    }
   });
 
   it('proves the schema readiness contract before serving workflow tasks', async () => {
@@ -195,13 +223,18 @@ describe('clinical workflow control plane — PostgreSQL assurance', () => {
   it('allows only one worker to claim a due task under PostgreSQL concurrency', async () => {
     const repository = new DatabaseWorkflowTaskRepository(pool);
     const { service } = serviceWithClock(repository);
-    const task = await createTask(service, fixture.accountA, fixture.userA, 'postgres-concurrent-claim');
+    const task = await createTask(
+      service,
+      fixture.accountA,
+      fixture.userA,
+      'postgres-concurrent-claim'
+    );
     const claims = await Promise.all([
       repository.claimDue({
         accountId: fixture.accountA,
         workerId: 'postgres-worker-a',
         correlationId: correlation('claim-a'),
-        now: nowAt,
+        now: laterAt,
         limit: 1,
         leaseMs: 10_000
       }),
@@ -209,7 +242,7 @@ describe('clinical workflow control plane — PostgreSQL assurance', () => {
         accountId: fixture.accountA,
         workerId: 'postgres-worker-b',
         correlationId: correlation('claim-b'),
-        now: nowAt,
+        now: laterAt,
         limit: 1,
         leaseMs: 10_000
       })
@@ -218,125 +251,157 @@ describe('clinical workflow control plane — PostgreSQL assurance', () => {
     const claimed = claims.flat();
     expect(claimed).toHaveLength(1);
     expect(claimed[0]?.task.id).toBe(task.id);
-    expect((await service.events(fixture.accountA, task.id)).map((event) => event.eventType)).toEqual([
-      'created',
-      'claimed'
-    ]);
+    expect(
+      (await service.events(fixture.accountA, task.id)).map((event) => event.eventType)
+    ).toEqual(['created', 'claimed']);
   });
 
   it('fences a stale lease after takeover and permits only the current worker to complete', async () => {
     const repository = new DatabaseWorkflowTaskRepository(pool);
     const { service } = serviceWithClock(repository);
     const task = await createTask(service, fixture.accountA, fixture.userA, 'postgres-fencing');
-    const first = (await repository.claimDue({
-      accountId: fixture.accountA,
-      workerId: 'postgres-stale-worker',
-      correlationId: correlation('stale'),
-      now: nowAt,
-      limit: 1,
-      leaseMs: 1_000
-    }))[0]!;
-    const second = (await repository.claimDue({
-      accountId: fixture.accountA,
-      workerId: 'postgres-current-worker',
-      correlationId: correlation('current'),
-      now: laterAt,
-      limit: 1,
-      leaseMs: 1_000
-    }))[0]!;
+    const first = (
+      await repository.claimDue({
+        accountId: fixture.accountA,
+        workerId: 'postgres-stale-worker',
+        correlationId: correlation('stale'),
+        now: nowAt,
+        limit: 1,
+        leaseMs: 1_000
+      })
+    )[0]!;
+    const second = (
+      await repository.claimDue({
+        accountId: fixture.accountA,
+        workerId: 'postgres-current-worker',
+        correlationId: correlation('current'),
+        now: laterAt,
+        limit: 1,
+        leaseMs: 1_000
+      })
+    )[0]!;
 
     expect(second.leaseToken).not.toBe(first.leaseToken);
-    expect(await repository.completeClaim(first, {
-      eventType: 'completed',
-      schemaVersion: 1,
-      source: 'clinical-workflow',
-      actorUserId: fixture.userA,
-      correlationId: correlation('stale-complete'),
-      occurredAt: laterAt
-    })).toBe(false);
-    expect(await repository.completeClaim(second, {
-      eventType: 'completed',
-      schemaVersion: 1,
-      source: 'clinical-workflow',
-      actorUserId: fixture.userA,
-      correlationId: correlation('current-complete'),
-      occurredAt: laterAt
-    })).toBe(true);
+    expect(
+      await repository.completeClaim(first, {
+        eventType: 'completed',
+        schemaVersion: 1,
+        source: 'clinical-workflow',
+        actorUserId: fixture.userA,
+        correlationId: correlation('stale-complete'),
+        occurredAt: laterAt
+      })
+    ).toBe(false);
+    expect(
+      await repository.completeClaim(second, {
+        eventType: 'completed',
+        schemaVersion: 1,
+        source: 'clinical-workflow',
+        actorUserId: fixture.userA,
+        correlationId: correlation('current-complete'),
+        occurredAt: laterAt
+      })
+    ).toBe(true);
     expect((await service.getOrThrow(fixture.accountA, task.id)).status).toBe('completed');
   });
 
   it('moves an abandoned final attempt to DLQ and records restart recovery evidence', async () => {
     const repository = new DatabaseWorkflowTaskRepository(pool);
     const { service } = serviceWithClock(repository);
-    const task = await createTask(service, fixture.accountA, fixture.userA, 'postgres-crash-recovery', {
-      maxAttempts: 1
-    });
-    expect((await repository.claimDue({
-      accountId: fixture.accountA,
-      workerId: 'postgres-crashed-worker',
-      correlationId: correlation('crashed'),
-      now: nowAt,
-      limit: 1,
-      leaseMs: 1_000
-    }))).toHaveLength(1);
+    const task = await createTask(
+      service,
+      fixture.accountA,
+      fixture.userA,
+      'postgres-crash-recovery',
+      {
+        maxAttempts: 1
+      }
+    );
+    expect(
+      await repository.claimDue({
+        accountId: fixture.accountA,
+        workerId: 'postgres-crashed-worker',
+        correlationId: correlation('crashed'),
+        now: nowAt,
+        limit: 1,
+        leaseMs: 1_000
+      })
+    ).toHaveLength(1);
 
-    expect(await repository.claimDue({
-      accountId: fixture.accountA,
-      workerId: 'postgres-restarted-worker',
-      correlationId: correlation('restarted'),
-      now: laterAt,
-      limit: 1,
-      leaseMs: 1_000
-    })).toHaveLength(0);
+    expect(
+      await repository.claimDue({
+        accountId: fixture.accountA,
+        workerId: 'postgres-restarted-worker',
+        correlationId: correlation('restarted'),
+        now: laterAt,
+        limit: 1,
+        leaseMs: 1_000
+      })
+    ).toHaveLength(0);
     expect((await service.getOrThrow(fixture.accountA, task.id)).status).toBe('dlq');
-    expect((await service.events(fixture.accountA, task.id)).at(-1)?.eventType).toBe('dead_lettered');
+    expect((await service.events(fixture.accountA, task.id)).at(-1)?.eventType).toBe(
+      'dead_lettered'
+    );
   });
 
   it('executes bounded retry, DLQ and authorized replay without duplicating the event trail', async () => {
     const repository = new DatabaseWorkflowTaskRepository(pool);
     const { service, setNow } = serviceWithClock(repository);
-    const task = await createTask(service, fixture.accountA, fixture.userA, 'postgres-retry-replay');
-    const first = (await repository.claimDue({
-      accountId: fixture.accountA,
-      workerId: 'postgres-retry-worker',
-      correlationId: correlation('retry-1'),
-      now: nowAt,
-      limit: 1,
-      leaseMs: 10_000
-    }))[0]!;
+    const task = await createTask(
+      service,
+      fixture.accountA,
+      fixture.userA,
+      'postgres-retry-replay'
+    );
+    const first = (
+      await repository.claimDue({
+        accountId: fixture.accountA,
+        workerId: 'postgres-retry-worker',
+        correlationId: correlation('retry-1'),
+        now: laterAt,
+        limit: 1,
+        leaseMs: 10_000
+      })
+    )[0]!;
+    setNow('2026-09-09T10:00:03.000Z');
     expect(await service.failClaim(first, 'provider timeout')).toBe(true);
 
     setNow('2026-09-09T10:01:02.000Z');
-    const second = (await repository.claimDue({
-      accountId: fixture.accountA,
-      workerId: 'postgres-retry-worker',
-      correlationId: correlation('retry-2'),
-      now: '2026-09-09T10:01:02.000Z',
-      limit: 1,
-      leaseMs: 10_000
-    }))[0]!;
+    const second = (
+      await repository.claimDue({
+        accountId: fixture.accountA,
+        workerId: 'postgres-retry-worker',
+        correlationId: correlation('retry-2'),
+        now: '2026-09-09T10:01:02.000Z',
+        limit: 1,
+        leaseMs: 10_000
+      })
+    )[0]!;
+    setNow('2026-09-09T10:01:03.000Z');
     expect(await service.failClaim(second, 'provider still unavailable')).toBe(true);
     expect((await service.getOrThrow(fixture.accountA, task.id)).status).toBe('dlq');
 
     const replayed = await service.replay(fixture.accountA, fixture.userA, task.id);
     expect(replayed.status).toBe('pending');
     expect(replayed.idempotencyKey).toBe('postgres-retry-replay');
-    expect((await service.events(fixture.accountA, task.id)).map((event) => event.eventType)).toEqual([
-      'created',
-      'claimed',
-      'retry_scheduled',
-      'claimed',
-      'dead_lettered',
-      'replayed'
-    ]);
+    expect(
+      (await service.events(fixture.accountA, task.id)).map((event) => event.eventType)
+    ).toEqual(['created', 'claimed', 'retry_scheduled', 'claimed', 'dead_lettered', 'replayed']);
   });
 
   it('serializes competing acknowledgements/completions and keeps lifecycle events append-only', async () => {
     const repository = new DatabaseWorkflowTaskRepository(pool);
-    const { service } = serviceWithClock(repository);
-    const task = await createTask(service, fixture.accountA, fixture.userA, 'postgres-lifecycle-race', {
-      executionMode: 'manual'
-    });
+    const { service, setNow } = serviceWithClock(repository);
+    const task = await createTask(
+      service,
+      fixture.accountA,
+      fixture.userA,
+      'postgres-lifecycle-race',
+      {
+        executionMode: 'manual'
+      }
+    );
+    setNow(laterAt);
     const acknowledgements = await Promise.allSettled([
       service.acknowledge(fixture.accountA, fixture.userA, task.id),
       service.acknowledge(fixture.accountA, fixture.userA, task.id)
@@ -351,7 +416,11 @@ describe('clinical workflow control plane — PostgreSQL assurance', () => {
     expect(completions.filter((result) => result.status === 'rejected')).toHaveLength(1);
 
     const events = await service.events(fixture.accountA, task.id);
-    expect(events.map((event) => event.eventType)).toEqual(['created', 'acknowledged', 'completed']);
+    expect(events.map((event) => event.eventType)).toEqual([
+      'created',
+      'acknowledged',
+      'completed'
+    ]);
     await expect(
       pool.query('UPDATE clinical_workflow_task_events SET payload = $1 WHERE task_id = $2', [
         JSON.stringify({ tampered: true }),
@@ -366,16 +435,32 @@ describe('clinical workflow control plane — PostgreSQL assurance', () => {
   it('does not allow a completed task to be replayed or a cancelled task to complete', async () => {
     const repository = new DatabaseWorkflowTaskRepository(pool);
     const { service } = serviceWithClock(repository);
-    const completed = await createTask(service, fixture.accountA, fixture.userA, 'postgres-completed-guard', {
-      executionMode: 'manual'
-    });
+    const completed = await createTask(
+      service,
+      fixture.accountA,
+      fixture.userA,
+      'postgres-completed-guard',
+      {
+        executionMode: 'manual'
+      }
+    );
     await service.complete(fixture.accountA, fixture.userA, completed.id);
-    await expect(service.replay(fixture.accountA, fixture.userA, completed.id)).rejects.toThrow(/dead-lettered/i);
+    await expect(service.replay(fixture.accountA, fixture.userA, completed.id)).rejects.toThrow(
+      /dead-lettered/i
+    );
 
-    const cancelled = await createTask(service, fixture.accountA, fixture.userA, 'postgres-cancelled-guard', {
-      executionMode: 'manual'
-    });
+    const cancelled = await createTask(
+      service,
+      fixture.accountA,
+      fixture.userA,
+      'postgres-cancelled-guard',
+      {
+        executionMode: 'manual'
+      }
+    );
     await service.cancel(fixture.accountA, fixture.userA, cancelled.id, 'clinical path closed');
-    await expect(service.complete(fixture.accountA, fixture.userA, cancelled.id)).rejects.toThrow(/cancelled/i);
+    await expect(service.complete(fixture.accountA, fixture.userA, cancelled.id)).rejects.toThrow(
+      /cancelled/i
+    );
   });
 });
