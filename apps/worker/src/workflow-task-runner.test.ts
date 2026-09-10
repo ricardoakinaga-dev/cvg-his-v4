@@ -4,6 +4,7 @@ import test from 'node:test';
 import { WorkflowTaskService } from '@cvg-his-v2/module-workflows';
 import type { AccountId, CorrelationId, UserId } from '@cvg-his-v2/shared-types';
 
+import { getWorkerMetricsText } from './worker-metrics.js';
 import { runWorkflowTaskTick } from './workflow-task-runner.js';
 
 const ACCOUNT = '11111111-1111-4111-8111-111111111111' as AccountId;
@@ -68,6 +69,7 @@ test('worker runner fails closed for an unregistered task type and honors DLQ po
   assert.equal(result.handlerMissing, 1);
   assert.equal(result.deadLettered, 1);
   assert.equal((await service.list(ACCOUNT))[0]?.status, 'dlq');
+  assert.match(await getWorkerMetricsText(), /^cvg_job_dead_letter_total [1-9]\d*$/m);
 });
 
 test('worker runner validates bounded lease and batch controls', async () => {

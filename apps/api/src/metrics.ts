@@ -100,6 +100,101 @@ export const appRateLimiterMode = new Gauge({
   registers: [registry]
 });
 
+/**
+ * Tenant-aggregated clinical operational metrics are intentionally exposed
+ * without labels. A production composition root must provide the snapshot
+ * from an authoritative, read-only aggregate source; until then the gauges
+ * remain absent instead of presenting synthetic zeroes as hospital state.
+ */
+export interface ClinicalOperationalMetricsSnapshot {
+  readonly activeInpatients: number;
+  readonly openEncounters: number;
+  readonly pendingWorkflowTasks: number;
+  readonly overdueWorkflowTasks: number;
+  readonly medicationOverdue: number;
+  readonly pendingDiagnostics: number;
+  readonly handoverPending: number;
+}
+
+export const cvgActiveInpatients = new Gauge({
+  name: 'cvg_active_inpatients',
+  help: 'Current active inpatient stays across the observed hospital scope',
+  registers: [registry]
+});
+
+export const cvgOpenEncounters = new Gauge({
+  name: 'cvg_open_encounters',
+  help: 'Current open clinical encounters across the observed hospital scope',
+  registers: [registry]
+});
+
+export const cvgPendingWorkflowTasks = new Gauge({
+  name: 'cvg_pending_workflow_tasks',
+  help: 'Current non-terminal clinical workflow tasks across the observed hospital scope',
+  registers: [registry]
+});
+
+export const cvgOverdueWorkflowTasks = new Gauge({
+  name: 'cvg_overdue_workflow_tasks',
+  help: 'Current overdue non-terminal clinical workflow tasks across the observed hospital scope',
+  registers: [registry]
+});
+
+export const cvgMedicationOverdue = new Gauge({
+  name: 'cvg_medication_overdue',
+  help: 'Current scheduled medication executions past due across the observed hospital scope',
+  registers: [registry]
+});
+
+export const cvgPendingDiagnostics = new Gauge({
+  name: 'cvg_pending_diagnostics',
+  help: 'Current diagnostic orders without a terminal result across the observed hospital scope',
+  registers: [registry]
+});
+
+export const cvgHandoverPending = new Gauge({
+  name: 'cvg_handover_pending',
+  help: 'Current clinical handovers awaiting acknowledgement or resolution',
+  registers: [registry]
+});
+
+function requireClinicalMetricCount(value: number, metricName: string): number {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`${metricName} must be a non-negative safe integer`);
+  }
+  return value;
+}
+
+export function updateClinicalOperationalMetrics(
+  snapshot: ClinicalOperationalMetricsSnapshot
+): void {
+  cvgActiveInpatients.set(requireClinicalMetricCount(snapshot.activeInpatients, 'activeInpatients'));
+  cvgOpenEncounters.set(requireClinicalMetricCount(snapshot.openEncounters, 'openEncounters'));
+  cvgPendingWorkflowTasks.set(
+    requireClinicalMetricCount(snapshot.pendingWorkflowTasks, 'pendingWorkflowTasks')
+  );
+  cvgOverdueWorkflowTasks.set(
+    requireClinicalMetricCount(snapshot.overdueWorkflowTasks, 'overdueWorkflowTasks')
+  );
+  cvgMedicationOverdue.set(
+    requireClinicalMetricCount(snapshot.medicationOverdue, 'medicationOverdue')
+  );
+  cvgPendingDiagnostics.set(
+    requireClinicalMetricCount(snapshot.pendingDiagnostics, 'pendingDiagnostics')
+  );
+  cvgHandoverPending.set(requireClinicalMetricCount(snapshot.handoverPending, 'handoverPending'));
+}
+
+export function resetClinicalOperationalMetrics(): void {
+  cvgActiveInpatients.reset();
+  cvgOpenEncounters.reset();
+  cvgPendingWorkflowTasks.reset();
+  cvgOverdueWorkflowTasks.reset();
+  cvgMedicationOverdue.reset();
+  cvgPendingDiagnostics.reset();
+  cvgHandoverPending.reset();
+}
+
 export const appRuntimeDistributedStateEnabled = new Gauge({
   name: 'app_runtime_distributed_state_enabled',
   help: 'Whether distributed runtime state is enabled for this API runtime (1 = enabled, 0 = disabled)',

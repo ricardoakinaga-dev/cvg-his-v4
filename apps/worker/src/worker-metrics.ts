@@ -136,6 +136,18 @@ export const workflowTasksTotal = new Counter({
   registers: [registry]
 });
 
+export const cvgJobRetryTotal = new Counter({
+  name: 'cvg_job_retry_total',
+  help: 'Total durable worker job retries without tenant or job-id labels',
+  registers: [registry]
+});
+
+export const cvgJobDeadLetterTotal = new Counter({
+  name: 'cvg_job_dead_letter_total',
+  help: 'Total durable worker jobs moved to dead letter without tenant or job-id labels',
+  registers: [registry]
+});
+
 export function recordWorkflowTaskMetric(
   outcome: WorkflowTaskMetricOutcome,
   count = 1
@@ -144,6 +156,8 @@ export function recordWorkflowTaskMetric(
     throw new Error('Workflow task metric count must be a positive safe integer');
   }
   workflowTasksTotal.inc({ outcome }, count);
+  if (outcome === 'retried') cvgJobRetryTotal.inc(count);
+  if (outcome === 'dead_lettered') cvgJobDeadLetterTotal.inc(count);
 }
 
 export function setPixProviderSettlementReconciliationRequired(count: number): void {

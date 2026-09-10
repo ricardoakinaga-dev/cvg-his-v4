@@ -404,6 +404,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build workspace dependencies
+        run: pnpm build
+
       - name: Wait for PostgreSQL
         run: |
           for i in $(seq 1 30); do
@@ -805,12 +808,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build workspace dependencies
+        run: pnpm build
+
       - name: Prepare performance database and deterministic tenant
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
           DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
         run: |
           pnpm exec tsx packages/db/src/migrate.ts
+          pnpm exec tsx packages/db/src/seed.ts
           pnpm benchmark:k6:seed
 
       - name: Start API
@@ -935,6 +942,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build workspace dependencies
+        run: pnpm build
 
       - name: Cache Playwright Chromium
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
@@ -1158,6 +1168,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build workspace dependencies
+        run: pnpm build
 
       - name: Cache Playwright Chromium
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4

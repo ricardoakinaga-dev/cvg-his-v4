@@ -175,7 +175,7 @@ export function resolvePackageManagerInvocation(args) {
 
   const commandLine = [PACKAGE_MANAGER_COMMAND, ...args].map(quoteWindowsCommandArgument).join(' ');
   return {
-    command: process.env.ComSpec || 'cmd.exe',
+    command: process.env.ComSpec || process.env.COMSPEC || 'cmd.exe',
     args: ['/d', '/s', '/c', commandLine]
   };
 }

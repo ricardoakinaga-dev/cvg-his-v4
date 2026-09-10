@@ -23,6 +23,7 @@ import {
 import { setAppState } from './app-state.js';
 import {
   recordRequestSloObservation,
+  resetClinicalOperationalMetrics,
   resetActiveRequestsCount,
   resetRequestSloObservations
 } from './metrics.js';
@@ -1818,6 +1819,38 @@ test('operational metrics classify forbidden responses and downloads by normaliz
     metricsText,
     /^http_operational_outcomes_total\{route="\/reports\/executions\/:id\/export",role="admin",operation="download",result="error"\} [1-9]\d*$/m
   );
+});
+
+test('clinical operational metrics use an authoritative unlabeled snapshot', async () => {
+  resetClinicalOperationalMetrics();
+  const server = createServerUnderTest({
+    clinicalOperationalMetricsProvider: async () => ({
+      activeInpatients: 4,
+      openEncounters: 7,
+      pendingWorkflowTasks: 11,
+      overdueWorkflowTasks: 3,
+      medicationOverdue: 2,
+      pendingDiagnostics: 5,
+      handoverPending: 1
+    })
+  });
+
+  const response = await performRequest(server, {
+    method: 'GET',
+    url: '/metrics',
+    headers: { host: 'localhost' }
+  });
+  assert.equal(response.statusCode, 200);
+  const metrics = response.bodyText();
+  assert.match(metrics, /^cvg_active_inpatients 4$/m);
+  assert.match(metrics, /^cvg_open_encounters 7$/m);
+  assert.match(metrics, /^cvg_pending_workflow_tasks 11$/m);
+  assert.match(metrics, /^cvg_overdue_workflow_tasks 3$/m);
+  assert.match(metrics, /^cvg_medication_overdue 2$/m);
+  assert.match(metrics, /^cvg_pending_diagnostics 5$/m);
+  assert.match(metrics, /^cvg_handover_pending 1$/m);
+  assert.doesNotMatch(metrics, /^cvg_[^\n]+\{[^\n]+\}/m);
+  resetClinicalOperationalMetrics();
 });
 
 test('SLO endpoint exposes compliance, error budget and Prometheus gauges', async () => {

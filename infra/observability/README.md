@@ -49,6 +49,25 @@
 | `app_active_requests`           | Gauge     | —                                | Requisições em processamento                          |
 | `app_database_healthy`          | Gauge     | —                                | Saúde do banco (1=ok, 0=fail)                         |
 | `app_persistence_mode`          | Gauge     | `mode`                           | Modo de persistência (database/in-memory/unavailable) |
+| `cvg_active_inpatients`         | Gauge     | —                                | Internações ativas; só aparece após refresh de fonte agregada autoritativa |
+| `cvg_open_encounters`           | Gauge     | —                                | Atendimentos abertos; sem labels de tenant/paciente |
+| `cvg_pending_workflow_tasks`    | Gauge     | —                                | Tarefas clínicas não terminais pendentes |
+| `cvg_overdue_workflow_tasks`    | Gauge     | —                                | Tarefas clínicas não terminais vencidas |
+| `cvg_medication_overdue`        | Gauge     | —                                | Execuções de medicação agendadas vencidas |
+| `cvg_pending_diagnostics`       | Gauge     | —                                | Diagnósticos ainda sem resultado terminal |
+| `cvg_handover_pending`          | Gauge     | —                                | Passagens de plantão aguardando reconhecimento/resolução |
+
+Os gauges clínicos não são inicializados com zero: a composição de produção
+deve injetar um provider de leitura agregada autoritativa. Isso evita que uma
+falha de consulta seja apresentada como hospital vazio. Identificadores de
+tenant, paciente, atendimento e tarefa são proibidos como labels.
+
+### 2.1.1 Worker reliability metrics
+
+| Métrica | Tipo | Labels | Descrição |
+|---|---|---|---|
+| `cvg_job_retry_total` | Counter | — | Retries duráveis observados pelo worker |
+| `cvg_job_dead_letter_total` | Counter | — | Jobs movidos para DLQ pelo worker |
 
 ### 2.2 Default Metrics (Node.js)
 
