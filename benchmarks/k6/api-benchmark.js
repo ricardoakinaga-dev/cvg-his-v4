@@ -239,6 +239,10 @@ export default function (data) {
     const encounterStart = Date.now();
     const encRes = http.get(`${BASE_URL}/encounters?page=1&limit=1`, { headers });
     queryLatency.add(Date.now() - encounterStart);
+    errorRate.add(encRes.status !== 200);
+    check(encRes, {
+      'billing encounter lookup returns 200': (r) => r.status === 200
+    });
     if (encRes.status === 200) {
       try {
         const body = JSON.parse(encRes.body);
