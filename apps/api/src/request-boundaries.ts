@@ -31,8 +31,10 @@ export function parseListPagination(
   if (!Number.isSafeInteger(page) || page < 1) {
     throw new ValidationError('page must be a positive safe integer');
   }
-  if (!Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 100) {
-    throw new ValidationError('pageSize must be an integer between 1 and 100');
+  // Inline lookup screens request up to 200 records; keep that bounded batch
+  // size compatible with the existing SPA while rejecting unbounded input.
+  if (!Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 200) {
+    throw new ValidationError('pageSize must be an integer between 1 and 200');
   }
   return { page, pageSize };
 }

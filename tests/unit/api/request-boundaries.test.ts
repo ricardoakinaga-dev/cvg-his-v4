@@ -25,7 +25,7 @@ describe('list pagination request boundary', () => {
     expect(() => parseListPagination(new URL('http://localhost/items?page=0'))).toThrow(
       ValidationError
     );
-    expect(() => parseListPagination(new URL('http://localhost/items?pageSize=101'))).toThrow(
+    expect(() => parseListPagination(new URL('http://localhost/items?pageSize=201'))).toThrow(
       ValidationError
     );
   });
