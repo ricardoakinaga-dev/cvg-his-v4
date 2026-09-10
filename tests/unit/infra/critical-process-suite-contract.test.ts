@@ -97,6 +97,8 @@ describe('critical process proof execution contract', () => {
     expect(supervisorScript).toContain('JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE');
     expect(supervisorScript).toContain('TerminateJobObject');
     expect(supervisorScript).toContain('return unchecked((int)exitCode);');
+    expect(supervisorScript).toContain('ConvertFrom-Json -InputObject');
+    expect(supervisorScript).toContain('foreach ($argument in $decodedArguments)');
     expect(supervisorScript).not.toContain('exitCode == STILL_ACTIVE');
     const terminatorScript = readFileSync(
       resolve(root, 'infra/scripts/windows-terminate-owned-process.ps1'),

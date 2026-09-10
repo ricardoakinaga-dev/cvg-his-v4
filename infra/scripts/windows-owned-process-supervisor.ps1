@@ -338,7 +338,18 @@ function ConvertTo-NativeCommandLineArgument {
 
 try {
     $targetCommand = [string]$env:CVG_CRITICAL_SUPERVISOR_TARGET_COMMAND
-    $targetArguments = @($env:CVG_CRITICAL_SUPERVISOR_TARGET_ARGS_JSON | ConvertFrom-Json)
+    # ConvertFrom-Json must receive the JSON as an input object. Piping the
+    # environment value through it on Windows PowerShell can enumerate the
+    # decoded array as one pipeline value, collapsing `['-e', 'script']` into
+    # a single native argument and making Node report `bad option: -e ...`.
+    $decodedArguments = ConvertFrom-Json -InputObject ([string]$env:CVG_CRITICAL_SUPERVISOR_TARGET_ARGS_JSON)
+    $targetArguments = @(
+        if ($decodedArguments -is [System.Array]) {
+            foreach ($argument in $decodedArguments) { [string]$argument }
+        } else {
+            [string]$decodedArguments
+        }
+    )
     $targetWorkingDirectory = [string]$env:CVG_CRITICAL_SUPERVISOR_TARGET_CWD
     $targetEnvironmentKeys = @($env:CVG_CRITICAL_SUPERVISOR_TARGET_KEYS_JSON | ConvertFrom-Json)
 
@@ -352,7 +363,10 @@ try {
         throw 'owned-process supervisor could not resolve the target executable'
     }
 
-    $commandLineParts = @($applicationName) + @($targetArguments)
+    $commandLineParts = @($applicationName)
+    foreach ($argument in $targetArguments) {
+        $commandLineParts += [string]$argument
+    }
     $commandLine = ($commandLineParts | ForEach-Object { ConvertTo-NativeCommandLineArgument ([string]$_) }) -join ' '
     $environmentEntries = @(
         foreach ($key in $targetEnvironmentKeys) {
