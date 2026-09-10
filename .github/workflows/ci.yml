@@ -524,8 +524,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build workspace dependencies
+        run: pnpm build
+
       - name: Start isolated PostgreSQL
         run: pnpm test:db:start
+
+      - name: Prepare unit-test database
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
+          DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
+        run: |
+          pnpm exec tsx packages/db/src/migrate.ts
+          pnpm exec tsx packages/db/src/seed.ts
 
       - name: Run unit tests
         run: pnpm test
@@ -535,6 +546,9 @@ jobs:
           # unset NODE_ENV.
           NODE_ENV: test
           REQUIRE_TEST_DB: 1
+          DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
+          DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
+          TEST_DB_EPHEMERAL: 0
 
       - name: Run critical process runner contract
         run: pnpm exec vitest run tests/unit/infra/critical-process-suite-contract.test.ts --config vitest.config.ts --no-file-parallelism
@@ -656,6 +670,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build workspace dependencies
+        run: pnpm build
 
       - name: Wait for PostgreSQL
         run: |
