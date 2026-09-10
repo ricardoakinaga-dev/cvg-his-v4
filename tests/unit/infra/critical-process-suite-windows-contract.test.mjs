@@ -33,7 +33,16 @@ test(
       windowsHide: true
     });
 
-    assert.equal(result.status, 0, result.stderr || result.error?.message);
+    const diagnostic = [
+      `command=${invocation.command}`,
+      `args=${JSON.stringify(invocation.args)}`,
+      result.error?.message,
+      result.stderr,
+      result.stdout
+    ]
+      .filter(Boolean)
+      .join('\n');
+    assert.equal(result.status, 0, diagnostic);
     assert.match(result.stdout, /\d+\.\d+\.\d+/);
   }
 );

@@ -189,25 +189,19 @@ function buildVitestArgs(file, reportPath) {
   ];
 }
 
-function quoteWindowsCommandArgument(argument) {
-  const value = String(argument);
-  if (/^[A-Za-z0-9_./\\:@=+,-]+$/.test(value)) return value;
-  const escaped = value.replace(/([()%!^&|<>])/g, '^$1').replace(/"/g, '""');
-  return `"${escaped}"`;
-}
-
 export function resolvePackageManagerInvocation(args) {
   if (process.platform !== 'win32') {
     return { command: PACKAGE_MANAGER_COMMAND, args };
   }
 
   // pnpm.cmd is a batch file; CALL preserves its exit status through cmd.exe.
-  const commandLine = ['call', resolveWindowsPackageManagerCommand(), ...args]
-    .map(quoteWindowsCommandArgument)
-    .join(' ');
   return {
     command: process.env.ComSpec || process.env.COMSPEC || 'cmd.exe',
-    args: ['/d', '/s', '/c', commandLine]
+    // Keep the command and its arguments as separate argv entries. Node's
+    // Windows launcher quotes paths with spaces for cmd.exe; embedding an
+    // already-quoted command line creates a second quoting layer that can
+    // make /c hand malformed text to the batch-file resolver.
+    args: ['/d', '/s', '/c', 'call', resolveWindowsPackageManagerCommand(), ...args]
   };
 }
 
