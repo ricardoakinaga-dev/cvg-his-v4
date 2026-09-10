@@ -107,6 +107,13 @@ function resolveWindowsPackageManagerCommand() {
   return PACKAGE_MANAGER_COMMAND;
 }
 
+function quoteWindowsCommandArgument(argument) {
+  const value = String(argument);
+  if (/^[A-Za-z0-9_./\\:@=+,-]+$/.test(value)) return value;
+  const escaped = value.replace(/([()%!^&|<>])/g, '^$1').replace(/"/g, '""');
+  return `"${escaped}"`;
+}
+
 function resolveDefaultTestDatabaseUrl() {
   const url = new URL('postgres://localhost:5433/cvg_his_v2_test');
   url.username = 'postgres';
@@ -194,14 +201,14 @@ export function resolvePackageManagerInvocation(args) {
     return { command: PACKAGE_MANAGER_COMMAND, args };
   }
 
-  // pnpm.cmd is a batch file; CALL preserves its exit status through cmd.exe.
+  // cmd.exe receives one /c command string. Keeping the command line whole
+  // lets its parser preserve quoting for a pnpm.cmd path with spaces.
+  const commandLine = [resolveWindowsPackageManagerCommand(), ...args]
+    .map(quoteWindowsCommandArgument)
+    .join(' ');
   return {
     command: process.env.ComSpec || process.env.COMSPEC || 'cmd.exe',
-    // Keep the command and its arguments as separate argv entries. Node's
-    // Windows launcher quotes paths with spaces for cmd.exe; embedding an
-    // already-quoted command line creates a second quoting layer that can
-    // make /c hand malformed text to the batch-file resolver.
-    args: ['/d', '/s', '/c', 'call', resolveWindowsPackageManagerCommand(), ...args]
+    args: ['/d', '/s', '/c', commandLine]
   };
 }
 
