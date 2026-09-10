@@ -81,11 +81,17 @@ async function replayBrowserMutation(token: string, request: Request): Promise<J
   );
 }
 
+function normalizeMutationPath(pathname: string): string {
+  const withoutApiPrefix = pathname.replace(/^\/api(?=\/|$)/, '');
+  return withoutApiPrefix.replace(/\/+$/, '') || '/';
+}
+
 function waitForMutation(page: Page, pathname: string | RegExp): Promise<Request> {
+  const expectedPath = typeof pathname === 'string' ? normalizeMutationPath(pathname) : pathname;
   return page.waitForRequest((request) => {
     if (request.method() !== 'POST') return false;
-    const candidate = new URL(request.url()).pathname.replace(/^\/api/, '');
-    return typeof pathname === 'string' ? candidate === pathname : pathname.test(candidate);
+    const candidate = normalizeMutationPath(new URL(request.url()).pathname);
+    return typeof expectedPath === 'string' ? candidate === expectedPath : expectedPath.test(candidate);
   });
 }
 
@@ -97,15 +103,25 @@ async function browserLogin(page: Page, username: string, password: string): Pro
   await expect(page).not.toHaveURL(/\/login/, { timeout: 15_000 });
 }
 
-async function createOwnerViaUi(page: Page, name: string, run: string): Promise<string> {
-  await page.goto(`${SPA_URL}/owners/new`, { waitUntil: 'networkidle' });
+async function createOwnerViaUi(
+  page: Page,
+  name: string,
+  run: string
+): Promise<{ ownerRequest: Request; ownerId: string }> {
+  await page.goto(`${SPA_URL}/owners/new`, { waitUntil: 'domcontentloaded' });
+  await expect(page).toHaveURL(/\/owners\/new$/);
+  await expect(page.getByRole('heading', { name: 'Cadastrar Novo Tutor', exact: true })).toBeVisible();
   await page.locator('#fullName').fill(name);
   await page.getByText('Documentação do Tutor', { exact: true }).click();
   await page.locator('#documentId').fill(`DOC-${run}`);
   await page.locator('#phone1').fill('11987654321');
-  await page.getByRole('button', { name: /cadastrar tutor/i }).click();
+  const submitButton = page.getByRole('button', { name: /cadastrar tutor/i });
+  await expect(submitButton).toBeEnabled();
+  const ownerRequestPromise = waitForMutation(page, '/owners');
+  await submitButton.click();
+  const ownerRequest = await ownerRequestPromise;
   await page.waitForURL(/\/owners\/(?!new$)[^/]+$/);
-  return page.url().split('/').pop() || '';
+  return { ownerRequest, ownerId: page.url().split('/').pop() || '' };
 }
 
 async function createPatientViaUi(page: Page, name: string, ownerName: string): Promise<string> {
@@ -231,10 +247,7 @@ test.describe('Rotinas hospitalares completas por persona', () => {
     const receptionSession = await apiLogin('reception', 'seed_reception');
 
     await browserLogin(page, 'reception', 'seed_reception');
-    const [ownerRequest, ownerId] = await Promise.all([
-      waitForMutation(page, '/owners'),
-      createOwnerViaUi(page, ownerName, run)
-    ]);
+    const { ownerRequest, ownerId } = await createOwnerViaUi(page, ownerName, run);
     const replayedOwner = await replayBrowserMutation(receptionSession.accessToken, ownerRequest);
     expect(replayedOwner.id).toBe(ownerId);
     const [patientRequest, patientId] = await Promise.all([
@@ -509,11 +522,13 @@ test.describe('Rotinas hospitalares completas por persona', () => {
     await browserLogin(page, pathologist.username, PERSONA_PASSWORD);
 
     const equipmentName = `Analisador Bioquímico ${run}`;
-    await page.goto(`${SPA_URL}/laboratory/equipment/new`, { waitUntil: 'networkidle' });
-    await page.getByLabel('Descrição').fill(equipmentName);
+    await page.goto(`${SPA_URL}/laboratory/equipment/new`, { waitUntil: 'domcontentloaded' });
+    await expect(page).toHaveURL(/\/laboratory\/equipment\/new$/);
+    await expect(page.getByRole('heading', { name: 'Incluir Equipamento', exact: true })).toBeVisible();
+    await page.getByLabel('Descrição', { exact: true }).fill(equipmentName);
     await page.getByRole('textbox', { name: 'Tipo', exact: true }).fill('Bioquímica automatizada');
-    await page.getByLabel('Nº Série').fill(`BIO-${run}`);
-    await page.getByLabel('Última Calibração').fill(new Date().toISOString().slice(0, 10));
+    await page.getByLabel('Nº Série', { exact: true }).fill(`BIO-${run}`);
+    await page.getByLabel('Última Calibração', { exact: true }).fill(new Date().toISOString().slice(0, 10));
     await page.getByRole('button', { name: 'Salvar', exact: true }).click();
     await expect(page.getByText('Equipamento salvo com sucesso.')).toBeVisible();
 
@@ -641,7 +656,7 @@ test.describe('Rotinas hospitalares completas por persona', () => {
     await page
       .getByLabel('Resumo do laudo')
       .fill(`Fígado com dimensões preservadas; sem líquido livre. Conclusão ${run}.`);
-    await page.getByLabel('Arquivo').fill(`laudo-ultrassom-${run}.pdf`);
+    await page.getByLabel('Nome do arquivo', { exact: true }).fill(`laudo-ultrassom-${run}.pdf`);
     await page.getByLabel('MIME type').fill('application/pdf');
     await page.getByLabel('Checksum').fill(`sha256-${run}`);
     await page.getByLabel('Categoria').selectOption('image');

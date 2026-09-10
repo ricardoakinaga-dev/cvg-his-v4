@@ -165,6 +165,72 @@ describe('AccessControlService', () => {
     ).not.toThrow();
   });
 
+  it('does not reuse a hydration that started before an account mutation', async () => {
+    let releaseInitialRead: () => void = () => undefined;
+    let markInitialReadStarted: () => void = () => undefined;
+    const initialReadStarted = new Promise<void>((resolve) => {
+      markInitialReadStarted = resolve;
+    });
+    const initialReadRelease = new Promise<void>((resolve) => {
+      releaseInitialRead = resolve;
+    });
+    let teamReads = 0;
+    const repository = {
+      findAllRoles: async () => [],
+      findAllPermissions: async () => [],
+      findAllTeams: async () => {
+        teamReads += 1;
+        if (teamReads === 1) {
+          markInitialReadStarted();
+          await initialReadRelease;
+          return [
+            {
+              id: 'team_stale' as never,
+              accountId,
+              code: 'stale',
+              name: 'Stale team',
+              status: 'active' as const,
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z'
+            }
+          ] satisfies readonly AccessTeamSummary[];
+        }
+        return [
+          {
+            id: 'team_fresh' as never,
+            accountId,
+            code: 'fresh',
+            name: 'Fresh team',
+            status: 'active' as const,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z'
+          }
+        ] satisfies readonly AccessTeamSummary[];
+      },
+      findAllSectors: async () => [],
+      findTeamMemberships: async () => [],
+      findSectorMemberships: async () => [],
+      findPermissionAssignments: async () => [],
+      findUserIdsByAccount: async () => [],
+      findRolesByUser: async () => [],
+      getAccountChangeToken: async () => 'stable'
+    } as unknown as AccessControlRepository;
+
+    const hydratedService = new AccessControlService({ repository });
+    const initialHydration = hydratedService.hydrateFromDatabase(accountId);
+    await initialReadStarted;
+
+    hydratedService.beginAccountMutation(accountId);
+    releaseInitialRead();
+    await expect(initialHydration).rejects.toMatchObject({
+      code: 'ACCESS_CONTROL_STATE_UNAVAILABLE'
+    });
+
+    await hydratedService.hydrateFromDatabase(accountId);
+    hydratedService.completeAccountMutation(accountId);
+    expect(hydratedService.listTeams(accountId).map((team) => team.code)).toEqual(['fresh']);
+  });
+
   it('does not mark a hydration fresh when the database changes during the read', async () => {
     const teams: readonly AccessTeamSummary[] = [
       {

@@ -61,7 +61,7 @@
             </li>
           </ul>
         </div>
-        <fieldset class="owner-form-fields" :disabled="loading || !hydrated">
+        <fieldset class="owner-form-fields" :disabled="isEdit && (loading || !hydrated)">
         <details open class="owner-section">
           <summary class="owner-section__summary">Identificação do {{ clinicalLabels.tutor.singular }}</summary>
           <div class="owner-section__body">
@@ -291,7 +291,7 @@
         </details>
 
         <div class="form-actions">
-        <DsButton type="submit" variant="primary" :loading="submitting" :disabled="loading || !hydrated">
+        <DsButton type="submit" variant="primary" :loading="submitting" :disabled="isEdit && (loading || !hydrated)">
             {{ submitting ? 'Salvando...' : isEdit || createdOwnerId ? 'Salvar Alterações' : `Cadastrar ${clinicalLabels.tutor.singularLower}` }}
           </DsButton>
           <DsButton variant="secondary" tag="a" to="/owners">Cancelar</DsButton>
@@ -356,7 +356,9 @@ const routeOwnerId = computed(() => ownerId.value);
 const loading = ref(false);
 const createdOwnerId = ref('');
 const duplicateOwnerId = ref('');
-const hydrated = ref(false);
+// A new owner has no remote state to hydrate. Keeping it ready from the first
+// render prevents the submit contract from depending on the edit loader.
+const hydrated = ref(!isEdit.value);
 let active = true;
 let pageGeneration = 0;
 

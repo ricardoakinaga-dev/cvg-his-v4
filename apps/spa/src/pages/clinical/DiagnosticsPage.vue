@@ -91,7 +91,7 @@
             label="Resumo do laudo"
             placeholder="Ex.: sem alterações relevantes"
           />
-          <DsInput v-model="attachmentForm.fileName" label="Arquivo" required />
+          <DsInput v-model="attachmentForm.fileName" label="Nome do arquivo" required />
           <DsInput
             v-model="attachmentForm.mimeType"
             label="MIME type"
@@ -105,15 +105,17 @@
             <option value="image">Imagem</option>
             <option value="other">Outro</option>
           </DsInput>
-          <label class="file-field">
-            <span>Arquivo binário (opcional)</span>
+          <div class="file-field">
+            <label for="attachment-binary-file">Arquivo binário (opcional)</label>
             <input
+              id="attachment-binary-file"
               type="file"
               accept="application/pdf,image/*,text/plain"
+              aria-describedby="attachment-binary-file-hint"
               @change="onAttachmentFileChange"
             />
-            <small>{{ attachmentFile?.name || 'Sem arquivo: o resultado ficará em quarentena até o conteúdo ser anexado.' }}</small>
-          </label>
+            <small id="attachment-binary-file-hint">{{ attachmentFile?.name || 'Sem arquivo: o resultado ficará em quarentena até o conteúdo ser anexado.' }}</small>
+          </div>
           <div class="form-actions">
             <DsButton type="submit" variant="primary" :loading="submittingAttachment"
               >Enviar resultado</DsButton

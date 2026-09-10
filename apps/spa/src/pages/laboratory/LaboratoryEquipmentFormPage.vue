@@ -20,29 +20,29 @@
     <div class="form-layout">
       <DsCard>
         <form class="equipment-form" @submit.prevent="submitForm">
-          <label class="form-field">
-            <span>Descrição</span>
-            <input v-model="form.name" required autocomplete="off" placeholder="Ex: Bioquímico ChemLab 300" />
-          </label>
-          <label class="form-field">
-            <span>Tipo</span>
-            <input v-model="form.type" required autocomplete="off" placeholder="Ex: Bioquímica" />
-          </label>
-          <label class="form-field">
-            <span>Nº Série</span>
-            <input v-model="form.serialNumber" required autocomplete="off" placeholder="Ex: BIO-300-114" />
-          </label>
-          <label class="form-field">
-            <span>Situação</span>
-            <select v-model="form.status">
+          <div class="form-field">
+            <label for="equipment-description">Descrição</label>
+            <input id="equipment-description" v-model="form.name" required autocomplete="off" placeholder="Ex: Bioquímico ChemLab 300" />
+          </div>
+          <div class="form-field">
+            <label for="equipment-type">Tipo</label>
+            <input id="equipment-type" v-model="form.type" required autocomplete="off" placeholder="Ex: Bioquímica" />
+          </div>
+          <div class="form-field">
+            <label for="equipment-serial-number">Nº Série</label>
+            <input id="equipment-serial-number" v-model="form.serialNumber" required autocomplete="off" placeholder="Ex: BIO-300-114" />
+          </div>
+          <div class="form-field">
+            <label for="equipment-status">Situação</label>
+            <select id="equipment-status" v-model="form.status">
               <option value="active">Ativo</option>
               <option value="maintenance">Manutenção</option>
             </select>
-          </label>
-          <label class="form-field">
-            <span>Última Calibração</span>
-            <input v-model="form.lastCalibrationAt" required type="date" />
-          </label>
+          </div>
+          <div class="form-field">
+            <label for="equipment-last-calibration">Última Calibração</label>
+            <input id="equipment-last-calibration" v-model="form.lastCalibrationAt" required type="date" />
+          </div>
           <div class="form-actions">
             <DsButton variant="primary" type="submit" :loading="submitting" :disabled="successPending">Salvar</DsButton>
             <DsButton variant="secondary" type="button" tag="a" to="/laboratory/equipment">Cancelar</DsButton>

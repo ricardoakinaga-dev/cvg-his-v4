@@ -204,6 +204,17 @@ export class AccessControlService {
    */
   public beginAccountMutation(accountId: AccountId): void {
     this.#pendingAccounts.add(accountId);
+
+    // A boot/request hydration may still be reading the pre-mutation snapshot.
+    // Do not let the post-commit refresh coalesce with that promise: its result
+    // must never become the authoritative read model for this mutation.
+    if (this.#hydrationPromises.has(accountId)) {
+      this.#accountHydrationGenerations.set(
+        accountId,
+        (this.#accountHydrationGenerations.get(accountId) ?? 0) + 1
+      );
+      this.#hydrationPromises.delete(accountId);
+    }
   }
 
   public completeAccountMutation(accountId: AccountId): void {

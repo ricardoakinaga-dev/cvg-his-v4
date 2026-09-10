@@ -27,6 +27,41 @@ interface ApiErrorBodyShape {
 
 const SESSION_EXPIRED_MESSAGE = 'Sua sessão expirou. Faça login novamente.';
 
+let refreshPromise: Promise<string | null> | undefined;
+
+async function refreshAccessToken(): Promise<string | null> {
+  refreshPromise ??= (async () => {
+    try {
+      const correlationId = generateCorrelationId();
+      const response = await fetch(`${API_BASE}/api/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Correlation-Id': correlationId,
+          'X-Request-Id': correlationId
+        },
+        body: '{}',
+        credentials: 'include'
+      });
+      if (!response.ok) return null;
+
+      const body = (await response.json().catch(() => null)) as {
+        accessToken?: unknown;
+      } | null;
+      if (typeof body?.accessToken !== 'string' || body.accessToken.length === 0) return null;
+
+      useAuthStore().setTokens(body.accessToken);
+      return body.accessToken;
+    } catch {
+      return null;
+    } finally {
+      refreshPromise = undefined;
+    }
+  })();
+
+  return refreshPromise;
+}
+
 async function invalidateClientCaches(path: string): Promise<void> {
   try {
     if (typeof caches !== 'undefined') {
@@ -182,60 +217,85 @@ export async function apiRequest<T = unknown>(
     typeof requestedTimeoutMs === 'number' && Number.isFinite(requestedTimeoutMs) && requestedTimeoutMs > 0
       ? requestedTimeoutMs
       : 0;
-  let response: Response;
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  let timedOut = false;
-  let timeoutController: AbortController | undefined;
-  let providedAbortListener: (() => void) | undefined;
+  const executeRequest = async (requestHeaders: Headers): Promise<Response> => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let timedOut = false;
+    let timeoutController: AbortController | undefined;
+    let providedAbortListener: (() => void) | undefined;
 
-  try {
-    let signal = providedSignal;
-    if (timeoutMs > 0 && typeof AbortController !== 'undefined') {
-      timeoutController = new AbortController();
-      providedAbortListener = () => timeoutController?.abort(providedSignal?.reason);
-      if (providedSignal?.aborted) {
-        providedAbortListener();
-      } else {
-        providedSignal?.addEventListener('abort', providedAbortListener, { once: true });
+    try {
+      let signal = providedSignal;
+      if (timeoutMs > 0 && typeof AbortController !== 'undefined') {
+        timeoutController = new AbortController();
+        providedAbortListener = () => timeoutController?.abort(providedSignal?.reason);
+        if (providedSignal?.aborted) {
+          providedAbortListener();
+        } else {
+          providedSignal?.addEventListener('abort', providedAbortListener, { once: true });
+        }
+        timeoutId = setTimeout(() => {
+          timedOut = true;
+          timeoutController?.abort();
+        }, timeoutMs);
+        signal = timeoutController.signal;
       }
-      timeoutId = setTimeout(() => {
-        timedOut = true;
-        timeoutController?.abort();
-      }, timeoutMs);
-      signal = timeoutController.signal;
-    }
 
-    response = await fetch(url, {
-      ...restOptions,
-      headers,
-      ...(signal ? { signal } : {}),
-      credentials: 'include'
-    });
-  } catch (error) {
-    if (timedOut) {
-      throw new ApiError(
-        'A solicitação excedeu o tempo limite; o resultado da operação pode estar pendente.',
-        408,
-        'Request Timeout'
-      );
+      return await fetch(url, {
+        ...restOptions,
+        // Keep each attempt's header set immutable from the perspective of
+        // fetch observers and service-worker instrumentation.
+        headers: new Headers(requestHeaders),
+        ...(signal ? { signal } : {}),
+        credentials: 'include'
+      });
+    } catch (error) {
+      if (timedOut) {
+        throw new ApiError(
+          'A solicitação excedeu o tempo limite; o resultado da operação pode estar pendente.',
+          408,
+          'Request Timeout'
+        );
+      }
+      throw error;
+    } finally {
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+      if (providedSignal && providedAbortListener) {
+        providedSignal.removeEventListener('abort', providedAbortListener);
+      }
     }
-    throw error;
-  } finally {
-    if (timeoutId !== undefined) clearTimeout(timeoutId);
-    if (providedSignal && providedAbortListener) {
-      providedSignal.removeEventListener('abort', providedAbortListener);
+  };
+
+  const readBody = async (response: Response): Promise<unknown> => {
+    try {
+      return await response.json();
+    } catch {
+      return null;
+    }
+  };
+
+  let response = await executeRequest(headers);
+  let body: unknown = response.ok ? null : await readBody(response);
+  const canRefresh =
+    !skipAuth &&
+    (response.status === 401 || (response.status === 404 && isSessionNotFoundResponse(body)));
+
+  if (canRefresh) {
+    const refreshedToken = await refreshAccessToken();
+    if (refreshedToken) {
+      headers.set('Authorization', `Bearer ${refreshedToken}`);
+      const refreshedAccountId =
+        useAuthStore().user.accountId ?? getAccountIdFromToken(refreshedToken);
+      if (refreshedAccountId) headers.set('x-account-id', refreshedAccountId);
+      response = await executeRequest(headers);
+      body = response.ok ? null : await readBody(response);
     }
   }
 
   if (!response.ok) {
-    let body: unknown;
-    try {
-      body = await response.json();
-    } catch {
-      body = null;
-    }
-
-    if (!skipAuth && (response.status === 401 || (response.status === 404 && isSessionNotFoundResponse(body)))) {
+    if (
+      !skipAuth &&
+      (response.status === 401 || (response.status === 404 && isSessionNotFoundResponse(body)))
+    ) {
       const authStore = useAuthStore();
       authStore.clearSession();
       await redirectToLogin();
@@ -244,7 +304,7 @@ export async function apiRequest<T = unknown>(
 
     throw new ApiError(
       typeof (body as ApiErrorBodyShape | null)?.message === 'string'
-        ? (body as ApiErrorBodyShape).message as string
+        ? ((body as ApiErrorBodyShape).message as string)
         : `HTTP ${response.status}: ${response.statusText}`,
       response.status,
       response.statusText,

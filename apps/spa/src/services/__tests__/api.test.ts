@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockClearSession = vi.fn();
 const mockRouterReplace = vi.fn();
+const mockSetTokens = vi.fn((token: string) => {
+  mockAccessToken = token;
+});
+let mockAccessToken = 'access-token';
 
 async function importApiModule(currentRoute = '/owners?tab=all') {
   vi.resetModules();
@@ -19,11 +23,12 @@ async function importApiModule(currentRoute = '/owners?tab=all') {
 
   vi.doMock('@/stores/auth', () => ({
     useAuthStore: () => ({
-      accessToken: 'access-token',
+      accessToken: mockAccessToken,
       user: {
         accountId: 'account-123'
       },
-      clearSession: mockClearSession
+      clearSession: mockClearSession,
+      setTokens: mockSetTokens
     })
   }));
 
@@ -40,6 +45,7 @@ async function importApiModule(currentRoute = '/owners?tab=all') {
 describe('apiRequest', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAccessToken = 'access-token';
     localStorage.clear();
   });
 
@@ -48,7 +54,57 @@ describe('apiRequest', () => {
     vi.resetModules();
   });
 
-  it('clears the session and redirects to login when an authenticated request returns 401', async () => {
+  it('renews an expired authenticated request once through the cookie session', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        json: vi.fn().mockResolvedValue({ detail: 'expired' })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: vi.fn().mockResolvedValue({ accessToken: 'refreshed-token' })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: vi.fn().mockResolvedValue({ items: [] })
+      });
+
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { apiRequest, cleanup } = await importApiModule();
+
+    try {
+      await expect(apiRequest('/owners')).resolves.toEqual({ items: [] });
+
+      expect(mockClearSession).not.toHaveBeenCalled();
+      expect(mockRouterReplace).not.toHaveBeenCalled();
+      expect(mockSetTokens).toHaveBeenCalledWith('refreshed-token');
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+
+      const requestInit = mockFetch.mock.calls[0]?.[1] as RequestInit;
+      const headers = requestInit.headers as Headers;
+      expect(mockFetch.mock.calls[0]?.[0]).toBe('/api/owners');
+      expect(headers.get('Authorization')).toBe('Bearer access-token');
+      expect(headers.get('x-account-id')).toBe('account-123');
+      expect(requestInit.credentials).toBe('include');
+      expect(mockFetch.mock.calls[1]?.[0]).toBe('/api/auth/refresh');
+      expect((mockFetch.mock.calls[1]?.[1] as RequestInit).credentials).toBe('include');
+      expect(mockFetch.mock.calls[2]?.[0]).toBe('/api/owners');
+      expect(
+        ((mockFetch.mock.calls[2]?.[1] as RequestInit).headers as Headers).get('Authorization')
+      ).toBe('Bearer refreshed-token');
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('clears the session when renewal cannot recover an authenticated 401', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 401,
@@ -74,12 +130,7 @@ describe('apiRequest', () => {
         path: '/login',
         query: { next: '/owners?tab=all' }
       });
-      expect(mockFetch).toHaveBeenCalledWith('/api/owners', expect.any(Object));
-      const requestInit = mockFetch.mock.calls[0]?.[1] as RequestInit;
-      const headers = requestInit.headers as Headers;
-      expect(headers.get('Authorization')).toBe('Bearer access-token');
-      expect(headers.get('x-account-id')).toBe('account-123');
-      expect(requestInit.credentials).toBe('include');
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     } finally {
       cleanup();
     }
