@@ -1063,7 +1063,7 @@
     },
     {
       "path": "apps/api/src/server.ts",
-      "sha256": "a3509eaa3b015c6adf0d673a037cd454b13bec29fa00da31e6161f17acf45d09",
+      "sha256": "83d0b184222eea1f4860d28bb09a0afe00c1fc36861aaf4e0bb829909aea7f48",
       "components": [
         "http-routes"
       ],
@@ -4531,7 +4531,7 @@
     },
     {
       "path": "packages/modules/auth/src/index.ts",
-      "sha256": "4540b9eab96d46b6ea26aa8256ba7b957c83f80c9fe2f4e2f132a39d8df64102",
+      "sha256": "7d5cbfed9b712e415e08ab238bbff1d2714a57fa7ed8d4f667e4e4ad7ff0e846",
       "components": [
         "auth"
       ],
@@ -4627,7 +4627,7 @@
     },
     {
       "path": "packages/modules/billing/src/index.ts",
-      "sha256": "b128e7f273dbf19b5fc7bf264223ce518983c3461dace7cb77f57dc086a882a6",
+      "sha256": "d39ce8d19d086c4090e943dc8922c79fcb52dbdc528b25b9e3df3a902c1b5edb",
       "components": [
         "billing-cash"
       ],

@@ -6,6 +6,7 @@ import {
   getDatabaseTransactionScope,
   getPool,
   getTenantTransactionContext,
+  runInTenantTransaction,
   runWithoutDatabaseTransactionScope,
   withTenantTransaction
 } from '@cvg-his-v2/shared-database';
@@ -81,6 +82,7 @@ import { createLogger } from '@cvg-his-v2/shared-logging';
 import { createCorrelationId } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 import {
+  requireAccountId,
   resolveTenantFromRequest,
   runWithTenantContext,
   withTenantQuery
@@ -200,6 +202,7 @@ import { InMemoryGoogleCalendarSyncRepository } from './google-calendar-sync-rep
 import { InMemoryLaboratoryResultImportRepository } from './laboratory-result-import-repository.js';
 import { createTenantCommandRunner } from './helpers/tenant-command.js';
 import { acquireAuthorizationTransactionLock } from './helpers/authorization-transaction-lock.js';
+import { getInitializedDatabasePool } from './helpers/initialized-database-pool.js';
 import {
   idempotencyAuthorizationPermissions,
   isDischargeMutationPath,
@@ -4378,9 +4381,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         return;
       }
 
-      // Synchronize before any privileged route, including the early chaos
-      // endpoints below. A failed repository check is remembered for the
-      // request so route guards cannot fall back to stale cache.
+      // Synchronize the authoritative session context before tenant
+      // resolution. A failed repository check is remembered for the request
+      // so route guards cannot fall back to stale cache; the final guard still
+      // reloads the complete user and role profile before authorizing.
       let accountId: string | undefined;
       let userId: string | undefined;
       const authHeader = request.headers['authorization'];
@@ -4388,7 +4392,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         const accessToken = extractBearerToken(authHeader);
         if (accessToken) {
           try {
-            const session = await auth.getSession(accessToken, correlationId);
+            const session = await auth.getAuthoritativeSessionContext(accessToken, correlationId);
             accountId = session.accountId;
             userId = session.userId;
           } catch (error) {
@@ -4575,17 +4579,6 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           ) {
             sendDatabasePersistenceUnavailable(response, correlationId);
             return;
-          }
-
-          const bearerAccessToken = extractBearerToken(readHeader(request, 'authorization'));
-          if (
-            !isPublicTenantlessRoute &&
-            bearerAccessToken &&
-            tenantCtx.accountId &&
-            tenantCtx.userId &&
-            accessControl.persistenceMode === 'database'
-          ) {
-            await accessControl.ensureFreshForRequest(tenantCtx.accountId as AccountId);
           }
 
           const dispatchRequest = async (): Promise<void> => {
@@ -8137,12 +8130,23 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     // this decision cannot use a profile assembled before the access-control
     // snapshot was refreshed. Full handler-wide linearization still belongs
     // to the database transaction/policy layer.
-    const session = await auth.getSession(
-      accessToken,
-      requestCorrelationIds.get(request) ?? createCorrelationId('auth-guard')
-    );
+    const correlationId = requestCorrelationIds.get(request) ?? createCorrelationId('auth-guard');
+    const loadSessionAndRefreshAccessControl = async () => {
+      const session = await auth.getSession(accessToken, correlationId);
+      await accessControl.ensureFreshForRequest(session.accountId);
+      return session;
+    };
+    // Keep authoritative auth and ACL reads on one tenant-scoped connection in database mode.
+    const databasePool =
+      accessControl.persistenceMode === 'database' ? getInitializedDatabasePool() : undefined;
+    const session = databasePool
+      ? await runInTenantTransaction(
+          databasePool,
+          requireAccountId(),
+          loadSessionAndRefreshAccessControl
+        )
+      : await loadSessionAndRefreshAccessControl();
     await acquireAuthorizationTransactionLock(request, session.accountId);
-    await accessControl.ensureFreshForRequest(session.accountId);
     const principal = auth.authenticateAccessToken(accessToken);
     requestRoles.set(request, principal.access.roleCodes);
     accessControl.assertAuthorized({

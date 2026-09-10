@@ -12,12 +12,18 @@ profile assembled before a concurrent revocation.
 
 ## Decision
 
-When the production `DatabaseSessionRepository` is in use, the authoritative
-session, user and role reads now run inside one tenant-scoped database
-transaction. The existing in-memory and test-repository paths retain their
-previous behavior. The final guard still re-reads the repository on every
-protected request; only connection and transaction setup between the related
-reads is consolidated.
+When the production `DatabaseSessionRepository` is in use, the early context
+lookup reads only the authoritative session needed for tenant resolution. The
+final guard then reads the complete user and role profile and checks the ACL
+change token on one tenant-scoped database transaction. The existing in-memory
+and test-repository paths retain their previous behavior. The final guard still
+re-reads the repository on every protected request; only connection and
+transaction setup between the related reads is consolidated.
+
+The billing estimate path also carries the record returned by its initial
+encounter lookup into the status transition, avoiding a second authoritative
+record-and-items reload while preserving the same transition validation and
+repository update.
 
 ## Rejected alternative
 

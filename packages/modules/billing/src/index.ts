@@ -314,8 +314,8 @@ export class BillingService {
     payload: CreateBillingEstimateRequest
   ): Promise<BillingRecordSummary> {
     const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId') as EncounterId;
-    await this.ensureRecord(accountId, encounterId);
-    return this.updateStatus(accountId, encounterId, {
+    const record = await this.ensureRecord(accountId, encounterId);
+    return this.applyStatus(record, {
       status: 'estimated',
       administrativeNotes: payload.administrativeNotes
     });
@@ -535,6 +535,13 @@ export class BillingService {
     if (!record) {
       throw new NotFoundError('Billing record not found', { encounterId });
     }
+    return this.applyStatus(record, payload);
+  }
+
+  private async applyStatus(
+    record: BillingRecordSummary,
+    payload: UpdateBillingStatusRequest
+  ): Promise<BillingRecordSummary> {
     const previousStatus = record.status;
     const allowedTransitions: Record<BillingRecordStatus, readonly BillingRecordStatus[]> = {
       draft: ['estimated', 'open'],

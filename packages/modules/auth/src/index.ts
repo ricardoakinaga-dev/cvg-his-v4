@@ -553,6 +553,53 @@ export class AuthService {
     await this.#loadAuthoritativeSession(payload, 'access', correlationId);
   }
 
+  /**
+   * Reads only the authoritative session context needed before tenant
+   * resolution. The full user and role profile remains a final-guard concern;
+   * this path must never be reused as an authorization snapshot.
+   */
+  public async getAuthoritativeSessionContext(
+    accessToken: string,
+    correlationId = createCorrelationId('auth-context')
+  ): Promise<SessionSummary> {
+    const payload = this.#verifyToken(accessToken, 'access');
+    const repository = this.#sessionRepository;
+    if (!(repository instanceof DatabaseSessionRepository)) {
+      const { session } = await this.#loadAuthoritativeSession(payload, 'access', correlationId);
+      return toSessionSummary(session);
+    }
+
+    const session = await this.#runAsTokenPayload(payload, correlationId, () =>
+      runInTenantTransaction(getPool(), payload.account_id, async () => {
+        const persisted = await repository.findById(payload.session_id as SessionId);
+        if (!persisted) {
+          throw new AuthenticationError('Session is not active');
+        }
+
+        this.#assertTokenSessionMatch(payload, persisted);
+        if (!persisted.active || persisted.revokedAt) {
+          this.#sessions.set(persisted.sessionId, persisted);
+          throw new AuthenticationError('Session is not active');
+        }
+
+        if (new Date(persisted.expiresAt).getTime() <= Date.now()) {
+          const expiredSession: SessionRecord = {
+            ...persisted,
+            active: false,
+            revokedAt: nowIso()
+          };
+          await repository.update(expiredSession);
+          this.#sessions.set(expiredSession.sessionId, expiredSession);
+          throw new AuthenticationError('Session expired');
+        }
+
+        this.#sessions.set(persisted.sessionId, persisted);
+        return persisted;
+      })
+    );
+    return toSessionSummary(session);
+  }
+
   public async getSession(
     accessToken: string,
     correlationId = createCorrelationId('auth-session')
