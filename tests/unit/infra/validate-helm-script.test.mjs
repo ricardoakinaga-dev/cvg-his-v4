@@ -56,6 +56,59 @@ test('production-like worker identity is wired as a required Secret value', () =
   assert.match(values, /secretKey: WORKER_REPORTS_USER_ID/);
 });
 
+test('embedded PostgreSQL requires separate API and worker passwords', () => {
+  const secrets = readFileSync(
+    resolve(repositoryRoot, 'infra/helm/cvg-his-v2/templates/secrets.yaml'),
+    'utf8'
+  );
+
+  assert.match(
+    secrets,
+    /postgresql\.apiPassword is required when postgresql\.existingSecret is empty/
+  );
+  assert.match(
+    secrets,
+    /postgresql\.workerPassword is required when postgresql\.existingSecret is empty/
+  );
+  assert.match(secrets, /postgresql\.apiPassword and postgresql\.workerPassword must be different/);
+  assert.doesNotMatch(
+    secrets,
+    /default \.Values\.postgresql\.password \.Values\.postgresql\.(apiPassword|workerPassword)/,
+    'generated runtime role secrets must not fall back to the administrative password'
+  );
+});
+
+test('Compose role bootstrap fails closed for missing or shared API/worker passwords', () => {
+  const roleBootstrapPath = resolve(repositoryRoot, 'infra/postgres/init-runtime-role.sh');
+  const baseEnv = {
+    POSTGRES_USER: 'postgres',
+    POSTGRES_DB: 'cvg_his_v2',
+    POSTGRES_RUNTIME_PASSWORD: 'synthetic-runtime-password',
+    POSTGRES_WORKER_PASSWORD: 'synthetic-worker-password'
+  };
+
+  const missingApi = spawnSync('/bin/sh', [roleBootstrapPath], {
+    env: baseEnv,
+    encoding: 'utf8'
+  });
+  assert.notEqual(missingApi.status, 0);
+  assert.match(`${missingApi.stdout}\n${missingApi.stderr}`, /POSTGRES_API_PASSWORD is required/);
+
+  const shared = spawnSync('/bin/sh', [roleBootstrapPath], {
+    env: {
+      ...baseEnv,
+      POSTGRES_API_PASSWORD: 'synthetic-shared-password',
+      POSTGRES_WORKER_PASSWORD: 'synthetic-shared-password'
+    },
+    encoding: 'utf8'
+  });
+  assert.notEqual(shared.status, 0);
+  assert.match(
+    `${shared.stdout}\n${shared.stderr}`,
+    /POSTGRES_API_PASSWORD and POSTGRES_WORKER_PASSWORD must be different/
+  );
+});
+
 test('REQUIRE_HELM fails closed when the Helm executable is unavailable', () => {
   const emptyPath = mkdtempSync('/tmp/cvg-his-empty-helm-');
 

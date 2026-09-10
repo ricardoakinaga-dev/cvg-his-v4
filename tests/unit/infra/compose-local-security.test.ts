@@ -117,6 +117,33 @@ describe('canonical local Compose security and observability contracts', () => {
     expect(envExample).not.toMatch(/^GRAFANA_ADMIN_PASSWORD=admin$/m);
   });
 
+  it('requires independent API and worker database credentials at every Compose boundary', () => {
+    const postgresEnvironment = service('postgres').environment;
+    const roleInitEnvironment = service('runtime-role-init').environment;
+
+    expect(postgresEnvironment?.POSTGRES_API_PASSWORD).toBe(
+      '${POSTGRES_API_PASSWORD:?POSTGRES_API_PASSWORD is required}'
+    );
+    expect(postgresEnvironment?.POSTGRES_WORKER_PASSWORD).toBe(
+      '${POSTGRES_WORKER_PASSWORD:?POSTGRES_WORKER_PASSWORD is required}'
+    );
+    expect(roleInitEnvironment?.POSTGRES_API_PASSWORD).toBe(
+      '${POSTGRES_API_PASSWORD:?POSTGRES_API_PASSWORD is required}'
+    );
+    expect(roleInitEnvironment?.POSTGRES_WORKER_PASSWORD).toBe(
+      '${POSTGRES_WORKER_PASSWORD:?POSTGRES_WORKER_PASSWORD is required}'
+    );
+
+    expect(service('cvg-his-v2-api').environment?.DATABASE_URL).toBe(
+      'postgres://${POSTGRES_API_USER:-cvg_api}:${POSTGRES_API_PASSWORD:?POSTGRES_API_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-cvg_his_v2}'
+    );
+    expect(service('cvg-his-v2-worker').environment?.DATABASE_URL).toBe(
+      'postgres://${POSTGRES_WORKER_USER:-cvg_worker}:${POSTGRES_WORKER_PASSWORD:?POSTGRES_WORKER_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-cvg_his_v2}'
+    );
+    expect(composeText).not.toContain('POSTGRES_API_PASSWORD:-');
+    expect(composeText).not.toContain('POSTGRES_WORKER_PASSWORD:-');
+  });
+
   it('declares an executable worker readiness probe and requires strict healthy status in cutover', async () => {
     const healthcheck = service('cvg-his-v2-worker').healthcheck?.test;
     expect(healthcheck?.[0]).toBe('CMD-SHELL');

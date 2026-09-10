@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { URL } from 'node:url';
-
 import {
   getDatabaseTransactionScope,
   getPool,
@@ -301,7 +300,6 @@ import {
   createApiWorkflowTaskService,
   createWorkflowTaskSchemaReadinessGuard
 } from './helpers/workflow-task-runtime.js';
-
 export function buildAuthenticatedActorAttributes(
   principal: AuthenticatedPrincipal,
   memberships: {
@@ -6320,6 +6318,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 encounter.id,
                 encounter.status
               );
+              await encounters.waitForPersistence();
               appendAudit(
                 principal.user.id,
                 principal.user.accountId,
@@ -6403,6 +6402,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                   transitioned.status
                 );
               }
+              await encounters.waitForPersistence();
               appendAudit(
                 principal.user.id,
                 principal.user.accountId,

@@ -1097,6 +1097,20 @@ jobs:
           export E2E_INVENTORY_DIGEST="$(node -e 'process.stdout.write(require("./tmp/usability-test-inventory.json").digest)')"
           npx playwright test --config playwright-spa.config.ts
 
+      - name: Run canonical clinical API E2E
+        if: always()
+        env:
+          API_URL: http://localhost:3001
+          BASE_URL: http://localhost:3001
+          E2E_ADMIN_USERNAME: admin
+          E2E_ADMIN_PASSWORD: seed_admin
+          E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
+          E2E_REDIS_URL: redis://localhost:6380
+          E2E_DATABASE_MODE: '1'
+          API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
+          REQUIRE_TEST_DB: '1'
+        run: npx playwright test --config playwright.config.ts e2e/tests/jornada-clinica-canonica.spec.ts
+
       - name: Validate complete usability evidence
         if: always()
         run: node scripts/validate-usability-playwright-evidence.mjs
@@ -1125,6 +1139,7 @@ jobs:
           name: e2e-spa-${{ github.sha }}
           path: |
             e2e/spa-report/
+            e2e/report/
             playwright-report/usability/
             test-results/
             tmp/master-usability-audit.json

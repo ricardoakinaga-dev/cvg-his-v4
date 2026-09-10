@@ -6,7 +6,7 @@
   "work_mode": "NORMAL",
   "work_mode_overlays": ["FEATURE", "REFACTOR", "MIGRATION"],
   "lifecycle_stage": "BUILD",
-  "active_activity": "REVIEW",
+  "active_activity": "VERIFY",
   "engineering_tier": "T4_CRITICAL",
   "risk_level": "CRITICAL",
   "blast_radius": "CROSS_SYSTEM",
@@ -14,7 +14,7 @@
   "active_execplan": ".agent/plans/triple-a-execplan.md",
   "active_task": "TRIPLE-A-RELEASE-CONTROL",
   "verification_state": "BLOCKED",
-  "repository_state": "main@cd7399f91bf3c3eda53e4598443acdbc9ff6d3b1; worktree clean; CI run #49 terminal failure; strict gate is PASS_WITH_CONDITIONS with score 43, critical 23 and 27 open P0",
+  "repository_state": "main@1434514c4e0ce88bc29d0feda28b09a61a08670f; worktree clean; CI run #70 (34490757429) is in progress; Release Artifacts run #50 (34490858211) is skipped pending green CI; strict gate remains BLOCKED with score 42, critical 20 and 28 open P0",
   "instruction_scope_refs": [
     ".agent/plans/external-assurance-closure-execplan.md",
     "docs/triple-a/MASTER_PROMPT_EXTERNAL_CLOSURE.md",
@@ -26,13 +26,13 @@
     "docs/clinical/CLINICAL_SAFETY_INVARIANTS.md"
   ],
   "last_gate_record": null,
-  "last_event_id": "EVT-TRIPLE-A-RELEASE-CONTROL-OBSERVE-CI49-20260910",
-  "state_revision": 8,
+  "last_event_id": "EVT-TRIPLE-A-RELEASE-CONTROL-OBSERVE-CI70-20260910",
+  "state_revision": 9,
   "next_gate": "VERIFIED",
-  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:REPRODUCE-CI49-FAILURES",
+  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:OBSERVE-CI-1434514C",
   "blocked_by": [
-    "CI #49 (run 34431492523) failed on Unit Tests, Performance (k6 SLOs), Visual Regression, E2E Tests (SPA) and Critical Process Runner (Windows contract)",
-    "Strict gate is below the required thresholds: score 43, critical 23 and 27 open P0",
+    "CI #70 (run 34490757429) for the candidate 1434514c4e0ce88bc29d0feda28b09a61a08670f is still in_progress; main is not green until all required jobs are terminal and successful",
+    "Strict gate is below the required thresholds: score 42, critical 20 and 28 open P0",
     "Branch governance, target deployment, runtime clinical/operations drills, image attestations and release authority remain unproven"
   ],
   "human_approval_required": [
@@ -42,5 +42,5 @@
     "destructive backup/restore/chaos drills on shared infrastructure",
     "final release authority and Triple-A certification"
   ],
-  "updated_at": "2026-09-10T00:35:15-03:00"
+  "updated_at": "2026-09-10T11:47:12-03:00"
 }

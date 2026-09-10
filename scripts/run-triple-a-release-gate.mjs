@@ -798,6 +798,185 @@ function criterion(id, area, priority, description, status, evidenceRefs, limita
   return { id, area, priority, description, status, evidence_refs: evidenceRefs, limitations };
 }
 
+function combineStatuses(statuses) {
+  if (statuses.some((status) => status === 'FAIL')) return 'FAIL';
+  if (statuses.some((status) => status === 'NOT_RUN')) return 'NOT_RUN';
+  if (statuses.some((status) => status === 'PARTIAL')) return 'PARTIAL';
+  return statuses.length > 0 && statuses.every((status) => status === 'PASS') ? 'PASS' : 'NOT_RUN';
+}
+
+function partialWhenIncomplete(statuses) {
+  if (statuses.some((status) => status === 'FAIL')) return 'FAIL';
+  if (statuses.length > 0 && statuses.every((status) => status === 'PASS')) return 'PASS';
+  if (statuses.some((status) => status === 'PARTIAL')) return 'PARTIAL';
+  return statuses.length > 0 ? 'PARTIAL' : 'NOT_RUN';
+}
+
+function currentCriterion(criteria, id) {
+  return criteria.find((item) => item.id === id) ?? null;
+}
+
+function currentStatus(criteria, id) {
+  return currentCriterion(criteria, id)?.status ?? 'NOT_RUN';
+}
+
+function currentAreaStatus(criteria, area) {
+  return combineStatuses(criteria.filter((item) => item.area === area).map((item) => item.status));
+}
+
+function evidenceFor(criteria, ids) {
+  const selected = ids.map((id) => currentCriterion(criteria, id)).filter(Boolean);
+  return {
+    refs: [...new Set(selected.flatMap((item) => item.evidence_refs ?? []))],
+    limitations: [...new Set(selected.flatMap((item) => item.limitations ?? []))],
+  };
+}
+
+function fileEvidence(rootDir, paths) {
+  const existing = paths.filter((path) => existsSync(resolve(rootDir, path)));
+  const missing = paths.filter((path) => !existsSync(resolve(rootDir, path)));
+  return {
+    status: missing.length > 0 ? 'FAIL' : 'PASS',
+    refs: existing,
+    limitations: missing.map((path) => `Arquivo obrigatório ausente: ${path}.`),
+  };
+}
+
+/**
+ * Evaluate the frozen quality-bar criteria from the current candidate evidence.
+ * The source QUALITY_BAR_V1.json remains immutable; its stored status is kept as
+ * frozen_status and never treated as current evidence.
+ */
+export function evaluateQualityBar({ rootDir, qualityBar, criteria }) {
+  const definitions = new Map();
+  const add = (id, status, ids = [], extraRefs = [], extraLimitations = []) => {
+    const source = evidenceFor(criteria, ids);
+    definitions.set(id, {
+      status,
+      refs: [...new Set([...source.refs, ...extraRefs])],
+      limitations: [...new Set([...source.limitations, ...extraLimitations])],
+    });
+  };
+  const all = (ids) => combineStatuses(ids.map((id) => currentStatus(criteria, id)));
+  const baselineFiles = fileEvidence(rootDir, [
+    'docs/engineering/TRIPLE_A_BASELINE.md',
+    'docs/triple-a/00-baseline.md',
+  ]);
+  add('BASE-001', all(['PROMPT-HASH', 'EXTERNAL-PROMPT-HASH']), ['PROMPT-HASH', 'EXTERNAL-PROMPT-HASH']);
+  add('BASE-002', combineStatuses([
+    baselineFiles.status,
+    currentAreaStatus(criteria, 'Candidate integrity'),
+  ]), ['CMD-01'], baselineFiles.refs, baselineFiles.limitations);
+
+  add('MAIN-001', currentStatus(criteria, 'CI-REMOTE'), ['CI-REMOTE']);
+  const greenMainPolicy = fileEvidence(rootDir, ['docs/engineering/GREEN_MAIN_POLICY.md']);
+  const branchStatus = currentStatus(criteria, 'BRANCH-PROTECTION');
+  add(
+    'MAIN-002',
+    greenMainPolicy.status === 'FAIL' ? 'FAIL' : branchStatus === 'PASS' ? 'PASS' : 'PARTIAL',
+    ['BRANCH-PROTECTION'],
+    greenMainPolicy.refs,
+    [...greenMainPolicy.limitations, ...(branchStatus === 'PASS' ? [] : ['Branch protection/required checks não têm evidência autenticada PASS no candidato.'])]
+  );
+
+  const supplyChainStatus = currentAreaStatus(criteria, 'Supply-chain pins');
+  add('SUPPLY-001', partialWhenIncomplete([
+    currentStatus(criteria, 'SECURITY-EVIDENCE'),
+    currentStatus(criteria, 'IMAGE-ATTESTATIONS'),
+    supplyChainStatus,
+  ]), [
+    'SECURITY-EVIDENCE', 'IMAGE-ATTESTATIONS'
+  ], [], supplyChainStatus === 'PASS' ? [] : ['O validator local de pins não substitui verificação externa de assinatura/proveniência das imagens.']);
+  add('RELEASE-001', all([
+    'RELEASE-MANIFEST', 'SECURITY-EVIDENCE', 'CI-REMOTE', 'BACKUP-DRILL',
+    'PERFORMANCE', 'E2E', 'WORKER-CRASH', 'HOSPITAL-UAT'
+  ]), [
+    'RELEASE-MANIFEST', 'SECURITY-EVIDENCE', 'CI-REMOTE', 'BACKUP-DRILL',
+    'PERFORMANCE', 'E2E', 'WORKER-CRASH', 'HOSPITAL-UAT'
+  ]);
+
+  const clinicalFiles = fileEvidence(rootDir, [
+    'docs/clinical/CLINICAL_CRITICALITY_MATRIX.md',
+    'docs/clinical/CLINICAL_SAFETY_INVARIANTS.md',
+  ]);
+  add('CLIN-001', combineStatuses([
+    clinicalFiles.status,
+    currentStatus(criteria, 'CRITICAL-TESTS'),
+    currentStatus(criteria, 'CLINICAL-E2E'),
+    currentStatus(criteria, 'AUDIT-INTEGRITY'),
+  ]), ['CRITICAL-TESTS', 'CLINICAL-E2E', 'AUDIT-INTEGRITY'], clinicalFiles.refs, clinicalFiles.limitations);
+  add('WORKER-001', all(['WORKER-CRASH', 'CRITICAL-TESTS']), ['WORKER-CRASH', 'CRITICAL-TESTS']);
+
+  const dataStaticStatus = combineStatuses([
+    currentAreaStatus(criteria, 'RLS static coverage'),
+    currentAreaStatus(criteria, 'Migration source'),
+  ]);
+  const dataRuntimeStatus = all(['RLS-RUNTIME', 'AUDIT-INTEGRITY']);
+  add('DATA-001', dataStaticStatus === 'FAIL'
+    ? 'FAIL'
+    : dataRuntimeStatus === 'PASS' && dataStaticStatus === 'PASS'
+      ? 'PASS'
+      : dataStaticStatus === 'PASS' || dataRuntimeStatus === 'PARTIAL'
+        ? 'PARTIAL'
+        : combineStatuses([dataStaticStatus, dataRuntimeStatus]), ['RLS-RUNTIME', 'AUDIT-INTEGRITY']);
+
+  const recoveryPolicy = fileEvidence(rootDir, [
+    'docs/operations/DISASTER_RECOVERY.md',
+    'docs/operations/RPO_RTO_POLICY.md',
+  ]);
+  add('REC-001', currentStatus(criteria, 'BACKUP-DRILL') === 'PASS'
+    ? recoveryPolicy.status
+    : currentStatus(criteria, 'BACKUP-DRILL'), ['BACKUP-DRILL'], recoveryPolicy.refs, recoveryPolicy.limitations);
+  add('OPS-001', currentStatus(criteria, 'OBSERVABILITY-EVIDENCE'), ['OBSERVABILITY-EVIDENCE']);
+  add('PERF-001', currentStatus(criteria, 'PERFORMANCE'), ['PERFORMANCE']);
+  add('UX-001', all(['E2E', 'HOSPITAL-UAT']), ['E2E', 'HOSPITAL-UAT']);
+
+  const architectureFiles = fileEvidence(rootDir, [
+    'docs/architecture/EVENT_GOVERNANCE.md',
+    'docs/architecture/IDEMPOTENCY_MATRIX.md',
+  ]);
+  add('ARCH-001', combineStatuses([
+    currentAreaStatus(criteria, 'Namespaces'),
+    architectureFiles.status,
+  ]), [], architectureFiles.refs, architectureFiles.limitations);
+
+  const policyStatuses = criteria.filter((item) => item.id.startsWith('POLICY-')).map((item) => item.status);
+  const docsStatus = currentAreaStatus(criteria, 'Documentation');
+  add('DOC-001', docsStatus === 'FAIL' ? 'FAIL' : partialWhenIncomplete(policyStatuses), [], [], [
+    'A validação documental não prova, sozinha, sincronização operacional de todos os runbooks com o alvo.'
+  ]);
+
+  const finalStatuses = qualityBar?.criteria
+    ?.filter((item) => item.id !== 'FINAL-001')
+    .map((item) => definitions.get(item.id)?.status ?? 'NOT_RUN') ?? [];
+  const authorityStatus = currentStatus(criteria, 'RELEASE-AUTHORITY');
+  add('FINAL-001', authorityStatus === 'PASS' && finalStatuses.length > 0 && finalStatuses.every((status) => status === 'PASS')
+    ? 'PASS'
+    : 'FAIL', ['RELEASE-AUTHORITY'], [], [
+    'A certificação final exige todos os critérios anteriores PASS e autoridade de release atual; não há atalho por score parcial.'
+  ]);
+
+  const evaluatedCriteria = (qualityBar?.criteria ?? []).map((frozen) => {
+    const derived = definitions.get(frozen.id) ?? {
+      status: 'NOT_RUN',
+      refs: [],
+      limitations: ['Critério congelado não possui mapeamento de evidência do candidato.'],
+    };
+    return {
+      ...frozen,
+      frozen_status: frozen.status,
+      status: derived.status,
+      evidence_refs: derived.refs,
+      limitations: derived.limitations,
+    };
+  });
+  return {
+    quality_bar_id: qualityBar?.quality_bar_id ?? null,
+    criteria: evaluatedCriteria,
+    ...scoreCriteria(evaluatedCriteria),
+  };
+}
+
 export function buildReleaseEvidence({
   rootDir = process.cwd(),
   outputDir = resolve(rootDir, process.env.TRIPLE_A_RELEASE_OUTPUT_DIR ?? DEFAULT_OUTPUT_DIR),
@@ -907,6 +1086,9 @@ export function buildReleaseEvidence({
     ...artifactCriteria,
   ];
   const score = scoreCriteria(criteria);
+  const qualityBarAssessment = qualityBar
+    ? evaluateQualityBar({ rootDir, qualityBar, criteria })
+    : null;
   const failed = criteria.filter((item) => item.status === 'FAIL');
   const notProven = criteria.filter((item) => item.status === 'NOT_RUN');
   const thresholds = {
@@ -916,7 +1098,11 @@ export function buildReleaseEvidence({
   };
   const thresholdFailure = score.score < thresholds.minimum_total_score
     || score.critical_score < thresholds.minimum_critical_score
-    || score.open_p0 > thresholds.maximum_open_p0;
+    || score.open_p0 > thresholds.maximum_open_p0
+    || !qualityBarAssessment
+    || qualityBarAssessment.score < thresholds.minimum_total_score
+    || qualityBarAssessment.critical_score < thresholds.minimum_critical_score
+    || qualityBarAssessment.open_p0 > thresholds.maximum_open_p0;
   const decision = strict
     ? (failed.length || notProven.length || thresholdFailure ? 'BLOCKED' : 'PASS')
     : (failed.length ? 'FAIL' : 'PASS_WITH_CONDITIONS');
@@ -943,8 +1129,10 @@ export function buildReleaseEvidence({
           sha256: qualityBarHash,
           source_prompt_sha256: qualityBar.source_prompt_sha256,
           criteria: qualityBar.criteria,
+          evaluation: qualityBarAssessment,
         }
       : null,
+    quality_bar_assessment: qualityBarAssessment,
     checks,
     criteria,
     limitations: [

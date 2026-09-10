@@ -85,3 +85,22 @@ o SHA publicado e todos os envelopes externos independentes.
 - O E2E finalizou `387 passed / 35 failed` em 422 testes. O detalhamento está no `EXECUTION_LOG.md`; inclui cinco falhas funcionais e 29 snapshots visuais. A validação de evidência de usabilidade também falhou com `invalid result totals`, corretamente, porque houve resultados inesperados.
 - O candidato local `0dc4809b3e06c8334667f39bf51c33e33c3c0f9` agrega as correções de timezone, concorrência de billing, argumentos Windows, baselines visuais reais e capacidade do pool de performance. As correções funcionais do E2E ainda estão em integração.
 - Gate strict local: `BLOCKED`, score `68`, crítico `54`, `open_p0=16`, `claim=NOT PROVEN`, `publication_allowed=false`. O relatório não declara `TRIPLE-A VERIFIED`, não autoriza deploy e não trata o CI #58 como verde.
+
+## Atualização corrente — candidato `1434514c`
+
+- `HEAD`/`origin/main`: `1434514c4e0ce88bc29d0feda28b09a61a08670f`, worktree limpo.
+- Correção E2E publicada em `c375b72b`: conjunto hospital-personas direcionado
+  `5/5` em `35.2s`. Controle de release publicado em `1434514c`: testes
+  direcionados `20/20`, envelope CI e provenance do manifest implementados.
+- A suíte workspace `pnpm test` concluiu sem falha observada na sessão local;
+  essa prova não substitui CI, runtime PostgreSQL/RLS, recovery, target,
+  browser/UAT ou autoridade externa.
+- CI #70 ([run 34490757429](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34490757429))
+  está pendente e `Release Artifacts` #50 ([run 34490858211](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34490858211))
+  foi pulado por depender de CI verde.
+- Gate agregado: `BLOCKED`, score `42`, crítico `20`, `open_p0=28`.
+  Quality bar avaliado diretamente: score `19`, crítico `17`, `open_p0=8`.
+
+O veredito permanece `NOT PROVEN`. A implementação do gate ficou mais
+transparente e estrita, mas não há base para afirmar `TRIPLE-A VERIFIED`,
+publicar artefatos ou fazer deploy.

@@ -58,3 +58,28 @@ no momento da observação; nenhum job pendente foi contado como PASS. Os P0 de
 PostgreSQL/RLS runtime, crash recovery, E2E/UAT, auditoria externa, imagens,
 branch protection e autoridade continuam abertos até haver envelopes atuais,
 verificáveis e vinculados ao SHA.
+
+## Scorecard corrente — candidato `1434514c`
+
+- `HEAD` e `origin/main` coincidem em `1434514c4e0ce88bc29d0feda28b09a61a08670f`;
+  worktree limpo.
+- O teste SPA direcionado passou `5/5` em `35.2s`; o conjunto de testes do
+  release-control passou `20/20`; `pnpm test` concluiu sem falha observada na
+  sessão local. O PostgreSQL temporário foi encerrado após a execução.
+- CI #70 ([run 34490757429](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34490757429))
+  está `in_progress`; `Release Artifacts` #50 ([run 34490858211](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34490858211))
+  foi pulado enquanto CI não está verde.
+- Gate agregado: `BLOCKED`, score `42`, crítico `20`, `open_p0=28`.
+- Quality bar derivado: score `19`, crítico `17`, `open_p0=8`.
+
+| Dimensão | Estado | Evidência/limitação |
+|---|---|---|
+| Prompt, baseline e controle documental | PASS local / PARTIAL operacional | Hash preservado; scorecard e logs atuais; sincronização completa de runbooks ainda não provada |
+| CI e Green Main | NOT PROVEN | CI #70 pendente; branch protection autenticada ausente |
+| Clínica, worker, RLS e auditoria | PARTIAL/NOT RUN | Implementação e testes locais existem; runtime clínico, crash recovery e RLS autenticado não foram fechados |
+| UX, E2E e UAT | PARTIAL/NOT RUN | E2E direcionada passa; cobertura ampla visual/a11y e UAT humano seguem abertas |
+| Recovery, observabilidade e performance alvo | NOT RUN | Sem drill autorizado/target evidence atual |
+| Supply chain, deploy e autoridade | PARTIAL/NOT RUN | Validators locais passam; attestations, deploy por digest no alvo e autoridade humana não comprovados |
+
+O quality bar permanece congelado em `docs/triple-a/QUALITY_BAR_V1.json`. Não há
+claim `TRIPLE-A VERIFIED`, autorização de release ou autorização de deploy.

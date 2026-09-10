@@ -14,6 +14,12 @@ data:
         ''|*[!A-Za-z0-9_]*) echo "Invalid PostgreSQL role name" >&2; exit 1 ;;
       esac
     }
+    : "${POSTGRES_API_PASSWORD:?POSTGRES_API_PASSWORD is required}"
+    : "${POSTGRES_WORKER_PASSWORD:?POSTGRES_WORKER_PASSWORD is required}"
+    if [ "$POSTGRES_API_PASSWORD" = "$POSTGRES_WORKER_PASSWORD" ]; then
+      echo "POSTGRES_API_PASSWORD and POSTGRES_WORKER_PASSWORD must be different" >&2
+      exit 1
+    fi
     validate_role_name "$POSTGRES_API_USER"
     validate_role_name "$POSTGRES_WORKER_USER"
     if [ "$POSTGRES_API_USER" = "$POSTGRES_WORKER_USER" ]; then
@@ -106,6 +112,12 @@ data:
     SELECT format('REVOKE DELETE, TRUNCATE ON TABLE public.%I FROM %I', 'laboratory_result_imports', runtime_role.role_name)
     FROM (VALUES (:'api_user'), (:'worker_user')) AS runtime_role(role_name)
     WHERE to_regclass('public.laboratory_result_imports') IS NOT NULL\gexec
+
+    -- Clinical workflow lifecycle evidence is append-only. Runtime roles retain
+    -- SELECT/INSERT from the broad tenant grant, but cannot rewrite or remove it.
+    SELECT format('REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I', 'clinical_workflow_task_events', runtime_role.role_name)
+    FROM (VALUES (:'api_user'), (:'worker_user')) AS runtime_role(role_name)
+    WHERE to_regclass('public.clinical_workflow_task_events') IS NOT NULL\gexec
 
     SELECT format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I', candidate.table_name, runtime_role.role_name)
     FROM (

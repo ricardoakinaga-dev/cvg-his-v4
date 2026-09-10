@@ -9,9 +9,14 @@ set -eu
 # API and worker must never share a login credential. The legacy runtime role
 # remains provisioned for controlled migrations/rollback compatibility only.
 POSTGRES_API_USER="${POSTGRES_API_USER:-cvg_api}"
-POSTGRES_API_PASSWORD="${POSTGRES_API_PASSWORD:-$POSTGRES_RUNTIME_PASSWORD}"
+: "${POSTGRES_API_PASSWORD:?POSTGRES_API_PASSWORD is required}"
 POSTGRES_WORKER_USER="${POSTGRES_WORKER_USER:-cvg_worker}"
-POSTGRES_WORKER_PASSWORD="${POSTGRES_WORKER_PASSWORD:-$POSTGRES_RUNTIME_PASSWORD}"
+: "${POSTGRES_WORKER_PASSWORD:?POSTGRES_WORKER_PASSWORD is required}"
+
+if [ "$POSTGRES_API_PASSWORD" = "$POSTGRES_WORKER_PASSWORD" ]; then
+  echo "POSTGRES_API_PASSWORD and POSTGRES_WORKER_PASSWORD must be different" >&2
+  exit 1
+fi
 
 validate_role_name() {
   case "$1" in
@@ -104,6 +109,16 @@ SELECT format(
   :'runtime_user'
 )
 WHERE to_regclass('public.laboratory_result_imports') IS NOT NULL;
+\gexec
+
+-- Clinical workflow lifecycle evidence is append-only. Runtime roles retain
+-- SELECT/INSERT from the broad tenant grant, but cannot rewrite or remove it.
+SELECT format(
+  'REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I',
+  'clinical_workflow_task_events',
+  :'runtime_user'
+)
+WHERE to_regclass('public.clinical_workflow_task_events') IS NOT NULL;
 \gexec
 
 -- Remove broad DML from every installer/governance table. The API receives

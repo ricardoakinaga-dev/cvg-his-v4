@@ -32,11 +32,11 @@
       "acceptance_summary": "release:triple-a e rc:evidence:triple-a agregam checks atuais, vinculam commit/digests e falham sem evidência obrigatória.",
       "evidence_refs": ["scripts/run-triple-a-release-gate.mjs", "scripts/generate-image-attestation-evidence.mjs", "tests/unit/infra/triple-a-release-gate.test.ts", "docs/triple-a/12-release-gate.md"],
       "next_action": {
-        "id": "TRIPLE-A-RELEASE-CONTROL:REPRODUCE-CI49-FAILURES",
-        "kind": "REPRODUCE",
-        "summary": "Reproduzir e corrigir os failures terminais do CI #49 antes de qualquer nova decisão de release.",
-        "target": "https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34431492523; .agent/verification.jsonl",
-        "completion_signal": "Unit, Performance, Visual, E2E SPA e Windows contract passam em um run terminal no SHA candidato, seguido de novo gate estrito."
+        "id": "TRIPLE-A-RELEASE-CONTROL:OBSERVE-CI-1434514C",
+        "kind": "VERIFY",
+        "summary": "Observar o CI #70 do candidato 1434514c e só então reconciliar o gate estrito; o run de Release Artifacts foi corretamente pulado enquanto CI não está verde.",
+        "target": "https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34490757429; .agent/verification.jsonl",
+        "completion_signal": "Os 16 jobs obrigatórios terminam com sucesso no mesmo SHA, a evidência CI tipada é gerada, e o gate estrito reexecutado sem evidência externa stale."
       }
     },
     {

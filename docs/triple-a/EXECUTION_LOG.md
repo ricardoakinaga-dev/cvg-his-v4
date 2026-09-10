@@ -145,3 +145,42 @@ Cada nova rodada deve registrar commit, comando ou observação, resultado, limi
   GitHub Actions. O resultado local não é promovido a evidência externa, e o
   candidato ainda precisa de push e de um run remoto terminal para confirmar
   Performance, Integration, E2E e Windows.
+
+## 2026-09-10 — Controle de release e reteste no candidato `1434514c`
+
+- `c375b72b` corrigiu o seletor E2E do campo obrigatório de nome de arquivo para
+  o nome acessível do textbox; o conjunto hospital-personas direcionado passou
+  `5/5` em `35.2s` no PostgreSQL descartável.
+- `1434514c` adicionou envelope tipado para evidência do CI remoto, verificação
+  por API do run e dos 16 jobs obrigatórios, binding do gate à evidência local,
+  precedência explícita de execução da suíte e provenance de source/migrations,
+  attestations, SBOM e evidências no manifest de release.
+- Os testes direcionados de infraestrutura passaram `20/20`; `node --check`,
+  `pnpm docs:validate`, `pnpm validate:supply-chain`,
+  `pnpm validate:deploy-surface`, `pnpm complexity:check`, `pnpm lint`,
+  `pnpm validate:migration-source`, `pnpm validate:openapi`,
+  `pnpm validate:rls`, `pnpm validate:namespaces` e
+  `pnpm validate:dependencies` passaram. A suíte workspace `pnpm test`
+  concluiu sem falha observada na sessão local; a limitação continua sendo
+  que isso não fecha as provas externas/operacionais do prompt.
+- O CI #70 (`34490757429`) está em execução para o SHA exato `1434514c`;
+  `Release Artifacts` #50 (`34490858211`) foi pulado enquanto o CI não está
+  verde. O gate strict com execução pulada permanece `BLOCKED`,
+  `score=42`, `critical=20`, `open_p0=28`; a avaliação direta dos 16 critérios
+  do quality bar ficou em `score=19`, `critical=17`, `open_p0=8`. Nenhum claim
+  de certificação é emitido.
+- O cluster PostgreSQL temporário da E2E foi encerrado. Nenhum ambiente
+  produtivo, dado clínico real, credencial externa ou drill destrutivo foi
+  acionado.
+
+## Verificação clínica canônica antes do commit — 2026-09-10 12:22:51 -03:00
+
+- A jornada API canônica `e2e/tests/jornada-clinica-canonica.spec.ts` foi executada contra PostgreSQL descartável e passou `1/1` em `3,4s`.
+- O cenário confirmou owner → patient → appointment/queue → encounter → triage com destino `in_care` → prontuário/prescrição assinada → pedido diagnóstico → alta/follow-up → fechamento e sincronização de queue/appointment.
+- A causa encontrada foi corrigida em `apps/api/src/server.ts`: criação e alteração de triagem agora aguardam a fila de persistência do encontro dentro do escopo transacional.
+- API server: `65/65`; workspace completo: `pnpm test` com API `581/581`; contratos infra: `33/33` Vitest + `8/8` Node; build, lint, documentação, complexidade, Helm estático e validators passaram.
+- O PostgreSQL foi encerrado após o teste. Esta é evidência local précommit; não substitui CI remoto terminalmente verde, governança de branch, RLS/runtime alvo, drills de recuperação, attestations, UAT ou autoridade de release.
+
+**Estado:** `BLOCKED / NOT PROVEN`. Próxima ação: observar a conclusão do CI
+#70, registrar os jobs no ledger e executar a próxima rodada de críticos/runtime
+sem transformar documentação ou teste local em prova externa.

@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   scoreCriteria,
+  evaluateQualityBar,
   validateCiEvidenceEnvelope,
   validateExternalEvidenceEnvelope,
   verifyPublishedImageAttestations,
@@ -17,6 +18,29 @@ import {
 } from '../../../scripts/run-triple-a-release-gate.mjs';
 
 describe('Triple-A release gate scoring', () => {
+  it('evaluates frozen quality-bar criteria from current evidence instead of copying frozen statuses', () => {
+    const result = evaluateQualityBar({
+      rootDir: process.cwd(),
+      qualityBar: {
+        quality_bar_id: 'fixture-quality-bar',
+        criteria: [
+          { id: 'BASE-001', area: 'baseline', priority: 'P0', description: 'prompt', status: 'NOT_EVALUATED' },
+          { id: 'MAIN-001', area: 'main', priority: 'P0', description: 'main', status: 'NOT_EVALUATED' },
+        ]
+      },
+      criteria: [
+        { id: 'PROMPT-HASH', area: 'Baseline', priority: 'P0', status: 'PASS', evidence_refs: ['prompt'] },
+        { id: 'EXTERNAL-PROMPT-HASH', area: 'Baseline', priority: 'P0', status: 'PASS', evidence_refs: ['external'] },
+        { id: 'CI-REMOTE', area: 'CI', priority: 'P0', status: 'NOT_RUN', evidence_refs: [] },
+      ]
+    });
+
+    expect(result.criteria[0].frozen_status).toBe('NOT_EVALUATED');
+    expect(result.criteria[0].status).toBe('PASS');
+    expect(result.criteria[1].status).toBe('NOT_RUN');
+    expect(result.open_p0).toBe(1);
+  });
+
   it('keeps critical score separate and counts every open P0', () => {
     const result = scoreCriteria([
       { id: 'p0-pass', priority: 'P0', status: 'PASS' },

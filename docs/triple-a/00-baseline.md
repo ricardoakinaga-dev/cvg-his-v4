@@ -2,9 +2,9 @@
 
 **Fotografia inicial:** 2026-09-09 · **HEAD:** `main@696d7dd5` · **Status:** `NOT PROVEN`
 
-**Reconciliação atual:** 2026-09-10T00:35:15-03:00 · **código candidato:** `main@cd7399f91bf3c3eda53e4598443acdbc9ff6d3b1` · **Status:** `BLOCKED / NOT PROVEN`
+**Reconciliação atual:** 2026-09-10T11:47:12-03:00 · **código candidato:** `main@1434514c4e0ce88bc29d0feda28b09a61a08670f` · **Status:** `BLOCKED / NOT PROVEN`
 
-O candidato atual contém as correções clínicas, de integração, observabilidade, backup, gate de SBOM e limpeza de processos publicadas após a fotografia inicial. O CI #49 terminou com failures em cinco jobs; artefatos e resultados ligados a SHAs anteriores permanecem históricos e não são reutilizados como prova atual.
+O candidato atual contém as correções clínicas, de integração, observabilidade, backup, gate de SBOM, limpeza de processos, seletor E2E acessível e binding tipado da evidência de CI publicadas após a fotografia inicial. O CI #70 ainda está em execução; artefatos e resultados ligados a SHAs anteriores permanecem históricos e não são reutilizados como prova atual.
 
 O prompt integral está salvo em [`MASTER_PROMPT.md`](./MASTER_PROMPT.md) e o hash conferido é `95270384800c87fcbe7e823a41a7b57834ddaac274914226745f7fdc5137197a`. O quality bar congelado antes da implementação está em [`QUALITY_BAR_V1.json`](./QUALITY_BAR_V1.json).
 
@@ -40,12 +40,14 @@ O programa segue para implementação controlada. Não há autorização nem evi
 - O replay idempotente grava e compara o ator, falha fechado para legado sem ator e revalida permissões nas famílias críticas mapeadas; runtime PostgreSQL/HTTP revogado ainda está aberto.
 - Diagnósticos, prontuário, atendimento e agenda receberam correções de contexto, anexos binários, semântica de tabs, erros visíveis e ações para itens ocultos; browser/Axe/UAT ainda não foram executados.
 
-## Atualização do candidato — 2026-09-10T00:35:15-03:00
+## Atualização do candidato — 2026-09-10T11:47:12-03:00
 
-- O código candidato local/remoto observado foi `cd7399f91bf3c3eda53e4598443acdbc9ff6d3b1`; worktree limpo e `origin/main` coincidente.
-- A suíte PostgreSQL descartável do workflow clínico passou `9/9`, mas os críticos atuais confirmam que isso não prova HTTP autenticado com roles canônicas, RLS em runtime, auditoria genérica ou a jornada clínica completa.
-- CI #49 (`https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34431492523`) terminou com failures em Unit, Performance/k6, Visual Regression, E2E SPA e Windows contract; main não é green.
-- O gate local atual retornou `PASS_WITH_CONDITIONS`, com `score=43`, `critical_score=23`, `open_p0=27` e `publication_allowed=false`.
+- O código candidato local/remoto observado é `1434514c4e0ce88bc29d0feda28b09a61a08670f`; o worktree está limpo e `origin/main` coincide.
+- O conjunto hospital-personas direcionado passou `5/5` em `35.2s`; os testes direcionados de controle de release passaram `20/20`; `pnpm test` concluiu sem falha observada na sessão local. Isso não prova HTTP autenticado com roles canônicas, RLS em runtime, auditoria genérica, jornada clínica completa, recovery ou UAT.
+- CI #70 ([run 34490757429](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34490757429)) está `in_progress` no SHA exato; `Release Artifacts` #50 foi pulado enquanto CI não está verde.
+- O gate local estrito com execução externa pulada retornou `BLOCKED`, com `score=42`, `critical_score=20`, `open_p0=28`, `claim=NOT PROVEN` e `publication_allowed=false`.
+
+Nenhuma dessas evidências autoriza `TRIPLE-A VERIFIED`. O PostgreSQL usado pela E2E era descartável e foi encerrado após o teste.
 
 ## Atualização do candidato corrente — 2026-09-10T08:23:05Z
 

@@ -113,6 +113,16 @@ this snapshot the following required runtime/external proofs remain open:
 **Baseline verdict:** `BLOCKED / NOT PROVEN`.  
 **Claim permitted:** none. `TRIPLE-A VERIFIED` is not asserted.
 
+## 2026-09-10 — Candidate `1434514c` / current release-control round
+
+- `HEAD` and `origin/main` coincide at `1434514c4e0ce88bc29d0feda28b09a61a08670f`; the worktree is clean. Commits `c375b72b` (accessible filename selector) and `1434514c` (typed CI evidence and release-manifest provenance) were pushed to `main`.
+- The focused SPA hospital-persona suite passed `5/5` in `35.2s`, including the previously hanging ultrasonographer upload path. The release-control unit set passed `20/20`; static validators and the complete workspace test command completed without a failure observed in the local session. These are local implementation evidence, not external release proof.
+- CI #70 ([run 34490757429](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34490757429)) is still `in_progress` for the exact candidate SHA. At the observation point, Secret Scan and Dependency Audit were successful; Typecheck and SAST were still running and dependent jobs had not all started. `Release Artifacts` #50 ([run 34490858211](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34490858211)) was skipped because its `workflow_run` condition requires successful CI.
+- `TRIPLE_A_SKIP_EXECUTION=1 pnpm release:triple-a` remains fail-closed with `BLOCKED`, `score=42`, `critical_score=20`, `open_p0=28`, `claim=NOT PROVEN` and `publication_allowed=false`. The generated ignored artifact is diagnostic only and is not a certification package.
+- A disposable PostgreSQL cluster used for the targeted E2E was stopped after verification. No production database, real patient/PHI data, external provider credential or shared destructive drill was used.
+
+The current external baseline therefore remains `BLOCKED / NOT PROVEN`. The next observation must replace the in-progress CI record with a terminal, exact-SHA job inventory before any release decision. Independent runtime clinical, worker crash, RLS, recovery, performance/soak, UAT, branch-governance, image-attestation and authority evidence remain open.
+
 ## Terminal reconciliation — CI #58 / local candidate
 
 Run [34454422885](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34454422885) reached a terminal `failure` for head SHA `a4a5658aa66200a70be709e986152fe61ffc0fe5`. The ten foundational jobs passed, while Unit Tests, E2E SPA, Visual Regression, Integration Tests, the Windows critical-process runner, and Performance failed.

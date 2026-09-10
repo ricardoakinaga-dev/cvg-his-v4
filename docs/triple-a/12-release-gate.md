@@ -21,3 +21,17 @@ envelope JSON autoassinado genérico permanece `PARTIAL`.
 No estado local atual, o gate continua honestamente bloqueado sem manifest,
 security evidence, CI, testes críticos, E2E, recovery, performance e deploy
 target vinculados ao candidato. Nenhum modo advisory autoriza publicação.
+
+## Avaliação corrente no candidato `1434514c`
+
+O gate também avalia os critérios do `QUALITY_BAR_V1.json` a partir das
+evidências do candidato. O arquivo congelado não é alterado: o artefato inclui
+`frozen_status` e o novo `quality_bar.evaluation`, evitando que status históricos
+sejam confundidos com prova corrente. A avaliação entra na decisão do gate e
+não reduz os thresholds de `97`, `95` e `open_p0=0`.
+
+No candidato `1434514c4e0ce88bc29d0feda28b09a61a08670f`, com execução externa
+explicitamente pulada, o agregado operacional foi `BLOCKED`, score `42`, score
+crítico `20` e `28` P0 abertos. A avaliação direta dos 16 critérios congelados
+foi score `19`, score crítico `17` e `8` P0 abertos. O resultado é diagnóstico,
+fail-closed e não autoriza publicação.

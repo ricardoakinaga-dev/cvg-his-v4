@@ -6,13 +6,15 @@
 **Prompt fonte:** [`docs/triple-a/MASTER_PROMPT.md`](../triple-a/MASTER_PROMPT.md)
 **Quality bar:** [`docs/triple-a/QUALITY_BAR_V1.json`](../triple-a/QUALITY_BAR_V1.json)
 
-## Reconciliação do candidato atual — 2026-09-10T00:35:15-03:00
+## Reconciliação do candidato atual — 2026-09-10T11:47:12-03:00
 
-- **Código candidato:** `main@cd7399f91bf3c3eda53e4598443acdbc9ff6d3b1`; worktree limpo e `origin/main` coincidente.
+- **Código candidato:** `main@1434514c4e0ce88bc29d0feda28b09a61a08670f`; worktree limpo e `origin/main` coincidente.
 - **Estado:** `BLOCKED / NOT PROVEN`. Nenhum claim `TRIPLE-A VERIFIED` é emitido.
-- **CI:** run #49 terminou com failure em Unit, Performance/k6, Visual Regression, E2E SPA e Windows contract; main não é green.
+- **CI:** run #70 (`34490757429`) está em execução; `Release Artifacts` #50 (`34490858211`) foi pulado porque o workflow exige CI verde.
 - **Evidência corrente:** os checks locais e o PostgreSQL descartável são úteis para os seus escopos, mas não fecham branch governance, HTTP/RLS autenticado, jornada clínica completa, UAT, restore/RPO/RTO, soak, target deploy ou autoridade de release.
-- **Gate:** execução local atual retornou `PASS_WITH_CONDITIONS`, `score=43`, `critical_score=23`, `open_p0=27` e `publication_allowed=false`.
+- **Gate:** execução local estrita com evidência externa pulada retornou `BLOCKED`, `score=42`, `critical_score=20`, `open_p0=28` e `publication_allowed=false`.
+
+O conjunto hospital-personas direcionado passou `5/5` em `35.2s`, os testes de infraestrutura do release-control passaram `20/20` e a suíte workspace local concluiu sem falha observada. Essas provas locais não substituem a execução remota nem os drills operacionais/externos.
 
 As seções abaixo preservam a fotografia histórica da Fase 0. Seus números e SHAs não devem ser interpretados como prova do candidato atual sem uma nova execução registrada no ledger.
 

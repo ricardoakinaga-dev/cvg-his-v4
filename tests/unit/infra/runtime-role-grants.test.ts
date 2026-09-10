@@ -8,6 +8,7 @@ import {
   API_SENSITIVE_TABLE_PRIVILEGES,
   DATABASE_RUNTIME_API_FUNCTIONS,
   RUNTIME_APPEND_ONLY_TABLES,
+  RUNTIME_IMMUTABLE_TABLES,
   RUNTIME_INSTALLER_MUTATIONS,
   RUNTIME_SENSITIVE_TABLES,
   RUNTIME_SETTLEMENT_FUNCTIONS,
@@ -47,6 +48,22 @@ const runtimeSecurityDefinerContractMigration = readFileSync(
 );
 
 describe('runtime PostgreSQL role grants', () => {
+  it('requires independent API and worker credentials in both role bootstraps', () => {
+    for (const script of roleScripts) {
+      expect(script.content, `${script.path} must require the API password`).toContain(
+        'POSTGRES_API_PASSWORD is required'
+      );
+      expect(script.content, `${script.path} must require the worker password`).toContain(
+        'POSTGRES_WORKER_PASSWORD is required'
+      );
+      expect(script.content, `${script.path} must reject shared passwords`).toContain(
+        'POSTGRES_API_PASSWORD and POSTGRES_WORKER_PASSWORD must be different'
+      );
+      expect(script.content).not.toContain('POSTGRES_API_PASSWORD:-$POSTGRES_RUNTIME_PASSWORD');
+      expect(script.content).not.toContain('POSTGRES_WORKER_PASSWORD:-$POSTGRES_RUNTIME_PASSWORD');
+    }
+  });
+
   it('binds the worker role variable before generating scoped revocations', () => {
     const shellScript = roleScripts.find(
       ({ path }) => path === 'infra/postgres/init-runtime-role.sh'
@@ -198,6 +215,35 @@ describe('runtime PostgreSQL role grants', () => {
     const appendOnlyPolicy = runtimeReconciler.indexOf('RUNTIME_APPEND_ONLY_TABLES');
     expect(appendOnlyPolicy).toBeGreaterThan(-1);
     expect(reconcilerLedgerRevoke).toBeGreaterThan(appendOnlyPolicy);
+  });
+
+  it('removes mutation privileges from immutable workflow lifecycle events after broad RLS grants', () => {
+    expect(RUNTIME_IMMUTABLE_TABLES).toEqual(['clinical_workflow_task_events']);
+
+    for (const script of roleScripts) {
+      const broadGrant = script.content.indexOf(
+        'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I'
+      );
+      const immutableRevoke = script.content.indexOf('REVOKE UPDATE, DELETE, TRUNCATE', broadGrant);
+      expect(
+        immutableRevoke,
+        `${script.path} must revoke workflow event mutations after broad RLS grants`
+      ).toBeGreaterThan(broadGrant);
+      expect(script.content.slice(immutableRevoke)).toContain('clinical_workflow_task_events');
+      expect(script.content.slice(immutableRevoke)).not.toMatch(
+        /GRANT [^\n]*(?:UPDATE|DELETE|TRUNCATE)[^\n]* ON TABLE public\.clinical_workflow_task_events/i
+      );
+    }
+
+    const reconcilerBroadGrant = runtimeReconciler.indexOf(
+      'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I'
+    );
+    const reconcilerImmutableRevoke = runtimeReconciler.indexOf(
+      'REVOKE UPDATE, DELETE, TRUNCATE',
+      reconcilerBroadGrant
+    );
+    expect(reconcilerImmutableRevoke).toBeGreaterThan(reconcilerBroadGrant);
+    expect(runtimeReconciler).toContain('RUNTIME_IMMUTABLE_TABLES');
   });
 
   it('defines the API auth/user contract without allowing service-principal mapping mutation', () => {
