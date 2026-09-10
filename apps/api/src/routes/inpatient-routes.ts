@@ -1026,18 +1026,28 @@ export async function handleInpatientRoutes(
             principal.user.accountId as never
           );
           await inpatient.waitForPersistence();
+          // The in-memory service may have observed a stale pending snapshot
+          // on a concurrent API instance. Return the committed row after the
+          // conditional database transition so equivalent requests converge
+          // on the same billingRecordId and updatedAt.
+          const authoritativeCharge = await inpatient.findDailyChargeById(
+            stayId as never,
+            chargeId as never,
+            principal.user.accountId as never
+          );
+          const responseCharge = authoritativeCharge ?? updatedCharge;
           await appendAuditAndWait(audit, {
             actorId: principal.user.id,
             accountId: principal.user.accountId,
             module: 'inpatient',
             action: 'bill_daily_charge',
             entityType: 'inpatient-daily-charge',
-            entityId: updatedCharge.id,
+            entityId: responseCharge.id,
             payloadSummary: `Inpatient daily charge billed`,
             riskLevel: 'high',
             correlationId
           });
-          return updatedCharge;
+          return responseCharge;
         }
       });
     } catch (error) {

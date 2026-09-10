@@ -748,6 +748,34 @@ export class InpatientService {
       .map((item) => ({ ...item }));
   }
 
+  /**
+   * Reads one daily charge from the durable repository when available.
+   *
+   * Concurrent billing requests can legitimately have different in-process
+   * snapshots. The HTTP command must serialize the response from the row that
+   * won the database transition, rather than returning a timestamp generated
+   * by a stale cache.
+   */
+  public async findDailyChargeById(
+    stayId: InpatientStayId,
+    chargeId: InpatientDailyChargeId,
+    accountId: AccountId
+  ): Promise<InpatientDailyChargeSummary | undefined> {
+    const stay = this.getOrThrow(stayId, accountId);
+    if (this.#dailyChargeRepository) {
+      const persisted = await this.#dailyChargeRepository.findByStayId(stayId);
+      const charge = persisted.find(
+        (item) => item.id === chargeId && this.isDailyChargeForStay(item, stay)
+      );
+      return charge ? { ...charge } : undefined;
+    }
+
+    const charge = (this.#dailyCharges.get(stayId) ?? []).find(
+      (item) => item.id === chargeId && this.isDailyChargeForStay(item, stay)
+    );
+    return charge ? { ...charge } : undefined;
+  }
+
   public listDailyChargeWorklist(
     accountId: AccountId,
     filters?: InpatientDailyChargeWorklistFilters

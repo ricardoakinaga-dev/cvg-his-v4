@@ -462,7 +462,11 @@ export class DatabaseInpatientDailyChargeRepository implements InpatientDailyCha
         .where(
           and(
             eq(inpatientDailyCharges.id, charge.id),
-            eq(inpatientDailyCharges.accountId, accountId)
+            eq(inpatientDailyCharges.accountId, accountId),
+            // Billing is a one-way transition. Re-check the state in the
+            // database so two API instances cannot overwrite the winner's
+            // timestamp with a later stale-cache write.
+            eq(inpatientDailyCharges.status, 'pending')
           )
         );
     });
