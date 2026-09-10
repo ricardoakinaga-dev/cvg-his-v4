@@ -21,7 +21,7 @@ function exported(): ReportExportSummary {
   };
 }
 
-test('worker report provider sends the durable delivery key and artifact', async () => {
+test('worker report provider sends the durable delivery key and artifact', { concurrency: false }, async () => {
   const previousKey = process.env.RESEND_API_KEY;
   const previousFrom = process.env.EMAIL_FROM;
   const previousEndpoint = process.env.REPORT_EMAIL_ENDPOINT;
@@ -70,14 +70,16 @@ test('worker report provider sends the durable delivery key and artifact', async
   }
 });
 
-test('worker report provider can use an explicit local endpoint in test environments', async () => {
+test('worker report provider can use an explicit local endpoint in test environments', { concurrency: false }, async () => {
   const previousKey = process.env.RESEND_API_KEY;
   const previousFrom = process.env.EMAIL_FROM;
   const previousEndpoint = process.env.REPORT_EMAIL_ENDPOINT;
+  const previousMock = process.env.EMAIL_MOCK_MODE;
   const previousFetch = globalThis.fetch;
   process.env.RESEND_API_KEY = 're_worker_test_key';
   process.env.EMAIL_FROM = 'reports@example.test';
   process.env.REPORT_EMAIL_ENDPOINT = 'http://127.0.0.1:43123/report-email';
+  delete process.env.EMAIL_MOCK_MODE;
 
   let requestedUrl: string | undefined;
   globalThis.fetch = (async (url) => {
@@ -106,10 +108,12 @@ test('worker report provider can use an explicit local endpoint in test environm
     else process.env.EMAIL_FROM = previousFrom;
     if (previousEndpoint === undefined) delete process.env.REPORT_EMAIL_ENDPOINT;
     else process.env.REPORT_EMAIL_ENDPOINT = previousEndpoint;
+    if (previousMock === undefined) delete process.env.EMAIL_MOCK_MODE;
+    else process.env.EMAIL_MOCK_MODE = previousMock;
   }
 });
 
-test('worker report provider remains explicit when production email is not configured', () => {
+test('worker report provider remains explicit when production email is not configured', { concurrency: false }, () => {
   const previousKey = process.env.RESEND_API_KEY;
   const previousFrom = process.env.EMAIL_FROM;
   const previousEndpoint = process.env.REPORT_EMAIL_ENDPOINT;
@@ -129,13 +133,15 @@ test('worker report provider remains explicit when production email is not confi
   }
 });
 
-test('worker report provider rejects a controlled endpoint in production-like environments', () => {
+test('worker report provider rejects a controlled endpoint in production-like environments', { concurrency: false }, () => {
   const previousKey = process.env.RESEND_API_KEY;
   const previousFrom = process.env.EMAIL_FROM;
   const previousEndpoint = process.env.REPORT_EMAIL_ENDPOINT;
+  const previousMock = process.env.EMAIL_MOCK_MODE;
   process.env.RESEND_API_KEY = 're_worker_test_key';
   process.env.EMAIL_FROM = 'reports@example.test';
   process.env.REPORT_EMAIL_ENDPOINT = 'http://127.0.0.1:43123/report-email';
+  delete process.env.EMAIL_MOCK_MODE;
 
   try {
     assert.throws(
@@ -149,5 +155,7 @@ test('worker report provider rejects a controlled endpoint in production-like en
     else process.env.EMAIL_FROM = previousFrom;
     if (previousEndpoint === undefined) delete process.env.REPORT_EMAIL_ENDPOINT;
     else process.env.REPORT_EMAIL_ENDPOINT = previousEndpoint;
+    if (previousMock === undefined) delete process.env.EMAIL_MOCK_MODE;
+    else process.env.EMAIL_MOCK_MODE = previousMock;
   }
 });

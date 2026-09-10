@@ -1014,7 +1014,10 @@ jobs:
           REDIS_URL: redis://localhost:6380
           RUNTIME_DISTRIBUTED_STATE_ENABLED: '1'
           AUTH_SECRET: e2e-ci-secret-key-do-not-use-in-production-12345678
-          AUTH_RATE_LIMIT_MAX_REQUESTS: '200'
+          # The full browser gate runs 419 serial tests and exercises the real
+          # login/refresh flow. Keep a finite CI-only budget large enough for
+          # that suite without changing the production default of 10.
+          AUTH_RATE_LIMIT_MAX_REQUESTS: '2000'
           API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
           PORT: '3001'
           NODE_ENV: test
@@ -1238,7 +1241,7 @@ jobs:
           REDIS_URL: redis://localhost:6380
           RUNTIME_DISTRIBUTED_STATE_ENABLED: '1'
           AUTH_SECRET: e2e-ci-secret-key-do-not-use-in-production-12345678
-          AUTH_RATE_LIMIT_MAX_REQUESTS: '200'
+          AUTH_RATE_LIMIT_MAX_REQUESTS: '2000'
           PORT: '3001'
           NODE_ENV: test
         run: |

@@ -76,7 +76,7 @@ describe('CI repository guardrails', () => {
         jobStart,
         nextJobOffset === -1 ? undefined : jobStart + 3 + nextJobOffset
       );
-      expect(job).toContain("AUTH_RATE_LIMIT_MAX_REQUESTS: '200'");
+      expect(job).toContain("AUTH_RATE_LIMIT_MAX_REQUESTS: '2000'");
     }
   });
 
