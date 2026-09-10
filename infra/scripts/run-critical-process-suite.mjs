@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { execFileSync } from 'node:child_process';
 import { closeSync, constants, existsSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, realpathSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -78,6 +79,33 @@ const SIGNAL_EXIT_CODES = {
 const PACKAGE_MANAGER_COMMAND = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 const APPROVED_TEST_DATABASE_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
 const TEST_DATABASE_NAME_PATTERN = /^cvg_his_v2_test(?:_[a-z0-9_]+)*$/;
+
+function resolveWindowsPackageManagerCommand() {
+  if (process.platform !== 'win32') return PACKAGE_MANAGER_COMMAND;
+
+  const configuredHome = process.env.PNPM_HOME;
+  if (typeof configuredHome === 'string' && configuredHome.trim() !== '') {
+    const configuredCommand = join(configuredHome, 'pnpm.cmd');
+    if (existsSync(configuredCommand)) return configuredCommand;
+  }
+
+  try {
+    const resolvedCommand = execFileSync('where.exe', ['pnpm.cmd'], {
+      encoding: 'utf8',
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'ignore']
+    })
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find(Boolean);
+    if (resolvedCommand) return resolvedCommand;
+  } catch {
+    // Keep the stable command name as a final fallback so cmd.exe can resolve
+    // it from PATH and the caller still receives a typed spawn failure.
+  }
+
+  return PACKAGE_MANAGER_COMMAND;
+}
 
 function resolveDefaultTestDatabaseUrl() {
   const url = new URL('postgres://localhost:5433/cvg_his_v2_test');
@@ -174,7 +202,7 @@ export function resolvePackageManagerInvocation(args) {
   }
 
   // pnpm.cmd is a batch file; CALL preserves its exit status through cmd.exe.
-  const commandLine = ['call', PACKAGE_MANAGER_COMMAND, ...args]
+  const commandLine = ['call', resolveWindowsPackageManagerCommand(), ...args]
     .map(quoteWindowsCommandArgument)
     .join(' ');
   return {

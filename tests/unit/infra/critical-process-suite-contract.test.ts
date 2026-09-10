@@ -121,6 +121,9 @@ describe('critical process proof execution contract', () => {
     expect(runner).toContain('sanitizeReportInPlace(reportPath, reportDirectory)');
     expect(runner).toContain('readBoundedReportText');
     expect(runner).toContain("'pnpm.cmd'");
+    expect(runner).toContain('resolveWindowsPackageManagerCommand');
+    expect(runner).toContain("execFileSync('where.exe'");
+    expect(runner).toContain('process.env.PNPM_HOME');
     expect(runner).toContain('process.env.ComSpec ||');
     expect(runner).toContain('resolveCriticalTestDatabaseUrl');
     expect(runner).toContain('DATABASE_URL: databaseUrl');
