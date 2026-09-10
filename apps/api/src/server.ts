@@ -5681,6 +5681,28 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
 
             if (pathname === '/encounters' && request.method === 'GET') {
               const principal = await requirePrincipal(request, 'encounters.read');
+              const hasPagination =
+                url.searchParams.has('page') ||
+                url.searchParams.has('pageSize') ||
+                url.searchParams.has('limit');
+              const allEncounters = encounters.listAll(principal.user.accountId);
+              let encounterItems = allEncounters;
+              if (hasPagination) {
+                const page = Number(url.searchParams.get('page') ?? '1');
+                // `limit` remains a supported legacy alias used by the
+                // benchmark profile; the public contract calls this pageSize.
+                const pageSize = Number(
+                  url.searchParams.get('pageSize') ?? url.searchParams.get('limit') ?? '20'
+                );
+                if (!Number.isSafeInteger(page) || page < 1) {
+                  throw new ValidationError('page must be a positive safe integer');
+                }
+                if (!Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 100) {
+                  throw new ValidationError('pageSize must be an integer between 1 and 100');
+                }
+                const start = (page - 1) * pageSize;
+                encounterItems = allEncounters.slice(start, start + pageSize);
+              }
               appendAudit(
                 principal.user.id,
                 principal.user.accountId,
@@ -5695,7 +5717,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               response.statusCode = 200;
               response.end(
                 JSON.stringify({
-                  items: encounters.listAll(principal.user.accountId)
+                  items: encounterItems
                 })
               );
               return;

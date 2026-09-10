@@ -12,7 +12,7 @@ import type {
   UpdateOwnerPatientLinkRequest
 } from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal, MasterSearchOwnerResult } from '@cvg-his-v2/shared-types';
-import { NotFoundError } from '@cvg-his-v2/shared-errors';
+import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
@@ -33,6 +33,30 @@ function json(response: ServerResponse, statusCode: number, payload: unknown): t
   response.setHeader('content-type', 'application/json');
   response.end(JSON.stringify(payload));
   return true;
+}
+
+function parsePatientsPagination(url: URL): { page: number; pageSize: number } | undefined {
+  if (
+    !url.searchParams.has('page') &&
+    !url.searchParams.has('pageSize') &&
+    !url.searchParams.has('limit')
+  ) {
+    return undefined;
+  }
+
+  const page = Number(url.searchParams.get('page') ?? '1');
+  // `limit` is retained for the legacy API and the benchmark profile; the
+  // canonical contract names the same field `pageSize`.
+  const pageSize = Number(
+    url.searchParams.get('pageSize') ?? url.searchParams.get('limit') ?? '20'
+  );
+  if (!Number.isSafeInteger(page) || page < 1) {
+    throw new ValidationError('page must be a positive safe integer');
+  }
+  if (!Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 100) {
+    throw new ValidationError('pageSize must be an integer between 1 and 100');
+  }
+  return { page, pageSize };
 }
 
 export async function handlePatientsRoutes(
@@ -156,6 +180,12 @@ export async function handlePatientsRoutes(
 
     if (status === 'active' || status === 'inactive' || status === 'deceased') {
       items = items.filter((p) => p.status === status);
+    }
+
+    const pagination = parsePatientsPagination(url);
+    if (pagination) {
+      const start = (pagination.page - 1) * pagination.pageSize;
+      items = items.slice(start, start + pagination.pageSize);
     }
 
     appendAudit(audit, {

@@ -278,6 +278,42 @@ test('handlePatientsRoutes GET /patients searches by tutor document and phone', 
   );
 });
 
+test('handlePatientsRoutes GET /patients applies pageSize and legacy limit aliases', async () => {
+  const pageResponse = new MockResponse();
+
+  await handlePatientsRoutes(
+    '/patients',
+    new MockRequest({ method: 'GET', url: '/patients?page=2&pageSize=1' }) as never,
+    pageResponse as never,
+    'corr-patients-pagination-page-size',
+    {
+      patients: createPatientsService(),
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.deepEqual(
+    pageResponse.bodyJson<{ items: Array<{ id: string }> }>().items.map((item) => item.id),
+    ['patient_mogeb6qv_5b0gq64z']
+  );
+
+  const legacyResponse = new MockResponse();
+  await handlePatientsRoutes(
+    '/patients',
+    new MockRequest({ method: 'GET', url: '/patients?page=1&limit=1' }) as never,
+    legacyResponse as never,
+    'corr-patients-pagination-limit',
+    {
+      patients: createPatientsService(),
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(legacyResponse.bodyJson<{ items: unknown[] }>().items.length, 1);
+});
+
 test('handlePatientsRoutes GET /owner-patient-links filters links by owner', async () => {
   const response = new MockResponse();
 
