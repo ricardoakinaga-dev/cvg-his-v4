@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { WorkflowTaskService } from '@cvg-his-v2/module-workflows';
+import { ForbiddenError } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
 import { handleWorkflowTaskRoutes } from './workflow-task-routes.js';
@@ -178,6 +179,34 @@ test('workflow task route permissions distinguish replay from normal task manage
   }))[0]!;
   await service.failClaim(claim, 'permanent failure');
 
+  const beforeDeniedReplay = await service.getOrThrow(task.accountId, task.id);
+  const eventsBeforeDeniedReplay = await service.events(task.accountId, task.id);
+  assert.equal(beforeDeniedReplay.status, 'dlq');
+  const deniedHandlers = handlers(service);
+  const permissionChecks: string[] = [];
+  deniedHandlers.requirePrincipal = (_request: unknown, permissionCode: string) => {
+    permissionChecks.push(permissionCode);
+    // Normal task operators may read/manage tasks, but cannot authorize replay.
+    if (!['workflow-tasks.read', 'workflow-tasks.manage'].includes(permissionCode)) {
+      throw new ForbiddenError('Replay permission is required');
+    }
+    return principal();
+  };
+  await assert.rejects(
+    handleWorkflowTaskRoutes(
+      `/workflow-tasks/${task.id}/replay`,
+      new MockRequest({ method: 'POST', url: `/workflow-tasks/${task.id}/replay` }) as never,
+      new MockResponse() as never,
+      'corr-http-replay-denied',
+      deniedHandlers
+    ),
+    ForbiddenError
+  );
+  assert.deepEqual(permissionChecks, ['workflow-tasks.replay']);
+  assert.deepEqual(await service.getOrThrow(task.accountId, task.id), beforeDeniedReplay);
+  assert.deepEqual(await service.events(task.accountId, task.id), eventsBeforeDeniedReplay);
+  assert.deepEqual(deniedHandlers.auditEntries, []);
+
   const response = new MockResponse();
   const routeHandlers = handlers(service, undefined, ['workflow-tasks.replay']);
   await handleWorkflowTaskRoutes(
@@ -188,4 +217,9 @@ test('workflow task route permissions distinguish replay from normal task manage
     routeHandlers
   );
   assert.equal(response.bodyJson<{ status: string }>().status, 'pending');
+  assert.deepEqual(routeHandlers.auditEntries, ['replay_task']);
+  assert.deepEqual(
+    (await service.events(task.accountId, task.id)).map((event) => event.eventType),
+    ['created', 'claimed', 'dead_lettered', 'replayed']
+  );
 });

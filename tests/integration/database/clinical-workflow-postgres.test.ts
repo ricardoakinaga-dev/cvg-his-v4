@@ -9,6 +9,7 @@ import {
   type WorkflowTaskSummary
 } from '@cvg-his-v2/module-workflows';
 import type { AccountId, CorrelationId, UserId } from '@cvg-his-v2/shared-types';
+import { ConflictError } from '@cvg-his-v2/shared-errors';
 
 import { activateRlsRole, setAccountContext } from '../../helpers/rls-helpers.js';
 import { getTestPool } from '../../db/db-admin.js';
@@ -27,6 +28,41 @@ type WorkflowFixture = {
 
 let fixture: WorkflowFixture;
 const pool = getTestPool();
+
+// Delay returning real PostgreSQL snapshots until all competing service calls
+// have read them. Persistence and conditional writes remain production code.
+class SynchronizedReadRepository extends DatabaseWorkflowTaskRepository {
+  private readBarrier?: (task: WorkflowTaskSummary | null) => Promise<void>;
+
+  synchronizeNextReads(participants: number): readonly (WorkflowTaskSummary | null)[] {
+    const snapshots: (WorkflowTaskSummary | null)[] = [];
+    let release!: () => void;
+    let fail!: (error: Error) => void;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const ready = new Promise<void>((resolve, reject) => {
+      release = resolve;
+      fail = reject;
+    });
+    this.readBarrier = async (task) => {
+      timeout ??= setTimeout(() => fail(new Error('Concurrent read barrier timed out')), 5_000);
+      snapshots.push(task);
+      if (snapshots.length === participants) {
+        this.readBarrier = undefined;
+        clearTimeout(timeout);
+        release();
+      }
+      await ready;
+    };
+    return snapshots;
+  }
+
+  override async findById(accountId: AccountId, taskId: WorkflowTaskSummary['id']) {
+    const barrier = this.readBarrier;
+    const task = await super.findById(accountId, taskId);
+    await barrier?.(task);
+    return task;
+  }
+}
 
 function input(
   idempotencyKey: string,
@@ -342,6 +378,159 @@ describe('clinical workflow control plane — PostgreSQL assurance', () => {
     expect((await service.events(fixture.accountA, task.id)).at(-1)?.eventType).toBe(
       'dead_lettered'
     );
+  });
+
+  it.each(['renew', 'retry', 'dead-letter'] as const)(
+    'rejects stale %s after takeover without changing the current lease or event history',
+    async (operation) => {
+      const repository = new DatabaseWorkflowTaskRepository(pool);
+      const { service } = serviceWithClock(repository);
+      const task = await createTask(service, fixture.accountA, fixture.userA, `stale-${operation}`);
+      const [stale] = await repository.claimDue({
+        accountId: fixture.accountA,
+        workerId: 'old-worker',
+        correlationId: correlation('old'),
+        now: '2026-09-09T10:00:00.100Z',
+        limit: 1,
+        leaseMs: 1_000
+      });
+      const [current] = await repository.claimDue({
+        accountId: fixture.accountA,
+        workerId: 'new-worker',
+        correlationId: correlation('new'),
+        now: laterAt,
+        limit: 1,
+        leaseMs: 10_000
+      });
+      expect(stale).toBeDefined();
+      expect(current).toBeDefined();
+      expect(current!.leaseToken).not.toBe(stale!.leaseToken);
+      const before = await service.getOrThrow(fixture.accountA, task.id);
+      const history = await service.events(fixture.accountA, task.id);
+      const event = {
+        eventType:
+          operation === 'retry' ? ('retry_scheduled' as const) : ('dead_lettered' as const),
+        schemaVersion: 1 as const,
+        source: 'clinical-workflow' as const,
+        actorUserId: fixture.userA,
+        correlationId: correlation('stale-mutation'),
+        occurredAt: '2026-09-09T10:00:03.000Z'
+      };
+      if (operation === 'renew') {
+        expect(await repository.renewClaim(stale!, laterAt, 60_000)).toBeNull();
+      } else if (operation === 'retry') {
+        expect(
+          await repository.retryClaim(stale!, '2026-09-09T10:01:00.000Z', 'stale retry', event)
+        ).toBe(false);
+      } else {
+        expect(await repository.moveToDeadLetter(stale!, 'stale DLQ', event)).toBe(false);
+      }
+      expect(await service.getOrThrow(fixture.accountA, task.id)).toEqual(before);
+      expect(await service.events(fixture.accountA, task.id)).toEqual(history);
+      expect(await repository.completeClaim(current!, { ...event, eventType: 'completed' })).toBe(
+        true
+      );
+      expect((await service.getOrThrow(fixture.accountA, task.id)).status).toBe('completed');
+      expect(
+        (await service.events(fixture.accountA, task.id)).map((entry) => entry.eventType)
+      ).toEqual(['created', 'claimed', 'claimed', 'completed']);
+    }
+  );
+
+  it('linearizes cancel versus complete with a single consistent terminal transition', async () => {
+    const repository = new SynchronizedReadRepository(pool);
+    const { service } = serviceWithClock(repository);
+    const task = await createTask(
+      service,
+      fixture.accountA,
+      fixture.userA,
+      'cancel-complete-race',
+      {
+        executionMode: 'manual'
+      }
+    );
+    const snapshots = repository.synchronizeNextReads(2);
+    const outcomes = await Promise.allSettled([
+      service.cancel(fixture.accountA, fixture.userA, task.id, 'clinical path closed'),
+      service.complete(fixture.accountA, fixture.userA, task.id)
+    ]);
+    const winners = outcomes.filter((outcome) => outcome.status === 'fulfilled');
+    expect(winners).toHaveLength(1);
+    expect(outcomes.filter((outcome) => outcome.status === 'rejected')).toHaveLength(1);
+    expect(snapshots).toEqual([task, task]);
+    for (const outcome of outcomes) {
+      if (outcome.status === 'rejected') expect(outcome.reason).toBeInstanceOf(ConflictError);
+    }
+    const finalTask = await service.getOrThrow(fixture.accountA, task.id);
+    expect(finalTask).toEqual(winners[0]!.value);
+    expect(['cancelled', 'completed']).toContain(finalTask.status);
+    expect(finalTask.revision).toBe(task.revision + 1);
+    const events = await service.events(fixture.accountA, task.id);
+    expect(events.map((event) => event.eventType)).toEqual(['created', finalTask.status]);
+    expect(
+      finalTask.status === 'completed' ? finalTask.cancelledAt : finalTask.completedAt
+    ).toBeUndefined();
+  });
+
+  it('linearizes concurrent replay and same-key creation while preserving the DLQ history', async () => {
+    const repository = new SynchronizedReadRepository(pool);
+    const { service, setNow } = serviceWithClock(repository);
+    const key = 'concurrent-replay-create';
+    const task = await createTask(service, fixture.accountA, fixture.userA, key, {
+      maxAttempts: 1
+    });
+    const [claim] = await repository.claimDue({
+      accountId: fixture.accountA,
+      workerId: 'replay-worker',
+      correlationId: correlation('replay'),
+      now: '2026-09-09T10:00:00.100Z',
+      limit: 1,
+      leaseMs: 10_000
+    });
+    setNow(laterAt);
+    expect(await service.failClaim(claim!, 'provider unavailable')).toBe(true);
+    const deadLettered = await service.getOrThrow(fixture.accountA, task.id);
+    const history = await service.events(fixture.accountA, task.id);
+    expect(history.map((event) => event.eventType)).toEqual([
+      'created',
+      'claimed',
+      'dead_lettered'
+    ]);
+    const snapshots = repository.synchronizeNextReads(8);
+    const [replays, creates] = await Promise.all([
+      Promise.allSettled(
+        Array.from({ length: 8 }, () => service.replay(fixture.accountA, fixture.userA, task.id))
+      ),
+      Promise.all(
+        Array.from({ length: 8 }, () =>
+          createTask(service, fixture.accountA, fixture.userA, key, { maxAttempts: 1 })
+        )
+      )
+    ]);
+    expect(replays.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
+    expect(replays.filter((outcome) => outcome.status === 'rejected')).toHaveLength(7);
+    expect(snapshots).toEqual(Array.from({ length: 8 }, () => deadLettered));
+    for (const outcome of replays) {
+      if (outcome.status === 'rejected') expect(outcome.reason).toBeInstanceOf(ConflictError);
+    }
+    expect(new Set(creates.map((created) => created.id))).toEqual(new Set([task.id]));
+    const replayed = await service.getOrThrow(fixture.accountA, task.id);
+    expect(replayed.status).toBe('pending');
+    expect(replayed.attempts).toBe(0);
+    expect(replayed.revision).toBe(deadLettered.revision + 1);
+    expect(replayed.idempotencyKey).toBe(key);
+    const events = await service.events(fixture.accountA, task.id);
+    expect(events.slice(0, history.length)).toEqual(history);
+    expect(events.map((event) => event.eventType)).toEqual([
+      'created',
+      'claimed',
+      'dead_lettered',
+      'replayed'
+    ]);
+    expect(
+      await createTask(service, fixture.accountA, fixture.userA, key, { maxAttempts: 1 })
+    ).toEqual(replayed);
+    expect(await service.events(fixture.accountA, task.id)).toEqual(events);
   });
 
   it('executes bounded retry, DLQ and authorized replay without duplicating the event trail', async () => {
