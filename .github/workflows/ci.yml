@@ -836,6 +836,7 @@ jobs:
           pnpm exec tsx packages/db/src/migrate.ts
           pnpm exec tsx packages/db/src/seed.ts
           pnpm benchmark:k6:seed
+          node infra/scripts/configure-performance-database.mjs
 
       - name: Start API
         env:

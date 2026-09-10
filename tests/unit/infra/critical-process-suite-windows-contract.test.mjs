@@ -11,6 +11,7 @@ import { runOwnedProcess } from '../../../infra/scripts/critical-process-suite-r
 const ciArtifactRoot = process.env.CRITICAL_PROCESS_ARTIFACT_DIR
   ? resolve(process.env.CRITICAL_PROCESS_ARTIFACT_DIR)
   : null;
+const windowsSupervisorStartupTimeoutMs = 1_000;
 
 function createContractArtifactDirectory(prefix) {
   if (!ciArtifactRoot) return mkdtempSync(join(tmpdir(), prefix));
@@ -80,7 +81,7 @@ test(
         label: 'windows-tree-contract'
       });
 
-      const readyDeadline = Date.now() + 500;
+      const readyDeadline = Date.now() + windowsSupervisorStartupTimeoutMs;
       while (!existsSync(readyPath) && Date.now() < readyDeadline) {
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
@@ -188,7 +189,7 @@ test(
         label: 'windows-exit-tree-contract'
       });
 
-      const readyDeadline = Date.now() + 500;
+      const readyDeadline = Date.now() + windowsSupervisorStartupTimeoutMs;
       while (!existsSync(readyPath) && Date.now() < readyDeadline) {
         await new Promise((resolve) => setTimeout(resolve, 10));
       }

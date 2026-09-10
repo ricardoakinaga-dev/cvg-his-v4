@@ -21,7 +21,7 @@ const scripts = packageJson.scripts ?? {};
 const vetusParity = spawnSync('node', ['scripts/check-vetus-parity.mjs'], {
   cwd: root,
   encoding: 'utf8',
-  stdio: ['ignore', 'pipe', 'pipe'],
+  stdio: ['ignore', 'pipe', 'pipe']
 });
 
 const requiredScripts = [
@@ -43,7 +43,7 @@ const requiredScripts = [
   ['test:e2e:spa:enterprise', 'E2E SPA Enterprise'],
   ['vetus:parity', 'Contrato estrito de paridade funcional Vetus'],
   ['rc:evidence', 'Pacote de evidencias Release Candidate'],
-  ['rc:evidence:strict', 'Pacote de evidencias Release Candidate em modo estrito'],
+  ['rc:evidence:strict', 'Pacote de evidencias Release Candidate em modo estrito']
 ];
 
 for (const [name, label] of requiredScripts) {
@@ -52,7 +52,7 @@ for (const [name, label] of requiredScripts) {
     item: label,
     status: scripts[name] ? 'PASS' : 'FAIL',
     evidence: scripts[name] ? `package.json:${name}` : `Script ausente: ${name}`,
-    action: scripts[name] ? '' : `Adicionar script ${name}.`,
+    action: scripts[name] ? '' : `Adicionar script ${name}.`
   });
 }
 
@@ -60,7 +60,7 @@ const enterpriseE2e = scripts['test:e2e:spa:enterprise'] ?? '';
 const requiredSpecs = [
   'e2e/spa/master-search-360-reception.spec.ts',
   'e2e/spa/master-search-360-mobile.spec.ts',
-  'e2e/spa/enterprise-surfaces-gate.spec.ts',
+  'e2e/spa/enterprise-surfaces-gate.spec.ts'
 ];
 
 for (const spec of requiredSpecs) {
@@ -71,7 +71,7 @@ for (const spec of requiredSpecs) {
     evidence: exists(spec)
       ? `Arquivo existe; ${enterpriseE2e.includes(spec) ? 'incluido' : 'nao incluido'} em test:e2e:spa:enterprise`
       : 'Arquivo ausente',
-    action: exists(spec) && enterpriseE2e.includes(spec) ? '' : 'Incluir o spec no gate Enterprise.',
+    action: exists(spec) && enterpriseE2e.includes(spec) ? '' : 'Incluir o spec no gate Enterprise.'
   });
 }
 
@@ -79,23 +79,33 @@ addCheck({
   area: 'Vetus',
   item: 'Contrato estrito de paridade funcional Vetus',
   status: vetusParity.status === 0 ? 'PASS' : 'FAIL',
-  evidence: vetusParity.status === 0
-    ? (vetusParity.stdout.match(/Functional parity: VERIFIED/)?.[0] ?? 'pnpm vetus:parity passou')
-    : (vetusParity.stderr.trim() || vetusParity.stdout.trim() || 'Falha ao executar matriz Vetus'),
-  action: vetusParity.status === 0 ? '' : 'Remover bloqueadores e adicionar provas comportamentais listadas por pnpm vetus:parity:audit.',
+  evidence:
+    vetusParity.status === 0
+      ? (vetusParity.stdout.match(/Functional parity: VERIFIED/)?.[0] ?? 'pnpm vetus:parity passou')
+      : vetusParity.stderr.trim() || vetusParity.stdout.trim() || 'Falha ao executar matriz Vetus',
+  action:
+    vetusParity.status === 0
+      ? ''
+      : 'Remover bloqueadores e adicionar provas comportamentais listadas por pnpm vetus:parity:audit.'
 });
 
 const ciPath = '.github/workflows/ci.yml';
 if (exists(ciPath)) {
   const ci = readText(ciPath);
-  const ciEvidence = inspectEnterpriseCi(ci, exists('playwright-spa.config.ts') ? readText('playwright-spa.config.ts') : '', requiredSpecs);
+  const ciEvidence = inspectEnterpriseCi(
+    ci,
+    exists('playwright-spa.config.ts') ? readText('playwright-spa.config.ts') : '',
+    requiredSpecs
+  );
   for (const [index, spec] of requiredSpecs.entries()) {
     addCheck({
       area: 'CI',
       item: `CI executa ${spec}`,
       status: ciEvidence.specs[index] ? 'PASS' : 'FAIL',
-      evidence: ciEvidence.specs[index] ? 'Invocacao completa da suite SPA e config incluem o spec (evidencia estatica)' : 'Inclusao do spec nao comprovada pelo comando/config de CI',
-      action: ciEvidence.specs[index] ? '' : 'Verificar comando e filtros da configuracao E2E SPA.',
+      evidence: ciEvidence.specs[index]
+        ? 'Invocacao completa da suite SPA e config incluem o spec (evidencia estatica)'
+        : 'Inclusao do spec nao comprovada pelo comando/config de CI',
+      action: ciEvidence.specs[index] ? '' : 'Verificar comando e filtros da configuracao E2E SPA.'
     });
   }
   addCheck({
@@ -105,7 +115,7 @@ if (exists(ciPath)) {
     evidence: !ciEvidence.blocking
       ? 'Step/job E2E SPA ausente, ambiguo ou permite continue-on-error'
       : 'Bloco Run SPA E2E tests falha o pipeline quando E2E falha',
-    action: ciEvidence.blocking ? '' : 'Exigir step/job E2E SPA unico e bloqueante.',
+    action: ciEvidence.blocking ? '' : 'Exigir step/job E2E SPA unico e bloqueante.'
   });
 } else {
   addCheck({
@@ -113,7 +123,7 @@ if (exists(ciPath)) {
     item: 'Workflow CI',
     status: 'FAIL',
     evidence: 'Arquivo .github/workflows/ci.yml ausente',
-    action: 'Criar workflow CI.',
+    action: 'Criar workflow CI.'
   });
 }
 
@@ -122,60 +132,89 @@ addCheck({
   area: 'Documentacao',
   item: 'Governanca da documentacao vigente',
   status: documentationErrors.length === 0 ? 'PASS' : 'FAIL',
-  evidence: documentationErrors.length === 0
-    ? 'Manifesto vigente, metadados e links validados; nao comprova execucao operacional'
-    : documentationErrors.join('; '),
-  action: documentationErrors.length === 0 ? '' : 'Corrigir os documentos vigentes e executar pnpm docs:validate.',
+  evidence:
+    documentationErrors.length === 0
+      ? 'Manifesto vigente, metadados e links validados; nao comprova execucao operacional'
+      : documentationErrors.join('; '),
+  action:
+    documentationErrors.length === 0
+      ? ''
+      : 'Corrigir os documentos vigentes e executar pnpm docs:validate.'
 });
 
 const lockPath = 'pnpm-lock.yaml';
 if (exists(lockPath)) {
   const lock = readText(lockPath);
-  const helperLines = lock
-    .split('\n')
-    .filter((line) => line.includes('vue-component-type-helpers'));
-  const hasUnexpectedHelperVersion = helperLines.some((line) => !line.includes('3.2.7'));
+  const helperPackageVersions = [...lock.matchAll(/^  vue-component-type-helpers@([^:]+):/gm)].map(
+    (match) => match[1]
+  );
+  const helperOverride = packageJson.pnpm?.overrides?.['vue-component-type-helpers'];
+  const hasExpectedHelperResolution =
+    helperOverride === '3.2.7' &&
+    helperPackageVersions.includes('3.2.7') &&
+    /^(?: {6})vue-component-type-helpers: 3\.2\.7$/m.test(lock);
   addCheck({
     area: 'Lockfile',
     item: 'vue-component-type-helpers fixado em 3.2.7',
-    status: helperLines.length > 0 && !hasUnexpectedHelperVersion ? 'PASS' : 'FAIL',
-    evidence: helperLines.length > 0 ? `${helperLines.length} entrada(s) verificadas` : 'Nenhuma entrada encontrada',
-    action: helperLines.length > 0 && !hasUnexpectedHelperVersion
-      ? ''
-      : 'Ajustar pnpm-lock.yaml para manter somente 3.2.7.',
+    status: hasExpectedHelperResolution ? 'PASS' : 'FAIL',
+    evidence:
+      helperPackageVersions.length > 0
+        ? `${helperPackageVersions.length} pacote(s) resolvido(s); override direto=${helperOverride ?? 'ausente'}; compatibilidade Vue Meta 2.2.x pode manter 2.2.12`
+        : 'Nenhuma entrada encontrada',
+    action: hasExpectedHelperResolution ? '' : 'Ajustar pnpm-lock.yaml para manter somente 3.2.7.'
   });
 }
 
 const warnItems = [
-  ['Homologacao', 'Evidencia de CI remoto verde', 'Confirmar execucao no GitHub Actions apos push.'],
-  ['Homologacao', 'Backup/restore em ambiente real', 'Executar pnpm ops:backup:check contra ambiente homolog/staging.'],
-  ['Homologacao', 'Deploy/cutover em ambiente real', 'Executar pnpm deploy:check e pnpm validate:helm com valores do ambiente alvo.'],
+  [
+    'Homologacao',
+    'Evidencia de CI remoto verde',
+    'Confirmar execucao no GitHub Actions apos push.'
+  ],
+  [
+    'Homologacao',
+    'Backup/restore em ambiente real',
+    'Executar pnpm ops:backup:check contra ambiente homolog/staging.'
+  ],
+  [
+    'Homologacao',
+    'Deploy/cutover em ambiente real',
+    'Executar pnpm deploy:check e pnpm validate:helm com valores do ambiente alvo.'
+  ]
 ];
 
 for (const [area, item, action] of warnItems) {
-  addCheck({ area, item, status: 'WARN', evidence: 'Depende de ambiente externo ou aceite operacional', action });
+  addCheck({
+    area,
+    item,
+    status: 'WARN',
+    evidence: 'Depende de ambiente externo ou aceite operacional',
+    action
+  });
 }
 
 const scoreWeights = { PASS: 1, WARN: 0.5, FAIL: 0 };
 const score = Math.round(
-  (checks.reduce((sum, check) => sum + scoreWeights[check.status], 0) / checks.length) * 100,
+  (checks.reduce((sum, check) => sum + scoreWeights[check.status], 0) / checks.length) * 100
 );
 
 const byStatus = checks.reduce(
   (acc, check) => ({ ...acc, [check.status]: (acc[check.status] ?? 0) + 1 }),
-  {},
+  {}
 );
 
 console.log('# Enterprise Readiness Check');
 console.log('');
 console.log(`Score: ${score}/100`);
-console.log(`PASS: ${byStatus.PASS ?? 0} | WARN: ${byStatus.WARN ?? 0} | FAIL: ${byStatus.FAIL ?? 0}`);
+console.log(
+  `PASS: ${byStatus.PASS ?? 0} | WARN: ${byStatus.WARN ?? 0} | FAIL: ${byStatus.FAIL ?? 0}`
+);
 console.log('');
 console.log('| Area | Item | Status | Evidence | Action |');
 console.log('| --- | --- | --- | --- | --- |');
 for (const check of checks) {
   console.log(
-    `| ${check.area} | ${check.item} | ${check.status} | ${check.evidence} | ${check.action || '-'} |`,
+    `| ${check.area} | ${check.item} | ${check.status} | ${check.evidence} | ${check.action || '-'} |`
   );
 }
 

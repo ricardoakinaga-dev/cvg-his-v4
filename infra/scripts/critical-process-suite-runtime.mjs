@@ -30,6 +30,10 @@ const GROUP_CLEANUP_HARD_GRACE_MS = 1_000;
 const WINDOWS_TREE_COMMAND_TIMEOUT_MS = 5_000;
 const WINDOWS_HELPER_CLOSE_GRACE_MS = 100;
 const WINDOWS_FORCE_RESERVE_MS = WINDOWS_TREE_COMMAND_TIMEOUT_MS * 2;
+// Windows PowerShell has a measurable cold-start cost on hosted runners. Keep
+// the child timeout finite while allowing the owned supervisor to bootstrap
+// before the timer starts judging the target process.
+const WINDOWS_SUPERVISOR_STARTUP_GRACE_MS = 1_000;
 const WINDOWS_TREE_CLEANUP_BUDGET_MS =
   TERMINATION_GRACE_MS + GROUP_CLEANUP_HARD_GRACE_MS + WINDOWS_FORCE_RESERVE_MS;
 const MAX_WINDOWS_TREE_PIDS = 256;
@@ -466,12 +470,13 @@ async function terminateWindowsSupervisorFallback(child, deadline, expectedRootI
   // Job Object. No WMI scan is needed after a successful supervisor close.
   if (!childIsAlive) return true;
 
-  // The supervisor is the process we created directly. Validate its creation
-  // identity in the handle-backed terminator, so a reused PID can never widen
-  // cleanup to an unrelated process.
-
+  // The supervisor is the process we created directly. Its PID is accepted
+  // only after the supervisor wrote the creation-time identity file and the
+  // PID matches the child returned by spawn(). Killing that owned supervisor
+  // closes its Job Object handle, whose KILL_ON_JOB_CLOSE limit reaps the
+  // target and every descendant without another PowerShell cold start.
   try {
-    if (!(await runWindowsIdentityTermination(expectedRootIdentity, deadline))) return false;
+    if (!terminateOwnedProcess(child, 'SIGTERM')) return false;
   } catch {
     return false;
   }
@@ -1251,7 +1256,9 @@ export function runOwnedProcess({
         });
     };
 
-    timeoutHandle = setTimeout(() => requestCleanup('timeout', 'SIGKILL'), timeoutMs);
+    const effectiveTimeoutMs =
+      process.platform === 'win32' ? timeoutMs + WINDOWS_SUPERVISOR_STARTUP_GRACE_MS : timeoutMs;
+    timeoutHandle = setTimeout(() => requestCleanup('timeout', 'SIGKILL'), effectiveTimeoutMs);
 
     try {
       onChildSpawn?.(child);
