@@ -10,11 +10,11 @@
   "engineering_tier": "T4_CRITICAL",
   "risk_level": "CRITICAL",
   "blast_radius": "CROSS_SYSTEM",
-  "status": "VERIFY",
+  "status": "BLOCKED",
   "active_execplan": ".agent/plans/triple-a-execplan.md",
   "active_task": "TRIPLE-A-RELEASE-CONTROL",
   "verification_state": "BLOCKED",
-  "repository_state": "main@9d7c43cec4e5d4068c1f92f2a0ed6ceda3d092a6; worktree clean; CI run #47 is non-terminal; strict gate for this SHA is pending",
+  "repository_state": "main@88857282027370aae003c62426c8b5a2aa9df8c5 code candidate; current evidence/control-plane reconciliation is versioned with this candidate; CI run #48 is non-terminal; strict gate for this SHA is pending",
   "instruction_scope_refs": [
     ".agent/plans/external-assurance-closure-execplan.md",
     "docs/triple-a/MASTER_PROMPT_EXTERNAL_CLOSURE.md",
@@ -26,11 +26,14 @@
     "docs/clinical/CLINICAL_SAFETY_INVARIANTS.md"
   ],
   "last_gate_record": null,
-  "last_event_id": "EVT-TRIPLE-A-RELEASE-CONTROL-OBSERVE-CI47-20260909",
-  "state_revision": 6,
+  "last_event_id": "EVT-TRIPLE-A-RELEASE-CONTROL-OBSERVE-CI48-20260909",
+  "state_revision": 7,
   "next_gate": "VERIFIED",
-  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:OBSERVE-CI-47",
-  "blocked_by": [],
+  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:OBSERVE-CI-48",
+  "blocked_by": [
+    "CI #48 (run 34431046431) for code candidate 88857282027370aae003c62426c8b5a2aa9df8c5 is still non-terminal",
+    "Branch governance, target deployment, runtime clinical/operations drills, image attestations and release authority remain unproven"
+  ],
   "human_approval_required": [
     "production deployment or rollback",
     "branch protection and organization-level required checks",
@@ -38,5 +41,5 @@
     "destructive backup/restore/chaos drills on shared infrastructure",
     "final release authority and Triple-A certification"
   ],
-  "updated_at": "2026-09-09T23:42:00-03:00"
+  "updated_at": "2026-09-09T23:56:15-03:00"
 }

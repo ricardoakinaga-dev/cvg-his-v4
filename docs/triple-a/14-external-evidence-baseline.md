@@ -12,12 +12,13 @@ historical [`MASTER_PROMPT.md`](./MASTER_PROMPT.md) and frozen
 original provenance. Evidence from the historical candidate is not reused as
 proof for this candidate.
 
-## Current candidate reconciliation — 2026-09-09T23:38:05-03:00
+## Current candidate reconciliation — 2026-09-09T23:56:15-03:00
 
-The current candidate is `9d7c43cec4e5d4068c1f92f2a0ed6ceda3d092a6`, with a
-clean worktree and matching `origin/main`. CI run #47 is still executing at
-[`34429888900`](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34429888900);
-therefore `main` is not yet classified as green. The prior run #46 and every
+The code candidate under verification is `88857282027370aae003c62426c8b5a2aa9df8c5`;
+the current evidence/control-plane reconciliation is versioned with this
+candidate. CI run #48 is still executing at
+[`34431046431`](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34431046431);
+therefore `main` is not yet classified as green. Prior runs #46 and #47 and every
 artifact bound to `1decbe1b` or earlier are stale for this candidate. The local
 strict gate must be rerun after CI completion, and the external obligations
 listed below remain open.
@@ -26,20 +27,20 @@ listed below remain open.
 
 | Probe | Result | Evidence |
 |---|---|---|
-| `git rev-parse HEAD` | PASS | `dcb731a196b499db246c5c53884c40547ec9e028` |
-| `git status --short --untracked-files=all` | PASS | Worktree limpo; `HEAD` e `origin/main` coincidem. |
+| Code candidate SHA | PASS | `88857282027370aae003c62426c8b5a2aa9df8c5` |
+| Evidence/control-plane reconciliation | PASS | Files are bound to the code candidate and validated by `.agent/verification.jsonl#VER-TRIPLE-A-BASELINE-20260909-CURRENT-888-FINAL`. |
 | Local strict release gate | BLOCKED / NOT PROVEN | `artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json`: `score=43`, `critical_score=23`, `open_p0=27`, `publication_allowed=false`. |
 | Prompt byte identity | PASS | `cmp` and SHA-256 against the supplied attachment. |
 
 ## Remote GitHub state
 
 The repository is public, the default branch is `main`, and Actions is active.
-The latest push for the observed candidate created executable jobs. The public
-run page was observed without authenticated logs:
+The latest code-candidate push created executable jobs. The public run page was
+observed without authenticated logs:
 
 | Workflow | Run | Result | Public evidence |
 |---|---:|---|---|
-| CI | `34418126020` / run 38 | `IN_PROGRESS` at snapshot; Secret Scan and Dependency Audit green, Typecheck running, remaining jobs queued | [run](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34418126020) |
+| CI | `34431046431` / run 48 | `IN_PROGRESS`; terminal conclusion and all required checks are not yet available | [run](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34431046431) |
 
 The earlier pre-fix run identified a concrete defect, which is now addressed by
 the current candidate:
@@ -86,7 +87,7 @@ this snapshot the following required runtime/external proofs remain open:
 
 ## Ordered next action
 
-1. Observe CI run 38 to completion; do not call it green until jobs/checks have
+1. Observe CI run 48 to completion; do not call it green until jobs/checks have
    completed successfully on the exact new SHA.
 2. Reconcile branch governance with authenticated evidence or retain
    `NOT PROVEN`.

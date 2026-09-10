@@ -11,7 +11,7 @@
       "dependencies": [],
       "owner": "lead",
       "acceptance_summary": "Baseline atual, quality bar, evidência e classificação P0/P1/P2 publicados sem alegações não comprovadas.",
-      "evidence_refs": ["docs/triple-a/00-baseline.md", "docs/engineering/TRIPLE_A_BASELINE.md", ".agent/verification.jsonl#VER-TRIPLE-A-BASELINE-20260909-CURRENT"],
+      "evidence_refs": ["docs/triple-a/00-baseline.md", "docs/engineering/TRIPLE_A_BASELINE.md", ".agent/verification.jsonl#VER-TRIPLE-A-BASELINE-20260909-CURRENT", ".agent/verification.jsonl#VER-TRIPLE-A-BASELINE-20260909-CURRENT-888-FINAL"],
       "next_action": {
         "id": "TRIPLE-A-BASELINE:REOPEN",
         "kind": "REOPEN",
@@ -25,18 +25,18 @@
       "title": "Construir gate agregador de release e manifest imutável",
       "stage": "BUILD",
       "priority": "P0",
-      "status": "VERIFY",
+      "status": "BLOCKED",
       "origin": "MASTER_PROMPT_FASES_1_2_8_9",
       "dependencies": ["TRIPLE-A-BASELINE"],
       "owner": "lead",
       "acceptance_summary": "release:triple-a e rc:evidence:triple-a agregam checks atuais, vinculam commit/digests e falham sem evidência obrigatória.",
       "evidence_refs": ["scripts/run-triple-a-release-gate.mjs", "scripts/generate-image-attestation-evidence.mjs", "tests/unit/infra/triple-a-release-gate.test.ts", "docs/triple-a/12-release-gate.md"],
       "next_action": {
-        "id": "TRIPLE-A-RELEASE-CONTROL:OBSERVE-CI-47",
+        "id": "TRIPLE-A-RELEASE-CONTROL:OBSERVE-CI-48",
         "kind": "WAIT",
-        "summary": "Observar o CI #47 no SHA atual até o estado terminal e registrar cada conclusão sem reutilizar o run anterior.",
-        "target": "https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34429888900; .agent/verification.jsonl",
-        "completion_signal": "Run #47 terminou, seus jobs foram reconciliados e o gate estrito foi reexecutado no mesmo SHA."
+        "summary": "Observar o CI #48 no SHA candidato até o estado terminal e registrar cada conclusão sem reutilizar os runs anteriores.",
+        "target": "https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34431046431; .agent/verification.jsonl",
+        "completion_signal": "Run #48 terminou, seus jobs foram reconciliados e o gate estrito foi reexecutado no mesmo SHA."
       }
     },
     {
