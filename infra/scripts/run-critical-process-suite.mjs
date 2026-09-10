@@ -173,7 +173,10 @@ export function resolvePackageManagerInvocation(args) {
     return { command: PACKAGE_MANAGER_COMMAND, args };
   }
 
-  const commandLine = [PACKAGE_MANAGER_COMMAND, ...args].map(quoteWindowsCommandArgument).join(' ');
+  // pnpm.cmd is a batch file; CALL preserves its exit status through cmd.exe.
+  const commandLine = ['call', PACKAGE_MANAGER_COMMAND, ...args]
+    .map(quoteWindowsCommandArgument)
+    .join(' ');
   return {
     command: process.env.ComSpec || process.env.COMSPEC || 'cmd.exe',
     args: ['/d', '/s', '/c', commandLine]
