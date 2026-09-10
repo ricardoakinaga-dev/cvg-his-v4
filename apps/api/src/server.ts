@@ -93,8 +93,7 @@ import type {
   CorrelationId,
   ModuleName,
   SchedulingAppointmentSummary,
-  AccountId,
-  SessionSummary
+  AccountId
 } from '@cvg-his-v2/shared-types';
 
 import {
@@ -4174,7 +4173,6 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   registerChaosExperimentOnce(chaos, providerFailureExperiment);
 
   const accessTokenSynchronizationErrors = new WeakMap<IncomingMessage, AppError>();
-  const requestAuthoritativeSessions = new WeakMap<IncomingMessage, SessionSummary>();
   const requestCorrelationIds = new WeakMap<IncomingMessage, string>();
   const requestRoles = new WeakMap<IncomingMessage, readonly string[]>();
   const server = createServer((request: IncomingMessage, response: ServerResponse) => {
@@ -4393,8 +4391,6 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             const session = await auth.getSession(accessToken, correlationId);
             accountId = session.accountId;
             userId = session.userId;
-            // Reuse the request's authoritative session snapshot at the final guard.
-            requestAuthoritativeSessions.set(request, session);
           } catch (error) {
             accessTokenSynchronizationErrors.set(
               request,
@@ -8136,14 +8132,15 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       throw synchronizationError;
     }
 
-    // Reuse the synchronized snapshot; fallback remains fail-closed. Full
-    // handler-wide linearization still belongs to the database transaction/policy layer.
-    const session =
-      requestAuthoritativeSessions.get(request) ??
-      (await auth.getSession(
-        accessToken,
-        requestCorrelationIds.get(request) ?? createCorrelationId('auth-guard')
-      ));
+    // The request-level synchronization above is an optimization for tenant
+    // resolution. Re-read the authoritative session at the final guard so
+    // this decision cannot use a profile assembled before the access-control
+    // snapshot was refreshed. Full handler-wide linearization still belongs
+    // to the database transaction/policy layer.
+    const session = await auth.getSession(
+      accessToken,
+      requestCorrelationIds.get(request) ?? createCorrelationId('auth-guard')
+    );
     await acquireAuthorizationTransactionLock(request, session.accountId);
     await accessControl.ensureFreshForRequest(session.accountId);
     const principal = auth.authenticateAccessToken(accessToken);
