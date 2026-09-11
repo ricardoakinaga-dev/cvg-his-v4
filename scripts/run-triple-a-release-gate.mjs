@@ -1175,11 +1175,30 @@ export function buildReleaseEvidence({
     ));
 
   const qualityBarHash = qualityBarExists ? sha256(qualityBarPath) : null;
+  const declaredPromptPath = qualityBar && typeof qualityBar.source_prompt === 'string'
+    ? qualityBar.source_prompt
+    : null;
+  const promptPath = declaredPromptPath ? resolve(rootDir, declaredPromptPath) : null;
+  const promptHashMatches = Boolean(
+    declaredPromptPath
+      && promptPath
+      && existsSync(promptPath)
+      && typeof qualityBar.source_prompt_sha256 === 'string'
+      && qualityBar.source_prompt_sha256 === sha256(promptPath)
+  );
   const externalPromptPath = resolve(rootDir, 'docs/triple-a/MASTER_PROMPT_EXTERNAL_CLOSURE.md');
   const externalPromptSha = existsSync(externalPromptPath) ? sha256(externalPromptPath) : null;
   const criteria = [
     criterion('QUALITY-BAR', 'Baseline', 'P0', 'Quality bar existe no repositório.', qualityBarExists ? 'PASS' : 'FAIL', qualityBarExists ? ['docs/triple-a/QUALITY_BAR_V1.json'] : []),
-    criterion('PROMPT-HASH', 'Baseline', 'P0', 'Prompt fonte permanece byte-a-byte preservado.', qualityBarHash && readJson(qualityBarPath).source_prompt_sha256 === sha256(resolve(rootDir, 'docs/triple-a/MASTER_PROMPT.md')) ? 'PASS' : 'FAIL', ['docs/triple-a/MASTER_PROMPT.md']),
+    criterion(
+      'PROMPT-HASH',
+      'Baseline',
+      'P0',
+      'A fonte de prompt declarada pelo quality bar permanece byte-a-byte preservada.',
+      promptHashMatches ? 'PASS' : 'FAIL',
+      declaredPromptPath ? [declaredPromptPath] : ['docs/triple-a/QUALITY_BAR_V1.json'],
+      promptHashMatches ? [] : ['A fonte declarada ou seu SHA-256 não corresponde ao arquivo presente no repositório.'],
+    ),
     criterion(
       'EXTERNAL-PROMPT-HASH',
       'Baseline',

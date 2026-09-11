@@ -7,24 +7,42 @@
 
       <div class="client-selector__tabs" role="tablist" aria-label="Fluxo de cliente">
         <button
+          id="client-selector-tab-registered"
           type="button"
+          role="tab"
           class="client-selector__tab"
           :class="{ 'client-selector__tab--active': activeTab === 'registered' }"
+          :aria-selected="activeTab === 'registered'"
+          aria-controls="client-selector-panel-registered"
+          :tabindex="activeTab === 'registered' ? 0 : -1"
           @click="activeTab = 'registered'"
+          @keydown="onTabKeydown($event, 'registered')"
         >
           Clientes Cadastrados
         </button>
         <button
+          id="client-selector-tab-new"
           type="button"
+          role="tab"
           class="client-selector__tab"
           :class="{ 'client-selector__tab--active': activeTab === 'new' }"
+          :aria-selected="activeTab === 'new'"
+          aria-controls="client-selector-panel-new"
+          :tabindex="activeTab === 'new' ? 0 : -1"
           @click="activeTab = 'new'"
+          @keydown="onTabKeydown($event, 'new')"
         >
           Novo Cliente
         </button>
       </div>
 
-      <template v-if="activeTab === 'registered'">
+      <section
+        v-if="activeTab === 'registered'"
+        id="client-selector-panel-registered"
+        role="tabpanel"
+        aria-labelledby="client-selector-tab-registered"
+        tabindex="0"
+      >
         <div class="client-selector__search">
           <DsInput
             id="client-search"
@@ -48,30 +66,37 @@
           description="Ajuste a busca ou abra a aba de novo cliente para cadastrar um tutor dentro do fluxo."
         />
 
-        <div v-else class="client-selector__list">
-          <button
+        <div v-else class="client-selector__list" role="list" aria-label="Clientes cadastrados">
+          <article
             v-for="owner in owners"
             :key="owner.id"
-            type="button"
             class="client-card"
+            role="listitem"
             :class="{ 'client-card--selected': selectedOwnerId === owner.id }"
-            @click="selectedOwnerId = owner.id"
           >
-            <div class="client-card__header">
-              <div>
-                <strong>{{ owner.fullName }}</strong>
-                <div class="client-card__meta">
-                  <span>{{ owner.documentId || 'Documento não informado' }}</span>
-                  <span>{{ primaryContactLabel(owner) }}</span>
+            <button
+              type="button"
+              class="client-card__select"
+              :aria-pressed="selectedOwnerId === owner.id"
+              :aria-label="`Selecionar cliente ${owner.fullName}`"
+              @click="selectedOwnerId = owner.id"
+            >
+              <div class="client-card__header">
+                <div>
+                  <strong>{{ owner.fullName }}</strong>
+                  <div class="client-card__meta">
+                    <span>{{ owner.documentId || 'Documento não informado' }}</span>
+                    <span>{{ primaryContactLabel(owner) }}</span>
+                  </div>
                 </div>
+                <span class="client-card__status">{{ owner.status === 'active' ? 'Ativo' : 'Inativo' }}</span>
               </div>
-              <span class="client-card__status">{{ owner.status === 'active' ? 'Ativo' : 'Inativo' }}</span>
-            </div>
 
-            <div class="client-card__body">
-              <span>ID: {{ owner.id }}</span>
-              <span>{{ owner.financialResponsible ? 'Responsável financeiro' : 'Contato operacional' }}</span>
-            </div>
+              <div class="client-card__body">
+                <span>ID: {{ owner.id }}</span>
+                <span>{{ owner.financialResponsible ? 'Responsável financeiro' : 'Contato operacional' }}</span>
+              </div>
+            </button>
 
             <div class="client-card__actions" @click.stop>
               <DsButton variant="ghost" size="sm" @click="toggleDetails(owner.id)">
@@ -102,7 +127,7 @@
                 </div>
               </div>
             </div>
-          </button>
+          </article>
         </div>
 
         <div v-if="totalPages > 1" class="client-selector__pagination">
@@ -114,9 +139,15 @@
             Próxima
           </DsButton>
         </div>
-      </template>
+      </section>
 
-      <template v-else>
+      <section
+        v-else
+        id="client-selector-panel-new"
+        role="tabpanel"
+        aria-labelledby="client-selector-tab-new"
+        tabindex="0"
+      >
         <div class="client-selector__new-form">
           <DsInput id="client-name" v-model="draft.fullName" label="Nome completo" required />
           <div class="client-selector__new-grid">
@@ -132,7 +163,7 @@
             é vincular ou criar o paciente e definir horário, profissional e serviço.
           </p>
         </div>
-      </template>
+      </section>
     </div>
 
     <template #footer>
@@ -189,6 +220,7 @@ const pageSize = 6;
 const totalPages = ref(1);
 const ownerPatients = ref<Record<string, PatientSummary[]>>({});
 const patientLookupLoading = ref<Record<string, boolean>>({});
+const clientTabs = ['registered', 'new'] as const;
 
 const draft = reactive({
   fullName: '',
@@ -296,6 +328,20 @@ function applySearch() {
   page.value = 1;
   appliedSearch.value = searchDraft.value;
   void loadOwners();
+}
+
+function onTabKeydown(event: KeyboardEvent, currentTab: (typeof clientTabs)[number]) {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+  event.preventDefault();
+  const currentIndex = clientTabs.indexOf(currentTab);
+  const nextIndex = event.key === 'Home'
+    ? 0
+    : event.key === 'End'
+      ? clientTabs.length - 1
+      : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + clientTabs.length) % clientTabs.length;
+  const nextTab = clientTabs[nextIndex];
+  activeTab.value = nextTab;
+  requestAnimationFrame(() => document.getElementById(`client-selector-tab-${nextTab}`)?.focus());
 }
 
 function changePage(nextPage: number) {
@@ -443,7 +489,22 @@ async function createOwnerAndContinue() {
   padding: 16px;
   display: grid;
   gap: 12px;
+}
+
+.client-card__select {
+  width: 100%;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  background: transparent;
   cursor: pointer;
+  border-radius: 10px;
+}
+
+.client-card__select:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus, 0 0 0 3px rgba(37, 99, 235, 0.35));
 }
 
 .client-card--selected {

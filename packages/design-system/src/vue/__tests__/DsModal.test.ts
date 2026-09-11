@@ -38,6 +38,7 @@ describe('DsModal.vue', () => {
     expect(dialog.attributes('aria-labelledby')).toMatch(/^ds-modal-/);
     expect(dialog.attributes('aria-describedby')).toMatch(/^ds-modal-/);
     expect(wrapper.get('.ds-modal__close').attributes('type')).toBe('button');
+    expect(wrapper.get('.ds-modal__close').attributes('aria-label')).toBe('Fechar');
 
     const firstAction = wrapper.get('#first-action');
     firstAction.element.focus();

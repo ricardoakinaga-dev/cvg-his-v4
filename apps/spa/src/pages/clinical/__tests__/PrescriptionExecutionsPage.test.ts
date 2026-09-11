@@ -281,6 +281,18 @@ describe('PrescriptionExecutionsPage', () => {
     wrapper.unmount();
   });
 
+  it('links the create toggle to its accessible region', async () => {
+    const Page = (await import('../PrescriptionExecutionsPage.vue')).default;
+    const wrapper = mount(Page);
+    await flushPromises();
+
+    const toggle = wrapper.findAll('button').find(button => button.text() === 'Nova execução')!;
+    expect(toggle.attributes('aria-controls')).toBe('prescription-execution-create-panel');
+    await toggle.trigger('click');
+    expect(wrapper.find('#prescription-execution-create-panel').attributes('role')).toBe('region');
+    wrapper.unmount();
+  });
+
   it('keeps the latest detail when requests finish out of order', async () => {
     const first = (await mockExecutionList())[0];
     const second = { ...first, id: 'exec-2', medicationName: 'Dipirona' };

@@ -7,7 +7,10 @@ script escreve `artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json`, separa modo
 advisory de strict e só emite `TRIPLE-A VERIFIED` quando todos os critérios
 passarem no mesmo SHA. O `QUALITY_BAR_V1.json` é uma referência congelada de
 thresholds e proveniência; seus estados históricos não são reciclados como
-falhas do candidato atual.
+falhas do candidato atual. O campo `source_prompt` é a fonte de identidade do
+prompt para o gate: o script resolve esse caminho dentro do repositório e
+compara seu SHA-256 com `source_prompt_sha256`, falhando fechado se a fonte
+faltar ou divergir.
 
 O workflow de release roda uma garantia strict de pré-publicação antes do
 primeiro `push: true`. Essa etapa bloqueia o candidato usando os checks locais,

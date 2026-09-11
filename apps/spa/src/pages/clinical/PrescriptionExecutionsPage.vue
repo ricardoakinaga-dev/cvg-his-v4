@@ -29,7 +29,12 @@
         <strong>Paciente {{ selectedEncounter.patientId }}</strong>
         <small>Tutor {{ selectedEncounter.ownerId || 'Não informado' }}</small>
       </div>
-      <DsButton :disabled="formDisabled || !prescriptions.length" :aria-expanded="createOpen" @click="createOpen = !createOpen">{{ createOpen ? 'Fechar formulário' : 'Nova execução' }}</DsButton>
+      <DsButton
+        :disabled="formDisabled || !prescriptions.length"
+        :aria-expanded="createOpen"
+        aria-controls="prescription-execution-create-panel"
+        @click="createOpen = !createOpen"
+      >{{ createOpen ? 'Fechar formulário' : 'Nova execução' }}</DsButton>
     </section>
     <DsAlert v-if="contextError" variant="danger">
       {{ contextError }} <DsButton variant="secondary" size="sm" @click="loadData">Tentar novamente</DsButton>
@@ -39,7 +44,13 @@
     <p v-else-if="!encounters.length && !contextError" class="context-message">Nenhum atendimento disponível. Abra um atendimento para acompanhar as execuções.</p>
     <p v-else-if="selectedEncounter && !prescriptions.length && !contextError" class="context-message">Nenhuma prescrição disponível neste atendimento. Consulte o prontuário para conferir as prescrições.</p>
 
-    <div v-if="createOpen" class="create-panel">
+    <div
+      v-if="createOpen"
+      id="prescription-execution-create-panel"
+      class="create-panel"
+      role="region"
+      aria-label="Nova execução de prescrição"
+    >
       <DsCard title="Nova execução">
         <form class="form-grid" @submit.prevent="submitExecution">
           <DsInput :disabled="formDisabled" v-model="form.clinicalEntryId" type="select" label="Prescrição vinculada" required>

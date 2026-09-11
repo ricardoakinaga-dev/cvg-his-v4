@@ -1,6 +1,11 @@
 # State of Art — rastreabilidade das 76 fases
 
-Fonte normativa: [prompt preservado](./MASTER_PROMPT_STATE_OF_ART.md).
+Fonte da missão desta execução: [prompt State of Art preservado](./MASTER_PROMPT_STATE_OF_ART.md).
+O quality bar mantém como fonte congelada o [prompt histórico](./MASTER_PROMPT.md),
+declarado em `QUALITY_BAR_V1.json`; o gate valida o caminho e o SHA declarados
+pelo próprio quality bar. Os dois documentos são preservados deliberadamente:
+o primeiro contém a missão expandida desta execução e o segundo mantém a
+proveniência da régua congelada sem misturar candidatos ou alterar thresholds.
 A tabela mantém o escopo completo. “NOT PROVEN” significa que a aceitação
 integral da fase não foi demonstrada no candidato corrente; não significa
 que o código esteja ausente. Evidência local, CI e alvo são avaliados separadamente.

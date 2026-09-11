@@ -80,6 +80,42 @@ describe('AppointmentClientSelectorModal', () => {
     expect(wrapper.emitted('selected')?.[0]?.[0]).toMatchObject({ id: 'owner-1' });
   });
 
+  it('exposes a keyboard-operable tablist and independent client actions', async () => {
+    const Component = (await import('../AppointmentClientSelectorModal.vue')).default;
+    const wrapper = mount(Component, {
+      props: { open: true },
+      global: {
+        stubs: {
+          DsModal: {
+            template: '<div><slot /><slot name="footer" /></div>',
+            props: ['open', 'title', 'size']
+          }
+        }
+      }
+    });
+
+    await flushPromises();
+
+    const tabs = wrapper.findAll('[role="tab"]');
+    expect(tabs).toHaveLength(2);
+    expect(tabs[0].attributes('aria-controls')).toBe('client-selector-panel-registered');
+    expect(tabs[0].attributes('aria-selected')).toBe('true');
+    expect(tabs[1].attributes('tabindex')).toBe('-1');
+
+    const card = wrapper.find('.client-card');
+    expect(card.element.tagName).toBe('ARTICLE');
+    expect(card.find('.client-card__select').attributes('aria-pressed')).toBe('true');
+    expect(card.findAll('button')).toHaveLength(2);
+
+    await tabs[0].trigger('keydown', { key: 'ArrowRight' });
+    expect(wrapper.findAll('[role="tab"]')[1].attributes('aria-selected')).toBe('true');
+
+    await tabs[1].trigger('click');
+    expect(wrapper.find('#client-selector-panel-new').attributes('aria-labelledby')).toBe(
+      'client-selector-tab-new'
+    );
+  });
+
   it('creates a new owner from the inline tab and continues the flow', async () => {
     const Component = (await import('../AppointmentClientSelectorModal.vue')).default;
     const wrapper = mount(Component, {

@@ -251,8 +251,8 @@ onBeforeUnmount(() => {
   font-size: 24px;
   cursor: pointer;
   color: var(--color-text-secondary, #475569);
-  width: 40px;
-  height: 40px;
+  width: max(44px, var(--touch-min, 44px));
+  height: max(44px, var(--touch-min, 44px));
   padding: 0;
   border-radius: var(--radius-md, 6px);
   line-height: 1;
