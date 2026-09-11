@@ -539,3 +539,11 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - A falha foi reproduzida localmente; as duas entradas foram atualizadas para os bytes publicados e `node scripts/critical-source-manifest.test.mjs` passou `2/2`.
 - O commit `bb03b74a513a6ab8ced2e4fb1cb2c6cf77ae276e` foi publicado por fast-forward, sem force-push. `HEAD` e `origin/main` coincidem e a branch de rollback permanece preservada.
 - O CI exato [#34634177739](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34634177739) está `pending`; nenhum resultado é promovido antes do estado terminal. Estado: **BLOCKED / NOT PROVEN**.
+
+## 2026-09-11T22:45:00Z — Execução local corrente no snapshot `3054d638`
+
+- `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` executou o gate estrito no snapshot `3054d6388becd9a262b2cd45fadbabc086c1ed75`: `BLOCKED`, score `55`, critical `57`, `15` P0 abertos, `publication_allowed=false`. O critério `CMD-17 Unit tests` passou; os critérios externos permanecem `NOT_RUN`.
+- A execução local crítica com PostgreSQL efêmero passou `66` arquivos e `615` testes. A suíte de processos críticos, com os binários Redis locais explicitamente fixados, passou `11/11` cenários não-skipped: setup, laboratório, SIGKILL/reclaim, restart, concorrência de caixa, settlement PIX, worker, webhook e workflow task.
+- As duas jornadas clínicas canônicas de Playwright passaram `2/2` com PostgreSQL/Redis locais e o usuário seed válido. Essas provas são bounded à sessão e não substituem o envelope de CI, o target ou UAT.
+- O CI [#130](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064) terminou `failure` no commit documental; `15/16` jobs passaram e somente `Performance (k6 SLOs)` falhou no [job 103443316221](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064/job/103443316221). O CI funcional [#129](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250) teve o mesmo padrão. Nenhum threshold foi relaxado e nenhuma métrica inacessível foi inventada.
+- O veredito continua **BLOCKED / NOT PROVEN**. Manifest/security evidence de publicação, backup/restore, runtime no target, envelopes externos de recovery/E2E/workflow/RLS/worker/auditoria, governança, attestation, UAT e autoridade de release permanecem P0 abertos.

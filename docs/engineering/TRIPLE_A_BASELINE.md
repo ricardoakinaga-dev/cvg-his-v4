@@ -1,14 +1,14 @@
 # CVG HIS — Triple-A Baseline
 
-## Reconciliação corrente — 2026-09-11T22:12:14Z
+## Reconciliação corrente — 2026-09-11T22:45:00Z
 
-- **Snapshot de código:** `68600d6a55dcf18bd04c28ff3ee7528cc686efdb`; a documentação deste parecer acompanha o candidato e o commit anterior `55ff8a5250d20f2dbd26c4572095599be485fb69` permanece disponível para rollback.
-- **CI:** [#129](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250) terminou `failure` com 15/16 jobs aprovados; somente Performance falhou. Windows, E2E SPA e os demais checks publicados passaram.
+- **Snapshot de evidência:** `3054d6388becd9a262b2cd45fadbabc086c1ed75`; o código funcional avaliado está em `68600d6a55dcf18bd04c28ff3ee7528cc686efdb` e a branch `origin/fix/state-of-art-ci-assurance` permanece em `fe5406c2` para rollback reversível.
+- **CI:** [#130](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064) e [#129](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250) terminaram `failure` com `15/16` jobs aprovados; somente `Performance (k6 SLOs)` falhou em cada SHA. Nenhum threshold foi relaxado.
 - **Estado:** **BLOCKED / NOT PROVEN**. Nenhum score histórico é transferido e nenhum claim é permitido.
-- **Gate estrito:** `pnpm release:triple-a` executado no SHA atual retornou `BLOCKED`, score `54`, critical `54`, `16` P0 abertos e `publication_allowed=false`; a avaliação derivada do quality bar foi `31/33/7`.
-- **Local:** checks de docs, namespaces, migration source, OpenAPI, RLS estático, deploy surface, Helm estático, supply chain, dependências, schema clínico, secrets, complexidade, typecheck, lint e build passaram; a cobertura executou 2.525 testes com 1 skipped. Docker, PostgreSQL descartável e o binário Helm não estão disponíveis nesta sessão.
-- **Mudanças de controle:** o candidato mantém o guard de identidade crítica dentro do orçamento congelado de 8.335 linhas físicas e preserva a prova canônica de internação, métricas clínicas agregadas e relações ARIA estáveis.
-- **Performance:** o job remoto falhou em `Run k6 benchmark`/`Check SLO results`; o artefato está vinculado ao run, mas suas métricas detalhadas exigem credencial. Nenhuma threshold foi alterada e a causa determinística de código não foi comprovada. O próximo ciclo deve coletar pressão de pool/DB/CPU e breakdown por check.
+- **Gate estrito:** `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` retornou `BLOCKED`, score `55`, critical `57`, `15` P0 abertos e `publication_allowed=false`; a avaliação derivada do quality bar foi `31/33/7`.
+- **Local:** `pnpm test` passou; a execução crítica local passou `66/615` testes PostgreSQL, `11/11` processos críticos com Redis pinned e `2/2` jornadas clínicas canônicas. Docker e o binário Helm continuam indisponíveis nesta sessão; PostgreSQL e Redis locais foram usados explicitamente.
+- **Mudanças de controle:** o candidato mantém o guard de identidade crítica dentro do orçamento congelado e preserva a política fail-closed de produtores de tarefas de workflow, a prova canônica de internação, métricas clínicas agregadas e relações ARIA estáveis.
+- **Performance:** os dois CIs falharam somente no job k6; os artefatos detalhados exigem acesso autenticado. A análise independente não comprovou causa determinística de código; o próximo ciclo deve coletar pressão de pool/DB/CPU e breakdown por check.
 - **Externo ainda aberto:** branch governance, Windows nativo reproduzido, RLS/runtime no alvo, workflow PostgreSQL, worker crash recovery, recovery/soak, restore/RPO/RTO, deploy/rollback, attestation, UAT e autoridade de release.
 
 As seções seguintes preservam a fotografia histórica e não devem ser lidas como evidência do SHA atual sem uma execução nova vinculada ao commit.

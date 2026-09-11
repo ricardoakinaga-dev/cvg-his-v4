@@ -1,45 +1,52 @@
 # Evidência de execução corrente — State of Art
 
-Observado em `2026-09-11T22:12:14Z` no checkout
-`68600d6a55dcf18bd04c28ff3ee7528cc686efdb`, com `origin/main` coincidente e
-worktree limpo durante a execução do gate; a documentação deste parecer é um
-commit de evidência posterior. O commit anterior é
-`55ff8a5250d20f2dbd26c4572095599be485fb69`.
+Observado em `2026-09-11T22:45:00Z` no checkout
+`3054d6388becd9a262b2cd45fadbabc086c1ed75`, com `HEAD`, `origin/main` e
+`origin/HEAD` coincidentes. O worktree ficou limpo após as execuções; os
+artefatos de gate permanecem ignorados pelo Git.
 
 ## Validações locais do candidato
 
 | Escopo | Resultado |
 | --- | --- |
-| Gate estrito | `BLOCKED`, score `54`, critical `54`, open P0 `16`, `publication_allowed=false` |
-| Checks locais | Docs, namespaces, migration source, OpenAPI, RLS estático, deploy surface, Helm estático, supply-chain pins, dependências, schema clínico, secrets, complexidade, typecheck, lint e build: PASS |
-| Suíte workspace | `pnpm test:coverage`: 232 arquivos, 2.525 testes passados, 1 skipped; statements/lines `82,44%`, branches `82,29%`, functions `85,14%` |
-| E2E clínico | `2/2` em PostgreSQL/Redis local; a instância local não é o target do CI |
-| SPA focada | `32/32`; lint da SPA passou |
-| Evidência frontend | suíte visual remota do CI #126 passou; testes existentes cobrem axe, 390×844 e 1280×720, mas UAT humano e aceite do hospital continuam ausentes |
+| Gate estrito | `BLOCKED`, score `55`, critical `57`, open P0 `15`, `publication_allowed=false` |
+| Checks agregados | Documentation, namespaces, migration source, OpenAPI, RLS estático, deploy surface, Helm estático, supply-chain pins, dependências, schema clínico, secrets, complexidade, typecheck, lint e build: PASS |
+| Suíte workspace | `pnpm test` terminou com exit 0; o relatório do gate registra a suíte API com `592 pass`, `0 fail` |
+| Integração PostgreSQL | `pnpm test:critical`: `66` arquivos e `615` testes aprovados; banco efêmero removido |
+| Processos críticos | `pnpm test:critical:process`: `11/11` cenários não-skipped aprovados com Redis local pinned; bancos efêmeros removidos |
+| E2E clínico | `2/2` jornadas canônicas aprovadas em PostgreSQL/Redis local com o usuário seed real |
 
-## CI remoto no SHA exato
+As provas locais exercitam migrações `0000`–`0169`, seed, RLS, concorrência,
+idempotência, leases/fencing, outbox, pagamentos, laboratório, worker,
+SIGKILL/restart, webhook e workflow task. São evidências bounded da sessão e
+não equivalem a CI verde, target produtivo, UAT ou aprovação humana.
+
+## CI remoto no SHA documentado
 
 O [CI #129](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250)
-terminou `failure` com 15/16 jobs aprovados. Unit, Integration, E2E SPA,
-Visual, API Contract, segurança, typecheck, lint, build e Windows passaram. O
-job [Performance](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250/job/103435372609)
-falhou. O artefato e a limitação de acesso estão em
-[critic-performance-assurance-20260911.md](./critic-performance-assurance-20260911.md);
-thresholds não foram alteradas.
+do SHA funcional `68600d6a` terminou `failure` com 15/16 jobs aprovados; apenas
+Performance falhou. A reconciliação está em
+[critic-performance-assurance-20260911.md](./critic-performance-assurance-20260911.md).
+
+O commit documental atual `3054d638` também foi executado pelo [CI #130](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064),
+que terminou `failure` com o mesmo padrão: os checks de código passaram e
+`Performance (k6 SLOs)` falhou no [job 103443316221](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064/job/103443316221).
+Nenhuma métrica de artefato inacessível foi inventada e nenhum threshold foi
+relaxado.
 
 ## Gate estrito
 
-`pnpm release:triple-a` executou os checks locais e escreveu
-`artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json` com `commit_sha` igual ao
-SHA acima. O artefato é diagnóstico e ignorado pelo Git. Manifesto de release,
-security evidence e todas as provas externas sem envelope atual permaneceram
-falhos ou `NOT_RUN`; nenhum envelope foi promovido como certificação.
+`TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` executou documentação, validações
+estáticas, typecheck, lint, build e a suíte workspace no SHA acima. O JSON
+`artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json` registrou `CMD-17 Unit tests`
+como PASS, mas os critérios externos continuam `NOT_RUN`; por isso o gate
+permaneceu bloqueado e não autoriza publicação.
 
 ## Limitações
 
-Continuam sem prova no mesmo boundary de release: CI terminal verde, logs
-autenticados do benchmark, Windows nativo reproduzido, branch protection,
-RLS runtime no alvo, workflow PostgreSQL de release, worker crash recovery,
-deploy/rollback, restore/RPO/RTO, attestation, soak 24/72h, tracing/pool no
-target, UAT humano e autoridade de release. O claim `TRIPLE-A VERIFIED`
-permanece proibido.
+Continuam sem prova no boundary de release: CI terminal verde, manifest e
+security evidence de publicação completos, backup/restore, RLS runtime no
+target, workflow PostgreSQL de release, worker crash recovery como envelope
+externo, E2E/visual de CI, integridade de auditoria, deploy/rollback,
+attestation, soak 24/72h, observabilidade no target, branch protection, UAT
+humano e autoridade de release. O claim `TRIPLE-A VERIFIED` permanece proibido.
