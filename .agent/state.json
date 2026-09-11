@@ -18,7 +18,7 @@
   "active_execplan": ".agent/plans/external-assurance-closure-execplan.md",
   "active_task": "TRIPLE-A-RELEASE-CONTROL",
   "verification_state": "PARTIAL",
-  "repository_state": "main and origin/main are synchronized at 83d01e9c60c3027b6068aa1d10a50f7f5c585296; functional code 59a63087 had exact CI run 34602927442 green 16/16, while exact HEAD CI run 34606095261 is terminal failure with 15/16 jobs and Performance failing at Run k6 benchmark/Check SLO results; bounded local evidence and focused accessibility/gate tests pass without replacing target evidence; rollback branch origin/fix/state-of-art-ci-assurance remains preserved",
+  "repository_state": "main and origin/main are synchronized at e8d7eaec35004c9492db78920c8652c8171bfd1e; exact HEAD CI run 34609488994 is terminal failure with 15/16 jobs and Performance failing at Run k6 benchmark/Check SLO results; bounded local evidence and focused accessibility/gate tests pass without replacing target evidence; rollback branch origin/fix/state-of-art-ci-assurance remains preserved",
   "instruction_scope_refs": [
     ".agent/plans/external-assurance-closure-execplan.md",
     "docs/triple-a/MASTER_PROMPT_EXTERNAL_CLOSURE.md",
@@ -34,12 +34,12 @@
     "docs/triple-a/16-requirement-traceability.md"
   ],
   "last_gate_record": null,
-  "last_event_id": "EVT-TRIPLE-A-RELEASE-CONTROL-CI115-TERMINAL-20260911",
-  "state_revision": 22,
+  "last_event_id": "EVT-TRIPLE-A-RELEASE-CONTROL-CI116-TERMINAL-20260911",
+  "state_revision": 23,
   "next_gate": "VERIFIED",
-  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:RECONCILE-CI-111",
+  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:RECONCILE-CI-116",
   "blocked_by": [
-    "Exact HEAD CI run 34606095261 is terminal failure with 15/16 jobs; Performance (k6 SLOs) failed at Run k6 benchmark and Check SLO results, while the functional parent run 34602927442 was green 16/16",
+    "Exact HEAD CI run 34609488994 is terminal failure with 15/16 jobs; Performance (k6 SLOs) failed at Run k6 benchmark and Check SLO results",
     "Current target evidence, UAT, soak24/72h, branch governance, image attestations, release authority and the strict 97/95/zero-P0 quality bar remain unproven"
   ],
   "human_approval_required": [
@@ -49,5 +49,5 @@
     "destructive backup/restore/chaos drills on shared infrastructure",
     "final release authority and Triple-A certification"
   ],
-  "updated_at": "2026-09-11T14:17:33Z"
+  "updated_at": "2026-09-11T14:53:11Z"
 }

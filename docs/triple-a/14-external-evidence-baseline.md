@@ -1,15 +1,15 @@
 # Triple-A External Assurance — Current Reconciliation
 
-**Current functional code candidate:** `59a63087`; HEAD documental `83d01e9c`; `main`/`origin/main` sincronizados.
-**Current CI:** [#34606095261](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34606095261) — `failure`, 15/16 jobs; Performance falhou
+**Current code candidate:** `e8d7eaec35004c9492db78920c8652c8171bfd1e`; `main`/`origin/main` sincronizados.
+**Current CI:** [#34609488994](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34609488994) — `failure`, 15/16 jobs; Performance falhou
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-11T14:17:33Z
+**Observation:** 2026-09-11T14:53:11Z
 
 **Current local execution:** testes focados SPA 3/3 e 33/33, design-system 5/5, gate 15/15, lint/typecheck e documentação passaram em `59a63087`; a evidência anterior PostgreSQL `66/66`, processos `11/11` e k6 `9/9` permanece bounded no checkout `0abdf651`. Esta evidência local não substitui o CI pinned ou o ambiente alvo.
 
-**Current strict gate:** `pnpm release:triple-a` no HEAD documental retornou `BLOCKED / NOT PROVEN`, score `34`, critical `23`, `27` P0 abertos e `publication_allowed=false`.
+**Current strict gate:** `pnpm release:triple-a` no HEAD retornou `BLOCKED / NOT PROVEN`, score `34`, critical `23`, `27` P0 abertos e `publication_allowed=false`.
 
-The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. Run #110 for `bd10b7a6` was superseded after Repository Guards reported a stale frozen hash for `packages/modules/billing/src/index.ts`; `bb16a47f` refreshes that identity and run #111 is the exact current validation. It finished with 15/16 jobs successful; only Performance (k6 SLOs) failed. Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
+The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. Run #116 is the exact validation for `e8d7eaec`; it finished with 15/16 jobs successful. Performance failed at `Run k6 benchmark` (exit 99) and `Check SLO results` (exit 1). Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
 
 ## Current candidate implementation delta
 

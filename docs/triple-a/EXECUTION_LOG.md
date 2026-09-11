@@ -1,5 +1,21 @@
 # Triple-A — Execution Log
 
+## 2026-09-11T14:53:11Z — CI #116 falho no HEAD `e8d7eaec`
+
+- **Candidato:** `main@e8d7eaec35004c9492db78920c8652c8171bfd1e`, sincronizado
+  com `origin/main`; o rollback remoto permanece preservado.
+- **CI:** [run 34609488994](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34609488994)
+  terminou `failure` com 15/16 jobs. Typecheck, segurança, Guards, Coverage,
+  Lint, Build, contratos, Unit, Integration, Windows, E2E SPA e Visual passaram;
+  somente Performance falhou.
+- **Falha observável:** `Run k6 benchmark` exit 99 e `Check SLO results` exit 1.
+  Os logs/métricas detalhados não estão disponíveis publicamente; não inferir
+  métricas ou causa raiz. Thresholds não foram relaxados.
+- **Gate:** execução local no mesmo HEAD retornou `BLOCKED / NOT PROVEN`, score
+  `34`, crítico `23`, `27` P0 e `publication_allowed=false`.
+- **Decisão:** manter o release bloqueado; o merge continua reversível e nenhum
+  claim `TRIPLE-A VERIFIED` é emitido.
+
 ## 2026-09-11T14:17:33Z — CI #115 falho no HEAD documental `83d01e9c`
 
 - **Candidato:** `main@83d01e9c60c3027b6068aa1d10a50f7f5c585296`; o código
