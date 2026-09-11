@@ -136,7 +136,11 @@ export function updateDatabasePoolMetrics(pool: DatabasePoolMetricsSource | unde
   appDbPoolWaiting.set(nonNegativePoolMetric(pool.waitingCount));
   appDbPoolIdle.set(nonNegativePoolMetric(pool.idleCount));
   appDbPoolTotal.set(nonNegativePoolMetric(pool.totalCount));
-  appDbPoolMax.set(nonNegativePoolMetric(pool.max ?? 0));
+  appDbPoolMax.set(
+    nonNegativePoolMetric(
+      pool.max ?? Number.parseInt(process.env.POSTGRES_MAX_CONNECTIONS ?? '20', 10)
+    )
+  );
 }
 
 export function resetDatabasePoolMetrics(): void {

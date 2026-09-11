@@ -4315,7 +4315,6 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       span.attributes['request.correlation_id'] = correlationId;
       const url = new URL(request.url ?? '/', 'http://localhost');
       const pathname = url.pathname;
-
       if (request.method === 'OPTIONS') {
         response.statusCode = 204;
         response.end();
@@ -4346,20 +4345,9 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       ) {
         return;
       }
-
       if (request.url === '/metrics' && request.method === 'GET') {
         await refreshClinicalOperationalMetrics(options.clinicalOperationalMetricsProvider, logger);
-        const databasePool = getInitializedDatabasePool();
-        updateDatabasePoolMetrics(
-          databasePool
-            ? {
-                waitingCount: databasePool.waitingCount,
-                idleCount: databasePool.idleCount,
-                totalCount: databasePool.totalCount,
-                max: Number.parseInt(process.env.POSTGRES_MAX_CONNECTIONS ?? '20', 10)
-              }
-            : undefined
-        );
+        updateDatabasePoolMetrics(getInitializedDatabasePool());
         const appState = getAppState();
         const redisHealth = await resolveRedisHealthStatus(
           healthRouteOptions,
