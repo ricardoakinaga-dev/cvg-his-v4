@@ -18,7 +18,7 @@
   "active_execplan": ".agent/plans/external-assurance-closure-execplan.md",
   "active_task": "TRIPLE-A-RELEASE-CONTROL",
   "verification_state": "PARTIAL",
-  "repository_state": "main and origin/main are synchronized at the current control-plane snapshot; functional candidate 5a079ceca57b246e17ecb0214ed1e2b9e9e23500 is documented in a metadata-only/control-plane chain; source rollback branch origin/fix/state-of-art-ci-assurance remains preserved",
+  "repository_state": "main and origin/main are synchronized at the current control-plane snapshot; functional candidate 5b036836bf71bc3a6c62bd151a2b19f235d3e2fc is documented in this metadata/control-plane chain and the source rollback branch origin/fix/state-of-art-ci-assurance remains preserved",
   "instruction_scope_refs": [
     ".agent/plans/external-assurance-closure-execplan.md",
     "docs/triple-a/MASTER_PROMPT_EXTERNAL_CLOSURE.md",
@@ -33,12 +33,12 @@
     "docs/triple-a/16-requirement-traceability.md"
   ],
   "last_gate_record": null,
-  "last_event_id": "EVT-STATE-OF-ART-CONTROL-PLANE-20260911",
-  "state_revision": 12,
+  "last_event_id": "EVT-TRIPLE-A-RELEASE-CONTROL-CI108-20260911",
+  "state_revision": 13,
   "next_gate": "VERIFIED",
-  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:OBSERVE-DOCUMENTATION-CI-CURRENT",
+  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:OBSERVE-CI-108",
   "blocked_by": [
-    "Functional candidate CI34577711985 is terminal failure with 15/16 jobs passed; Performance failed again despite local 9/9 reproduction",
+    "Functional candidate 5b036836bf71bc3a6c62bd151a2b19f235d3e2fc CI run 34587238104 is terminal failure with 14/16 jobs passed; Unit Tests and Performance (k6 SLOs) failed, while Integration, E2E SPA, Visual, Windows and API contract checks passed",
     "Current target evidence, UAT, soak24/72h, branch governance, image attestations and release authority are not proven"
   ],
   "human_approval_required": [
@@ -48,5 +48,5 @@
     "destructive backup/restore/chaos drills on shared infrastructure",
     "final release authority and Triple-A certification"
   ],
-  "updated_at": "2026-09-11T09:47:30.000Z"
+  "updated_at": "2026-09-11T10:35:44.000Z"
 }

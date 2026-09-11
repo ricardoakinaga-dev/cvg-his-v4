@@ -1,8 +1,8 @@
 # Triple-A final critic — current reconciliation
 
-**Candidate code:** main@5a079ceca57b246e17ecb0214ed1e2b9e9e23500
-**CI:** [run 34577711985](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34577711985), terminal 15/16; Performance failed
-**Observed:** 2026-09-11T08:40:00Z
+**Candidate code:** main@5b036836bf71bc3a6c62bd151a2b19f235d3e2fc
+**CI:** [run 34587238104](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34587238104), terminal 14/16; Unit Tests and Performance failed
+**Observed:** 2026-09-11T10:35:44Z
 **Verdict:** **BLOCKED / NOT PROVEN**
 
 This document records a bounded evidence review. It is not release authority and does not convert source inspection or local tests into target evidence.

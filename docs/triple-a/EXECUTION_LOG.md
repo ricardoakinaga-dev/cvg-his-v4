@@ -1,5 +1,15 @@
 # Triple-A — Execution Log
 
+## 2026-09-11T10:35:44Z — CI #108 e contratos operacionais do candidato `5b036836`
+
+- **Candidato:** `main@5b036836bf71bc3a6c62bd151a2b19f235d3e2fc`; o snapshot documental metadata-only que contém esta entrada será sincronizado em `main`/`origin/main`. A origem `origin/fix/state-of-art-ci-assurance` permanece preservada para rollback.
+- **CI:** [run 34587238104](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34587238104) terminou `failure` com 14/16 jobs aprovados. Unit Tests e Performance (k6 SLOs) falharam; Secret Scan, Dependency Audit, SAST, Typecheck, Guards, OpenAPI, Coverage, Lint, Build, API Contract, Integration, Windows, Visual e E2E SPA passaram.
+- **Artefatos:** E2E `sha256:e9904403f4b88207463562f5c6c0ea90725c253a6778e1ac1f51366ee0405c20`; k6 `sha256:7c48e9055ae1d7866d4010594d181b314ea5a7d66359524780a02f5860851bcc`; visual `sha256:eae9d0244c2f92cfe43c4b97c070b49f878d3f354f9b8513ca8da5e1185cda4d`; cobertura `sha256:60605ee4083121d22c520e534ee09c0763bff3b66883fb28f67486026e8b1468`; segurança `sha256:9ce1d6e7c6f195d1c2d06677e18a1c6d755ab0bb5aefd8832cb7fbd4e27e752c`.
+- **Mudanças verificadas localmente:** `storageIncluded=false` permite restore database-only sem artefatos de storage; `storageIncluded=true` mantém validação obrigatória; helpers Helm em produção exigem digest OCI `sha256:` válido. Sintaxe, docs, Helm estático, backup/restore 4/4 mais 15 checks, contrato Helm 9/9 e restore focado 16/16 passaram.
+- **Local:** `pnpm test` completo terminou com `EXIT_CODE=0`; a suíte local não substitui o CI remoto nem prova o alvo.
+- **Limitações:** logs dos jobs falhos não estão disponíveis pela API pública sem autenticação administrativa; Docker e binário Helm não estão disponíveis localmente.
+- **Decisão:** `BLOCKED / NOT PROVEN`; não transferir evidência para commits documentais, não relaxar thresholds, não publicar release nem emitir `TRIPLE-A VERIFIED`.
+
 ## 2026-09-11T08:40:00Z — CI terminal do candidato funcional `5a079cec`
 
 - **Candidato:** `main@5a079ceca57b246e17ecb0214ed1e2b9e9e23500`; `origin/main` coincide. Esta entrada reconcilia o candidato funcional; o commit que atualizará a documentação é metadata-only.

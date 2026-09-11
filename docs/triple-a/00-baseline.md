@@ -1,12 +1,12 @@
 # Triple-A — 00 Baseline
 
-## Reconciliação corrente — 2026-09-11T08:40:00Z
+## Reconciliação corrente — 2026-09-11T10:35:44Z
 
-- Candidato funcional: `5a079ceca57b246e17ecb0214ed1e2b9e9e23500`; `main`/`origin/main` permanecem sincronizados em commits documentais metadata-only posteriores. A branch de origem permanece disponível para rollback.
-- Esta fotografia separa o candidato funcional do commit documental e não transfere resultados históricos para ele.
-- CI atual: [#34577711985](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34577711985) terminou 15/16; apenas Performance (k6 SLOs) falhou.
-- Veredicto: **BLOCKED / NOT PROVEN**. O prompt exige CI verde, quality bar, evidência operacional/humana atual e zero P0; o gate diagnóstico pós-fix marcou score 56, crítico 32 e 15 P0, sem autorizar publicação.
-- Evidência local limpa: `pnpm test` completo, lint, docs, supply-chain, release 20/20, provenance 5/5 e runner PostgreSQL 3/3 passaram; a prova local foi vinculada ao SHA e rebaixada a PARTIAL quando aplicável.
+- Candidato funcional: `5b036836bf71bc3a6c62bd151a2b19f235d3e2fc`; `main`/`origin/main` permanecem sincronizados no snapshot documental metadata-only e a branch de origem continua disponível para rollback.
+- Esta fotografia vincula a evidência ao SHA exato e não transfere resultados históricos para commits documentais posteriores.
+- CI atual: [#34587238104](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34587238104) terminou 14/16; Unit Tests e Performance (k6 SLOs) falharam.
+- Veredicto: **BLOCKED / NOT PROVEN**. O prompt exige CI verde, quality bar, evidência operacional/humana atual e zero P0; nenhum score histórico é reutilizado e a publicação não é autorizada.
+- Evidência local bounded: `pnpm test` completo exit 0, sintaxe, docs, Helm estático, backup/restore 4/4 mais 15 checks, Helm 9/9 e restore focado 16/16 passaram; a captura está registrada separadamente no ledger.
 - O gate pré-publicação agora usa fases explícitas e estados `NOT_APPLICABLE` para critérios posteriores, sem remover critérios externos nem alterar o quality bar pós-publicação. O bundle continua em `artifacts/release/` e `artifacts/triple-a/TRIPLE_A_RELEASE_EVIDENCE.json`; nenhum envelope foi promovido.
 - O prompt e o quality bar mantêm os hashes já registrados. O claim TRIPLE-A VERIFIED permanece proibido.
 

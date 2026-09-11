@@ -2,15 +2,15 @@
 
 | Campo | Estado |
 | --- | --- |
-| CURRENT CODE CANDIDATE | funcional `5a079ceca57b246e17ecb0214ed1e2b9e9e23500`; `main`/`origin/main` permanecem sincronizados em commits documentais metadata-only; branch de origem preservada em `fix/state-of-art-ci-assurance` para rollback |
-| DOCUMENTATION SNAPSHOT | Reconciliação do CI terminal do candidato funcional; o commit desta atualização é metadata-only |
-| CURRENT SCORE | 56 no gate diagnóstico pós-fix; BLOCKED / NOT PROVEN |
-| CURRENT CRITICAL SCORE | 32 no gate diagnóstico pós-fix; abaixo do mínimo 95 |
-| CURRENT OPEN P0 | 15 no gate diagnóstico pós-fix; provas externas permanecem ausentes |
-| CURRENT CI | [#34577711985](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34577711985): 15/16 jobs aprovados; somente Performance (k6 SLOs) falhou |
-| CURRENT LOCAL PERFORMANCE | Reprodução local do perfil operacional passou 9/9 SLOs; o CI pinned falhou e o resultado local não é transferido |
+| CURRENT CODE CANDIDATE | funcional `5b036836bf71bc3a6c62bd151a2b19f235d3e2fc`; `main`/`origin/main` sincronizados no snapshot documental metadata-only; branch de origem preservada em `fix/state-of-art-ci-assurance` para rollback |
+| DOCUMENTATION SNAPSHOT | Reconciliação do CI terminal do candidato funcional; qualquer commit desta atualização é metadata-only e não recebe a evidência funcional |
+| CURRENT SCORE | não recalculado; BLOCKED / NOT PROVEN (o score histórico 56/32/15 não é transferido) |
+| CURRENT CRITICAL SCORE | não recalculado; quality bar congelado exige mínimo 95 |
+| CURRENT OPEN P0 | não recalculado; provas externas permanecem ausentes |
+| CURRENT CI | [#34587238104](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34587238104): 14/16 jobs aprovados; Unit Tests e Performance (k6 SLOs) falharam |
+| CURRENT LOCAL PERFORMANCE | Reprodução local e contratos operacionais são limitados; nenhum resultado local substitui o CI pinned ou certifica o alvo |
 | CURRENT VERDICT | BLOCKED / NOT PROVEN |
 
-O run #101 atual falhou somente em performance; thresholds não foram relaxados. O runner local passou os três cenários PostgreSQL, e a suíte workspace completa passou, mas nenhuma dessas provas substitui target, autoridade ou o score do quality bar. O novo envelope de provenance acompanha o artefato k6. O estado e a cadeia de identidade estão registrados em [15-current-baseline](./15-current-baseline.md) e no [EXECUTION_LOG](./EXECUTION_LOG.md).
+O run #108 do SHA exato `5b036836` falhou em Unit Tests e Performance; thresholds não foram relaxados. Integration, E2E SPA, Visual, Windows e API Contract passaram. Os contratos locais de database-only restore e Helm production digest passaram, mas não substituem target, autoridade ou o score do quality bar. O estado e a cadeia de identidade estão registrados em [15-current-baseline](./15-current-baseline.md) e no [EXECUTION_LOG](./EXECUTION_LOG.md).
 
 Histórico anterior preservado em [scorecard-history](./scorecard-history/2026-09-10-before-b85b03ea-13-final-scorecard.md).

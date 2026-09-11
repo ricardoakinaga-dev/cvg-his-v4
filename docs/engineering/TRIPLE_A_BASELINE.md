@@ -1,12 +1,12 @@
 # CVG HIS — Triple-A Baseline
 
-## Reconciliação corrente — 2026-09-11T08:40:00Z
+## Reconciliação corrente — 2026-09-11T10:35:44Z
 
-- **Código funcional:** `5a079ceca57b246e17ecb0214ed1e2b9e9e23500`; `main`/`origin/main` permanecem sincronizados em commits documentais metadata-only posteriores; a origem do merge permanece disponível.
-- **CI:** [#34577711985](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34577711985) terminou 15/16; somente Performance falhou.
-- **Estado:** **BLOCKED / NOT PROVEN**. O gate diagnóstico pós-fix marcou score 56, crítico 32 e 15 P0; nenhum claim é permitido.
-- **Local:** `pnpm test`, docs, lint, supply-chain, 20 testes focados de release, 5 de provenance e runner PostgreSQL limpo 3/3 passaram; a reprodução k6 local 9/9 não substitui o CI pinned.
-- **Mudanças de controle:** gate pré-publicação por fase, verificação CI exata, identidade OCI imutável, provenance sanitizada do runner e SearchSelect com relações ARIA completas.
+- **Código funcional:** `5b036836bf71bc3a6c62bd151a2b19f235d3e2fc`; `main`/`origin/main` permanecem sincronizados no snapshot documental metadata-only e a origem do merge permanece disponível.
+- **CI:** [#34587238104](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34587238104) terminou 14/16; Unit Tests e Performance falharam, com Integration, E2E SPA, Visual, Windows e API Contract aprovados.
+- **Estado:** **BLOCKED / NOT PROVEN**. Nenhum score histórico é transferido e nenhum claim é permitido.
+- **Local:** `pnpm test` completo exit 0 e os contratos de backup/restore e Helm passaram dentro dos limites documentados; Docker e o binário Helm não estão disponíveis.
+- **Mudanças de controle:** compatibilidade database-only por `storageIncluded=false`, helpers Helm de produção fail-closed por digest, gate pré-publicação por fase, verificação CI exata, identidade OCI imutável, provenance sanitizada e SearchSelect com relações ARIA completas.
 - **Externo ainda aberto:** branch governance, Windows nativo, RLS/runtime no alvo, recovery/soak, restore/RPO/RTO, deploy/rollback, attestation, UAT e autoridade de release.
 
 As seções seguintes preservam a fotografia histórica e não devem ser lidas como evidência do SHA atual sem uma execução nova vinculada ao commit.
