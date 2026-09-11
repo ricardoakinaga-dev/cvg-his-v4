@@ -2,16 +2,16 @@
 
 **Status:** NOT PROVEN
 
-Observado em `2026-09-11T20:19:59Z` no snapshot
-`68bea151102c01ee54a3c782b5cf4b1c3ad631f5`, cujo pai funcional é
-`b77539c9891eef89cbbe8160bf6e30a0fb369d48`. `HEAD`, `main` e `origin/main`
-coincidem no snapshot publicado e nenhum force-push foi usado.
+Observado em `2026-09-11T22:12:14Z` no snapshot
+`68600d6a55dcf18bd04c28ff3ee7528cc686efdb`, cujo pai funcional é
+`55ff8a5250d20f2dbd26c4572095599be485fb69`. `main` e `origin/main`
+coincidiram no snapshot de código e nenhum force-push foi usado.
 
-O CI exato [#127](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34641292826)
-terminou `failure` com 15/16 jobs aprovados. Apenas Performance falhou; o
-contrato do Critical Process Runner Windows passou. A API pública não fornece
-os logs detalhados do job falho sem autenticação administrativa, portanto a
-causa não foi inferida nem escondida por alteração de threshold.
+O CI exato [#129](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250)
+terminou `failure` com 15/16 jobs aprovados. Apenas Performance falhou nos
+passos do benchmark/SLO; o contrato do Critical Process Runner Windows passou.
+As métricas detalhadas do artefato exigem credencial e nenhuma causa foi
+inferida ou escondida por alteração de threshold.
 
 `docs/engineering/GREEN_MAIN_POLICY.md` exige que todos os checks obrigatórios
 estejam verdes no mesmo SHA. Por isso este documento não autoriza release,

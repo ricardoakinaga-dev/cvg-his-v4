@@ -1,5 +1,26 @@
 # Triple-A — Execution Log
 
+## 2026-09-11T22:12:14Z — CI #129 / auditoria de performance no candidato `68600d6a`
+
+- **Candidato:** `main@68600d6a55dcf18bd04c28ff3ee7528cc686efdb`; `HEAD` e
+  `origin/main` coincidiram no push, com rollback remoto preservado e sem
+  force-push.
+- **CI:** [run 34650926250](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250)
+  terminou `failure` em 25m35s com 15/16 jobs. Performance foi o único job
+  falho; Unit, Integration, E2E SPA, Visual, contratos, segurança, typecheck,
+  lint, build, Coverage, Guards e Windows passaram.
+- **Artefato:** `performance-k6-report`, digest
+  `sha256:02545b5f8db2c53c5421edd62281b50f8b073e0345ecc8a3d6dd3838bd4f3460`;
+  os arquivos detalhados exigem credencial nesta sessão.
+- **Falha observável:** `Run k6 benchmark` terminou com exit 99 e `Check SLO
+  results` com exit 1. Nenhuma threshold ou carga foi alterada; o parecer
+  independente está em [`critic-performance-assurance-20260911.md`](./critic-performance-assurance-20260911.md).
+- **Gate:** permanece `BLOCKED / NOT PROVEN`, score `54`, critical `54`,
+  `open_p0=16`, `publication_allowed=false`.
+- **Decisão:** não aplicar patch funcional especulativo. A próxima execução
+  deve capturar breakdown de checks, pressão do pool, `pg_stat_activity`,
+  CPU/cgroup e I/O durante o k6.
+
 ## 2026-09-11T20:19:59Z — CI #127 / snapshot documental `68bea151`
 
 - **Candidato:** `main@68bea151102c01ee54a3c782b5cf4b1c3ad631f5`, snapshot

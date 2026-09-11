@@ -1,14 +1,14 @@
 # Triple-A — 00 Baseline
 
-## Reconciliação corrente — 2026-09-11T20:19:59Z
+## Reconciliação corrente — 2026-09-11T22:12:14Z
 
-- Snapshot atual: `68bea151102c01ee54a3c782b5cf4b1c3ad631f5` (docs-only sobre o código `b77539c9891eef89cbbe8160bf6e30a0fb369d48`); `main`, `HEAD` e `origin/main` coincidem, com rollback remoto preservado e sem force-push.
+- Snapshot atual: `68600d6a55dcf18bd04c28ff3ee7528cc686efdb` (código funcional; documentação de reconciliação acompanha o candidato); `main`, `HEAD` e `origin/main` coincidem, com rollback remoto preservado e sem force-push.
 - Esta fotografia vincula a evidência ao SHA exato e não transfere resultados históricos para commits documentais posteriores.
-- CI atual: [#127](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34641292826) terminou `failure` com 15/16 jobs aprovados; somente Performance falhou. Os demais checks publicados, inclusive Windows, passaram.
+- CI atual: [#129](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250) terminou `failure` com 15/16 jobs aprovados; somente Performance falhou em `Run k6 benchmark`/`Check SLO results`. O artefato está vinculado ao run, mas as métricas detalhadas não foram baixadas sem credencial.
 - Veredicto: **BLOCKED / NOT PROVEN**. O prompt exige CI verde, quality bar, evidência operacional/humana atual e zero P0; nenhum score histórico é reutilizado e a publicação não é autorizada.
 - Gate estrito local: `pnpm release:triple-a` retornou `BLOCKED`, score `54`, critical `54`, `16` P0 abertos e `publication_allowed=false`; a avaliação derivada do quality bar foi `31/33/7`.
 - Checks locais de documentação, namespaces, migration source, OpenAPI, RLS estático, deploy surface, Helm estático, supply chain, dependências, schema clínico, secrets, complexidade, typecheck, lint e build passaram. A suíte de cobertura passou com 2.525 testes e 1 skipped.
-- Os logs detalhados dos dois jobs falhos do CI exigem autenticação administrativa; nenhuma causa foi inferida, threshold foi relaxada ou evidência de outro SHA transferida.
+- O artefato de performance e a limitação de acesso estão documentados em [`critic-performance-assurance-20260911.md`](./critic-performance-assurance-20260911.md). Nenhum threshold foi relaxado e nenhuma evidência de outro SHA foi transferida.
 - O prompt e o quality bar mantêm os hashes registrados. O claim `TRIPLE-A VERIFIED` permanece proibido.
 
 ## Fotografia histórica da Fase 0

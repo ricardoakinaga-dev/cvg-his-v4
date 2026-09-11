@@ -1,8 +1,8 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Code snapshot:** `main@68bea151102c01ee54a3c782b5cf4b1c3ad631f5` (docs-only;
-code parent `b77539c9891eef89cbbe8160bf6e30a0fb369d48`)
-**Observed:** `2026-09-11T20:19:59Z`
+**Code snapshot:** `main@68600d6a55dcf18bd04c28ff3ee7528cc686efdb` (candidato funcional;
+reconciliação documental vinculada a este SHA)
+**Observed:** `2026-09-11T22:12:14Z`
 **Repository state:** `HEAD` e `origin/main` coincidem; o rollback remoto
 continua preservado e nenhum force-push foi usado.
 **Verdict:** **BLOCKED / NOT PROVEN**
@@ -12,11 +12,11 @@ além da suíte local de testes, mas terminou com score `54`, critical `54`,
 `16` P0 abertos e `publication_allowed=false`. O quality bar congelado exige
 `97/95/zero P0`; a avaliação derivada do quality bar foi `31/33/7`.
 
-O [CI #127](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34641292826)
+O [CI #129](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250)
 executou no SHA exato e terminou com 15/16 jobs aprovados. Apenas Performance
-falhou; o contrato Windows passou. Os logs públicos não permitem determinar a
-causa raiz; thresholds não foram relaxados e nenhuma evidência de outro SHA foi
-transferida.
+falhou nos passos do benchmark/SLO; o contrato Windows passou. O artefato está
+vinculado ao run, mas suas métricas detalhadas exigem credencial. Thresholds
+não foram relaxados e nenhuma evidência de outro SHA foi transferida.
 
 Permanecem sem prova suficiente branch protection, RLS/runtime alvo,
 workflow PostgreSQL de release, crash recovery, restore/RPO/RTO,

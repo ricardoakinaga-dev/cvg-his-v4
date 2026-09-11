@@ -1,18 +1,18 @@
 # Baseline corrente — State of Art
 
-Observado em `2026-09-11T20:19:59Z`. Este snapshot acompanha o commit
-documental `68bea151102c01ee54a3c782b5cf4b1c3ad631f5`; o código funcional
-auditado permanece no pai `b77539c9891eef89cbbe8160bf6e30a0fb369d48`.
+Observado em `2026-09-11T22:12:14Z`. Este snapshot acompanha o commit de código
+`68600d6a55dcf18bd04c28ff3ee7528cc686efdb`; a documentação de reconciliação é
+publicada como evidência vinculada a esse candidato.
 
 | Campo | Evidência atual |
 | --- | --- |
-| current_sha | `68bea151102c01ee54a3c782b5cf4b1c3ad631f5` — snapshot documental |
-| code_parent_sha | `b77539c9891eef89cbbe8160bf6e30a0fb369d48` |
-| main_sha | `68bea151102c01ee54a3c782b5cf4b1c3ad631f5` — `main` e `origin/main` coincidem |
-| worktree | Limpo após a execução do gate; artefatos locais permanecem ignorados |
+| current_sha | `68600d6a55dcf18bd04c28ff3ee7528cc686efdb` — código candidato avaliado |
+| code_parent_sha | `55ff8a5250d20f2dbd26c4572095599be485fb69` |
+| main_sha | `68600d6a55dcf18bd04c28ff3ee7528cc686efdb` no momento da validação; a documentação é um commit de evidência posterior |
+| worktree | Limpo após a publicação desta reconciliação; artefatos locais permanecem ignorados |
 | rollback | `origin/fix/state-of-art-ci-assurance` preservada em `fe5406c2`; nenhum force-push |
-| ci_run | [#127](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34641292826), `failure`, SHA exato, 15/16 jobs aprovados |
-| ci_failures | [Performance](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34641292826/job/103404419012); Critical Process Runner Windows passou; logs detalhados exigem acesso autenticado |
+| ci_run | [#129](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250), `failure`, SHA exato, 15/16 jobs aprovados |
+| ci_failures | [Performance](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250/job/103435372609); Windows, E2E SPA, Integration, Unit, Visual e API Contract passaram; artefato reconciliado em `critic-performance-assurance-20260911.md` |
 | local_gate | `pnpm release:triple-a` — `BLOCKED`, score `54`, critical `54`, open P0 `16`, `publication_allowed=false` |
 | quality_bar_assessment | `31/33/7` (score/critical/open P0) no quality bar congelado; o gate superior continua bloqueado |
 | local_checks | Docs, namespaces, migration source, OpenAPI, RLS estático, deploy surface, Helm estático, supply-chain pins, dependency policy, clinical workflow schema, secrets, complexity, typecheck, lint e build: PASS |
@@ -28,10 +28,11 @@ ausentes. Os 16 P0 abertos incluem CI remoto verde, testes críticos,
 workflow PostgreSQL, RLS runtime, crash recovery, E2E clínico, integridade de
 auditoria, UAT, attestation, branch protection e autoridade de release.
 
-O CI #127 aprovou Unit, Integration, E2E SPA, Visual, contratos, segurança,
-typecheck, lint, build e o contrato Windows. Performance falhou novamente no
-benchmark/SLO; a causa não foi inferida sem logs autenticados e nenhuma
-threshold foi alterada. O CI #126 do pai de código permanece histórico.
+O CI #129 aprovou Unit, Integration, E2E SPA, Visual, contratos, segurança,
+typecheck, lint, build e o contrato Windows. Performance falhou nos passos do
+benchmark/SLO; as métricas detalhadas exigem credencial. Nenhuma causa
+determinística de código foi comprovada e nenhuma threshold foi alterada. O CI
+#128 do snapshot anterior permanece histórico.
 
 O prompt preservado e seu hash estão em
 [MASTER_PROMPT.md](./MASTER_PROMPT.md), SHA-256

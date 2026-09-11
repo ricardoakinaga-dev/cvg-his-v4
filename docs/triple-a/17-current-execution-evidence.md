@@ -1,9 +1,10 @@
 # Evidência de execução corrente — State of Art
 
-Observado em `2026-09-11T20:19:59Z` no checkout
-`68bea151102c01ee54a3c782b5cf4b1c3ad631f5`, com `origin/main` coincidente e
-worktree limpo antes do próximo parecer documental. O código funcional desse
-snapshot está no pai `b77539c9891eef89cbbe8160bf6e30a0fb369d48`.
+Observado em `2026-09-11T22:12:14Z` no checkout
+`68600d6a55dcf18bd04c28ff3ee7528cc686efdb`, com `origin/main` coincidente e
+worktree limpo durante a execução do gate; a documentação deste parecer é um
+commit de evidência posterior. O commit anterior é
+`55ff8a5250d20f2dbd26c4572095599be485fb69`.
 
 ## Validações locais do candidato
 
@@ -18,12 +19,13 @@ snapshot está no pai `b77539c9891eef89cbbe8160bf6e30a0fb369d48`.
 
 ## CI remoto no SHA exato
 
-O [CI #127](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34641292826)
+O [CI #129](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250)
 terminou `failure` com 15/16 jobs aprovados. Unit, Integration, E2E SPA,
 Visual, API Contract, segurança, typecheck, lint, build e Windows passaram. O
-job [Performance](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34641292826/job/103404419012)
-falhou. Os annotations públicos só informam exit code; logs e artefatos
-detalhados exigem credencial administrativa. Thresholds não foram alteradas.
+job [Performance](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250/job/103435372609)
+falhou. O artefato e a limitação de acesso estão em
+[critic-performance-assurance-20260911.md](./critic-performance-assurance-20260911.md);
+thresholds não foram alteradas.
 
 ## Gate estrito
 

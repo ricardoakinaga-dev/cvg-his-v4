@@ -1,15 +1,15 @@
 # Triple-A External Assurance — Current Reconciliation
 
-**Current snapshot:** `68bea151102c01ee54a3c782b5cf4b1c3ad631f5` (docs-only; código pai `b77539c9891eef89cbbe8160bf6e30a0fb369d48`); `main`/`origin/main` sincronizados.
-**Current CI:** [#127](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34641292826) — `failure`, 15/16 jobs; somente Performance falhou
+**Current snapshot:** `68600d6a55dcf18bd04c28ff3ee7528cc686efdb` (código funcional; a reconciliação documental acompanha o candidato); `main`/`origin/main` sincronizados no momento da validação.
+**Current CI:** [#129](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250) — `failure`, 15/16 jobs; somente Performance falhou
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-11T19:39:53Z
+**Observation:** 2026-09-11T22:12:14Z
 
 **Current local execution:** o gate estrito no snapshot executou checks estáticos, typecheck, lint e build com PASS; `pnpm test:coverage` terminou com 2.525 testes passados e 1 skipped, E2E clínico `2/2` e SPA focada `32/32`. A evidência local não substitui o CI pinned nem o ambiente alvo.
 
 **Current strict gate:** `pnpm release:triple-a` no HEAD retornou `BLOCKED / NOT PROVEN`, score `54`, critical `54`, `16` P0 abertos e `publication_allowed=false`; a avaliação derivada do quality bar foi `31/33/7`.
 
-The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. The exact current run #127 failed in `Run k6 benchmark`/`Check SLO results`; the Windows package-manager contract passed. Logs detalhados exigem autenticação; branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
+The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. The exact current run #129 failed in `Run k6 benchmark`/`Check SLO results`; the Windows package-manager contract and E2E SPA passed. The performance artifact and its access limitation are reconciled in [critic-performance-assurance-20260911.md](./critic-performance-assurance-20260911.md). Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
 
 ## Current candidate implementation delta
 

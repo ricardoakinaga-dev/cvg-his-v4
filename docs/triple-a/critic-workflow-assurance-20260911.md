@@ -4,6 +4,11 @@
 **Escopo:** fases 7–13 e P0s 4–7 do prompt State of Art
 **Resultado:** `INCOMPLETE / NOT PROVEN`
 
+No candidato `68600d6a`, a fronteira HTTP passou a rejeitar `executionMode=worker`
+quando o tipo não está em uma allow-list imutável. Isso fecha o caminho de
+produção para tarefas sem handler registrado; não cria um handler clínico nem
+prova o efeito durável, retry/DLQ ou crash recovery de um worker aprovado.
+
 O código possui repositório PostgreSQL, idempotência, eventos append-only,
 claims concorrentes, leases, fencing, retry, DLQ e replay. A auditoria não
 tratou código ou configuração como prova de runtime: `localhost:5433` recusou

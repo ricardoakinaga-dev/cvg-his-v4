@@ -4,6 +4,15 @@
 **Snapshot documental publicado:** `68bea151102c01ee54a3c782b5cf4b1c3ad631f5`
 **Resultado:** `NOT PROVEN / BLOCKED`
 
+O CI #129 do candidato funcional `68600d6a` terminou com 15/16 jobs aprovados;
+Performance foi o único job falho. Os checks de segurança, typecheck, lint,
+build e guards passaram; isso não altera este parecer de segurança.
+
+O CI #128 posterior do mesmo snapshot terminou com 15/16 jobs aprovados;
+Performance foi o único job falho. A análise específica está em
+[`critic-performance-assurance-20260911.md`](./critic-performance-assurance-20260911.md)
+e não altera este parecer de segurança.
+
 As verificações locais do candidato passaram: `pnpm security:secrets`, RLS
 estático (`170/171` tabelas com proteção e uma exceção documentada),
 `validate:supply-chain` (113 actions e 6 imagens-base imutáveis) e a política
