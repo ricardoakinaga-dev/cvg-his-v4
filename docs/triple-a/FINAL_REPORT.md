@@ -1,7 +1,8 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Code candidate:** `main@b77539c9891eef89cbbe8160bf6e30a0fb369d48`
-**Observed:** `2026-09-11T19:39:53Z`
+**Code snapshot:** `main@68bea151102c01ee54a3c782b5cf4b1c3ad631f5` (docs-only;
+code parent `b77539c9891eef89cbbe8160bf6e30a0fb369d48`)
+**Observed:** `2026-09-11T20:19:59Z`
 **Repository state:** `HEAD` e `origin/main` coincidem; o rollback remoto
 continua preservado e nenhum force-push foi usado.
 **Verdict:** **BLOCKED / NOT PROVEN**
@@ -11,10 +12,10 @@ além da suíte local de testes, mas terminou com score `54`, critical `54`,
 `16` P0 abertos e `publication_allowed=false`. O quality bar congelado exige
 `97/95/zero P0`; a avaliação derivada do quality bar foi `31/33/7`.
 
-O [CI #126](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34635843119)
-executou no SHA exato e terminou com 14/16 jobs aprovados. Performance e o
-contrato Windows falharam. Os logs públicos não permitem determinar a causa
-raiz; thresholds não foram relaxados e nenhuma evidência de outro SHA foi
+O [CI #127](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34641292826)
+executou no SHA exato e terminou com 15/16 jobs aprovados. Apenas Performance
+falhou; o contrato Windows passou. Os logs públicos não permitem determinar a
+causa raiz; thresholds não foram relaxados e nenhuma evidência de outro SHA foi
 transferida.
 
 Permanecem sem prova suficiente branch protection, RLS/runtime alvo,

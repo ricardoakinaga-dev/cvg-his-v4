@@ -1,5 +1,26 @@
 # Triple-A — Execution Log
 
+## 2026-09-11T20:19:59Z — CI #127 / snapshot documental `68bea151`
+
+- **Candidato:** `main@68bea151102c01ee54a3c782b5cf4b1c3ad631f5`, snapshot
+  documental sobre o código funcional pai `b77539c9891eef89cbbe8160bf6e30a0fb369d48`;
+  `HEAD` e `origin/main` coincidiram no momento da execução e nenhum
+  force-push foi usado.
+- **CI:** [run 34641292826](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34641292826)
+  terminou `failure` com 15/16 jobs. Secret Scan, Dependency Audit, SAST,
+  Typecheck, Lint, Coverage, Guards, OpenAPI, Build, API Contract, Unit,
+  Integration, E2E SPA, Visual e Critical Process Runner Windows passaram;
+  somente Performance (k6 SLOs) falhou.
+- **Falha observável:** o job [Performance](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34641292826/job/103404419012)
+  terminou nos passos do benchmark/SLO. Logs e métricas detalhados exigem
+  acesso administrativo; nenhuma causa ou threshold foi inferida/alterada.
+- **Gate local:** no SHA do snapshot, `pnpm release:triple-a` terminou
+  `BLOCKED`, score `54`, critical `54`, `open_p0=16` e
+  `publication_allowed=false`; a avaliação do quality bar foi `31/33/7`.
+- **Decisão:** a documentação está sincronizada, mas `main` não é verde e o
+  release permanece bloqueado por Performance e pelas provas externas de
+  runtime, recovery, governança, UAT, attestation e autoridade.
+
 ## 2026-09-11T19:39:53Z — candidato `b77539c9` / CI #126
 
 - **Candidato:** `main@b77539c9891eef89cbbe8160bf6e30a0fb369d48`; `HEAD` e

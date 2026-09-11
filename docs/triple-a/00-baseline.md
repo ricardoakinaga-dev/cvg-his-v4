@@ -1,10 +1,10 @@
 # Triple-A — 00 Baseline
 
-## Reconciliação corrente — 2026-09-11T19:39:53Z
+## Reconciliação corrente — 2026-09-11T20:19:59Z
 
-- Candidato atual: `b77539c9891eef89cbbe8160bf6e30a0fb369d48`; `main`, `HEAD` e `origin/main` coincidem, com rollback remoto preservado e sem force-push.
+- Snapshot atual: `68bea151102c01ee54a3c782b5cf4b1c3ad631f5` (docs-only sobre o código `b77539c9891eef89cbbe8160bf6e30a0fb369d48`); `main`, `HEAD` e `origin/main` coincidem, com rollback remoto preservado e sem force-push.
 - Esta fotografia vincula a evidência ao SHA exato e não transfere resultados históricos para commits documentais posteriores.
-- CI atual: [#126](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34635843119) terminou `failure` com 14/16 jobs aprovados; Performance e Critical Process Runner Windows falharam. Os demais checks publicados passaram.
+- CI atual: [#127](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34641292826) terminou `failure` com 15/16 jobs aprovados; somente Performance falhou. Os demais checks publicados, inclusive Windows, passaram.
 - Veredicto: **BLOCKED / NOT PROVEN**. O prompt exige CI verde, quality bar, evidência operacional/humana atual e zero P0; nenhum score histórico é reutilizado e a publicação não é autorizada.
 - Gate estrito local: `pnpm release:triple-a` retornou `BLOCKED`, score `54`, critical `54`, `16` P0 abertos e `publication_allowed=false`; a avaliação derivada do quality bar foi `31/33/7`.
 - Checks locais de documentação, namespaces, migration source, OpenAPI, RLS estático, deploy surface, Helm estático, supply chain, dependências, schema clínico, secrets, complexidade, typecheck, lint e build passaram. A suíte de cobertura passou com 2.525 testes e 1 skipped.

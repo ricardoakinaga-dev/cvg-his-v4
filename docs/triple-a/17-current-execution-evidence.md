@@ -1,8 +1,9 @@
 # Evidência de execução corrente — State of Art
 
-Observado em `2026-09-11T19:39:53Z` no checkout
-`b77539c9891eef89cbbe8160bf6e30a0fb369d48`, com `origin/main` coincidente e
-worktree limpo após a coleta.
+Observado em `2026-09-11T20:19:59Z` no checkout
+`68bea151102c01ee54a3c782b5cf4b1c3ad631f5`, com `origin/main` coincidente e
+worktree limpo antes do próximo parecer documental. O código funcional desse
+snapshot está no pai `b77539c9891eef89cbbe8160bf6e30a0fb369d48`.
 
 ## Validações locais do candidato
 
@@ -17,14 +18,12 @@ worktree limpo após a coleta.
 
 ## CI remoto no SHA exato
 
-O [CI #126](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34635843119)
-terminou `failure` com 14/16 jobs aprovados. Unit, Integration, E2E SPA,
-Visual, API Contract, segurança, typecheck, lint e build passaram. Os jobs
-[Performance](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34635843119/job/103387572819)
-e [Critical Process Runner Windows](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34635843119/job/103387572845)
-falharam. Os annotations públicos só informam exit code; logs e artefatos
-detalhados exigem credencial administrativa. Thresholds e o contrato Windows
-não foram enfraquecidos.
+O [CI #127](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34641292826)
+terminou `failure` com 15/16 jobs aprovados. Unit, Integration, E2E SPA,
+Visual, API Contract, segurança, typecheck, lint, build e Windows passaram. O
+job [Performance](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34641292826/job/103404419012)
+falhou. Os annotations públicos só informam exit code; logs e artefatos
+detalhados exigem credencial administrativa. Thresholds não foram alteradas.
 
 ## Gate estrito
 

@@ -1,9 +1,9 @@
 # CVG HIS — Triple-A Baseline
 
-## Reconciliação corrente — 2026-09-11T19:39:53Z
+## Reconciliação corrente — 2026-09-11T20:19:59Z
 
-- **Código funcional:** `b77539c9891eef89cbbe8160bf6e30a0fb369d48`; `main`/`origin/main` coincidem e a origem do merge permanece disponível para rollback.
-- **CI:** [#126](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34635843119) terminou `failure` com 14/16 jobs aprovados; Performance e Critical Process Runner Windows falharam. Os demais checks publicados passaram.
+- **Snapshot documental:** `68bea151102c01ee54a3c782b5cf4b1c3ad631f5`; o código funcional está no pai `b77539c9891eef89cbbe8160bf6e30a0fb369d48`; `main`/`origin/main` coincidem e a origem do merge permanece disponível para rollback.
+- **CI:** [#127](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34641292826) terminou `failure` com 15/16 jobs aprovados; somente Performance falhou. Windows e os demais checks publicados passaram.
 - **Estado:** **BLOCKED / NOT PROVEN**. Nenhum score histórico é transferido e nenhum claim é permitido.
 - **Gate estrito:** `pnpm release:triple-a` executado no SHA atual retornou `BLOCKED`, score `54`, critical `54`, `16` P0 abertos e `publication_allowed=false`; a avaliação derivada do quality bar foi `31/33/7`.
 - **Local:** checks de docs, namespaces, migration source, OpenAPI, RLS estático, deploy surface, Helm estático, supply chain, dependências, schema clínico, secrets, complexidade, typecheck, lint e build passaram; a cobertura executou 2.525 testes com 1 skipped. Docker, PostgreSQL descartável e o binário Helm não estão disponíveis nesta sessão.
