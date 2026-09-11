@@ -224,7 +224,8 @@ describe('EncounterDetailPage', () => {
     expect(wrapper.get('[role="tablist"]').attributes('aria-label')).toBe('Etapas do atendimento');
     expect(tabs).toHaveLength(6);
     expect(tabs[0].attributes('aria-selected')).toBe('true');
-    expect(tabs[0].attributes('aria-controls')).toBe('encounter-workflow-panel-summary');
+    expect(tabs.every((tab) => tab.attributes('aria-controls') === 'encounter-workflow-panel')).toBe(true);
+    expect(wrapper.find('#encounter-workflow-panel').exists()).toBe(true);
     expect(tabs[0].attributes('tabindex')).toBe('0');
     expect(tabs[1].attributes('tabindex')).toBe('-1');
     expect(wrapper.get('[role="tabpanel"]').attributes('aria-labelledby')).toBe(

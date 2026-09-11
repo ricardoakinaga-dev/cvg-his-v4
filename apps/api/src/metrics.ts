@@ -169,9 +169,9 @@ export const appRateLimiterMode = new Gauge({
 
 /**
  * Tenant-aggregated clinical operational metrics are intentionally exposed
- * without labels. A production composition root must provide the snapshot
- * from an authoritative, read-only aggregate source; until then the gauges
- * remain absent instead of presenting synthetic zeroes as hospital state.
+ * without labels. The production composition root supplies the snapshot from
+ * the composed, read-only domain sources; an injected provider remains
+ * available for isolated tests and controlled runtimes.
  */
 export interface ClinicalOperationalMetricsSnapshot {
   readonly activeInpatients: number;

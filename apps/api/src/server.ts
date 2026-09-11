@@ -188,6 +188,7 @@ import {
 } from '@cvg-his-v2/chaos';
 import type { SectorBedServiceOptions } from '@cvg-his-v2/module-inpatient';
 import { createApiRuntime, type RuntimeRepositories } from './runtime.js';
+import { createClinicalOperationalMetricsProvider } from './clinical-operational-metrics.js';
 import { LocalPixPaymentGateway, PagarMePaymentGatewayAdapter } from './payment-gateway.js';
 import { LocalEmailGateway, ResendEmailGatewayAdapter } from './email-gateway.js';
 import { InMemoryEmailDeliveryRepository } from './email-delivery-repository.js';
@@ -3803,6 +3804,17 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   });
   const workflowTasks =
     options.workflowTaskService ?? createApiWorkflowTaskService(options.environment);
+  const clinicalOperationalMetricsProvider =
+    options.clinicalOperationalMetricsProvider ??
+    createClinicalOperationalMetricsProvider({
+      users,
+      inpatient,
+      encounters,
+      workflowTasks,
+      prescriptionExecutions,
+      diagnostics,
+      clinicalHandoffs
+    });
   const ensureWorkflowTaskSchemaReady = createWorkflowTaskSchemaReadinessGuard(options.environment);
   const refreshAccessControlCaches = async (accountId: AccountId): Promise<void> => {
     try {
@@ -4346,7 +4358,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         return;
       }
       if (request.url === '/metrics' && request.method === 'GET') {
-        await refreshClinicalOperationalMetrics(options.clinicalOperationalMetricsProvider, logger);
+        await refreshClinicalOperationalMetrics(clinicalOperationalMetricsProvider, logger);
         updateDatabasePoolMetrics(getInitializedDatabasePool());
         const appState = getAppState();
         const redisHealth = await resolveRedisHealthStatus(

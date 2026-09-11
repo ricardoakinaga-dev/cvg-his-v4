@@ -91,7 +91,7 @@
               :class="{ 'workflow-tab--active': activeWorkflowStep === step.key }"
               role="tab"
               :aria-selected="activeWorkflowStep === step.key"
-              :aria-controls="activeWorkflowStep === step.key ? workflowPanelId(step.key) : undefined"
+              :aria-controls="workflowPanelId"
               :tabindex="activeWorkflowStep === step.key ? 0 : -1"
               @keydown="handleWorkflowTabKey($event, step.key)"
               @click="selectWorkflowStep(step.key)"
@@ -103,7 +103,7 @@
           </nav>
 
           <section
-            :id="workflowPanelId(activeWorkflowStep)"
+            :id="workflowPanelId"
             class="workflow-panel"
             role="tabpanel"
             :aria-labelledby="workflowTabId(activeWorkflowStep)"
@@ -1075,9 +1075,7 @@ function workflowTabId(step: WorkflowStepKey): string {
   return `encounter-workflow-tab-${step}`;
 }
 
-function workflowPanelId(step: WorkflowStepKey): string {
-  return `encounter-workflow-panel-${step}`;
-}
+const workflowPanelId = 'encounter-workflow-panel';
 
 function selectWorkflowStep(step: WorkflowStepKey): void {
   activeWorkflowStep.value = step;

@@ -1129,7 +1129,10 @@ jobs:
           E2E_DATABASE_MODE: '1'
           API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
           REQUIRE_TEST_DB: '1'
-        run: npx playwright test --config playwright.config.ts e2e/tests/jornada-clinica-canonica.spec.ts
+        run: >-
+          npx playwright test --config playwright.config.ts
+          e2e/tests/jornada-clinica-canonica.spec.ts
+          e2e/tests/jornada-internacao-canonica.spec.ts
 
       - name: Validate complete usability evidence
         if: always()
