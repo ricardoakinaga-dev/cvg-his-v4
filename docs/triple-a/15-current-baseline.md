@@ -1,10 +1,9 @@
 # Baseline corrente — State of Art
 
-Observado em 2026-09-11T14:53:11Z. O HEAD corrente é
-`e8d7eaec35004c9492db78920c8652c8171bfd1e`; o código funcional foi preservado
-nos commits anteriores. `main` e `origin/main` estão sincronizados. O run #116
-do HEAD exato falhou apenas em Performance (k6 SLOs). A execução local corrente de
-PostgreSQL, processos críticos e k6 está detalhada em
+Observado em 2026-09-11T15:45:08Z. O candidato funcional corrente é
+`2ed8e408487ce966300e437946fd2ad45790bcd9`; esta fotografia foi atualizada
+antes da publicação documental do candidato. O run remoto deste SHA ainda não
+foi observado. A execução local corrente de PostgreSQL, processos críticos e k6 está detalhada em
 [17-current-execution-evidence.md](./17-current-execution-evidence.md). Esta
 entrada separa o candidato local, o remoto e os resultados de CI; nenhum
 resultado de outro SHA é transferido.
@@ -13,26 +12,34 @@ resultado de outro SHA é transferido.
 
 | Campo | Evidência atual |
 | --- | --- |
-| current_sha | `e8d7eaec35004c9492db78920c8652c8171bfd1e` |
-| main_sha | `e8d7eaec35004c9492db78920c8652c8171bfd1e` |
-| origin/main | `e8d7eaec35004c9492db78920c8652c8171bfd1e` |
-| worktree | Limpo para arquivos rastreados; artefatos locais estão ignorados |
-| ci_run | [#34609488994](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34609488994), `failure`, 15/16 jobs; Performance (k6 SLOs) falhou no HEAD `e8d7eaec` |
-| overall_score | gate estrito local em `e8d7eaec`: 34; mínimo congelado 97 |
-| critical_score | gate estrito local em `e8d7eaec`: 23; mínimo congelado 95 |
-| open_p0 | gate estrito local em `e8d7eaec`: 27; máximo congelado 0 |
-| implemented | Frescor de envelopes externos com fail-closed, identidade de prompt declarada no quality bar, tabs acessíveis no seletor de clientes, ações sem controles aninhados, região acessível para criação de execução e alvo de toque de 44px no modal |
-| verified_local | Testes focados SPA 3/3 e 33/33, design-system 5/5, lint/typecheck dos dois pacotes, gate 15/15, docs:validate e diff check passaram; evidência bounded de PostgreSQL 66/66, processos 11/11 e k6 local 9/9 permanece limitada ao snapshot documentado |
-| verified_remote | Run #116 no HEAD `e8d7eaec`: 15/16 jobs passaram; `Run k6 benchmark` falhou (exit 99) e `Check SLO results` falhou (exit 1) |
+| current_sha | `2ed8e408487ce966300e437946fd2ad45790bcd9` |
+| main_sha | `2ed8e408487ce966300e437946fd2ad45790bcd9` (candidato funcional; a revisão documental será o commit seguinte) |
+| origin/main | `f5e0e6572a3743f1a9f8d34843a92e8af8cd2987` até a publicação deste candidato |
+| worktree | Limpo após o commit funcional; artefatos locais estão ignorados |
+| ci_run | Ainda não observado para `2ed8e408`; o último run exato conhecido (#117) falhou apenas em Performance (k6 SLOs) |
+| overall_score | gate estrito local em `2ed8e408`: 34; mínimo congelado 97 |
+| critical_score | gate estrito local em `2ed8e408`: 23; mínimo congelado 95 |
+| open_p0 | gate estrito local em `2ed8e408`: 27; máximo congelado 0 |
+| implemented | Frescor de envelopes externos com fail-closed, jornada clínica com execução de medicação e ciclo laboratorial assinado/idempotente/entregue, isolamento RLS runtime coberto para `diagnostic_orders`, tabs acessíveis com chaves textuais preservadas, métricas de pressão do pool sem labels de tenant e alvo de toque de 44px no modal |
+| verified_local | API 66/66, SPA focada 52/52, design-system 49/49, build/lint/typecheck API/SPA/design-system, Playwright `--list`, validação RLS estática, docs:validate e diff check passaram; PostgreSQL/RLS real não executou porque o daemon Docker negou acesso ao socket |
+| verified_remote | Nenhum run observado ainda para `2ed8e408`; o último run #117 no SHA documental anterior passou 15/16 jobs e falhou em Performance |
 | verified_target | NOT PROVEN |
-| blocked | Performance falhou no CI do HEAD; quality bar e gate estrito continuam abaixo do limiar; branch governance, ambiente alvo, recuperação/soak, UAT, attestation e autoridade de release permanecem sem prova |
-| not_proven | Quality bar 97/95/zero P0, Windows nativo fora do runner Linux, RLS/DB runtime no alvo, deploy/rollback, restore/RPO/RTO, attestation, observabilidade operacional e provas humanas |
+| blocked | Quality bar e gate estrito continuam abaixo do limiar; CI do candidato ainda não observado; branch governance, ambiente alvo, recuperação/soak, UAT, attestation e autoridade de release permanecem sem prova |
+| not_proven | Quality bar 97/95/zero P0, CI remoto do candidato, Windows nativo fora do runner Linux, RLS/DB runtime real, deploy/rollback, restore/RPO/RTO, attestation, query/pool tracing, soak e provas humanas |
 
 ## Evidência corrente
 
 As execuções locais descartáveis desta fotografia estão em [17-current-execution-evidence.md](./17-current-execution-evidence.md). Elas são evidência de implementação e runtime local; não substituem o boundary remoto ou o alvo exigido pelo quality bar.
 
-O gate estrito `pnpm release:triple-a` foi executado com a execução pesada desabilitada no HEAD `e8d7eaec` e produziu `BLOCKED / NOT PROVEN`, score `34`, critical `23` e `27` P0 abertos. O JSON temporário não foi promovido a artefato de release.
+O gate estrito `pnpm release:triple-a` foi executado com a execução pesada desabilitada no candidato `2ed8e408` e produziu `BLOCKED / NOT PROVEN`, score `34`, critical `23` e `27` P0 abertos. O JSON temporário não foi promovido a artefato de release.
+
+O commit funcional `2ed8e408` amplia a jornada clínica canônica executada pelo CI para
+incluir criação/execução de medicação, ciclo laboratorial `collected → in_analysis →
+reported → delivered`, replay idempotente do relatório, auditoria e invariantes de
+tenant. Também adiciona a prova RLS de leitura/alteração cross-tenant em
+`diagnostic_orders`, corrige Home/End do `DsTabs` para chaves textuais e publica
+pressão do pool PostgreSQL em `/metrics`. A execução do banco descartável permanece
+necessária para converter esses testes em evidência runtime.
 
 ### Candidato atual — `bb16a47f`
 

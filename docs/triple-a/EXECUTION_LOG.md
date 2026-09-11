@@ -1,5 +1,39 @@
 # Triple-A — Execution Log
 
+## 2026-09-11T15:45:08Z — candidato funcional `2ed8e408`
+
+- **Código:** a jornada clínica canônica passou a provar execução de medicação,
+  assinatura/entrega laboratorial, replay idempotente, histórico de workflow e
+  auditoria no mesmo encounter. A matriz RLS ganhou leitura/alteração cross-tenant
+  para `diagnostic_orders`; `DsTabs` preserva chaves textuais em Home/End; e
+  `/metrics` expõe gauges sem labels de tenant para pressão do pool PostgreSQL.
+- **Commit:** `2ed8e408487ce966300e437946fd2ad45790bcd9` em `main`; o worktree ficou
+  limpo após o commit funcional.
+- **Validação local:** API `66/66`; SPA focada `52/52`; design-system `49/49`;
+  build/lint/typecheck da API, SPA e design-system; Playwright `--list`; validação
+  estática RLS; `docs:validate`; `git diff --check`: PASS.
+- **Limitação:** o teste RLS PostgreSQL e a jornada clínica não foram executados
+  neste ambiente porque `docker compose` não obteve acesso ao socket do daemon
+  (`permission denied`). O `pnpm release:triple-a` com execução pesada pulada
+  retornou `BLOCKED / NOT PROVEN`, score `34`, crítico `23`, `27` P0.
+- **Decisão:** publicar o candidato é reversível e autorizado; aguardar o CI no
+  SHA exato. Nenhum claim `TRIPLE-A VERIFIED` ou `main green` é emitido antes do
+  resultado remoto terminal.
+
+## 2026-09-11 — CI #117 falho no HEAD documental `f5e0e657`
+
+- **Candidato:** `main@f5e0e6572a3743f1a9f8d34843a92e8af8cd2987`, revisão
+  documental do candidato funcional anterior; o run foi disparado para
+  reconciliar o ledger e não transferiu evidência para outro SHA.
+- **CI:** [run 34613079579](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34613079579)
+  terminou `failure` com 15/16 jobs. Unit, Integration, Windows, E2E SPA e
+  Visual passaram; somente Performance falhou.
+- **Falha observável:** `Run k6 benchmark` exit 99 e `Check SLO results` exit 1.
+  O artefato `performance-k6-report` foi produzido, mas logs/métricas detalhados
+  não estão disponíveis pela API pública sem autenticação; não inferir causa.
+- **Decisão:** thresholds não foram relaxados; o candidato funcional seguinte
+  precisa de CI próprio e continua sem claim de `main green` até terminalização.
+
 ## 2026-09-11T14:53:11Z — CI #116 falho no HEAD `e8d7eaec`
 
 - **Candidato:** `main@e8d7eaec35004c9492db78920c8652c8171bfd1e`, sincronizado
