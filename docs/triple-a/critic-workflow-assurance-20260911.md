@@ -1,0 +1,31 @@
+# Auditoria independente — workflow clínico
+
+**SHA auditado:** `b77539c9891eef89cbbe8160bf6e30a0fb369d48`
+**Escopo:** fases 7–13 e P0s 4–7 do prompt State of Art
+**Resultado:** `INCOMPLETE / NOT PROVEN`
+
+O código possui repositório PostgreSQL, idempotência, eventos append-only,
+claims concorrentes, leases, fencing, retry, DLQ e replay. A auditoria não
+tratou código ou configuração como prova de runtime: `localhost:5433` recusou
+a conexão, `pg_isready` não está disponível e Docker retornou `permission
+denied`.
+
+Validações executadas pelo crítico:
+
+- `pnpm validate:clinical-workflow` — PASS;
+- `node --test scripts/validate-clinical-workflow-schema.test.mjs` — PASS `1/1`;
+- `node scripts/check-migration-source-of-truth.mjs` — PASS;
+- testes unitários de workflows — PASS `14/14`, limitados a memória/doubles.
+
+As suítes PostgreSQL e SIGKILL não foram executadas neste ambiente. O teste de
+crash recovery atual prova reclaim/fencing da task, mas o fixture não executa
+um efeito material com ledger/outbox idempotente; por isso não prova ausência
+de efeito duplicado após crash. O crítico também apontou que todos os erros
+seguem a política retryable até o limite, que a classificação retryable/permanent
+não é persistida e que faltam gauges explícitos de profundidade/idade da fila,
+DLQ e heartbeat.
+
+Este relatório é evidência independente de lacunas, não aprovação. O gate deve
+continuar bloqueado até a execução PostgreSQL/processual no SHA exato e até um
+teste de efeito durável demonstrar exatamente um efeito material após
+SIGKILL/reclaim.

@@ -2,16 +2,17 @@
 
 **Status:** NOT PROVEN
 
-Observado em `2026-09-11T18:36:24Z` no candidato
-`bb03b74a513a6ab8ced2e4fb1cb2c6cf77ae276e`. O merge funcional para `main` foi
-fast-forward, sem force-push; `HEAD` e `origin/main` coincidiram antes deste
-snapshot documental, que é um commit separado.
+Observado em `2026-09-11T19:39:53Z` no candidato
+`b77539c9891eef89cbbe8160bf6e30a0fb369d48`. `HEAD`, `main` e `origin/main`
+coincidem e a atualização preservou o rollback remoto sem force-push.
 
-O CI exato [#124](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34634177739)
-está `pending`. O run #123 do snapshot documental anterior falhou no contrato
-de identidade de fontes; a causa foi reproduzida e corrigida neste candidato.
-Nenhum run pendente pode ser tratado como verde.
+O CI exato [#126](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34635843119)
+terminou `failure` com 14/16 jobs aprovados. Performance e o contrato do
+Critical Process Runner Windows falharam; os demais checks obrigatórios
+publicados no run passaram. A API pública não fornece os logs detalhados dos
+jobs falhos sem autenticação administrativa, portanto a causa não foi
+inferida nem escondida por alteração de threshold.
 
-`docs/engineering/GREEN_MAIN_POLICY.md` define que GREEN exige todos os checks
-obrigatórios verdes no mesmo commit. Portanto, este documento não autoriza
-release, aprovação de produção ou o claim `TRIPLE-A VERIFIED`.
+`docs/engineering/GREEN_MAIN_POLICY.md` exige que todos os checks obrigatórios
+estejam verdes no mesmo SHA. Por isso este documento não autoriza release,
+deploy produtivo ou o claim `TRIPLE-A VERIFIED`.

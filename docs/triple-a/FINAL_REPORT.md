@@ -1,27 +1,29 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Code candidate:** `main@bb03b74a513a6ab8ced2e4fb1cb2c6cf77ae276e`
-**Observed:** `2026-09-11T18:36:24Z`
-**Repository state:** o candidato funcional foi publicado em `main` por fast-forward, sem force-push; este relatório é um snapshot documental posterior.
+**Code candidate:** `main@b77539c9891eef89cbbe8160bf6e30a0fb369d48`
+**Observed:** `2026-09-11T19:39:53Z`
+**Repository state:** `HEAD` e `origin/main` coincidem; o rollback remoto
+continua preservado e nenhum force-push foi usado.
 **Verdict:** **BLOCKED / NOT PROVEN**
 
-O candidato publicado adiciona a jornada canônica de internação, métricas
-clínicas agregadas ligadas ao `/metrics` e uma correção de acessibilidade nas
-abas de workflow. A validação local passou API `590/590`, E2E clínico `2/2` e
-SPA focada `32/32`.
+O gate local estrito passou todos os checks estáticos, typecheck, lint e build,
+além da suíte local de testes, mas terminou com score `54`, critical `54`,
+`16` P0 abertos e `publication_allowed=false`. O quality bar congelado exige
+`97/95/zero P0`; a avaliação derivada do quality bar foi `31/33/7`.
 
-O CI exato [#124](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34634177739)
-está `pending`. O run #123 do snapshot anterior falhou na identidade de fontes;
-a causa foi corrigida e nenhum resultado é transferido entre commits.
-O gate estrito local do candidato é `BLOCKED`, score `34`, critical `23`,
-`27` P0 e `publication_allowed=false`.
+O [CI #126](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34635843119)
+executou no SHA exato e terminou com 14/16 jobs aprovados. Performance e o
+contrato Windows falharam. Os logs públicos não permitem determinar a causa
+raiz; thresholds não foram relaxados e nenhuma evidência de outro SHA foi
+transferida.
 
-O quality bar congelado exige score geral mínimo `97`, score crítico mínimo `95`,
-zero P0 e main verde no mesmo candidato. Permanecem sem prova suficiente
-governança da branch, RLS no runtime alvo, recovery/restore, deploy/rollback,
-soak, attestation, UAT humano e autoridade de release. Este relatório não emite
-`TRIPLE-A VERIFIED`.
+Permanecem sem prova suficiente branch protection, RLS/runtime alvo,
+workflow PostgreSQL de release, crash recovery, restore/RPO/RTO,
+deploy/rollback, attestation, soak 24/72h, observabilidade no target, UAT
+humano e autoridade de release. O relatório não emite `main green`, release
+produtivo ou `TRIPLE-A VERIFIED`.
 
-O prompt está preservado em [MASTER_PROMPT_STATE_OF_ART.md](./MASTER_PROMPT_STATE_OF_ART.md),
-com SHA-256 `872014ed989fa4b565bbab5293009c13ef6437104204cbf39c876e64a593f745`.
-O histórico de scorecards está em [scorecard-history](./scorecard-history).
+O prompt byte a byte preservado é [MASTER_PROMPT.md](./MASTER_PROMPT.md), com
+SHA-256 `95270384800c87fcbe7e823a41a7b57834ddaac274914226745f7fdc5137197a`.
+A régua está em [QUALITY_BAR_V1.json](./QUALITY_BAR_V1.json) e o ledger atual
+em [EXECUTION_LOG.md](./EXECUTION_LOG.md).

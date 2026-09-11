@@ -1,5 +1,37 @@
 # Triple-A — Execution Log
 
+## 2026-09-11T19:39:53Z — candidato `b77539c9` / CI #126
+
+- **Candidato:** `main@b77539c9891eef89cbbe8160bf6e30a0fb369d48`; `HEAD` e
+  `origin/main` coincidem, worktree limpo após a coleta e rollback remoto
+  preservado sem force-push.
+- **Gate local:** `pnpm release:triple-a` executou os checks locais e terminou
+  `BLOCKED`, score `54`, critical `54`, `open_p0=16` e
+  `publication_allowed=false`. A avaliação derivada do quality bar foi
+  `31/33/7`; manifesto e security evidence não estavam vinculados a um pacote
+  externo válido.
+- **Local:** documentação, namespaces, migration source, OpenAPI, RLS
+  estático, deploy surface, Helm estático, supply chain, dependências, schema
+  clínico, secrets, complexidade, typecheck, lint e build passaram. A cobertura
+  executou 2.525 testes, com 1 skipped; E2E clínico `2/2` e SPA focada `32/32`.
+- **CI:** [run 34635843119](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34635843119)
+  terminou `failure` com 14/16 jobs. Unit, Integration, E2E SPA, Visual,
+  contratos, segurança, typecheck, lint e build passaram; Performance
+  ([103387572819](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34635843119/job/103387572819))
+  e Critical Process Runner Windows
+  ([103387572845](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34635843119/job/103387572845))
+  falharam. Logs detalhados não estão disponíveis pela API pública sem acesso
+  administrativo; nenhuma causa ou threshold foi inferida/alterada.
+- **Críticos independentes:** a auditoria de workflow confirmou implementação
+  substancial, mas classificou PostgreSQL real, leases, SIGKILL, efeitos
+  idempotentes e observabilidade de backlog como `NOT PROVEN`/`INCOMPLETE` no
+  ambiente sem Docker/PostgreSQL. A auditoria de segurança permanece em
+  andamento nesta coleta.
+- **Decisão:** `BLOCKED / NOT PROVEN`; não emitir `main green`, release ou
+  `TRIPLE-A VERIFIED`. O próximo passo é reproduzir os dois jobs falhos com
+  logs autenticados e obter os envelopes externos do target antes de qualquer
+  certificação.
+
 ## 2026-09-11T15:45:08Z — candidato funcional `2ed8e408`
 
 - **Código:** a jornada clínica canônica passou a provar execução de medicação,

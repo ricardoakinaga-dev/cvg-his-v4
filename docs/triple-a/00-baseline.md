@@ -1,14 +1,15 @@
 # Triple-A — 00 Baseline
 
-## Reconciliação corrente — 2026-09-11T11:57:40Z
+## Reconciliação corrente — 2026-09-11T19:39:53Z
 
-- Candidato funcional: `bb16a47f`; `main` e `origin/main` estão sincronizados no snapshot corrente de assurance e a branch de origem continua disponível para rollback.
+- Candidato atual: `b77539c9891eef89cbbe8160bf6e30a0fb369d48`; `main`, `HEAD` e `origin/main` coincidem, com rollback remoto preservado e sem force-push.
 - Esta fotografia vincula a evidência ao SHA exato e não transfere resultados históricos para commits documentais posteriores.
-- CI atual: [#34593912427](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34593912427) terminou `failure` com 15/16 jobs em `success`; somente Performance (k6 SLOs) falhou. O Repository Guards e as suítes Unit, Integration, E2E SPA, Visual, Windows e API Contract passaram.
+- CI atual: [#126](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34635843119) terminou `failure` com 14/16 jobs aprovados; Performance e Critical Process Runner Windows falharam. Os demais checks publicados passaram.
 - Veredicto: **BLOCKED / NOT PROVEN**. O prompt exige CI verde, quality bar, evidência operacional/humana atual e zero P0; nenhum score histórico é reutilizado e a publicação não é autorizada.
-- Evidência local bounded do candidato: `pnpm test`, typecheck, lint, OpenAPI, complexidade, identidade de fontes críticas, RLS estático, supply chain, dependências, backup/restore e Helm estático passaram; o caminho de estimativa de billing também tem cobertura explícita para preservar subtotal sem hidratar itens.
-- O gate pré-publicação agora usa fases explícitas e estados `NOT_APPLICABLE` para critérios posteriores, sem remover critérios externos nem alterar o quality bar pós-publicação. O bundle continua em `artifacts/release/` e `artifacts/triple-a/TRIPLE_A_RELEASE_EVIDENCE.json`; nenhum envelope foi promovido.
-- O prompt e o quality bar mantêm os hashes já registrados. O claim TRIPLE-A VERIFIED permanece proibido.
+- Gate estrito local: `pnpm release:triple-a` retornou `BLOCKED`, score `54`, critical `54`, `16` P0 abertos e `publication_allowed=false`; a avaliação derivada do quality bar foi `31/33/7`.
+- Checks locais de documentação, namespaces, migration source, OpenAPI, RLS estático, deploy surface, Helm estático, supply chain, dependências, schema clínico, secrets, complexidade, typecheck, lint e build passaram. A suíte de cobertura passou com 2.525 testes e 1 skipped.
+- Os logs detalhados dos dois jobs falhos do CI exigem autenticação administrativa; nenhuma causa foi inferida, threshold foi relaxada ou evidência de outro SHA transferida.
+- O prompt e o quality bar mantêm os hashes registrados. O claim `TRIPLE-A VERIFIED` permanece proibido.
 
 ## Fotografia histórica da Fase 0
 

@@ -1,15 +1,15 @@
 # Triple-A External Assurance — Current Reconciliation
 
-**Current code candidate:** `e8d7eaec35004c9492db78920c8652c8171bfd1e`; `main`/`origin/main` sincronizados.
-**Current CI:** [#34609488994](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34609488994) — `failure`, 15/16 jobs; Performance falhou
+**Current code candidate:** `b77539c9891eef89cbbe8160bf6e30a0fb369d48`; `main`/`origin/main` sincronizados.
+**Current CI:** [#126](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34635843119) — `failure`, 14/16 jobs; Performance e Windows falharam
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-11T14:53:11Z
+**Observation:** 2026-09-11T19:39:53Z
 
-**Current local execution:** testes focados SPA 3/3 e 33/33, design-system 5/5, gate 15/15, lint/typecheck e documentação passaram em `59a63087`; a evidência anterior PostgreSQL `66/66`, processos `11/11` e k6 `9/9` permanece bounded no checkout `0abdf651`. Esta evidência local não substitui o CI pinned ou o ambiente alvo.
+**Current local execution:** o gate estrito executou checks estáticos, typecheck, lint e build com PASS; `pnpm test:coverage` terminou com 2.525 testes passados e 1 skipped, E2E clínico `2/2` e SPA focada `32/32`. A evidência local não substitui o CI pinned nem o ambiente alvo.
 
-**Current strict gate:** `pnpm release:triple-a` no HEAD retornou `BLOCKED / NOT PROVEN`, score `34`, critical `23`, `27` P0 abertos e `publication_allowed=false`.
+**Current strict gate:** `pnpm release:triple-a` no HEAD retornou `BLOCKED / NOT PROVEN`, score `54`, critical `54`, `16` P0 abertos e `publication_allowed=false`; a avaliação derivada do quality bar foi `31/33/7`.
 
-The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. Run #116 is the exact validation for `e8d7eaec`; it finished with 15/16 jobs successful. Performance failed at `Run k6 benchmark` (exit 99) and `Check SLO results` (exit 1). Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
+The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. The exact current run #126 failed in `Run k6 benchmark`/`Check SLO results` and in the Windows package-manager contract. Logs detalhados exigem autenticação; branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
 
 ## Current candidate implementation delta
 
