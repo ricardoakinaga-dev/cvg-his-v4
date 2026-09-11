@@ -1,8 +1,8 @@
 # Triple-A final critic — current reconciliation
 
-**Candidate code:** main@fe5406c23c515585629060e0dc01b91f2d113d65  
-**CI:** [34556230892](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34556230892)  
-**Observed:** 2026-09-11T03:45:00Z  
+**Candidate code:** main@c07f568c64841f0ae8fafcb6118d9014645ef9c4
+**CI:** NOT RUN for this candidate; remote push pending at observation
+**Observed:** 2026-09-11T05:36:33Z
 **Verdict:** **BLOCKED / NOT PROVEN**
 
 This document records a bounded evidence review. It is not release authority and does not convert source inspection or local tests into target evidence.
@@ -13,8 +13,7 @@ Backup, restore, deploy, rollback, observability, alerts, on-call and runbooks.
 
 ## Evidence
 
-- CI infrastructure, build, integration, Windows contract, E2E and visual jobs passed on the exact SHA.
-- The performance job failed; the dependent release-artifacts workflow was skipped.
+- No remote CI run exists yet for the candidate; earlier infrastructure and performance results remain historical.
 - No current target backup/restore, RPO/RTO, 24/72-hour soak, deploy rehearsal, rollback rehearsal, alert delivery or human release-authority package is present.
 
 ## Blocking findings

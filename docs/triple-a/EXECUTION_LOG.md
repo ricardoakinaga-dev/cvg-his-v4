@@ -1,5 +1,14 @@
 # Triple-A — Execution Log
 
+## 2026-09-11T05:36:33Z — auditoria append-only e artefato final canônico
+
+- **SHA:** `c07f568c64841f0ae8fafcb6118d9014645ef9c4` (candidato de código local; CI remoto ainda não executado).
+- **Problema:** a auditoria runtime tinha revogação declarada, mas não uma prova PostgreSQL de `UPDATE`, `DELETE` e `TRUNCATE` negados; o gate escrevia o resultado apenas no bundle operacional.
+- **Alterações:** teste PostgreSQL com papel temporário `NOBYPASSRLS`, envelope local de auditoria, execução no job de runtime do CI, runner fail-closed para worktree sujo e cópia canônica em `artifacts/triple-a/TRIPLE_A_RELEASE_EVIDENCE.json` com estados por área.
+- **Testes:** `tests/integration/database/audit-cursor-pagination-postgres.test.ts` passou 3/3 em PostgreSQL descartável; testes de release 23/23; `pnpm lint`; `pnpm docs:validate`.
+- **Resultado:** PASS local parcial e reproduzível; evidência local do runner vinculada ao SHA e rebaixada para PARTIAL pelo gate até verificação independente.
+- **Risco restante:** CI remoto, performance, governança de branch, RLS/target, recovery/soak, deploy/rollback, attestation, UAT e autoridade humana continuam NOT PROVEN.
+
 ## 2026-09-09 — Fase 0 / baseline
 
 - Prompt fonte copiado byte-a-byte para `docs/triple-a/MASTER_PROMPT.md`; SHA-256 conferido.

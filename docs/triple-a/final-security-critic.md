@@ -1,8 +1,8 @@
 # Triple-A final critic — current reconciliation
 
-**Candidate code:** main@fe5406c23c515585629060e0dc01b91f2d113d65  
-**CI:** [34556230892](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34556230892)  
-**Observed:** 2026-09-11T03:45:00Z  
+**Candidate code:** main@c07f568c64841f0ae8fafcb6118d9014645ef9c4
+**CI:** NOT RUN for this candidate; remote push pending at observation
+**Observed:** 2026-09-11T05:36:33Z
 **Verdict:** **BLOCKED / NOT PROVEN**
 
 This document records a bounded evidence review. It is not release authority and does not convert source inspection or local tests into target evidence.
@@ -13,7 +13,7 @@ Authentication and authorization boundaries, tenant/RLS controls, webhooks, secr
 
 ## Evidence
 
-- The exact-SHA CI run passed Secret Scan, Dependency Audit, SAST, Repository Guards and the other static/security checks.
+- The clean local candidate passed the focused release checks; no remote exact-SHA CI run exists yet for this candidate.
 - Public branch metadata reports main as unprotected; the protection endpoint requires authenticated administration. Effective required checks and bypass ownership therefore remain unproven.
 - Static role/RLS and secret validators exist, but no current target credential probe, registry scan, SBOM/provenance package or signature verification is bound to this candidate.
 - No current image digest and attestation envelope is available in the required release evidence path.

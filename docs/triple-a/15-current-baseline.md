@@ -1,45 +1,45 @@
 # Baseline corrente — State of Art
 
-Observado em 2026-09-11T04:37:28Z. O candidato corrente é o "main@4ca6e79364d892444dc29d9f2b1a2004300b6ab6". Este bloco é a fonte corrente; as seções posteriores são históricas e não transferem resultados para outro SHA.
+Observado em 2026-09-11T05:36:33Z. O candidato de código corrente é o "main@c07f568c64841f0ae8fafcb6118d9014645ef9c4". Nesta fotografia, `origin/main` ainda estava em `7d18feaff1d142d4e2eef741b8edd98611eb0ac9` e o CI do novo candidato estava pendente. Este bloco é a fonte corrente; as seções posteriores são históricas e não transferem resultados para outro SHA.
 
 ## Estado do candidato atual
 
 | Campo | Evidência atual |
 | --- | --- |
-| current_sha | "4ca6e79364d892444dc29d9f2b1a2004300b6ab6" ("main" e "origin/main") |
-| main_sha | "4ca6e79364d892444dc29d9f2b1a2004300b6ab6" |
-| origin/main | "4ca6e79364d892444dc29d9f2b1a2004300b6ab6" |
+| current_sha | "c07f568c64841f0ae8fafcb6118d9014645ef9c4" (candidato local em `main`) |
+| main_sha | "c07f568c64841f0ae8fafcb6118d9014645ef9c4" |
+| origin/main | "7d18feaff1d142d4e2eef741b8edd98611eb0ac9" na observação; push pendente |
 | worktree | Limpo para arquivos rastreados; artefatos locais estão ignorados |
-| ci_run | [#34560856450](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34560856450), terminal "failure", 15/16 jobs aprovados |
-| overall_score | BLOCKED — gate local estrito score 72; publicação não permitida |
-| critical_score | 60 no gate local estrito; abaixo do mínimo 95 |
-| open_p0 | 14 no gate local estrito; critérios externos continuam sem prova |
-| implemented | API/SPA/worker, workflow durável, contratos, validadores, gate de release, SBOM com bom-ref único, runner de evidência PostgreSQL e proteção fail-closed de claims |
-| verified_local | docs, OpenAPI, workflow clínico, segurança/SBOM (199 componentes), testes focados 14/14, suíte do gate com unit tests PASS, PostgreSQL efêmero 16/16 e SIGKILL 1/1 |
-| verified_remote | 15/16 jobs no SHA atual; somente Performance (k6 SLOs) falhou; Unit, Integration, E2E SPA, Visual, Windows e checks preparatórios passaram |
+| ci_run | NOT RUN para `c07f568c`; o último #96 pertence ao SHA anterior |
+| overall_score | NOT REEVALUATED; publicação não permitida |
+| critical_score | NOT REEVALUATED; o score histórico está abaixo do mínimo 95 |
+| open_p0 | NOT REEVALUATED; critérios externos continuam sem prova |
+| implemented | API/SPA/worker, workflow durável, contratos, validadores, gate de release com artefato canônico, SBOM com bom-ref único, runner de evidência PostgreSQL com auditoria append-only e proteção fail-closed de claims |
+| verified_local | docs, lint, testes do gate 23/23 e runner PostgreSQL limpo 3/3 (workflow clínico, SIGKILL/fencing e auditoria append-only) |
+| verified_remote | NOT RUN para o candidato de código |
 | verified_target | NOT PROVEN |
-| blocked | Performance remoto no run atual, score abaixo do quality bar, evidência de release atual ausente, branch governance, ambiente alvo, recuperação/soak, UAT e autoridade de release |
+| blocked | CI remoto pendente para o novo candidato, score ainda não reavaliado, evidência de release atual ausente, branch governance, ambiente alvo, recuperação/soak, UAT e autoridade de release |
 | not_proven | Quality bar 97/95/zero P0, Windows nativo fora do runner Linux, RLS/DB runtime no alvo, deploy/rollback, restore/RPO/RTO, attestation, observabilidade operacional e provas humanas |
 
 ## Evidência corrente
 
-O CI atual executou no SHA exato acima. O job [Performance (k6 SLOs)](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34560856450/job/103145389086) terminou com exit 99; o passo de verificação de SLO terminou com exit 1. Os demais 15 jobs passaram. O artefato remoto `performance-k6-report` é o ID `10184658898`, digest `sha256:d6b36e6cc2c91ed269a5080b938c128118b64c584c9c29dce5b785746996bb06`; os logs/arquivo não estão autenticados para download neste workspace. O run [34551458338](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34551458338) permanece histórico de checkout anterior.
+O CI do candidato `c07f568c` ainda não foi executado. O run [34563112372](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34563112372), seu artefato e o score 72/60/14 pertencem ao SHA documental anterior e permanecem históricos.
 
-A execução remota confirma a falha de SLO, mas o artefato não está autenticado neste workspace para extrair métricas adicionais. Os thresholds permanecem congelados; o run verde anterior não transfere PASS para este SHA.
+Não há execução remota terminal para o novo candidato nesta observação. Os thresholds permanecem congelados; nenhum run anterior transfere PASS para este SHA.
 
-No ambiente local efêmero, com PostgreSQL/Redis descartáveis, k6 v0.55.0 e perfil operational-minimum-v1 (60 VUs), a execução atual terminou 4/9 SLOs: API p95 224,21 ms, query 248 ms, write 303,2 ms, billing 306 ms e inventory 261,17 ms acima dos alvos; p99 367,11 ms, auth 17,97 ms, erros 0% e disponibilidade 100% passaram. Isso é diagnóstico local parcial e não certificação remota ou de ambiente alvo.
+O benchmark k6 4/9 SLOs é histórico do SHA anterior e não foi transferido. Neste candidato novo, o runner local PostgreSQL passou workflow clínico, SIGKILL/fencing e auditoria append-only (3/3); a evidência local continua parcial e não certifica CI, ambiente alvo ou autoridade humana.
 
-O runner local de workflow vinculou o SHA exato e passou os testes PostgreSQL clínico (16/16) e SIGKILL/fencing (1/1); a política do gate rebaixa essa prova local para PARTIAL até verificador independente. A evidência de segurança atual passou com SBOM CycloneDX de 199 componentes e referências únicas, auditoria de dependências e oito verificações SAST.
+O runner local limpo vinculou o SHA `c07f568c` e passou os três arquivos PostgreSQL/processo; a política do gate rebaixa essa prova local para PARTIAL até verificador independente. A evidência de segurança/SBOM e o gate estrito ainda precisam ser reexecutados no candidato novo.
 
-O gate estrito local no SHA atual produziu `BLOCKED`, `score=72`, `critical_score=60`, `open_p0=14`, `claim=NOT PROVEN` e `publication_allowed=false`. O resultado é diagnóstico fail-closed; não é pacote de certificação.
+O gate estrito e o score do candidato `c07f568c` ainda não foram reexecutados após o commit; o score 72/60/14 é histórico e não é evidência atual. O gate permanece fail-closed.
 
-O prompt integral continua byte a byte em [MASTER_PROMPT_STATE_OF_ART.md](./MASTER_PROMPT_STATE_OF_ART.md), SHA-256 872014ed989fa4b565bbab5293009c13ef6437104204cbf39c876e64a593f745. O [QUALITY_BAR_V1.json](./QUALITY_BAR_V1.json) permanece congelado em 97/95/zero P0. O prompt exige artifacts/triple-a/TRIPLE_A_RELEASE_EVIDENCE.json, enquanto o gate implementado escreve em artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json; nenhum envelope atual vinculado a este SHA existe em qualquer dos dois caminhos, e o artefato ignorado antigo não é promovido como prova.
+O prompt integral continua byte a byte em [MASTER_PROMPT_STATE_OF_ART.md](./MASTER_PROMPT_STATE_OF_ART.md), SHA-256 872014ed989fa4b565bbab5293009c13ef6437104204cbf39c876e64a593f745. O [QUALITY_BAR_V1.json](./QUALITY_BAR_V1.json) permanece congelado em 97/95/zero P0. O gate agora escreve o mesmo envelope no bundle operacional `artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json` e no caminho canônico exigido `artifacts/triple-a/TRIPLE_A_RELEASE_EVIDENCE.json`; nenhum envelope atual foi promovido como certificação.
 
 Os pareceres correntes estão em [final-security-critic.md](./final-security-critic.md), [final-clinical-critic.md](./final-clinical-critic.md), [final-database-critic.md](./final-database-critic.md), [final-operations-critic.md](./final-operations-critic.md) e [final-ux-critic.md](./final-ux-critic.md). Todos permanecem BLOCKED / NOT PROVEN e listam a evidência necessária para fechamento.
 
 ## Decisão corrente
 
-**BLOCKED / NOT PROVEN.** O merge é seguro e reversível, mas a certificação Triple-A, o release e o claim TRIPLE-A VERIFIED continuam bloqueados pela falha de performance e pelas evidências externas, operacionais e humanas ainda ausentes.
+**BLOCKED / NOT PROVEN.** O merge é seguro e reversível, mas a certificação Triple-A, o release e o claim TRIPLE-A VERIFIED continuam bloqueados pelo CI ainda pendente e pelas evidências externas, operacionais e humanas ainda ausentes.
 
 ## Registros históricos
 

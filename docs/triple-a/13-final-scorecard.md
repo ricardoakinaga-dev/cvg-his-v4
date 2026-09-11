@@ -2,15 +2,15 @@
 
 | Campo | Estado |
 | --- | --- |
-| CURRENT CODE CANDIDATE | "main@4ca6e79364d892444dc29d9f2b1a2004300b6ab6"; branch de origem preservada em `fix/state-of-art-ci-assurance` para rollback |
-| DOCUMENTATION SNAPSHOT | Esta reconciliação registra o CI terminal do SHA atual e a evidência local fail-closed |
-| CURRENT SCORE | 72 no gate local estrito; BLOCKED / NOT PROVEN |
-| CURRENT CRITICAL SCORE | 60 no gate local estrito; abaixo do mínimo 95 |
-| CURRENT OPEN P0 | 14 no gate local estrito; provas externas permanecem ausentes |
-| CURRENT CI | [#34560856450](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34560856450): 15/16 jobs aprovados; somente Performance (k6 SLOs) falhou |
-| CURRENT LOCAL PERFORMANCE | 4/9 SLOs no runner local; erros HTTP 0% e disponibilidade 100%; não substitui CI ou ambiente alvo |
+| CURRENT CODE CANDIDATE | "main@c07f568c64841f0ae8fafcb6118d9014645ef9c4"; branch de origem preservada em `fix/state-of-art-ci-assurance` para rollback |
+| DOCUMENTATION SNAPSHOT | Reconciliação do candidato de código; `origin/main`/CI ainda não foram atualizados nesta fotografia |
+| CURRENT SCORE | NOT REEVALUATED; o 72 histórico pertence a `4ca6e793` |
+| CURRENT CRITICAL SCORE | NOT REEVALUATED; o 60 histórico pertence a `4ca6e793` |
+| CURRENT OPEN P0 | NOT REEVALUATED; os 14 históricos não são transferidos |
+| CURRENT CI | NOT RUN para `c07f568c`; o último #96 pertence a outro SHA |
+| CURRENT LOCAL PERFORMANCE | Não reexecutada neste candidato; o 4/9 histórico não é transferido |
 | CURRENT VERDICT | BLOCKED / NOT PROVEN |
 
-O run [34551458338](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34551458338) foi verde em checkout anterior e permanece explicitamente histórico. O run atual falhou somente em performance; os thresholds não foram relaxados. O merge, a origem e a cadeia de identidade estão registrados em [15-current-baseline](./15-current-baseline.md) e no [EXECUTION_LOG](./EXECUTION_LOG.md).
+O run [34563112372](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34563112372) e o score 72/60/14 anteriores permanecem históricos de outro SHA. O runner local novo passou os três cenários PostgreSQL, mas não substitui CI, target, autoridade ou o score do quality bar. Os thresholds não foram relaxados. O estado e a cadeia de identidade estão registrados em [15-current-baseline](./15-current-baseline.md) e no [EXECUTION_LOG](./EXECUTION_LOG.md).
 
 Histórico anterior preservado em [scorecard-history](./scorecard-history/2026-09-10-before-b85b03ea-13-final-scorecard.md).

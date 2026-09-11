@@ -1,8 +1,8 @@
 # Triple-A final critic — current reconciliation
 
-**Candidate code:** main@fe5406c23c515585629060e0dc01b91f2d113d65  
-**CI:** [34556230892](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34556230892)  
-**Observed:** 2026-09-11T03:45:00Z  
+**Candidate code:** main@c07f568c64841f0ae8fafcb6118d9014645ef9c4
+**CI:** NOT RUN for this candidate; remote push pending at observation
+**Observed:** 2026-09-11T05:36:33Z
 **Verdict:** **BLOCKED / NOT PROVEN**
 
 This document records a bounded evidence review. It is not release authority and does not convert source inspection or local tests into target evidence.
@@ -13,7 +13,7 @@ Recepção, clínica, internação, administração, desktop, tablet, mobile, ac
 
 ## Evidence
 
-- The exact-SHA CI run passed SPA E2E and visual regression.
+- No exact-SHA CI run exists yet for this candidate; historical SPA/E2E evidence is not transferred.
 - Local build and focused UI contracts passed in the candidate session.
 - No independent current axe/keyboard/responsive review or named human UAT package is attached; historical screenshots and a green prior checkout cannot certify this candidate.
 

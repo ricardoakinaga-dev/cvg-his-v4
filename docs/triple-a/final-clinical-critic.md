@@ -1,8 +1,8 @@
 # Triple-A final critic — current reconciliation
 
-**Candidate code:** main@fe5406c23c515585629060e0dc01b91f2d113d65  
-**CI:** [34556230892](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34556230892)  
-**Observed:** 2026-09-11T03:45:00Z  
+**Candidate code:** main@c07f568c64841f0ae8fafcb6118d9014645ef9c4
+**CI:** NOT RUN for this candidate; remote push pending at observation
+**Observed:** 2026-09-11T05:36:33Z
 **Verdict:** **BLOCKED / NOT PROVEN**
 
 This document records a bounded evidence review. It is not release authority and does not convert source inspection or local tests into target evidence.
@@ -13,8 +13,8 @@ Clinical workflow safety, owner/patient context, encounters, triage, records, pr
 
 ## Evidence
 
-- Focused local workflow and clinical tests passed in the recorded candidate session; the ephemeral PostgreSQL workflow assurance lane passed 16/16 and the independent SIGKILL workflow test passed 1/1.
-- The exact-SHA remote run passed integration, API contract, unit, SPA E2E and visual jobs.
+- Focused local workflow, SIGKILL/fencing and audit append-only tests passed 3/3 in the clean disposable PostgreSQL runner.
+- No exact-SHA remote run exists yet for this candidate; earlier CI results remain historical.
 - These results do not establish the full SHA-bound golden path, negative matrix, audit/timeline assertions, runtime tenant isolation or clinical human UAT on the target.
 
 ## Blocking findings

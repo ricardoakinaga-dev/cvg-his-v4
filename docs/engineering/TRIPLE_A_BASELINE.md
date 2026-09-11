@@ -1,11 +1,11 @@
 # CVG HIS — Triple-A Baseline
 
-## Reconciliação corrente — 2026-09-11T04:37:28Z
+## Reconciliação corrente — 2026-09-11T05:36:33Z
 
-- **Código:** "main@4ca6e79364d892444dc29d9f2b1a2004300b6ab6"; "origin/main" coincide e a origem do merge permanece disponível.
-- **CI:** [#34560856450](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34560856450) terminou 15/16; o job Performance falhou.
-- **Estado:** **BLOCKED / NOT PROVEN**. O gate local marcou score 72, crítico 60 e 14 P0; zero P0 não foi certificado.
-- **Local:** docs, OpenAPI, workflow, segurança/SBOM, testes focados, build, PostgreSQL efêmero 16/16 e SIGKILL 1/1 passaram; o k6 local passou 4/9 SLOs.
+- **Código:** "main@c07f568c64841f0ae8fafcb6118d9014645ef9c4"; `origin/main` estava em `7d18feaff1d142d4e2eef741b8edd98611eb0ac9` na observação e o push estava pendente.
+- **CI:** NOT RUN para o candidato novo; o #96 pertence ao SHA anterior.
+- **Estado:** **BLOCKED / NOT PROVEN**. O gate e o score ainda não foram reavaliados neste SHA; nenhum claim é permitido.
+- **Local:** docs, lint, 23 testes de release e runner PostgreSQL limpo 3/3 (workflow clínico, SIGKILL/fencing e auditoria append-only) passaram; o k6 anterior é histórico.
 - **Externo ainda aberto:** branch governance, Windows nativo, RLS/runtime no alvo, recovery/soak, restore/RPO/RTO, deploy/rollback, attestation, UAT e autoridade de release.
 
 As seções seguintes preservam a fotografia histórica e não devem ser lidas como evidência do SHA atual sem uma execução nova vinculada ao commit.

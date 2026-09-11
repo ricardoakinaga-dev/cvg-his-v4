@@ -1,11 +1,11 @@
 # Triple-A External Assurance — Current Reconciliation
 
-**Current candidate:** "4ca6e79364d892444dc29d9f2b1a2004300b6ab6" ("main" / "origin/main")
-**Current CI:** [#34560856450](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34560856450) — 15/16, Performance failure
+**Current code candidate:** "c07f568c64841f0ae8fafcb6118d9014645ef9c4" (local `main`; push pending at observation)
+**Current CI:** NOT RUN for this candidate; run #96 belongs to the prior documentation SHA
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-11T04:37:28Z
+**Observation:** 2026-09-11T05:36:33Z
 
-The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. The current run confirms the same performance gate failure; thresholds remain unchanged. Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
+The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. The clean local PostgreSQL runner passed workflow, SIGKILL/fencing and audit append-only checks (3/3), but CI, branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
 
 # Triple-A External Assurance — Baseline 2026-09-09
 
