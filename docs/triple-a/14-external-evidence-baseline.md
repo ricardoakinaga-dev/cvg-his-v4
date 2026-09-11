@@ -1,11 +1,11 @@
 # Triple-A External Assurance — Current Reconciliation
 
-**Current candidate:** "fe5406c23c515585629060e0dc01b91f2d113d65" ("main" / "origin/main")
-**Current CI:** [#34556230892](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34556230892) — 15/16, Performance failure
+**Current candidate:** "4ca6e79364d892444dc29d9f2b1a2004300b6ab6" ("main" / "origin/main")
+**Current CI:** [#34560856450](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34560856450) — 15/16, Performance failure
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-11T03:45:00Z
+**Observation:** 2026-09-11T04:37:28Z
 
-The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. The current comparison found runner/contention variance and recommends 2–3 same-SHA performance repetitions without changing thresholds. Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
+The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. The current run confirms the same performance gate failure; thresholds remain unchanged. Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
 
 # Triple-A External Assurance — Baseline 2026-09-09
 

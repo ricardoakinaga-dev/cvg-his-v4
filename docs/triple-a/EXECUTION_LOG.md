@@ -265,3 +265,11 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 
 - O gate recebeu um teste explícito em `tests/unit/infra/triple-a-release-gate.test.ts`: qualquer decisão strict diferente de PASS deve produzir `claim=NOT PROVEN` e `publication_allowed=false`.
 - A suíte do gate passou 11/11. A garantia protege contra publicação acidental e não substitui CI, runtime, UAT ou autoridade humana.
+
+## 2026-09-11T04:37:28Z — CI terminal do candidato `4ca6e793`
+
+- O candidato publicado permanece `main@4ca6e79364d892444dc29d9f2b1a2004300b6`, com `origin/main` coincidente, worktree rastreado limpo e branch de origem preservada para rollback.
+- O CI [#34560856450](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34560856450) terminou em `failure` após 30m54s: 15/16 jobs passaram; somente `Performance (k6 SLOs)` falhou. Unit, Integration, E2E SPA, Visual, Windows e os checks preparatórios passaram.
+- O job de performance [103145389086](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34560856450/job/103145389086) terminou com exit 99 no benchmark e exit 1 na verificação. O artefato `performance-k6-report` é o ID `10184658898`, digest `sha256:d6b36e6cc2c91ed269a5080b938c128118b64c584c9c29dce5b785746996bb06`.
+- O benchmark local do mesmo SHA terminou 4/9 SLOs sob o runner atual: API p95 224,21 ms, query 248 ms, write 303,2 ms, billing 306 ms e inventory 261,17 ms falharam; p99 367,11 ms, auth 17,97 ms, erros 0% e disponibilidade 100% passaram. Thresholds não foram relaxados.
+- O gate estrito local terminou `BLOCKED`, `score=72`, `critical_score=60`, `open_p0=14`, `claim=NOT PROVEN` e `publication_allowed=false`. Segurança/SBOM, documentação, testes do gate e workflow PostgreSQL/SIGKILL local passaram nos escopos registrados; provas externas, target, UAT, governança e autoridade continuam abertas.
