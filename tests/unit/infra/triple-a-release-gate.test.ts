@@ -121,6 +121,31 @@ describe('Triple-A release gate scoring', () => {
     expect(result.open_p0).toBe(1);
   });
 
+  it('excludes explicitly non-applicable prepublication criteria from scoring', () => {
+    const evaluation = evaluateQualityBar({
+      rootDir: process.cwd(),
+      phase: 'prepublication',
+      qualityBar: {
+        quality_bar_id: 'fixture-quality-bar',
+        criteria: [
+          { id: 'MAIN-002', area: 'main', priority: 'P0', description: 'branch', status: 'NOT_EVALUATED' },
+          { id: 'FINAL-001', area: 'certification', priority: 'P0', description: 'final', status: 'NOT_EVALUATED' },
+        ]
+      },
+      criteria: []
+    });
+    const statuses = new Map(evaluation.criteria.map((item) => [item.id, item.status]));
+
+    expect(evaluation.phase).toBe('prepublication');
+    expect(statuses.get('MAIN-002')).toBe('NOT_APPLICABLE');
+    expect(statuses.get('FINAL-001')).toBe('NOT_APPLICABLE');
+    expect(evaluation.open_p0).toBe(0);
+    expect(scoreCriteria([
+      { id: 'applicable', priority: 'P0', status: 'PASS' },
+      { id: 'prepublication-only', priority: 'P0', status: 'NOT_APPLICABLE' },
+    ])).toEqual({ score: 100, critical_score: 100, open_p0: 0 });
+  });
+
   it('reports a bounded first dirty path without expanding untracked directories', () => {
     const root = mkdtempSync(join(tmpdir(), 'cvg-triple-a-gate-'));
     try {

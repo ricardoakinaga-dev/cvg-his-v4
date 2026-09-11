@@ -79,7 +79,12 @@ jobs:
         env:
           TRIPLE_A_RELEASE_OUTPUT_DIR: artifacts/release
           TRIPLE_A_PREPUBLICATION: '1'
+          TRIPLE_A_EVIDENCE_COMMIT_SHA: ${{ env.RELEASE_SHA }}
+          TRIPLE_A_CI_EVIDENCE: artifacts/release/ci-evidence.json
+          TRIPLE_A_CI_RUN_ID: ${{ github.event.workflow_run.id }}
+          TRIPLE_A_VERIFY_CI_EVIDENCE: '1'
           TRIPLE_A_RUN_TESTS: '1'
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm release:triple-a
 
       - name: Setup Docker Buildx

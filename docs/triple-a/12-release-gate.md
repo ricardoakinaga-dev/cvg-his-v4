@@ -18,6 +18,14 @@ As três imagens só recebem PASS de attestation depois de o próprio `gh
 attestation verify` confirmar repository, workflow, branch, digest e SHA; um
 envelope JSON autoassinado genérico permanece `PARTIAL`.
 
+A avaliação do quality bar registra a fase no artefato (`prepublication` ou
+`postpublication`). Critérios que dependem de publicação, ambiente alvo,
+recuperação, E2E, UAT ou autoridade são `NOT_APPLICABLE` no pré-gate e ficam
+fora do denominador e dos P0 abertos; isso não os converte em PASS. O pré-gate
+exige o envelope CI completo do mesmo SHA, com reconsulta autenticada do run e
+dos jobs, além dos checks locais e da security evidence. O gate pós-publicação
+continua avaliando todos os critérios e thresholds congelados.
+
 No estado local atual, o gate continua honestamente bloqueado sem manifest,
 security evidence, CI, testes críticos, E2E, recovery, performance e deploy
 target vinculados ao candidato. Nenhum modo advisory autoriza publicação.

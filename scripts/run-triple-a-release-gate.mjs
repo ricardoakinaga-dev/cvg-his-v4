@@ -798,13 +798,14 @@ export function verifySecurityEvidence({ rootDir, outputDir, commitSha }) {
 
 export function scoreCriteria(criteria) {
   const scoreFor = (status) => ({ PASS: 1, PARTIAL: 0.5 }[status] ?? 0);
-  const total = criteria.length || 1;
-  const critical = criteria.filter((criterion) => criterion.priority === 'P0');
+  const applicable = criteria.filter((criterion) => criterion.status !== 'NOT_APPLICABLE');
+  const total = applicable.length || 1;
+  const critical = applicable.filter((criterion) => criterion.priority === 'P0');
   const criticalTotal = critical.length || 1;
   return {
-    score: Math.round((criteria.reduce((sum, criterion) => sum + scoreFor(criterion.status), 0) / total) * 100),
+    score: Math.round((applicable.reduce((sum, criterion) => sum + scoreFor(criterion.status), 0) / total) * 100),
     critical_score: Math.round((critical.reduce((sum, criterion) => sum + scoreFor(criterion.status), 0) / criticalTotal) * 100),
-    open_p0: criteria.filter((criterion) => criterion.priority === 'P0' && criterion.status !== 'PASS').length,
+    open_p0: applicable.filter((criterion) => criterion.priority === 'P0' && criterion.status !== 'PASS').length,
   };
 }
 
@@ -865,19 +866,39 @@ function fileEvidence(rootDir, paths) {
   };
 }
 
+const PREPUBLICATION_NOT_APPLICABLE = new Set([
+  'MAIN-002',
+  'SUPPLY-001',
+  'RELEASE-001',
+  'CLIN-001',
+  'WORKER-001',
+  'DATA-001',
+  'REC-001',
+  'OPS-001',
+  'PERF-001',
+  'UX-001',
+  'FINAL-001',
+]);
+
 /**
  * Evaluate the frozen quality-bar criteria from the current candidate evidence.
  * The source QUALITY_BAR_V1.json remains immutable; its stored status is kept as
  * frozen_status and never treated as current evidence.
  */
-export function evaluateQualityBar({ rootDir, qualityBar, criteria }) {
+export function evaluateQualityBar({ rootDir, qualityBar, criteria, phase = 'postpublication' }) {
+  const prepublication = phase === 'prepublication';
   const definitions = new Map();
   const add = (id, status, ids = [], extraRefs = [], extraLimitations = []) => {
     const source = evidenceFor(criteria, ids);
+    const notApplicable = prepublication && PREPUBLICATION_NOT_APPLICABLE.has(id);
     definitions.set(id, {
-      status,
+      status: notApplicable ? 'NOT_APPLICABLE' : status,
       refs: [...new Set([...source.refs, ...extraRefs])],
-      limitations: [...new Set([...source.limitations, ...extraLimitations])],
+      limitations: [...new Set([
+        ...source.limitations,
+        ...extraLimitations,
+        ...(notApplicable ? ['Este critério só é aplicável ao gate pós-publicação.'] : []),
+      ])],
     });
   };
   const all = (ids) => combineStatuses(ids.map((id) => currentStatus(criteria, id)));
@@ -995,6 +1016,7 @@ export function evaluateQualityBar({ rootDir, qualityBar, criteria }) {
   });
   return {
     quality_bar_id: qualityBar?.quality_bar_id ?? null,
+    phase,
     criteria: evaluatedCriteria,
     ...scoreCriteria(evaluatedCriteria),
   };
@@ -1045,15 +1067,7 @@ export function buildReleaseEvidence({
     existsSync(resolve(rootDir, path)) ? [] : ['Documento ainda não foi criado ou não está vinculado a evidência executada.'],
   ));
 
-  const commandCriteria = checks.map((check, index) => criterion(
-    `CMD-${String(index + 1).padStart(2, '0')}`,
-    check.area,
-    ['Candidate integrity', 'Documentation', 'Namespaces', 'Migration source', 'OpenAPI', 'RLS static coverage', 'Deploy surface', 'Secret scan', 'Complexity budget', 'Typecheck', 'Lint', 'Build', 'Unit tests'].includes(check.area) ? 'P0' : 'P1',
-    check.command,
-    check.status,
-    check.status === 'PASS' ? [check.command] : [],
-    check.limitation ? [check.limitation] : [],
-  ));
+  const prepublicationExcludedChecks = new Set();
 
   const artifactCriteria = [
     ...(prepublication ? [] : [
@@ -1081,14 +1095,28 @@ export function buildReleaseEvidence({
     ['RELEASE-AUTHORITY', 'Governance', 'P0', 'Aprovação humana/authority record do release candidato', 'TRIPLE_A_AUTHORITY_EVIDENCE'],
   ]) {
     const evidence = envEvidence(rootDir, envName, commitSha, outputDir);
-    checks.push(evidence
+    const externalCheck = evidence
       ? { area, command: envName, status: evidence.status, exit_code: null, evidence: evidence.reason, limitation: null }
-      : skippedCheck(area, envName, `Evidência externa ausente; informe ${envName}.`));
-    if (!prepublication) {
+      : skippedCheck(area, envName, `Evidência externa ausente; informe ${envName}.`);
+    checks.push(externalCheck);
+    if (prepublication && id !== 'CI-REMOTE') prepublicationExcludedChecks.add(externalCheck);
+    if (!prepublication || id === 'CI-REMOTE') {
       const status = evidence?.status ?? 'NOT_RUN';
       artifactCriteria.push(criterion(id, area, priority, name, status, evidence ? [evidence.path] : [], evidence ? [] : [`Informe ${envName} com artefato/link do candidato.`]));
     }
   }
+
+  const commandCriteria = checks
+    .filter((check) => !prepublicationExcludedChecks.has(check))
+    .map((check, index) => criterion(
+      `CMD-${String(index + 1).padStart(2, '0')}`,
+      check.area,
+      ['Candidate integrity', 'Documentation', 'Namespaces', 'Migration source', 'OpenAPI', 'RLS static coverage', 'Deploy surface', 'Secret scan', 'Complexity budget', 'Typecheck', 'Lint', 'Build', 'Unit tests'].includes(check.area) ? 'P0' : 'P1',
+      check.command,
+      check.status,
+      check.status === 'PASS' ? [check.command] : [],
+      check.limitation ? [check.limitation] : [],
+    ));
 
   const qualityBarHash = qualityBarExists ? sha256(qualityBarPath) : null;
   const externalPromptPath = resolve(rootDir, 'docs/triple-a/MASTER_PROMPT_EXTERNAL_CLOSURE.md');
@@ -1110,10 +1138,11 @@ export function buildReleaseEvidence({
   ];
   const score = scoreCriteria(criteria);
   const qualityBarAssessment = qualityBar
-    ? evaluateQualityBar({ rootDir, qualityBar, criteria })
+    ? evaluateQualityBar({ rootDir, qualityBar, criteria, phase: prepublication ? 'prepublication' : 'postpublication' })
     : null;
-  const failed = criteria.filter((item) => item.status === 'FAIL');
-  const notProven = criteria.filter((item) => item.status === 'NOT_RUN');
+  const applicableCriteria = criteria.filter((item) => item.status !== 'NOT_APPLICABLE');
+  const failed = applicableCriteria.filter((item) => item.status === 'FAIL');
+  const notProven = applicableCriteria.filter((item) => item.status === 'NOT_RUN');
   const thresholds = {
     minimum_total_score: qualityBar?.minimum_total_score ?? 97,
     minimum_critical_score: qualityBar?.minimum_critical_score ?? 95,

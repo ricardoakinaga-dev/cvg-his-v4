@@ -67,11 +67,17 @@ describe('immutable release workflow contract', () => {
     const preflightIndex = workflow.indexOf('name: Run pre-publication candidate assurance');
     const firstPublishIndex = workflow.indexOf('name: Build and publish API image');
     const firstPushIndex = workflow.indexOf('push: true');
+    const preflight = workflow.slice(preflightIndex, firstPublishIndex);
 
     expect(preflightIndex).toBeGreaterThan(-1);
     expect(workflow).toContain('TRIPLE_A_PREPUBLICATION: \'1\'');
     expect(workflow).not.toContain('TRIPLE_A_ADVISORY: \'1\'');
     expect(workflow).toContain('run: pnpm release:triple-a');
+    expect(preflight).toContain('TRIPLE_A_EVIDENCE_COMMIT_SHA: ${{ env.RELEASE_SHA }}');
+    expect(preflight).toContain('TRIPLE_A_CI_EVIDENCE: artifacts/release/ci-evidence.json');
+    expect(preflight).toContain('TRIPLE_A_CI_RUN_ID: ${{ github.event.workflow_run.id }}');
+    expect(preflight).toContain("TRIPLE_A_VERIFY_CI_EVIDENCE: '1'");
+    expect(preflight).toContain('GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}');
     expect(firstPublishIndex).toBeGreaterThan(preflightIndex);
     expect(firstPushIndex).toBeGreaterThan(preflightIndex);
   });
