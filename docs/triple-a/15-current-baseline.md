@@ -1,9 +1,10 @@
 # Baseline corrente — State of Art
 
-Observado em 2026-09-11T13:42:23Z. O candidato corrente é
-`59a630875d9ee6e1050ba39195fc0771c4d3501d`; `main` e `origin/main` estão
-sincronizados após um push fast-forward. O run #114 terminou verde neste SHA.
-A execução local corrente de
+Observado em 2026-09-11T14:17:33Z. O HEAD corrente é
+`83d01e9c60c3027b6068aa1d10a50f7f5c585296`; o candidato funcional de código é
+`59a630875d9ee6e1050ba39195fc0771c4d3501d`. `main` e `origin/main` estão
+sincronizados. O run #114 terminou verde no código funcional, mas o run #115
+do HEAD documental falhou apenas em Performance (k6 SLOs). A execução local corrente de
 PostgreSQL, processos críticos e k6 está detalhada em
 [17-current-execution-evidence.md](./17-current-execution-evidence.md). Esta
 entrada separa o candidato local, o remoto e os resultados de CI; nenhum
@@ -13,19 +14,19 @@ resultado de outro SHA é transferido.
 
 | Campo | Evidência atual |
 | --- | --- |
-| current_sha | `59a630875d9ee6e1050ba39195fc0771c4d3501d` (candidato publicado) |
-| main_sha | `59a630875d9ee6e1050ba39195fc0771c4d3501d` |
-| origin/main | `59a630875d9ee6e1050ba39195fc0771c4d3501d` |
+| current_sha | `83d01e9c60c3027b6068aa1d10a50f7f5c585296` (HEAD documental; código funcional `59a63087`) |
+| main_sha | `83d01e9c60c3027b6068aa1d10a50f7f5c585296` |
+| origin/main | `83d01e9c60c3027b6068aa1d10a50f7f5c585296` |
 | worktree | Limpo para arquivos rastreados; artefatos locais estão ignorados |
-| ci_run | [#34602927442](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34602927442), `success`, 16/16 jobs no SHA exato |
-| overall_score | gate estrito local em `59a63087`: 34; mínimo congelado 97 |
-| critical_score | gate estrito local em `59a63087`: 23; mínimo congelado 95 |
-| open_p0 | gate estrito local em `59a63087`: 27; máximo congelado 0 |
+| ci_run | [#34606095261](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34606095261), `failure`, 15/16 jobs; Performance (k6 SLOs) falhou no HEAD `83d01e9c` |
+| overall_score | gate estrito local em `83d01e9c`: 34; mínimo congelado 97 |
+| critical_score | gate estrito local em `83d01e9c`: 23; mínimo congelado 95 |
+| open_p0 | gate estrito local em `83d01e9c`: 27; máximo congelado 0 |
 | implemented | Frescor de envelopes externos com fail-closed, identidade de prompt declarada no quality bar, tabs acessíveis no seletor de clientes, ações sem controles aninhados, região acessível para criação de execução e alvo de toque de 44px no modal |
 | verified_local | Testes focados SPA 3/3 e 33/33, design-system 5/5, lint/typecheck dos dois pacotes, gate 15/15, docs:validate e diff check passaram; evidência bounded de PostgreSQL 66/66, processos 11/11 e k6 local 9/9 permanece limitada ao snapshot documentado |
-| verified_remote | Run #114 no SHA exato: Typecheck, segurança, cobertura, build, OpenAPI, Guards, Lint, contratos, Unit, Integration, E2E SPA, Visual, Performance e Windows passaram |
+| verified_remote | Run #114 no código `59a63087`: 16/16 jobs passaram; Run #115 no HEAD `83d01e9c`: 15/16 passaram e Performance falhou (exit 99/1) |
 | verified_target | NOT PROVEN |
-| blocked | Quality bar e gate estrito continuam abaixo do limiar; branch governance, ambiente alvo, recuperação/soak, UAT, attestation e autoridade de release permanecem sem prova |
+| blocked | Performance falhou no CI do HEAD documental; quality bar e gate estrito continuam abaixo do limiar; branch governance, ambiente alvo, recuperação/soak, UAT, attestation e autoridade de release permanecem sem prova |
 | not_proven | Quality bar 97/95/zero P0, Windows nativo fora do runner Linux, RLS/DB runtime no alvo, deploy/rollback, restore/RPO/RTO, attestation, observabilidade operacional e provas humanas |
 
 ## Evidência corrente

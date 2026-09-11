@@ -1,8 +1,8 @@
 # Triple-A final critic — current reconciliation
 
-**Candidate code:** main@59a630875d9ee6e1050ba39195fc0771c4d3501d
-**CI:** [run 34602927442](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34602927442), terminal success 16/16 on exact SHA
-**Observed:** 2026-09-11T13:42:23Z
+**Candidate code:** main@83d01e9c60c3027b6068aa1d10a50f7f5c585296
+**CI:** [run 34606095261](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34606095261), terminal failure 15/16; Performance failed
+**Observed:** 2026-09-11T14:17:33Z
 **Verdict:** **BLOCKED / NOT PROVEN**
 
 This document records a bounded evidence review. It is not release authority and does not convert source inspection or local tests into target evidence.
@@ -22,7 +22,7 @@ Constraints, transactions, concurrency, RLS, roles, indexes and migrations.
 1. No current target-bound runtime RLS/role envelope is attached.
 2. No complete current concurrency/locking plan evidence covers all billing, inventory and workflow critical paths.
 3. No restore/migration rollback rehearsal is bound to this candidate.
-4. Release remains blocked because target-bound data evidence, rollback rehearsal and complete concurrency proof are absent.
+4. Release remains blocked by the exact HEAD performance failure plus absent target-bound data evidence, rollback rehearsal and complete concurrency proof.
 
 ## Required closure
 

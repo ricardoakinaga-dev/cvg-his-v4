@@ -1,5 +1,19 @@
 # Triple-A — Execution Log
 
+## 2026-09-11T14:17:33Z — CI #115 falho no HEAD documental `83d01e9c`
+
+- **Candidato:** `main@83d01e9c60c3027b6068aa1d10a50f7f5c585296`; o código
+  funcional permanece em `59a630875d9ee6e1050ba39195fc0771c4d3501d`.
+- **CI:** [run 34606095261](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34606095261)
+  terminou `failure` com 15/16 jobs. Typecheck, segurança, Guards, Coverage,
+  Lint, Build, contratos, Unit, Integration, Windows, E2E SPA e Visual passaram;
+  somente Performance falhou.
+- **Falha observável:** `Run k6 benchmark` exit 99 e `Check SLO results` exit 1.
+  Os logs/artefatos detalhados não estão disponíveis publicamente; não inferir
+  métricas ou causa raiz. Thresholds não foram relaxados.
+- **Gate:** execução local no mesmo HEAD retornou `BLOCKED / NOT PROVEN`, score
+  `34`, crítico `23`, `27` P0 e `publication_allowed=false`.
+
 ## 2026-09-11T13:42:23Z — CI #114 e gate do candidato publicado `59a63087`
 
 - **Candidato:** `main@59a630875d9ee6e1050ba39195fc0771c4d3501d`, sincronizado
