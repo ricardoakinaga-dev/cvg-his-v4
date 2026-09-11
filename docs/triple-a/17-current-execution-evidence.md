@@ -1,9 +1,6 @@
 # Evidência de execução corrente — State of Art
 
-Observado em `2026-09-11T22:45:00Z` no checkout
-`3054d6388becd9a262b2cd45fadbabc086c1ed75`, com `HEAD`, `origin/main` e
-`origin/HEAD` coincidentes. O worktree ficou limpo após as execuções; os
-artefatos de gate permanecem ignorados pelo Git.
+Observado em `2026-09-11T23:33:28Z` na reconciliação documental `6fe76696240925ad550d05cd38a14a5239f50abc`; o gate estrito local foi executado no checkout de código equivalente `3054d6388becd9a262b2cd45fadbabc086c1ed75`. O worktree ficou limpo após as execuções; os artefatos de gate permanecem ignorados pelo Git.
 
 ## Validações locais do candidato
 
@@ -28,24 +25,27 @@ do SHA funcional `68600d6a` terminou `failure` com 15/16 jobs aprovados; apenas
 Performance falhou. A reconciliação está em
 [critic-performance-assurance-20260911.md](./critic-performance-assurance-20260911.md).
 
-O commit documental atual `3054d638` também foi executado pelo [CI #130](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064),
+O commit documental anterior `3054d638` também foi executado pelo [CI #130](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064),
 que terminou `failure` com o mesmo padrão: os checks de código passaram e
 `Performance (k6 SLOs)` falhou no [job 103443316221](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064/job/103443316221).
 Nenhuma métrica de artefato inacessível foi inventada e nenhum threshold foi
 relaxado.
 
+Depois da publicação desta reconciliação, o [CI #131](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34656290327) do SHA `6fe76696` terminou `success` com `16/16` jobs verdes, incluindo Performance, Integration, E2E SPA, Unit, Visual, API Contract e o contrato Windows. Esse run fecha a verificação do commit documental; não transfere por si só as evidências externas ainda ausentes do gate de release.
+
 ## Gate estrito
 
 `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` executou documentação, validações
-estáticas, typecheck, lint, build e a suíte workspace no SHA acima. O JSON
+estáticas, typecheck, lint, build e a suíte workspace no checkout de código
+equivalente `3054d638`; o commit `6fe76696` só acrescenta esta reconciliação documental. O JSON
 `artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json` registrou `CMD-17 Unit tests`
 como PASS, mas os critérios externos continuam `NOT_RUN`; por isso o gate
 permaneceu bloqueado e não autoriza publicação.
 
 ## Limitações
 
-Continuam sem prova no boundary de release: CI terminal verde, manifest e
-security evidence de publicação completos, backup/restore, RLS runtime no
+Continuam sem prova no boundary de release: CI terminal verde vinculado ao
+release gate, manifest e security evidence de publicação completos, backup/restore, RLS runtime no
 target, workflow PostgreSQL de release, worker crash recovery como envelope
 externo, E2E/visual de CI, integridade de auditoria, deploy/rollback,
 attestation, soak 24/72h, observabilidade no target, branch protection, UAT

@@ -547,3 +547,10 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - As duas jornadas clínicas canônicas de Playwright passaram `2/2` com PostgreSQL/Redis locais e o usuário seed válido. Essas provas são bounded à sessão e não substituem o envelope de CI, o target ou UAT.
 - O CI [#130](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064) terminou `failure` no commit documental; `15/16` jobs passaram e somente `Performance (k6 SLOs)` falhou no [job 103443316221](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064/job/103443316221). O CI funcional [#129](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250) teve o mesmo padrão. Nenhum threshold foi relaxado e nenhuma métrica inacessível foi inventada.
 - O veredito continua **BLOCKED / NOT PROVEN**. Manifest/security evidence de publicação, backup/restore, runtime no target, envelopes externos de recovery/E2E/workflow/RLS/worker/auditoria, governança, attestation, UAT e autoridade de release permanecem P0 abertos.
+
+
+## 2026-09-11T23:33:28Z — CI terminal verde do snapshot documental `6fe76696`
+
+- O [CI #131](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34656290327) executado no SHA `6fe76696240925ad550d05cd38a14a5239f50abc` terminou `success` com `16/16` jobs verdes. SAST, Secret Scan, Typecheck, Dependency Audit, Repository Guards, Lint, OpenAPI, Coverage, Build, API Contract, Performance, E2E SPA, Visual, Unit, Integration e o contrato Windows passaram.
+- Este resultado fecha a verificação remota do commit documental e confirma que a alteração publicada não introduziu regressão nos checks do workflow. Ele não substitui manifest/security evidence de publicação, runtime no target, backup/restore, UAT, governança, attestation ou autoridade de release.
+- O gate local permanece **BLOCKED / NOT PROVEN**, com `55/57/15`, e nenhum claim `TRIPLE-A VERIFIED` é emitido.

@@ -56,6 +56,6 @@ mesmo limite de pool, passou 9/9 SLOs. Essa reprodução é histórica do SHA
 produto para mascarar a falha; a variação não demonstrou defeito determinístico
 no código ou no banco.
 
-## Verificação documental — CI #130
+## Verificação documental — CI #130 e #131
 
-O commit documental `3054d638` foi executado pelo [CI #130](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064), que terminou `failure` com `15/16` jobs aprovados. O único job falho foi `Performance (k6 SLOs)`, no [job 103443316221](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064/job/103443316221), nos passos do benchmark e da verificação de SLO. Os demais checks publicados passaram. O artefato detalhado não foi promovido sem acesso autenticado; thresholds permaneceram intactos.
+O commit documental `3054d638` foi executado pelo [CI #130](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064), que terminou `failure` com `15/16` jobs aprovados; somente `Performance (k6 SLOs)` falhou no [job 103443316221](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064/job/103443316221). O SHA documental seguinte `6fe76696` foi executado pelo [CI #131](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34656290327), que terminou `success` com `16/16` jobs verdes, incluindo Performance. Nenhum threshold foi alterado; os runs não transferem evidência entre SHAs.

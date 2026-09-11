@@ -1,13 +1,13 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Documentation snapshot:** `main@3054d6388becd9a262b2cd45fadbabc086c1ed75`
+**Documentation snapshot:** `main@6fe76696240925ad550d05cd38a14a5239f50abc`
 **Functional candidate:** `68600d6a55dcf18bd04c28ff3ee7528cc686efdb`
-**Observed:** `2026-09-11T22:45:00Z`
+**Observed:** `2026-09-11T23:33:28Z`
 **Repository state:** `HEAD` e `origin/main` coincidem; o rollback remoto
 continua preservado e nenhum force-push foi usado.
 **Verdict:** **BLOCKED / NOT PROVEN**
 
-O gate local estrito com `TRIPLE_A_RUN_TESTS=1` passou as validações estáticas,
+O gate local estrito com `TRIPLE_A_RUN_TESTS=1`, executado no checkout de código equivalente `3054d638`, passou as validações estáticas,
 typecheck, lint, build e a suíte workspace, mas terminou com score `55`,
 critical `57`, `15` P0 abertos e `publication_allowed=false`. O quality bar
 congelado exige `97/95/zero P0`; a avaliação derivada permanece `31/33/7`.
@@ -17,12 +17,11 @@ cenários de processo com Redis local e `2/2` jornadas clínicas canônicas. Ess
 provas fortalecem a implementação e permanecem bounded ao ambiente local; não
 são promovidas como CI, target produtivo, UAT ou autoridade.
 
-O [CI #129](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250)
-do candidato funcional terminou com 15/16 jobs aprovados e falhou somente em
-Performance. O [CI #130](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064)
-do commit documental repetiu o padrão; o job falho foi [Performance (k6
-SLOs)](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064/job/103443316221).
-Nenhum threshold foi relaxado e nenhuma evidência de SHA diferente foi
+O [CI #131](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34656290327)
+do SHA documental terminou `success` com `16/16` jobs verdes, incluindo
+Performance, Integration, E2E SPA, Unit, Visual, API Contract e o contrato
+Windows. Os CIs #129 e #130 dos SHAs anteriores falharam somente em Performance;
+nenhum threshold foi relaxado e nenhuma evidência de SHA diferente foi
 transferida.
 
 Permanecem sem prova suficiente manifest/security evidence de publicação,
