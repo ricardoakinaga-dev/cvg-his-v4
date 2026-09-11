@@ -15,10 +15,35 @@ import {
   verifyPublishedImageAttestations,
   verifyCleanWorktree,
   verifyReleaseManifest,
-  verifySecurityEvidence
+  verifySecurityEvidence,
+  validateEvidenceFreshness
 } from '../../../scripts/run-triple-a-release-gate.mjs';
 
 describe('Triple-A release gate scoring', () => {
+  it('rejects stale evidence and timestamps beyond the allowed clock skew', () => {
+    const now = new Date('2026-09-11T12:00:00.000Z');
+    expect(validateEvidenceFreshness({
+      observedAt: '2026-09-04T11:59:59.000Z',
+      now,
+      maxAgeHours: 168,
+    }).valid).toBe(false);
+    expect(validateEvidenceFreshness({
+      observedAt: '2026-09-11T12:06:00.000Z',
+      now,
+      maxAgeHours: 168,
+    }).valid).toBe(false);
+  });
+
+  it('accepts current evidence within the configured clock and age bounds', () => {
+    const result = validateEvidenceFreshness({
+      observedAt: '2026-09-11T11:59:00.000Z',
+      now: new Date('2026-09-11T12:00:00.000Z'),
+      maxAgeHours: 168,
+    });
+    expect(result.valid).toBe(true);
+    expect(result.max_age_hours).toBe(168);
+  });
+
   it('writes the prompt-required canonical final artifact with explicit area status', () => {
     const outputDir = mkdtempSync(join(tmpdir(), 'cvg-triple-a-release-'));
     const finalArtifactDir = mkdtempSync(join(tmpdir(), 'cvg-triple-a-final-'));

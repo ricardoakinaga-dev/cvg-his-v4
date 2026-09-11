@@ -5,6 +5,8 @@ import { spawnSync } from 'node:child_process';
 
 const DEFAULT_OUTPUT_DIR = 'artifacts/release';
 const DEFAULT_FINAL_ARTIFACT_DIR = 'artifacts/triple-a';
+const DEFAULT_EVIDENCE_MAX_AGE_HOURS = 7 * 24;
+const EVIDENCE_CLOCK_SKEW_MS = 5 * 60 * 1000;
 const REQUIRED_POLICY_FILES = [
   'docs/engineering/GREEN_MAIN_POLICY.md',
   'docs/clinical/CLINICAL_CRITICALITY_MATRIX.md',
@@ -63,6 +65,51 @@ function isIsoTimestamp(value) {
   return typeof value === 'string'
     && /T[^\s]*?(?:Z|[+-]\d{2}:?\d{2})$/.test(value)
     && Number.isFinite(Date.parse(value));
+}
+
+function configuredEvidenceMaxAgeHours() {
+  const configured = Number(process.env.TRIPLE_A_EVIDENCE_MAX_AGE_HOURS);
+  return Number.isFinite(configured) && configured > 0
+    ? configured
+    : DEFAULT_EVIDENCE_MAX_AGE_HOURS;
+}
+
+export function validateEvidenceFreshness({
+  observedAt,
+  now = new Date(),
+  maxAgeHours = configuredEvidenceMaxAgeHours(),
+  clockSkewMs = EVIDENCE_CLOCK_SKEW_MS,
+}) {
+  if (!isIsoTimestamp(observedAt)) {
+    return { valid: false, reason: 'Evidence timestamp is not a valid ISO-8601 instant.' };
+  }
+  const observedMs = Date.parse(observedAt);
+  const nowMs = now instanceof Date ? now.getTime() : Date.parse(now);
+  if (!Number.isFinite(nowMs)) {
+    return { valid: false, reason: 'Reference clock is invalid.' };
+  }
+  if (observedMs > nowMs + clockSkewMs) {
+    return {
+      valid: false,
+      reason: `Evidence timestamp is in the future beyond the ${Math.round(clockSkewMs / 1000)}s clock-skew allowance.`,
+    };
+  }
+  const ageMs = Math.max(0, nowMs - observedMs);
+  const maxAgeMs = maxAgeHours * 60 * 60 * 1000;
+  if (!Number.isFinite(maxAgeMs) || maxAgeMs <= 0) {
+    return { valid: false, reason: 'Evidence max age must be a positive finite duration.' };
+  }
+  if (ageMs > maxAgeMs) {
+    return {
+      valid: false,
+      reason: `Evidence is ${Math.round(ageMs / 3_600_000)}h old; the maximum allowed age is ${maxAgeHours}h.`,
+    };
+  }
+  return {
+    valid: true,
+    age_hours: ageMs / 3_600_000,
+    max_age_hours: maxAgeHours,
+  };
 }
 
 function isSafeEvidencePath(rootDir, candidate) {
@@ -157,6 +204,15 @@ export function validateExternalEvidenceEnvelope({
       status: 'FAIL',
       path: value,
       reason: 'Envelope externo inválido: exige schema, SHA, status PASS, produtor, verificador, timestamps e artefatos.'
+    };
+  }
+
+  const freshness = validateEvidenceFreshness({ observedAt: artifact.observed_at });
+  if (!freshness.valid) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Envelope externo expirado ou com relógio inválido: ${freshness.reason}`,
     };
   }
 

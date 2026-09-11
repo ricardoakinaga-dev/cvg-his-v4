@@ -26,6 +26,12 @@ exige o envelope CI completo do mesmo SHA, com reconsulta autenticada do run e
 dos jobs, além dos checks locais e da security evidence. O gate pós-publicação
 continua avaliando todos os critérios e thresholds congelados.
 
+Todo envelope externo também precisa estar dentro da política de frescor: sete
+dias por padrão (`TRIPLE_A_EVIDENCE_MAX_AGE_HOURS` pode reduzir ou ampliar o
+limite em uma execução autorizada) e no máximo cinco minutos à frente do relógio
+do verificador. Evidência expirada ou com timestamp futuro falha fechado antes de
+ser considerada para score; o vínculo ao SHA continua obrigatório.
+
 No estado local atual, o gate continua honestamente bloqueado sem manifest,
 security evidence, CI, testes críticos, E2E, recovery, performance e deploy
 target vinculados ao candidato. Nenhum modo advisory autoriza publicação.

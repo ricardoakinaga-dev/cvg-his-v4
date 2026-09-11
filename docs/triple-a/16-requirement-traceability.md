@@ -80,7 +80,7 @@ A [fotografia atual](./15-current-baseline.md) contém SHA, CI e lacunas medidas
 | F69 | OPERATIONS CRITIC | NOT PROVEN | Executar e revisar todos os itens desta fase no boundary exigido |
 | F70 | UX CRITIC | NOT PROVEN | Executar e revisar todos os itens desta fase no boundary exigido |
 | F71 | RELEASE GATE | NOT PROVEN | Executar e revisar todos os itens desta fase no boundary exigido |
-| F72 | FRESHNESS POLICY | NOT PROVEN | Executar e revisar todos os itens desta fase no boundary exigido |
+| F72 | FRESHNESS POLICY | PARTIAL | `scripts/run-triple-a-release-gate.mjs` rejeita envelopes expirados e timestamps futuros; a política padrão é 7 dias com skew de 5 minutos. Revalidar em cada candidato e completar as regras específicas de target/soak. |
 | F73 | FINAL ARTIFACT | NOT PROVEN | Executar e revisar todos os itens desta fase no boundary exigido |
 | F74 | FINAL SCORE | NOT PROVEN | Score calculado de evidências válidas: 97/95/zero P0 |
 | F75 | TRIPLE-A VERIFIED | NOT PROVEN | Todos os gates e autoridade satisfeitos no mesmo candidato |
