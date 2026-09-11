@@ -1,5 +1,14 @@
 # Triple-A — Execution Log
 
+## 2026-09-11T08:40:00Z — CI terminal do candidato funcional `5a079cec`
+
+- **Candidato:** `main@5a079ceca57b246e17ecb0214ed1e2b9e9e23500`; `origin/main` coincide. Esta entrada reconcilia o candidato funcional; o commit que atualizará a documentação é metadata-only.
+- **CI:** [run 34577711985](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34577711985) terminou `failure` com 15/16 jobs aprovados. Typecheck, SAST, Secret Scan, Dependency Audit, Lint, OpenAPI, Guards, Coverage, Build, API Contract, Unit, Windows, Integration, E2E SPA e Visual passaram; Performance (k6 SLOs) terminou com códigos 1/99.
+- **Artefatos:** `performance-k6-report` digest `sha256:539d88b7a070ae5a3e0d18693ad04edf943b379d002b3bafb973f2879bbac5b2`; E2E digest `sha256:b30ed64456f881568a53c5e17ac1634dc6cd0d339f903d40ce24bbb3c0b1faab`. O relatório k6 agora é acompanhado por `performance-provenance.json`, com runner/versões sanitizados.
+- **Local:** `pnpm test` completo, `pnpm lint`, `pnpm docs:validate`, `pnpm validate:supply-chain`, testes focados de release 20/20, provenance 5/5 e runner PostgreSQL 3/3 passaram. A reprodução k6 local passou 9/9, mas não substitui o runner CI pinned.
+- **Gate:** pré-publicação agora é phase-aware e exclui somente critérios explicitamente `NOT_APPLICABLE`; diagnóstico pós-fix: `BLOCKED`, `score=56`, `critical_score=32`, `open_p0=15`, `claim=NOT PROVEN`, `publication_allowed=false`. O pós-publicação continua exigindo o quality bar completo.
+- **Decisão:** merge seguro e reversível, sem force push; nenhum release ou claim `TRIPLE-A VERIFIED` é autorizado. Branch governance, target runtime/RLS, recovery/soak, restore/RPO-RTO, deploy/rollback, attestation, UAT e autoridade humana permanecem sem prova.
+
 ## 2026-09-11T06:10:44Z — CI terminal do candidato e reconciliação documental
 
 - **Candidato de código:** `main@04864a54cdb02b5d2c1fa5e6291804d66ea4721a`; `origin/main` coincidente na observação. Esta entrada é uma fotografia do candidato funcional; o commit documental que a contém é metadata-only.

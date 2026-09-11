@@ -1,11 +1,12 @@
 # CVG HIS — Triple-A Baseline
 
-## Reconciliação corrente — 2026-09-11T06:10:44Z
+## Reconciliação corrente — 2026-09-11T08:40:00Z
 
-- **Código:** "main@04864a54cdb02b5d2c1fa5e6291804d66ea4721a"; `origin/main` coincide e a origem do merge permanece disponível.
-- **CI:** [#34567116409](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34567116409) terminou 15/16; somente Performance falhou.
-- **Estado:** **BLOCKED / NOT PROVEN**. O gate diagnóstico marcou score 65, crítico 49 e 19 P0; nenhum claim é permitido.
-- **Local:** docs, lint, 23 testes de release e runner PostgreSQL limpo 3/3 (workflow clínico, SIGKILL/fencing e auditoria append-only) passaram; o k6 4/9 anterior não é transferido.
+- **Código funcional:** "main@5a079ceca57b246e17ecb0214ed1e2b9e9e23500"; `origin/main` coincide e a origem do merge permanece disponível.
+- **CI:** [#34577711985](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34577711985) terminou 15/16; somente Performance falhou.
+- **Estado:** **BLOCKED / NOT PROVEN**. O gate diagnóstico pós-fix marcou score 56, crítico 32 e 15 P0; nenhum claim é permitido.
+- **Local:** `pnpm test`, docs, lint, supply-chain, 20 testes focados de release, 5 de provenance e runner PostgreSQL limpo 3/3 passaram; a reprodução k6 local 9/9 não substitui o CI pinned.
+- **Mudanças de controle:** gate pré-publicação por fase, verificação CI exata, identidade OCI imutável, provenance sanitizada do runner e SearchSelect com relações ARIA completas.
 - **Externo ainda aberto:** branch governance, Windows nativo, RLS/runtime no alvo, recovery/soak, restore/RPO/RTO, deploy/rollback, attestation, UAT e autoridade de release.
 
 As seções seguintes preservam a fotografia histórica e não devem ser lidas como evidência do SHA atual sem uma execução nova vinculada ao commit.

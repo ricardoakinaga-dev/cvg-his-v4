@@ -1,8 +1,8 @@
 # Triple-A final critic — current reconciliation
 
-**Candidate code:** main@04864a54cdb02b5d2c1fa5e6291804d66ea4721a
-**CI:** [run 34567116409](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34567116409), terminal 15/16; Performance failed
-**Observed:** 2026-09-11T06:10:44Z
+**Candidate code:** main@5a079ceca57b246e17ecb0214ed1e2b9e9e23500
+**CI:** [run 34577711985](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34577711985), terminal 15/16; Performance failed
+**Observed:** 2026-09-11T08:40:00Z
 **Verdict:** **BLOCKED / NOT PROVEN**
 
 This document records a bounded evidence review. It is not release authority and does not convert source inspection or local tests into target evidence.
@@ -13,7 +13,7 @@ Constraints, transactions, concurrency, RLS, roles, indexes and migrations.
 
 ## Evidence
 
-- Migration, namespace, OpenAPI and static RLS validators pass locally.
+- Migration, namespace, OpenAPI, static RLS and supply-chain validators pass locally; the full workspace test suite also passed.
 - The disposable PostgreSQL runner passed workflow, SIGKILL/fencing and runtime audit append-only checks (3/3).
 - Static evidence does not prove every tenant boundary, database role, index plan or authorization path under target credentials.
 

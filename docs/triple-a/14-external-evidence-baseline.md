@@ -1,11 +1,19 @@
 # Triple-A External Assurance — Current Reconciliation
 
-**Current code candidate:** "04864a54cdb02b5d2c1fa5e6291804d66ea4721a" (`main` / `origin/main`)
-**Current CI:** [#34567116409](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34567116409) — 15/16, Performance failure
+**Current code candidate:** "5a079ceca57b246e17ecb0214ed1e2b9e9e23500" (`main` / `origin/main`)
+**Current CI:** [#34577711985](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34577711985) — 15/16, Performance failure
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-11T06:10:44Z
+**Observation:** 2026-09-11T08:40:00Z
 
-The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. The current run passed all required jobs except Performance; the clean local PostgreSQL runner passed workflow, SIGKILL/fencing and audit append-only checks (3/3), but branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
+The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. The current run passed all required jobs except Performance; the clean local PostgreSQL runner passed workflow, SIGKILL/fencing and audit append-only checks (3/3), and the workspace test suite passed locally. Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
+
+## Current candidate implementation delta
+
+- The prepublication gate now evaluates an explicit phase and marks criteria that require a published target as `NOT_APPLICABLE`; they are excluded from the phase denominator and critical/P0 counts without weakening the postpublication quality bar.
+- The release workflow passes an exact-SHA CI evidence envelope to the gate and verifies the immutable CI run before prepublication evaluation.
+- OCI identity parsing rejects registry/tag substitution, SearchSelect now exposes stable combobox/listbox relationships, and k6 artifacts include sanitized runner provenance.
+- Local evidence for this SHA: `pnpm test`, lint, docs, supply-chain, focused release tests 20/20, provenance tests 5/5 and PostgreSQL runner 3/3 passed.
+- Remote CI remains `15/16`; Performance failed again. The `performance-k6-report` digest is `sha256:539d88b7a070ae5a3e0d18693ad04edf943b379d002b3bafb973f2879bbac5b2` and the E2E digest is `sha256:b30ed64456f881568a53c5e17ac1634dc6cd0d339f903d40ce24bbb3c0b1faab`.
 
 # Triple-A External Assurance — Baseline 2026-09-09
 

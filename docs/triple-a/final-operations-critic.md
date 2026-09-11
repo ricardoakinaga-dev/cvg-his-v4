@@ -1,8 +1,8 @@
 # Triple-A final critic — current reconciliation
 
-**Candidate code:** main@04864a54cdb02b5d2c1fa5e6291804d66ea4721a
-**CI:** [run 34567116409](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34567116409), terminal 15/16; Performance failed
-**Observed:** 2026-09-11T06:10:44Z
+**Candidate code:** main@5a079ceca57b246e17ecb0214ed1e2b9e9e23500
+**CI:** [run 34577711985](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34577711985), terminal 15/16; Performance failed
+**Observed:** 2026-09-11T08:40:00Z
 **Verdict:** **BLOCKED / NOT PROVEN**
 
 This document records a bounded evidence review. It is not release authority and does not convert source inspection or local tests into target evidence.
@@ -14,7 +14,7 @@ Backup, restore, deploy, rollback, observability, alerts, on-call and runbooks.
 ## Evidence
 
 - The exact-SHA CI run is terminal with 15/16 jobs passed; Performance failed.
-- The diagnostic gate wrote SHA-bound envelopes to its operational and canonical paths, but no current target backup/restore, RPO/RTO, 24/72-hour soak, deploy rehearsal, rollback rehearsal, alert delivery or human release-authority package is present.
+- The diagnostic gate wrote SHA-bound envelopes to its operational and canonical paths, and the provenance sidecar is now captured, but no current target backup/restore, RPO/RTO, 24/72-hour soak, deploy rehearsal, rollback rehearsal, alert delivery or human release-authority package is present.
 
 ## Blocking findings
 
