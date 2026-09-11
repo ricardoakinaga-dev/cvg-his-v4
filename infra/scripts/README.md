@@ -83,6 +83,11 @@ sudo BACKUP_INCLUDE_STORAGE=false ./backup-v2.sh
 6. Manifest JSON com restore hints
 7. Limpeza de backups com mais de `RETENTION_DAYS` dias
 
+Quando `BACKUP_INCLUDE_STORAGE=false`, o manifesto registra
+`storageIncluded=false`, omite os artefatos de storage e gera hints de restore
+somente do banco. O restore drill aceita esse bundle e marca
+`storageRestoreStatus=skipped`.
+
 **Estrutura do backup:**
 
 ```
@@ -130,8 +135,9 @@ KEEP_RUNTIME=true pnpm ops:restore:drill:v2 -- latest
 2. `postgres-globals.sql` aplicado em Postgres descartável
 3. restore real do `pg_dump` custom para banco temporário
 4. contagem e listagem de tabelas públicas restauradas
-5. restore do storage em workspace temporário
-6. diff entre `file-storage.contents.txt` e o conteúdo realmente restaurado
+5. quando `storageIncluded=true`, restore do storage em workspace temporário
+6. quando `storageIncluded=true`, diff entre `file-storage.contents.txt` e o conteúdo restaurado
+7. quando `storageIncluded=false`, ausência explícita de artefatos de storage e status `skipped`
 
 **Saída principal:**
 

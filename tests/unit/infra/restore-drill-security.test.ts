@@ -53,7 +53,7 @@ function createFixture(variant: ArchiveVariant): {
   writeFileSync(join(databaseDir, 'backup.info'), 'profile=minimal\n', 'utf8');
   writeFileSync(join(databaseDir, 'postgres.dump'), 'not-used-by-stub\n', 'utf8');
   writeFileSync(join(databaseDir, 'postgres-globals.sql'), '', 'utf8');
-  writeFileSync(join(metaDir, 'manifest.json'), '{}\n', 'utf8');
+  writeFileSync(join(metaDir, 'manifest.json'), '{"storageIncluded":true}\n', 'utf8');
   writeFileSync(join(storageDir, 'file-storage.contents.txt'), 'payload.txt\n', 'utf8');
 
   if (variant === 'traversal') {

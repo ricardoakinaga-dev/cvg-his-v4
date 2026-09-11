@@ -40,6 +40,7 @@ const environments = [
     expectApiProbes: true
   }
 ];
+const validationImageDigest = `sha256:${'a'.repeat(64)}`;
 
 function runHelm(args) {
   return execFileSync(helmExecutable, args, {
@@ -76,6 +77,8 @@ function readYamlFile(filePath) {
 function validateStaticChart() {
   const chart = readYamlFile(path.join(chartDir, 'Chart.yaml'));
   const base = readYamlFile(baseValues);
+  const production = readYamlFile(path.join(chartDir, 'values.prod.yaml'));
+  const helmHelpers = fs.readFileSync(path.join(chartDir, 'templates', '_helpers.tpl'), 'utf8');
 
   assert(chart.apiVersion === 'v2', 'Chart.yaml must use apiVersion v2');
   assert(chart.name === 'cvg-his-v2', 'Chart.yaml name must be cvg-his-v2');
@@ -87,6 +90,17 @@ function validateStaticChart() {
     'values.yaml must define worker.accountIds.secretKey for the production worker scope'
   );
   assert(base.spa?.image?.repository, 'values.yaml must define spa.image.repository');
+  assert(
+    production.global?.environment === 'production',
+    'values.prod.yaml must declare the production environment'
+  );
+  assert(
+    helmHelpers.includes('api.image.sha is required for production image immutability') &&
+      helmHelpers.includes('worker.image.sha is required for production image immutability') &&
+      helmHelpers.includes('spa.image.sha is required for production image immutability') &&
+      helmHelpers.includes('sha256:<64 lowercase hex characters>'),
+    'production Helm images must fail closed without immutable SHA references'
+  );
 
   const requiredTemplates = [
     'api-deployment.yaml',
@@ -142,7 +156,6 @@ function validateStaticChart() {
       databaseMaintenanceJobs.includes('"helm.sh/hook-weight": "-10"'),
     'Helm must run canonical database migrations before runtime-role reconciliation'
   );
-  const helmHelpers = fs.readFileSync(path.join(chartDir, 'templates', '_helpers.tpl'), 'utf8');
   assert(
     helmHelpers.includes('cvg-his-v2.databaseMaintenance.initContainers') &&
       helmHelpers.includes('packages/db/dist/migrate.js') &&
@@ -252,7 +265,26 @@ if (requireExecutableHelm && !isRequiredHelmVersion(helmVersion)) {
 
 for (const environment of environments) {
   const values = readYamlFile(environment.values);
-  const lintArgs = ['lint', chartDir, '-f', baseValues, '-f', environment.values];
+  const imageOverrideArgs =
+    environment.name === 'prod'
+      ? [
+          '--set-string',
+          `api.image.sha=${validationImageDigest}`,
+          '--set-string',
+          `worker.image.sha=${validationImageDigest}`,
+          '--set-string',
+          `spa.image.sha=${validationImageDigest}`
+        ]
+      : [];
+  const lintArgs = [
+    'lint',
+    chartDir,
+    '-f',
+    baseValues,
+    '-f',
+    environment.values,
+    ...imageOverrideArgs
+  ];
   const templateArgs = [
     'template',
     environment.release,
@@ -260,7 +292,8 @@ for (const environment of environments) {
     '-f',
     baseValues,
     '-f',
-    environment.values
+    environment.values,
+    ...imageOverrideArgs
   ];
   runHelm(lintArgs);
   const rendered = runHelm(templateArgs);

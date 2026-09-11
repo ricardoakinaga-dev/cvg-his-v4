@@ -67,6 +67,12 @@ const checks = [
       files.backup?.includes('sha256sum')
   },
   {
+    label: 'backup restringe BACKUP_INCLUDE_STORAGE a booleano explicito',
+    ok:
+      files.backup?.includes('BACKUP_INCLUDE_STORAGE must be exactly true or false') &&
+      files.backup?.includes('storageIncluded')
+  },
+  {
     label: 'backup falha se o inventario de anexos nao puder ser capturado',
     ok:
       files.backup?.includes('> "$listing_file"') &&
@@ -102,6 +108,14 @@ const checks = [
       files.restoreDrill?.includes('restore_database') &&
       files.restoreDrill?.includes('restore_storage') &&
       files.restoreDrill?.includes('restore-drill-report.json')
+  },
+  {
+    label: 'restore-drill aceita bundle database-only com manifest protegido',
+    ok:
+      files.restoreDrill?.includes('typeof manifest.storageIncluded !== "boolean"') &&
+      files.restoreDrill?.includes('storageIncluded=false; skipping storage restore') &&
+      files.restoreDrill?.includes('"storageRestoreStatus": "$STORAGE_RESTORE_STATUS"') &&
+      files.restoreDrill?.includes('"storageListingMatch": $(if [[ "$STORAGE_INCLUDED" == "true" ]]')
   },
   {
     label: 'package.json expõe backup, restore drill e check estatico',

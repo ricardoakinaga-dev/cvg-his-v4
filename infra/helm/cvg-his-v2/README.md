@@ -51,10 +51,18 @@ helm template cvg-his-v2-staging infra/helm/cvg-his-v2 \
 Produção:
 
 ```bash
+RELEASE_IMAGE_SHA='sha256:<digest-publicado-pelo-release>'
 helm template cvg-his-v2-prod infra/helm/cvg-his-v2 \
   -f infra/helm/cvg-his-v2/values.yaml \
-  -f infra/helm/cvg-his-v2/values.prod.yaml
+  -f infra/helm/cvg-his-v2/values.prod.yaml \
+  --set-string api.image.sha="$RELEASE_IMAGE_SHA" \
+  --set-string worker.image.sha="$RELEASE_IMAGE_SHA" \
+  --set-string spa.image.sha="$RELEASE_IMAGE_SHA"
 ```
+
+Em produção, os três `image.sha` são obrigatórios. O chart falha fechado se
+qualquer digest não for injetado pelo release, evitando fallback para uma tag
+mutável.
 
 Validação de guardrails:
 
@@ -86,6 +94,9 @@ helm upgrade --install cvg-his-v2-prod infra/helm/cvg-his-v2 \
   -n cvg-his \
   -f infra/helm/cvg-his-v2/values.yaml \
   -f infra/helm/cvg-his-v2/values.prod.yaml \
+  --set-string api.image.sha="$RELEASE_IMAGE_SHA" \
+  --set-string worker.image.sha="$RELEASE_IMAGE_SHA" \
+  --set-string spa.image.sha="$RELEASE_IMAGE_SHA" \
   --wait \
   --atomic
 ```

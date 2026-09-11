@@ -43,6 +43,8 @@ STORAGE_LISTING=""
 STORAGE_RESTORE_WORKSPACE=""
 MANIFEST_FILE=""
 CHECKSUMS_FILE=""
+STORAGE_INCLUDED=""
+STORAGE_RESTORE_STATUS="not-run"
 PG_CONTAINER=""
 PG_VOLUME=""
 RESTORE_USER="restore_admin"
@@ -190,8 +192,36 @@ validate_prereqs() {
   require_cmd diff
   require_cmd find
   require_cmd mktemp
+  require_cmd node
   require_cmd sed
   [[ "$RESTORE_DRILL_DB_NAME" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] || die "invalid restore database name: $RESTORE_DRILL_DB_NAME"
+}
+
+read_storage_included() {
+  node --input-type=module -e '
+import { readFileSync } from "node:fs";
+
+const manifestPath = process.argv[1];
+let manifest;
+try {
+  manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+} catch (error) {
+  console.error(`unable to parse manifest: ${error instanceof Error ? error.message : String(error)}`);
+  process.exit(2);
+}
+
+if (
+  manifest === null ||
+  typeof manifest !== "object" ||
+  Array.isArray(manifest) ||
+  typeof manifest.storageIncluded !== "boolean"
+) {
+  console.error("manifest storageIncluded must be an explicit boolean");
+  process.exit(3);
+}
+
+process.stdout.write(String(manifest.storageIncluded));
+' "$MANIFEST_FILE"
 }
 
 validate_bundle() {
@@ -215,8 +245,12 @@ validate_bundle() {
   [[ -f "$GLOBALS_FILE" ]] || die "globals dump not found: $GLOBALS_FILE"
   [[ -f "$MANIFEST_FILE" ]] || die "manifest not found: $MANIFEST_FILE"
   [[ -f "$CHECKSUMS_FILE" ]] || die "checksums file not found: $CHECKSUMS_FILE"
-  [[ -f "$STORAGE_ARCHIVE" ]] || die "storage archive not found: $STORAGE_ARCHIVE"
-  [[ -f "$STORAGE_LISTING" ]] || die "storage listing not found: $STORAGE_LISTING"
+  STORAGE_INCLUDED="$(read_storage_included)" || die "invalid storage inclusion declaration in manifest: $MANIFEST_FILE"
+  STORAGE_RESTORE_STATUS="skipped"
+  if [[ "$STORAGE_INCLUDED" == "true" ]]; then
+    [[ -f "$STORAGE_ARCHIVE" ]] || die "storage archive not found: $STORAGE_ARCHIVE"
+    [[ -f "$STORAGE_LISTING" ]] || die "storage listing not found: $STORAGE_LISTING"
+  fi
 
   log "verifying backup checksums"
   (
@@ -452,6 +486,7 @@ restore_storage() {
   RESTORED_STORAGE_COUNT="$(wc -l < "$REPORT_DIR/restored-storage.contents.txt" | tr -d ' ')"
   phase_finished_at="$(timestamp_ms)"
   STORAGE_RESTORE_MS=$((phase_finished_at - phase_started_at))
+  STORAGE_RESTORE_STATUS="restored"
 }
 
 write_report() {
@@ -474,7 +509,7 @@ Validated artifacts:
   $CHECKSUMS_FILE
   $DUMP_FILE
   $GLOBALS_FILE
-  $STORAGE_ARCHIVE
+$(if [[ "$STORAGE_INCLUDED" == "true" ]]; then printf '  %s\n' "$STORAGE_ARCHIVE"; else printf '  storage archive: not included\n'; fi)
 
 Database restore:
   disposable container: $PG_CONTAINER
@@ -483,8 +518,10 @@ Database restore:
   public tables restored: $PUBLIC_TABLE_COUNT
 
 Storage restore:
+  included: $STORAGE_INCLUDED
+  status: $STORAGE_RESTORE_STATUS
   restored files: $RESTORED_STORAGE_COUNT
-  listing diff: $REPORT_DIR/storage-contents.diff
+$(if [[ "$STORAGE_INCLUDED" == "true" ]]; then printf '  listing diff: %s\n' "$REPORT_DIR/storage-contents.diff"; else printf '  listing diff: not applicable\n'; fi)
 
 Timing:
   started at: $DRILL_STARTED_AT
@@ -533,7 +570,8 @@ EOF
   "reportDir": "$REPORT_DIR",
   "databaseDump": "$DUMP_FILE",
   "globalsDump": "$GLOBALS_FILE",
-  "storageArchive": "$STORAGE_ARCHIVE",
+  "storageIncluded": $STORAGE_INCLUDED,
+  "storageArchive": $(if [[ "$STORAGE_INCLUDED" == "true" ]]; then printf '"%s"' "$STORAGE_ARCHIVE"; else printf 'null'; fi),
   "restoreDatabase": "$RESTORE_DRILL_DB_NAME",
   "restoreProfile": "$RESTORE_DRILL_PROFILE",
   "representativeRuntimeRole": "$REPRESENTATIVE_RUNTIME_ROLE",
@@ -543,7 +581,8 @@ EOF
   "representativeAssertionsPassed": $REPRESENTATIVE_ASSERTION_COUNT,
   "representativeIntegrity": "$REPRESENTATIVE_CHECK_STATUS",
   "checksumVerification": "passed",
-  "storageListingMatch": true
+  "storageRestoreStatus": "$STORAGE_RESTORE_STATUS",
+  "storageListingMatch": $(if [[ "$STORAGE_INCLUDED" == "true" ]]; then printf 'true'; else printf 'null'; fi)
 }
 EOF
 
@@ -555,12 +594,18 @@ main() {
   validate_prereqs
   resolve_bundle_dir
   validate_bundle
-  validate_storage_archive
+  if [[ "$STORAGE_INCLUDED" == "true" ]]; then
+    validate_storage_archive
+  fi
   start_disposable_postgres
   restore_globals
   restore_database
   validate_representative_restore
-  restore_storage
+  if [[ "$STORAGE_INCLUDED" == "true" ]]; then
+    restore_storage
+  else
+    log "storageIncluded=false; skipping storage restore"
+  fi
   write_report
 }
 

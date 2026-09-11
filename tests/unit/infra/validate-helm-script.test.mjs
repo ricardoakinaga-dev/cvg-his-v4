@@ -56,6 +56,24 @@ test('production-like worker identity is wired as a required Secret value', () =
   assert.match(values, /secretKey: WORKER_REPORTS_USER_ID/);
 });
 
+test('production image helpers require immutable digests instead of tag fallback', () => {
+  const helpers = readFileSync(
+    resolve(repositoryRoot, 'infra/helm/cvg-his-v2/templates/_helpers.tpl'),
+    'utf8'
+  );
+  const productionValues = readFileSync(
+    resolve(repositoryRoot, 'infra/helm/cvg-his-v2/values.prod.yaml'),
+    'utf8'
+  );
+
+  assert.match(productionValues, /global:\s*\n\s+environment: production/);
+  assert.match(helpers, /api\.image\.sha is required for production image immutability/);
+  assert.match(helpers, /worker\.image\.sha is required for production image immutability/);
+  assert.match(helpers, /spa\.image\.sha is required for production image immutability/);
+  assert.match(helpers, /sha256:<64 lowercase hex characters>/);
+  assert.match(helpers, /if eq \.Values\.global\.environment "production"/);
+});
+
 test('embedded PostgreSQL requires separate API and worker passwords', () => {
   const secrets = readFileSync(
     resolve(repositoryRoot, 'infra/helm/cvg-his-v2/templates/secrets.yaml'),

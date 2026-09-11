@@ -1,4 +1,7 @@
 # values.prod.yaml — Production environment overrides
+global:
+  environment: production
+
 api:
   replicaCount: 3
   revisionHistoryLimit: 10

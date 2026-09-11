@@ -123,6 +123,10 @@ Nao usar como runtime oficial:
 - `BACKUP_RETENTION_DAYS=7`
 - `BACKUP_INCLUDE_STORAGE=true`
 
+`BACKUP_INCLUDE_STORAGE` aceita somente `true` ou `false`. Com `false`, o
+manifesto marca `storageIncluded=false`; o restore drill não exige o arquivo de
+storage e persiste `storageRestoreStatus=skipped` no relatório.
+
 ## Build e validacao local
 
 ```bash
@@ -371,8 +375,8 @@ Saída esperada do restore drill:
 - `postgres-globals.sql` aplicado em Postgres descartável
 - dump lógico restaurado em banco temporário
 - `restored-public-tables.txt` com tabelas públicas recuperadas
-- restore do storage em workspace temporário
-- diff vazio entre `file-storage.contents.txt` e o conteúdo restaurado
+- quando `storageIncluded=true`, restore do storage em workspace temporário e diff vazio entre `file-storage.contents.txt` e o conteúdo restaurado
+- quando `storageIncluded=false`, storage é explicitamente pulado e o relatório registra `storageRestoreStatus=skipped`
 
 ## Segredos e rotacao
 

@@ -105,7 +105,11 @@ app.kubernetes.io/component: spa
 {{- end }}
 
 {{- define "cvg-his-v2.api.image" -}}
-{{- if .Values.api.image.sha -}}
+{{- if eq .Values.global.environment "production" -}}
+{{- $sha := required "api.image.sha is required for production image immutability" .Values.api.image.sha -}}
+{{- if not (regexMatch "^sha256:[a-f0-9]{64}$" $sha) -}}{{- fail "api.image.sha must match sha256:<64 lowercase hex characters>" -}}{{- end -}}
+{{- printf "%s/%s@%s" .Values.api.image.registry .Values.api.image.repository $sha -}}
+{{- else if .Values.api.image.sha -}}
 {{- printf "%s/%s@%s" .Values.api.image.registry .Values.api.image.repository .Values.api.image.sha -}}
 {{- else -}}
 {{- printf "%s/%s:%s" .Values.api.image.registry .Values.api.image.repository (.Values.api.image.tag | default .Chart.AppVersion) -}}
@@ -113,7 +117,11 @@ app.kubernetes.io/component: spa
 {{- end }}
 
 {{- define "cvg-his-v2.worker.image" -}}
-{{- if .Values.worker.image.sha -}}
+{{- if eq .Values.global.environment "production" -}}
+{{- $sha := required "worker.image.sha is required for production image immutability" .Values.worker.image.sha -}}
+{{- if not (regexMatch "^sha256:[a-f0-9]{64}$" $sha) -}}{{- fail "worker.image.sha must match sha256:<64 lowercase hex characters>" -}}{{- end -}}
+{{- printf "%s/%s@%s" .Values.worker.image.registry .Values.worker.image.repository $sha -}}
+{{- else if .Values.worker.image.sha -}}
 {{- printf "%s/%s@%s" .Values.worker.image.registry .Values.worker.image.repository .Values.worker.image.sha -}}
 {{- else -}}
 {{- printf "%s/%s:%s" .Values.worker.image.registry .Values.worker.image.repository (.Values.worker.image.tag | default .Chart.AppVersion) -}}
@@ -121,7 +129,11 @@ app.kubernetes.io/component: spa
 {{- end }}
 
 {{- define "cvg-his-v2.spa.image" -}}
-{{- if .Values.spa.image.sha -}}
+{{- if eq .Values.global.environment "production" -}}
+{{- $sha := required "spa.image.sha is required for production image immutability" .Values.spa.image.sha -}}
+{{- if not (regexMatch "^sha256:[a-f0-9]{64}$" $sha) -}}{{- fail "spa.image.sha must match sha256:<64 lowercase hex characters>" -}}{{- end -}}
+{{- printf "%s/%s@%s" .Values.spa.image.registry .Values.spa.image.repository $sha -}}
+{{- else if .Values.spa.image.sha -}}
 {{- printf "%s/%s@%s" .Values.spa.image.registry .Values.spa.image.repository .Values.spa.image.sha -}}
 {{- else -}}
 {{- printf "%s/%s:%s" .Values.spa.image.registry .Values.spa.image.repository (.Values.spa.image.tag | default .Chart.AppVersion) -}}

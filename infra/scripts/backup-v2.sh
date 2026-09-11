@@ -57,6 +57,10 @@ ensure_prereqs() {
   require_cmd find
   require_cmd sed
   load_env_file
+  case "$BACKUP_INCLUDE_STORAGE" in
+    true|false) ;;
+    *) die "BACKUP_INCLUDE_STORAGE must be exactly true or false: $BACKUP_INCLUDE_STORAGE" ;;
+  esac
   require_env POSTGRES_PASSWORD
   ensure_numeric "$BACKUP_RETENTION_DAYS"
 }
@@ -161,7 +165,8 @@ write_manifest() {
 }
 EOF
 
-  cat > "$BACKUP_DIR/meta/restore-hints.txt" <<EOF
+  if [[ "$storage_enabled" == "true" ]]; then
+    cat > "$BACKUP_DIR/meta/restore-hints.txt" <<EOF
 Restore prep hints for this backup bundle:
 
 1. Restore Postgres roles/globals first:
@@ -177,6 +182,23 @@ Restore prep hints for this backup bundle:
    curl http://127.0.0.1:3003/health
    curl http://127.0.0.1:3003/ready
 EOF
+  else
+    cat > "$BACKUP_DIR/meta/restore-hints.txt" <<EOF
+Restore prep hints for this database-only backup bundle:
+
+1. Restore Postgres roles/globals first:
+   psql < database/postgres-globals.sql
+
+2. Restore logical database dump:
+   pg_restore --clean --if-exists --no-owner --no-privileges -d TARGET_DATABASE database/$db_file
+
+3. This bundle declares storageIncluded=false; no attachment storage restore is expected.
+
+4. Validate application health after restore:
+   curl http://127.0.0.1:3003/health
+   curl http://127.0.0.1:3003/ready
+EOF
+  fi
 }
 
 write_checksums() {

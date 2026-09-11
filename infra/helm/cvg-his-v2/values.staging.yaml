@@ -1,4 +1,7 @@
 # values.staging.yaml — Staging environment overrides
+global:
+  environment: staging
+
 api:
   replicaCount: 2
   revisionHistoryLimit: 5
