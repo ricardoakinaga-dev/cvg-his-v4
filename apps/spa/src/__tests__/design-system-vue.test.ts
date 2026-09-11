@@ -252,6 +252,25 @@ describe('DsTabs', () => {
     await wrapper.findAll('.ds-tab')[1].trigger('click');
     expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['tab2']);
   });
+
+  it('preserves keyed values for Home and End while skipping disabled tabs', async () => {
+    const wrapper = mount(DsTabs, {
+      props: {
+        tabs: [
+          { key: 'first', label: 'First', disabled: true },
+          { key: 'consent', label: 'Consent' },
+          { key: 'dsr', label: 'DSR' }
+        ],
+        modelValue: 'consent'
+      }
+    });
+
+    const activeTab = wrapper.findAll('.ds-tab')[1];
+    await activeTab.trigger('keydown', { key: 'Home' });
+    await activeTab.trigger('keydown', { key: 'End' });
+
+    expect(wrapper.emitted('update:modelValue')).toEqual([['consent'], ['dsr']]);
+  });
 });
 
 describe('DsInput', () => {

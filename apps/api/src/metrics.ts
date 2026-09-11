@@ -81,6 +81,68 @@ export const appDbHealthy = new Gauge({
   registers: [registry]
 });
 
+export interface DatabasePoolMetricsSource {
+  readonly waitingCount: number;
+  readonly idleCount: number;
+  readonly totalCount: number;
+  readonly max?: number;
+}
+
+export const appDbPoolWaiting = new Gauge({
+  name: 'app_database_pool_waiting_count',
+  help: 'Number of callers waiting for a database connection',
+  registers: [registry]
+});
+
+export const appDbPoolIdle = new Gauge({
+  name: 'app_database_pool_idle_count',
+  help: 'Number of idle database connections',
+  registers: [registry]
+});
+
+export const appDbPoolTotal = new Gauge({
+  name: 'app_database_pool_total_count',
+  help: 'Number of database connections currently allocated by the pool',
+  registers: [registry]
+});
+
+export const appDbPoolMax = new Gauge({
+  name: 'app_database_pool_max_connections',
+  help: 'Configured maximum number of database connections for the pool',
+  registers: [registry]
+});
+
+export const appDbPoolConfigured = new Gauge({
+  name: 'app_database_pool_configured',
+  help: 'Whether the database connection pool is initialized (1 = yes, 0 = no)',
+  registers: [registry]
+});
+
+function nonNegativePoolMetric(value: number): number {
+  return Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
+export function updateDatabasePoolMetrics(pool: DatabasePoolMetricsSource | undefined): void {
+  if (!pool) {
+    appDbPoolConfigured.set(0);
+    appDbPoolWaiting.set(0);
+    appDbPoolIdle.set(0);
+    appDbPoolTotal.set(0);
+    appDbPoolMax.set(0);
+    return;
+  }
+
+  appDbPoolConfigured.set(1);
+  appDbPoolWaiting.set(nonNegativePoolMetric(pool.waitingCount));
+  appDbPoolIdle.set(nonNegativePoolMetric(pool.idleCount));
+  appDbPoolTotal.set(nonNegativePoolMetric(pool.totalCount));
+  appDbPoolMax.set(nonNegativePoolMetric(pool.max ?? 0));
+}
+
+export function resetDatabasePoolMetrics(): void {
+  updateDatabasePoolMetrics(undefined);
+}
+
 export const appRedisHealthy = new Gauge({
   name: 'app_redis_healthy',
   help: 'Redis health status for distributed runtime state (1 = healthy, 0 = unhealthy or not configured)',

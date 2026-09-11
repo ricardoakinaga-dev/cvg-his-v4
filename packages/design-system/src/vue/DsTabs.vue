@@ -1,20 +1,31 @@
 <template>
-  <div class="ds-tabs" role="tablist" :aria-label="ariaLabel">
+  <div class="ds-tabs" role="tablist" :aria-label="props.ariaLabel">
     <button
-      v-for="(tab, index) in tabs"
-      :key="tab.key || index"
+      v-for="(tab, index) in props.tabs"
+      :key="tab.key ?? index"
       role="tab"
       :data-key="tab.key ?? index"
-      :class="['ds-tab', { 'ds-tab--active': modelValue === (tab.key ?? index), 'ds-tab--disabled': tab.disabled }]"
-      :aria-selected="modelValue === (tab.key ?? index)"
+      :class="[
+        'ds-tab',
+        {
+          'ds-tab--active': props.modelValue === (tab.key ?? index),
+          'ds-tab--disabled': tab.disabled
+        }
+      ]"
+      :aria-selected="props.modelValue === (tab.key ?? index)"
       :aria-disabled="tab.disabled"
-      :tabindex="modelValue === (tab.key ?? index) ? 0 : -1"
+      :tabindex="props.modelValue === (tab.key ?? index) ? 0 : -1"
       :disabled="tab.disabled"
       @click="!tab.disabled && $emit('update:modelValue', tab.key ?? index)"
       @keydown="handleKeydown($event, index)"
     >
       {{ tab.label }}
-      <span v-if="tab.count !== undefined" class="ds-tab__count" :aria-label="`${tab.count} itens`">{{ tab.count }}</span>
+      <span
+        v-if="tab.count !== undefined"
+        class="ds-tab__count"
+        :aria-label="`${tab.count} itens`"
+        >{{ tab.count }}</span
+      >
     </button>
   </div>
 </template>
@@ -33,7 +44,7 @@ export interface DsTabsProps {
   ariaLabel?: string;
 }
 
-withDefaults(defineProps<DsTabsProps>(), {
+const props = withDefaults(defineProps<DsTabsProps>(), {
   ariaLabel: undefined
 });
 
@@ -41,39 +52,51 @@ const emit = defineEmits<{
   'update:modelValue': [value: string | number];
 }>();
 
-function handleKeydown(event: KeyboardEvent, index: number) {
-  const tabs = (event.currentTarget as HTMLElement).parentElement?.querySelectorAll<HTMLElement>('button[role="tab"]');
-  if (!tabs) return;
+function tabValue(index: number): string | number {
+  return props.tabs[index]?.key ?? index;
+}
 
-  let nextIndex = index;
+function isDisabled(index: number): boolean {
+  return props.tabs[index]?.disabled === true;
+}
+
+function findEnabledIndex(startIndex: number, direction: 1 | -1): number {
+  const count = props.tabs.length;
+  if (count === 0) return -1;
+
+  let candidate = startIndex;
+  for (let attempts = 0; attempts < count; attempts += 1) {
+    if (!isDisabled(candidate)) return candidate;
+    candidate = (candidate + direction + count) % count;
+  }
+  return -1;
+}
+
+function handleKeydown(event: KeyboardEvent, index: number) {
+  const tabElements = (
+    event.currentTarget as HTMLElement
+  ).parentElement?.querySelectorAll<HTMLElement>('button[role="tab"]');
+  if (!tabElements || tabElements.length === 0) return;
+
+  let nextIndex = -1;
 
   if (event.key === 'ArrowRight') {
     event.preventDefault();
-    nextIndex = index + 1;
-    if (nextIndex >= tabs.length) nextIndex = 0;
-    // Skip disabled tabs
-    while (nextIndex !== index && tabs[nextIndex]?.getAttribute('aria-disabled') === 'true') {
-      nextIndex = (nextIndex + 1) % tabs.length;
-    }
-    emit('update:modelValue', (event.currentTarget as HTMLElement).closest('.ds-tabs')?.querySelectorAll<HTMLElement>('button[role="tab"]')[nextIndex]?.getAttribute('data-key') ?? nextIndex);
-    tabs[nextIndex]?.focus();
+    nextIndex = findEnabledIndex((index + 1) % tabElements.length, 1);
   } else if (event.key === 'ArrowLeft') {
     event.preventDefault();
-    nextIndex = index - 1;
-    if (nextIndex < 0) nextIndex = tabs.length - 1;
-    while (nextIndex !== index && tabs[nextIndex]?.getAttribute('aria-disabled') === 'true') {
-      nextIndex = (nextIndex - 1 + tabs.length) % tabs.length;
-    }
-    emit('update:modelValue', (event.currentTarget as HTMLElement).closest('.ds-tabs')?.querySelectorAll<HTMLElement>('button[role="tab"]')[nextIndex]?.getAttribute('data-key') ?? nextIndex);
-    tabs[nextIndex]?.focus();
+    nextIndex = findEnabledIndex((index - 1 + tabElements.length) % tabElements.length, -1);
   } else if (event.key === 'Home') {
     event.preventDefault();
-    emit('update:modelValue', 0);
-    tabs[0]?.focus();
+    nextIndex = findEnabledIndex(0, 1);
   } else if (event.key === 'End') {
     event.preventDefault();
-    emit('update:modelValue', tabs.length - 1);
-    tabs[tabs.length - 1]?.focus();
+    nextIndex = findEnabledIndex(tabElements.length - 1, -1);
+  }
+
+  if (nextIndex >= 0) {
+    emit('update:modelValue', tabValue(nextIndex));
+    tabElements[nextIndex]?.focus();
   }
 }
 </script>

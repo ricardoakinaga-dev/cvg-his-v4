@@ -238,4 +238,19 @@ describe('LgpdHubPage', () => {
     expect(wrapper.text()).toContain('20 anos para prontuario clinico veterinario');
     expect(wrapper.text()).toContain('Anonimizar após janela legal');
   });
+
+  it('keeps the selected LGPD panel when Home and End navigate keyed tabs', async () => {
+    const LgpdHubPage = (await import('../LgpdHubPage.vue')).default;
+    const wrapper = mount(LgpdHubPage);
+
+    await flushPromises();
+    const tabs = wrapper.findAll('[role="tab"]');
+    await tabs[1].trigger('keydown', { key: 'Home' });
+    await flushPromises();
+    expect(wrapper.find('.tab-panel').text()).toContain('Consentimentos do titular');
+
+    await tabs[0].trigger('keydown', { key: 'End' });
+    await flushPromises();
+    expect(wrapper.find('.tab-panel').text()).toContain('Criar nova solicitação');
+  });
 });

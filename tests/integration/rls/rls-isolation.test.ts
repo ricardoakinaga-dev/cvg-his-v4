@@ -14,6 +14,8 @@ describe('RLS Integration Tests', () => {
   const OWNER_B = '22222222-2222-4222-8222-222222222222';
   const OWNER_UPDATE_A = '33333333-3333-4333-8333-333333333333';
   const OWNER_UPDATE_B = '44444444-4444-4444-8444-444444444444';
+  const DIAGNOSTIC_A = 'diagnostic-rls-a';
+  const DIAGNOSTIC_B = 'diagnostic-rls-b';
 
   beforeAll(async () => {
     pool = new Pool({ connectionString: TEST_DB_URL });
@@ -281,6 +283,50 @@ describe('RLS Integration Tests', () => {
       } finally {
         clientA.release();
       }
+    });
+
+    it('should isolate diagnostic orders across tenants for reads and updates', async () => {
+      await adminClient.query(
+        `
+        INSERT INTO diagnostic_orders (
+          id, account_id, encounter_id, patient_id, exam_type, reason, status,
+          created_at, updated_at
+        )
+        VALUES
+          ($1, $3, 'encounter-rls-a', 'patient-rls-a', 'Hemograma A', 'RLS test', 'requested', NOW(), NOW()),
+          ($2, $4, 'encounter-rls-b', 'patient-rls-b', 'Hemograma B', 'RLS test', 'requested', NOW(), NOW())
+        ON CONFLICT (id) DO NOTHING
+      `,
+        [DIAGNOSTIC_A, DIAGNOSTIC_B, ACCOUNT_A, ACCOUNT_B]
+      );
+
+      const clientA = await pool.connect();
+      try {
+        await clientA.query('BEGIN');
+        await activateRlsRole(clientA);
+        await setAccountContext(clientA, ACCOUNT_A);
+
+        const hidden = await clientA.query(
+          'SELECT id, status FROM diagnostic_orders WHERE id = $1',
+          [DIAGNOSTIC_B]
+        );
+        expect(hidden.rows).toEqual([]);
+
+        const update = await clientA.query(
+          'UPDATE diagnostic_orders SET status = $1 WHERE id = $2 RETURNING id',
+          ['reported', DIAGNOSTIC_B]
+        );
+        expect(update.rows).toEqual([]);
+        await clientA.query('ROLLBACK');
+      } finally {
+        clientA.release();
+      }
+
+      const accountBRow = await adminClient.query(
+        'SELECT account_id, status FROM diagnostic_orders WHERE id = $1',
+        [DIAGNOSTIC_B]
+      );
+      expect(accountBRow.rows).toEqual([{ account_id: ACCOUNT_B, status: 'requested' }]);
     });
 
     it('should prevent DELETE of data belonging to another account', async () => {

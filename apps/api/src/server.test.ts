@@ -25,7 +25,10 @@ import {
   recordRequestSloObservation,
   resetClinicalOperationalMetrics,
   resetActiveRequestsCount,
-  resetRequestSloObservations
+  resetRequestSloObservations,
+  getMetricsText,
+  resetDatabasePoolMetrics,
+  updateDatabasePoolMetrics
 } from './metrics.js';
 import {
   assertProductionProviderReadiness,
@@ -1851,6 +1854,19 @@ test('clinical operational metrics use an authoritative unlabeled snapshot', asy
   assert.match(metrics, /^cvg_handover_pending 1$/m);
   assert.doesNotMatch(metrics, /^cvg_[^\n]+\{[^\n]+\}/m);
   resetClinicalOperationalMetrics();
+});
+
+test('database pool metrics expose bounded connection pressure without tenant labels', async () => {
+  updateDatabasePoolMetrics({ waitingCount: 3, idleCount: 2, totalCount: 6, max: 8 });
+  const metrics = await getMetricsText();
+
+  assert.match(metrics, /^app_database_pool_configured 1$/m);
+  assert.match(metrics, /^app_database_pool_waiting_count 3$/m);
+  assert.match(metrics, /^app_database_pool_idle_count 2$/m);
+  assert.match(metrics, /^app_database_pool_total_count 6$/m);
+  assert.match(metrics, /^app_database_pool_max_connections 8$/m);
+  assert.doesNotMatch(metrics, /app_database_pool_[^\n]+\{[^\n]+account/);
+  resetDatabasePoolMetrics();
 });
 
 test('SLO endpoint exposes compliance, error budget and Prometheus gauges', async () => {

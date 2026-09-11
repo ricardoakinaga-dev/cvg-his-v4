@@ -2,15 +2,15 @@ import { test, expect } from '../fixtures/cvg-his.fixture';
 import type { APIRequestContext, APIResponse } from '@playwright/test';
 
 /**
- * Jornada clínica canônica mínima, mantida no escopo do harness de API.
+ * Jornada clínica canônica ponta a ponta, mantida no escopo do harness de API.
  *
  * A jornada só é executada quando /health confirma persistência PostgreSQL em
  * um banco descartável preparado pelo harness. Disponibilidade (se criada),
  * queue, triage, diagnóstico e alta não têm uma API pública de descarte
  * completa; a execução CI usa uma base efêmera que é descartada ao terminar o
  * job, portanto nenhum banco compartilhado é aceito como evidência.
- * O teste cobre pedido diagnóstico (status requested), não resultado/liberação
- * laboratorial nem execução assíncrona por worker.
+ * O teste cobre resultado laboratorial assinado, entrega, execução de medicação,
+ * auditoria e invariantes de tenant no mesmo encounter.
  */
 
 type ApiEntity = {
@@ -163,6 +163,7 @@ test('executa owner -> patient -> appointment/queue -> triage/encounter -> presc
     appointmentId?: string;
     encounterId?: string;
     prescriptionId?: string;
+    executionId?: string;
     encounterClosed?: boolean;
   } = {};
 
@@ -396,6 +397,53 @@ test('executa owner -> patient -> appointment/queue -> triage/encounter -> presc
     expect(listedPrescription).toBeDefined();
     expectTenant(listedPrescription!, accountId);
 
+    const execution = await readJson<ApiEntity>(
+      await apiContext.post('/prescription-executions', {
+        data: {
+          clinicalEntryId: prescription.id,
+          patientId: patient.id,
+          encounterId: encounter.id,
+          medicationName: prescription.medicationName,
+          dosage: prescription.dosage,
+          route: prescription.route,
+          frequency: prescription.frequency,
+          scheduledAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          notes: 'Execução de medicação da jornada canônica'
+        }
+      }),
+      'create prescription execution',
+      201
+    );
+    created.executionId = execution.id;
+    expectTenant(execution, accountId);
+    expect(execution.encounterId).toBe(encounter.id);
+    expect(execution.patientId).toBe(patient.id);
+    expect(execution.status).toBe('scheduled');
+
+    const administered = await readJson<ApiEntity>(
+      await apiContext.post(`/prescription-executions/${execution.id}/execute`, {
+        data: {
+          status: 'administered',
+          notes: 'Administração sintética registrada no encounter',
+          vitalsSnapshot: { temperatureC: 38.4, heartRateBpm: 96 }
+        }
+      }),
+      'execute prescription',
+      200
+    );
+    expectTenant(administered, accountId);
+    expect(administered.id).toBe(execution.id);
+    expect(administered.status).toBe('administered');
+
+    const executionDetail = await readJson<ApiEntity & { readonly events?: readonly ApiEntity[] }>(
+      await apiContext.get(`/prescription-executions/${execution.id}`),
+      'read prescription execution detail'
+    );
+    expectTenant(executionDetail, accountId);
+    expect(
+      executionDetail.events?.some((event) => event.eventType === 'administered')
+    ).toBeTruthy();
+
     const diagnostic = await readJson<ApiEntity>(
       await apiContext.post('/diagnostics/orders', {
         data: {
@@ -420,6 +468,95 @@ test('executa owner -> patient -> appointment/queue -> triage/encounter -> presc
     const listedDiagnostic = diagnostics.items.find((item) => item.id === diagnostic.id);
     expect(listedDiagnostic).toBeDefined();
     expectTenant(listedDiagnostic!, accountId);
+
+    const collectedDiagnostic = await readJson<ApiEntity>(
+      await apiContext.post(`/diagnostics/orders/${diagnostic.id}/result`, {
+        headers: { 'idempotency-key': `canonical-${suffix}-collect` },
+        data: { status: 'collected' }
+      }),
+      'collect diagnostic order'
+    );
+    expectTenant(collectedDiagnostic, accountId);
+    expect(collectedDiagnostic.status).toBe('collected');
+    expect(collectedDiagnostic.collectionAttempt).toBe(1);
+
+    const analyzingDiagnostic = await readJson<ApiEntity>(
+      await apiContext.post(`/diagnostics/orders/${diagnostic.id}/result`, {
+        headers: { 'idempotency-key': `canonical-${suffix}-analysis` },
+        data: { status: 'in_analysis' }
+      }),
+      'start diagnostic analysis'
+    );
+    expectTenant(analyzingDiagnostic, accountId);
+    expect(analyzingDiagnostic.status).toBe('in_analysis');
+
+    const reportedDiagnostic = await readJson<ApiEntity>(
+      await apiContext.post(`/diagnostics/orders/${diagnostic.id}/result`, {
+        headers: { 'idempotency-key': `canonical-${suffix}-report` },
+        data: {
+          status: 'reported',
+          resultSummary: 'Hemograma sintético sem alterações críticas',
+          resultValues: [
+            {
+              parameter: 'Leucócitos',
+              value: '8500',
+              unit: '/mm³',
+              reference: '6000–17000'
+            }
+          ]
+        }
+      }),
+      'report diagnostic result'
+    );
+    expectTenant(reportedDiagnostic, accountId);
+    expect(reportedDiagnostic.status).toBe('reported');
+    expect(reportedDiagnostic.signedByUserId).toBeTruthy();
+    expect(reportedDiagnostic.signatureHash).toBeTruthy();
+
+    const replayedReportedDiagnostic = await readJson<ApiEntity>(
+      await apiContext.post(`/diagnostics/orders/${diagnostic.id}/result`, {
+        headers: { 'idempotency-key': `canonical-${suffix}-report` },
+        data: {
+          status: 'reported',
+          resultSummary: 'Hemograma sintético sem alterações críticas',
+          resultValues: [
+            {
+              parameter: 'Leucócitos',
+              value: '8500',
+              unit: '/mm³',
+              reference: '6000–17000'
+            }
+          ]
+        }
+      }),
+      'replay diagnostic result'
+    );
+    expect(replayedReportedDiagnostic.id).toBe(reportedDiagnostic.id);
+    expect(replayedReportedDiagnostic.status).toBe('reported');
+
+    const deliveredDiagnostic = await readJson<ApiEntity>(
+      await apiContext.post(`/diagnostics/orders/${diagnostic.id}/result`, {
+        headers: { 'idempotency-key': `canonical-${suffix}-deliver` },
+        data: { status: 'delivered', deliveryChannel: 'portal' }
+      }),
+      'deliver diagnostic result'
+    );
+    expectTenant(deliveredDiagnostic, accountId);
+    expect(deliveredDiagnostic.status).toBe('delivered');
+
+    const diagnosticDetail = await readJson<
+      ApiEntity & { readonly history?: readonly ApiEntity[] }
+    >(
+      await apiContext.get(`/laboratory/orders/${diagnostic.id}`),
+      'read diagnostic workflow detail'
+    );
+    expectTenant(diagnosticDetail, accountId);
+    expect(diagnosticDetail.history?.map((event) => event.eventType)).toEqual([
+      'collected',
+      'in_analysis',
+      'reported',
+      'delivered'
+    ]);
 
     const followUpDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const discharge = await readJson<ApiEntity>(
@@ -500,6 +637,21 @@ test('executa owner -> patient -> appointment/queue -> triage/encounter -> presc
       summary.diagnostics.latestOrders.some((order) => order.id === diagnostic.id)
     ).toBeTruthy();
     expect(summary.timeline.some((event) => event.eventType === 'triage_recorded')).toBeTruthy();
+
+    const auditEvents = await readJson<Collection<ApiEntity>>(
+      await apiContext.get('/audit/events'),
+      'read canonical audit events'
+    );
+    expect(
+      auditEvents.items.some(
+        (event) => event.entityId === diagnostic.id && event.action === 'reported'
+      )
+    ).toBeTruthy();
+    expect(
+      auditEvents.items.some(
+        (event) => event.entityId === execution.id && event.action === 'administered'
+      )
+    ).toBeTruthy();
   } finally {
     // These are public soft-delete/archive routes. Synthetic availability (when
     // created), queue, triage, diagnostics and discharge have no public delete

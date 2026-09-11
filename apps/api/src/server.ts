@@ -232,6 +232,7 @@ import {
   incrementActiveRequests,
   recordRequestSloObservation,
   updateAppMetrics,
+  updateDatabasePoolMetrics,
   refreshClinicalOperationalMetrics,
   type ClinicalOperationalMetricsSnapshot,
   createFeatureFlagMetricsCollector
@@ -4348,6 +4349,17 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
 
       if (request.url === '/metrics' && request.method === 'GET') {
         await refreshClinicalOperationalMetrics(options.clinicalOperationalMetricsProvider, logger);
+        const databasePool = getInitializedDatabasePool();
+        updateDatabasePoolMetrics(
+          databasePool
+            ? {
+                waitingCount: databasePool.waitingCount,
+                idleCount: databasePool.idleCount,
+                totalCount: databasePool.totalCount,
+                max: Number.parseInt(process.env.POSTGRES_MAX_CONNECTIONS ?? '20', 10)
+              }
+            : undefined
+        );
         const appState = getAppState();
         const redisHealth = await resolveRedisHealthStatus(
           healthRouteOptions,
