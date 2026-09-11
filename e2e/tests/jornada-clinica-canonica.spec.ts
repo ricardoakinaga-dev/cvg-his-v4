@@ -418,7 +418,7 @@ test('executa owner -> patient -> appointment/queue -> triage/encounter -> presc
     expectTenant(execution, accountId);
     expect(execution.encounterId).toBe(encounter.id);
     expect(execution.patientId).toBe(patient.id);
-    expect(execution.status).toBe('scheduled');
+    expect(execution.status).toBe('pending');
 
     const administered = await readJson<ApiEntity>(
       await apiContext.post(`/prescription-executions/${execution.id}/execute`, {
