@@ -1,27 +1,33 @@
 # Baseline corrente — State of Art
 
-Observado em 2026-09-11T10:35:44Z. O candidato funcional corrente é `5b036836bf71bc3a6c62bd151a2b19f235d3e2fc`; `main`/`origin/main` serão sincronizados no snapshot de controle documental desta reconciliação. Esta entrada registra o CI do SHA exato; o commit que a contém é metadata-only e não recebe essa evidência. As seções posteriores são históricas e não transferem resultados para outro SHA.
+Observado em 2026-09-11T11:57:40Z. O candidato funcional corrente é `bb16a47f`; `main` e `origin/main` estão sincronizados no snapshot corrente de assurance. Esta entrada registra o CI terminal do SHA exato; as seções posteriores são históricas e não transferem resultados para outro SHA.
 
 ## Estado do candidato atual
 
 | Campo | Evidência atual |
 | --- | --- |
-| current_sha | `5b036836bf71bc3a6c62bd151a2b19f235d3e2fc` (candidato funcional) |
-| main_sha | snapshot de controle documental desta reconciliação (metadata-only) |
-| origin/main | snapshot de controle documental desta reconciliação (metadata-only) |
+| current_sha | `bb16a47f` (candidato funcional) |
+| main_sha | snapshot corrente de assurance; candidato funcional `bb16a47f` |
+| origin/main | snapshot corrente de assurance; candidato funcional `bb16a47f` |
 | worktree | Limpo para arquivos rastreados; artefatos locais estão ignorados |
-| ci_run | [#34587238104](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34587238104), terminal `failure`, 14/16 jobs aprovados |
+| ci_run | [#34593912427](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34593912427), `failure` — 15/16 jobs passaram; Performance falhou |
 | overall_score | BLOCKED — o gate atual não foi promovido; o score diagnóstico histórico 56/32/15 não é transferido |
 | critical_score | não recalculado para este SHA; mínimo congelado 95 |
 | open_p0 | não recalculado para este SHA; critérios externos continuam sem prova |
-| implemented | Restore database-only compatível com `storageIncluded=false`, Helm de produção fail-closed por digest, além dos controles anteriores de release, OCI, provenance e acessibilidade |
-| verified_local | `pnpm test` completo exit 0, mais sintaxe, docs, Helm estático, backup/restore 4/4 e 15 checks, Helm script 9/9 e restore focado 16/16 passaram |
-| verified_remote | 14/16 no SHA exato; Unit Tests e Performance falharam; Integration, E2E SPA, Visual, Windows, API Contract e os checks preparatórios passaram |
+| implemented | Restore database-only compatível com `storageIncluded=false`, Helm de produção fail-closed por digest e leitura record-only para estimativas, além dos controles anteriores de release, OCI, provenance e acessibilidade |
+| verified_local | `pnpm test`, typecheck, lint, OpenAPI, complexidade, identidade de fontes críticas, RLS estático, supply chain, dependências, backup/restore e Helm estático passaram; billing focused/API tests passaram |
+| verified_remote | Run #111 terminal: Repository Guards, Unit, Integration, E2E SPA, Visual, Windows e API Contract passaram; Performance (k6 SLOs) falhou |
 | verified_target | NOT PROVEN |
-| blocked | Unit Tests e Performance falharam no CI remoto; os logs públicos dos jobs falhos exigem autenticação; branch governance, ambiente alvo, recuperação/soak, UAT e autoridade de release permanecem sem prova |
+| blocked | Performance remota falhou e branch governance, ambiente alvo, recuperação/soak, UAT e autoridade de release permanecem sem prova |
 | not_proven | Quality bar 97/95/zero P0, Windows nativo fora do runner Linux, RLS/DB runtime no alvo, deploy/rollback, restore/RPO/RTO, attestation, observabilidade operacional e provas humanas |
 
 ## Evidência corrente
+
+### Candidato atual — `bb16a47f`
+
+O CI [#34593912427](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34593912427) terminou no SHA exato `bb16a47f` com 15/16 jobs em `success`; Performance (k6 SLOs) falhou. O run #110 foi supersedido após `Repository Guards` detectar o hash antigo de `packages/modules/billing/src/index.ts`; o manifesto foi atualizado antes desta execução. O caminho de estimativa de billing usa leitura record-only e preserva o subtotal persistido quando os itens não são carregados; os testes locais do módulo, API, workspace e identidade crítica passaram. O artefato de performance observado é `performance-k6-report`, digest `sha256:212cd76b10ac0d746fa3f576d35876791016c5dfef3e2ca2282d382cae269cac`; logs detalhados não estão disponíveis sem autenticação administrativa.
+
+### Evidência histórica — `5b036836`
 
 O CI [#34587238104](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34587238104) executou no SHA exato `5b036836bf71bc3a6c62bd151a2b19f235d3e2fc` e terminou `failure` com 14/16 jobs aprovados. Unit Tests e Performance (k6 SLOs) falharam; Integration, E2E SPA, Visual, Windows, API Contract e os checks preparatórios passaram. Os artefatos observados incluem `e2e-spa` com digest `sha256:e9904403f4b88207463562f5c6c0ea90725c253a6778e1ac1f51366ee0405c20`, `performance-k6-report` com `sha256:7c48e9055ae1d7866d4010594d181b314ea5a7d66359524780a02f5860851bcc`, `visual-regression-report` com `sha256:eae9d0244c2f92cfe43c4b97c070b49f878d3f354f9b8513ca8da5e1185cda4d`, `coverage-report` com `sha256:60605ee4083121d22c520e534ee09c0763bff3b66883fb28f67486026e8b1468` e `security-evidence` com `sha256:9ce1d6e7c6f195d1c2d06677e18a1c6d755ab0bb5aefd8832cb7fbd4e27e752c`.
 
@@ -39,7 +45,7 @@ Os pareceres correntes estão em [final-security-critic.md](./final-security-cri
 
 ## Decisão corrente
 
-**BLOCKED / NOT PROVEN.** O merge permanece reversível, mas a certificação Triple-A, o release e o claim TRIPLE-A VERIFIED continuam bloqueados pelas falhas de Unit Tests e Performance no CI exato e pelas evidências externas, operacionais e humanas ainda ausentes.
+**BLOCKED / NOT PROVEN.** O merge permanece reversível, mas a certificação Triple-A, o release e o claim TRIPLE-A VERIFIED continuam bloqueados enquanto o CI exato não termina verde e as evidências externas, operacionais e humanas permanecem ausentes.
 
 ## Registros históricos
 

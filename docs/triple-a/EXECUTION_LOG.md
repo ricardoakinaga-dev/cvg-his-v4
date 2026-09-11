@@ -308,3 +308,25 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - O job de performance [103145389086](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34560856450/job/103145389086) terminou com exit 99 no benchmark e exit 1 na verificação. O artefato `performance-k6-report` é o ID `10184658898`, digest `sha256:d6b36e6cc2c91ed269a5080b938c128118b64c584c9c29dce5b785746996bb06`.
 - O benchmark local do mesmo SHA terminou 4/9 SLOs sob o runner atual: API p95 224,21 ms, query 248 ms, write 303,2 ms, billing 306 ms e inventory 261,17 ms falharam; p99 367,11 ms, auth 17,97 ms, erros 0% e disponibilidade 100% passaram. Thresholds não foram relaxados.
 - O gate estrito local terminou `BLOCKED`, `score=72`, `critical_score=60`, `open_p0=14`, `claim=NOT PROVEN` e `publication_allowed=false`. Segurança/SBOM, documentação, testes do gate e workflow PostgreSQL/SIGKILL local passaram nos escopos registrados; provas externas, target, UAT, governança e autoridade continuam abertas.
+
+## 2026-09-11T11:10:00Z — Novo candidato de billing e CI exato
+
+- O candidato funcional foi atualizado para `main@bd10b7a69407e128c354f058c358014279451f33` e publicado com fast-forward, sem force push; `origin/main` coincide e a branch `fix/state-of-art-ci-assurance` permanece disponível para rollback.
+- A correção de billing separa a leitura de resumo da hidratação de itens em `createEstimate()`. O subtotal persistido continua autoritativo quando os itens não são carregados; o teste dedicado verifica zero leituras de itens e replay correto.
+- Validação local do candidato: `pnpm test` completo, typecheck, lint, OpenAPI, complexidade, RLS estático, supply chain, dependências, backup/restore e Helm estático passaram. O módulo billing passou 23/23 e a suíte API passou 587/587.
+- O CI exato [#34592599899](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34592599899) está `in_progress`; nenhum job, artefato ou métrica é promovido antes do estado terminal. O run #108 e seus failures permanecem vinculados ao SHA anterior `5b036836`.
+- Estado: **BLOCKED / NOT PROVEN**. Thresholds não foram relaxados; target, governança, recovery, soak, UAT, attestation e autoridade de release continuam abertos.
+
+## 2026-09-11T11:26:25Z — Reconciliação do guard de identidade e novo CI
+
+- O run exato [#34592599899](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34592599899) do candidato `bd10b7a6` foi supersedido depois que `Repository Guards` falhou em `Validate static and process contracts`: `packages/modules/billing/src/index.ts` tinha hash diferente do manifesto congelado. Os jobs restantes foram cancelados pelo novo push; nenhum resultado parcial foi promovido.
+- A causa foi reproduzida localmente pelo teste `scripts/critical-source-manifest.test.mjs`; o manifesto foi atualizado para o SHA-256 corrente, e o teste passou. O commit corretivo `bb16a47f` foi publicado por fast-forward, sem force push.
+- O CI exato corrente é [#34593912427](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34593912427), ainda `in_progress`. Não há transferência de artefatos, métricas ou PASS do run anterior.
+- Estado: **BLOCKED / NOT PROVEN**. Thresholds permanecem intactos; target, governança, recovery, soak, UAT, attestation e autoridade de release continuam abertos.
+
+## 2026-09-11T11:57:40Z — CI terminal do candidato corrigido
+
+- O CI exato [#34593912427](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34593912427) terminou `failure` com 15/16 jobs em `success` no SHA `bb16a47fa2f111315e24494b40a752b77e82f56c`.
+- Typecheck, SAST, Secret Scan, Dependency Audit, Lint, OpenAPI, Repository Guards, Coverage, Build, API Contract, Unit, Windows, Integration, E2E SPA e Visual passaram. Apenas `Performance (k6 SLOs)` falhou nos passos `Run k6 benchmark`/`Check SLO results`; o artefato `performance-k6-report` tem digest `sha256:212cd76b10ac0d746fa3f576d35876791016c5dfef3e2ca2282d382cae269cac`.
+- A identidade crítica e todos os testes funcionais do novo candidato passaram; nenhum threshold de performance foi relaxado. Logs detalhados do job falho exigem autenticação administrativa e não foram inventados.
+- Estado: **BLOCKED / NOT PROVEN**. O release permanece bloqueado por performance remota e pelas provas externas, operacionais e humanas de target, governança, recovery, soak, UAT, attestation e autoridade.

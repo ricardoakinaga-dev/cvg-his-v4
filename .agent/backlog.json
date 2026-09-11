@@ -46,11 +46,11 @@
         "docs/triple-a/16-requirement-traceability.md"
       ],
       "next_action": {
-        "id": "TRIPLE-A-RELEASE-CONTROL:OBSERVE-CI-108",
+        "id": "TRIPLE-A-RELEASE-CONTROL:RECONCILE-CI-111",
         "kind": "VERIFY",
-        "summary": "Reconciliar o CI exato do candidato funcional 5b036836 e manter qualquer commit documental posterior separado; não transferir evidência nem relaxar thresholds.",
+        "summary": "Reconciliar o CI exato do candidato bb16a47f: 15/16 jobs passaram e Performance falhou; preservar o bloqueio sem relaxar SLOs.",
         "target": ".github/workflows/ci.yml; docs/triple-a/15-current-baseline.md; docs/triple-a/FINAL_REPORT.md; .agent/verification.jsonl",
-        "completion_signal": "Run 34587238104 no SHA exato 5b036836 terminalmente reconciliado como 14/16, com Unit Tests e Performance falhos; o release permanece BLOCKED e nenhum resultado é transferido para outro SHA."
+        "completion_signal": "Run 34593912427 no SHA exato bb16a47f é registrado como terminal 15/16 com Performance falho; o release permanece BLOCKED e nenhum resultado de run anterior é transferido."
       }
     },
     {

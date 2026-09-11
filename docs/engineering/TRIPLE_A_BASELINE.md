@@ -1,12 +1,12 @@
 # CVG HIS — Triple-A Baseline
 
-## Reconciliação corrente — 2026-09-11T10:35:44Z
+## Reconciliação corrente — 2026-09-11T11:57:40Z
 
-- **Código funcional:** `5b036836bf71bc3a6c62bd151a2b19f235d3e2fc`; `main`/`origin/main` permanecem sincronizados no snapshot documental metadata-only e a origem do merge permanece disponível.
-- **CI:** [#34587238104](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34587238104) terminou 14/16; Unit Tests e Performance falharam, com Integration, E2E SPA, Visual, Windows e API Contract aprovados.
+- **Código funcional:** `bb16a47f`; `main`/`origin/main` permanecem sincronizados no snapshot corrente de assurance e a origem do merge permanece disponível.
+- **CI:** [#34593912427](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34593912427) terminou `failure` com 15/16 jobs em `success`; somente Performance (k6 SLOs) falhou. O run #110 foi supersedido após o guard de identidade crítica detectar o hash antigo do billing.
 - **Estado:** **BLOCKED / NOT PROVEN**. Nenhum score histórico é transferido e nenhum claim é permitido.
-- **Local:** `pnpm test` completo exit 0 e os contratos de backup/restore e Helm passaram dentro dos limites documentados; Docker e o binário Helm não estão disponíveis.
-- **Mudanças de controle:** compatibilidade database-only por `storageIncluded=false`, helpers Helm de produção fail-closed por digest, gate pré-publicação por fase, verificação CI exata, identidade OCI imutável, provenance sanitizada e SearchSelect com relações ARIA completas.
+- **Local:** `pnpm test`, typecheck, lint, OpenAPI, complexidade, RLS estático, supply chain, dependências e os contratos de backup/restore e Helm passaram dentro dos limites documentados; Docker e o binário Helm não estão disponíveis.
+- **Mudanças de controle:** compatibilidade database-only por `storageIncluded=false`, helpers Helm de produção fail-closed por digest, leitura record-only para estimativas de billing, gate pré-publicação por fase, verificação CI exata, identidade OCI imutável, provenance sanitizada e SearchSelect com relações ARIA completas.
 - **Externo ainda aberto:** branch governance, Windows nativo, RLS/runtime no alvo, recovery/soak, restore/RPO/RTO, deploy/rollback, attestation, UAT e autoridade de release.
 
 As seções seguintes preservam a fotografia histórica e não devem ser lidas como evidência do SHA atual sem uma execução nova vinculada ao commit.

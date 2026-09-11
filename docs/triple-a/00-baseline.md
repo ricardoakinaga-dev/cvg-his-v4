@@ -1,12 +1,12 @@
 # Triple-A — 00 Baseline
 
-## Reconciliação corrente — 2026-09-11T10:35:44Z
+## Reconciliação corrente — 2026-09-11T11:57:40Z
 
-- Candidato funcional: `5b036836bf71bc3a6c62bd151a2b19f235d3e2fc`; `main`/`origin/main` permanecem sincronizados no snapshot documental metadata-only e a branch de origem continua disponível para rollback.
+- Candidato funcional: `bb16a47f`; `main` e `origin/main` estão sincronizados no snapshot corrente de assurance e a branch de origem continua disponível para rollback.
 - Esta fotografia vincula a evidência ao SHA exato e não transfere resultados históricos para commits documentais posteriores.
-- CI atual: [#34587238104](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34587238104) terminou 14/16; Unit Tests e Performance (k6 SLOs) falharam.
+- CI atual: [#34593912427](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34593912427) terminou `failure` com 15/16 jobs em `success`; somente Performance (k6 SLOs) falhou. O Repository Guards e as suítes Unit, Integration, E2E SPA, Visual, Windows e API Contract passaram.
 - Veredicto: **BLOCKED / NOT PROVEN**. O prompt exige CI verde, quality bar, evidência operacional/humana atual e zero P0; nenhum score histórico é reutilizado e a publicação não é autorizada.
-- Evidência local bounded: `pnpm test` completo exit 0, sintaxe, docs, Helm estático, backup/restore 4/4 mais 15 checks, Helm 9/9 e restore focado 16/16 passaram; a captura está registrada separadamente no ledger.
+- Evidência local bounded do candidato: `pnpm test`, typecheck, lint, OpenAPI, complexidade, identidade de fontes críticas, RLS estático, supply chain, dependências, backup/restore e Helm estático passaram; o caminho de estimativa de billing também tem cobertura explícita para preservar subtotal sem hidratar itens.
 - O gate pré-publicação agora usa fases explícitas e estados `NOT_APPLICABLE` para critérios posteriores, sem remover critérios externos nem alterar o quality bar pós-publicação. O bundle continua em `artifacts/release/` e `artifacts/triple-a/TRIPLE_A_RELEASE_EVIDENCE.json`; nenhum envelope foi promovido.
 - O prompt e o quality bar mantêm os hashes já registrados. O claim TRIPLE-A VERIFIED permanece proibido.
 

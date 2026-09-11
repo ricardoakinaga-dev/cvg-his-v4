@@ -1,11 +1,11 @@
 # Triple-A External Assurance — Current Reconciliation
 
-**Current functional code candidate:** `5b036836bf71bc3a6c62bd151a2b19f235d3e2fc`; `main`/`origin/main` serão sincronizados no snapshot documental metadata-only desta reconciliação.
-**Current CI:** [#34587238104](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34587238104) — 14/16, Unit Tests e Performance failures
+**Current functional code candidate:** `bb16a47f`; `main`/`origin/main` estão sincronizados no snapshot corrente de assurance.
+**Current CI:** [#34593912427](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34593912427) — `failure`, 15/16 jobs passaram; Performance (k6 SLOs) falhou
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-11T10:35:44Z
+**Observation:** 2026-09-11T11:57:40Z
 
-The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. The current exact-SHA run passed 14/16 jobs; Unit Tests and Performance failed, while Integration, E2E SPA, Visual, Windows and API Contract passed. Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven; failed-job logs are not public without repository-admin authentication.
+The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. Run #110 for `bd10b7a6` was superseded after Repository Guards reported a stale frozen hash for `packages/modules/billing/src/index.ts`; `bb16a47f` refreshes that identity and run #111 is the exact current validation. It finished with 15/16 jobs successful; only Performance (k6 SLOs) failed. Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
 
 ## Current candidate implementation delta
 
@@ -13,7 +13,7 @@ The previous external-assurance sections below are historical snapshots. Their S
 - The release workflow passes an exact-SHA CI evidence envelope to the gate and verifies the immutable CI run before prepublication evaluation.
 - OCI identity parsing rejects registry/tag substitution, SearchSelect exposes stable combobox/listbox relationships, and k6 artifacts include sanitized runner provenance.
 - This SHA adds database-only backup/restore compatibility and production Helm digest enforcement. Local bounded evidence passed syntax, docs, static Helm, backup/restore 4/4 plus 15 checks, Helm contracts 9/9 and restore contracts 16/16.
-- Remote CI is `14/16`: Unit Tests and Performance failed. Observed artifact digests include E2E `sha256:e9904403f4b88207463562f5c6c0ea90725c253a6778e1ac1f51366ee0405c20`, k6 `sha256:7c48e9055ae1d7866d4010594d181b314ea5a7d66359524780a02f5860851bcc`, visual `sha256:eae9d0244c2f92cfe43c4b97c070b49f878d3f354f9b8513ca8da5e1185cda4d` and security `sha256:9ce1d6e7c6f195d1c2d06677e18a1c6d755ab0bb5aefd8832cb7fbd4e27e752c`.
+- The billing estimate path now uses a record-only read when reusing an existing estimate and preserves the persisted subtotal until items are explicitly loaded; focused billing tests, API tests, workspace tests and the critical-source identity test passed locally. Run #111 passed the source guard and functional suites; Performance failed at the SLO gate with `performance-k6-report` digest `sha256:212cd76b10ac0d746fa3f576d35876791016c5dfef3e2ca2282d382cae269cac`. Thresholds remain unchanged and no historical artifact digest is promoted.
 
 # Triple-A External Assurance — Baseline 2026-09-09
 

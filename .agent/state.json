@@ -18,7 +18,7 @@
   "active_execplan": ".agent/plans/external-assurance-closure-execplan.md",
   "active_task": "TRIPLE-A-RELEASE-CONTROL",
   "verification_state": "PARTIAL",
-  "repository_state": "main and origin/main are synchronized at the current control-plane snapshot; functional candidate 5b036836bf71bc3a6c62bd151a2b19f235d3e2fc is documented in this metadata/control-plane chain and the source rollback branch origin/fix/state-of-art-ci-assurance remains preserved",
+  "repository_state": "main and origin/main are synchronized at the current assurance control-plane snapshot; functional candidate bb16a47fa2f111315e24494b40a752b77e82f56c has exact CI run 34593912427 terminal failure with 15/16 jobs successful and Performance failed; the source rollback branch origin/fix/state-of-art-ci-assurance remains preserved",
   "instruction_scope_refs": [
     ".agent/plans/external-assurance-closure-execplan.md",
     "docs/triple-a/MASTER_PROMPT_EXTERNAL_CLOSURE.md",
@@ -33,12 +33,12 @@
     "docs/triple-a/16-requirement-traceability.md"
   ],
   "last_gate_record": null,
-  "last_event_id": "EVT-TRIPLE-A-RELEASE-CONTROL-CI108-20260911",
-  "state_revision": 13,
+  "last_event_id": "EVT-TRIPLE-A-RELEASE-CONTROL-CI111-TERMINAL-20260911",
+  "state_revision": 16,
   "next_gate": "VERIFIED",
-  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:OBSERVE-CI-108",
+  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:RECONCILE-CI-111",
   "blocked_by": [
-    "Functional candidate 5b036836bf71bc3a6c62bd151a2b19f235d3e2fc CI run 34587238104 is terminal failure with 14/16 jobs passed; Unit Tests and Performance (k6 SLOs) failed, while Integration, E2E SPA, Visual, Windows and API contract checks passed",
+    "Functional candidate bb16a47fa2f111315e24494b40a752b77e82f56c CI run 34593912427 is terminal failure with 15/16 jobs successful; Performance (k6 SLOs) failed, while the source identity guard and functional suites passed",
     "Current target evidence, UAT, soak24/72h, branch governance, image attestations and release authority are not proven"
   ],
   "human_approval_required": [
@@ -48,5 +48,5 @@
     "destructive backup/restore/chaos drills on shared infrastructure",
     "final release authority and Triple-A certification"
   ],
-  "updated_at": "2026-09-11T10:35:44.000Z"
+  "updated_at": "2026-09-11T11:57:40.000Z"
 }
