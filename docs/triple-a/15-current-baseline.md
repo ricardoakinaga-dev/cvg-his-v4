@@ -18,13 +18,13 @@ resultado de outro SHA é transferido.
 | main_sha | `055f282db45cf35368ba6f5b24c7870e1c89e118` (HEAD local; push pendente do término do run #113) |
 | origin/main | `533a12a4940baca7a71a2fd6cd67a306ac2efcd4` (snapshot remoto observado) |
 | worktree | Limpo para arquivos rastreados; artefatos locais estão ignorados |
-| ci_run | [#34599938521](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34599938521), em execução para o pai `533a12a4`; não é transferível ao candidato `055f282d` |
+| ci_run | [#34599938521](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34599938521), `success` com 16/16 jobs no pai `533a12a4`; não é transferível ao candidato `055f282d` |
 | overall_score | gate estrito local em `055f282d`: 34; mínimo congelado 97 |
 | critical_score | gate estrito local em `055f282d`: 23; mínimo congelado 95 |
 | open_p0 | gate estrito local em `055f282d`: 27; máximo congelado 0 |
 | implemented | Frescor de envelopes externos com fail-closed, identidade de prompt declarada no quality bar, tabs acessíveis no seletor de clientes, ações sem controles aninhados, região acessível para criação de execução e alvo de toque de 44px no modal |
 | verified_local | Testes focados SPA 3/3 e 33/33, design-system 5/5, lint/typecheck dos dois pacotes, gate 15/15, docs:validate e diff check passaram; evidência anterior bounded de PostgreSQL 66/66, processos 11/11 e k6 local 9/9 permanece limitada ao snapshot documentado |
-| verified_remote | Run #113 do pai `533a12a4`: Typecheck, segurança, cobertura, build, contratos, Unit, Visual, Performance e Windows passaram; E2E SPA e Integration ainda estavam em execução na observação |
+| verified_remote | Run #113 do pai `533a12a4`: 16/16 jobs passaram, incluindo E2E SPA e Integration; o resultado é terminal e não é transferido ao candidato `055f282d` |
 | verified_target | NOT PROVEN |
 | blocked | Push aguardando o término do run #113 para não cancelá-lo; quality bar e gate estrito continuam abaixo do limiar; branch governance, ambiente alvo, recuperação/soak, UAT, attestation e autoridade de release permanecem sem prova |
 | not_proven | Quality bar 97/95/zero P0, CI terminal do SHA `055f282d`, Windows nativo fora do runner Linux, RLS/DB runtime no alvo, deploy/rollback, restore/RPO/RTO, attestation, observabilidade operacional e provas humanas |

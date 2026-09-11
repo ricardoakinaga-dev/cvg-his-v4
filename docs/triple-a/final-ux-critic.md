@@ -1,8 +1,8 @@
 # Triple-A final critic — current reconciliation
 
-**Candidate code:** main@5b036836bf71bc3a6c62bd151a2b19f235d3e2fc
-**CI:** [run 34587238104](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34587238104), terminal 14/16; Unit Tests and Performance failed
-**Observed:** 2026-09-11T10:35:44Z
+**Candidate code:** main@055f282db45cf35368ba6f5b24c7870e1c89e118 (local; push pending)
+**CI:** [run 34599938521](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34599938521), terminal success 16/16 on parent `533a12a4`; not transferable
+**Observed:** 2026-09-11T13:10:00Z
 **Verdict:** **BLOCKED / NOT PROVEN**
 
 This document records a bounded evidence review. It is not release authority and does not convert source inspection or local tests into target evidence.
@@ -21,7 +21,7 @@ Recepção, clínica, internação, administração, desktop, tablet, mobile, ac
 
 1. Current candidate has no four-profile clinical UAT approval.
 2. Responsive, focus-management and assistive-technology evidence is incomplete.
-3. The release gate remains blocked by the exact-SHA performance failure and missing target evidence.
+3. The release gate remains blocked because the current candidate has no terminal CI of its own and human/target UX evidence is incomplete.
 
 ## Required closure
 

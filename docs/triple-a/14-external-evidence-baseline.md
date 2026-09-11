@@ -1,13 +1,13 @@
 # Triple-A External Assurance — Current Reconciliation
 
-**Current functional code candidate:** `bb16a47f`; `main`/`origin/main` estão sincronizados no snapshot corrente de assurance.
-**Current CI:** [#34593912427](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34593912427) — `failure`, 15/16 jobs passaram; Performance (k6 SLOs) falhou
+**Current functional code candidate:** `055f282d` local; `origin/main` ainda está em `533a12a4` até o push seguro.
+**Current CI:** [#34599938521](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34599938521) — `success`, 16/16 jobs no pai `533a12a4`; não transferível ao candidato local
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-11T12:29:58Z
+**Observation:** 2026-09-11T13:10:00Z
 
-**Current local execution:** PostgreSQL descartável `66/66` arquivos e `615/615` testes, runner crítico `11/11` cenários e k6 `9/9` SLOs passaram no checkout `0abdf651`; a matriz detalhada e as limitações estão em [17-current-execution-evidence.md](./17-current-execution-evidence.md). Esta evidência local não substitui o CI pinned ou o ambiente alvo.
+**Current local execution:** testes focados SPA 3/3 e 33/33, design-system 5/5, gate 15/15, lint/typecheck e documentação passaram em `055f282d`; a evidência anterior PostgreSQL `66/66`, processos `11/11` e k6 `9/9` permanece bounded no checkout `0abdf651`. Esta evidência local não substitui o CI pinned ou o ambiente alvo.
 
-**Current strict gate:** `pnpm release:triple-a` no mesmo snapshot retornou `BLOCKED / NOT PROVEN`, score `33`, critical `20`, `28` P0 abertos e `publication_allowed=false`.
+**Current strict gate:** `pnpm release:triple-a` no candidato local retornou `BLOCKED / NOT PROVEN`, score `34`, critical `23`, `27` P0 abertos e `publication_allowed=false`.
 
 The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. Run #110 for `bd10b7a6` was superseded after Repository Guards reported a stale frozen hash for `packages/modules/billing/src/index.ts`; `bb16a47f` refreshes that identity and run #111 is the exact current validation. It finished with 15/16 jobs successful; only Performance (k6 SLOs) failed. Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
 

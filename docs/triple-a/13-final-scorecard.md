@@ -7,7 +7,7 @@
 | CURRENT SCORE | `34` no gate estrito local de `055f282d`; mínimo 97 |
 | CURRENT CRITICAL SCORE | `23` no gate estrito local de `055f282d`; mínimo 95 |
 | CURRENT OPEN P0 | `27` no gate estrito local de `055f282d`; o quality bar exige zero |
-| CURRENT CI | [#34599938521](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34599938521) no pai `533a12a4`, ainda com E2E SPA e Integration em execução na observação; não transferível |
+| CURRENT CI | [#34599938521](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34599938521) no pai `533a12a4`: `success`, 16/16 jobs; não transferível ao candidato local |
 | CURRENT LOCAL PERFORMANCE | Evidência anterior bounded de PostgreSQL 66/66, runner 11/11 e k6 local 9/9; novos testes focados SPA/design-system passaram; nenhum resultado local substitui CI pinned ou certifica o alvo |
 | CURRENT VERDICT | BLOCKED / NOT PROVEN; gate estrito total `34` |
 

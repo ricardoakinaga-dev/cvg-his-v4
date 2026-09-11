@@ -17,10 +17,17 @@
   `QUALITY_BAR_V1.json`; a missão State of Art e o prompt histórico do quality
   bar permanecem preservados sem misturar proveniências.
 - **CI:** run [#34599938521](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34599938521)
-  ainda pertence ao pai `533a12a4`; Typecheck, segurança, cobertura, build,
-  contratos, Unit, Visual, Performance e Windows passaram na observação, mas
-  E2E SPA e Integration ainda executavam. Nenhum resultado parcial é promovido
-  ao candidato `055f282d`; o push aguarda o estado terminal.
+  pertence ao pai `533a12a4` e terminou `success` com 16/16 jobs, incluindo
+  E2E SPA e Integration. Nenhum resultado é promovido ao candidato `055f282d`;
+  o push pode prosseguir sem cancelar o run terminal.
+
+## 2026-09-11T13:10:00Z — terminalização do CI #113 do pai `533a12a4`
+
+- O run [34599938521](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34599938521)
+  terminou `success` com os 16 jobs obrigatórios aprovados. Essa evidência é
+  válida somente para o SHA `533a12a4940baca7a71a2fd6cd67a306ac2efcd4` e não
+  substitui o CI que será executado para o candidato local `055f282d` após o
+  push.
 
 ## 2026-09-11T10:35:44Z — CI #108 e contratos operacionais do candidato `5b036836`
 
