@@ -2,7 +2,7 @@
 
 ## Reconciliação corrente — 2026-09-11T08:40:00Z
 
-- **Código funcional:** `5a079ceca57b246e17ecb0214ed1e2b9e9e23500`; `main`/`origin/main` estão em `227cb79243ad0e0787b0e81539661e759aae4694`, commit documental metadata-only; a origem do merge permanece disponível.
+- **Código funcional:** `5a079ceca57b246e17ecb0214ed1e2b9e9e23500`; `main`/`origin/main` permanecem sincronizados em commits documentais metadata-only posteriores; a origem do merge permanece disponível.
 - **CI:** [#34577711985](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34577711985) terminou 15/16; somente Performance falhou.
 - **Estado:** **BLOCKED / NOT PROVEN**. O gate diagnóstico pós-fix marcou score 56, crítico 32 e 15 P0; nenhum claim é permitido.
 - **Local:** `pnpm test`, docs, lint, supply-chain, 20 testes focados de release, 5 de provenance e runner PostgreSQL limpo 3/3 passaram; a reprodução k6 local 9/9 não substitui o CI pinned.
