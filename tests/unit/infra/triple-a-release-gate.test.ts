@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   scoreCriteria,
+  buildReleaseEvidence,
   evaluateQualityBar,
   validateCiEvidenceEnvelope,
   validateExternalEvidenceEnvelope,
@@ -18,6 +19,27 @@ import {
 } from '../../../scripts/run-triple-a-release-gate.mjs';
 
 describe('Triple-A release gate scoring', () => {
+  it('fails closed: a blocked strict decision cannot publish or claim Triple-A', () => {
+    const outputDir = mkdtempSync(join(tmpdir(), 'cvg-triple-a-claim-'));
+    try {
+      const result = buildReleaseEvidence({
+        rootDir: process.cwd(),
+        outputDir,
+        commitSha: 'a'.repeat(40),
+        strict: true,
+        executeChecks: false,
+        executeBuild: false,
+        executeTests: false
+      });
+
+      expect(result.evidence.decision).not.toBe('PASS');
+      expect(result.evidence.claim).toBe('NOT PROVEN');
+      expect(result.evidence.publication_allowed).toBe(false);
+    } finally {
+      rmSync(outputDir, { recursive: true, force: true });
+    }
+  });
+
   it('evaluates frozen quality-bar criteria from current evidence instead of copying frozen statuses', () => {
     const result = evaluateQualityBar({
       rootDir: process.cwd(),

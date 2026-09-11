@@ -260,3 +260,8 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - `scripts/generate-security-evidence.mjs` agora deduplica componentes por tipo/nome/versão, agrega os declarantes e usa referências de biblioteca distintas; uma asserção falha fechado se qualquer bom-ref não for único.
 - `SECURITY_EVIDENCE_DIR=artifacts/release pnpm security:evidence` passou com auditoria/SAST PASS e SBOM de 199 componentes. Os testes de contrato do gate e de segurança passaram 13/13.
 - A correção é código local e ainda exige CI no novo SHA; não prova assinatura/proveniência de imagens, attestation, registry ou ambiente alvo.
+
+## 2026-09-11T04:04:40Z — Garantia de claim fail-closed
+
+- O gate recebeu um teste explícito em `tests/unit/infra/triple-a-release-gate.test.ts`: qualquer decisão strict diferente de PASS deve produzir `claim=NOT PROVEN` e `publication_allowed=false`.
+- A suíte do gate passou 11/11. A garantia protege contra publicação acidental e não substitui CI, runtime, UAT ou autoridade humana.
