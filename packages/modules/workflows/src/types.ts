@@ -22,6 +22,18 @@ export type WorkflowTaskStatus =
 export type WorkflowTaskPriority = 'low' | 'normal' | 'high' | 'critical';
 export type WorkflowTaskExecutionMode = 'manual' | 'worker';
 export type WorkflowTaskOwnerType = 'sector' | 'team' | 'person' | 'system';
+
+/**
+ * Explicit allow-list for task types that may be claimed by a worker.
+ *
+ * The registry deliberately exposes only membership and a read-only snapshot;
+ * callers cannot mutate the worker policy after it has been constructed.
+ */
+export interface WorkflowTaskWorkerRegistry {
+  readonly taskTypes: readonly string[];
+  readonly has: (taskType: string) => boolean;
+}
+
 export type WorkflowTaskEventType =
   | 'created'
   | 'claimed'

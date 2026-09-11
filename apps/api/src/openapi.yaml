@@ -17245,6 +17245,7 @@ components:
           type: string
           enum: [manual, worker]
           default: manual
+          description: Worker execution requires a task type registered with an idempotent worker handler; unregistered types are rejected.
         patientId:
           type: string
           format: uuid

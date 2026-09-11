@@ -5,7 +5,9 @@ import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/share
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 
 import {
+  assertWorkflowTaskWorkerPolicy,
   createDatabaseWorkflowTaskService,
+  createWorkflowTaskWorkerRegistry,
   DatabaseWorkflowTaskRepository,
   WorkflowTaskService
 } from './index.js';
@@ -150,6 +152,18 @@ test('creates an account-scoped task idempotently and rejects payload drift', as
   assert.notEqual(otherAccountTask.id, created.id);
   assert.equal((await service.list(ACCOUNT_A)).length, 1);
   assert.equal((await service.list(ACCOUNT_B)).length, 1);
+});
+
+test('worker policy fails closed unless the task type is explicitly registered', () => {
+  assert.throws(
+    () => assertWorkflowTaskWorkerPolicy({ taskType: 'clinical.future_effect', executionMode: 'worker' }),
+    ValidationError
+  );
+  assert.doesNotThrow(() => assertWorkflowTaskWorkerPolicy({ taskType: 'clinical.follow_up', executionMode: 'manual' }));
+  const registry = createWorkflowTaskWorkerRegistry(['approved.effect', 'approved.effect']);
+  assert.deepEqual(registry.taskTypes, ['approved.effect']);
+  assert.equal(registry.has('approved.effect'), true);
+  assert.doesNotThrow(() => assertWorkflowTaskWorkerPolicy({ taskType: 'approved.effect', executionMode: 'worker' }, registry));
 });
 
 test('serializes concurrent in-memory creates for one idempotency key', async () => {

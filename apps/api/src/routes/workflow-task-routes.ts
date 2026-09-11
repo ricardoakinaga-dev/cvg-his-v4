@@ -1,12 +1,15 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import {
+  assertWorkflowTaskWorkerPolicy,
+  EMPTY_WORKFLOW_TASK_WORKER_REGISTRY,
   WorkflowTaskService,
   type CreateWorkflowTaskInput,
   type WorkflowTaskId,
   type WorkflowTaskListFilters,
   type WorkflowTaskStatus,
-  type WorkflowTaskSummary
+  type WorkflowTaskSummary,
+  type WorkflowTaskWorkerRegistry
 } from '@cvg-his-v2/module-workflows';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import { ValidationError } from '@cvg-his-v2/shared-errors';
@@ -30,6 +33,8 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
 
 export interface WorkflowTaskRoutesHandlers {
   readonly workflowTasks: WorkflowTaskService;
+  /** Production stays fail-closed until a handler and its proof are registered. */
+  readonly workerTaskRegistry?: WorkflowTaskWorkerRegistry;
   readonly audit: AuditService;
   readonly requirePrincipal: (
     request: IncomingMessage,
@@ -205,10 +210,15 @@ export async function handleWorkflowTaskRoutes(
 
   if (pathname === '/workflow-tasks' && request.method === 'POST') {
     const principal = await requirePrincipal(request, 'workflow-tasks.manage');
+    const input = parseCreateInput(asRecord(await readJsonBody(request)), request);
+    assertWorkflowTaskWorkerPolicy(
+      input,
+      handlers.workerTaskRegistry ?? EMPTY_WORKFLOW_TASK_WORKER_REGISTRY
+    );
     const task = await workflowTasks.create(
       principal.user.accountId as AccountId,
       principal.user.id as UserId,
-      parseCreateInput(asRecord(await readJsonBody(request)), request)
+      input
     );
     await auditMutation(audit, principal, correlationId, 'create_task', task);
     return json(response, 201, publicTask(task));

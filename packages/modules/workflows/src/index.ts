@@ -24,7 +24,8 @@ import type {
   WorkflowTaskPriority,
   WorkflowTaskStatus,
   WorkflowTaskSummary,
-  WorkflowTaskTransitionEvent
+  WorkflowTaskTransitionEvent,
+  WorkflowTaskWorkerRegistry
 } from './types.js';
 
 export * from './types.js';
@@ -34,6 +35,47 @@ export {
   checkWorkflowTaskSchemaReadiness,
   type WorkflowTaskRepository
 } from './repository.js';
+
+/**
+ * Build the allow-list shared by task producers and the worker boundary.
+ * Empty by default: no worker task type is production-ready until its
+ * idempotent effect, retry behavior and lease-loss handling are registered.
+ */
+export function createWorkflowTaskWorkerRegistry(
+  taskTypes: Iterable<string> = []
+): WorkflowTaskWorkerRegistry {
+  const normalized = [...new Set([...taskTypes].map((taskType) => {
+    if (typeof taskType !== 'string' || taskType.trim() !== taskType || taskType.length === 0 || taskType.length > 80) {
+      throw new TypeError('Workflow task worker type must be a trimmed non-empty string of at most 80 characters');
+    }
+    return taskType;
+  }))].sort();
+  const allowed = new Set(normalized);
+  return {
+    taskTypes: Object.freeze(normalized),
+    has: (taskType: string): boolean => allowed.has(taskType)
+  };
+}
+
+/** No worker side effect is currently approved for production registration. */
+export const EMPTY_WORKFLOW_TASK_WORKER_REGISTRY = createWorkflowTaskWorkerRegistry();
+
+/**
+ * Enforce the producer-side half of the worker registration contract. The
+ * service remains generic for durable lease/retry tests and migrations; HTTP
+ * producers must pass the explicit registry before persisting a worker task.
+ */
+export function assertWorkflowTaskWorkerPolicy(
+  input: Pick<CreateWorkflowTaskInput, 'taskType' | 'executionMode'>,
+  registry: WorkflowTaskWorkerRegistry = EMPTY_WORKFLOW_TASK_WORKER_REGISTRY
+): void {
+  const executionMode = input.executionMode ?? 'manual';
+  if (executionMode !== 'worker' || registry.has(input.taskType)) return;
+  throw new ValidationError(
+    `Workflow task type '${input.taskType}' is not registered for worker execution`,
+    { taskType: input.taskType, executionMode }
+  );
+}
 
 function stableJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;

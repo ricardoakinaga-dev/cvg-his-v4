@@ -2,8 +2,11 @@ import { Readable, Writable } from 'node:stream';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { WorkflowTaskService } from '@cvg-his-v2/module-workflows';
-import { ForbiddenError } from '@cvg-his-v2/shared-errors';
+import {
+  createWorkflowTaskWorkerRegistry,
+  WorkflowTaskService
+} from '@cvg-his-v2/module-workflows';
+import { ForbiddenError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
 import { handleWorkflowTaskRoutes } from './workflow-task-routes.js';
@@ -79,7 +82,12 @@ function principal(accountId = '11111111-1111-4111-8111-111111111111'): Authenti
   };
 }
 
-function handlers(service: WorkflowTaskService, accountId?: string, permissions?: string[]) {
+function handlers(
+  service: WorkflowTaskService,
+  accountId?: string,
+  permissions?: string[],
+  workerTaskRegistry?: ReturnType<typeof createWorkflowTaskWorkerRegistry>
+) {
   const auditEntries: string[] = [];
   return {
     audit: {
@@ -93,6 +101,7 @@ function handlers(service: WorkflowTaskService, accountId?: string, permissions?
       }
     } as never,
     workflowTasks: service,
+    workerTaskRegistry,
     requirePrincipal: (_request: unknown, permissionCode: string) => {
       assert.equal(permissions?.includes(permissionCode) ?? true, true);
       return principal(accountId);
@@ -100,6 +109,65 @@ function handlers(service: WorkflowTaskService, accountId?: string, permissions?
     auditEntries
   };
 }
+
+test('workflow task routes reject worker tasks without an explicitly registered type', async () => {
+  const service = new WorkflowTaskService({ now: () => '2026-09-09T10:00:00.000Z' });
+  const routeHandlers = handlers(service);
+
+  await assert.rejects(
+    handleWorkflowTaskRoutes(
+      '/workflow-tasks',
+      new MockRequest({
+        method: 'POST',
+        url: '/workflow-tasks',
+        headers: { 'idempotency-key': 'unregistered-worker-1' },
+        body: {
+          taskType: 'clinical.future_effect',
+          title: 'Efeito futuro',
+          executionMode: 'worker',
+          dueAt: '2026-09-09T09:00:00.000Z'
+        }
+      }) as never,
+      new MockResponse() as never,
+      'corr-http-unregistered-worker',
+      routeHandlers
+    ),
+    (error: unknown) => error instanceof ValidationError && /not registered for worker execution/.test(String((error as Error).message))
+  );
+  assert.equal((await service.list('11111111-1111-4111-8111-111111111111' as never)).length, 0);
+});
+
+test('workflow task routes accept a worker task only through the explicit registry', async () => {
+  const service = new WorkflowTaskService({ now: () => '2026-09-09T10:00:00.000Z' });
+  const routeHandlers = handlers(
+    service,
+    undefined,
+    undefined,
+    createWorkflowTaskWorkerRegistry(['test.approved_effect'])
+  );
+  const response = new MockResponse();
+
+  await handleWorkflowTaskRoutes(
+    '/workflow-tasks',
+    new MockRequest({
+      method: 'POST',
+      url: '/workflow-tasks',
+      headers: { 'idempotency-key': 'registered-worker-1' },
+      body: {
+        taskType: 'test.approved_effect',
+        title: 'Efeito aprovado',
+        executionMode: 'worker',
+        dueAt: '2026-09-09T09:00:00.000Z'
+      }
+    }) as never,
+    response as never,
+    'corr-http-registered-worker',
+    routeHandlers
+  );
+
+  assert.equal(response.statusCode, 201);
+  assert.equal(response.bodyJson<{ executionMode: string }>().executionMode, 'worker');
+});
 
 test('workflow task routes expose a bounded public projection and lifecycle commands', async () => {
   const service = new WorkflowTaskService({ now: () => '2026-09-09T10:00:00.000Z' });
