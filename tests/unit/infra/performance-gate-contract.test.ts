@@ -35,6 +35,10 @@ describe('performance and SLO gate', () => {
     expect(performanceJob).not.toContain('curl -fsS http://localhost:3001/health');
     expect(performanceJob).toContain('LOAD_PROFILE: operational-minimum-v1');
     expect(performanceJob).toContain('mkdir -p benchmarks/k6/results');
+    expect(performanceJob).toContain('Capture performance runner provenance');
+    expect(performanceJob).toContain('Finalize performance runner provenance');
+    expect(performanceJob).toContain('performance-provenance.json');
+    expect(performanceJob).toContain('BENCHMARK_OUTCOME: ${{ steps.k6-benchmark.outcome }}');
     expect(performanceJob).not.toContain('continue-on-error: true');
     expect(performanceJob).toContain(
       '47a43a8dbb4c1f5d5bd7b8ed6a1b8c83b35546acf989b78400b4e6ce3adaf628'

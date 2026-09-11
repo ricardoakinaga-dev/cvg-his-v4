@@ -885,6 +885,16 @@ jobs:
           test "$(command -v k6)" = "/usr/local/bin/k6"
           k6 version
 
+      - name: Capture performance runner provenance
+        env:
+          TARGET: http://localhost:3001
+          LOAD_PROFILE: operational-minimum-v1
+          POSTGRES_MAX_CONNECTIONS: '60'
+          POSTGRES_POOL_MIN: '8'
+        run: |
+          mkdir -p benchmarks/k6/results
+          node scripts/capture-performance-provenance.mjs --phase before --output benchmarks/k6/results/performance-provenance.json
+
       - name: Run k6 benchmark
         id: k6-benchmark
         env:
@@ -893,6 +903,12 @@ jobs:
         run: |
           mkdir -p benchmarks/k6/results
           k6 run benchmarks/k6/api-benchmark.js
+
+      - name: Finalize performance runner provenance
+        if: always()
+        env:
+          BENCHMARK_OUTCOME: ${{ steps.k6-benchmark.outcome }}
+        run: node scripts/capture-performance-provenance.mjs --phase after --output benchmarks/k6/results/performance-provenance.json
 
       - name: Check SLO results
         if: always()
@@ -904,7 +920,9 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: performance-k6-report
-          path: benchmarks/k6/results/performance-report.json
+          path: |
+            benchmarks/k6/results/performance-report.json
+            benchmarks/k6/results/performance-provenance.json
           retention-days: 30
 
   test-e2e-spa:
