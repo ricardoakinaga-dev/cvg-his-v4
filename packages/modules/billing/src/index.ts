@@ -65,6 +65,14 @@ export interface BillingRecordFilters {
   readonly ownerId?: string;
 }
 
+interface EnsureRecordOptions {
+  /**
+   * Loads the record's items when an existing database record is reused.
+   * Commands that only change record metadata can safely skip this read.
+   */
+  readonly loadItems?: boolean;
+}
+
 export class BillingService {
   readonly #encounters: EncountersService;
   readonly #repository?: BillingRepository;
@@ -199,10 +207,35 @@ export class BillingService {
 
   public async ensureRecord(
     accountId: AccountId,
-    encounterId: EncounterId
+    encounterId: EncounterId,
+    options: EnsureRecordOptions = {}
   ): Promise<BillingRecordSummary> {
     const encounter = this.getEncounterForAccount(accountId, encounterId);
-    const existing = await this.findByEncounter(accountId, encounterId);
+    const loadItems = options.loadItems !== false;
+    let existing: BillingRecordSummary | null;
+    if (this.#repository && !loadItems) {
+      existing = await this.#repository.findRecordByEncounter(encounter.accountId, encounterId);
+      if (existing) {
+        if (existing.accountId !== accountId) {
+          throw new NotFoundError('Billing record not found', { encounterId });
+        }
+        this.#records.set(existing.id, existing);
+        this.#recordByEncounterId.set(encounterId, existing.id);
+        // The summary is authoritative for this command. Drop any older
+        // in-process item snapshot so applyStatus cannot recompute a stale
+        // subtotal from data that was not loaded in this read.
+        this.#items.delete(existing.id);
+      } else {
+        const staleId = this.#recordByEncounterId.get(encounterId);
+        if (staleId) {
+          this.#recordByEncounterId.delete(encounterId);
+          this.#records.delete(staleId);
+          this.#items.delete(staleId);
+        }
+      }
+    } else {
+      existing = await this.findByEncounter(accountId, encounterId);
+    }
     if (existing) {
       return existing;
     }
@@ -252,8 +285,13 @@ export class BillingService {
 
         this.#records.set(concurrent.id, concurrent);
         this.#recordByEncounterId.set(encounterId, concurrent.id);
-        const items = await this.#repository.findItemsByRecord(concurrent.accountId, concurrent.id);
-        this.#items.set(concurrent.id, this.filterItemsForRecord(concurrent, items));
+        if (loadItems) {
+          const items = await this.#repository.findItemsByRecord(
+            concurrent.accountId,
+            concurrent.id
+          );
+          this.#items.set(concurrent.id, this.filterItemsForRecord(concurrent, items));
+        }
         this.#records.delete(record.id);
         this.#items.delete(record.id);
         return concurrent;
@@ -325,7 +363,7 @@ export class BillingService {
     payload: CreateBillingEstimateRequest
   ): Promise<BillingRecordSummary> {
     const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId') as EncounterId;
-    const record = await this.ensureRecord(accountId, encounterId);
+    const record = await this.ensureRecord(accountId, encounterId, { loadItems: false });
     return this.applyStatus(record, {
       status: 'estimated',
       administrativeNotes: payload.administrativeNotes
@@ -563,7 +601,11 @@ export class BillingService {
       });
     }
     const administrativeNotes = payload.administrativeNotes?.trim() || record.administrativeNotes;
-    const subtotalAmount = sumItems(this.#items.get(record.id) ?? []);
+    // A metadata-only command may intentionally reuse a persisted record
+    // without hydrating its items. In that case the database subtotal is the
+    // authoritative value until a caller explicitly loads the item list.
+    const cachedItems = this.#items.get(record.id);
+    const subtotalAmount = cachedItems ? sumItems(cachedItems) : record.subtotalAmount;
     if (
       payload.status === previousStatus &&
       administrativeNotes === record.administrativeNotes &&

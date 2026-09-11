@@ -315,6 +315,63 @@ test('BillingService createEstimate explicitly creates repository record', async
   assert.equal(record.status, 'estimated');
 });
 
+test('BillingService createEstimate reuses a record summary without hydrating items', async () => {
+  let itemReads = 0;
+  let combinedReads = 0;
+  let updatedSubtotal: number | undefined;
+  const persisted = {
+    id: 'bill_existing_estimate' as never,
+    accountId: 'acc_test' as never,
+    encounterId: 'encounter_1' as never,
+    patientId: 'patient_1' as never,
+    ownerId: 'owner_1' as never,
+    status: 'draft' as const,
+    subtotalAmount: 42,
+    currency: 'BRL' as const,
+    createdAt: '2026-04-13T00:00:00.000Z',
+    updatedAt: '2026-04-13T00:00:00.000Z'
+  };
+  const repository = createRepository({
+    async findRecordByEncounter() {
+      return persisted;
+    },
+    async findItemsByRecord() {
+      itemReads += 1;
+      return [];
+    },
+    async updateRecord(record) {
+      updatedSubtotal = record.subtotalAmount;
+    }
+  });
+  repository.findRecordWithItemsByEncounter = async () => {
+    combinedReads += 1;
+    return { record: persisted, items: [] };
+  };
+  const service = new BillingService(
+    {
+      getOrThrow(_accountId: string, encounterId: string) {
+        return {
+          id: encounterId,
+          accountId: 'acc_test',
+          patientId: 'patient_1',
+          ownerId: 'owner_1'
+        };
+      }
+    } as never,
+    { repository }
+  );
+
+  const record = await service.createEstimate('acc_test' as never, {
+    encounterId: 'encounter_1'
+  });
+
+  assert.equal(record.status, 'estimated');
+  assert.equal(record.subtotalAmount, 42);
+  assert.equal(updatedSubtotal, 42);
+  assert.equal(itemReads, 0);
+  assert.equal(combinedReads, 0);
+});
+
 test('BillingService replays an unchanged estimate without taking another write lock', async () => {
   let updates = 0;
   const service = new BillingService(
