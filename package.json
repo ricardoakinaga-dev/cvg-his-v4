@@ -108,6 +108,7 @@
     "security:evidence": "node scripts/generate-security-evidence.mjs",
     "security:operations:index": "node scripts/generate-security-operations-index.mjs",
     "evidence:uat:skeleton": "node scripts/generate-hospital-uat-evidence.mjs",
+    "evidence:workflow:local": "node scripts/generate-local-workflow-evidence.mjs",
     "release:manifest": "node scripts/generate-release-manifest.mjs",
     "release:ci-evidence": "node scripts/generate-ci-evidence.mjs",
     "release:attestation-evidence": "node scripts/generate-image-attestation-evidence.mjs",
