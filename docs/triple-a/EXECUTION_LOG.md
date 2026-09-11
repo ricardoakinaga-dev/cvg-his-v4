@@ -1,5 +1,19 @@
 # Triple-A — Execution Log
 
+## 2026-09-11T13:42:23Z — CI #114 e gate do candidato publicado `59a63087`
+
+- **Candidato:** `main@59a630875d9ee6e1050ba39195fc0771c4d3501d`, sincronizado
+  com `origin/main` por push fast-forward; rollback remoto preservado.
+- **CI:** [run 34602927442](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34602927442)
+  terminou `success` com 16/16 jobs, incluindo Unit, Integration, E2E SPA,
+  Visual, Performance, Windows e contratos.
+- **Gate:** `TRIPLE_A_SKIP_EXECUTION=1 pnpm release:triple-a` retornou
+  `BLOCKED / NOT PROVEN`, score `34`, crítico `23`, `27` P0 abertos e
+  `publication_allowed=false`; o artefato temporário não foi promovido.
+- **Decisão:** o merge está publicado e reversível, mas o release continua
+  bloqueado por evidências de target, governança, recovery/soak, UAT,
+  attestation, observabilidade e autoridade humana ausentes.
+
 ## 2026-09-11T13:02:08Z — candidato local `055f282d` e correções de acessibilidade/gate
 
 - **Candidato:** `main@055f282db45cf35368ba6f5b24c7870e1c89e118`, dois commits à

@@ -18,7 +18,7 @@
   "active_execplan": ".agent/plans/external-assurance-closure-execplan.md",
   "active_task": "TRIPLE-A-RELEASE-CONTROL",
   "verification_state": "PARTIAL",
-  "repository_state": "local main is at documentation snapshot bfdcfba2 with code candidate 055f282db45cf35368ba6f5b24c7870e1c89e118, three commits ahead of origin/main 533a12a4940baca7a71a2fd6cd67a306ac2efcd4; parent run 34599938521 is terminal success with all 16 jobs on SHA 533a12a4 and is not transferred to the local candidate; bounded local evidence and focused accessibility/gate tests pass without replacing CI; rollback branch origin/fix/state-of-art-ci-assurance remains preserved",
+  "repository_state": "main and origin/main are synchronized at 59a630875d9ee6e1050ba39195fc0771c4d3501d; exact CI run 34602927442 is terminal success with 16/16 jobs including Unit, Integration, E2E SPA, Visual, Performance and Windows; bounded local evidence and focused accessibility/gate tests pass without replacing target evidence; rollback branch origin/fix/state-of-art-ci-assurance remains preserved",
   "instruction_scope_refs": [
     ".agent/plans/external-assurance-closure-execplan.md",
     "docs/triple-a/MASTER_PROMPT_EXTERNAL_CLOSURE.md",
@@ -34,12 +34,12 @@
     "docs/triple-a/16-requirement-traceability.md"
   ],
   "last_gate_record": null,
-  "last_event_id": "EVT-TRIPLE-A-RELEASE-CONTROL-CI113-TERMINAL-20260911",
-  "state_revision": 20,
+  "last_event_id": "EVT-TRIPLE-A-RELEASE-CONTROL-CI114-TERMINAL-20260911",
+  "state_revision": 21,
   "next_gate": "VERIFIED",
   "active_action_id": "TRIPLE-A-RELEASE-CONTROL:RECONCILE-CI-111",
   "blocked_by": [
-    "Candidate 055f282db45cf35368ba6f5b24c7870e1c89e118 has no terminal remote CI yet; parent run 34599938521 is green 16/16 on 533a12a4 but its result is not transferred",
+    "Exact candidate CI run 34602927442 is green 16/16, but the strict release gate remains BLOCKED with 34/23/27 P0 and target evidence is not proven",
     "Current target evidence, UAT, soak24/72h, branch governance, image attestations, release authority and the strict 97/95/zero-P0 quality bar remain unproven"
   ],
   "human_approval_required": [
@@ -49,5 +49,5 @@
     "destructive backup/restore/chaos drills on shared infrastructure",
     "final release authority and Triple-A certification"
   ],
-  "updated_at": "2026-09-11T13:10:00Z"
+  "updated_at": "2026-09-11T13:42:23Z"
 }

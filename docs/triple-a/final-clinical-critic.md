@@ -1,8 +1,8 @@
 # Triple-A final critic — current reconciliation
 
-**Candidate code:** main@055f282db45cf35368ba6f5b24c7870e1c89e118 (local; push pending)
-**CI:** [run 34599938521](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34599938521), terminal success 16/16 on parent `533a12a4`; not transferable
-**Observed:** 2026-09-11T13:10:00Z
+**Candidate code:** main@59a630875d9ee6e1050ba39195fc0771c4d3501d
+**CI:** [run 34602927442](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34602927442), terminal success 16/16 on exact SHA
+**Observed:** 2026-09-11T13:42:23Z
 **Verdict:** **BLOCKED / NOT PROVEN**
 
 This document records a bounded evidence review. It is not release authority and does not convert source inspection or local tests into target evidence.
@@ -22,7 +22,7 @@ Clinical workflow safety, owner/patient context, encounters, triage, records, pr
 1. No current evidence package contains the complete check-in-to-discharge/follow-up journey with all safety assertions.
 2. No current human clinical UAT or named clinical authority approval exists.
 3. Runtime database roles, RLS and worker crash/recovery behavior are not proven on the target.
-4. The current candidate has no terminal CI of its own; the parent run is green but cannot close the clinical release decision.
+4. Human UAT, target runtime proofs and the complete clinical acceptance package are absent, so green CI cannot close the clinical release decision.
 
 ## Required closure
 
