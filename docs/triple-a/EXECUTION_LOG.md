@@ -330,3 +330,15 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - Typecheck, SAST, Secret Scan, Dependency Audit, Lint, OpenAPI, Repository Guards, Coverage, Build, API Contract, Unit, Windows, Integration, E2E SPA e Visual passaram. Apenas `Performance (k6 SLOs)` falhou nos passos `Run k6 benchmark`/`Check SLO results`; o artefato `performance-k6-report` tem digest `sha256:212cd76b10ac0d746fa3f576d35876791016c5dfef3e2ca2282d382cae269cac`.
 - A identidade crítica e todos os testes funcionais do novo candidato passaram; nenhum threshold de performance foi relaxado. Logs detalhados do job falho exigem autenticação administrativa e não foram inventados.
 - Estado: **BLOCKED / NOT PROVEN**. O release permanece bloqueado por performance remota e pelas provas externas, operacionais e humanas de target, governança, recovery, soak, UAT, attestation e autoridade.
+
+## 2026-09-11T12:29:58Z — Execução local corrente no snapshot `0abdf651`
+
+- A fase PostgreSQL descartável passou `66/66` arquivos e `615/615` testes em `183,78s`, com migrations, seed, RLS, workflow, auditoria, billing/financeiro, leases/fencing e cenários fundacionais; o banco efêmero foi removido.
+- O runner de processos críticos passou `11/11` cenários não-skipped com Redis local pinned: setup distribuído, laboratório, SIGKILL/reclaim, fencing, restart, child process, concorrência de caixa, settlement PIX, worker, webhook e workflow task. Cada banco foi limpo pelo runner.
+- O k6 pinned local completou o perfil `operational-minimum-v1` com 60 VUs, `4.226` iterações e `9/9` SLOs: API p95 `33,99 ms`, query `36 ms`, billing `41 ms`, inventory `38,46 ms`, erros `0%` e disponibilidade `100%`.
+- Essas execuções são bounded/local e estão detalhadas em [17-current-execution-evidence.md](./17-current-execution-evidence.md). Elas não reclassificam o CI remoto #111, não substituem o ambiente alvo e não autorizam `TRIPLE-A VERIFIED`.
+
+## 2026-09-11T12:34:50Z — Gate estrito no snapshot `0abdf651`
+
+- `TRIPLE_A_SKIP_EXECUTION=1 pnpm release:triple-a` gerou decisão `BLOCKED / NOT PROVEN`, score `33`, critical `20` e `28` P0 abertos; `publication_allowed=false`.
+- O JSON foi escrito em diretório temporário e não foi promovido a artefato de release. Thresholds continuam `97/95/zero P0`.

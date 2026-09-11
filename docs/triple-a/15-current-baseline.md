@@ -1,6 +1,6 @@
 # Baseline corrente — State of Art
 
-Observado em 2026-09-11T11:57:40Z. O candidato funcional corrente é `bb16a47f`; `main` e `origin/main` estão sincronizados no snapshot corrente de assurance. Esta entrada registra o CI terminal do SHA exato; as seções posteriores são históricas e não transferem resultados para outro SHA.
+Observado em 2026-09-11T12:29:58Z. O candidato funcional corrente é `bb16a47f`; `main` e `origin/main` estão sincronizados no snapshot corrente de assurance em `0abdf651`. A execução local corrente de PostgreSQL, processos críticos e k6 está detalhada em [17-current-execution-evidence.md](./17-current-execution-evidence.md). Esta entrada registra o CI terminal do SHA exato; as seções posteriores são históricas e não transferem resultados para outro SHA.
 
 ## Estado do candidato atual
 
@@ -11,17 +11,21 @@ Observado em 2026-09-11T11:57:40Z. O candidato funcional corrente é `bb16a47f`;
 | origin/main | snapshot corrente de assurance; candidato funcional `bb16a47f` |
 | worktree | Limpo para arquivos rastreados; artefatos locais estão ignorados |
 | ci_run | [#34593912427](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34593912427), `failure` — 15/16 jobs passaram; Performance falhou |
-| overall_score | BLOCKED — o gate atual não foi promovido; o score diagnóstico histórico 56/32/15 não é transferido |
-| critical_score | não recalculado para este SHA; mínimo congelado 95 |
-| open_p0 | não recalculado para este SHA; critérios externos continuam sem prova |
+| overall_score | gate estrito no snapshot `0abdf651`: 33; mínimo congelado 97 |
+| critical_score | gate estrito no snapshot `0abdf651`: 20; mínimo congelado 95 |
+| open_p0 | gate estrito no snapshot `0abdf651`: 28; máximo congelado 0 |
 | implemented | Restore database-only compatível com `storageIncluded=false`, Helm de produção fail-closed por digest e leitura record-only para estimativas, além dos controles anteriores de release, OCI, provenance e acessibilidade |
-| verified_local | `pnpm test`, typecheck, lint, OpenAPI, complexidade, identidade de fontes críticas, RLS estático, supply chain, dependências, backup/restore e Helm estático passaram; billing focused/API tests passaram |
+| verified_local | `pnpm test`, typecheck, lint, OpenAPI, complexidade, identidade de fontes críticas, RLS estático, supply chain, dependências, backup/restore e Helm estático passaram; 66/66 arquivos e 615/615 testes PostgreSQL descartáveis passaram; runner de processos 11/11 e k6 local 9/9 SLOs passaram; billing focused/API tests passaram |
 | verified_remote | Run #111 terminal: Repository Guards, Unit, Integration, E2E SPA, Visual, Windows e API Contract passaram; Performance (k6 SLOs) falhou |
 | verified_target | NOT PROVEN |
-| blocked | Performance remota falhou e branch governance, ambiente alvo, recuperação/soak, UAT e autoridade de release permanecem sem prova |
+| blocked | Performance remota falhou; a reprodução local não transfere PASS; branch governance, ambiente alvo, recuperação/soak, UAT e autoridade de release permanecem sem prova |
 | not_proven | Quality bar 97/95/zero P0, Windows nativo fora do runner Linux, RLS/DB runtime no alvo, deploy/rollback, restore/RPO/RTO, attestation, observabilidade operacional e provas humanas |
 
 ## Evidência corrente
+
+As execuções locais descartáveis desta fotografia estão em [17-current-execution-evidence.md](./17-current-execution-evidence.md). Elas são evidência de implementação e runtime local; não substituem o boundary remoto ou o alvo exigido pelo quality bar.
+
+O gate estrito `pnpm release:triple-a` foi executado com a execução pesada desabilitada no snapshot `0abdf651` e produziu `BLOCKED / NOT PROVEN`, score `33`, critical `20` e `28` P0 abertos. O JSON temporário não foi promovido a artefato de release.
 
 ### Candidato atual — `bb16a47f`
 

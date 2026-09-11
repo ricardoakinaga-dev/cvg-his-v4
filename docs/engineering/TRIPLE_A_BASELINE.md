@@ -1,11 +1,12 @@
 # CVG HIS — Triple-A Baseline
 
-## Reconciliação corrente — 2026-09-11T11:57:40Z
+## Reconciliação corrente — 2026-09-11T12:29:58Z
 
 - **Código funcional:** `bb16a47f`; `main`/`origin/main` permanecem sincronizados no snapshot corrente de assurance e a origem do merge permanece disponível.
 - **CI:** [#34593912427](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34593912427) terminou `failure` com 15/16 jobs em `success`; somente Performance (k6 SLOs) falhou. O run #110 foi supersedido após o guard de identidade crítica detectar o hash antigo do billing.
 - **Estado:** **BLOCKED / NOT PROVEN**. Nenhum score histórico é transferido e nenhum claim é permitido.
-- **Local:** `pnpm test`, typecheck, lint, OpenAPI, complexidade, RLS estático, supply chain, dependências e os contratos de backup/restore e Helm passaram dentro dos limites documentados; Docker e o binário Helm não estão disponíveis.
+- **Gate estrito:** no snapshot `0abdf651`, `pnpm release:triple-a` retornou `BLOCKED / NOT PROVEN`, score `33`, critical `20`, `28` P0 abertos e `publication_allowed=false`; thresholds `97/95/zero P0` permanecem congelados.
+- **Local:** `pnpm test`, typecheck, lint, OpenAPI, complexidade, RLS estático, supply chain, dependências e os contratos de backup/restore e Helm passaram dentro dos limites documentados; a integração PostgreSQL descartável passou 66/66 arquivos e 615/615 testes, o runner crítico passou 11/11 e o k6 local passou 9/9 SLOs; Docker e o binário Helm não estão disponíveis.
 - **Mudanças de controle:** compatibilidade database-only por `storageIncluded=false`, helpers Helm de produção fail-closed por digest, leitura record-only para estimativas de billing, gate pré-publicação por fase, verificação CI exata, identidade OCI imutável, provenance sanitizada e SearchSelect com relações ARIA completas.
 - **Externo ainda aberto:** branch governance, Windows nativo, RLS/runtime no alvo, recovery/soak, restore/RPO/RTO, deploy/rollback, attestation, UAT e autoridade de release.
 

@@ -3,7 +3,11 @@
 **Current functional code candidate:** `bb16a47f`; `main`/`origin/main` estão sincronizados no snapshot corrente de assurance.
 **Current CI:** [#34593912427](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34593912427) — `failure`, 15/16 jobs passaram; Performance (k6 SLOs) falhou
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-11T11:57:40Z
+**Observation:** 2026-09-11T12:29:58Z
+
+**Current local execution:** PostgreSQL descartável `66/66` arquivos e `615/615` testes, runner crítico `11/11` cenários e k6 `9/9` SLOs passaram no checkout `0abdf651`; a matriz detalhada e as limitações estão em [17-current-execution-evidence.md](./17-current-execution-evidence.md). Esta evidência local não substitui o CI pinned ou o ambiente alvo.
+
+**Current strict gate:** `pnpm release:triple-a` no mesmo snapshot retornou `BLOCKED / NOT PROVEN`, score `33`, critical `20`, `28` P0 abertos e `publication_allowed=false`.
 
 The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. Run #110 for `bd10b7a6` was superseded after Repository Guards reported a stale frozen hash for `packages/modules/billing/src/index.ts`; `bb16a47f` refreshes that identity and run #111 is the exact current validation. It finished with 15/16 jobs successful; only Performance (k6 SLOs) failed. Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
 

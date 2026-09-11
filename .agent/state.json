@@ -18,7 +18,7 @@
   "active_execplan": ".agent/plans/external-assurance-closure-execplan.md",
   "active_task": "TRIPLE-A-RELEASE-CONTROL",
   "verification_state": "PARTIAL",
-  "repository_state": "main and origin/main are synchronized at the current assurance control-plane snapshot; functional candidate bb16a47fa2f111315e24494b40a752b77e82f56c has exact CI run 34593912427 terminal failure with 15/16 jobs successful and Performance failed; the source rollback branch origin/fix/state-of-art-ci-assurance remains preserved",
+  "repository_state": "main and origin/main are synchronized at assurance snapshot 0abdf651fbb2433163b8d94fcaa6e59cd5199f8d; functional candidate bb16a47fa2f111315e24494b40a752b77e82f56c has exact CI run 34593912427 terminal failure with 15/16 jobs successful and Performance failed; bounded local PostgreSQL, critical-process and k6 evidence is recorded without replacing CI; metadata-only run 34596773483 passed; the source rollback branch origin/fix/state-of-art-ci-assurance remains preserved",
   "instruction_scope_refs": [
     ".agent/plans/external-assurance-closure-execplan.md",
     "docs/triple-a/MASTER_PROMPT_EXTERNAL_CLOSURE.md",
@@ -30,11 +30,12 @@
     "docs/clinical/CLINICAL_SAFETY_INVARIANTS.md",
     "docs/triple-a/MASTER_PROMPT_STATE_OF_ART.md",
     "docs/triple-a/15-current-baseline.md",
+    "docs/triple-a/17-current-execution-evidence.md",
     "docs/triple-a/16-requirement-traceability.md"
   ],
   "last_gate_record": null,
-  "last_event_id": "EVT-TRIPLE-A-RELEASE-CONTROL-CI111-TERMINAL-20260911",
-  "state_revision": 16,
+  "last_event_id": "EVT-TRIPLE-A-RELEASE-GATE-20260911",
+  "state_revision": 18,
   "next_gate": "VERIFIED",
   "active_action_id": "TRIPLE-A-RELEASE-CONTROL:RECONCILE-CI-111",
   "blocked_by": [
@@ -48,5 +49,5 @@
     "destructive backup/restore/chaos drills on shared infrastructure",
     "final release authority and Triple-A certification"
   ],
-  "updated_at": "2026-09-11T11:57:40.000Z"
+  "updated_at": "2026-09-11T12:34:50.641Z"
 }
