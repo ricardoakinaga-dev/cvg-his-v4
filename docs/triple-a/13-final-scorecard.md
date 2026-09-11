@@ -6,7 +6,7 @@
 | CURRENT SCORE | NOT PROVEN — gate estrito local permanece bloqueado |
 | CURRENT CRITICAL SCORE | NOT PROVEN |
 | CURRENT OPEN P0 | Aberto; inventário em [baseline](./15-current-baseline.md), zero não comprovado |
-| CURRENT CI | [34546979414](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34546979414): 15/16 jobs verdes; Windows/E2E/Integration passaram e Performance falhou; docs-only [34549295964](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34549295964) também falhou somente em Performance |
+| CURRENT CI | [34551458338](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34551458338): 16/16 jobs verdes, incluindo Windows, E2E e Performance 9/9; candidato de código `ef30673f`, revisão documental `8360a615` |
 | CURRENT VERDICT | BLOCKED / NOT PROVEN |
 
 Histórico preservado em [scorecard-history](./scorecard-history/2026-09-10-before-b85b03ea-13-final-scorecard.md).

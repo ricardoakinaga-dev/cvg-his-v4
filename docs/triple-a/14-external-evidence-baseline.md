@@ -274,3 +274,59 @@ quality bar or the external runtime, clinical, soak, UAT, restore, deploy,
 attestation, governance and authority proofs.
 
 **Terminal verdict for `ef30673f`:** `BLOCKED / NOT PROVEN`.
+
+## Terminal reconciliation — final documented checkout `8360a615` / CI run `34551458338`
+
+The documentation revision is
+`8360a61536155bf5c44eb8f24896bb32c966cb7a`; it contains the unchanged
+behavioral candidate `ef30673f871b29638c2bab9b6ede90776cf59e10`. GitHub Actions
+run [`34551458338`](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34551458338)
+reached terminal `success` with all 16 jobs green, including the Windows
+contract and Performance (k6 SLOs).
+
+The final run's jobs were:
+
+| Job | GitHub job ID | Result |
+| --- | ---: | --- |
+| Typecheck | 103115063370 | success |
+| SAST | 103115063431 | success |
+| Secret Scan | 103115063379 | success |
+| Dependency Audit | 103115063264 | success |
+| Validate OpenAPI | 103116303506 | success |
+| Coverage | 103116303518 | success |
+| Lint | 103116303522 | success |
+| Repository Guards | 103116303542 | success |
+| Build | 103117125070 | success |
+| Critical Process Runner (Windows) | 103117672515 | success |
+| Integration Tests | 103117672520 | success |
+| Unit Tests | 103117672525 | success |
+| API Contract Tests | 103117672533 | success |
+| E2E Tests (SPA) | 103117672562 | success |
+| Visual Regression | 103117672569 | success |
+| Performance (k6 SLOs) | 103117672669 | success |
+
+The `performance-k6-report` artifact is ID `10181401056`, digest
+`sha256:b772a7a377be6c14eb407561ba74e226b7ad88aed6e5f45c5f85d4040384c926`.
+Its 60-VU profile passed all 9 SLOs: API p95 140.41 ms, query 133 ms, write
+234.70 ms, billing 248.70 ms, inventory 197.62 ms, auth 26.65 ms, API errors 0
+and availability 100%; thresholds and load profile were unchanged.
+
+The E2E artifact is `e2e-spa-74c7bbbe076c90d2f6a0a11dd60715f9c406ba5b`, ID
+`10181554140`, digest
+`sha256:c5784d41ea92cf94bd9a83cf8413ddd5bb9b89959e2a6b7a5644f047322e7978`.
+Metadata binds it to run `ci-34551458338`, merge-context SHA
+`74c7bbbe076c90d2f6a0a11dd60715f9c406ba5b`, environment `ci-postgresql`,
+Chromium `145.0.7632.6`, Playwright `1.58.2`, locale `pt-BR`, timezone
+`America/Sao_Paulo`, 422 expected tests, zero skipped, zero unexpected, zero
+flaky, 151 routes and 302 navigations. The inventory digest is
+`d1d4b7dea08ef141ef504a99cc46486e671a3845f6760ae265f46792079e2a03`.
+
+The associated enterprise report is advisory `PASS: 10 | WARN: 2 | FAIL: 2`.
+Readiness remains 92/100 and Vetus parity remains unverified; real backup and
+target deploy evidence are still absent. Green CI and 9/9 k6 SLOs therefore
+strengthen the candidate evidence but do not prove the 97/95/zero-P0 quality
+bar, authenticated branch governance, runtime RLS, worker crash/recovery,
+clinical golden path, soak, human UAT, restore, target deploy, attestation or
+release authority.
+
+**Terminal verdict for the final documented checkout:** `BLOCKED / NOT PROVEN`.
