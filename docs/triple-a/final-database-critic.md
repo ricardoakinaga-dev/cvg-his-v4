@@ -1,8 +1,8 @@
 # Triple-A final critic — current reconciliation
 
-**Candidate code:** main@c07f568c64841f0ae8fafcb6118d9014645ef9c4
-**CI:** NOT RUN for this candidate; remote push pending at observation
-**Observed:** 2026-09-11T05:36:33Z
+**Candidate code:** main@04864a54cdb02b5d2c1fa5e6291804d66ea4721a
+**CI:** [run 34567116409](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34567116409), terminal 15/16; Performance failed
+**Observed:** 2026-09-11T06:10:44Z
 **Verdict:** **BLOCKED / NOT PROVEN**
 
 This document records a bounded evidence review. It is not release authority and does not convert source inspection or local tests into target evidence.

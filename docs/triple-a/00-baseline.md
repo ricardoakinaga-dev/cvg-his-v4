@@ -1,12 +1,12 @@
 # Triple-A — 00 Baseline
 
-## Reconciliação corrente — 2026-09-11T05:36:33Z
+## Reconciliação corrente — 2026-09-11T06:10:44Z
 
-- Candidato de código: "main@c07f568c64841f0ae8fafcb6118d9014645ef9c4"; na fotografia, `origin/main` ainda estava em `7d18feaff1d142d4e2eef741b8edd98611eb0ac9` e o push/CI estava pendente.
+- Candidato de código: "main@04864a54cdb02b5d2c1fa5e6291804d66ea4721a"; `origin/main` coincide e a branch de origem permanece disponível para rollback.
 - Esta fotografia separa o candidato de código dos documentos e não transfere resultados históricos para ele.
-- CI atual: **NOT RUN** para `c07f568c`; o último run #96 pertence ao SHA documental anterior e não é prova deste candidato.
-- Veredicto: **BLOCKED / NOT PROVEN**. O prompt exige CI verde, quality bar, evidência operacional/humana atual e zero P0; o score do novo candidato ainda não foi reavaliado.
-- Evidência local limpa: runner PostgreSQL executou workflow clínico, SIGKILL/fencing e auditoria append-only, 3/3 PASS; a evidência foi vinculada ao SHA `c07f568c`.
+- CI atual: [#34567116409](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34567116409) terminou 15/16; apenas Performance (k6 SLOs) falhou.
+- Veredicto: **BLOCKED / NOT PROVEN**. O prompt exige CI verde, quality bar, evidência operacional/humana atual e zero P0; o gate diagnóstico marcou score 65, crítico 49 e 19 P0 com build/testes completos fora desta coleta.
+- Evidência local limpa: runner PostgreSQL executou workflow clínico, SIGKILL/fencing e auditoria append-only, 3/3 PASS; a evidência foi vinculada ao SHA `04864a54` e rebaixada a PARTIAL pelo gate.
 - O gate agora gera o bundle em `artifacts/release/` e uma cópia canônica em `artifacts/triple-a/TRIPLE_A_RELEASE_EVIDENCE.json`; nenhum envelope de release atual foi promovido.
 - O prompt e o quality bar mantêm os hashes já registrados. O claim TRIPLE-A VERIFIED permanece proibido.
 

@@ -1,8 +1,8 @@
 # Triple-A final critic — current reconciliation
 
-**Candidate code:** main@c07f568c64841f0ae8fafcb6118d9014645ef9c4
-**CI:** NOT RUN for this candidate; remote push pending at observation
-**Observed:** 2026-09-11T05:36:33Z
+**Candidate code:** main@04864a54cdb02b5d2c1fa5e6291804d66ea4721a
+**CI:** [run 34567116409](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34567116409), terminal 15/16; Performance failed
+**Observed:** 2026-09-11T06:10:44Z
 **Verdict:** **BLOCKED / NOT PROVEN**
 
 This document records a bounded evidence review. It is not release authority and does not convert source inspection or local tests into target evidence.
@@ -13,12 +13,12 @@ Backup, restore, deploy, rollback, observability, alerts, on-call and runbooks.
 
 ## Evidence
 
-- No remote CI run exists yet for the candidate; earlier infrastructure and performance results remain historical.
-- No current target backup/restore, RPO/RTO, 24/72-hour soak, deploy rehearsal, rollback rehearsal, alert delivery or human release-authority package is present.
+- The exact-SHA CI run is terminal with 15/16 jobs passed; Performance failed.
+- The diagnostic gate wrote SHA-bound envelopes to its operational and canonical paths, but no current target backup/restore, RPO/RTO, 24/72-hour soak, deploy rehearsal, rollback rehearsal, alert delivery or human release-authority package is present.
 
 ## Blocking findings
 
-1. The release evidence envelope is absent at the required current path.
+1. The available release envelope is diagnostic only and remains `NOT PROVEN`.
 2. Branch governance and required checks are not authenticated.
 3. Recovery, target observability and operational ownership are not proven.
 4. Main is not green at the current SHA.

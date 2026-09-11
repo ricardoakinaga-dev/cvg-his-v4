@@ -1,5 +1,12 @@
 # Triple-A — Execution Log
 
+## 2026-09-11T06:10:44Z — CI terminal do candidato e reconciliação documental
+
+- **Candidato de código:** `main@04864a54cdb02b5d2c1fa5e6291804d66ea4721a`; `origin/main` coincidente na observação. Esta entrada é uma fotografia do candidato funcional; o commit documental que a contém é metadata-only.
+- **CI:** [run 34567116409](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34567116409) terminou `failure` com 15/16 jobs aprovados; somente Performance (k6 SLOs) falhou. O artefato `performance-k6-report` é o ID `10186798096`, digest `sha256:aff13018a4e8912b83bd031fd2118b1f4c89373fa37ef96486a30da812017b90`.
+- **Local:** `pnpm docs:validate`, `pnpm lint`, os testes de release 23/23 e o runner PostgreSQL limpo 3/3 passaram. O gate diagnóstico terminou `BLOCKED`, score 65, crítico 49, 19 P0, `claim=NOT PROVEN` e `publication_allowed=false`; build/testes completos não foram executados nessa coleta.
+- **Decisão:** nenhum claim Triple-A é emitido. Permanecem sem prova branch governance, runtime alvo/RLS, Windows nativo, recovery/soak, restore/RPO/RTO, deploy/rollback, attestation, UAT e autoridade de release.
+
 ## 2026-09-11T05:36:33Z — auditoria append-only e artefato final canônico
 
 - **SHA:** `c07f568c64841f0ae8fafcb6118d9014645ef9c4` (candidato de código local; CI remoto ainda não executado).
