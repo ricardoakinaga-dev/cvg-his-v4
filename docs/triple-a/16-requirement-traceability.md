@@ -9,7 +9,7 @@ proveniência da régua congelada sem misturar candidatos ou alterar thresholds.
 A tabela mantém o escopo completo. “NOT PROVEN” significa que a aceitação
 integral da fase não foi demonstrada no candidato corrente; não significa
 que o código esteja ausente. Evidência local, CI e alvo são avaliados separadamente.
-A implementação corrente `ecd75335381cd85ee7e20fb3f97302f769a0b539` adiciona
+A implementação corrente `bb03b74a513a6ab8ced2e4fb1cb2c6cf77ae276e` adiciona
 evidência local para F15/F16/F47/F50/F52/F54/F55: os dois specs clínicos passam
 localmente, os gauges clínicos são compostos no `/metrics` sem labels de tenant
 e a página de workflow mantém relações ARIA estáveis. Essas provas continuam

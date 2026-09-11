@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Code candidate:** `main@ecd75335381cd85ee7e20fb3f97302f769a0b539`
-**Observed:** `2026-09-11T18:19:59Z`
+**Code candidate:** `main@bb03b74a513a6ab8ced2e4fb1cb2c6cf77ae276e`
+**Observed:** `2026-09-11T18:36:24Z`
 **Repository state:** o candidato funcional foi publicado em `main` por fast-forward, sem force-push; este relatório é um snapshot documental posterior.
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -10,9 +10,9 @@ clínicas agregadas ligadas ao `/metrics` e uma correção de acessibilidade nas
 abas de workflow. A validação local passou API `590/590`, E2E clínico `2/2` e
 SPA focada `32/32`.
 
-O CI exato [#122](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34632644376)
-ainda está `in_progress`. O run anterior #121 pertence ao SHA anterior e
-falhou somente em Performance; nenhum resultado é transferido entre commits.
+O CI exato [#124](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34634177739)
+está `pending`. O run #123 do snapshot anterior falhou na identidade de fontes;
+a causa foi corrigida e nenhum resultado é transferido entre commits.
 O gate estrito local do candidato é `BLOCKED`, score `34`, critical `23`,
 `27` P0 e `publication_allowed=false`.
 

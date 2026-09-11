@@ -2,9 +2,9 @@
 
 | Campo | Estado |
 | --- | --- |
-| CURRENT CODE CANDIDATE | `ecd75335381cd85ee7e20fb3f97302f769a0b539` |
+| CURRENT CODE CANDIDATE | `bb03b74a513a6ab8ced2e4fb1cb2c6cf77ae276e` |
 | MAIN / ORIGIN | O candidato funcional `ecd75335` foi fast-forward para `main`; este snapshot documental é um commit separado |
-| CURRENT CI | [#122](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34632644376): `in_progress` no SHA exato |
+| CURRENT CI | [#124](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34634177739): `pending` no SHA exato |
 | LAST TERMINAL BASELINE | [#121](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34624736494) no SHA anterior: `failure`, 15/16; somente Performance falhou |
 | CURRENT SCORE | `34` no gate estrito local; mínimo congelado `97` |
 | CURRENT CRITICAL SCORE | `23` no gate estrito local; mínimo congelado `95` |

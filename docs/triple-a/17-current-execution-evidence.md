@@ -1,7 +1,7 @@
 # Evidência de execução corrente — State of Art
 
-Observado em `2026-09-11T18:19:59Z` no checkout
-`ecd75335381cd85ee7e20fb3f97302f769a0b539`, com `origin/main` coincidente.
+Observado em `2026-09-11T18:36:24Z` no checkout
+`bb03b74a513a6ab8ced2e4fb1cb2c6cf77ae276e`, com `origin/main` coincidente.
 
 ## Validações locais do candidato
 
@@ -25,10 +25,9 @@ disponibilidade `100%` e gauges de pool sem espera; ela foi executada no SHA
 anterior `b953ff3384596b7b0ebd486ec9cb2b43f71bb85e` e permanece explicitamente
 fora da evidência do candidato atual. Não houve relaxamento de thresholds.
 
-O CI exato [#122](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34632644376)
-está `in_progress`. O run terminal [#121](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34624736494)
-foi no SHA anterior, terminou `failure` com 15/16 jobs e falhou somente em
-`Performance (k6 SLOs)`.
+O CI exato [#124](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34634177739)
+está `pending`. O run #123 do snapshot documental anterior falhou na identidade
+de fontes críticas; o manifesto foi corrigido e o teste local `2/2` passou.
 
 ## Gate estrito
 

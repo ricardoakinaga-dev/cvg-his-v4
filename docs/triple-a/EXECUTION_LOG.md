@@ -458,3 +458,10 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - O gate estrito no SHA atual retornou `BLOCKED / NOT PROVEN`, score `34`, critical `23`, `27` P0 e `publication_allowed=false`; thresholds não foram relaxados e o envelope não foi promovido.
 - Após o push, `HEAD`, `main` e `origin/main` coincidem no SHA exato. O CI [#34632644376](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34632644376) foi criado para esse SHA e permanece `in_progress`; o resultado não é promovido antes do estado terminal.
 - Risco restante: o CI anterior falhou no k6, e ainda faltam provas de target, governança, recovery/restore, soak, UAT, attestation e autoridade de release. Estado: **BLOCKED / NOT PROVEN**.
+
+## 2026-09-11T18:36:24Z — Correção de identidade das fontes críticas `bb03b74a`
+
+- O CI #123 do snapshot documental falhou em `Repository Guards` porque `docs/engineering/critical-coverage-scope.json` ainda carregava os hashes antigos de `apps/api/src/server.ts` e `apps/spa/src/pages/encounters/EncounterDetailPage.vue`.
+- A falha foi reproduzida localmente; as duas entradas foram atualizadas para os bytes publicados e `node scripts/critical-source-manifest.test.mjs` passou `2/2`.
+- O commit `bb03b74a513a6ab8ced2e4fb1cb2c6cf77ae276e` foi publicado por fast-forward, sem force-push. `HEAD` e `origin/main` coincidem e a branch de rollback permanece preservada.
+- O CI exato [#34634177739](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34634177739) está `pending`; nenhum resultado é promovido antes do estado terminal. Estado: **BLOCKED / NOT PROVEN**.
