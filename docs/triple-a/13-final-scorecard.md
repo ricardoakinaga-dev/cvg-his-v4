@@ -2,11 +2,15 @@
 
 | Campo | Estado |
 | --- | --- |
-| CURRENT CANDIDATE | Código `ef30673f871b29638c2bab9b6ede90776cf59e10` na branch `fix/state-of-art-ci-assurance`; revisão documental `5a0ffac4703a4f3ca1c6849dce87622ab5ab749f` |
-| CURRENT SCORE | NOT PROVEN — gate estrito local permanece bloqueado |
+| CURRENT CODE CANDIDATE | "main@fe5406c23c515585629060e0dc01b91f2d113d65" após merge fast-forward; branch de origem preservada para rollback |
+| DOCUMENTATION SNAPSHOT | Esta reconciliação é um commit documental posterior; o SHA final do branch deve receber CI novo antes do release |
+| CURRENT SCORE | NOT PROVEN — o gate estrito não autoriza release |
 | CURRENT CRITICAL SCORE | NOT PROVEN |
-| CURRENT OPEN P0 | Aberto; inventário em [baseline](./15-current-baseline.md), zero não comprovado |
-| CURRENT CI | [34551458338](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34551458338): 16/16 jobs verdes, incluindo Windows, E2E e Performance 9/9; candidato de código `ef30673f`, revisão documental `8360a615` |
+| CURRENT OPEN P0 | NOT PROVEN — envelope de release atual não foi gerado |
+| CURRENT CI | [#34556230892](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34556230892): 15/16 jobs aprovados; somente Performance (k6 SLOs) falhou |
+| CURRENT LOCAL PERFORMANCE | 9/9 SLOs em PostgreSQL/Redis efêmeros locais; não substitui CI ou ambiente alvo |
 | CURRENT VERDICT | BLOCKED / NOT PROVEN |
 
-Histórico preservado em [scorecard-history](./scorecard-history/2026-09-10-before-b85b03ea-13-final-scorecard.md).
+O run [34551458338](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34551458338) foi verde em checkout anterior e permanece explicitamente histórico. O relatório remoto atual aponta variância de contenção; os thresholds não foram relaxados. O merge, a origem e a cadeia de identidade estão registrados em [15-current-baseline](./15-current-baseline.md) e no [EXECUTION_LOG](./EXECUTION_LOG.md).
+
+Histórico anterior preservado em [scorecard-history](./scorecard-history/2026-09-10-before-b85b03ea-13-final-scorecard.md).

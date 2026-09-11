@@ -1,60 +1,43 @@
 # Baseline corrente — State of Art
 
-Observado em 2026-09-11T01:04:50+00:00. Perfil brownfield, monólito modular, T4 crítico; atividade AUDIT/VERIFY.
+Observado em 2026-09-11T03:45:00Z. O candidato de código do merge é o "main@fe5406c23c515585629060e0dc01b91f2d113d65" após merge fast-forward. Esta reconciliação documental é registrada separadamente e, por alterar o SHA do branch, exige uma nova execução CI antes de qualquer decisão de release. Este bloco é a fonte corrente. As seções posteriores são históricas e não transferem resultados para outro SHA.
+
+## Estado do candidato atual
 
 | Campo | Evidência atual |
 | --- | --- |
-| current_sha | `ef30673f871b29638c2bab9b6ede90776cf59e10` (candidato de código; revisão documental `8360a61536155bf5c44eb8f24896bb32c966cb7a`) |
-| main_sha | `b85b03ea029b9ffe2186dc0021ddf7f6c65e37f3` (local e `git ls-remote origin refs/heads/main`) |
-| origin/main | `b85b03ea029b9ffe2186dc0021ddf7f6c65e37f3` |
-| worktree | Limpo antes desta reconciliação; a alteração documental não muda o candidato de código |
-| ci_run | [34551458338](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34551458338), terminal `success` 16/16 |
-| overall_score | NOT PROVEN para o candidato atual |
-| critical_score | NOT PROVEN para o candidato atual |
-| open_p0 | Inventário abaixo; contagem integral depende do gate atual |
-| open_p1 | Inventário abaixo; contagem integral ainda não comprovada |
-| open_p2 | Inventário abaixo; zero não inferido |
-| implemented | API/SPA/worker, workflow durável, gate de release e contratos presentes no source |
-| verified_local | Hash do novo prompt e identidade Git; demais provas históricas não transferidas |
-| verified_remote | 16/16 jobs CI aprovados no checkout `8360a615`; código candidato `ef30673f` e documentação vinculados |
+| current_sha | "fe5406c23c515585629060e0dc01b91f2d113d65" ("main", "origin/main" e "origin/fix/state-of-art-ci-assurance") |
+| main_sha | "fe5406c23c515585629060e0dc01b91f2d113d65" |
+| origin/main | "fe5406c23c515585629060e0dc01b91f2d113d65" |
+| worktree | Limpo para arquivos rastreados; artefatos locais estão ignorados |
+| ci_run | [#34556230892](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34556230892), terminal "failure", 15/16 jobs aprovados |
+| overall_score | NOT PROVEN — gate de release atual não autoriza certificação |
+| critical_score | NOT PROVEN |
+| open_p0 | NOT PROVEN — não há envelope de release atual válido para contar P0 |
+| implemented | API/SPA/worker, workflow durável, contratos, validadores, gate de release e correções de CI presentes no source |
+| verified_local | docs, OpenAPI, workflow clínico, testes focados, contratos de infraestrutura, API 587/587, build SPA, PostgreSQL efêmero 16/16, SIGKILL 1/1 e k6 local 9/9 |
+| verified_remote | 15/16 jobs no SHA atual; Performance falhou; os outros 15 passaram |
 | verified_target | NOT PROVEN |
-| blocked | Certificação/release; main não verde, provas operacionais e humanas pendentes |
-| not_proven | Qualidade global 97/95, zero P0, ambiente alvo, UAT, soak e autoridade |
+| blocked | Performance remoto no run atual, evidência de release atual ausente, branch governance, ambiente alvo, recuperação/soak, UAT e autoridade de release |
+| not_proven | Quality bar 97/95/zero P0, Windows nativo fora do runner Linux, RLS/DB runtime no alvo, deploy/rollback, restore/RPO/RTO, attestation, observabilidade operacional e provas humanas |
 
-## Fonte e evidência
+## Evidência corrente
 
-Novo prompt preservado byte a byte em `MASTER_PROMPT_STATE_OF_ART.md`, SHA-256
-`872014ed989fa4b565bbab5293009c13ef6437104204cbf39c876e64a593f745`.
-`QUALITY_BAR_V1.json` permanece inalterado (97/95/zero P0).
-O run público [34551458338](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34551458338)
-foi observado para a revisão documental `8360a61536155bf5c44eb8f24896bb32c966cb7a`
-e contém o candidato de código `ef30673f871b29638c2bab9b6ede90776cf59e10`.
-No contexto de pull request, os artefatos de execução registram o merge SHA
-`74c7bbbe076c90d2f6a0a11dd60715f9c406ba5b`; ele não substitui o SHA de código.
-Os artefatos públicos foram verificados por digest: E2E `sha256:c5784d41ea92cf94bd9a83cf8413ddd5bb9b89959e2a6b7a5644f047322e7978`
-e performance `sha256:b772a7a377be6c14eb407561ba74e226b7ad88aed6e5f45c5f85d4040384c926`.
-Resultados históricos de outros SHAs não são reutilizados como prova deste candidato.
+O CI atual executou no SHA exato acima. O job [Performance (k6 SLOs)](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34556230892/job/103131906730) terminou com exit 99; o passo de verificação de SLO terminou com exit 1. Secret Scan, Dependency Audit, Typecheck, SAST, Repository Guards, Lint, Coverage, OpenAPI, Build, API Contract Tests, Integration Tests, Unit Tests, E2E SPA, Visual Regression e o contrato Windows passaram. O artefato remoto de performance é o ID 10183097282; seu conteúdo não está autenticado para download neste workspace.
 
-## CI por job
+A investigação comparativa registrou no relatório remoto: API p95 223,42 ms, query 239 ms, billing 272,35 ms e inventory 261,29 ms falharam; write 296,35 ms, auth 28,33 ms, erros HTTP 0% e disponibilidade 100% passaram. O run [34551458338](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34551458338) passou 16/16 em outro checkout e é histórico, não prova do SHA atual. A diferença é classificada como variância de runner/contenção; os thresholds permanecem congelados.
 
-| Job | Resultado |
-| --- | --- |
-| Secret Scan | success |
-| Dependency Audit (CVE Scan) | success |
-| Typecheck | success |
-| SAST (Semgrep) | success |
-| Repository Guards | success |
-| Lint | success |
-| Coverage | success |
-| Validate OpenAPI | success |
-| Build | success |
-| API Contract Tests | success |
-| Integration Tests | success |
-| Critical Process Runner (Windows contract) | success |
-| E2E Tests (SPA) | success |
-| Visual Regression | success |
-| Performance (k6 SLOs) | success |
-| Unit Tests | success |
+No ambiente local efêmero, com PostgreSQL/Redis descartáveis, k6 v0.55.0 e perfil operational-minimum-v1 (60 VUs), a execução terminou 9/9: API p95 51,46 ms, query 56 ms, write 63 ms, billing 61 ms, inventory 56,64 ms, auth 19,13 ms, erros 0% e disponibilidade 100%. Isso é evidência local reproduzível, não certificação remota ou de ambiente alvo.
+
+O prompt integral continua byte a byte em [MASTER_PROMPT_STATE_OF_ART.md](./MASTER_PROMPT_STATE_OF_ART.md), SHA-256 872014ed989fa4b565bbab5293009c13ef6437104204cbf39c876e64a593f745. O [QUALITY_BAR_V1.json](./QUALITY_BAR_V1.json) permanece congelado em 97/95/zero P0. O prompt exige artifacts/triple-a/TRIPLE_A_RELEASE_EVIDENCE.json, enquanto o gate implementado escreve em artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json; nenhum envelope atual vinculado a este SHA existe em qualquer dos dois caminhos, e o artefato ignorado antigo não é promovido como prova.
+
+Os pareceres correntes estão em [final-security-critic.md](./final-security-critic.md), [final-clinical-critic.md](./final-clinical-critic.md), [final-database-critic.md](./final-database-critic.md), [final-operations-critic.md](./final-operations-critic.md) e [final-ux-critic.md](./final-ux-critic.md). Todos permanecem BLOCKED / NOT PROVEN e listam a evidência necessária para fechamento.
+
+## Decisão corrente
+
+**BLOCKED / NOT PROVEN.** O merge foi seguro e reversível, mas a certificação Triple-A, o release e o claim TRIPLE-A VERIFIED continuam bloqueados até CI verde no SHA candidato e até a obtenção das evidências externas, operacionais e humanas exigidas pelo prompt.
+
+## Registros históricos
 
 ## Execução remota anterior — candidato `5470b4f5` (histórico)
 

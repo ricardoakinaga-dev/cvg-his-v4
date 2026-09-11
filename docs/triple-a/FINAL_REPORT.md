@@ -1,41 +1,24 @@
 # CVG-HIS V4 — Current Assurance Report
 
-Candidate: branch `fix/state-of-art-ci-assurance`, source `3cfe8b33a23a2f46988abb572fc5b1ba08a88376`.
-Release SHA ainda não congelado; diagnóstico remoto pertence à main base.
+**Code candidate:** "main@fe5406c23c515585629060e0dc01b91f2d113d65"
+**Observed:** 2026-09-11T03:45:00Z
+**Merge:** fast-forward para "main"; "origin/main", "origin/HEAD" e a branch de origem apontam para o mesmo SHA.
+**Verdict:** **BLOCKED / NOT PROVEN**
 
-Verdict: **BLOCKED / NOT PROVEN**. Arquitetura preservada: monólito modular,
-API/SPA/worker e PostgreSQL; certificação Triple-A ainda não atingida.
+Este relatório é o snapshot documental pós-merge. O commit que o registra altera o SHA do branch sem alterar o código; por isso o SHA final precisa de uma nova execução CI antes de qualquer decisão de release. O run abaixo é evidência do candidato de código do merge e não é promovido como prova do snapshot documental posterior.
 
-O prompt vigente foi copiado byte a byte para
-[MASTER_PROMPT_STATE_OF_ART.md](./MASTER_PROMPT_STATE_OF_ART.md).
-A qualidade mínima permanece 97 geral, 95 crítico e zero P0.
+O prompt vigente está preservado byte a byte em [MASTER_PROMPT_STATE_OF_ART.md](./MASTER_PROMPT_STATE_OF_ART.md), com SHA-256 872014ed989fa4b565bbab5293009c13ef6437104204cbf39c876e64a593f745. O quality bar congelado exige score geral mínimo 97, score crítico mínimo 95, zero P0, main verde e evidência atual. Nenhuma regra foi relaxada.
 
-| Dimensão | Evidência atual / limite |
-| --- | --- |
-| CI/CD | CI [34509025262](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34509025262) falhou: Windows, E2E e performance; 13 outros jobs aprovados |
-| UX automated | CI: 420/422 E2Es; visual aprovado. Correção local de isolamento dos quatro relatórios: 4/4 em Chromium/PostgreSQL descartável, 11,7s (reteste integrado); não equivale a suíte completa verde |
-| Windows | Correção do bootstrap/HANDLE aceita por crítico I1; contratos Linux 27/27, execução Windows ainda não comprovada |
-| Performance | Quatro p95 falhos: queries 181/150ms, writes 312/300ms, billing 390/250ms, inventory 251,98/200ms (medido/limite). Sem erros de API, disponibilidade 100%; paginação de inventário implementada e aprovada em revisão delimitada; benchmark pendente |
-| Security / Database / Clinical / Worker | Código e testes presentes; certificação integrada atual e prova no alvo pendentes |
-| Supply chain / Recovery / Production assurance | Envelopes atuais de imagens/attestations, restore, deploy, rollback e soak pendentes |
-| UAT / Release authority | NOT PROVEN; aprovação humana não fabricada |
-| Overall / Critical / Open P0 | Sem score certificado do candidato; diagnóstico local modificado 62/43/20, bloqueado pela integridade e provas ausentes |
+## Evidência ligada ao SHA atual
 
-O [baseline atual](./15-current-baseline.md) distingue implementado,
-verificado local/remoto/alvo e inventaria os P0/P1/P2. O
-[scorecard](./13-final-scorecard.md) contém somente o estado corrente.
-O [relatório anterior](./scorecard-history/2026-09-10-before-b85b03ea-FINAL_REPORT.md)
-foi preservado como histórico, sem transferir seus scores para o SHA atual.
+- O CI [#34556230892](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34556230892) terminou com 15/16 jobs aprovados. O único failure foi [Performance (k6 SLOs)](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34556230892/job/103131906730), com API p95 223,42 ms, query 239 ms, billing 272,35 ms e inventory 261,29 ms acima dos alvos; erros HTTP ficaram em 0% e disponibilidade em 100%.
+- O benchmark local, executado com PostgreSQL e Redis efêmeros, k6 v0.55.0, 60 VUs e o perfil operational-minimum-v1, passou 9/9 SLOs. Essa prova fica limitada ao ambiente local.
+- Validações locais atuais passaram: documentação, OpenAPI, workflow clínico, testes focados 65/65, contratos workflow/infra 44/44, API 587/587, build SPA, workflow PostgreSQL efêmero 16/16 e SIGKILL 1/1.
+- A comparação entre o run atual e o run verde anterior mostra variância de runner/contenção; a medição remota não deve ser convertida em PASS por repetição informal. A recomendação é repetir o mesmo SHA 2–3 vezes, mantendo thresholds e diagnósticos.
+- Os cinco pareceres correntes de segurança, clínica, banco de dados, operações e UX estão em [final-security-critic.md](./final-security-critic.md), [final-clinical-critic.md](./final-clinical-critic.md), [final-database-critic.md](./final-database-critic.md), [final-operations-critic.md](./final-operations-critic.md) e [final-ux-critic.md](./final-ux-critic.md); todos mantêm o veredito BLOCKED / NOT PROVEN.
 
-Próxima ação: fechar revisão e regressão das correções de CI, gerar um novo
-candidato e executar CI completo sem reduzir thresholds. Seguir a ordem das
-76 fases do prompt; nenhuma grande feature antecede a resolução de main vermelho.
+## Lacunas que mantêm o bloqueio
 
-Observação local: o primeiro fixture expôs ausência de `cvg_installer`; o
-reteste integrado provisionou os papéis com o reconciliador canônico e passou
-4/4 em 11,7s, com shutdown confirmado. Isso ainda não certifica a matriz RLS.
-API compilada final em Node22: 71/71 testes de server/rota; build da API e lint workspace passaram.
-A evidência local com hashes está em
-`artifacts/release/baseline-b85b03ea/local-inventory-verification.json`.
+O score atual, o score crítico e a contagem de P0 não podem ser declarados porque não há envelope TRIPLE_A_RELEASE_EVIDENCE.json atual no caminho exigido. Permanecem sem prova suficiente branch protection/required checks, Windows nativo, RLS e isolamento runtime no alvo, crash/recovery e soak 24/72h, restore/RPO/RTO, deploy/rollback, imagem/attestation, observabilidade operacional, UAT clínico e autoridade humana de release. O run verde [34551458338](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34551458338) pertence a checkout anterior e é mantido apenas como histórico.
 
-Atualizado em 2026-09-10T18:42:30.364474+00:00.
+O claim TRIPLE-A VERIFIED não é emitido. O relatório anterior foi preservado em [scorecard-history/2026-09-10-before-b85b03ea-FINAL_REPORT.md](./scorecard-history/2026-09-10-before-b85b03ea-FINAL_REPORT.md); seus números não são evidência do candidato atual.

@@ -242,3 +242,14 @@ OpenAPI, docs, lint, complexidade e source identity aprovados.
 Commits: `97fe88d8` E2E, `1a448d15` paginação, `3cfe8b33` supervisor Windows.
 Branch `fix/state-of-art-ci-assurance`; nenhum merge/deploy foi feito.
 Próxima prova: CI completo do novo candidato; source acceptance não fecha runtime.
+
+
+## 2026-09-11T03:45:00Z — Reconciliação pós-merge e performance
+
+- Merge fast-forward concluído para "main@fe5406c23c515585629060e0dc01b91f2d113d65"; "origin/main", "origin/HEAD" e a branch de origem apontam para o mesmo SHA. Nenhum force push foi usado; a branch de origem permanece como rollback reversível.
+- CI corrente [#34556230892](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34556230892) executou no SHA exato e terminou 15/16. O único failure foi o job Performance (k6 SLOs), [job 103131906730](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34556230892/job/103131906730); o artefato remoto é performance-k6-report ID 10183097282.
+- Métricas remotas registradas: API p95 223,42 ms, query 239 ms, billing 272,35 ms, inventory 261,29 ms (falhas); write 296,35 ms, auth 28,33 ms, HTTP errors 0%, disponibilidade 100% (pass).
+- O run anterior [34551458338](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34551458338) passou em checkout anterior e não é reutilizado como PASS do SHA atual. A análise independente classifica a diferença como variância de runner/contenção; thresholds não foram relaxados.
+- Benchmark local efêmero: PostgreSQL/Redis descartáveis, k6 v0.55.0, perfil operational-minimum-v1, 60 VUs, 3m30s; 9/9 SLOs, API p95 51,46 ms, query 56 ms, write 63 ms, billing 61 ms, inventory 56,64 ms, auth 19,13 ms, erros 0%, disponibilidade 100%. Esta evidência é local e não substitui CI/target.
+- Validações locais vinculadas ao candidato: docs/OpenAPI/workflow clínico, testes focados 65/65, contratos workflow/infra 44/44, API 587/587, build SPA, PostgreSQL efêmero 16/16 e SIGKILL 1/1. O worktree rastreado permanece limpo.
+- Documentação corrente foi reconciliada em 00-baseline.md, 13-final-scorecard.md, 14-external-evidence-baseline.md, 15-current-baseline.md, FINAL_REPORT.md e neste log. O gate não autoriza TRIPLE-A VERIFIED; score, critical score e zero P0 continuam NOT PROVEN.

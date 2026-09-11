@@ -1,22 +1,15 @@
 # CVG HIS — Triple-A Baseline
 
-**Data da fotografia inicial:** 2026-09-09 (America/Sao_Paulo)
-**Commit observado na fotografia inicial:** `main@696d7dd5`
-**Estado da certificação:** `NOT PROVEN` / release bloqueado para Triple-A
-**Prompt fonte:** [`docs/triple-a/MASTER_PROMPT.md`](../triple-a/MASTER_PROMPT.md)
-**Quality bar:** [`docs/triple-a/QUALITY_BAR_V1.json`](../triple-a/QUALITY_BAR_V1.json)
+## Reconciliação corrente — 2026-09-11T03:45:00Z
 
-## Reconciliação do candidato atual — 2026-09-10T11:47:12-03:00
+- **Código:** "main@fe5406c23c515585629060e0dc01b91f2d113d65"; "origin/main" coincide e a origem do merge permanece disponível.
+- **Snapshot documental:** esta reconciliação é um commit posterior somente de documentação; o SHA final precisa de CI novo antes de qualquer decisão de release.
+- **CI:** [#34556230892](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34556230892) terminou 15/16; o job Performance falhou.
+- **Estado:** **BLOCKED / NOT PROVEN**. O score geral/crítico e zero P0 não foram certificados.
+- **Local:** docs, OpenAPI, workflow, testes focados, API, build SPA, PostgreSQL efêmero, workflow SIGKILL e k6 local passaram conforme o baseline corrente.
+- **Externo ainda aberto:** branch governance, Windows nativo, RLS/runtime no alvo, recovery/soak, restore/RPO/RTO, deploy/rollback, attestation, UAT e autoridade de release.
 
-- **Código candidato:** `main@1434514c4e0ce88bc29d0feda28b09a61a08670f`; worktree limpo e `origin/main` coincidente.
-- **Estado:** `BLOCKED / NOT PROVEN`. Nenhum claim `TRIPLE-A VERIFIED` é emitido.
-- **CI:** run #70 (`34490757429`) está em execução; `Release Artifacts` #50 (`34490858211`) foi pulado porque o workflow exige CI verde.
-- **Evidência corrente:** os checks locais e o PostgreSQL descartável são úteis para os seus escopos, mas não fecham branch governance, HTTP/RLS autenticado, jornada clínica completa, UAT, restore/RPO/RTO, soak, target deploy ou autoridade de release.
-- **Gate:** execução local estrita com evidência externa pulada retornou `BLOCKED`, `score=42`, `critical_score=20`, `open_p0=28` e `publication_allowed=false`.
-
-O conjunto hospital-personas direcionado passou `5/5` em `35.2s`, os testes de infraestrutura do release-control passaram `20/20` e a suíte workspace local concluiu sem falha observada. Essas provas locais não substituem a execução remota nem os drills operacionais/externos.
-
-As seções abaixo preservam a fotografia histórica da Fase 0. Seus números e SHAs não devem ser interpretados como prova do candidato atual sem uma nova execução registrada no ledger.
+As seções seguintes preservam a fotografia histórica e não devem ser lidas como evidência do SHA atual sem uma execução nova vinculada ao commit.
 
 ## 1. Escopo e regra de evidência
 

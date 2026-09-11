@@ -1,9 +1,18 @@
+# Triple-A External Assurance — Current Reconciliation
+
+**Current candidate:** "fe5406c23c515585629060e0dc01b91f2d113d65" ("main" / "origin/main")
+**Current CI:** [#34556230892](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34556230892) — 15/16, Performance failure
+**Current status:** **BLOCKED / NOT PROVEN**
+**Observation:** 2026-09-11T03:45:00Z
+
+The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. The current comparison found runner/contention variance and recommends 2–3 same-SHA performance repetitions without changing thresholds. Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
+
 # Triple-A External Assurance — Baseline 2026-09-09
 
 **Snapshot histórico:** `2026-09-09T20:48:09-03:00` (America/Sao_Paulo)
-**Repository:** `ricardoakinaga-dev/cvg-his-v4`  
+**Repository:** `ricardoakinaga-dev/cvg-his-v4`
 **Observed candidate histórico:** `dcb731a196b499db246c5c53884c40547ec9e028`
-**Closure prompt:** [`MASTER_PROMPT_EXTERNAL_CLOSURE.md`](./MASTER_PROMPT_EXTERNAL_CLOSURE.md)  
+**Closure prompt:** [`MASTER_PROMPT_EXTERNAL_CLOSURE.md`](./MASTER_PROMPT_EXTERNAL_CLOSURE.md)
 **Closure prompt SHA-256:** `d89a249f9b0b13e0da6fb9e4ee3c0e4728c11760fd435d325d48a9b8d1b5ed59`
 
 This is a fresh external-assurance baseline for the new closure prompt. The
@@ -12,7 +21,7 @@ historical [`MASTER_PROMPT.md`](./MASTER_PROMPT.md) and frozen
 original provenance. Evidence from the historical candidate is not reused as
 proof for this candidate.
 
-## Current candidate reconciliation — 2026-09-10T00:35:15-03:00
+## Historical candidate reconciliation — 2026-09-10T00:35:15-03:00
 
 The current candidate is `cd7399f91bf3c3eda53e4598443acdbc9ff6d3b1`, with a
 clean worktree and matching `origin/main`. CI run #49 terminated with failures;
@@ -110,7 +119,7 @@ this snapshot the following required runtime/external proofs remain open:
 4. Re-run the strict gate and fresh final critics. A missing external proof is
    a blocker, never a warning or an inferred PASS.
 
-**Baseline verdict:** `BLOCKED / NOT PROVEN`.  
+**Baseline verdict:** `BLOCKED / NOT PROVEN`.
 **Claim permitted:** none. `TRIPLE-A VERIFIED` is not asserted.
 
 ## 2026-09-10 — Candidate `1434514c` / current release-control round

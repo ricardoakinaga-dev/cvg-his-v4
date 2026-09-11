@@ -1,14 +1,17 @@
 # Triple-A — 00 Baseline
 
-**Fotografia inicial:** 2026-09-09 · **HEAD:** `main@696d7dd5` · **Status:** `NOT PROVEN`
+## Reconciliação corrente — 2026-09-11T03:45:00Z
 
-**Reconciliação atual:** 2026-09-10T11:47:12-03:00 · **código candidato:** `main@1434514c4e0ce88bc29d0feda28b09a61a08670f` · **Status:** `BLOCKED / NOT PROVEN`
+- Candidato: "main@fe5406c23c515585629060e0dc01b91f2d113d65"; "origin/main" coincide e o merge fast-forward é reversível pela branch de origem.
+- Esta fotografia documental é pós-merge e altera o SHA do branch sem alterar o código; o SHA final precisa de CI novo para qualquer decisão de release.
+- CI atual: [#34556230892](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34556230892) terminou 15/16, com Performance em failure. A execução verde anterior é histórica.
+- Veredicto: **BLOCKED / NOT PROVEN**. O prompt exige CI verde, quality bar, evidência operacional/humana atual e zero P0; nenhuma dessas condições é inferida de documentação ou do benchmark local.
+- Evidência local: docs/OpenAPI/workflow, testes focados, API, build, PostgreSQL efêmero e k6 local passaram nos escopos registrados em [15-current-baseline](./15-current-baseline.md).
+- O prompt e o quality bar mantêm os hashes já registrados. O claim TRIPLE-A VERIFIED permanece proibido.
 
-O candidato atual contém as correções clínicas, de integração, observabilidade, backup, gate de SBOM, limpeza de processos, seletor E2E acessível e binding tipado da evidência de CI publicadas após a fotografia inicial. O CI #70 ainda está em execução; artefatos e resultados ligados a SHAs anteriores permanecem históricos e não são reutilizados como prova atual.
+## Fotografia histórica da Fase 0
 
-O prompt integral está salvo em [`MASTER_PROMPT.md`](./MASTER_PROMPT.md) e o hash conferido é `95270384800c87fcbe7e823a41a7b57834ddaac274914226745f7fdc5137197a`. O quality bar congelado antes da implementação está em [`QUALITY_BAR_V1.json`](./QUALITY_BAR_V1.json).
-
-## Resultado da fotografia inicial da Fase 0
+## Resultado histórico da fotografia inicial da Fase 0
 
 | Classe | Situação atual | Prioridade |
 |---|---|---|
