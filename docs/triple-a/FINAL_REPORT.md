@@ -2,7 +2,7 @@
 
 **Code candidate:** "main@5a079ceca57b246e17ecb0214ed1e2b9e9e23500"
 **Observed:** 2026-09-11T08:40:00Z
-**Repository state:** `main` e `origin/main` coincidem; a origem do merge permanece preservada para rollback.
+**Repository state:** `main` e `origin/main` coincidem em `227cb79243ad0e0787b0e81539661e759aae4694`, commit documental metadata-only; a origem do merge permanece preservada para rollback.
 **Verdict:** **BLOCKED / NOT PROVEN**
 
 Este relatório registra o candidato funcional e sua execução CI terminal. O resultado não autoriza release porque a performance falhou e as provas externas, operacionais e humanas exigidas continuam ausentes.

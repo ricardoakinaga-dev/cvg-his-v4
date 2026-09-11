@@ -1,14 +1,14 @@
 # Baseline corrente — State of Art
 
-Observado em 2026-09-11T08:40:00Z. O candidato funcional corrente é o "main@5a079ceca57b246e17ecb0214ed1e2b9e9e23500". `origin/main` coincide; a documentação desta reconciliação é metadata-only e não substitui a evidência funcional vinculada a esse SHA. Este bloco é a fonte corrente; as seções posteriores são históricas e não transferem resultados para outro SHA.
+Observado em 2026-09-11T08:40:00Z. O candidato funcional corrente é `5a079ceca57b246e17ecb0214ed1e2b9e9e23500`; `main`/`origin/main` estão em `227cb79243ad0e0787b0e81539661e759aae4694`, um commit documental metadata-only. Este bloco é a fonte corrente; as seções posteriores são históricas e não transferem resultados para outro SHA.
 
 ## Estado do candidato atual
 
 | Campo | Evidência atual |
 | --- | --- |
-| current_sha | "5a079ceca57b246e17ecb0214ed1e2b9e9e23500" (`main` e `origin/main`) |
-| main_sha | "5a079ceca57b246e17ecb0214ed1e2b9e9e23500" |
-| origin/main | "5a079ceca57b246e17ecb0214ed1e2b9e9e23500" |
+| current_sha | "5a079ceca57b246e17ecb0214ed1e2b9e9e23500" (candidato funcional) |
+| main_sha | "227cb79243ad0e0787b0e81539661e759aae4694" (documentação metadata-only) |
+| origin/main | "227cb79243ad0e0787b0e81539661e759aae4694" (documentação metadata-only) |
 | worktree | Limpo para arquivos rastreados; artefatos locais estão ignorados |
 | ci_run | [#34577711985](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34577711985), terminal "failure", 15/16 jobs aprovados |
 | overall_score | BLOCKED — gate diagnóstico pós-fix score 56; publicação não permitida |

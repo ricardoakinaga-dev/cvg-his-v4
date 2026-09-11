@@ -2,7 +2,7 @@
 
 | Campo | Estado |
 | --- | --- |
-| CURRENT CODE CANDIDATE | "main@5a079ceca57b246e17ecb0214ed1e2b9e9e23500"; branch de origem preservada em `fix/state-of-art-ci-assurance` para rollback |
+| CURRENT CODE CANDIDATE | funcional `5a079ceca57b246e17ecb0214ed1e2b9e9e23500`; `main`/`origin/main` estão no commit documental `227cb792`; branch de origem preservada em `fix/state-of-art-ci-assurance` para rollback |
 | DOCUMENTATION SNAPSHOT | Reconciliação do CI terminal do candidato funcional; o commit desta atualização é metadata-only |
 | CURRENT SCORE | 56 no gate diagnóstico pós-fix; BLOCKED / NOT PROVEN |
 | CURRENT CRITICAL SCORE | 32 no gate diagnóstico pós-fix; abaixo do mínimo 95 |

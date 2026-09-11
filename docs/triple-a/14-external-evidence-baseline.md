@@ -1,6 +1,6 @@
 # Triple-A External Assurance — Current Reconciliation
 
-**Current code candidate:** "5a079ceca57b246e17ecb0214ed1e2b9e9e23500" (`main` / `origin/main`)
+**Current functional code candidate:** "5a079ceca57b246e17ecb0214ed1e2b9e9e23500"; `main`/`origin/main` documentam esse candidato em `227cb79243ad0e0787b0e81539661e759aae4694` (metadata-only)
 **Current CI:** [#34577711985](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34577711985) — 15/16, Performance failure
 **Current status:** **BLOCKED / NOT PROVEN**
 **Observation:** 2026-09-11T08:40:00Z

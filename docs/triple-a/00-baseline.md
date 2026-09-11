@@ -2,7 +2,7 @@
 
 ## Reconciliação corrente — 2026-09-11T08:40:00Z
 
-- Candidato funcional: "main@5a079ceca57b246e17ecb0214ed1e2b9e9e23500"; `origin/main` coincide e a branch de origem permanece disponível para rollback.
+- Candidato funcional: `5a079ceca57b246e17ecb0214ed1e2b9e9e23500`; `main`/`origin/main` estão em `227cb79243ad0e0787b0e81539661e759aae4694`, um commit documental metadata-only. A branch de origem permanece disponível para rollback.
 - Esta fotografia separa o candidato funcional do commit documental e não transfere resultados históricos para ele.
 - CI atual: [#34577711985](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34577711985) terminou 15/16; apenas Performance (k6 SLOs) falhou.
 - Veredicto: **BLOCKED / NOT PROVEN**. O prompt exige CI verde, quality bar, evidência operacional/humana atual e zero P0; o gate diagnóstico pós-fix marcou score 56, crítico 32 e 15 P0, sem autorizar publicação.
