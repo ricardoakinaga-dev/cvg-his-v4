@@ -200,3 +200,77 @@ restore, target deploy, image attestation, branch governance or release
 authority.
 
 **Terminal verdict for this candidate:** `BLOCKED / NOT PROVEN`.
+
+## Terminal reconciliation — candidate `ef30673f` / CI run `34546979414`
+
+The Windows bootstrap correction is the exact source SHA
+`ef30673f871b29638c2bab9b6ede90776cf59e10` (`fix(ci): allow cold Windows
+supervisor bootstrap`). The docs reconciliation that follows is documentation
+only; the executable candidate and its remote proof remain bound to this SHA.
+`origin/main` is still `b85b03ea029b9ffe2186dc0021ddf7f6c65e37f3`.
+
+GitHub Actions run
+[`34546979414`](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34546979414)
+reached a terminal `failure` with 15/16 jobs successful. Typecheck, SAST,
+Secret Scan, Dependency Audit, Lint, OpenAPI, Repository Guards, Coverage,
+Build, API Contract, Unit, Windows, Integration, E2E SPA and Visual Regression
+passed. Performance (k6 SLOs) is the only failure. The public job records are:
+
+| Job | GitHub job ID | Result |
+| --- | ---: | --- |
+| Typecheck | 103101620881 | success |
+| SAST | 103101620961 | success |
+| Secret Scan | 103101621132 | success |
+| Dependency Audit | 103101621103 | success |
+| Repository Guards | 103102976205 | success |
+| Lint | 103102976236 | success |
+| Coverage | 103102976250 | success |
+| Validate OpenAPI | 103102976265 | success |
+| Build | 103103844770 | success |
+| E2E Tests (SPA) | 103104313730 | success |
+| API Contract Tests | 103104313786 | success |
+| Integration Tests | 103104313793 | success |
+| Critical Process Runner (Windows) | 103104313798 | success |
+| Performance (k6 SLOs) | 103104313847 | failure |
+| Unit Tests | 103104313869 | success |
+| Visual Regression | 103104313894 | success |
+
+The Windows contract passed after the startup budget was raised from 30s to a
+finite 60s. The preceding run had measured a legitimate cold start of 34.435s
+and terminated with `SIGTERM`; its diagnostic reported
+`cleanupComplete: true` and an empty cleanup error. The new run validates the
+headroom on the hosted Windows runner without changing the child execution or
+cleanup budgets.
+
+The performance artifact is `performance-k6-report`, ID `10179866930`, with
+download digest
+`sha256:5cad7f84f2930d9cc3d85b59501e97963750719c6353ea76feb3117503131ec2`.
+The unchanged 60-VU profile produced 4/9 SLOs: API p95 270.80 ms (target
+<200), query p95 285 ms (<150), write p95 351.85 ms (<300), billing p95 332 ms
+(<250), inventory p95 315.35 ms (<200), auth p95 27.91 ms (<300), API errors 0
+and availability 100%. Endpoint diagnostics recorded inventory create/read p95
+351.47/249.56 ms and patient list/detail p95 240.85/248.85 ms. A directly
+preceding run passed 9/9 under the same thresholds; both reports are retained
+and no threshold or load profile was relaxed.
+
+The E2E artifact is `e2e-spa-29e5c32b6f2904525b40859d7a404e5fa0fba0a1`, ID
+`10180087681`, digest
+`sha256:ddd6dd04e6d3a9095856fdac5dffd26f2b505919289ebcfa17f68ff30e9a7ab0`.
+Its metadata records merge-context SHA
+`29e5c32b6f2904525b40859d7a404e5fa0fba0a1` for source SHA
+`ef30673f871b29638c2bab9b6ede90776cf59e10`, run `ci-34546979414`, environment
+`ci-postgresql`, Chromium `145.0.7632.6`, Playwright `1.58.2`, locale `pt-BR`,
+timezone `America/Sao_Paulo`, 422 expected tests, zero skipped, zero unexpected,
+zero flaky, 151 routes and 302 navigations. The inventory digest is
+`d2ca0efa69c4261a9854d2f1bd111d2f3c881fc839ab6faa9efa79dae1122872`.
+
+The E2E enterprise report remains explicitly advisory: `PASS: 10 | WARN: 2 |
+FAIL: 2`. Readiness is 92/100 and Vetus parity is not verified. The real backup
+and deploy rows remain WARN because no external evidence was supplied. The
+advisory collector exits zero while retaining these FAIL rows; the strict
+collector remains fail-closed. The candidate therefore has a verified Windows
+contract and complete CI/E2E execution evidence, but not the 97/95/zero-P0
+quality bar or the external runtime, clinical, soak, UAT, restore, deploy,
+attestation, governance and authority proofs.
+
+**Terminal verdict for `ef30673f`:** `BLOCKED / NOT PROVEN`.

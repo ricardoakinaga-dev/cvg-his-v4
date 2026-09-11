@@ -1,14 +1,14 @@
 # Baseline corrente — State of Art
 
-Observado em 2026-09-10T23:57:48+00:00. Perfil brownfield, monólito modular, T4 crítico; atividade AUDIT/VERIFY.
+Observado em 2026-09-11T01:04:50+00:00. Perfil brownfield, monólito modular, T4 crítico; atividade AUDIT/VERIFY.
 
 | Campo | Evidência atual |
 | --- | --- |
-| current_sha | `5470b4f5891da6bbf3d80e03bc736f40c88c2895` |
+| current_sha | `ef30673f871b29638c2bab9b6ede90776cf59e10` (candidato de código; a reconciliação documental é docs-only) |
 | main_sha | `b85b03ea029b9ffe2186dc0021ddf7f6c65e37f3` (local e `git ls-remote origin refs/heads/main`) |
 | origin/main | `b85b03ea029b9ffe2186dc0021ddf7f6c65e37f3` |
-| worktree | Limpo na coleta deste run; a reconciliação documental desta alteração será validada no próximo run |
-| ci_run | [34542095726](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34542095726), terminal `failure` por Performance (k6) |
+| worktree | Limpo antes desta reconciliação; a alteração documental não muda o candidato de código |
+| ci_run | [34546979414](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34546979414), terminal `failure` por Performance (k6) |
 | overall_score | NOT PROVEN para o candidato atual |
 | critical_score | NOT PROVEN para o candidato atual |
 | open_p0 | Inventário abaixo; contagem integral depende do gate atual |
@@ -16,7 +16,7 @@ Observado em 2026-09-10T23:57:48+00:00. Perfil brownfield, monólito modular, T4
 | open_p2 | Inventário abaixo; zero não inferido |
 | implemented | API/SPA/worker, workflow durável, gate de release e contratos presentes no source |
 | verified_local | Hash do novo prompt e identidade Git; demais provas históricas não transferidas |
-| verified_remote | 15/16 jobs CI aprovados no SHA `5470b4f5`; Performance (k6) falhou por SLO de cauda |
+| verified_remote | 15/16 jobs CI aprovados no SHA `ef30673f`; Windows/E2E/integration passaram; Performance (k6) falhou por SLO de cauda |
 | verified_target | NOT PROVEN |
 | blocked | Certificação/release; main não verde, provas operacionais e humanas pendentes |
 | not_proven | Qualidade global 97/95, zero P0, ambiente alvo, UAT, soak e autoridade |
@@ -26,12 +26,12 @@ Observado em 2026-09-10T23:57:48+00:00. Perfil brownfield, monólito modular, T4
 Novo prompt preservado byte a byte em `MASTER_PROMPT_STATE_OF_ART.md`, SHA-256
 `872014ed989fa4b565bbab5293009c13ef6437104204cbf39c876e64a593f745`.
 `QUALITY_BAR_V1.json` permanece inalterado (97/95/zero P0).
-O run público [34542095726](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34542095726)
-foi observado para o SHA de origem `5470b4f5891da6bbf3d80e03bc736f40c88c2895`.
+O run público [34546979414](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34546979414)
+foi observado para o SHA de origem `ef30673f871b29638c2bab9b6ede90776cf59e10`.
 No contexto de pull request, os artefatos de execução registram o merge SHA
-`ed9592d6eb6595c3f8925fddde637184af718ad0`; ele não substitui o SHA de origem.
-Os artefatos públicos foram verificados por digest: E2E `sha256:4fcfd0c156c7ecce3846f66e59841d1f24268c2755144def446b899dc39a5add`
-e performance `sha256:09dbb0ff889fffd5b224e6292bc66532b7896e2a1e196d99c819378ec45a0762`.
+`29e5c32b6f2904525b40859d7a404e5fa0fba0a1`; ele não substitui o SHA de origem.
+Os artefatos públicos foram verificados por digest: E2E `sha256:ddd6dd04e6d3a9095856fdac5dffd26f2b505919289ebcfa17f68ff30e9a7ab0`
+e performance `sha256:5cad7f84f2930d9cc3d85b59501e97963750719c6353ea76feb3117503131ec2`.
 Resultados históricos de outros SHAs não são reutilizados como prova deste candidato.
 
 ## CI por job
@@ -55,7 +55,7 @@ Resultados históricos de outros SHAs não são reutilizados como prova deste ca
 | Performance (k6 SLOs) | failure |
 | Unit Tests | success |
 
-## Última execução remota — candidato `5470b4f5`
+## Execução remota anterior — candidato `5470b4f5` (histórico)
 
 O run [34542095726](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34542095726)
 terminou com 15 de 16 jobs em `success`. Typecheck, SAST, Secret Scan, Dependency
@@ -93,6 +93,55 @@ não converte esses FAILs em PASS.
 
 Esse run prova a execução remota vinculada ao candidato, mas não prova o quality
 bar 97/95/zero-P0, governança da branch, runtime RLS, crash/recovery do worker,
+golden path clínico completo, soak 24/72h, UAT humano, restore production-like,
+deploy no ambiente alvo, attestation de imagem ou autoridade de release.
+
+## Última execução remota — candidato `ef30673f`
+
+O run [34546979414](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34546979414)
+terminou com 15 de 16 jobs em `success`: Typecheck, SAST, Secret Scan,
+Dependency Audit, Lint, OpenAPI, Repository Guards, Coverage, Build, API
+Contract, Unit, Windows, Integration, E2E SPA e Visual passaram. O único job em
+`failure` foi Performance (k6 SLOs). O limite de bootstrap do supervisor Windows
+foi exercitado no runner hospedado e passou com cleanup completo; o ajuste de
+30s para 60s não relaxou o limite de execução do processo nem o cleanup.
+
+O perfil remoto de 60 VUs mediu 4/9 SLOs nesta rodada:
+
+| Métrica | P95 observado | Alvo | Resultado |
+| --- | ---: | ---: | --- |
+| API | 270,80 ms | < 200 ms | FAIL |
+| Query | 285 ms | < 150 ms | FAIL |
+| Write | 351,85 ms | < 300 ms | FAIL |
+| Billing | 332 ms | < 250 ms | FAIL |
+| Inventory | 315,35 ms | < 200 ms | FAIL |
+| Auth | 27,91 ms | < 300 ms | PASS |
+| API errors | 0 | < 0,1% | PASS |
+| Availability | 100% | >= 99,5% | PASS |
+
+Os diagnósticos por endpoint foram `inventory_create_latency_ms` P95 351,47 ms,
+`inventory_read_latency_ms` 249,56 ms, `query_patients_list_latency_ms` 240,85
+ms e `query_patient_detail_latency_ms` 248,85 ms. A rodada imediatamente
+anterior, no mesmo runner e sem relaxar limiares, passou 9/9; esta diferença é
+registrada como variância de contenção, não como certificação. O artefato
+`performance-k6-report` (ID `10179866930`, digest
+`sha256:5cad7f84f2930d9cc3d85b59501e97963750719c6353ea76feb3117503131ec2`)
+é a fonte dos números acima.
+
+O artefato E2E (ID `10180087681`, digest
+`sha256:ddd6dd04e6d3a9095856fdac5dffd26f2b505919289ebcfa17f68ff30e9a7ab0`)
+contém 422 testes esperados, zero skipped, zero unexpected e zero flaky; a
+validação de inventário confirmou 151 rotas e 302 navegações no ambiente
+`ci-postgresql`, Chromium 145.0.7632.6, Playwright 1.58.2, locale `pt-BR` e
+timezone `America/Sao_Paulo`. O merge SHA registrado no metadata é
+`29e5c32b6f2904525b40859d7a404e5fa0fba0a1` e o inventory digest é
+`d2ca0efa69c4261a9854d2f1bd111d2f3c881fc839ab6faa9efa79dae1122872`.
+O relatório enterprise permanece advisory, `PASS: 10 | WARN: 2 | FAIL: 2`:
+readiness 92/100 e Vetus parity não verificado; backup/deploy reais seguem sem
+evidência externa.
+
+Esta execução confirma o fix Windows no candidato, mas não prova o quality bar
+97/95/zero-P0, governança da branch, runtime RLS, crash/recovery do worker,
 golden path clínico completo, soak 24/72h, UAT humano, restore production-like,
 deploy no ambiente alvo, attestation de imagem ou autoridade de release.
 
