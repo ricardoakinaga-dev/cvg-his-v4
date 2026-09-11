@@ -14,7 +14,8 @@
       "evidence_refs": [
         "docs/triple-a/00-baseline.md",
         "docs/engineering/TRIPLE_A_BASELINE.md",
-        ".agent/verification.jsonl#VER-TRIPLE-A-BASELINE-20260910-CURRENT-CD7399-FINAL"
+        "docs/triple-a/15-current-baseline.md",
+        ".agent/verification.jsonl#VER-STATE-OF-ART-CURRENT-20260911"
       ],
       "next_action": {
         "id": "TRIPLE-A-BASELINE:REOPEN",
@@ -45,11 +46,11 @@
         "docs/triple-a/16-requirement-traceability.md"
       ],
       "next_action": {
-        "id": "TRIPLE-A-RELEASE-CONTROL:INTEGRATE-CI-REPAIRS",
+        "id": "TRIPLE-A-RELEASE-CONTROL:OBSERVE-DOCUMENTATION-CI-104",
         "kind": "VERIFY",
-        "summary": "Fechar revisão e regressão das correções Windows, inventário e E2E; preparar candidato para CI completo sem reduzir thresholds.",
-        "target": "infra/scripts/critical-process-suite-runtime.mjs; apps/api/src/routes/inventory-routes.ts; e2e/spa/inventory-*-report-flow.spec.ts",
-        "completion_signal": "Correções aprovadas em revisão independente, testes integrados atuais, novo CI completo observado e todos os 16 jobs aprovados no mesmo SHA."
+        "summary": "Observar o CI documental final e manter a evidência funcional separada do commit metadata-only; não relaxar thresholds.",
+        "target": ".github/workflows/ci.yml; docs/triple-a/15-current-baseline.md; docs/triple-a/FINAL_REPORT.md",
+        "completion_signal": "Run 34584191558 terminal reconciliado; o candidato funcional conserva evidência própria e nenhum resultado documental é transferido para outro SHA."
       }
     },
     {

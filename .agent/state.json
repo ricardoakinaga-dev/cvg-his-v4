@@ -18,7 +18,7 @@
   "active_execplan": ".agent/plans/external-assurance-closure-execplan.md",
   "active_task": "TRIPLE-A-RELEASE-CONTROL",
   "verification_state": "PARTIAL",
-  "repository_state": "fix/state-of-art-ci-assurance source@3cfe8b33a23a2f46988abb572fc5b1ba08a88376; source changes committed, documentation checkpoint pending; remote main b85b03ea CI34509025262 failed; next candidate CI not run",
+  "repository_state": "main@7d22cacccdb3f930912c83312752e7806ddea048 equals origin/main; functional candidate 5a079ceca57b246e17ecb0214ed1e2b9e9e23500 is documented in a metadata-only chain; source rollback branch origin/fix/state-of-art-ci-assurance remains preserved",
   "instruction_scope_refs": [
     ".agent/plans/external-assurance-closure-execplan.md",
     "docs/triple-a/MASTER_PROMPT_EXTERNAL_CLOSURE.md",
@@ -33,13 +33,13 @@
     "docs/triple-a/16-requirement-traceability.md"
   ],
   "last_gate_record": null,
-  "last_event_id": "EVT-STATE-OF-ART-RECOVERY-20260910",
-  "state_revision": 10,
+  "last_event_id": "EVT-STATE-OF-ART-CURRENT-20260911",
+  "state_revision": 11,
   "next_gate": "VERIFIED",
-  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:INTEGRATE-CI-REPAIRS",
+  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:OBSERVE-DOCUMENTATION-CI-104",
   "blocked_by": [
-    "Release blocked: remote main CI34509025262 failed Windows/E2E/performance; local repairs being verified",
-    "Current target evidence, UAT, soak24/72h, branch governance, image attestations and release authority not proven"
+    "Functional candidate CI34577711985 is terminal failure with 15/16 jobs passed; Performance failed again despite local 9/9 reproduction",
+    "Current target evidence, UAT, soak24/72h, branch governance, image attestations and release authority are not proven"
   ],
   "human_approval_required": [
     "production deployment or rollback",
@@ -48,5 +48,5 @@
     "destructive backup/restore/chaos drills on shared infrastructure",
     "final release authority and Triple-A certification"
   ],
-  "updated_at": "2026-09-10T18:46:33.857715+00:00"
+  "updated_at": "2026-09-11T09:45:46.590Z"
 }
