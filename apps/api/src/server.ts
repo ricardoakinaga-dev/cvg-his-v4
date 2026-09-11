@@ -3802,20 +3802,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           ): Promise<T> => withTenantTransaction(accountId, async () => command(), metadata)
         : undefined)
   });
-  const workflowTasks =
-    options.workflowTaskService ?? createApiWorkflowTaskService(options.environment);
-  const clinicalOperationalMetricsProvider =
-    options.clinicalOperationalMetricsProvider ??
-    createClinicalOperationalMetricsProvider({
-      users,
-      inpatient,
-      encounters,
-      workflowTasks,
-      prescriptionExecutions,
-      diagnostics,
-      clinicalHandoffs
-    });
-  const ensureWorkflowTaskSchemaReady = createWorkflowTaskSchemaReadinessGuard(options.environment);
+  const workflowTasks = options.workflowTaskService ?? createApiWorkflowTaskService(options.environment);
+  const clinicalOperationalMetricsProvider = options.clinicalOperationalMetricsProvider ?? createClinicalOperationalMetricsProvider({ users, inpatient, encounters, workflowTasks, prescriptionExecutions, diagnostics, clinicalHandoffs }); const ensureWorkflowTaskSchemaReady = createWorkflowTaskSchemaReadinessGuard(options.environment);
   const refreshAccessControlCaches = async (accountId: AccountId): Promise<void> => {
     try {
       await Promise.all([
