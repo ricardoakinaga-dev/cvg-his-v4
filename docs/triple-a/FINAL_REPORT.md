@@ -1,27 +1,27 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Code candidate:** `main@e8d7eaec35004c9492db78920c8652c8171bfd1e`
-**Observed:** 2026-09-11T14:53:11Z
-**Repository state:** `main` e `origin/main` estão sincronizados após push fast-forward; o rollback `origin/fix/state-of-art-ci-assurance@fe5406c2` permanece preservado.
+**Code candidate:** `main@ecd75335381cd85ee7e20fb3f97302f769a0b539`
+**Observed:** `2026-09-11T18:19:59Z`
+**Repository state:** o candidato funcional foi publicado em `main` por fast-forward, sem force-push; este relatório é um snapshot documental posterior.
 **Verdict:** **BLOCKED / NOT PROVEN**
 
-Este relatório registra o HEAD publicado após as correções de frescor do release gate e acessibilidade clínica. O CI #116 desse SHA terminou com 15/16 jobs: Performance (k6 SLOs) falhou com exit 99/1. O resultado não autoriza release; as provas externas, operacionais e humanas exigidas continuam ausentes.
+O candidato publicado adiciona a jornada canônica de internação, métricas
+clínicas agregadas ligadas ao `/metrics` e uma correção de acessibilidade nas
+abas de workflow. A validação local passou API `590/590`, E2E clínico `2/2` e
+SPA focada `32/32`.
 
-A execução local corrente acrescentou evidência bounded: PostgreSQL descartável passou 66/66 arquivos e 615/615 testes, o runner de processos passou 11/11 cenários com Redis local pinned e o perfil k6 passou 9/9 SLOs. Esses resultados estão detalhados em [17-current-execution-evidence.md](./17-current-execution-evidence.md) e não reclassificam o job remoto falho.
+O CI exato [#122](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34632644376)
+ainda está `in_progress`. O run anterior #121 pertence ao SHA anterior e
+falhou somente em Performance; nenhum resultado é transferido entre commits.
+O gate estrito local do candidato é `BLOCKED`, score `34`, critical `23`,
+`27` P0 e `publication_allowed=false`.
 
-O gate estrito local em `e8d7eaec` retornou `BLOCKED / NOT PROVEN`, score `34`, critical `23` e `27` P0 abertos, com `publication_allowed=false`; thresholds não foram relaxados.
+O quality bar congelado exige score geral mínimo `97`, score crítico mínimo `95`,
+zero P0 e main verde no mesmo candidato. Permanecem sem prova suficiente
+governança da branch, RLS no runtime alvo, recovery/restore, deploy/rollback,
+soak, attestation, UAT humano e autoridade de release. Este relatório não emite
+`TRIPLE-A VERIFIED`.
 
-O prompt vigente está preservado byte a byte em [MASTER_PROMPT_STATE_OF_ART.md](./MASTER_PROMPT_STATE_OF_ART.md), com SHA-256 872014ed989fa4b565bbab5293009c13ef6437104204cbf39c876e64a593f745. O quality bar congelado exige score geral mínimo 97, score crítico mínimo 95, zero P0, main verde e evidência atual. Nenhuma regra foi relaxada.
-
-## Evidência ligada ao SHA atual
-
-- O CI [#34609488994](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34609488994) terminou `failure` no HEAD exato `e8d7eaec`: 15/16 jobs passaram; `Run k6 benchmark` terminou exit 99 e `Check SLO results` exit 1. Logs detalhados/métricas do job não estão disponíveis publicamente, então nenhuma causa adicional é inferida.
-- Validações locais do candidato passaram: testes focados SPA 3/3 e 33/33, design-system 5/5, lint/typecheck dos pacotes, gate 15/15, `docs:validate` e `git diff --check`. Nenhum score histórico é transferido.
-- O run verde anterior pertence a checkouts anteriores e permanece histórico; thresholds não foram alterados.
-- Os cinco pareceres correntes de segurança, clínica, banco de dados, operações e UX estão em [final-security-critic.md](./final-security-critic.md), [final-clinical-critic.md](./final-clinical-critic.md), [final-database-critic.md](./final-database-critic.md), [final-operations-critic.md](./final-operations-critic.md) e [final-ux-critic.md](./final-ux-critic.md); todos mantêm o veredito BLOCKED / NOT PROVEN.
-
-## Lacunas que mantêm o bloqueio
-
-O gate local é diagnóstico e gera o envelope em `artifacts/release/` e no caminho canônico `artifacts/triple-a/TRIPLE_A_RELEASE_EVIDENCE.json`; nenhum envelope foi promovido como prova. Permanecem sem prova suficiente CI verde, logs autenticados dos jobs falhos, branch protection/required checks, Windows nativo, RLS e isolamento runtime no alvo, crash/recovery e soak 24/72h, restore/RPO/RTO, deploy/rollback, imagem/attestation, observabilidade operacional, UAT clínico e autoridade humana de release.
-
-O claim TRIPLE-A VERIFIED não é emitido. O relatório anterior foi preservado em [scorecard-history/2026-09-10-before-b85b03ea-FINAL_REPORT.md](./scorecard-history/2026-09-10-before-b85b03ea-FINAL_REPORT.md); seus números não são evidência do candidato atual.
+O prompt está preservado em [MASTER_PROMPT_STATE_OF_ART.md](./MASTER_PROMPT_STATE_OF_ART.md),
+com SHA-256 `872014ed989fa4b565bbab5293009c13ef6437104204cbf39c876e64a593f745`.
+O histórico de scorecards está em [scorecard-history](./scorecard-history).

@@ -9,6 +9,12 @@ proveniência da régua congelada sem misturar candidatos ou alterar thresholds.
 A tabela mantém o escopo completo. “NOT PROVEN” significa que a aceitação
 integral da fase não foi demonstrada no candidato corrente; não significa
 que o código esteja ausente. Evidência local, CI e alvo são avaliados separadamente.
+A implementação corrente `ecd75335381cd85ee7e20fb3f97302f769a0b539` adiciona
+evidência local para F15/F16/F47/F50/F52/F54/F55: os dois specs clínicos passam
+localmente, os gauges clínicos são compostos no `/metrics` sem labels de tenant
+e a página de workflow mantém relações ARIA estáveis. Essas provas continuam
+abaixo da aceitação integral porque o CI do SHA está em execução e ainda faltam
+target, governança, UAT e autoridade de release.
 A [fotografia atual](./15-current-baseline.md) contém SHA, CI e lacunas medidas.
 
 | ID | Requisito do prompt | Estado integral | Próxima prova de aceitação |

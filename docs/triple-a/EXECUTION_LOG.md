@@ -449,3 +449,12 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 
 - `TRIPLE_A_SKIP_EXECUTION=1 pnpm release:triple-a` gerou decisão `BLOCKED / NOT PROVEN`, score `33`, critical `20` e `28` P0 abertos; `publication_allowed=false`.
 - O JSON foi escrito em diretório temporário e não foi promovido a artefato de release. Thresholds continuam `97/95/zero P0`.
+
+## 2026-09-11T18:19:59Z — Merge seguro do candidato `ecd75335`
+
+- O commit funcional `ecd75335381cd85ee7e20fb3f97302f769a0b539` foi criado em `main` e publicado com fast-forward; nenhum force-push foi usado. A branch `origin/fix/state-of-art-ci-assurance@fe5406c2` continua preservada para rollback.
+- A alteração liga ao `/metrics` os gauges clínicos agregados sem labels de tenant, adiciona teste unitário do provider, inclui a jornada E2E de internação no job obrigatório e estabiliza a relação ARIA das abas de workflow.
+- Validação local: suíte API `590/590`, provider de métricas `2/2`, E2E clínico combinado `2/2` em PostgreSQL/Redis local, SPA focada `32/32`, build/lint e Playwright discovery passaram.
+- O gate estrito no SHA atual retornou `BLOCKED / NOT PROVEN`, score `34`, critical `23`, `27` P0 e `publication_allowed=false`; thresholds não foram relaxados e o envelope não foi promovido.
+- Após o push, `HEAD`, `main` e `origin/main` coincidem no SHA exato. O CI [#34632644376](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34632644376) foi criado para esse SHA e permanece `in_progress`; o resultado não é promovido antes do estado terminal.
+- Risco restante: o CI anterior falhou no k6, e ainda faltam provas de target, governança, recovery/restore, soak, UAT, attestation e autoridade de release. Estado: **BLOCKED / NOT PROVEN**.

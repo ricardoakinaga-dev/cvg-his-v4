@@ -1,61 +1,44 @@
 # Evidência de execução corrente — State of Art
 
-Observado em `2026-09-11` no checkout `0abdf651fbb2433163b8d94fcaa6e59cd5199f8d`.
-`HEAD` e `origin/main` coincidem; o código funcional deste snapshot é o candidato
-`bb16a47f` e as alterações posteriores são apenas controles/documentação de assurance.
+Observado em `2026-09-11T18:19:59Z` no checkout
+`ecd75335381cd85ee7e20fb3f97302f769a0b539`, com `origin/main` coincidente.
 
-## PostgreSQL de integração
+## Validações locais do candidato
 
-| Campo | Resultado |
+| Escopo | Resultado |
 | --- | --- |
-| Comando | `REQUIRE_TEST_DB=1 TEST_DB_EPHEMERAL=1 TEST_DB_SUFFIX=stateofart_db_<timestamp> DATABASE_URL=<admin-url>/cvg_his_v2_test_stateofart DATABASE_URL_TEST=<same> pnpm exec vitest run tests/integration/database tests/integration/setup tests/integration/foundational.test.ts --config vitest.integration.config.ts --reporter=verbose --no-file-parallelism` |
-| Resultado | **PASS local** — 66 arquivos e 615 testes passaram; exit 0; duração 183,78 s |
-| Ambiente | PostgreSQL local descartável, migrations e seed reais; o banco efêmero foi removido no teardown |
-| Escopo | RLS/tenant, workflow clínico, auditoria append-only, billing/financeiro, leases/fencing, migrations, invariantes e cenários fundacionais |
+| API build/lint | PASS |
+| Suíte API | PASS — `590/590`, incluindo o provider de métricas clínicas `2/2` |
+| E2E clínico | PASS — `2/2` (jornada clínica e jornada inpatient) em PostgreSQL/Redis local |
+| SPA focada | PASS — `32/32` testes da página de atendimento; lint passou |
+| Playwright discovery | PASS — novo spec listado sem erro |
+| Diff/format dos arquivos novos | PASS — `git diff --check` e Prettier passaram; o único alerta de Prettier restante é formatação histórica não relacionada em `server.ts` |
 
-Esta execução é evidência local vinculada ao SHA corrente. Ela não substitui CI
-Ubuntu/Node 22, ambiente alvo, branch governance ou autorização de release.
+O E2E local usou PostgreSQL e Redis locais adaptados; o banco não é a instância
+efêmera do CI. A evidência comprova o comportamento exercitado, mas não prova
+RLS, governança ou o ambiente alvo.
 
-## Runner de processos críticos
+## Performance e CI
 
-| Campo | Resultado |
-| --- | --- |
-| Comando | `REQUIRE_TEST_DB=1 TEST_DB_EPHEMERAL=1 DATABASE_URL=<admin-url>/cvg_his_v2_test_stateofart DATABASE_URL_TEST=<same> REDIS_SERVER_BIN=/tmp/opencode/redis-src/src/redis-server REDIS_CLI_BIN=/tmp/opencode/redis-src/src/redis-cli pnpm test:critical:process` |
-| Resultado | **PASS local** — 11/11 cenários foram executados como não-skipped e o runner terminou com `Completed 11 process test(s) serially` |
-| Escopo | Setup distribuído, laboratório, SIGKILL/reclaim, fencing, restart, child process, concorrência de caixa, settlement PIX, worker entrypoint, webhook delivery e workflow task |
-| Ambiente | PostgreSQL efêmero por cenário e Redis local pinned 8.10.1; cada banco foi limpo pelo runner |
+A última execução local bounded do perfil k6 passou `9/9` SLOs, com erros `0%`,
+disponibilidade `100%` e gauges de pool sem espera; ela foi executada no SHA
+anterior `b953ff3384596b7b0ebd486ec9cb2b43f71bb85e` e permanece explicitamente
+fora da evidência do candidato atual. Não houve relaxamento de thresholds.
 
-O primeiro ensaio sem os caminhos Redis disponíveis foi corretamente bloqueado
-por ambiente; nenhum skip foi promovido a PASS. O segundo ensaio forneceu os
-binários explicitamente e executou todos os cenários.
+O CI exato [#122](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34632644376)
+está `in_progress`. O run terminal [#121](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34624736494)
+foi no SHA anterior, terminou `failure` com 15/16 jobs e falhou somente em
+`Performance (k6 SLOs)`.
 
-## Perfil k6 operacional
+## Gate estrito
 
-| Métrica | P95 observado | P99 observado | Alvo |
-| --- | ---: | ---: | ---: |
-| API | 33,99 ms | 46,03 ms | < 200 / < 500 ms |
-| Query | 36 ms | 58 ms | < 150 ms |
-| Billing | 41 ms | 52 ms | < 250 ms |
-| Inventory | 38,46 ms | 49,95 ms | < 200 ms |
-| Write | 43 ms | 54 ms | < 300 ms |
-| Auth | 16,50 ms | 16,50 ms | < 300 ms |
-| Disponibilidade | 100% | — | >= 99,5% |
+`TRIPLE_A_SKIP_EXECUTION=1 pnpm release:triple-a` retornou `BLOCKED`, score
+`34`, critical `23`, `27` P0 e `publication_allowed=false`. Nenhum envelope
+local foi promovido como release.
 
-Comando: `/tmp/k6-v0.55.0 run benchmarks/k6/api-benchmark.js`, com
-`TARGET=http://127.0.0.1:3101`, `LOAD_PROFILE=operational-minimum-v1`, pool
-PostgreSQL `60/8`, banco e tenant descartáveis. O perfil completou 4.226
-iterações, 60 VUs e **9/9 SLOs**; o banco foi removido e a API foi encerrada.
+## Limitações
 
-Este resultado explica que a implementação passa o perfil em um ambiente local
-isolado, mas não substitui o CI pinned: o CI exato do candidato funcional,
-run [#34593912427](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34593912427),
-permanece `failure` porque somente `Performance (k6 SLOs)` falhou. O relatório
-remoto não é reclassificado a partir desta execução local e nenhum threshold foi
-alterado.
-
-## Limitações de fechamento
-
-O gate permanece **BLOCKED / NOT PROVEN**. Continuam sem prova no mesmo boundary
-do release: run remoto verde, logs autenticados do job de performance, branch
-protection/required checks, target deploy/rollback, restore/RPO/RTO, soak 24/72h,
-attestation de imagem, UAT humano e autoridade de release.
+Continuam sem prova no mesmo boundary de release: CI terminal verde no SHA
+atual, logs autenticados do benchmark, branch protection, runtime RLS no alvo,
+deploy/rollback, restore/RPO/RTO, attestation de imagem, soak 24/72h, UAT
+humano e autoridade de release. O claim `TRIPLE-A VERIFIED` permanece proibido.
