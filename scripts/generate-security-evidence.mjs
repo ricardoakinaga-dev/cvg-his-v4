@@ -101,7 +101,7 @@ function collectComponents() {
         type: 'library',
         name,
         version,
-        'bom-ref': `${name}@${version}`,
+        'bom-ref': `library:${name}@${version}`,
         properties: [{ name: 'cvg:declaredBy', value: file }]
       });
     }
@@ -109,15 +109,36 @@ function collectComponents() {
 
   const unique = new Map();
   for (const component of components) {
-    const key = `${component.type}:${component.name}:${component.version}:${component.properties?.[0]?.value ?? ''}`;
-    if (!unique.has(key)) {
+    const key = `${component.type}:${component.name}:${component.version}`;
+    const existing = unique.get(key);
+    if (!existing) {
       unique.set(key, component);
+      continue;
     }
+
+    const existingProperties = existing.properties ?? [];
+    for (const property of component.properties ?? []) {
+      const alreadyDeclared = existingProperties.some((candidate) =>
+        candidate.name === property.name && candidate.value === property.value
+      );
+      if (!alreadyDeclared) existingProperties.push(property);
+    }
+    existing.properties = existingProperties;
   }
 
   return [...unique.values()].sort((a, b) =>
     `${a.name}${a.version}`.localeCompare(`${b.name}${b.version}`)
   );
+}
+
+function assertUniqueBomRefs(components) {
+  const refs = components.map((component) => component['bom-ref']);
+  if (refs.some((ref) => typeof ref !== 'string' || ref.length === 0)) {
+    throw new Error('SBOM component is missing a non-empty bom-ref.');
+  }
+  if (new Set(refs).size !== refs.length) {
+    throw new Error('SBOM component bom-ref values must be unique.');
+  }
 }
 
 function validateSemgrepCi() {
@@ -164,6 +185,7 @@ const sbom = {
   },
   components: collectComponents()
 };
+assertUniqueBomRefs(sbom.components);
 
 const sbomPath = join(outputPath, 'sbom.cyclonedx.json');
 writeFileSync(sbomPath, `${JSON.stringify(sbom, null, 2)}\n`);

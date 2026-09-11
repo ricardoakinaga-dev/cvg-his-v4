@@ -253,3 +253,10 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - Benchmark local efêmero: PostgreSQL/Redis descartáveis, k6 v0.55.0, perfil operational-minimum-v1, 60 VUs, 3m30s; 9/9 SLOs, API p95 51,46 ms, query 56 ms, write 63 ms, billing 61 ms, inventory 56,64 ms, auth 19,13 ms, erros 0%, disponibilidade 100%. Esta evidência é local e não substitui CI/target.
 - Validações locais vinculadas ao candidato: docs/OpenAPI/workflow clínico, testes focados 65/65, contratos workflow/infra 44/44, API 587/587, build SPA, PostgreSQL efêmero 16/16 e SIGKILL 1/1. O worktree rastreado permanece limpo.
 - Documentação corrente foi reconciliada em 00-baseline.md, 13-final-scorecard.md, 14-external-evidence-baseline.md, 15-current-baseline.md, FINAL_REPORT.md e neste log. O gate não autoriza TRIPLE-A VERIFIED; score, critical score e zero P0 continuam NOT PROVEN.
+
+## 2026-09-11T04:00:08Z — Correção do SBOM CycloneDX
+
+- A coleta local de segurança encontrou um defeito real no gerador: dependências compartilhadas recebiam bom-ref duplicado, fazendo o validador CycloneDX rejeitar o artefato apesar do SAST e da auditoria passarem.
+- `scripts/generate-security-evidence.mjs` agora deduplica componentes por tipo/nome/versão, agrega os declarantes e usa referências de biblioteca distintas; uma asserção falha fechado se qualquer bom-ref não for único.
+- `SECURITY_EVIDENCE_DIR=artifacts/release pnpm security:evidence` passou com auditoria/SAST PASS e SBOM de 199 componentes. Os testes de contrato do gate e de segurança passaram 13/13.
+- A correção é código local e ainda exige CI no novo SHA; não prova assinatura/proveniência de imagens, attestation, registry ou ambiente alvo.
