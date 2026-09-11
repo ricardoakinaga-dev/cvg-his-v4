@@ -33,10 +33,11 @@ const WINDOWS_HELPER_CLOSE_GRACE_MS = 100;
 const WINDOWS_FORCE_RESERVE_MS = WINDOWS_TREE_COMMAND_TIMEOUT_MS * 2;
 // PowerShell must start and compile the native supervisor before the target
 // can run. Bound that phase separately; it must not consume the child budget.
-// Hosted Windows runners can spend more than ten seconds importing the
-// trusted PowerShell modules and compiling the native supervisor. Keep a
-// finite bootstrap budget with enough headroom for that cold start.
-export const WINDOWS_SUPERVISOR_STARTUP_TIMEOUT_MS = 30_000;
+// Hosted Windows runners can spend tens of seconds importing the trusted
+// PowerShell modules and compiling the native supervisor. Keep a finite
+// bootstrap budget with enough headroom for that cold start without allowing
+// an unbounded child process.
+export const WINDOWS_SUPERVISOR_STARTUP_TIMEOUT_MS = 60_000;
 const WINDOWS_TREE_CLEANUP_BUDGET_MS =
   TERMINATION_GRACE_MS + GROUP_CLEANUP_HARD_GRACE_MS + WINDOWS_FORCE_RESERVE_MS;
 const MAX_WINDOWS_TREE_PIDS = 256;
