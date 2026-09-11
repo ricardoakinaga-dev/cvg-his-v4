@@ -1,5 +1,27 @@
 # Triple-A — Execution Log
 
+## 2026-09-11T13:02:08Z — candidato local `055f282d` e correções de acessibilidade/gate
+
+- **Candidato:** `main@055f282db45cf35368ba6f5b24c7870e1c89e118`, dois commits à
+  frente de `origin/main@533a12a4940baca7a71a2fd6cd67a306ac2efcd4`; worktree
+  limpo e rollback `origin/fix/state-of-art-ci-assurance@fe5406c2` preservado.
+- **Código:** tabs do seletor de clientes com semântica e teclado completos,
+  cartões sem botões aninhados, `role=listitem`, região acessível para nova
+  execução de prescrição e botão de fechamento do modal com alvo mínimo de 44px.
+- **Gate:** `TRIPLE_A_SKIP_EXECUTION=1 pnpm release:triple-a` retornou
+  `BLOCKED / NOT PROVEN`, score `34`, crítico `23`, `27` P0 abertos e
+  `publication_allowed=false`; o artefato temporário não foi promovido.
+- **Validação:** testes SPA 3/3 e 33/33, design-system 5/5, lint/typecheck dos
+  dois pacotes, testes do gate 15/15, `docs:validate` e `git diff --check`: PASS.
+- **Prompt:** o gate agora valida o caminho e o SHA declarados em
+  `QUALITY_BAR_V1.json`; a missão State of Art e o prompt histórico do quality
+  bar permanecem preservados sem misturar proveniências.
+- **CI:** run [#34599938521](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34599938521)
+  ainda pertence ao pai `533a12a4`; Typecheck, segurança, cobertura, build,
+  contratos, Unit, Visual, Performance e Windows passaram na observação, mas
+  E2E SPA e Integration ainda executavam. Nenhum resultado parcial é promovido
+  ao candidato `055f282d`; o push aguarda o estado terminal.
+
 ## 2026-09-11T10:35:44Z — CI #108 e contratos operacionais do candidato `5b036836`
 
 - **Candidato:** `main@5b036836bf71bc3a6c62bd151a2b19f235d3e2fc`; o snapshot documental metadata-only que contém esta entrada será sincronizado em `main`/`origin/main`. A origem `origin/fix/state-of-art-ci-assurance` permanece preservada para rollback.

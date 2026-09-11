@@ -1,25 +1,33 @@
 # Baseline corrente — State of Art
 
-Observado em 2026-09-11T12:29:58Z. O candidato funcional corrente é `bb16a47f`; `main` e `origin/main` estão sincronizados no snapshot corrente de assurance em `0abdf651`. A execução local corrente de PostgreSQL, processos críticos e k6 está detalhada em [17-current-execution-evidence.md](./17-current-execution-evidence.md). Esta entrada registra o CI terminal do SHA exato; as seções posteriores são históricas e não transferem resultados para outro SHA.
+Observado em 2026-09-11T13:02:08Z. O candidato de código local corrente é
+`055f282db45cf35368ba6f5b24c7870e1c89e118`; `origin/main` ainda está em
+`533a12a4940baca7a71a2fd6cd67a306ac2efcd4` enquanto o run #113 do snapshot
+anterior termina. Os dois commits locais seguintes são reversíveis e serão
+publicados somente após a conclusão desse run. A execução local corrente de
+PostgreSQL, processos críticos e k6 está detalhada em
+[17-current-execution-evidence.md](./17-current-execution-evidence.md). Esta
+entrada separa o candidato local, o remoto e os resultados de CI; nenhum
+resultado de outro SHA é transferido.
 
 ## Estado do candidato atual
 
 | Campo | Evidência atual |
 | --- | --- |
-| current_sha | `bb16a47f` (candidato funcional) |
-| main_sha | snapshot corrente de assurance; candidato funcional `bb16a47f` |
-| origin/main | snapshot corrente de assurance; candidato funcional `bb16a47f` |
+| current_sha | `055f282db45cf35368ba6f5b24c7870e1c89e118` (candidato local de código) |
+| main_sha | `055f282db45cf35368ba6f5b24c7870e1c89e118` (HEAD local; push pendente do término do run #113) |
+| origin/main | `533a12a4940baca7a71a2fd6cd67a306ac2efcd4` (snapshot remoto observado) |
 | worktree | Limpo para arquivos rastreados; artefatos locais estão ignorados |
-| ci_run | [#34593912427](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34593912427), `failure` — 15/16 jobs passaram; Performance falhou |
-| overall_score | gate estrito no snapshot `0abdf651`: 33; mínimo congelado 97 |
-| critical_score | gate estrito no snapshot `0abdf651`: 20; mínimo congelado 95 |
-| open_p0 | gate estrito no snapshot `0abdf651`: 28; máximo congelado 0 |
-| implemented | Restore database-only compatível com `storageIncluded=false`, Helm de produção fail-closed por digest e leitura record-only para estimativas, além dos controles anteriores de release, OCI, provenance e acessibilidade |
-| verified_local | `pnpm test`, typecheck, lint, OpenAPI, complexidade, identidade de fontes críticas, RLS estático, supply chain, dependências, backup/restore e Helm estático passaram; 66/66 arquivos e 615/615 testes PostgreSQL descartáveis passaram; runner de processos 11/11 e k6 local 9/9 SLOs passaram; billing focused/API tests passaram |
-| verified_remote | Run #111 terminal: Repository Guards, Unit, Integration, E2E SPA, Visual, Windows e API Contract passaram; Performance (k6 SLOs) falhou |
+| ci_run | [#34599938521](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34599938521), em execução para o pai `533a12a4`; não é transferível ao candidato `055f282d` |
+| overall_score | gate estrito local em `055f282d`: 34; mínimo congelado 97 |
+| critical_score | gate estrito local em `055f282d`: 23; mínimo congelado 95 |
+| open_p0 | gate estrito local em `055f282d`: 27; máximo congelado 0 |
+| implemented | Frescor de envelopes externos com fail-closed, identidade de prompt declarada no quality bar, tabs acessíveis no seletor de clientes, ações sem controles aninhados, região acessível para criação de execução e alvo de toque de 44px no modal |
+| verified_local | Testes focados SPA 3/3 e 33/33, design-system 5/5, lint/typecheck dos dois pacotes, gate 15/15, docs:validate e diff check passaram; evidência anterior bounded de PostgreSQL 66/66, processos 11/11 e k6 local 9/9 permanece limitada ao snapshot documentado |
+| verified_remote | Run #113 do pai `533a12a4`: Typecheck, segurança, cobertura, build, contratos, Unit, Visual, Performance e Windows passaram; E2E SPA e Integration ainda estavam em execução na observação |
 | verified_target | NOT PROVEN |
-| blocked | Performance remota falhou; a reprodução local não transfere PASS; branch governance, ambiente alvo, recuperação/soak, UAT e autoridade de release permanecem sem prova |
-| not_proven | Quality bar 97/95/zero P0, Windows nativo fora do runner Linux, RLS/DB runtime no alvo, deploy/rollback, restore/RPO/RTO, attestation, observabilidade operacional e provas humanas |
+| blocked | Push aguardando o término do run #113 para não cancelá-lo; quality bar e gate estrito continuam abaixo do limiar; branch governance, ambiente alvo, recuperação/soak, UAT, attestation e autoridade de release permanecem sem prova |
+| not_proven | Quality bar 97/95/zero P0, CI terminal do SHA `055f282d`, Windows nativo fora do runner Linux, RLS/DB runtime no alvo, deploy/rollback, restore/RPO/RTO, attestation, observabilidade operacional e provas humanas |
 
 ## Evidência corrente
 
