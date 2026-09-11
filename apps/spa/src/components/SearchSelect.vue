@@ -3,12 +3,18 @@
     <div class="search-select__input-wrapper">
       <input
         ref="inputRef"
+        :id="inputId"
         type="text"
         class="search-select__input"
         :value="searchQuery"
         :placeholder="placeholder"
         :disabled="disabled"
+        :aria-label="ariaLabel"
+        :aria-labelledby="ariaLabelledby"
+        :aria-describedby="ariaDescribedby"
         :aria-expanded="isOpen"
+        :aria-controls="isOpen ? listboxId : undefined"
+        :aria-activedescendant="activeOptionId"
         aria-autocomplete="list"
         role="combobox"
         @input="onSearchInput"
@@ -19,7 +25,7 @@
         @keydown.enter.prevent="onEnter"
         @keydown.escape.prevent="close"
       />
-      <span v-if="loading" class="search-select__spinner" aria-label="Carregando...">⏳</span>
+      <span v-if="loading" class="search-select__spinner" role="status" aria-label="Carregando...">⏳</span>
       <button
         v-if="modelValue && !disabled"
         class="search-select__clear"
@@ -31,10 +37,16 @@
       </button>
     </div>
 
-    <div v-if="isOpen && filteredOptions.length > 0" class="search-select__dropdown" role="listbox">
+    <div
+      v-if="isOpen && filteredOptions.length > 0"
+      :id="listboxId"
+      class="search-select__dropdown"
+      role="listbox"
+    >
       <div
         v-for="(option, index) in filteredOptions"
         :key="option.value"
+        :id="optionId(index)"
         class="search-select__option"
         :class="{
           'search-select__option--highlighted': index === highlightedIndex,
@@ -52,6 +64,8 @@
     <div
       v-if="isOpen && !loading && filteredOptions.length === 0 && searchQuery"
       class="search-select__empty"
+      role="status"
+      aria-live="polite"
     >
       Nenhum resultado encontrado
     </div>
@@ -59,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed, useId } from 'vue';
 
 export interface SearchSelectOption {
   label: string;
@@ -67,6 +81,10 @@ export interface SearchSelectOption {
 }
 
 interface Props {
+  id?: string;
+  ariaLabel?: string;
+  ariaLabelledby?: string;
+  ariaDescribedby?: string;
   modelValue?: string;
   options: SearchSelectOption[];
   placeholder?: string;
@@ -75,6 +93,10 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  id: undefined,
+  ariaLabel: undefined,
+  ariaLabelledby: undefined,
+  ariaDescribedby: undefined,
   modelValue: '',
   placeholder: 'Buscar...',
   disabled: false,
@@ -90,6 +112,9 @@ const searchQuery = ref('');
 const isOpen = ref(false);
 const highlightedIndex = ref(0);
 const inputRef = ref<HTMLInputElement | null>(null);
+const generatedId = `search-select-${useId()}`;
+const inputId = computed(() => props.id || generatedId);
+const listboxId = computed(() => `${inputId.value}-listbox`);
 
 const filteredOptions = computed(() => {
   if (!searchQuery.value) return props.options;
@@ -98,6 +123,15 @@ const filteredOptions = computed(() => {
 });
 
 const selectedOption = computed(() => props.options.find((o) => o.value === props.modelValue));
+const activeOptionId = computed(() =>
+  isOpen.value && filteredOptions.value[highlightedIndex.value]
+    ? optionId(highlightedIndex.value)
+    : undefined
+);
+
+function optionId(index: number): string {
+  return `${listboxId.value}-option-${index}`;
+}
 
 function onSearchInput(event: Event) {
   const value = (event.target as HTMLInputElement).value;
@@ -218,7 +252,8 @@ if (selectedOption.value) {
   color: var(--color-text-muted, #94a3b8);
   cursor: pointer;
   padding: 4px;
-  min-height: auto;
+  min-width: 44px;
+  min-height: 44px;
   line-height: 1;
 }
 
@@ -242,6 +277,9 @@ if (selectedOption.value) {
 }
 
 .search-select__option {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
   padding: 10px 14px;
   font-size: 14px;
   cursor: pointer;

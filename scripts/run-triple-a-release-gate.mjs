@@ -308,6 +308,16 @@ function imageManifestByComponent(manifest) {
   );
 }
 
+function immutableImageReference(image) {
+  const reference = image?.reference;
+  const digest = image?.digest;
+  if (typeof reference !== 'string' || typeof digest !== 'string') return null;
+  const lastColon = reference.lastIndexOf(':');
+  const lastSlash = reference.lastIndexOf('/');
+  if (lastColon <= lastSlash) return null;
+  return `${reference.slice(0, lastColon)}@${digest}`;
+}
+
 function readReleaseManifest(outputDir) {
   const manifestPath = resolve(outputDir, 'release-manifest.json');
   if (!existsSync(manifestPath)) return null;
@@ -363,7 +373,9 @@ export function verifyPublishedImageAttestations({ rootDir, outputDir, commitSha
     const expectedReference = new RegExp(
       `^ghcr\\.io\\/[^\\s/]+\\/cvg-his-v4-${component}@sha256:[0-9a-f]{64}$`
     );
-    if (!image || !expectedReference.test(image.immutable_reference ?? '') || image.immutable_reference !== `${image.immutable_reference?.split('@')[0]}@${image.digest}`) {
+    if (!image
+      || image.immutable_reference !== immutableImageReference(image)
+      || !expectedReference.test(image.immutable_reference ?? '')) {
       return {
         status: 'FAIL',
         path: 'release-manifest.json',
@@ -442,6 +454,7 @@ function validateImageAttestationEnvelope({ rootDir, outputDir, value, artifact,
       const image = images.get(component);
       const attestation = attestations.find((item) => item?.component === component);
       return image
+        && image.immutable_reference === immutableImageReference(image)
         && attestation?.subject_reference === image.reference
         && attestation?.subject_digest === image.digest
         && attestation?.subject_name === image.reference?.split(':')[0]
@@ -648,7 +661,7 @@ export function verifyReleaseManifest({ rootDir, outputDir, commitSha }) {
       && manifest.images.every((image) =>
         /^sha256:[0-9a-f]{64}$/.test(image.digest ?? '') &&
         typeof image.immutable_reference === 'string' &&
-        image.immutable_reference.endsWith(`@${image.digest}`)
+        image.immutable_reference === immutableImageReference(image)
       );
     const sbomPath = manifest.sbom;
     const sbom = typeof sbomPath === 'string'

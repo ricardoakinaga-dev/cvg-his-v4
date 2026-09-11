@@ -17,6 +17,26 @@ describe('SearchSelect', () => {
     expect(wrapper.find('input').attributes('placeholder')).toBe('Buscar...');
   });
 
+  it('keeps the external label target on the input and exposes active listbox semantics', async () => {
+    const wrapper = mount(SearchSelect, {
+      props: { id: 'patientId', options }
+    });
+    const input = wrapper.get('input');
+
+    expect(input.attributes('id')).toBe('patientId');
+    expect(wrapper.find('.search-select').attributes('id')).toBeUndefined();
+
+    await input.trigger('focus');
+    const listbox = wrapper.get('[role="listbox"]');
+    const firstOption = listbox.get('[role="option"]');
+    expect(input.attributes('aria-controls')).toBe(listbox.attributes('id'));
+    expect(input.attributes('aria-activedescendant')).toBe(firstOption.attributes('id'));
+
+    await input.trigger('keydown.down');
+    const secondOption = listbox.findAll('[role="option"]')[1];
+    expect(input.attributes('aria-activedescendant')).toBe(secondOption.attributes('id'));
+  });
+
   it('shows all options when focused', async () => {
     const wrapper = mount(SearchSelect, { props: { options } });
     await wrapper.find('input').trigger('focus');

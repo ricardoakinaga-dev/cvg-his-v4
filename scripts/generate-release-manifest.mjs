@@ -15,6 +15,13 @@ function sha256(path) {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
 }
 
+function immutableImageReference(reference, digest) {
+  const lastColon = reference.lastIndexOf(':');
+  const lastSlash = reference.lastIndexOf('/');
+  if (lastColon <= lastSlash) return `${reference}@${digest}`;
+  return `${reference.slice(0, lastColon)}@${digest}`;
+}
+
 function migrationState(rootDir) {
   const migrationDirectory = resolve(rootDir, 'packages/db/migrations');
   if (!existsSync(migrationDirectory)) {
@@ -91,7 +98,7 @@ export function generateReleaseManifest({
         component: image.component,
         reference: image.reference,
         digest: image.digest,
-        immutable_reference: `${image.reference.split(':')[0]}@${image.digest}`,
+        immutable_reference: immutableImageReference(image.reference, image.digest),
       };
     });
   if (requireImageDigests && normalizedImages.length !== 3) {

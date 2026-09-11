@@ -91,6 +91,13 @@ describe('release manifest', () => {
       });
 
       expect(verifyReleaseManifest({ rootDir, outputDir, commitSha: '3'.repeat(40) }).status).toBe('PASS');
+
+      const manifestPath = resolve(outputDir, 'release-manifest.json');
+      const tamperedManifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+      tamperedManifest.images[0].immutable_reference = `ghcr.io/attacker/cvg-his-v4-api@${digest}`;
+      writeFileSync(manifestPath, `${JSON.stringify(tamperedManifest)}\n`);
+
+      expect(verifyReleaseManifest({ rootDir, outputDir, commitSha: '3'.repeat(40) }).status).toBe('FAIL');
     } finally {
       rmSync(rootDir, { recursive: true, force: true });
     }
