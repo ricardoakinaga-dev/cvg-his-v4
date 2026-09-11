@@ -4,6 +4,7 @@ import { relative, resolve, sep } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const DEFAULT_OUTPUT_DIR = 'artifacts/release';
+const DEFAULT_FINAL_ARTIFACT_DIR = 'artifacts/triple-a';
 const REQUIRED_POLICY_FILES = [
   'docs/engineering/GREEN_MAIN_POLICY.md',
   'docs/clinical/CLINICAL_CRITICALITY_MATRIX.md',
@@ -824,6 +825,15 @@ function currentAreaStatus(criteria, area) {
   return combineStatuses(criteria.filter((item) => item.area === area).map((item) => item.status));
 }
 
+function finalArtifactSection(criteria, ids) {
+  const evidence = evidenceFor(criteria, ids);
+  return {
+    status: combineStatuses(ids.map((id) => currentStatus(criteria, id))),
+    evidence_refs: evidence.refs,
+    limitations: evidence.limitations,
+  };
+}
+
 function evidenceFor(criteria, ids) {
   const selected = ids.map((id) => currentCriterion(criteria, id)).filter(Boolean);
   return {
@@ -1142,8 +1152,38 @@ export function buildReleaseEvidence({
     ],
   };
   const outputPath = resolve(outputDir, 'TRIPLE_A_RELEASE_EVIDENCE.json');
+  const finalArtifactDir = resolve(
+    rootDir,
+    process.env.TRIPLE_A_FINAL_ARTIFACT_DIR ?? DEFAULT_FINAL_ARTIFACT_DIR,
+  );
+  const canonicalOutputPath = resolve(finalArtifactDir, 'TRIPLE_A_RELEASE_EVIDENCE.json');
+  Object.assign(evidence, {
+    candidate_sha: commitSha,
+    final_artifact_path: relative(rootDir, canonicalOutputPath),
+    ci: finalArtifactSection(criteria, ['CI-REMOTE']),
+    branch_governance: finalArtifactSection(criteria, ['BRANCH-PROTECTION']),
+    security: finalArtifactSection(criteria, ['SECURITY-EVIDENCE']),
+    clinical: finalArtifactSection(criteria, ['CRITICAL-TESTS', 'CLINICAL-E2E', 'AUDIT-INTEGRITY']),
+    workflow: finalArtifactSection(criteria, ['WORKFLOW-POSTGRES', 'CRITICAL-TESTS']),
+    rls: finalArtifactSection(criteria, ['RLS-RUNTIME']),
+    worker: finalArtifactSection(criteria, ['WORKER-CRASH']),
+    e2e: finalArtifactSection(criteria, ['E2E']),
+    ux: finalArtifactSection(criteria, ['E2E', 'HOSPITAL-UAT']),
+    performance: finalArtifactSection(criteria, ['PERFORMANCE']),
+    soak: finalArtifactSection(criteria, []),
+    backup_restore: finalArtifactSection(criteria, ['BACKUP-DRILL']),
+    deploy: finalArtifactSection(criteria, ['DEPLOY-TARGET', 'HELM-TARGET']),
+    rollback: finalArtifactSection(criteria, []),
+    supply_chain: finalArtifactSection(criteria, ['SECURITY-EVIDENCE', 'IMAGE-ATTESTATIONS']),
+    attestations: finalArtifactSection(criteria, ['IMAGE-ATTESTATIONS']),
+    authority: finalArtifactSection(criteria, ['RELEASE-AUTHORITY']),
+  });
   writeFileSync(outputPath, `${JSON.stringify(evidence, null, 2)}\n`);
-  return { evidence, outputPath };
+  if (canonicalOutputPath !== outputPath) {
+    mkdirSync(finalArtifactDir, { recursive: true });
+    writeFileSync(canonicalOutputPath, `${JSON.stringify(evidence, null, 2)}\n`);
+  }
+  return { evidence, outputPath, canonicalOutputPath };
 }
 
 const invokedAsScript = process.argv[1] && resolve(process.argv[1]) === resolve(new URL(import.meta.url).pathname);

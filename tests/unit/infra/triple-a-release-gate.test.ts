@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -19,6 +19,40 @@ import {
 } from '../../../scripts/run-triple-a-release-gate.mjs';
 
 describe('Triple-A release gate scoring', () => {
+  it('writes the prompt-required canonical final artifact with explicit area status', () => {
+    const outputDir = mkdtempSync(join(tmpdir(), 'cvg-triple-a-release-'));
+    const finalArtifactDir = mkdtempSync(join(tmpdir(), 'cvg-triple-a-final-'));
+    const previousFinalArtifactDir = process.env.TRIPLE_A_FINAL_ARTIFACT_DIR;
+    process.env.TRIPLE_A_FINAL_ARTIFACT_DIR = finalArtifactDir;
+    try {
+      const result = buildReleaseEvidence({
+        rootDir: process.cwd(),
+        outputDir,
+        commitSha: 'a'.repeat(40),
+        strict: true,
+        executeChecks: false,
+        executeBuild: false,
+        executeTests: false
+      });
+      const canonicalPath = join(finalArtifactDir, 'TRIPLE_A_RELEASE_EVIDENCE.json');
+      const canonical = JSON.parse(readFileSync(canonicalPath, 'utf8'));
+
+      expect(result.canonicalOutputPath).toBe(canonicalPath);
+      expect(canonical.candidate_sha).toBe('a'.repeat(40));
+      expect(canonical.final_artifact_path).toContain('TRIPLE_A_RELEASE_EVIDENCE.json');
+      expect(canonical.ci.status).toBe('NOT_RUN');
+      expect(canonical.branch_governance.status).toBe('NOT_RUN');
+      expect(canonical.rollback.status).toBe('NOT_RUN');
+      expect(canonical.claim).toBe('NOT PROVEN');
+      expect(canonical.publication_allowed).toBe(false);
+    } finally {
+      if (previousFinalArtifactDir === undefined) delete process.env.TRIPLE_A_FINAL_ARTIFACT_DIR;
+      else process.env.TRIPLE_A_FINAL_ARTIFACT_DIR = previousFinalArtifactDir;
+      rmSync(outputDir, { recursive: true, force: true });
+      rmSync(finalArtifactDir, { recursive: true, force: true });
+    }
+  });
+
   it('fails closed: a blocked strict decision cannot publish or claim Triple-A', () => {
     const outputDir = mkdtempSync(join(tmpdir(), 'cvg-triple-a-claim-'));
     try {

@@ -23,8 +23,19 @@ const eventIds = [randomUUID(), randomUUID(), randomUUID(), randomUUID(), random
 const legacyEventId = randomUUID();
 const foreignLegacyEventId = randomUUID();
 const mismatchedLegacyMetadataEventId = randomUUID();
+const runtimeAppendOnlyEventId = randomUUID();
+const runtimeRole = `cvg_audit_runtime_${process.pid}_${randomUUID().replaceAll('-', '')}`;
 const bulkEventIds = Array.from({ length: 101 }, () => randomUUID());
 const accountAEventIds = eventIds.slice(0, 4).sort((left, right) => (right < left ? -1 : 1));
+
+async function dropRuntimeRole(pool: Pool): Promise<void> {
+  try {
+    await pool.query(`DROP OWNED BY "${runtimeRole}"`);
+  } catch (error) {
+    if (!String(error).includes(`role "${runtimeRole}" does not exist`)) throw error;
+  }
+  await pool.query(`DROP ROLE IF EXISTS "${runtimeRole}"`);
+}
 
 describe('audit cursor pagination on PostgreSQL', () => {
   beforeAll(async () => {
@@ -143,11 +154,13 @@ describe('audit cursor pagination on PostgreSQL', () => {
         legacyEventId,
         foreignLegacyEventId,
         mismatchedLegacyMetadataEventId,
+        runtimeAppendOnlyEventId,
         ...bulkEventIds
       ]
     ]);
     await pool.query('DELETE FROM accounts WHERE id IN ($1, $2)', [accountA, accountB]);
     await pool.query('DELETE FROM tenants WHERE id = $1', [tenantId]);
+    await dropRuntimeRole(pool);
     await closeDatabaseClient();
   });
 
@@ -304,6 +317,91 @@ describe('audit cursor pagination on PostgreSQL', () => {
 
       const invoiceEvents = committed.filter((event) => event.entityType === 'invoice');
       expect(invoiceEvents.map((event) => event.eventId)).toEqual(accountAEventIds);
+    } finally {
+      await restrictedClient.query('ROLLBACK');
+      restrictedClient.release();
+      await restrictedPool.end();
+    }
+  });
+
+  it('proves runtime audit roles are append-only for tenant-owned events', async () => {
+    const pool = getTestPool();
+    await pool.query(
+      `INSERT INTO audit_events (
+         id, account_id, action, entity_type, entity_id, metadata, correlation_id,
+         occurred_at, created_at
+       ) VALUES ($1, $2, 'runtime_append_only_fixture', 'audit-event', 'runtime-fixture', $3, 'runtime-fixture', now(), now())`,
+      [
+        runtimeAppendOnlyEventId,
+        accountA,
+        JSON.stringify({ module: 'audit', payloadSummary: 'Runtime append-only fixture', riskLevel: 'high' })
+      ]
+    );
+    await dropRuntimeRole(pool);
+    await pool.query(`
+      CREATE ROLE "${runtimeRole}" NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
+        NOINHERIT NOREPLICATION NOBYPASSRLS
+    `);
+    await pool.query(`GRANT USAGE ON SCHEMA public, app TO "${runtimeRole}"`);
+    await pool.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.audit_events TO "${runtimeRole}"`);
+    await pool.query(`GRANT EXECUTE ON FUNCTION app.current_account_id() TO "${runtimeRole}"`);
+    await pool.query(`REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.audit_events FROM "${runtimeRole}"`);
+
+    const restrictedPool = new Pool({ connectionString: TEST_DB_URL, max: 1 });
+    const restrictedClient = await restrictedPool.connect();
+    try {
+      await restrictedClient.query('BEGIN');
+      await restrictedClient.query(`SET LOCAL ROLE "${runtimeRole}"`);
+      await setAccountContext(restrictedClient, accountA);
+
+      const privileges = await restrictedClient.query<{
+        readonly can_select: boolean;
+        readonly can_insert: boolean;
+        readonly can_update: boolean;
+        readonly can_delete: boolean;
+        readonly can_truncate: boolean;
+      }>(`
+        SELECT has_table_privilege(current_user, 'public.audit_events', 'SELECT') AS can_select,
+               has_table_privilege(current_user, 'public.audit_events', 'INSERT') AS can_insert,
+               has_table_privilege(current_user, 'public.audit_events', 'UPDATE') AS can_update,
+               has_table_privilege(current_user, 'public.audit_events', 'DELETE') AS can_delete,
+               has_table_privilege(current_user, 'public.audit_events', 'TRUNCATE') AS can_truncate
+      `);
+      expect(privileges.rows).toEqual([{
+        can_select: true,
+        can_insert: true,
+        can_update: false,
+        can_delete: false,
+        can_truncate: false
+      }]);
+
+      const visible = await restrictedClient.query(
+        'SELECT id FROM audit_events WHERE id = $1',
+        [runtimeAppendOnlyEventId]
+      );
+      expect(visible.rows).toEqual([{ id: runtimeAppendOnlyEventId }]);
+
+      await restrictedClient.query('SAVEPOINT append_only_update');
+      await expect(
+        restrictedClient.query(
+          "UPDATE audit_events SET action = 'forbidden_update' WHERE id = $1",
+          [runtimeAppendOnlyEventId]
+        )
+      ).rejects.toThrow(/permission denied/i);
+      await restrictedClient.query('ROLLBACK TO SAVEPOINT append_only_update');
+      await restrictedClient.query('RELEASE SAVEPOINT append_only_update');
+
+      await restrictedClient.query('SAVEPOINT append_only_delete');
+      await expect(
+        restrictedClient.query('DELETE FROM audit_events WHERE id = $1', [runtimeAppendOnlyEventId])
+      ).rejects.toThrow(/permission denied/i);
+      await restrictedClient.query('ROLLBACK TO SAVEPOINT append_only_delete');
+      await restrictedClient.query('RELEASE SAVEPOINT append_only_delete');
+
+      await restrictedClient.query('SAVEPOINT append_only_truncate');
+      await expect(restrictedClient.query('TRUNCATE TABLE audit_events')).rejects.toThrow(/permission denied/i);
+      await restrictedClient.query('ROLLBACK TO SAVEPOINT append_only_truncate');
+      await restrictedClient.query('RELEASE SAVEPOINT append_only_truncate');
     } finally {
       await restrictedClient.query('ROLLBACK');
       restrictedClient.release();

@@ -18,6 +18,10 @@ const observedAt = new Date().toISOString();
 const runId = `local-workflow-${process.pid}-${Date.now()}`;
 const logPath = resolve(outputDir, `workflow-postgres-${commitSha}.log`);
 const envelopePath = resolve(outputDir, 'workflow-postgres-evidence.json');
+const auditEnvelopePath = resolve(outputDir, 'audit-evidence.json');
+const worktreeStatus = run('git', ['status', '--porcelain=v1', '--untracked-files=normal'], { capture: true });
+const worktreeStatusText = String(worktreeStatus.stdout ?? '');
+const worktreeClean = worktreeStatus.status === 0 && worktreeStatusText.trim() === '';
 
 function run(command, args, options = {}) {
   return spawnSync(command, args, {
@@ -89,22 +93,34 @@ function execute(label, file, databaseUrl) {
 }
 
 mkdirSync(outputDir, { recursive: true });
-writeFileSync(logPath, `# Local workflow evidence\ncommit_sha=${commitSha}\nobserved_at=${observedAt}\n`);
+writeFileSync(logPath, [
+  '# Local workflow evidence',
+  `commit_sha=${commitSha}`,
+  `observed_at=${observedAt}`,
+  `worktree_clean=${worktreeClean}`,
+  worktreeClean ? '' : `worktree_status=${redact(worktreeStatusText)}`,
+].filter(Boolean).join('\n').concat('\n'));
 
 let databaseUrl;
 let results;
 try {
+  if (!worktreeClean) {
+    throw new Error('Refusing to publish SHA-bound evidence from a dirty worktree. Commit or stash all changes first.');
+  }
   databaseUrl = testDatabaseUrl();
   results = [
     execute('clinical workflow PostgreSQL assurance', 'tests/integration/database/clinical-workflow-postgres.test.ts', databaseUrl),
     execute('workflow SIGKILL lease/fencing assurance', 'tests/integration/process/workflow-task-sigkill.test.ts', databaseUrl),
+    execute('audit append-only PostgreSQL assurance', 'tests/integration/database/audit-cursor-pagination-postgres.test.ts', databaseUrl),
   ];
 } catch (error) {
   appendFileSync(logPath, `runner_error=${redact(error.stack ?? error.message)}\n`);
   results = [{ label: 'runner setup', command: 'local workflow evidence runner', status: 'FAIL', exit_code: null, signal: null }];
 }
 
-const passed = results.length === 2 && results.every((result) => result.status === 'PASS');
+const passed = worktreeClean && results.length === 3 && results.every((result) => result.status === 'PASS');
+const auditResult = results.find((result) => result.label === 'audit append-only PostgreSQL assurance');
+const artifactReference = { path: logPath.replace(`${root}/`, ''), sha256: `sha256:${sha256(logPath)}` };
 const envelope = {
   schema_version: 1,
   evidence_type: 'cvg-his-external-evidence',
@@ -118,7 +134,11 @@ const envelope = {
     verifier_id: 'local-workflow-evidence-runner',
     verified_at: new Date().toISOString(),
   },
-  artifacts: [{ path: logPath.replace(`${root}/`, ''), sha256: `sha256:${sha256(logPath)}` }],
+  artifacts: [artifactReference],
+  candidate_integrity: {
+    worktree_clean: worktreeClean,
+    status: worktreeClean ? 'PASS' : 'FAIL',
+  },
   scope: 'clinical workflow PostgreSQL, concurrency, lease/fencing, retry/DLQ, replay, audit and SIGKILL reclaim',
   environment: 'disposable PostgreSQL database requested through TEST_DB_EPHEMERAL=1',
   results,
@@ -128,6 +148,34 @@ const envelope = {
   ],
 };
 writeFileSync(envelopePath, `${JSON.stringify(envelope, null, 2)}\n`);
+const auditEnvelope = {
+  schema_version: 1,
+  evidence_type: 'cvg-his-external-evidence',
+  status: auditResult?.status === 'PASS' ? 'PASS' : 'FAIL',
+  commit_sha: commitSha,
+  observed_at: observedAt,
+  producer: { kind: 'local-disposable-postgres-runner', run_id: runId },
+  verification: {
+    verified: true,
+    method: 'local-command-capture',
+    verifier_id: 'local-audit-evidence-runner',
+    verified_at: new Date().toISOString(),
+  },
+  artifacts: [artifactReference],
+  candidate_integrity: {
+    worktree_clean: worktreeClean,
+    status: worktreeClean ? 'PASS' : 'FAIL',
+  },
+  scope: 'audit event tenant isolation and append-only runtime role privileges',
+  environment: 'disposable PostgreSQL database requested through TEST_DB_EPHEMERAL=1',
+  results: auditResult ? [auditResult] : [],
+  limitations: [
+    'Local evidence is intentionally downgraded to PARTIAL by the release gate until an independent CI or target verifier confirms it.',
+    'The disposable role models the runtime privilege contract; it does not certify organization-level production governance.',
+  ],
+};
+writeFileSync(auditEnvelopePath, `${JSON.stringify(auditEnvelope, null, 2)}\n`);
 console.log(`Workflow evidence: ${envelopePath}`);
+console.log(`Audit evidence: ${auditEnvelopePath}`);
 console.log(`Status: ${envelope.status}; commit=${commitSha}; results=${results.map((result) => `${result.label}:${result.status}`).join(', ')}`);
 if (!passed) process.exitCode = 1;
