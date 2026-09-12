@@ -2,11 +2,14 @@
 
 **Registrado em:** `2026-09-12T11:32:02Z`
 **Repositório:** `https://github.com/ricardoakinaga-dev/cvg-his-v4`
+**Commit inicial do checkpoint:** `f2fd6556` (`[skip ci]`)
 
 ## Estado do Git
 
 - Branch ativa: `main`.
-- `HEAD == origin/main`: `fecb70cad2f7c25fb08c09262547ecac51fc049c`.
+- SHA auditado antes deste arquivo: `fecb70cad2f7c25fb08c09262547ecac51fc049c`.
+- O estado auditado foi publicado em `main` por commits documentais com
+  `[skip ci]`; consulte `git rev-parse HEAD` ao retomar para o SHA mais recente.
 - Worktree limpo no momento do checkpoint.
 - Nenhum force-push foi usado.
 - Rollback remoto preservado em `origin/fix/state-of-art-ci-assurance`:
