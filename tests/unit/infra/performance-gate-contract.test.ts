@@ -38,6 +38,10 @@ describe('performance and SLO gate', () => {
     expect(performanceJob).toContain('Capture performance runner provenance');
     expect(performanceJob).toContain('Finalize performance runner provenance');
     expect(performanceJob).toContain('performance-provenance.json');
+    expect(performanceJob).toContain('capture-performance-diagnostics.mjs');
+    expect(performanceJob).toContain('performance-diagnostics.json');
+    expect(performanceJob).toContain('--watch');
+    expect(performanceJob).toContain('--interval-ms 5000');
     expect(performanceJob).toContain('BENCHMARK_OUTCOME: ${{ steps.k6-benchmark.outcome }}');
     expect(performanceJob).not.toContain('continue-on-error: true');
     expect(performanceJob).toContain(
@@ -56,6 +60,7 @@ describe('performance and SLO gate', () => {
     expect(benchmark).toContain("direction: 'gte'");
     expect(benchmark).toContain('evaluateThreshold(config.actual, config.target, config.direction)');
     expect(benchmark).toContain('authLatency.add(loginRes.timings.duration)');
+    expect(benchmark).toContain("new Trend('health_latency_ms')");
     expect(benchmark).toContain("new Trend('query_patients_list_latency_ms')");
     expect(benchmark).toContain("new Trend('query_patient_detail_latency_ms')");
     expect(benchmark).toContain("new Trend('inventory_read_latency_ms')");

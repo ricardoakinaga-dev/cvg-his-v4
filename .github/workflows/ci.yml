@@ -317,6 +317,7 @@ jobs:
           node --test scripts/database-schema-source-resolution.test.mjs
           node --test scripts/critical-source-manifest.test.mjs
           node --test scripts/build-source-map-contract.test.mjs
+          node --test scripts/capture-performance-diagnostics.test.mjs
           node --test scripts/process-reexport-coverage.test.mjs scripts/source-metric-presence.test.mjs scripts/check-critical-coverage.test.mjs
           pnpm vetus:parity:test
 
@@ -900,9 +901,37 @@ jobs:
         env:
           TARGET: http://localhost:3001
           LOAD_PROFILE: operational-minimum-v1
+          DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
+          POSTGRES_MAX_CONNECTIONS: '60'
+          POSTGRES_POOL_MIN: '8'
         run: |
+          set +e
           mkdir -p benchmarks/k6/results
+          node scripts/capture-performance-diagnostics.mjs \
+            --watch \
+            --interval-ms 5000 \
+            --output benchmarks/k6/results/performance-diagnostics.json &
+          DIAGNOSTICS_PID=$!
           k6 run benchmarks/k6/api-benchmark.js
+          K6_STATUS=$?
+          kill -INT "$DIAGNOSTICS_PID" >/dev/null 2>&1 || true
+          wait "$DIAGNOSTICS_PID" >/dev/null 2>&1 || true
+          exit "$K6_STATUS"
+
+      - name: Finalize performance diagnostics
+        if: always()
+        env:
+          TARGET: http://localhost:3001
+          LOAD_PROFILE: operational-minimum-v1
+          DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
+          POSTGRES_MAX_CONNECTIONS: '60'
+          POSTGRES_POOL_MIN: '8'
+        run: |
+          if [ ! -s benchmarks/k6/results/performance-diagnostics.json ]; then
+            node scripts/capture-performance-diagnostics.mjs \
+              --phase after \
+              --output benchmarks/k6/results/performance-diagnostics.json || true
+          fi
 
       - name: Finalize performance runner provenance
         if: always()
@@ -923,6 +952,7 @@ jobs:
           path: |
             benchmarks/k6/results/performance-report.json
             benchmarks/k6/results/performance-provenance.json
+            benchmarks/k6/results/performance-diagnostics.json
           retention-days: 30
 
   test-e2e-spa:

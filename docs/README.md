@@ -78,6 +78,7 @@ O manifesto `legado/manifest.json` registra origem, destino e integridade dos ar
 - [`engineering/EVIDENCE_RISK_DASHBOARD.md`](engineering/EVIDENCE_RISK_DASHBOARD.md)
 - [`engineering/INSTALL_UPGRADE_ROLLBACK.md`](engineering/INSTALL_UPGRADE_ROLLBACK.md)
 - [`engineering/SLO_AND_LOAD_PROFILE.md`](engineering/SLO_AND_LOAD_PROFILE.md)
+- [`operations/PERFORMANCE_DIAGNOSTICS.md`](operations/PERFORMANCE_DIAGNOSTICS.md)
 - [`engineering/REPORT_DATE_SEMANTICS.md`](engineering/REPORT_DATE_SEMANTICS.md)
 - [`engineering/SECRET_ROTATION_AND_BREAK_GLASS.md`](engineering/SECRET_ROTATION_AND_BREAK_GLASS.md)
 

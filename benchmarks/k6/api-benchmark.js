@@ -37,6 +37,7 @@ const queryLatency = new Trend('query_latency_ms');
 const writeLatency = new Trend('write_latency_ms');
 const billingLatency = new Trend('billing_latency_ms');
 const inventoryLatency = new Trend('inventory_latency_ms');
+const healthLatency = new Trend('health_latency_ms');
 // Endpoint-level diagnostics keep the blocking aggregate SLOs comparable while
 // making a tail attributable to a concrete read or write path.
 const queryPatientsListLatency = new Trend('query_patients_list_latency_ms');
@@ -122,6 +123,7 @@ export default function (data) {
   // Health check
   group('Health', () => {
     const res = http.get(`${BASE_URL}/health`);
+    healthLatency.add(res.timings.duration);
     check(res, {
       'health returns 200': (r) => r.status === 200,
       'health latency < 50ms': (r) => r.timings.duration < 50

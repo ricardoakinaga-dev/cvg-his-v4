@@ -32,6 +32,33 @@ function flattenSloResults(slo) {
   return flattened;
 }
 
+function endpointLatencyMetrics(data) {
+  const aggregateNames = new Set([
+    'api_latency_ms',
+    'auth_latency_ms',
+    'query_latency_ms',
+    'write_latency_ms',
+    'billing_latency_ms',
+    'inventory_latency_ms'
+  ]);
+
+  return Object.entries(data.metrics ?? {})
+    .filter(
+      ([name, metric]) =>
+        metric &&
+        typeof metric.avg === 'number' &&
+        name.endsWith('_latency_ms') &&
+        !aggregateNames.has(name)
+    )
+    .map(([name, metric]) => ({
+      name,
+      p95: metric.p95 ?? metric['p(95)'] ?? metric.avg,
+      avg: metric.avg,
+      max: metric.max
+    }))
+    .sort((left, right) => (right.p95 ?? 0) - (left.p95 ?? 0));
+}
+
 try {
   const data = JSON.parse(readFileSync(resultsPath, 'utf8'));
   const flattenedSloResults = flattenSloResults(data.slo);
@@ -61,6 +88,19 @@ try {
       console.log(
         `| ${result.metricName} | ${result.criterionName} | ${result.target} | ${result.actual} | ${result.passed ? 'PASS' : 'FAIL'} |`
       );
+    }
+    const endpointMetrics = endpointLatencyMetrics(data);
+    if (endpointMetrics.length > 0) {
+      console.log('');
+      console.log('### Endpoint latency diagnostics');
+      console.log('');
+      console.log('| Metric | Average (ms) | P95 (ms) | Max (ms) |');
+      console.log('| --- | ---: | ---: | ---: |');
+      for (const metric of endpointMetrics) {
+        console.log(
+          `| ${metric.name} | ${metric.avg ?? '-'} | ${metric.p95 ?? '-'} | ${metric.max ?? '-'} |`
+        );
+      }
     }
     process.exit(summary.allPassed ? 0 : 1);
   }
@@ -111,6 +151,16 @@ try {
   if (auth) {
     console.log(`  avg:  ${auth.avg.toFixed(2)}ms`);
     console.log(`  p95:  ${auth.p95.toFixed(2)}ms`);
+  }
+
+  const endpointMetrics = endpointLatencyMetrics(data);
+  if (endpointMetrics.length > 0) {
+    console.log('\n--- Endpoint Latency Diagnostics (P95) ---');
+    for (const metric of endpointMetrics) {
+      console.log(
+        `  ${metric.name}: avg=${metric.avg ?? '-'}ms p95=${metric.p95 ?? '-'}ms max=${metric.max ?? '-'}ms`
+      );
+    }
   }
 
   process.exit(summary.allPassed ? 0 : 1);
