@@ -1542,7 +1542,15 @@ test('runEventBusTick logs processed event correlation ids for async trace follo
             payload: {
               accountId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
               _meta: {
+                eventId: 'evt-1',
+                eventType: 'notification.sent',
+                schemaVersion: 1,
+                occurredAt: new Date(Date.now() - 1000).toISOString(),
                 accountId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+                sourceModule: 'notifications',
+                actor: { type: 'system', id: 'worker-test' },
+                correlationId: 'corr-api-123',
+                causationId: null,
                 traceparent: '00-1234567890abcdef1234567890abcdef-1234567890abcdef-01'
               }
             },
