@@ -1,6 +1,6 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `main@a3354f021d7046ad345f5aad89d16ab0ef9c1be3` (documentação publicada em `8273ecb5c7ea9afd759fdde86c91fe073ba64f94` e `f9cc660a085793bffee9a45ccbeb3d004a755a70`)
+**Candidate funcional avaliado:** `main@553078be60c963ffb7cab5c45c130912e5e299b8` (documentação corrente em reconciliação)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -18,9 +18,11 @@ esse checkout. O [CI #146](https://github.com/ricardoakinaga-dev/cvg-his-v4/acti
 no `main@697c6efa` terminou `failure` no passo de API E2E clínico canônico. O
 candidato `a3354f02` isolou o banco/API da prova canônica e o [CI #147](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34684079972)
 no SHA exato publicado `8273ecb5` terminou `success` com `16/16` jobs verdes,
-incluindo a suíte SPA e `Run canonical clinical API E2E`. O [CI #148](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34685632858)
-no descendente documental `f9cc660a` manteve `15/16` jobs verdes, mas falhou
-somente em Performance/k6.
+incluindo a suíte SPA e `Run canonical clinical API E2E`. O [CI #149](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34687849607)
+no SHA `553078be` falhou em `Repository Guards` porque os snapshots
+documentais ainda apontavam para o candidato anterior; os jobs iniciais,
+Coverage e OpenAPI passaram. A correção documental está sendo publicada e exige
+novo CI terminal.
 
 ## Atualização terminal — isolamento da prova clínica
 

@@ -1,12 +1,12 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-12T09:50:58Z
+## Snapshot vigente — 2026-09-12T10:23:00Z
 
 O baseline autoritativo do candidato atual está em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md):
-`a3354f021d7046ad345f5aad89d16ab0ef9c1be3` (código/workflow), com a documentação
-publicada em `8273ecb5c7ea9afd759fdde86c91fe073ba64f94` e `f9cc660a085793bffee9a45ccbeb3d004a755a70`; `HEAD == main == origin/main`,
+`553078be60c963ffb7cab5c45c130912e5e299b8` (código/workflow), com a documentação
+em reconciliação neste descendente; `HEAD == main == origin/main`,
 gate local estrito `BLOCKED` com `55/57/15` (score/critical/open P0) e claim
 `NOT PROVEN`. O CI #143 do candidato funcional pai `82ff6eec` terminou
 `failure` somente em Performance/k6; os outros 15 jobs, incluindo E2E SPA,
@@ -19,8 +19,10 @@ O CI #146, no `main@697c6efa` (descendente documental anterior), terminou
 Performance/k6 e integração passaram. O candidato
 `a3354f02` isola o banco/API da prova canônica; o CI #147 no SHA documental
 `8273ecb5` terminou verde com `16/16` jobs, incluindo essa prova canônica. O
-CI #148 no descendente documental `f9cc660a` terminou `failure` somente em
-Performance/k6, com `15/16` jobs verdes.
+CI #149 no SHA `553078be` terminou `failure` em `Repository Guards` porque os
+snapshots ainda apontavam para o candidato anterior; os jobs iniciais, Coverage
+e OpenAPI passaram. Esta atualização corrige a identidade documental antes de
+uma nova execução terminal.
 As seções abaixo são
 histórico append-only; seus SHAs e scores não são evidência do candidato atual.
 

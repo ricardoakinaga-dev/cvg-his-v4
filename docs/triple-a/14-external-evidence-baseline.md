@@ -5,7 +5,7 @@
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA atual é
-> `a3354f021d7046ad345f5aad89d16ab0ef9c1be3`; o CI #143 pertence ao pai
+> `553078be60c963ffb7cab5c45c130912e5e299b8`; o CI #149 pertence a este candidato
 > `82ff6eec` e terminou `failure` somente em Performance/k6. O CI #144 pertence
 > ao pai documental `da5dd244` e falhou em `Repository Guards` porque o
 > checkout raso ocultou a ancestralidade do snapshot; o candidato atual corrige
@@ -17,10 +17,10 @@
 > (`Run k6 benchmark` exit `99`, `Check SLO results` exit `1`). Nenhum threshold
 > foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `a3354f021d7046ad345f5aad89d16ab0ef9c1be3` (candidato de código/workflow; a documentação corrente é descendente documental, rollback preservado).
-**Current CI:** [#148](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34685632858) — `main@f9cc660a` terminou `failure` com `15/16` jobs verdes; E2E SPA, a prova clínica canônica isolada em banco/API próprios, integração, guards, segurança, build e visual passaram. O #147 anterior confirmou o código/workflow com `16/16`; o #148 falhou apenas em Performance/k6.
+**Current snapshot:** `553078be60c963ffb7cab5c45c130912e5e299b8` (candidato de código/workflow; documentação corrente em reconciliação, rollback preservado).
+**Current CI:** [#149](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34687849607) — `main@553078be` terminou `failure` em `Repository Guards` porque os seis snapshots ainda apontavam para o pai. Os jobs iniciais, Coverage e OpenAPI passaram; nenhum PASS parcial é promovido.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-12T09:50:58Z
+**Observation:** 2026-09-12T10:23:00Z
 
 **Current local execution:** o gate estrito completo do pai `82ff6eec` executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A suíte crítica local passou `615` testes PostgreSQL e `11` suítes de processo. A reprodução da API clínica canônica passou `2/2` em PostgreSQL real; a validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
 

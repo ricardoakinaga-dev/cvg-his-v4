@@ -1,8 +1,8 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato funcional observado em 2026-09-12T09:50:58Z
+## Candidato funcional observado em 2026-09-12T10:23:00Z
 
-- SHA de código e documentação: `a3354f021d7046ad345f5aad89d16ab0ef9c1be3` (código/workflow); documentação publicada em `8273ecb5c7ea9afd759fdde86c91fe073ba64f94` e `f9cc660a085793bffee9a45ccbeb3d004a755a70`.
+- SHA de código e documentação: `553078be60c963ffb7cab5c45c130912e5e299b8` (snapshot vinculado ao workflow; esta atualização documental será o próximo descendente publicado).
 - `HEAD`, `main` e `origin/main` coincidem; rollback preservado em
   `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
@@ -15,7 +15,7 @@
 | Workspace              | `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` executou checks, build e suíte workspace no pai; decisão permaneceu bloqueada                 |
 | Contratos direcionados | CI contract `18/18`; Vitest `38/38`; Node `8/8`; typecheck, lint, Prettier e `git diff --check`: PASS                                      |
 | Fixtures k6            | `pnpm benchmark:k6:seed` repetido `2/2` no PostgreSQL descartável, sem reassignment entre tenants                                          |
-| Performance local      | k6 `operational-minimum-v1`, 60 VUs, `4.303` iterações, `9/9` SLOs; API p95 `27,54 ms`, p99 `40,30 ms`, erros `0%`, disponibilidade `100%` |
+| Performance local      | k6 `operational-minimum-v1`, 60 VUs, `3.001` iterações, `9/9` SLOs; API p95 `124,84 ms`, p99 `166,49 ms`, query p95 `143 ms`, erros `0%`, disponibilidade `100%`, API/PostgreSQL/Redis em 2 CPUs e k6 `GOMAXPROCS=1` |
 | Suíte crítica local    | `615/615` testes PostgreSQL e `11/11` suítes de processo com relatórios completos; Redis local descartável configurado explicitamente      |
 | Supply/artefatos       | Diretório de resultados versionado com `.gitkeep`; relatório gerado localmente foi descartado; nenhum PASS externo foi inventado           |
 
@@ -52,6 +52,14 @@ Performance/k6: `Run k6 benchmark` exit `99` e `Check SLO results` exit `1`.
 Esse resultado não transfere falha para o código/workflow de `a3354f02`, que
 permanece confirmado pelo #147; ele mantém o snapshot atual `BLOCKED` até uma
 execução k6 terminal verde.
+
+O [CI #149](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34687849607),
+no SHA `553078be`, terminou `failure` em `Validate repository source contracts`:
+o guard detectou que os documentos correntes ainda declaravam `a3354f02` depois
+da alteração do workflow/contrato. Os jobs Typecheck, SAST, Secret Scan,
+Dependency Audit, Coverage e OpenAPI passaram; nenhum resultado parcial é
+promovido. Esta reconciliação atualiza os seis snapshots obrigatórios e exige
+um novo CI terminal.
 
 ## Recovery e target
 
