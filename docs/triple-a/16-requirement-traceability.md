@@ -10,8 +10,10 @@ A tabela mantém o escopo completo. “NOT PROVEN” significa que a aceitação
 integral da fase não foi demonstrada no candidato corrente; não significa
 que o código esteja ausente. Evidência local, CI e alvo são avaliados separadamente.
 Os registros históricos abaixo mencionam candidatos anteriores. A fotografia
-vigente é `ede3a1d8b88a3a259f123349c672a13253851800`, com gate local estrito
-`55/57/15`, suíte crítica local `615 + 11` aprovada e CI #141 ainda em execução.
+vigente é `4d6739f2892fd5782e6b3a26158fc4d748d1bf1a`, com gate local estrito
+`55/57/15`, suíte crítica local `615 + 11` aprovada. O CI #143 do pai
+`82ff6eec` terminou com falha exclusiva em Performance/k6; não há ainda CI
+exata para `4d6739f2`.
 Essas provas continuam abaixo da aceitação integral porque faltam CI terminal,
 target, governança, UAT e autoridade de release. A [fotografia atual](./15-current-baseline.md)
 contém SHA, CI e lacunas medidas.

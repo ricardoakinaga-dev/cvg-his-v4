@@ -1,27 +1,30 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-12T05:52:49Z
+## Snapshot vigente — 2026-09-12T07:04:29Z
 
 O baseline autoritativo do candidato atual está em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md):
-`ede3a1d8b88a3a259f123349c672a13253851800`, com `HEAD == main == origin/main`,
+`4d6739f2892fd5782e6b3a26158fc4d748d1bf1a`, com `HEAD == main == origin/main`,
 gate local estrito `BLOCKED` com `55/57/15` (score/critical/open P0) e claim
-`NOT PROVEN`. O CI exato #141 ainda está em execução. As seções abaixo são
+`NOT PROVEN`. O CI #143 do candidato funcional pai `82ff6eec` terminou
+`failure` somente em Performance/k6; os outros 15 jobs, incluindo E2E SPA,
+passaram, mas esse resultado não é transferido para o novo commit de governança.
+As seções abaixo são
 histórico append-only; seus SHAs e scores não são evidência do candidato atual.
 
 ## Registro obrigatório do prompt
 
-| Campo              | Registro                                                                                                               |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| Problema           | Estabelecer arquitetura, forças, dívidas e riscos antes da implementação.                                              |
-| Estado anterior    | Baselines misturavam candidatos e não distinguiam local, CI e target.                                                  |
-| Decisão            | Usar este índice histórico com o snapshot corrente em `15-current-baseline.md`.                                        |
-| Implementação      | Prompt preservado, quality bar congelado, matriz e ledger append-only.                                                 |
-| Arquivos alterados | `docs/triple-a/MASTER_PROMPT.md`, `QUALITY_BAR_V1.json`, `15-current-baseline.md`, `17-current-execution-evidence.md`. |
-| Testes             | `pnpm docs:validate`; gate local e verificações de qualidade do candidato.                                             |
-| Evidências         | SHA de código `5b0f1b09`, gate local `55/57/15`, seed/k6 locais e artefato estrito `BLOCKED`; CI novo ainda pendente. |
-| Riscos residuais   | Evidência de target, recovery, governança, UAT e autoridade humana ausente.                                            |
+| Campo              | Registro                                                                                                                                                                                  |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Problema           | Estabelecer arquitetura, forças, dívidas e riscos antes da implementação.                                                                                                                 |
+| Estado anterior    | Baselines misturavam candidatos e não distinguiam local, CI e target.                                                                                                                     |
+| Decisão            | Usar este índice histórico com o snapshot corrente em `15-current-baseline.md`.                                                                                                           |
+| Implementação      | Prompt preservado, quality bar congelado, matriz e ledger append-only.                                                                                                                    |
+| Arquivos alterados | `docs/triple-a/MASTER_PROMPT.md`, `QUALITY_BAR_V1.json`, `15-current-baseline.md`, `17-current-execution-evidence.md`.                                                                    |
+| Testes             | `pnpm docs:validate`; gate local e verificações de qualidade do candidato.                                                                                                                |
+| Evidências         | SHA de código `4d6739f2`, gate local `55/57/15` herdado da execução completa no pai, seed/k6 locais e artefato estrito `BLOCKED`; CI #143 do pai falhou exclusivamente em Performance/k6. |
+| Riscos residuais   | Evidência de target, recovery, governança, UAT e autoridade humana ausente.                                                                                                               |
 
 ## Reconciliação corrente — 2026-09-11T22:12:14Z
 

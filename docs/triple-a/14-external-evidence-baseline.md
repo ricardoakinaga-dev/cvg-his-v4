@@ -5,17 +5,18 @@
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA atual é
-> `ede3a1d8b88a3a259f123349c672a13253851800`; o CI exato #141 ainda está em
-> execução e o veredito é `BLOCKED / NOT PROVEN`; nenhum dado abaixo é transferido.
+> `4d6739f2892fd5782e6b3a26158fc4d748d1bf1a`; o CI #143 pertence ao pai
+> `82ff6eec` e terminou `failure` somente em Performance/k6; não há CI exata
+> para este commit e o veredito é `BLOCKED / NOT PROVEN`; nenhum dado abaixo é transferido.
 
-**Current snapshot:** `ede3a1d8b88a3a259f123349c672a13253851800` (código e documentação; `HEAD == origin/main`, rollback preservado).
-**Current CI:** [#141](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34675471468) — `In progress`; o último [#140](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34672193141) — `failure`, 15/16 jobs, somente Performance/k6
+**Current snapshot:** `4d6739f2892fd5782e6b3a26158fc4d748d1bf1a` (código e documentação; `HEAD == origin/main`, rollback preservado).
+**Current CI:** [#143](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34678150409) — run do pai `82ff6eec`, `failure`, 15/16 jobs passaram e somente Performance/k6 falhou; CI exata do commit atual ainda não comprovada
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-12T05:52:49Z
+**Observation:** 2026-09-12T07:04:29Z
 
-**Current local execution:** o gate estrito no snapshot executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A suíte crítica local passou `615` testes PostgreSQL e `11` suítes de processo. A validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
+**Current local execution:** o gate estrito completo do pai `82ff6eec` executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A suíte crítica local passou `615` testes PostgreSQL e `11` suítes de processo. A validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
 
-**Current strict gate:** `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` no HEAD retornou `BLOCKED / NOT PROVEN`, score `55`, critical `57`, `15` P0 abertos, `claim=NOT PROVEN` e `publication_allowed=false`.
+**Current strict gate:** `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` no pai `82ff6eec` retornou `BLOCKED / NOT PROVEN`, score `55`, critical `57`, `15` P0 abertos, `claim=NOT PROVEN` e `publication_allowed=false`.
 
 The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. Historical runs #137 and #140 belong to earlier SHAs; #140 failed in `Run k6 benchmark`/`Check SLO results`, while #137 passed all published jobs. The performance evidence and its access limitation are reconciled in [critic-performance-assurance-20260911.md](./critic-performance-assurance-20260911.md). Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
 

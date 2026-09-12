@@ -1,5 +1,20 @@
 # Triple-A — Execution Log
 
+## 2026-09-12T07:04:29Z — candidato `82ff6eec` / CI #143 terminal
+
+- **Candidato:** `main@82ff6eecb79a511b68a0d20b2a919a04d003442c`; `HEAD` e
+  `origin/main` coincidem, rollback remoto preservado e nenhum force-push foi
+  usado.
+- **Gate local:** `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` terminou
+  `BLOCKED`, score `55`, critical `57`, `open_p0=15`,
+  `publication_allowed=false` e claim `NOT PROVEN` no SHA exato.
+- **CI:** [#143](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34678150409)
+  terminou `failure` com `15/16` jobs verdes; E2E SPA, integração, segurança,
+  build e visual passaram, e somente Performance/k6 falhou.
+- **Decisão:** manter `BLOCKED / NOT PROVEN`; thresholds não foram relaxados e
+  target, governança, recovery, attestation, deploy/rollback, soak, UAT e
+  autoridade de release continuam sem evidência externa autenticada.
+
 ## 2026-09-12T05:52:49Z — candidato `ede3a1d8` / CI #141 em execução
 
 - **Candidato:** `main@ede3a1d8b88a3a259f123349c672a13253851800`; `HEAD` e
@@ -30,7 +45,7 @@
   `sha256:02545b5f8db2c53c5421edd62281b50f8b073e0345ecc8a3d6dd3838bd4f3460`;
   os arquivos detalhados exigem credencial nesta sessão.
 - **Falha observável:** `Run k6 benchmark` terminou com exit 99 e `Check SLO
-  results` com exit 1. Nenhuma threshold ou carga foi alterada; o parecer
+results` com exit 1. Nenhuma threshold ou carga foi alterada; o parecer
   independente está em [`critic-performance-assurance-20260911.md`](./critic-performance-assurance-20260911.md).
 - **Gate:** permanece `BLOCKED / NOT PROVEN`, score `54`, critical `54`,
   `open_p0=16`, `publication_allowed=false`.
@@ -368,12 +383,12 @@ Cada nova rodada deve registrar commit, comando ou observação, resultado, limi
   reutiliza o registro já carregado antes da transição de status.
 - Validação do candidato: `pnpm --filter @cvg-his-v2/module-auth run build`,
   `pnpm --filter @cvg-his-v2/api run build`, `pnpm --filter
-  @cvg-his-v2/module-auth run test` (`49/49`), `pnpm --filter
-  @cvg-his-v2/module-billing run test` (`20/20`) e
+@cvg-his-v2/module-auth run test` (`49/49`), `pnpm --filter
+@cvg-his-v2/module-billing run test` (`20/20`) e
   `NODE_ENV=test node --test apps/api/dist/server.test.js` (`65/65`): PASS.
 - Checks de repositório: `pnpm typecheck`, `pnpm lint`,
   `pnpm complexity:check`, `node --test
-  scripts/critical-source-manifest.test.mjs` e `git diff --check`: PASS.
+scripts/critical-source-manifest.test.mjs` e `git diff --check`: PASS.
 - Limitação: a aceitação de performance continua dependente do k6 pinned no
   GitHub Actions. O resultado local não é promovido a evidência externa, e o
   candidato ainda precisa de push e de um run remoto terminal para confirmar
@@ -417,7 +432,6 @@ Cada nova rodada deve registrar commit, comando ou observação, resultado, limi
 **Estado:** `BLOCKED / NOT PROVEN`. Próxima ação: observar a conclusão do CI
 #70, registrar os jobs no ledger e executar a próxima rodada de críticos/runtime
 sem transformar documentação ou teste local em prova externa.
-
 
 ## 2026-09-10T18:45:25.542905+00:00 — State of Art: baseline fresco e correções do CI
 
@@ -475,7 +489,6 @@ OpenAPI, docs, lint, complexidade e source identity aprovados.
 Commits: `97fe88d8` E2E, `1a448d15` paginação, `3cfe8b33` supervisor Windows.
 Branch `fix/state-of-art-ci-assurance`; nenhum merge/deploy foi feito.
 Próxima prova: CI completo do novo candidato; source acceptance não fecha runtime.
-
 
 ## 2026-09-11T03:45:00Z — Reconciliação pós-merge e performance
 
@@ -565,13 +578,11 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - O CI [#130](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064) terminou `failure` no commit documental; `15/16` jobs passaram e somente `Performance (k6 SLOs)` falhou no [job 103443316221](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064/job/103443316221). O CI funcional [#129](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250) teve o mesmo padrão. Nenhum threshold foi relaxado e nenhuma métrica inacessível foi inventada.
 - O veredito continua **BLOCKED / NOT PROVEN**. Manifest/security evidence de publicação, backup/restore, runtime no target, envelopes externos de recovery/E2E/workflow/RLS/worker/auditoria, governança, attestation, UAT e autoridade de release permanecem P0 abertos.
 
-
 ## 2026-09-11T23:33:28Z — CI terminal verde do snapshot documental `6fe76696`
 
 - O [CI #131](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34656290327) executado no SHA `6fe76696240925ad550d05cd38a14a5239f50abc` terminou `success` com `16/16` jobs verdes. SAST, Secret Scan, Typecheck, Dependency Audit, Repository Guards, Lint, OpenAPI, Coverage, Build, API Contract, Performance, E2E SPA, Visual, Unit, Integration e o contrato Windows passaram.
 - Este resultado fecha a verificação remota do commit documental e confirma que a alteração publicada não introduziu regressão nos checks do workflow. Ele não substitui manifest/security evidence de publicação, runtime no target, backup/restore, UAT, governança, attestation ou autoridade de release.
 - O gate local permanece **BLOCKED / NOT PROVEN**, com `55/57/15`, e nenhum claim `TRIPLE-A VERIFIED` é emitido.
-
 
 ## 2026-09-12T00:08:01Z — CI terminal do snapshot `3fa9ad78`
 
