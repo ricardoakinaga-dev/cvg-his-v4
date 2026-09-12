@@ -7,7 +7,7 @@
 ## Estado do Git
 
 - Branch ativa: `main`; o código foi publicado por fast-forward, sem force-push.
-- `main` e `origin/main` apontam para `72cfcfb8`.
+- `main` e `origin/main` apontam para o commit documental que contém este checkpoint; o código funcional integrado permanece em `72cfcfb8`.
 - O rollback remoto continua preservado em `origin/fix/state-of-art-ci-assurance@fe5406c23c515585629060e0dc01b91f2d113d65`, ancestral do código integrado.
 - A árvore de trabalho estava limpa no momento deste checkpoint.
 
