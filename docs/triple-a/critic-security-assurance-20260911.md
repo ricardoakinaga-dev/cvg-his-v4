@@ -1,5 +1,12 @@
 # Auditoria independente de segurança e release — escopo delimitado
 
+## Reconciliação do candidato vigente — 2026-09-12
+
+As linhas abaixo são um parecer histórico. A análise corrente é
+`c7336ac0f6a909c10d07797c36814f0b321c6d5`, CI #135: os jobs de segurança
+passaram, mas o run geral falhou em Performance. Branch protection, runtime
+RLS/roles, attestation e autoridade continuam `NOT PROVEN`.
+
 **SHA de código avaliado:** `b77539c9891eef89cbbe8160bf6e30a0fb369d48`
 **Snapshot documental publicado:** `68bea151102c01ee54a3c782b5cf4b1c3ad631f5`
 **Resultado:** `NOT PROVEN / BLOCKED`

@@ -292,7 +292,8 @@ export async function capturePerformanceDiagnostics({
   env = process.env,
   phase = argument('--phase', hasFlag('--watch') ? 'watch' : 'single'),
   intervalMs = Number(argument('--interval-ms', DEFAULT_INTERVAL_MS)),
-  watch = hasFlag('--watch')
+  watch = hasFlag('--watch'),
+  appendExisting = hasFlag('--append')
 } = {}) {
   const report = {
     schema_version: 1,
@@ -311,6 +312,19 @@ export async function capturePerformanceDiagnostics({
     },
     samples: []
   };
+
+  if (appendExisting) {
+    try {
+      const existing = JSON.parse(readFileSync(outputPath, 'utf8'));
+      if (existing?.evidence_type === report.evidence_type && Array.isArray(existing.samples)) {
+        report.samples = existing.samples;
+        report.status = existing.status ?? report.status;
+        report.captured_at = existing.captured_at ?? report.captured_at;
+      }
+    } catch {
+      // A missing or incomplete prior report is replaced by the terminal sample.
+    }
+  }
 
   let writing = false;
   const append = async (samplePhase) => {

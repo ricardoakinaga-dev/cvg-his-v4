@@ -1,5 +1,15 @@
 # CVG HIS — Triple-A Baseline
 
+## Candidato vigente — 2026-09-12T01:40:26Z
+
+O snapshot corrente está reconciliado em
+[`docs/triple-a/15-current-baseline.md`](../triple-a/15-current-baseline.md):
+`c7336ac0f6a909c10d07797c36814f0b321c6d5c`, `HEAD == origin/main`, CI #135
+falhou somente no SLO de Performance/k6 e o gate local registrou
+`BLOCKED / NOT PROVEN`, score `50`, critical `46` e `19` P0. Este documento
+mantém as fotografias históricas abaixo como contexto e não as promove como
+prova do candidato atual.
+
 ## Reconciliação corrente — 2026-09-12T00:08:01Z
 
 - **Snapshot de evidência:** `3fa9ad7832236e661618436b9cd68c6c145d4d51`; o gate local equivalente foi executado em `3054d6388becd9a262b2cd45fadbabc086c1ed75`, o código funcional avaliado está em `68600d6a55dcf18bd04c28ff3ee7528cc686efdb` e a branch `origin/fix/state-of-art-ci-assurance` permanece em `fe5406c2` para rollback reversível.

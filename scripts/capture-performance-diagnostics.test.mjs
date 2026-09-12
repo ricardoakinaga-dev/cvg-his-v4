@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import test from 'node:test';
+import { join } from 'node:path';
 import {
+  capturePerformanceDiagnostics,
   collectPerformanceSnapshot,
   redactConnectionString
 } from './capture-performance-diagnostics.mjs';
@@ -50,4 +53,41 @@ test('performance snapshot fails closed on an invalid database URL without leaki
   assert.equal(snapshot.database.status, 'PARTIAL');
   assert.match(JSON.stringify(snapshot), /invalid-connection-string|ENOTFOUND|Invalid/);
   assert.equal(JSON.stringify(snapshot).includes('secret'), false);
+});
+
+test('terminal diagnostics append an after-boundary sample to a partial watch report', async () => {
+  const directory = mkdtempSync(join('/tmp', 'cvg-performance-diagnostics-'));
+  const outputPath = join(directory, 'performance-diagnostics.json');
+  const env = {
+    TARGET: 'http://localhost:3001',
+    LOAD_PROFILE: 'operational-minimum-v1'
+  };
+
+  try {
+    await capturePerformanceDiagnostics({
+      rootDir: process.cwd(),
+      outputPath,
+      env,
+      phase: 'watch',
+      watch: false
+    });
+    await capturePerformanceDiagnostics({
+      rootDir: process.cwd(),
+      outputPath,
+      env,
+      phase: 'after',
+      appendExisting: true,
+      watch: false
+    });
+
+    const report = JSON.parse(readFileSync(outputPath, 'utf8'));
+    assert.deepEqual(
+      report.samples.map((sample) => sample.phase),
+      ['watch', 'after']
+    );
+    assert.equal(report.samples.at(-1).phase, 'after');
+    assert.equal(report.samples.at(-1).system.commands.note, undefined);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });

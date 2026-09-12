@@ -2,17 +2,26 @@
 
 **Status:** NOT PROVEN
 
-Observado em `2026-09-11T22:12:14Z` no snapshot
-`68600d6a55dcf18bd04c28ff3ee7528cc686efdb`, cujo pai funcional é
-`55ff8a5250d20f2dbd26c4572095599be485fb69`. `main` e `origin/main`
-coincidiram no snapshot de código e nenhum force-push foi usado.
+No candidato `c7336ac0f6a909c10d07797c36814f0b321c6d5c`, `HEAD` e `origin/main`
+coincidem e não houve force-push. A política em
+[`docs/engineering/GREEN_MAIN_POLICY.md`](../engineering/GREEN_MAIN_POLICY.md)
+exige todos os checks obrigatórios verdes no mesmo SHA.
 
-O CI exato [#129](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250)
-terminou `failure` com 15/16 jobs aprovados. Apenas Performance falhou nos
-passos do benchmark/SLO; o contrato do Critical Process Runner Windows passou.
-As métricas detalhadas do artefato exigem credencial e nenhuma causa foi
-inferida ou escondida por alteração de threshold.
+O [CI #135](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34663821242)
+terminou com 15/16 jobs verdes; somente Performance/k6 falhou. Os demais
+checks, incluindo o E2E clínico canônico, passaram. Portanto a integração é
+reversível e localmente validada, mas esta evidência não autoriza o claim
+`main green`, release produtivo ou `TRIPLE-A VERIFIED`.
 
-`docs/engineering/GREEN_MAIN_POLICY.md` exige que todos os checks obrigatórios
-estejam verdes no mesmo SHA. Por isso este documento não autoriza release,
-deploy produtivo ou o claim `TRIPLE-A VERIFIED`.
+## Registro obrigatório do prompt
+
+| Campo              | Registro                                                                                     |
+| ------------------ | -------------------------------------------------------------------------------------------- |
+| Problema           | Fazer a main bloquear regressões e aceitar somente checks obrigatórios verdes.               |
+| Estado anterior    | O candidato tinha checks locais fortes, mas o CI remoto de performance oscilava.             |
+| Decisão            | Não promover main a green enquanto um job obrigatório falhar.                                |
+| Implementação      | Política Green Main, jobs pinned e diagnóstico terminal do k6.                               |
+| Arquivos alterados | `.github/workflows/ci.yml`, `docs/engineering/GREEN_MAIN_POLICY.md`, scripts de diagnóstico. |
+| Testes             | Contrato de workflow, guards e CI #135; performance permanece falha.                         |
+| Evidências         | Run #135 vinculado ao SHA atual.                                                             |
+| Riscos residuais   | SLO remoto, branch protection autenticada e release target.                                  |

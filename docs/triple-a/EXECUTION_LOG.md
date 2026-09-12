@@ -561,3 +561,12 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - O [CI #132](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34658653993) executado no SHA `3fa9ad7832236e661618436b9cd68c6c145d4d51` terminou `failure` com `15/16` jobs verdes. SAST, Secret Scan, Typecheck, Dependency Audit, Repository Guards, Lint, OpenAPI, Coverage, Build, API Contract, E2E SPA, Visual, Unit, Integration e o contrato Windows passaram; somente `Performance (k6 SLOs)` falhou no [job 103458570170](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34658653993/job/103458570170), nos passos do benchmark/SLO.
 - O CI #131 anterior terminou `success` com `16/16` jobs verdes; os resultados permanecem vinculados aos respectivos SHAs e não são transferidos. Nenhum threshold foi relaxado.
 - O gate local permanece **BLOCKED / NOT PROVEN**, com `55/57/15`, e nenhum claim `TRIPLE-A VERIFIED` é emitido.
+
+## 2026-09-12T01:40:26Z — Reconciliação do candidato `c7336ac0`
+
+- `main`, `origin/main` e `HEAD` coincidem em `c7336ac0f6a909c10d07797c36814f0b321c6d5c`; o worktree ficou limpo e o rollback `origin/fix/state-of-art-ci-assurance@fe5406c2` foi preservado.
+- A documentação obrigatória do prompt foi completada com as entradas 02–12, e os snapshots `15-current-baseline`, `17-current-execution-evidence`, `13-final-scorecard` e `FINAL_REPORT` foram reconciliados para o SHA atual. O histórico anterior permanece append-only.
+- A execução local do gate registrou `BLOCKED`, score `50`, critical `46`, `19` P0, `claim=NOT PROVEN` e `publication_allowed=false`. Separadamente, testes, lint, typecheck, build, secrets, docs, supply chain, backup estático, critical `66/615`, processos `11/11` e E2E clínico `2/2` passaram nos escopos declarados.
+- O CI [#135](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34663821242) terminou `failure` com `15/16` jobs verdes; somente Performance/k6 falhou. O E2E clínico canônico, a validação de usabilidade e a finalização dos diagnósticos de performance passaram.
+- O restore drill real permaneceu bloqueado pelo acesso negado ao Docker daemon. Nenhuma evidência externa, UAT, target, attestation, deploy/rollback ou autoridade humana foi promovida.
+- Estado: **BLOCKED / NOT PROVEN**. Nenhum threshold foi relaxado e nenhum claim `TRIPLE-A VERIFIED` foi emitido.

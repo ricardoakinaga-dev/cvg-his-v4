@@ -201,11 +201,21 @@ jobs:
           TRIPLE_A_VERIFY_ATTESTATIONS: '1'
         run: pnpm release:triple-a
 
+      - name: Generate complete Triple-A evidence package
+        if: always()
+        env:
+          TRIPLE_A_EVIDENCE_PACKAGE_DIR: artifacts/triple-a
+          TRIPLE_A_RELEASE_OUTPUT_DIR: artifacts/release
+          TRIPLE_A_EVIDENCE_COMMIT_SHA: ${{ env.RELEASE_SHA }}
+        run: pnpm evidence:triple-a:package
+
       - name: Upload release evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-${{ env.RELEASE_SHA }}
-          path: artifacts/release/
+          path: |
+            artifacts/release/
+            artifacts/triple-a/
           if-no-files-found: error
           retention-days: 90

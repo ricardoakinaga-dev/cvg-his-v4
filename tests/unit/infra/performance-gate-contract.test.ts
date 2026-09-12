@@ -42,6 +42,8 @@ describe('performance and SLO gate', () => {
     expect(performanceJob).toContain('performance-diagnostics.json');
     expect(performanceJob).toContain('--watch');
     expect(performanceJob).toContain('--interval-ms 5000');
+    expect(performanceJob).toContain('--append');
+    expect(performanceJob).toContain('Always append a terminal snapshot');
     expect(performanceJob).toContain('BENCHMARK_OUTCOME: ${{ steps.k6-benchmark.outcome }}');
     expect(performanceJob).not.toContain('continue-on-error: true');
     expect(performanceJob).toContain(

@@ -1,5 +1,14 @@
 # Auditoria independente de performance — escopo delimitado
 
+## Reconciliação do candidato vigente — CI #135
+
+O parecer abaixo contém análises históricas. No candidato
+`c7336ac0f6a909c10d07797c36814f0b321c6d5c`, o
+[CI #135](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34663821242)
+falhou somente em Performance/k6; a coleta/finalização de diagnóstico passou.
+O artefato detalhado não foi lido sem credencial administrativa, portanto a
+causa permanece `NOT PROVEN`. Nenhum threshold foi relaxado.
+
 ## Candidato atual — CI #129
 
 **SHA avaliado:** `68600d6a55dcf18bd04c28ff3ee7528cc686efdb`

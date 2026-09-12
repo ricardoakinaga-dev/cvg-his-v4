@@ -81,7 +81,10 @@ Por padrão, o setup usa banco efêmero por execução quando `DATABASE_URL_TEST
 pnpm test:e2e
 ```
 
-Cobre: 8 flows ponta a ponta via API real (user creation, vet eligibility, scheduling, encounter chain, audit trail, billing, inventory, inactivation).
+Cobre os fluxos críticos legados e as duas jornadas canônicas atuais via API
+real: owner/patient, encounter, internação, leito, handover, alta, timeline,
+auditoria e invariantes de tenant. O resultado deve registrar `0 skipped`;
+execuções sem PostgreSQL/Redis são bloqueadas por `REQUIRE_TEST_DB=1`.
 
 ### 4. Rodar tudo (crítico + E2E)
 
@@ -97,16 +100,16 @@ pnpm test:db:stop
 
 ## Mapa de Scripts
 
-| Script             | O que executa                                                | Dependências                  |
-| ------------------ | ------------------------------------------------------------ | ----------------------------- |
-| `test:db:start`    | Sobe PostgreSQL 16 em porta 5433                             | Docker                        |
-| `test:db`          | Validação estrutural do banco (migrations, FKs, constraints) | Banco rodando                 |
-| `test:integration` | Todas as integrações (DB + fundacionais + factories)         | Banco rodando                 |
-| `test:critical`    | Suíte crítica: DB (151) + fundacionais (11) = 162 testes     | Banco rodando                 |
-| `test:runner:clean`| Mata `vitest` órfão e remove bancos efêmeros sem conexões    | PostgreSQL local opcional     |
-| `test:e2e`         | 8 fluxos críticos via Playwright API context                 | API rodando em localhost:3000 |
-| `test:all`         | test:critical + test:e2e                                     | Banco + API rodando           |
-| `test:db:stop`     | Derruba PostgreSQL de teste                                  | —                             |
+| Script              | O que executa                                                            | Dependências                 |
+| ------------------- | ------------------------------------------------------------------------ | ---------------------------- |
+| `test:db:start`     | Sobe PostgreSQL 16 em porta 5433                                         | Docker                       |
+| `test:db`           | Validação estrutural do banco (migrations, FKs, constraints)             | Banco rodando                |
+| `test:integration`  | Todas as integrações (DB + fundacionais + factories)                     | Banco rodando                |
+| `test:critical`     | Suíte crítica: DB (151) + fundacionais (11) = 162 testes                 | Banco rodando                |
+| `test:runner:clean` | Mata `vitest` órfão e remove bancos efêmeros sem conexões                | PostgreSQL local opcional    |
+| `test:e2e`          | Fluxos críticos + jornadas clínicas canônicas via Playwright API context | API/PostgreSQL/Redis rodando |
+| `test:all`          | test:critical + test:e2e                                                 | Banco + API rodando          |
+| `test:db:stop`      | Derruba PostgreSQL de teste                                              | —                            |
 
 ## Interpretação dos Relatórios
 

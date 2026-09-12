@@ -1,6 +1,6 @@
 # CVG-HIS V4 - Documentacao ativa
 
-**Atualizado em:** 2026-09-07 (programa executivo State of Art / Triplo AAA)
+**Atualizado em:** 2026-09-12 (programa executivo State of Art / Triplo AAA)
 
 Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afirmacao de funcionalidade so e considerada valida quando estiver sustentada por codigo executavel e teste comportamental.
 
@@ -19,6 +19,12 @@ reproduzível, integrado, seguro, acessível e operável com régua Triplo AAA.
 5. [Quality Bar](engineering/QUALITY_BAR.md) e [matriz de evidências](engineering/REQUIREMENT_EVIDENCE_MATRIX.md) — gates que impedem que uma nota ou um arquivo substitua prova.
 6. [Evidência do critical gate de 07/09](engineering/CRITICAL_GATE_2026-09-07.md) — `PASS_BOUNDED` local: 65/65 arquivos, 594/594 testes e 10/10 processos; limites de target e recertificação preservados.
 7. [Evidência E2E SPA de 07/09](engineering/E2E_SPA_2026-09-07.md) — `PASS_BOUNDED` scoped: 9/9 jornadas contra PostgreSQL/Redis reais, com cleanup sem erro.
+8. [Baseline corrente](triple-a/15-current-baseline.md) e [evidência corrente](triple-a/17-current-execution-evidence.md) — candidato `c7336ac0`, CI #135 e limitações explícitas.
+9. [Relatório final de assurance](triple-a/FINAL_REPORT.md), [scorecard](triple-a/13-final-scorecard.md) e [execution log](triple-a/EXECUTION_LOG.md).
+
+As entradas numeradas de [`triple-a/MASTER_PROMPT.md`](triple-a/MASTER_PROMPT.md) seguem as fases do prompt
+preservado. Cada documento separa implementação local de verificação remota e
+target; `BLOCKED`/`NOT PROVEN` não é convertido em aprovação.
 
 O selo “Triplo AAA” é aspiracional e só poderá ser usado após nota global ≥95,
 dimensões ≥90, nenhum item crítico abaixo de 85, gates obrigatórios aprovados,

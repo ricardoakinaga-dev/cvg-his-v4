@@ -318,6 +318,7 @@ jobs:
           node --test scripts/critical-source-manifest.test.mjs
           node --test scripts/build-source-map-contract.test.mjs
           node --test scripts/capture-performance-diagnostics.test.mjs
+          node --test scripts/generate-triple-a-evidence-package.test.mjs
           node --test scripts/process-reexport-coverage.test.mjs scripts/source-metric-presence.test.mjs scripts/check-critical-coverage.test.mjs
           pnpm vetus:parity:test
 
@@ -927,11 +928,13 @@ jobs:
           POSTGRES_MAX_CONNECTIONS: '60'
           POSTGRES_POOL_MIN: '8'
         run: |
-          if [ ! -s benchmarks/k6/results/performance-diagnostics.json ]; then
-            node scripts/capture-performance-diagnostics.mjs \
-              --phase after \
-              --output benchmarks/k6/results/performance-diagnostics.json || true
-          fi
+          # Always append a terminal snapshot. If the watcher died after its
+          # initial sample, this preserves the after-boundary evidence instead
+          # of treating an incomplete report as final.
+          node scripts/capture-performance-diagnostics.mjs \
+            --append \
+            --phase after \
+            --output benchmarks/k6/results/performance-diagnostics.json || true
 
       - name: Finalize performance runner provenance
         if: always()

@@ -1,5 +1,13 @@
 # Triple-A External Assurance — Current Reconciliation
 
+> **Current candidate supersession (2026-09-12):** este arquivo preserva
+> snapshots históricos. Para o candidato vigente, use
+> [`15-current-baseline.md`](./15-current-baseline.md),
+> [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
+> [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA atual é
+> `c7336ac0f6a909c10d07797c36814f0b321c6d5`, o CI é #135 e o veredito é
+> `BLOCKED / NOT PROVEN`; nenhum dado abaixo é transferido.
+
 **Current snapshot:** `68600d6a55dcf18bd04c28ff3ee7528cc686efdb` (código funcional; a reconciliação documental acompanha o candidato); `main`/`origin/main` sincronizados no momento da validação.
 **Current CI:** [#129](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250) — `failure`, 15/16 jobs; somente Performance falhou
 **Current status:** **BLOCKED / NOT PROVEN**

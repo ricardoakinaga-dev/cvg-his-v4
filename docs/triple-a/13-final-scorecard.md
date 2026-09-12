@@ -1,28 +1,33 @@
 # Triple-A — Current Scorecard
 
-| Campo | Estado |
-| --- | --- |
-| CURRENT SNAPSHOT | `3fa9ad7832236e661618436b9cd68c6c145d4d51` (documentação; gate local equivalente executado em `3054d638`, código funcional em `68600d6a`) |
-| MAIN / ORIGIN | Coincidiram em `3fa9ad78` no último push; atualização foi fast-forward, sem force-push |
-| CURRENT CI | [#132](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34658653993): `failure`; `15/16` jobs verdes, somente Performance falhou |
-| LOCAL STRICT GATE | `BLOCKED`, score `55`, critical `57`, open P0 `15`, `publication_allowed=false` |
-| FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0 |
-| QUALITY BAR ASSESSMENT | score `31`, crítico `33`, open P0 `7` antes da decisão agregada do gate |
-| LOCAL VALIDATION | checks estáticos, typecheck, lint, build e `pnpm test` PASS; integração PostgreSQL `66/615`, processos críticos `11/11`, E2E canônico `2/2` |
-| CURRENT VERDICT | **BLOCKED / NOT PROVEN**; nenhum release ou claim Triple-A autorizado |
+| Campo              | Estado                                                                                                                              |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| CURRENT SNAPSHOT   | `c7336ac0f6a909c10d07797c36814f0b321c6d5c`                                                                                          |
+| MAIN / ORIGIN      | Coincidem; fast-forward/reversível; sem force-push                                                                                  |
+| CURRENT CI         | [#135](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34663821242): `failure`; 15/16 jobs verdes; Performance falhou |
+| LOCAL STRICT GATE  | `BLOCKED`, score `50`, critical `46`, open P0 `19`, `publication_allowed=false`                                                     |
+| FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                            |
+| LOCAL VALIDATION   | testes, lint, typecheck, build, security/docs/supply chain e backup estático: PASS; E2E clínico `2/2`                               |
+| VERIFIED TARGET    | `NOT PROVEN`                                                                                                                        |
+| CURRENT VERDICT    | **BLOCKED / NOT PROVEN**                                                                                                            |
 
-O gate estrito executado com `TRIPLE_A_RUN_TESTS=1` confirmou a integridade do
-checkout, passou os checks locais e registrou a suíte unitária como PASS. A
-execução separada contra PostgreSQL/Redis locais também passou a integração
-crítica e os onze cenários de processo. Essas provas locais fortalecem o
-candidato, mas não substituem os envelopes externos exigidos pela régua.
+O score não é uma média permissiva: os gates externos ausentes e a falha de
+Performance continuam bloqueando a certificação. O diagnóstico k6 foi
+adicionado para atribuir a próxima falha sem relaxar os thresholds.
 
-O CI #132 do SHA documental terminou `failure` com `15/16` jobs verdes;
-somente Performance falhou. Integration, E2E SPA, Unit, Visual, API Contract e
-o contrato Windows passaram. O CI #131 anterior terminou verde, enquanto #130 e
-#129 tiveram falha somente em Performance; esses resultados não são transferidos
-e thresholds não foram alteradas.
+Não são emitidos `main green`, release produtivo ou `TRIPLE-A VERIFIED`.
+Limitações operacionais, humanas, de target e de governança estão detalhadas
+em [`17-current-execution-evidence.md`](./17-current-execution-evidence.md).
 
-O scorecard não emite `main green` nem `TRIPLE-A VERIFIED`. As limitações
-operacionais, humanas, de target e de governança continuam registradas em
-[17-current-execution-evidence.md](./17-current-execution-evidence.md).
+## Registro obrigatório do prompt
+
+| Campo              | Registro                                                                                                   |
+| ------------------ | ---------------------------------------------------------------------------------------------------------- |
+| Problema           | Resumir qualidade por domínio sem esconder P0 ou converter ausência em PASS.                               |
+| Estado anterior    | Scorecards anteriores apontavam para SHAs e CIs já superados.                                              |
+| Decisão            | Recalcular e publicar somente o snapshot `c7336ac0`; manter `BLOCKED`.                                     |
+| Implementação      | Gate strict, scorecard current, execution evidence e pacote de envelopes.                                  |
+| Arquivos alterados | `scripts/run-triple-a-release-gate.mjs`, `scripts/generate-triple-a-evidence-package.mjs`, docs correntes. |
+| Testes             | Gate local, docs, testes workspace e contratos de evidência.                                               |
+| Evidências         | `50/46/19`, CI #135 e `artifacts/triple-a/index.json` local.                                               |
+| Riscos residuais   | Nenhum score autoriza release enquanto houver P0, SLO falho ou target sem prova.                           |

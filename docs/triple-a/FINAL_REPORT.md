@@ -1,37 +1,49 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Documentation snapshot:** `main@3fa9ad7832236e661618436b9cd68c6c145d4d51`
-**Functional candidate:** `68600d6a55dcf18bd04c28ff3ee7528cc686efdb`
-**Observed:** `2026-09-12T00:08:01Z`
-**Repository state:** `HEAD` e `origin/main` coincidem; o rollback remoto
-continua preservado e nenhum force-push foi usado.
+**Candidate:** `main@c7336ac0f6a909c10d07797c36814f0b321c6d5`
+
 **Verdict:** **BLOCKED / NOT PROVEN**
 
-O gate local estrito com `TRIPLE_A_RUN_TESTS=1`, executado no checkout de código equivalente `3054d638`, passou as validações estáticas,
-typecheck, lint, build e a suíte workspace, mas terminou com score `55`,
-critical `57`, `15` P0 abertos e `publication_allowed=false`. O quality bar
-congelado exige `97/95/zero P0`; a avaliação derivada permanece `31/33/7`.
+## Executive Summary
 
-A execução local adicional passou `66/615` testes PostgreSQL críticos, `11/11`
-cenários de processo com Redis local e `2/2` jornadas clínicas canônicas. Essas
-provas fortalecem a implementação e permanecem bounded ao ambiente local; não
-são promovidas como CI, target produtivo, UAT ou autoridade.
+O candidato preserva o modular monolith e recebeu controles incrementais de
+workflow/worker, jornadas clínicas canônicas, observabilidade, supply chain,
+diagnóstico de performance e documentação de release. A `main` está limpa,
+sincronizada e reversível.
 
-O [CI #132](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34658653993)
-do SHA documental terminou `failure` com `15/16` jobs verdes; somente
-Performance falhou. Integration, E2E SPA, Unit, Visual, API Contract e o
-contrato Windows passaram. O CI #131 anterior terminou verde; #129 e #130
-tiveram falha somente em Performance. Nenhum threshold foi relaxado e nenhuma
-evidência de SHA diferente foi transferida.
+## Scorecard
 
-Permanecem sem prova suficiente manifest/security evidence de publicação,
-branch protection, RLS/runtime alvo, workflow PostgreSQL de release, crash
-recovery em envelope externo, backup/restore/RPO-RTO, deploy/rollback,
-attestation, soak, observabilidade no target, UAT humano e autoridade de
-release. O relatório não emite `main green`, release produtivo ou
-`TRIPLE-A VERIFIED`.
+| Área                 | Estado atual                 | Evidência                                       |
+| -------------------- | ---------------------------- | ----------------------------------------------- |
+| Architecture         | BOUNDED PASS                 | guards e contratos locais                       |
+| Security             | PARTIAL                      | SAST, secrets, dependency audit e testes locais |
+| Testing              | LOCAL PASS                   | suíte workspace, critical e E2E clínico         |
+| Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas        |
+| Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                   |
+| CI/CD                | BLOCKED                      | CI #135 falhou somente em Performance           |
+| Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                 |
+| Recovery             | BLOCKED                      | Docker impediu restore drill real               |
+| Frontend             | BOUNDED PASS                 | E2E/visual/a11y no CI                           |
+| Database             | PARTIAL                      | testes locais; RLS target não provado           |
+| Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas        |
+| Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes       |
+| Overall              | `50`, critical `46`, `19 P0` | gate estrito local                              |
 
-O prompt byte a byte preservado é [MASTER_PROMPT.md](./MASTER_PROMPT.md), com
-SHA-256 `95270384800c87fcbe7e823a41a7b57834ddaac274914226745f7fdc5137197a`.
-A régua está em [QUALITY_BAR_V1.json](./QUALITY_BAR_V1.json) e o ledger atual em
-[EXECUTION_LOG.md](./EXECUTION_LOG.md).
+## P0 Findings
+
+Permanecem abertos: CI remoto verde no mesmo SHA, RLS/runtime target,
+workflow PostgreSQL externo, crash recovery do worker, auditoria externa,
+backup/restore, deploy/rollback, attestation, UAT e autoridade de go/no-go.
+
+## Remaining Risks
+
+O SLO de performance k6 falhou no runner remoto, embora a reprodução local
+tenha passado. Os diagnósticos publicados agora devem ser usados antes de
+qualquer ajuste funcional ou de threshold. O Docker daemon indisponível impede
+o drill real de recuperação nesta estação.
+
+## Release Recommendation
+
+**BLOCKED**. O claim `TRIPLE-A VERIFIED` continua proibido até que todos os
+gates da régua congelada sejam satisfeitos no mesmo candidato e com evidência
+externa verificável.

@@ -1,5 +1,28 @@
 # Triple-A — 00 Baseline
 
+## Snapshot vigente — 2026-09-12T01:40:26Z
+
+O baseline autoritativo do candidato atual está em
+[`15-current-baseline.md`](./15-current-baseline.md) e
+[`17-current-execution-evidence.md`](./17-current-execution-evidence.md):
+`c7336ac0f6a909c10d07797c36814f0b321c6d5c`, `HEAD == origin/main`, CI #135
+com 15/16 jobs verdes e falha somente em Performance/k6, gate local
+`BLOCKED` com `50/46/19` (score/critical/open P0). As seções abaixo são
+histórico append-only; seus SHAs e scores não são evidência do candidato atual.
+
+## Registro obrigatório do prompt
+
+| Campo              | Registro                                                                                                               |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| Problema           | Estabelecer arquitetura, forças, dívidas e riscos antes da implementação.                                              |
+| Estado anterior    | Baselines misturavam candidatos e não distinguiam local, CI e target.                                                  |
+| Decisão            | Usar este índice histórico com o snapshot corrente em `15-current-baseline.md`.                                        |
+| Implementação      | Prompt preservado, quality bar congelado, matriz e ledger append-only.                                                 |
+| Arquivos alterados | `docs/triple-a/MASTER_PROMPT.md`, `QUALITY_BAR_V1.json`, `15-current-baseline.md`, `17-current-execution-evidence.md`. |
+| Testes             | `pnpm docs:validate`; gate local e verificações de qualidade do candidato.                                             |
+| Evidências         | SHA `c7336ac0`, CI #135 e artefato estrito `BLOCKED`.                                                                  |
+| Riscos residuais   | Evidência de target, recovery, governança, UAT e autoridade humana ausente.                                            |
+
 ## Reconciliação corrente — 2026-09-11T22:12:14Z
 
 - Snapshot atual: `68600d6a55dcf18bd04c28ff3ee7528cc686efdb` (código funcional; documentação de reconciliação acompanha o candidato); `main`, `HEAD` e `origin/main` coincidem, com rollback remoto preservado e sem force-push.
@@ -15,16 +38,16 @@
 
 ## Resultado histórico da fotografia inicial da Fase 0
 
-| Classe | Situação atual | Prioridade |
-|---|---|---|
-| Fundamentos de workspace, contratos, OpenAPI, migrations, RLS estático, typecheck, lint e build | Confirmados por comandos locais com exit 0 | PASS parcial |
-| Complexidade | `AppointmentsListPage.vue` excede o limite em 106 linhas | P0 aberto na fotografia |
-| Helm | Só validação estática; binário ausente | P1 aberto |
-| Testes completos | `pnpm test` passou com exit 0 na fotografia inicial; SPA 211 arquivos/1862 testes e API 576 testes reportados | PASS local |
-| Release Triple-A | Não existia gate agregador, evidence JSON ou scorecard final | P0 aberto na fotografia |
-| DR/RPO-RTO/performance/chaos/supply chain | Implementações parciais, sem prova de release atual | P1 aberto |
-| Clinical criticality/safety invariants | Matriz consolidada ainda não existia | P0 aberto na fotografia |
-| UX/design | Base existente, mas certificação visual/UX desta missão ainda não executada | P1 aberto |
+| Classe                                                                                          | Situação atual                                                                                                | Prioridade              |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| Fundamentos de workspace, contratos, OpenAPI, migrations, RLS estático, typecheck, lint e build | Confirmados por comandos locais com exit 0                                                                    | PASS parcial            |
+| Complexidade                                                                                    | `AppointmentsListPage.vue` excede o limite em 106 linhas                                                      | P0 aberto na fotografia |
+| Helm                                                                                            | Só validação estática; binário ausente                                                                        | P1 aberto               |
+| Testes completos                                                                                | `pnpm test` passou com exit 0 na fotografia inicial; SPA 211 arquivos/1862 testes e API 576 testes reportados | PASS local              |
+| Release Triple-A                                                                                | Não existia gate agregador, evidence JSON ou scorecard final                                                  | P0 aberto na fotografia |
+| DR/RPO-RTO/performance/chaos/supply chain                                                       | Implementações parciais, sem prova de release atual                                                           | P1 aberto               |
+| Clinical criticality/safety invariants                                                          | Matriz consolidada ainda não existia                                                                          | P0 aberto na fotografia |
+| UX/design                                                                                       | Base existente, mas certificação visual/UX desta missão ainda não executada                                   | P1 aberto               |
 
 ## Classificação de risco
 

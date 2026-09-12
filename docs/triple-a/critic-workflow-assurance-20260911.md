@@ -1,5 +1,12 @@
 # Auditoria independente — workflow clínico
 
+## Reconciliação do candidato vigente — 2026-09-12
+
+O texto abaixo é histórico. No SHA
+`c7336ac0f6a909c10d07797c36814f0b321c6d5`, os contratos e jornadas canônicas
+passam localmente e o E2E clínico do CI #135 passou; PostgreSQL/worker crash,
+efeitos duráveis e target continuam sem envelope externo `PASS`.
+
 **SHA auditado:** `b77539c9891eef89cbbe8160bf6e30a0fb369d48`
 **Escopo:** fases 7–13 e P0s 4–7 do prompt State of Art
 **Resultado:** `INCOMPLETE / NOT PROVEN`
