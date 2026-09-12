@@ -56,7 +56,7 @@ remota e pelos gates externos de target e release.
 | Database             | PARTIAL                      | testes locais; RLS target não provado                                                                                                   |
 | Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas                                                                                                |
 | Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes                                                                                               |
-| Overall              | `55`, critical `57`, `15 P0` | gate estrito local no pai `82ff6eec` com checks, build e testes                                                                         |
+| Overall              | `55`, critical `57`, `15 P0` | gate estrito local no HEAD documental `c1059e6c` com checks, build e testes                                                             |
 
 ## P0 Findings
 

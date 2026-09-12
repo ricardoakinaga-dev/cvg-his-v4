@@ -11,8 +11,8 @@
 
 | Escopo                 | Resultado                                                                                                                                                                                                                                                                                                                                                                     |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate estrito           | `BLOCKED`, score `55`, critical `57`, open P0 `15`, claim `NOT PROVEN`, `publication_allowed=false`, no SHA `82ff6eec`                                                                                                                                                                                                                                                        |
-| Workspace              | `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` executou checks, build e suíte workspace no pai; decisão permaneceu bloqueada                                                                                                                                                                                                                                                    |
+| Gate estrito           | `BLOCKED`, score `55`, critical `57`, open P0 `15`, claim `NOT PROVEN`, `publication_allowed=false`, no HEAD documental `c1059e6c`                                                                                                                                                                                                                                            |
+| Workspace              | `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` executou checks, build e suíte workspace no HEAD `c1059e6c`; decisão permaneceu bloqueada                                                                                                                                                                                                                                        |
 | Contratos direcionados | CI contract `18/18`; Vitest `38/38`; Node `8/8`; typecheck, lint, Prettier e `git diff --check`: PASS                                                                                                                                                                                                                                                                         |
 | Fixtures k6            | `pnpm benchmark:k6:seed` repetido `2/2` no PostgreSQL descartável, sem reassignment entre tenants                                                                                                                                                                                                                                                                             |
 | Performance local      | k6 `operational-minimum-v1`, 60 VUs, `3.001` iterações, `9/9` SLOs; API p95 `124,84 ms`, p99 `166,49 ms`, query p95 `143 ms`, erros `0%`, disponibilidade `100%`, API/PostgreSQL/Redis em 2 CPUs e k6 `GOMAXPROCS=1`; reprodução equivalente ao watcher de 5 s passou `3.371` iterações e `9/9` (`p95 94,29 ms`, `p99 136,61 ms`, query `107 ms`, 44 amostras de diagnóstico) |
@@ -82,9 +82,9 @@ não substitui a execução remota nem uma certificação de target.
 
 ## Decisão
 
-O envelope ignorado `artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json` do SHA
-`82ff6eec` é `BLOCKED / NOT PROVEN` (`55/57/15`); a execução completa foi feita
-antes do commit de governança. O pacote local
+O envelope ignorado `artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json` do HEAD
+`c1059e6c` é `BLOCKED / NOT PROVEN` (`55/57/15`); a execução completa passou
+checks e suíte workspace, mas não substitui as provas externas ausentes. O pacote local
 `artifacts/triple-a/index.json` também permanece `BLOCKED`. A ausência de uma
 prova externa permanece ausência; não é convertida em PASS pelo k6 local ou
 por um CI verde de outro SHA.

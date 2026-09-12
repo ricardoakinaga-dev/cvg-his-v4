@@ -632,3 +632,9 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - O artefato `performance-k6-report` tem 20,4 KB e digest `sha256:84b09a10162af819504fe8e269a84d498f1927aee9189af553ff3f8086390afa`. As métricas individuais não foram promovidas porque os logs/artefato detalhados exigem credencial administrativa.
 - A sequência histórica do mesmo código/workflow alterna entre verde e falha conforme o runner: #137 passou Performance, enquanto #138, #140 e #151 falharam; nenhum threshold, perfil de carga ou regra foi alterado entre essas observações. A reprodução local controlada continua `9/9` SLOs.
 - Estado: **BLOCKED / NOT PROVEN**. O runner público compartilhado não fornece a certificação determinística exigida; a correção segura pendente é infraestrutura de performance dedicada/isolada, que não foi inventada neste commit.
+
+## 2026-09-12T11:49:00Z — Gate estrito completo no HEAD documental `c1059e6c`
+
+- `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` executou checks, build e suíte workspace no HEAD documental `c1059e6ce189a30c7934d1f4d014f2ecbb6d28d1` e terminou `BLOCKED`, score `55`, critical `57`, `15` P0, `claim=NOT PROVEN`, `publication_allowed=false`.
+- O resultado confirma a decisão fail-closed: a execução local passou os checks cobertos, mas não fornece CI verde do candidato, target, recovery, governança, UAT, attestation ou autoridade de release.
+- O artefato `artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json` permanece ignorado e diagnóstico; não foi promovido como evidência de release.

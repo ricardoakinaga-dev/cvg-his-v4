@@ -27,9 +27,9 @@
 **Current status:** **BLOCKED / NOT PROVEN**
 **Observation:** 2026-09-12T11:43:00Z
 
-**Current local execution:** o gate estrito completo do pai `82ff6eec` executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A suíte crítica local passou `615` testes PostgreSQL e `11` suítes de processo. A reprodução da API clínica canônica passou `2/2` em PostgreSQL real; a validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
+**Current local execution:** o gate estrito completo do HEAD documental `c1059e6c` executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A suíte crítica local passou `615` testes PostgreSQL e `11` suítes de processo. A reprodução da API clínica canônica passou `2/2` em PostgreSQL real; a validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
 
-**Current strict gate:** `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` no pai `82ff6eec` retornou `BLOCKED / NOT PROVEN`, score `55`, critical `57`, `15` P0 abertos, `claim=NOT PROVEN` e `publication_allowed=false`.
+**Current strict gate:** `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` no HEAD `c1059e6c` retornou `BLOCKED / NOT PROVEN`, score `55`, critical `57`, `15` P0 abertos, `claim=NOT PROVEN` e `publication_allowed=false`.
 
 The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. Historical runs #137 and #140 belong to earlier SHAs; #140 failed in `Run k6 benchmark`/`Check SLO results`, while #137 passed all published jobs. The performance evidence and its access limitation are reconciled in [critic-performance-assurance-20260911.md](./critic-performance-assurance-20260911.md). Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
 
