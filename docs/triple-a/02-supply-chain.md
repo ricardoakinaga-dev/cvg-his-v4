@@ -33,7 +33,7 @@ configuração de observabilidade antes de um deploy.
   mutáveis em services, Compose e Helm e a exceção restrita de imagens locais.
 - Proveniência/SBOM: `scripts/generate-image-attestation-evidence.mjs` e o
   workflow de release.
-- Candidato observado: `f24b90a8a50839b6a8853d66ef8ab4b7754092e0`; o snapshot
+- Candidato observado: `e605597c73a54e7d4c001fad6c5a83806d22d4ba`; o snapshot
   anterior `c7336ac0f6a909c10d07797c36814f0b321c6d5c` é histórico.
 
 ## Verificação
@@ -57,12 +57,12 @@ licença/abandono de dependências continuam `NOT PROVEN` para uma release.
 | Implementação      | Pins imutáveis, guard central e workflow de provenance/SBOM.                                                 |
 | Arquivos alterados | `.github/workflows`, `scripts/validate-supply-chain.mjs`, `scripts/generate-image-attestation-evidence.mjs`. |
 | Testes             | `pnpm validate:supply-chain`; secret scan; guards de release.                                                |
-| Evidências         | Guard local no SHA `f24b90a8`; CI novo do candidato ainda pendente.                                          |
+| Evidências         | Guard local no SHA `e605597c`; CI novo do candidato ainda pendente.                                          |
 | Riscos residuais   | Registry scan, assinatura, licença/abandono e attestation de imagem ainda sem prova externa.                 |
 
 ## Atualização do candidato de supply chain — 2026-09-12T14:40:32Z
 
-- O candidato `f24b90a8a50839b6a8853d66ef8ab4b7754092e0` fixa por digest as
+- O candidato `e605597c73a54e7d4c001fad6c5a83806d22d4ba` fixa por digest as
   imagens externas de services do workflow, Compose, Helm e bases Docker; as
   imagens locais de Compose permanecem limitadas ao namespace `cvg-his-v2-*`/
   `cvg-his-v4-*`.

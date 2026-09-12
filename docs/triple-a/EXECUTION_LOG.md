@@ -712,3 +712,11 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - A execução local passou: guard supply-chain com 113 actions, 13 imagens de workflow, 15 imagens Compose, seis bases Docker e quatro referências de scripts; regressões `4/4`; contratos de game-day/restore `12/12`; shell/node syntax, Prettier, secret scan e `git diff --check`.
 - O CI #162 no SHA documental anterior `ddf9ebc6` falhou nos contratos por essa expectativa antiga (`redis:7-alpine`) e foi cancelado pelos commits corretivos; nenhum resultado parcial foi promovido.
 - Estado: **BLOCKED / NOT PROVEN** até o novo CI executar no SHA exato e concluir o render Helm, os guards e os jobs dependentes.
+
+
+## 2026-09-12T15:10:31Z — exceção de documentação corrigida no candidato `e605597c`
+
+- O candidato `e605597c73a54e7d4c001fad6c5a83806d22d4ba` classifica `docs/README.md` como caminho documental no validador de snapshot; a reconciliação de índices não marca mais um candidato de código como stale.
+- O teste do validador de snapshot passou `8/8`; a sequência completa de contratos de source (`validate:openapi`, namespaces, migration source, RLS, deploy surface, dependencies, docs e complexity) passou localmente.
+- O CI #163 no snapshot documental anterior `04fcae98` encontrou exatamente essa falha em `docs:validate`; o run foi interrompido antes dos gates posteriores. Nenhum resultado parcial foi promovido.
+- Estado: **BLOCKED / NOT PROVEN** até o próximo CI executar o novo validador no SHA exato.

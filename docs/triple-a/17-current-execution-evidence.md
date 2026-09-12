@@ -2,7 +2,7 @@
 
 ## Candidato de código observado em 2026-09-12T14:40:32Z
 
-- SHA de código e documentação: `f24b90a8a50839b6a8853d66ef8ab4b7754092e0` (pins imutáveis de deployment, envelope de eventos versionado, crosswalk normativo e hardening conjunto de logging/workflow/tenant); a documentação reancorada sucede o candidato de código anterior `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c` e o candidato de assurance `0d475dee358eab9621e5497db9929b7010ed09eb` e o candidato funcional/workflow anterior é `553078be60c963ffb7cab5c45c130912e5e299b8`.
+- SHA de código e documentação: `e605597c73a54e7d4c001fad6c5a83806d22d4ba` (pins imutáveis de deployment, envelope de eventos versionado, crosswalk normativo e hardening conjunto de logging/workflow/tenant); a documentação reancorada sucede o candidato de código anterior `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c` e o candidato de assurance `0d475dee358eab9621e5497db9929b7010ed09eb` e o candidato funcional/workflow anterior é `553078be60c963ffb7cab5c45c130912e5e299b8`.
 - `HEAD`, `main` e `origin/main` coincidem; rollback preservado em
   `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
@@ -25,7 +25,7 @@ autoridade de release.
 
 ## CI remoto e reancoragem
 
-O [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) pertence ao commit documental anterior `e6edb6f8` e não é usado como prova do SHA `f24b90a8`. Esta atualização deve disparar uma nova execução com os guards vinculados ao candidato correto.
+O [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) pertence ao commit documental anterior `e6edb6f8` e não é usado como prova do SHA `e605597c`. Esta atualização deve disparar uma nova execução com os guards vinculados ao candidato correto.
 
 
 O [CI #143](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34678150409)
@@ -78,7 +78,7 @@ relaxado.
 O [CI #153](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34693263252)
 permanece como histórico do descendente documental anterior `9955b8b5`; terminou
 `failure` com `15/16` jobs verdes e falha exclusiva de Performance/k6. Nenhuma
-evidência parcial ou de outro SHA é transferida para `f24b90a8`.
+evidência parcial ou de outro SHA é transferida para `e605597c`.
 
 ## Recovery e target
 

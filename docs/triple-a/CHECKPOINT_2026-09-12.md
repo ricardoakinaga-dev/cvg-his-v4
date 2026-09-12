@@ -2,7 +2,7 @@
 
 **Registrado em:** `2026-09-12T14:40:32Z`
 **Repositório:** `https://github.com/ricardoakinaga-dev/cvg-his-v4`
-**Código integrado:** `f24b90a8a50839b6a8853d66ef8ab4b7754092e0`
+**Código integrado:** `e605597c73a54e7d4c001fad6c5a83806d22d4ba`
 
 ## Estado do Git
 
@@ -39,4 +39,4 @@ pnpm docs:validate
 git diff --check
 ```
 
-Depois, abrir o CI do candidato `f24b90a8` e conferir o resultado terminal no SHA exato. Só aceitar merge/release quando todos os jobs obrigatórios e as provas externas exigidas pelo quality bar estiverem presentes.
+Depois, abrir o CI do candidato `e605597c` e conferir o resultado terminal no SHA exato. Só aceitar merge/release quando todos os jobs obrigatórios e as provas externas exigidas pelo quality bar estiverem presentes.

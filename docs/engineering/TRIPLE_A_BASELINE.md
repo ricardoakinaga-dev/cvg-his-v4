@@ -4,7 +4,7 @@
 
 O snapshot corrente está reconciliado em
 [`docs/triple-a/15-current-baseline.md`](../triple-a/15-current-baseline.md):
-`f24b90a8a50839b6a8853d66ef8ab4b7754092e0`, que adiciona pins imutáveis às superfícies de deployment e mantém o envelope de eventos versionado, o crosswalk normativo, a redaction recursiva do logging estruturado, o boundary de workflow e a verificação de tenant. A documentação sucede o candidato de assurance
+`e605597c73a54e7d4c001fad6c5a83806d22d4ba`, que adiciona pins imutáveis às superfícies de deployment e mantém o envelope de eventos versionado, o crosswalk normativo, a redaction recursiva do logging estruturado, o boundary de workflow e a verificação de tenant. A documentação sucede o candidato de assurance
 `0d475dee`; `HEAD`, `main` e `origin/main` coincidem e o rollback remoto está
 preservado. O [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) pertence ao commit documental anterior e não é prova terminal do snapshot. O gate local completo histórico permanece `BLOCKED / NOT
 PROVEN`, score `55`, critical `57` e `15` P0; target, recovery, UAT, attestation,
