@@ -5,21 +5,22 @@
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA atual é
-> `56a18736d7870033c11fb263f68fba98c4b739fc`; o CI #143 pertence ao pai
+> `a3354f021d7046ad345f5aad89d16ab0ef9c1be3`; o CI #143 pertence ao pai
 > `82ff6eec` e terminou `failure` somente em Performance/k6. O CI #144 pertence
 > ao pai documental `da5dd244` e falhou em `Repository Guards` porque o
 > checkout raso ocultou a ancestralidade do snapshot; o candidato atual corrige
 > esse contrato com `fetch-depth: 0`. O CI #145, no descendente documental
-> `66a605be`, fornece a execução remota do código e terminou `failure` com
-> 15/16 jobs verdes e falha exclusiva em Performance/k6; o veredito é
-> `BLOCKED / NOT PROVEN`; nenhum dado abaixo é transferido como aprovação.
+> `697c6efa`, fornece a execução remota anterior e terminou `failure` no passo
+> de API E2E clínico canônico; o veredito é `BLOCKED / NOT PROVEN`; nenhum dado
+> abaixo é transferido como aprovação. O candidato `a3354f02` adiciona
+> isolamento de banco/API para essa prova.
 
-**Current snapshot:** `56a18736d7870033c11fb263f68fba98c4b739fc` (código e documentação; `HEAD == origin/main`, rollback preservado).
-**Current CI:** [#145](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34680830958) — `main@66a605be`, 15/16 jobs passaram, E2E e integração incluídos, e somente Performance/k6 falhou. O #144 anterior, no pai documental `da5dd244`, falhou em `Repository Guards` por checkout raso; o guard foi corrigido, mas o SLO de performance continua bloqueando a certificação.
+**Current snapshot:** `a3354f021d7046ad345f5aad89d16ab0ef9c1be3` (candidato de código/workflow; a documentação corrente é descendente documental, rollback preservado).
+**Current CI:** [#146](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34682262401) — `main@697c6efa` terminou `failure` no passo de API E2E clínico canônico; a suíte SPA, Performance/k6, integração e guards passaram. O candidato `a3354f02` isola o banco/API dessa prova; o novo CI exato ainda está pendente.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-12T08:02:13Z
+**Observation:** 2026-09-12T08:40:31Z
 
-**Current local execution:** o gate estrito completo do pai `82ff6eec` executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A suíte crítica local passou `615` testes PostgreSQL e `11` suítes de processo. A validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
+**Current local execution:** o gate estrito completo do pai `82ff6eec` executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A suíte crítica local passou `615` testes PostgreSQL e `11` suítes de processo. A reprodução da API clínica canônica passou `2/2` em PostgreSQL real; a validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
 
 **Current strict gate:** `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` no pai `82ff6eec` retornou `BLOCKED / NOT PROVEN`, score `55`, critical `57`, `15` P0 abertos, `claim=NOT PROVEN` e `publication_allowed=false`.
 

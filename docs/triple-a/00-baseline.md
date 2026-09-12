@@ -1,11 +1,11 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-12T08:02:13Z
+## Snapshot vigente — 2026-09-12T08:40:31Z
 
 O baseline autoritativo do candidato atual está em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md):
-`56a18736d7870033c11fb263f68fba98c4b739fc`, com `HEAD == main == origin/main`,
+`a3354f021d7046ad345f5aad89d16ab0ef9c1be3`, com `HEAD == main == origin/main`,
 gate local estrito `BLOCKED` com `55/57/15` (score/critical/open P0) e claim
 `NOT PROVEN`. O CI #143 do candidato funcional pai `82ff6eec` terminou
 `failure` somente em Performance/k6; os outros 15 jobs, incluindo E2E SPA,
@@ -13,9 +13,10 @@ passaram, mas esse resultado não é transferido para o novo commit de governan�
 O CI #144 do commit documental pai `da5dd244` registrou falha no job
 `Repository Guards`: o checkout raso não permitia provar a ancestralidade do
 snapshot; o candidato atual corrige o checkout com `fetch-depth: 0`. Ainda não
-há CI verde do candidato atual: o CI #145, no `main@66a605be` (descendente
-documental do candidato), terminou com 15/16 jobs verdes e falha exclusiva em
-Performance/k6; E2E e integração passaram.
+há CI verde do candidato atual: o CI #146, no `main@697c6efa` (descendente
+documental anterior), terminou `failure` porque o passo de API E2E clínico
+canônico falhou; a suíte SPA, Performance/k6 e integração passaram. O candidato
+`a3354f02` isola o banco/API da prova canônica e aguarda novo CI.
 As seções abaixo são
 histórico append-only; seus SHAs e scores não são evidência do candidato atual.
 
