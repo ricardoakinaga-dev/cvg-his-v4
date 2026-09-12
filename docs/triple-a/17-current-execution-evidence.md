@@ -1,8 +1,8 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato funcional observado em 2026-09-12T08:40:31Z
+## Candidato funcional observado em 2026-09-12T09:15:44Z
 
-- SHA de código e documentação: `a3354f021d7046ad345f5aad89d16ab0ef9c1be3`.
+- SHA de código e documentação: `a3354f021d7046ad345f5aad89d16ab0ef9c1be3` (código/workflow); documentação publicada em `8273ecb5c7ea9afd759fdde86c91fe073ba64f94`.
 - `HEAD`, `main` e `origin/main` coincidem; rollback preservado em
   `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
@@ -13,7 +13,7 @@
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | Gate estrito           | `BLOCKED`, score `55`, critical `57`, open P0 `15`, claim `NOT PROVEN`, `publication_allowed=false`, no SHA `82ff6eec`                     |
 | Workspace              | `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` executou checks, build e suíte workspace no pai; decisão permaneceu bloqueada                 |
-| Contratos direcionados | CI contract `18/18`; Vitest `33/33`; Node `8/8`; typecheck, lint, Prettier e `git diff --check`: PASS                                      |
+| Contratos direcionados | CI contract `18/18`; Vitest `38/38`; Node `8/8`; typecheck, lint, Prettier e `git diff --check`: PASS                                      |
 | Fixtures k6            | `pnpm benchmark:k6:seed` repetido `2/2` no PostgreSQL descartável, sem reassignment entre tenants                                          |
 | Performance local      | k6 `operational-minimum-v1`, 60 VUs, `4.303` iterações, `9/9` SLOs; API p95 `27,54 ms`, p99 `40,30 ms`, erros `0%`, disponibilidade `100%` |
 | Suíte crítica local    | `615/615` testes PostgreSQL e `11/11` suítes de processo com relatórios completos; Redis local descartável configurado explicitamente      |
@@ -39,11 +39,12 @@ verdes; E2E, integração e os demais checks passaram, mas Performance/k6 falhou
 O SLO remoto permanece sem prova de aprovação.
 O [CI #146](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34682262401),
 no descendente documental `697c6efa`, terminou `failure`: a suíte SPA passou,
-mas `Run canonical clinical API E2E` falhou; Performance/k6 e os demais jobs
-passaram. O log público não expõe a asserção; a reprodução local em PostgreSQL
-real passou `2/2`. O candidato `a3354f02` prepara `cvg_his_e2e_canonical` e
-sobe a API em `3113`, separando a prova clínica do banco mutável da suíte SPA.
-Essa correção ainda aguarda CI remoto exato.
+mas `Run canonical clinical API E2E` falhou. O candidato `a3354f02` prepara
+`cvg_his_e2e_canonical` e sobe a API em `3113`, separando a prova clínica do
+banco mutável da suíte SPA. O [CI #147](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34684079972),
+no SHA exato publicado `8273ecb5`, confirmou a correção: `16/16` jobs verdes,
+SPA E2E verde e `Run canonical clinical API E2E` concluído com sucesso em
+`8s`, além de Performance/k6, integração, unidade, visual, guards e segurança.
 
 ## Recovery e target
 
