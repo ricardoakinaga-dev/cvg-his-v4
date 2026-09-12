@@ -154,6 +154,7 @@ describe('canonical runtime process lifecycle', () => {
       WORKER_HEALTH_PORT: String(port),
       WORKER_INTERVAL_MS: '1000',
       OTEL_ENABLED: 'false',
+      REQUIRE_TEST_DB: '0',
       DATABASE_URL: ''
     });
 
