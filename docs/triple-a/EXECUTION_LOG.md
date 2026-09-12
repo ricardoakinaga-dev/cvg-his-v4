@@ -720,3 +720,11 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - O teste do validador de snapshot passou `8/8`; a sequência completa de contratos de source (`validate:openapi`, namespaces, migration source, RLS, deploy surface, dependencies, docs e complexity) passou localmente.
 - O CI #163 no snapshot documental anterior `04fcae98` encontrou exatamente essa falha em `docs:validate`; o run foi interrompido antes dos gates posteriores. Nenhum resultado parcial foi promovido.
 - Estado: **BLOCKED / NOT PROVEN** até o próximo CI executar o novo validador no SHA exato.
+
+## 2026-09-12T15:34:47Z — checkpoint após reprodução local de Unit Tests
+
+- O commit documental `ae30e3df9612aae5e4b281b7b90ebbcca777b614` está publicado em `main` e `origin/main`; o candidato funcional continua sendo `e605597c73a54e7d4c001fad6c5a83806d22d4ba`.
+- A reprodução local completa de `pnpm test` terminou com exit code `0`, incluindo os testes da API e dos módulos. `git diff --check` e `pnpm docs:validate` continuam passando.
+- O [CI #164](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34701444110) passou nos gates estruturais observados, mas o job `Unit Tests` terminou com exit code `1`; os logs detalhados não estão disponíveis sem autenticação. O resultado remoto não é promovido nem substituído pela evidência local.
+- Retomada: consultar o CI no SHA exato, obter o log autenticado do job Unit, confirmar o estado terminal dos jobs restantes e investigar a divergência antes de qualquer merge/release.
+- Estado: **BLOCKED / NOT PROVEN**.

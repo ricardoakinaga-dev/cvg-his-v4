@@ -1,15 +1,16 @@
 # Checkpoint — merge seguro e auditoria
 
-**Registrado em:** `2026-09-12T14:40:32Z`
+**Registrado em:** `2026-09-12T15:34:47Z`
 **Repositório:** `https://github.com/ricardoakinaga-dev/cvg-his-v4`
 **Código integrado:** `e605597c73a54e7d4c001fad6c5a83806d22d4ba`
+**Commit documental atual:** `ae30e3df9612aae5e4b281b7b90ebbcca777b614`
 
 ## Estado do Git
 
 - Branch ativa: `main`; o código foi publicado por fast-forward, sem force-push.
 - `main` e `origin/main` apontam para o commit funcional que contém os pins imutáveis de deployment, o envelope de eventos e o crosswalk validado; este checkpoint será publicado junto da reconciliação documental, sem force-push.
 - O rollback remoto continua preservado em `origin/fix/state-of-art-ci-assurance@fe5406c23c515585629060e0dc01b91f2d113d65`, ancestral do código integrado.
-- A árvore de trabalho estava limpa antes desta atualização documental.
+- A árvore de trabalho estava limpa antes desta atualização documental; `main` e `origin/main` apontavam para `ae30e3df`.
 
 ## Mudanças validadas
 
@@ -25,7 +26,7 @@
 
 ## CI e decisão
 
-O [CI #159](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34698297705) pertence ao candidato anterior `6462323f` e não é promovido para este candidato. Um novo CI será acompanhado após a publicação do commit documental deste checkpoint.
+O [CI #164](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34701444110) foi disparado no commit documental `ae30e3df`. Os gates estruturais observados passaram, mas o job `Unit Tests` terminou com exit code 1; o log detalhado não está acessível sem autenticação. A reprodução local completa de `pnpm test` terminou com exit code 0. Os jobs remotos restantes ainda não devem ser tratados como prova terminal, e nenhum resultado parcial é promovido.
 
 O estado de release continua **BLOCKED / NOT PROVEN**: permanecem sem prova target, recovery/restore, UAT, attestation, governança, deploy/rollback, performance remota, cobertura visual global, SCA avançada e autoridade de release. Não declarar `main green` ou `TRIPLE-A VERIFIED` antes das evidências externas exigidas pelo quality bar.
 
@@ -33,10 +34,12 @@ O estado de release continua **BLOCKED / NOT PROVEN**: permanecem sem prova targ
 
 ```bash
 cd /home/ricardo/cvg-his-v4
+git fetch origin --prune
 git status --short --branch
 git log --oneline -5 --decorate
 pnpm docs:validate
 git diff --check
+pnpm test
 ```
 
-Depois, abrir o CI do candidato `e605597c` e conferir o resultado terminal no SHA exato. Só aceitar merge/release quando todos os jobs obrigatórios e as provas externas exigidas pelo quality bar estiverem presentes.
+Depois, abrir o CI do commit documental `ae30e3df` e conferir o resultado terminal no SHA exato. Investigar a divergência do job remoto `Unit Tests` antes de qualquer nova promoção. Só aceitar merge/release quando todos os jobs obrigatórios e as provas externas exigidas pelo quality bar estiverem presentes.
