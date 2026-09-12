@@ -324,6 +324,7 @@ jobs:
           node --test scripts/build-source-map-contract.test.mjs
           node --test scripts/capture-performance-diagnostics.test.mjs
           node --test scripts/generate-triple-a-evidence-package.test.mjs
+          node --test scripts/run-security-audit.test.mjs
           node --test scripts/validate-supply-chain.test.mjs
           node --test scripts/process-reexport-coverage.test.mjs scripts/source-metric-presence.test.mjs scripts/check-critical-coverage.test.mjs
           pnpm vetus:parity:test

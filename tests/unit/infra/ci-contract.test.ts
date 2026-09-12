@@ -221,6 +221,7 @@ describe('CI repository guardrails', () => {
       'REQUIRE_TEST_DB=1 pnpm vitest run tests/unit/infra/requirement-evidence-matrix.test.ts --config vitest.config.ts'
     );
     expect(job).toContain('node --test tests/unit/infra/gauntlet-subcriteria-evidence.test.mjs');
+    expect(job).toContain('node --test scripts/run-security-audit.test.mjs');
     expect(job).toContain('pnpm vetus:parity:test');
     expect(job).toContain(
       'pnpm vitest run tests/integration/process/runtime-lifecycle.test.ts --config vitest.integration.config.ts'
