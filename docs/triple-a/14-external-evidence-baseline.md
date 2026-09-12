@@ -4,23 +4,27 @@
 > snapshots históricos. Para o candidato vigente, use
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
-> [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA atual é
-> `553078be60c963ffb7cab5c45c130912e5e299b8`; o CI #149 pertence a este candidato
-> `82ff6eec` e terminou `failure` somente em Performance/k6. O CI #144 pertence
-> ao pai documental `da5dd244` e falhou em `Repository Guards` porque o
-> checkout raso ocultou a ancestralidade do snapshot; o candidato atual corrige
-> esse contrato com `fetch-depth: 0`. O CI #145, no descendente documental
-> `697c6efa`, fornece a execução remota anterior e terminou `failure` no passo
-> de API E2E clínico canônico. O CI #147 no descendente documental `8273ecb5`
-> terminou `success` com `16/16` jobs verdes, incluindo a prova canônica isolada;
-> o CI #148 no descendente `f9cc660a` terminou `failure` somente em Performance/k6
+> [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA de código/workflow é
+> `553078be60c963ffb7cab5c45c130912e5e299b8`, com documentação corrente no
+> descendente `4b49c4ef`. O CI #150 nesse descendente terminou `failure` somente
+> em Performance/k6; os outros `15/16` jobs, incluindo E2E SPA e integração,
+> passaram. O CI #149 no SHA de código/workflow foi bloqueado em
+> `Repository Guards` porque os snapshots ainda apontavam para o candidato
+> anterior; essa documentação foi então reconciliada. O CI #144 pertence ao pai
+> documental `da5dd244` e falhou em `Repository Guards` porque o checkout raso
+> ocultou a ancestralidade do snapshot; o candidato atual corrige esse contrato
+> com `fetch-depth: 0`. O CI #145, no descendente documental `697c6efa`, fornece a
+> execução remota anterior e terminou `failure` no passo de API E2E clínico
+> canônico. O CI #147 no descendente documental `8273ecb5` terminou `success`
+> com `16/16` jobs verdes, incluindo a prova canônica isolada; o CI #148 no
+> descendente `f9cc660a` terminou `failure` somente em Performance/k6
 > (`Run k6 benchmark` exit `99`, `Check SLO results` exit `1`). Nenhum threshold
 > foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
 **Current snapshot:** `553078be60c963ffb7cab5c45c130912e5e299b8` (candidato de código/workflow; documentação corrente em reconciliação, rollback preservado).
-**Current CI:** [#149](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34687849607) — `main@553078be` terminou `failure` em `Repository Guards` porque os seis snapshots ainda apontavam para o pai. Os jobs iniciais, Coverage e OpenAPI passaram; nenhum PASS parcial é promovido.
+**Current CI:** [#150](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34688526421) — `main@4b49c4ef` terminou `failure` somente em `Performance (k6 SLOs)`; `15/16` jobs passaram, incluindo `Repository Guards`, Integration, E2E SPA e Visual Regression. O artefato público do job é `performance-k6-report` (digest `sha256:a9cac2efa9318590c27dae16cc3296c8c71d54693fa7ab2d4fc23e9c32d764ed`); os valores detalhados não estão disponíveis sem credencial. Nenhum PASS parcial é promovido.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-12T10:23:00Z
+**Observation:** 2026-09-12T11:03:00Z
 
 **Current local execution:** o gate estrito completo do pai `82ff6eec` executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A suíte crítica local passou `615` testes PostgreSQL e `11` suítes de processo. A reprodução da API clínica canônica passou `2/2` em PostgreSQL real; a validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
 

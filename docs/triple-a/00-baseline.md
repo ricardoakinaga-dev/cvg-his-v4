@@ -1,12 +1,12 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-12T10:23:00Z
+## Snapshot vigente — 2026-09-12T11:03:00Z
 
 O baseline autoritativo do candidato atual está em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md):
 `553078be60c963ffb7cab5c45c130912e5e299b8` (código/workflow), com a documentação
-em reconciliação neste descendente; `HEAD == main == origin/main`,
+corrente no descendente `4b49c4ef529a43344887f621f9d6ac2ebd969bb0`; `HEAD == main == origin/main`,
 gate local estrito `BLOCKED` com `55/57/15` (score/critical/open P0) e claim
 `NOT PROVEN`. O CI #143 do candidato funcional pai `82ff6eec` terminou
 `failure` somente em Performance/k6; os outros 15 jobs, incluindo E2E SPA,
@@ -20,9 +20,10 @@ Performance/k6 e integração passaram. O candidato
 `a3354f02` isola o banco/API da prova canônica; o CI #147 no SHA documental
 `8273ecb5` terminou verde com `16/16` jobs, incluindo essa prova canônica. O
 CI #149 no SHA `553078be` terminou `failure` em `Repository Guards` porque os
-snapshots ainda apontavam para o candidato anterior; os jobs iniciais, Coverage
-e OpenAPI passaram. Esta atualização corrige a identidade documental antes de
-uma nova execução terminal.
+snapshots ainda apontavam para o candidato anterior. A reconciliação documental
+foi publicada no descendente `4b49c4ef`; o CI #150 terminou `failure` somente em
+Performance/k6, com `15/16` jobs passando, incluindo os guards, integração e
+E2E. Nenhum threshold foi relaxado.
 As seções abaixo são
 histórico append-only; seus SHAs e scores não são evidência do candidato atual.
 
@@ -36,7 +37,7 @@ histórico append-only; seus SHAs e scores não são evidência do candidato atu
 | Implementação      | Prompt preservado, quality bar congelado, matriz e ledger append-only.                                                                                                                                                                                           |
 | Arquivos alterados | `docs/triple-a/MASTER_PROMPT.md`, `QUALITY_BAR_V1.json`, `15-current-baseline.md`, `17-current-execution-evidence.md`, `.github/workflows/ci.yml`.                                                                                                               |
 | Testes             | `pnpm docs:validate`; gate local e verificações de qualidade do candidato.                                                                                                                                                                                       |
-| Evidências         | CI #147 `16/16` verde no código/workflow, CI #148 com falha exclusiva de Performance/k6 no descendente documental, gate local `55/57/15` herdado da execução completa no pai, seed/k6 locais e artefato estrito `BLOCKED`; gates de target permanecem sem prova. |
+| Evidências         | CI #150 com `15/16` jobs passando e falha exclusiva de Performance/k6, CI #147 `16/16` verde em outro descendente, gate local `55/57/15` herdado da execução completa no pai, seed/k6 locais e artefato estrito `BLOCKED`; gates de target permanecem sem prova. |
 | Riscos residuais   | Evidência de target, recovery, governança, UAT e autoridade humana ausente.                                                                                                                                                                                      |
 
 ## Reconciliação corrente — 2026-09-11T22:12:14Z

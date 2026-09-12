@@ -1,6 +1,6 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `main@553078be60c963ffb7cab5c45c130912e5e299b8` (documentação corrente em reconciliação)
+**Candidate funcional avaliado:** `main@553078be60c963ffb7cab5c45c130912e5e299b8` (código/workflow; documentação corrente no descendente `4b49c4ef529a43344887f621f9d6ac2ebd969bb0`)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -20,9 +20,13 @@ candidato `a3354f02` isolou o banco/API da prova canônica e o [CI #147](https:/
 no SHA exato publicado `8273ecb5` terminou `success` com `16/16` jobs verdes,
 incluindo a suíte SPA e `Run canonical clinical API E2E`. O [CI #149](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34687849607)
 no SHA `553078be` falhou em `Repository Guards` porque os snapshots
-documentais ainda apontavam para o candidato anterior; os jobs iniciais,
-Coverage e OpenAPI passaram. A correção documental está sendo publicada e exige
-novo CI terminal.
+documentais ainda apontavam para o candidato anterior; essa identidade foi
+reconciliada no descendente documental. O [CI #150](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34688526421)
+terminou `failure` somente em Performance/k6, com `15/16` jobs passando,
+incluindo guards, integração, E2E SPA e regressão visual. O artefato público
+`performance-k6-report` tem digest
+`sha256:a9cac2efa9318590c27dae16cc3296c8c71d54693fa7ab2d4fc23e9c32d764ed`;
+as métricas detalhadas não estão disponíveis sem credencial.
 
 ## Atualização terminal — isolamento da prova clínica
 
@@ -36,21 +40,21 @@ remota e pelos gates externos de target e release.
 
 ## Scorecard
 
-| Área                 | Estado atual                 | Evidência                                                                                                                  |
-| -------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Architecture         | BOUNDED PASS                 | guards e contratos locais                                                                                                  |
-| Security             | PARTIAL                      | SAST, secrets, dependency audit e testes locais                                                                            |
-| Testing              | LOCAL PASS                   | suíte workspace, critical e E2E clínico                                                                                    |
-| Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas                                                                                   |
-| Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                                                                                              |
-| CI/CD                | BLOQUEADO no SHA atual       | CI #148 terminou `failure` em Performance/k6 com `15/16` jobs verdes; #147 confirmou o código/workflow clínico com `16/16` |
-| Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                                                                                            |
-| Recovery             | BLOCKED                      | Docker impediu restore drill real                                                                                          |
-| Frontend             | BOUNDED PASS                 | E2E/visual/a11y no CI                                                                                                      |
-| Database             | PARTIAL                      | testes locais; RLS target não provado                                                                                      |
-| Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas                                                                                   |
-| Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes                                                                                  |
-| Overall              | `55`, critical `57`, `15 P0` | gate estrito local no pai `82ff6eec` com checks, build e testes                                                            |
+| Área                 | Estado atual                 | Evidência                                                                                                                               |
+| -------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Architecture         | BOUNDED PASS                 | guards e contratos locais                                                                                                               |
+| Security             | PARTIAL                      | SAST, secrets, dependency audit e testes locais                                                                                         |
+| Testing              | LOCAL PASS                   | suíte workspace, critical e E2E clínico                                                                                                 |
+| Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas                                                                                                |
+| Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                                                                                                           |
+| CI/CD                | BLOQUEADO no SHA atual       | CI #150 terminou `failure` somente em Performance/k6 com `15/16` jobs verdes; #147 confirmou historicamente outro candidato com `16/16` |
+| Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                                                                                                         |
+| Recovery             | BLOCKED                      | Docker impediu restore drill real                                                                                                       |
+| Frontend             | BOUNDED PASS                 | E2E/visual/a11y no CI                                                                                                                   |
+| Database             | PARTIAL                      | testes locais; RLS target não provado                                                                                                   |
+| Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas                                                                                                |
+| Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes                                                                                               |
+| Overall              | `55`, critical `57`, `15 P0` | gate estrito local no pai `82ff6eec` com checks, build e testes                                                                         |
 
 ## P0 Findings
 
@@ -61,10 +65,12 @@ attestation, soak, UAT e autoridade de go/no-go.
 ## Remaining Risks
 
 O k6 local no banco descartável passou `9/9` SLOs sem alteração de threshold
-(API p95 `27,54 ms`, p99 `40,30 ms`, erros `0%`, disponibilidade `100%`). Essa
-prova é local e não substitui o CI remoto, o target ou um envelope externo. O
-Docker daemon indisponível ainda impede o drill real de recuperação nesta
-estação.
+(API p95 `27,54 ms`, p99 `40,30 ms`, erros `0%`, disponibilidade `100%`). A
+reprodução equivalente ao watcher de diagnóstico de 5 s com `GOMAXPROCS=1`
+também passou `9/9` (API p95 `94,29 ms`, p99 `136,61 ms`, query p95 `107 ms`,
+44 amostras). Essa prova é local e não substitui o CI remoto, o target ou um
+envelope externo. O Docker daemon indisponível ainda impede o drill real de
+recuperação nesta estação.
 
 ## Release Recommendation
 

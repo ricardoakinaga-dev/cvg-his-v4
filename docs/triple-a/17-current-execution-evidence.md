@@ -1,23 +1,23 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato funcional observado em 2026-09-12T10:23:00Z
+## Candidato funcional observado em 2026-09-12T11:03:00Z
 
-- SHA de código e documentação: `553078be60c963ffb7cab5c45c130912e5e299b8` (snapshot vinculado ao workflow; esta atualização documental será o próximo descendente publicado).
+- SHA de código e documentação: `553078be60c963ffb7cab5c45c130912e5e299b8` (código/workflow); documentação corrente publicada no descendente `4b49c4ef529a43344887f621f9d6ac2ebd969bb0`.
 - `HEAD`, `main` e `origin/main` coincidem; rollback preservado em
   `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
 
 ## Validações locais
 
-| Escopo                 | Resultado                                                                                                                                  |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Gate estrito           | `BLOCKED`, score `55`, critical `57`, open P0 `15`, claim `NOT PROVEN`, `publication_allowed=false`, no SHA `82ff6eec`                     |
-| Workspace              | `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` executou checks, build e suíte workspace no pai; decisão permaneceu bloqueada                 |
-| Contratos direcionados | CI contract `18/18`; Vitest `38/38`; Node `8/8`; typecheck, lint, Prettier e `git diff --check`: PASS                                      |
-| Fixtures k6            | `pnpm benchmark:k6:seed` repetido `2/2` no PostgreSQL descartável, sem reassignment entre tenants                                          |
-| Performance local      | k6 `operational-minimum-v1`, 60 VUs, `3.001` iterações, `9/9` SLOs; API p95 `124,84 ms`, p99 `166,49 ms`, query p95 `143 ms`, erros `0%`, disponibilidade `100%`, API/PostgreSQL/Redis em 2 CPUs e k6 `GOMAXPROCS=1` |
-| Suíte crítica local    | `615/615` testes PostgreSQL e `11/11` suítes de processo com relatórios completos; Redis local descartável configurado explicitamente      |
-| Supply/artefatos       | Diretório de resultados versionado com `.gitkeep`; relatório gerado localmente foi descartado; nenhum PASS externo foi inventado           |
+| Escopo                 | Resultado                                                                                                                                                                                                                                                                                                                                                                     |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gate estrito           | `BLOCKED`, score `55`, critical `57`, open P0 `15`, claim `NOT PROVEN`, `publication_allowed=false`, no SHA `82ff6eec`                                                                                                                                                                                                                                                        |
+| Workspace              | `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` executou checks, build e suíte workspace no pai; decisão permaneceu bloqueada                                                                                                                                                                                                                                                    |
+| Contratos direcionados | CI contract `18/18`; Vitest `38/38`; Node `8/8`; typecheck, lint, Prettier e `git diff --check`: PASS                                                                                                                                                                                                                                                                         |
+| Fixtures k6            | `pnpm benchmark:k6:seed` repetido `2/2` no PostgreSQL descartável, sem reassignment entre tenants                                                                                                                                                                                                                                                                             |
+| Performance local      | k6 `operational-minimum-v1`, 60 VUs, `3.001` iterações, `9/9` SLOs; API p95 `124,84 ms`, p99 `166,49 ms`, query p95 `143 ms`, erros `0%`, disponibilidade `100%`, API/PostgreSQL/Redis em 2 CPUs e k6 `GOMAXPROCS=1`; reprodução equivalente ao watcher de 5 s passou `3.371` iterações e `9/9` (`p95 94,29 ms`, `p99 136,61 ms`, query `107 ms`, 44 amostras de diagnóstico) |
+| Suíte crítica local    | `615/615` testes PostgreSQL e `11/11` suítes de processo com relatórios completos; Redis local descartável configurado explicitamente                                                                                                                                                                                                                                         |
+| Supply/artefatos       | Diretório de resultados versionado com `.gitkeep`; relatório gerado localmente foi descartado; nenhum PASS externo foi inventado                                                                                                                                                                                                                                              |
 
 Esses resultados são bounded ao ambiente local. A execução k6 usou um banco
 descartável local e não é promovida para target, UAT, branch protection ou
@@ -58,8 +58,17 @@ no SHA `553078be`, terminou `failure` em `Validate repository source contracts`:
 o guard detectou que os documentos correntes ainda declaravam `a3354f02` depois
 da alteração do workflow/contrato. Os jobs Typecheck, SAST, Secret Scan,
 Dependency Audit, Coverage e OpenAPI passaram; nenhum resultado parcial é
-promovido. Esta reconciliação atualiza os seis snapshots obrigatórios e exige
-um novo CI terminal.
+promovido. A reconciliação foi publicada no descendente `4b49c4ef`.
+
+O [CI #150](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34688526421),
+no descendente documental `4b49c4ef`, terminou `failure` somente em
+`Performance (k6 SLOs)`: `15/16` jobs passaram, incluindo Repository Guards,
+Integration, E2E SPA e Visual Regression. O job remoto publicou o artefato
+`performance-k6-report` com digest
+`sha256:a9cac2efa9318590c27dae16cc3296c8c71d54693fa7ab2d4fc23e9c32d764ed`;
+as métricas detalhadas não estão disponíveis sem credencial. A mudança
+`GOMAXPROCS=1` e o watcher de diagnóstico passaram na reprodução local, mas a
+evidência hospedada continua falha e nenhum threshold foi relaxado.
 
 ## Recovery e target
 
