@@ -70,6 +70,19 @@ SHA e não transfere os números dos runs históricos acima. O gate local perman
 `BLOCKED / NOT PROVEN` (`54/54/16`) porque o pacote externo completo, target e
 autoridade de release continuam ausentes; nenhum threshold foi alterado.
 
+## Reexecuções posteriores — CI #138 e #139
+
+Os commits documentais/teste `a2533b8e` e `2239f52d` foram executados nos
+[CI #138](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34669285411)
+e [CI #139](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34670803981).
+O #138 também falhou em Repository Guards e Performance/k6; depois do ajuste
+explícito de `REQUIRE_TEST_DB` no contrato de worker, o #139 deixou apenas
+Performance/k6 falho (`Run k6 benchmark` exit `99`, `Check SLO results` exit `1`)
+com os outros `15/16` jobs verdes. O código de produto não mudou desde o #137
+verde. Sem acesso ao relatório detalhado do artefato, a causa do SLO não é
+afirmada; thresholds e carga permanecem congelados e o parecer continua
+**BLOCKED / NOT PROVEN**.
+
 **Decisão histórica:** não alterar thresholds, carga ou comportamento de
 produto para mascarar a falha; a variação não demonstrou defeito determinístico
 no código ou no banco.
