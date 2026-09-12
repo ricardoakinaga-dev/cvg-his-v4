@@ -526,6 +526,9 @@ test('keeps database workflow reads tenant-scoped and fail-closed on absent rows
   const client = {
     query: async (sql: string) => {
       queries.push(sql);
+      if (sql.includes("current_setting('app.current_account_id'")) {
+        return { rows: [{ matches: true }] };
+      }
       return { rows: [] as Record<string, unknown>[] };
     },
     release: () => {
@@ -537,7 +540,11 @@ test('keeps database workflow reads tenant-scoped and fail-closed on absent rows
 
   assert.equal(await repository.findById(ACCOUNT_A, '99999999-9999-4999-8999-999999999999' as never), null);
   assert.equal(await repository.findByIdempotencyKey(ACCOUNT_A, 'missing'), null);
-  assert.deepEqual(queries.slice(0, 2), ['BEGIN', "SELECT set_config('app.current_account_id', $1, true)"]);
+  assert.deepEqual(queries.slice(0, 3), [
+    'BEGIN',
+    "SELECT set_config('app.current_account_id', $1, true)",
+    "SELECT current_setting('app.current_account_id', true) = $1 AS matches"
+  ]);
   assert.equal(queries.filter((query) => query === 'COMMIT').length, 2);
   assert.equal(releases, 2);
 });
@@ -595,6 +602,9 @@ test('covers the durable workflow repository contract through a transactional cl
       queries.push(sql);
       if (sql === 'BEGIN' || sql.startsWith("SELECT set_config('app.current_account_id'") || sql === 'COMMIT') {
         return { rows: [], rowCount: 0 };
+      }
+      if (sql.includes("current_setting('app.current_account_id'")) {
+        return { rows: [{ matches: true }], rowCount: 1 };
       }
       if (sql.startsWith('INSERT INTO clinical_workflow_tasks')) {
         taskInsertCount += 1;
