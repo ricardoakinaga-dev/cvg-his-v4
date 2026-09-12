@@ -259,7 +259,7 @@ export async function collectPerformanceSnapshot({
   env = process.env,
   phase = 'sample',
   now = new Date(),
-  detailed = phase === 'watch' || phase.startsWith('watch-')
+  detailed = phase !== 'interval'
 } = {}) {
   const connectionString = env.DATABASE_URL ?? env.DATABASE_URL_TEST ?? null;
   const database = await databaseSnapshot(connectionString);

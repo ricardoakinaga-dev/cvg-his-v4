@@ -28,7 +28,8 @@ test('performance snapshot is bounded when PostgreSQL is unavailable', async () 
       LOAD_PROFILE: 'operational-minimum-v1'
     },
     phase: 'test',
-    now: new Date('2026-09-12T00:00:00.000Z')
+    now: new Date('2026-09-12T00:00:00.000Z'),
+    detailed: false
   });
 
   assert.equal(snapshot.phase, 'test');
@@ -42,7 +43,8 @@ test('performance snapshot is bounded when PostgreSQL is unavailable', async () 
 test('performance snapshot fails closed on an invalid database URL without leaking it', async () => {
   const snapshot = await collectPerformanceSnapshot({
     env: { DATABASE_URL: 'postgres://user:secret@[%invalid]' },
-    phase: 'invalid-url'
+    phase: 'invalid-url',
+    detailed: false
   });
 
   assert.equal(snapshot.database.status, 'PARTIAL');
