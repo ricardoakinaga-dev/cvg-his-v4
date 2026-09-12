@@ -34,6 +34,19 @@ test('accepts a current snapshot with only documentation commits after its candi
   );
 });
 
+test('accepts the canonical engineering baseline reconciliation path', () => {
+  assert.deepEqual(
+    validateCurrentSnapshot({
+      headSha: head,
+      candidateSha: parent,
+      candidateIsAncestor: true,
+      changedPathsSinceCandidate: ['docs/engineering/TRIPLE_A_BASELINE.md'],
+      documents: documents(parent)
+    }),
+    []
+  );
+});
+
 test('rejects a code commit whose current snapshot still points to its parent', () => {
   const errors = validateCurrentSnapshot({
     headSha: head,

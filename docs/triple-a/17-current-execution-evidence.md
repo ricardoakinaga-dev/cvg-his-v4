@@ -29,7 +29,7 @@ O [CI #143](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/346781
 é o run do candidato funcional pai `82ff6eec` e terminou `failure` com `15/16`
 jobs verdes: E2E SPA, integração, segurança, build, visual e demais checks
 passaram; somente Performance/k6 falhou em `Run k6 benchmark`/`Check SLO results`.
-Esse resultado não é transferido para `56a18736`; nenhum threshold foi relaxado.
+Esse resultado não é transferido para `553078be`; nenhum threshold foi relaxado.
 O CI #144 do pai documental `da5dd244` falhou em `Repository Guards` porque o
 checkout raso impediu validar a ancestralidade do snapshot. O candidato atual
 passa a solicitar `fetch-depth: 0`; a correção foi exercitada no CI seguinte.

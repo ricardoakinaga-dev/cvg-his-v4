@@ -10,14 +10,16 @@ A tabela mantém o escopo completo. “NOT PROVEN” significa que a aceitação
 integral da fase não foi demonstrada no candidato corrente; não significa
 que o código esteja ausente. Evidência local, CI e alvo são avaliados separadamente.
 Os registros históricos abaixo mencionam candidatos anteriores. A fotografia
-vigente é `56a18736d7870033c11fb263f68fba98c4b739fc`, com gate local estrito
-`55/57/15`, suíte crítica local `615 + 11` aprovada. O CI #143 do pai
-`82ff6eec` terminou com falha exclusiva em Performance/k6; não há ainda CI
-exata para `56a18736`. O CI #144 do pai documental `da5dd244` também falhou
-em `Repository Guards` porque o checkout raso ocultou a ancestralidade do
-snapshot; o candidato atual fixa o checkout com `fetch-depth: 0`.
-O CI #145 do descendente documental `66a605be` passou em 15/16 jobs, mas falhou
-exclusivamente em Performance/k6; E2E e integração passaram.
+vigente é o candidato de código/workflow `553078be60c963ffb7cab5c45c130912e5e299b8`,
+com documentação corrente em descendentes que alteraram somente
+`docs/triple-a`, gate local estrito `55/57/15` no descendente documental
+`c1059e6c` e suíte crítica local `615 + 11` aprovada. O CI #151 no descendente
+documental `fecb70ca` passou os guards e as suítes remotas, mas falhou
+exclusivamente em Performance/k6; não há CI remoto terminal verde para o
+candidato de código/workflow atual. O CI #149 no SHA `553078be` falhou em
+`Repository Guards` porque os snapshots ainda apontavam para o candidato
+anterior; a reconciliação documental posterior corrigiu essa identidade. O
+checkout do workflow agora usa `fetch-depth: 0` para provar a ancestralidade.
 Essas provas continuam abaixo da aceitação integral porque faltam CI terminal,
 target, governança, UAT e autoridade de release. A [fotografia atual](./15-current-baseline.md)
 contém SHA, CI e lacunas medidas.

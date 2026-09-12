@@ -41,6 +41,11 @@ const SNAPSHOT_DOCUMENTS = [
 ];
 
 const DOCUMENTATION_ONLY_PREFIX = 'docs/triple-a/';
+const DOCUMENTATION_ONLY_PATHS = new Set(['docs/engineering/TRIPLE_A_BASELINE.md']);
+
+function isDocumentationOnlyPath(path) {
+  return path.startsWith(DOCUMENTATION_ONLY_PREFIX) || DOCUMENTATION_ONLY_PATHS.has(path);
+}
 
 function git(args, rootDir = root) {
   const result = spawnSync('git', args, {
@@ -127,7 +132,7 @@ export function validateCurrentSnapshot({
     const paths = Array.isArray(changedPathsSinceCandidate)
       ? [...new Set(changedPathsSinceCandidate.filter(Boolean))]
       : [];
-    const sourcePaths = paths.filter((path) => !path.startsWith(DOCUMENTATION_ONLY_PREFIX));
+    const sourcePaths = paths.filter((path) => !isDocumentationOnlyPath(path));
     if (sourcePaths.length > 0) {
       errors.push(
         `current snapshot ${candidateSha} is stale: source/workflow changes occurred after it (${sourcePaths.slice(0, 5).join(', ')}${sourcePaths.length > 5 ? ', ...' : ''})`
