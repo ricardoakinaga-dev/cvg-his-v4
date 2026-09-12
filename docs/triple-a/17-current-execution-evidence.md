@@ -1,6 +1,6 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato de assurance observado em 2026-09-12T12:10:47Z
+## Candidato de assurance observado em 2026-09-12T12:55:00Z
 
 - SHA de código e documentação: `0d475dee358eab9621e5497db9929b7010ed09eb` (guard de snapshot e reconciliação documental); o candidato funcional/workflow anterior é `553078be60c963ffb7cab5c45c130912e5e299b8`.
 - `HEAD`, `main` e `origin/main` coincidem; rollback preservado em
@@ -72,10 +72,13 @@ evidência hospedada continua falha. Runs anteriores do mesmo código/workflow
 alternaram entre verde e falha em runners diferentes; nenhum threshold foi
 relaxado.
 
-O [CI #152](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34692643050)
-é a execução exata de `0d475dee` e permanece `in_progress` nesta captura. Seus
-resultados só poderão ser promovidos depois do estado terminal; nenhuma prova de
-outro SHA é transferida para este candidato.
+O [CI #153](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34693263252)
+é a execução terminal do descendente documental `9955b8b5`, cuja superfície
+executável é a do candidato `0d475dee`. Terminou `failure` com `15/16` jobs
+verdes; somente `Performance (k6 SLOs)` falhou em `Run k6 benchmark` (exit `99`)
+e `Check SLO results` (exit `1`). O artefato `performance-k6-report` tem digest
+`sha256:d2ca8e3123e7b98125dde6fd5222fac42901ebf3ca80ab215ecc603bc68438ab`.
+Nenhuma evidência parcial ou de outro SHA é transferida para este candidato.
 
 ## Recovery e target
 

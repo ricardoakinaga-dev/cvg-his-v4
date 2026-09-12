@@ -6,10 +6,10 @@
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA de código/workflow é
 > `0d475dee358eab9621e5497db9929b7010ed09eb`, com o candidato funcional/workflow anterior
-> `553078be60c963ffb7cab5c45c130912e5e299b8`. O CI #152 é a execução exata deste
-> SHA e permanece `in_progress`; nenhum resultado parcial é promovido. O CI #151
-> no descendente documental terminou `failure` somente em Performance/k6; os
-> outros `15/16` jobs passaram. O CI #149 no SHA de código/workflow foi bloqueado em
+> `553078be60c963ffb7cab5c45c130912e5e299b8`. O CI #153 no descendente
+> documental `9955b8b5` terminou `failure` com `15/16` jobs verdes; somente
+> Performance/k6 falhou. O artefato `performance-k6-report` tem digest
+> `sha256:d2ca8e3123e7b98125dde6fd5222fac42901ebf3ca80ab215ecc603bc68438ab`. O CI #149 no SHA de código/workflow foi bloqueado em
 > `Repository Guards` porque os snapshots ainda apontavam para o candidato
 > anterior; essa documentação foi então reconciliada. O CI #144 pertence ao pai
 > documental `da5dd244` e falhou em `Repository Guards` porque o checkout raso
@@ -23,9 +23,9 @@
 > foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
 **Current snapshot:** `0d475dee358eab9621e5497db9929b7010ed09eb` (candidato de assurance; candidato funcional/workflow anterior `553078be60c963ffb7cab5c45c130912e5e299b8`, rollback preservado).
-**Current CI:** [#152](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34692643050) — `main@0d475dee` está `in_progress`; nenhum resultado parcial é promovido.
+**Current CI:** [#153](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34693263252) — `main@9955b8b5` terminou `failure` com `15/16` jobs verdes; somente `Performance (k6 SLOs)` falhou. O artefato `performance-k6-report` tem digest `sha256:d2ca8e3123e7b98125dde6fd5222fac42901ebf3ca80ab215ecc603bc68438ab`.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-12T12:10:47Z
+**Observation:** 2026-09-12T12:55:00Z
 
 **Current local execution:** o gate estrito completo do HEAD documental `c1059e6c` executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A suíte crítica local passou `615` testes PostgreSQL e `11` suítes de processo. A reprodução da API clínica canônica passou `2/2` em PostgreSQL real; a validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
 

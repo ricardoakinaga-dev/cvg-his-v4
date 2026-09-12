@@ -1,6 +1,6 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-12T12:10:47Z
+## Snapshot vigente — 2026-09-12T12:55:00Z
 
 O baseline autoritativo do candidato atual está em
 [`15-current-baseline.md`](./15-current-baseline.md) e
@@ -22,8 +22,10 @@ Performance/k6 e integração passaram. O candidato
 `8273ecb5` terminou verde com `16/16` jobs, incluindo essa prova canônica. O
 CI #149 no SHA `553078be` terminou `failure` em `Repository Guards` porque os
 snapshots ainda apontavam para o candidato anterior. A reconciliação documental
-foi publicada. O CI #152 no SHA `0d475dee` está `in_progress`; nenhum resultado
-parcial é promovido. O CI #151 terminou `failure` somente em Performance/k6, com
+foi publicada. O CI #153 no descendente documental `9955b8b5` terminou
+`failure` somente em Performance/k6, com `15/16` jobs passando; nenhum resultado
+parcial é promovido. O artefato tem digest
+`sha256:d2ca8e3123e7b98125dde6fd5222fac42901ebf3ca80ab215ecc603bc68438ab`. O CI #151 terminou `failure` somente em Performance/k6, com
 `15/16` jobs passando, incluindo os guards, integração, E2E e visual. O
 artefato remoto tem digest `sha256:84b09a10162af819504fe8e269a84d498f1927aee9189af553ff3f8086390afa`.
 Nenhum threshold foi relaxado.

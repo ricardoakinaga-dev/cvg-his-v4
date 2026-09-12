@@ -1,13 +1,13 @@
 # Checkpoint — merge seguro e auditoria
 
-**Registrado em:** `2026-09-12T12:24:00Z`
+**Registrado em:** `2026-09-12T12:55:00Z`
 **Repositório:** `https://github.com/ricardoakinaga-dev/cvg-his-v4`
-**Commit do checkpoint:** `9955b8b5efc96f7127b4599c1ee99de40c3ed3aa`
+**Commit base do checkpoint:** `9955b8b5efc96f7127b4599c1ee99de40c3ed3aa`
 
 ## Estado do Git
 
 - Branch ativa: `main`.
-- SHA corrente: `9955b8b5efc96f7127b4599c1ee99de40c3ed3aa`.
+- SHA corrente antes deste registro: `27790299e779bbbd186e5b93c101ad3b6547bace`.
 - O estado auditado foi publicado em `main` por fast-forward e está sincronizado
   com `origin/main`; a reancoragem documental aponta todos os snapshots correntes
   para o candidato de assurance `0d475dee358eab9621e5497db9929b7010ed09eb`.
@@ -29,7 +29,7 @@
 5. `0d475dee` — permite a reconciliação do baseline canônico sem transferir
    evidência entre candidatos.
 6. `9955b8b5` — reancora os oito documentos correntes no candidato de assurance
-   e registra o CI exato pendente.
+   e registra o CI exato.
 
 ## Validações concluídas
 
@@ -48,14 +48,17 @@
 ## CI para retomar
 
 Run atual: [CI #153](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34693263252),
-no SHA exato `9955b8b5`; no último polling permanecia `in_progress`.
+no SHA exato `9955b8b5`; terminou `failure`.
 
 No último polling, o run tinha:
 
-- Passado: Secret Scan e Dependency Audit; SAST estava concluído com sucesso.
-- Em execução: Typecheck; os demais jobs ainda não tinham estado terminal
-  publicado.
-- Nenhum resultado parcial foi promovido como evidência do candidato.
+- Passado: `15/16` jobs — Typecheck, SAST, Secret Scan, Dependency Audit, Lint,
+  OpenAPI, Repository Guards, Coverage, Build, API Contract, Unit, Windows,
+  Integration, E2E SPA e Visual.
+- Falhado: `Performance (k6 SLOs)` — `Run k6 benchmark` exit `99` e `Check SLO
+  results` exit `1`.
+- Artefato: `performance-k6-report`, digest
+  `sha256:d2ca8e3123e7b98125dde6fd5222fac42901ebf3ca80ab215ecc603bc68438ab`.
 
 O [CI #151](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34690210769)
 continua histórico: terminou com `15/16` jobs e falha exclusiva de
@@ -78,6 +81,6 @@ git log --oneline -4 --decorate
 pnpm docs:validate
 ```
 
-Depois, abrir o run #153 acima para consultar o estado terminal e atualizar este
-checkpoint com o resultado final. O veredito permanece **BLOCKED / NOT PROVEN**
-até que todos os gates obrigatórios e as provas externas estejam concluídos.
+Depois, abrir o run #153 acima para consultar os logs do único job falho. O
+veredito permanece **BLOCKED / NOT PROVEN** até que a Performance/k6 e todos os
+gates obrigatórios e provas externas estejam concluídos.

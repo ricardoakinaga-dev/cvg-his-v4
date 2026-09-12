@@ -638,3 +638,10 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` executou checks, build e suíte workspace no HEAD documental `c1059e6ce189a30c7934d1f4d014f2ecbb6d28d1` e terminou `BLOCKED`, score `55`, critical `57`, `15` P0, `claim=NOT PROVEN`, `publication_allowed=false`.
 - O resultado confirma a decisão fail-closed: a execução local passou os checks cobertos, mas não fornece CI verde do candidato, target, recovery, governança, UAT, attestation ou autoridade de release.
 - O artefato `artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json` permanece ignorado e diagnóstico; não foi promovido como evidência de release.
+
+## 2026-09-12T12:55:00Z — CI terminal do candidato de assurance `0d475dee`
+
+- O [CI #153](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34693263252), no descendente documental `9955b8b5`, terminou `failure` com `15/16` jobs verdes. Typecheck, SAST, Secret Scan, Dependency Audit, Lint, OpenAPI, Repository Guards, Coverage, Build, API Contract, Unit, Windows, Integration, E2E SPA e Visual passaram.
+- A única falha foi `Performance (k6 SLOs)`: `Run k6 benchmark` terminou com exit `99` e `Check SLO results` com exit `1`. O artefato `performance-k6-report` tem digest `sha256:d2ca8e3123e7b98125dde6fd5222fac42901ebf3ca80ab215ecc603bc68438ab`.
+- O guard aceitou a deriva documental e confirmou que a superfície executável do descendente permanece vinculada ao candidato `0d475dee`. Nenhum resultado parcial ou histórico foi promovido como PASS.
+- Estado: **BLOCKED / NOT PROVEN**. O gate local `55/57/15`, target, recovery, governança, UAT, attestation, deploy/rollback e autoridade de release continuam sem evidência suficiente.

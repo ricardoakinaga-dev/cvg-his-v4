@@ -16,8 +16,9 @@ e documentação corrente no SHA de assurance, que alterou somente
 `docs/triple-a`, gate local estrito `55/57/15` no descendente documental
 `c1059e6c` e suíte crítica local `615 + 11` aprovada. O CI #151 no descendente
 documental `fecb70ca` passou os guards e as suítes remotas, mas falhou
-exclusivamente em Performance/k6. O CI #152 no SHA `0d475dee` está em execução;
-não há CI remoto terminal verde para o candidato de assurance atual. O CI #149 no SHA `553078be` falhou em
+exclusivamente em Performance/k6. O CI #153 no descendente documental
+`9955b8b5` passou os guards e terminou com `15/16` jobs verdes; Performance/k6
+falhou. Não há CI remoto terminal verde para o candidato de assurance atual. O CI #149 no SHA `553078be` falhou em
 `Repository Guards` porque os snapshots ainda apontavam para o candidato
 anterior; a reconciliação documental posterior corrigiu essa identidade. O
 checkout do workflow agora usa `fetch-depth: 0` para provar a ancestralidade.

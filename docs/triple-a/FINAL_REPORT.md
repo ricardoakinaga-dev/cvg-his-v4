@@ -30,6 +30,14 @@ com exit `99` e o parser com exit `1`; o artefato público
 as métricas detalhadas não estão disponíveis sem credencial. Runs anteriores do
 mesmo código/workflow alternaram entre verde e falha em runners diferentes.
 
+O [CI #153](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34693263252)
+no descendente documental `9955b8b5` terminou `failure` com `15/16` jobs
+verdes. Typecheck, SAST, Secret Scan, Dependency Audit, Lint, OpenAPI,
+Repository Guards, Coverage, Build, API Contract, Unit, Windows, Integration,
+E2E SPA e Visual passaram; somente Performance/k6 falhou com exit `99` no
+benchmark e exit `1` no parser. O artefato `performance-k6-report` tem digest
+`sha256:d2ca8e3123e7b98125dde6fd5222fac42901ebf3ca80ab215ecc603bc68438ab`.
+
 ## Atualização terminal — isolamento da prova clínica
 
 O CI #146 falhou no passo de API E2E canônico depois de a suíte SPA passar. A
@@ -49,7 +57,7 @@ remota e pelos gates externos de target e release.
 | Testing              | LOCAL PASS                   | suíte workspace, critical e E2E clínico                                                                                                 |
 | Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas                                                                                                |
 | Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                                                                                                           |
-| CI/CD                | BLOQUEADO no SHA atual       | CI #152 está `in_progress` no SHA exato; #151 terminou `failure` somente em Performance/k6 com `15/16` jobs verdes; #147 confirmou historicamente outro candidato com `16/16` |
+| CI/CD                | BLOQUEADO no SHA atual       | CI #153 no descendente documental terminou `failure` somente em Performance/k6 com `15/16` jobs verdes; #147 confirmou historicamente outro candidato com `16/16` |
 | Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                                                                                                         |
 | Recovery             | BLOCKED                      | Docker impediu restore drill real                                                                                                       |
 | Frontend             | BOUNDED PASS                 | E2E/visual/a11y no CI                                                                                                                   |
