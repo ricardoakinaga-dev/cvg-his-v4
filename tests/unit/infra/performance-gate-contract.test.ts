@@ -46,6 +46,7 @@ describe('performance and SLO gate', () => {
     expect(performanceJob).toContain('--append');
     expect(performanceJob).toContain('Always append a terminal snapshot');
     expect(performanceJob).toContain('BENCHMARK_OUTCOME: ${{ steps.k6-benchmark.outcome }}');
+    expect(performanceJob).toContain("GOMAXPROCS: '1'");
     expect(performanceJob).not.toContain('continue-on-error: true');
     expect(performanceJob).toContain(
       '47a43a8dbb4c1f5d5bd7b8ed6a1b8c83b35546acf989b78400b4e6ce3adaf628'

@@ -930,6 +930,10 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
           POSTGRES_MAX_CONNECTIONS: '60'
           POSTGRES_POOL_MIN: '8'
+          # k6 shares the hosted runner with the API and its dependencies.
+          # Keep the load generator's Go scheduler bounded so it cannot turn
+          # runner CPU contention into an API latency measurement artifact.
+          GOMAXPROCS: '1'
         run: |
           set +e
           mkdir -p benchmarks/k6/results
