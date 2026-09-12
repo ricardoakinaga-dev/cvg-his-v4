@@ -90,3 +90,18 @@ no código ou no banco.
 ## Verificação documental — CI #130, #131 e #132
 
 O commit documental `3054d638` foi executado pelo [CI #130](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064), que terminou `failure` com `15/16` jobs aprovados; somente `Performance (k6 SLOs)` falhou no [job 103443316221](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064/job/103443316221). O SHA documental seguinte `6fe76696` foi executado pelo [CI #131](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34656290327), que terminou `success` com `16/16` jobs verdes. O SHA documental corrente `3fa9ad78` foi executado pelo [CI #132](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34658653993), que terminou `failure` com `15/16` jobs verdes; somente Performance falhou no [job 103458570170](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34658653993/job/103458570170). Nenhum threshold foi alterado; os runs não transferem evidência entre SHAs.
+
+## Atualização do candidato `5b0f1b09` — execução local determinística
+
+O código `5b0f1b0905bbf472a78626dd61e126361f6b7435` fixa os IDs de paciente e
+encounter usados nas rotas detalhadas do k6 e torna o seed tenant-safe. Em um
+PostgreSQL descartável local, com o perfil congelado de 60 VUs, o benchmark
+completou `4.303` iterações e passou `9/9` SLOs: API p95 `27,54 ms`, p99
+`40,30 ms`, auth p95 `142,32 ms`, query p95 `30 ms`, write p95 `36 ms`, billing
+p95 `34 ms`, inventory p95 `31,71 ms`, erros `0%` e disponibilidade `100%`.
+
+Essa execução é evidência bounded/local e não substitui o CI remoto nem o
+target. O [CI #140](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34672193141)
+do snapshot anterior continuou falhando somente em Performance/k6; nenhum
+threshold foi relaxado e o parecer permanece **BLOCKED / NOT PROVEN** até um
+run remoto exato do novo SHA.

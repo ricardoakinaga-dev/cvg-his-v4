@@ -5,19 +5,19 @@
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA atual é
-> `1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689`, o CI é #137 e o veredito é
-> `BLOCKED / NOT PROVEN`; nenhum dado abaixo é transferido.
+> `5b0f1b0905bbf472a78626dd61e126361f6b7435`; ainda não há CI remoto desse
+> SHA e o veredito é `BLOCKED / NOT PROVEN`; nenhum dado abaixo é transferido.
 
-**Current snapshot:** `1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689` (código funcional; a reconciliação documental acompanha o candidato); `main`/`origin/main` sincronizados no momento da validação.
-**Current CI:** [#137](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34667412200) — `success`, 16/16 jobs verdes
+**Current snapshot:** `5b0f1b0905bbf472a78626dd61e126361f6b7435` (código funcional; a reconciliação documental acompanha o candidato); fast-forward para `main` preparado, push pendente na observação.
+**Current CI:** nenhum run remoto do novo SHA; o último [#140](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34672193141) — `failure`, 15/16 jobs, somente Performance/k6
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-12T02:53:43Z
+**Observation:** 2026-09-12T05:15:00Z
 
-**Current local execution:** o gate estrito no snapshot executou checks, typecheck, lint e build; a validação local não substitui o CI pinned nem o ambiente alvo. O CI #137 também passou por Unit, Integration, E2E SPA/usabilidade, Visual e Performance/k6.
+**Current local execution:** o gate estrito no snapshot executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
 
-**Current strict gate:** `pnpm release:triple-a` no HEAD retornou `BLOCKED / NOT PROVEN`, score `54`, critical `54`, `16` P0 abertos, `claim=NOT PROVEN` e `publication_allowed=false`.
+**Current strict gate:** `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` no HEAD retornou `BLOCKED / NOT PROVEN`, score `55`, critical `57`, `15` P0 abertos, `claim=NOT PROVEN` e `publication_allowed=false`.
 
-The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. Historical run #129 failed in `Run k6 benchmark`/`Check SLO results`; the current run #137 passed the published CI jobs, including Performance/k6. The performance evidence and its access limitation are reconciled in [critic-performance-assurance-20260911.md](./critic-performance-assurance-20260911.md). Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
+The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. Historical runs #137 and #140 belong to earlier SHAs; #140 failed in `Run k6 benchmark`/`Check SLO results`, while #137 passed all published jobs. The performance evidence and its access limitation are reconciled in [critic-performance-assurance-20260911.md](./critic-performance-assurance-20260911.md). Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
 
 ## Current candidate implementation delta
 

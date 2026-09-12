@@ -1,14 +1,15 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-12T02:53:43Z
+## Snapshot vigente — 2026-09-12T05:15:00Z
 
 O baseline autoritativo do candidato atual está em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md):
-`1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689`, `HEAD == origin/main`, CI #137
-com 16/16 jobs verdes, gate local estrito `BLOCKED` com `54/54/16`
-(score/critical/open P0) e claim `NOT PROVEN`. As seções abaixo são histórico
-append-only; seus SHAs e scores não são evidência do candidato funcional atual.
+`5b0f1b0905bbf472a78626dd61e126361f6b7435`, com fast-forward preparado para
+`main`, gate local estrito `BLOCKED` com `55/57/15` (score/critical/open P0) e
+claim `NOT PROVEN`. Não havia CI remoto do novo SHA na captura. As seções
+abaixo são histórico append-only; seus SHAs e scores não são evidência do
+candidato funcional atual.
 
 ## Registro obrigatório do prompt
 
@@ -20,7 +21,7 @@ append-only; seus SHAs e scores não são evidência do candidato funcional atua
 | Implementação      | Prompt preservado, quality bar congelado, matriz e ledger append-only.                                                 |
 | Arquivos alterados | `docs/triple-a/MASTER_PROMPT.md`, `QUALITY_BAR_V1.json`, `15-current-baseline.md`, `17-current-execution-evidence.md`. |
 | Testes             | `pnpm docs:validate`; gate local e verificações de qualidade do candidato.                                             |
-| Evidências         | SHA funcional `1e0077a3`, CI #137 verde e artefato estrito `BLOCKED`.                                                  |
+| Evidências         | SHA de código `5b0f1b09`, gate local `55/57/15`, seed/k6 locais e artefato estrito `BLOCKED`; CI novo ainda pendente. |
 | Riscos residuais   | Evidência de target, recovery, governança, UAT e autoridade humana ausente.                                            |
 
 ## Reconciliação corrente — 2026-09-11T22:12:14Z

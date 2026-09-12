@@ -1,6 +1,6 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `main@1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689`
+**Candidate funcional avaliado:** `main@5b0f1b0905bbf472a78626dd61e126361f6b7435`
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -8,9 +8,9 @@
 
 O candidato preserva o modular monolith e recebeu controles incrementais de
 workflow/worker, jornadas clínicas canônicas, observabilidade, supply chain,
-diagnóstico de performance, readiness fail-closed e documentação de release. O
-CI #137 ficou verde em 16/16 jobs; as provas externas de produção continuam
-ausentes.
+diagnóstico de performance, readiness fail-closed, fixtures k6 determinísticas
+e fechamento fail-closed do pacote de evidência. O gate local completo ficou
+`BLOCKED` (`55/57/15`); ainda não havia CI remoto para este SHA na captura.
 
 ## Scorecard
 
@@ -21,14 +21,14 @@ ausentes.
 | Testing              | LOCAL PASS                   | suíte workspace, critical e E2E clínico         |
 | Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas        |
 | Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                   |
-| CI/CD                | PASS NO SHA FUNCIONAL        | CI #137 verde em 16/16 jobs                     |
+| CI/CD                | PENDENTE NO SHA ATUAL        | CI remoto novo ainda não executado; #140 anterior falhou em Performance/k6 |
 | Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                 |
 | Recovery             | BLOCKED                      | Docker impediu restore drill real               |
 | Frontend             | BOUNDED PASS                 | E2E/visual/a11y no CI                           |
 | Database             | PARTIAL                      | testes locais; RLS target não provado           |
 | Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas        |
 | Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes       |
-| Overall              | `54`, critical `54`, `16 P0` | gate estrito local                              |
+| Overall              | `55`, critical `57`, `15 P0` | gate estrito local com checks, build e testes   |
 
 ## P0 Findings
 
@@ -38,9 +38,11 @@ attestation, soak, UAT e autoridade de go/no-go.
 
 ## Remaining Risks
 
-O SLO de performance k6 passou no CI #137 sem alteração de threshold. O Docker
-daemon indisponível ainda impede o drill real de recuperação nesta estação, e
-o target não possui envelope externo verificável.
+O k6 local no banco descartável passou `9/9` SLOs sem alteração de threshold
+(API p95 `27,54 ms`, p99 `40,30 ms`, erros `0%`, disponibilidade `100%`). Essa
+prova é local e não substitui o CI remoto, o target ou um envelope externo. O
+Docker daemon indisponível ainda impede o drill real de recuperação nesta
+estação.
 
 ## Release Recommendation
 
