@@ -324,6 +324,7 @@ jobs:
           node --test scripts/build-source-map-contract.test.mjs
           node --test scripts/capture-performance-diagnostics.test.mjs
           node --test scripts/generate-triple-a-evidence-package.test.mjs
+          node --test scripts/validate-supply-chain.test.mjs
           node --test scripts/process-reexport-coverage.test.mjs scripts/source-metric-presence.test.mjs scripts/check-critical-coverage.test.mjs
           pnpm vetus:parity:test
 
@@ -362,7 +363,7 @@ jobs:
     needs: [build]
     services:
       postgres:
-        image: postgres:16
+        image: postgres@sha256:f1c3376c26f2609ab9f29f71f824103fe2fcd8ee0346485cb6122a4f93df6f94
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -376,7 +377,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
       redis:
-        image: redis:7-alpine
+        image: redis@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
         ports:
           - 6380:6379
         options: >-
@@ -643,7 +644,7 @@ jobs:
     needs: [build]
     services:
       postgres:
-        image: postgres:16
+        image: postgres@sha256:f1c3376c26f2609ab9f29f71f824103fe2fcd8ee0346485cb6122a4f93df6f94
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -800,7 +801,7 @@ jobs:
     needs: [build]
     services:
       postgres:
-        image: postgres:16
+        image: postgres@sha256:f1c3376c26f2609ab9f29f71f824103fe2fcd8ee0346485cb6122a4f93df6f94
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -814,7 +815,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
       redis:
-        image: redis:7-alpine
+        image: redis@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
         ports:
           - 6380:6379
         options: >-
@@ -996,7 +997,7 @@ jobs:
       PLAYWRIGHT_BROWSERS_PATH: .cache/ms-playwright
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -1010,7 +1011,7 @@ jobs:
           --health-timeout 5s
           --health-retries 15
       redis:
-        image: redis:7-alpine
+        image: redis@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
         ports:
           - 6380:6379
         options: >-
@@ -1284,7 +1285,7 @@ jobs:
       PLAYWRIGHT_BROWSERS_PATH: .cache/ms-playwright
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -1298,7 +1299,7 @@ jobs:
           --health-timeout 5s
           --health-retries 15
       redis:
-        image: redis:7-alpine
+        image: redis@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
         ports:
           - 6380:6379
         options: >-

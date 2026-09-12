@@ -13,7 +13,7 @@
 #
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-cvg_his_v2}
@@ -37,7 +37,7 @@ services:
       retries: 20
 
   redis:
-    image: redis:7-alpine
+    image: redis@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
     restart: unless-stopped
     command: ['redis-server', '--appendonly', 'yes']
     ports:
@@ -51,7 +51,7 @@ services:
       retries: 20
 
   runtime-role-init:
-    image: postgres:16-alpine
+    image: postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
     restart: 'no'
     environment:
       PGHOST: postgres
@@ -90,7 +90,7 @@ services:
         condition: service_completed_successfully
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.124.1
+    image: otel/opentelemetry-collector-contrib@sha256:4798e3095561ac8ae13a81965088d68b943b1991bbeede91b1564e12c95372cc
     profiles: ['observability']
     restart: unless-stopped
     command: ['--config=/etc/otelcol-contrib/config.yaml']
@@ -100,7 +100,7 @@ services:
       - '127.0.0.1:4318:4318'
 
   prometheus:
-    image: prom/prometheus:v2.54.1
+    image: prom/prometheus@sha256:f6639335d34a77d9d9db382b92eeb7fc00934be8eae81dbc03b31cfe90411a94
     profiles: ['observability']
     restart: unless-stopped
     command:
@@ -112,7 +112,7 @@ services:
       - '127.0.0.1:9090:9090'
 
   grafana:
-    image: grafana/grafana:11.1.4
+    image: grafana/grafana@sha256:886b56d5534e54f69a8cfcb4b8928da8fc753178a7a3d20c3f9b04b660169805
     profiles: ['observability']
     restart: unless-stopped
     environment:

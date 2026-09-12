@@ -91,6 +91,14 @@ function validateStaticChart() {
   );
   assert(base.spa?.image?.repository, 'values.yaml must define spa.image.repository');
   assert(
+    /^sha256:[a-f0-9]{64}$/.test(base.postgresql?.image?.sha ?? ''),
+    'values.yaml must define an immutable PostgreSQL image digest'
+  );
+  assert(
+    /^sha256:[a-f0-9]{64}$/.test(base.redis?.image?.sha ?? ''),
+    'values.yaml must define an immutable Redis image digest'
+  );
+  assert(
     production.global?.environment === 'production',
     'values.prod.yaml must declare the production environment'
   );
@@ -98,8 +106,14 @@ function validateStaticChart() {
     helmHelpers.includes('api.image.sha is required for production image immutability') &&
       helmHelpers.includes('worker.image.sha is required for production image immutability') &&
       helmHelpers.includes('spa.image.sha is required for production image immutability') &&
+      helmHelpers.includes(
+        'postgresql.image.sha is required for embedded datastore image immutability'
+      ) &&
+      helmHelpers.includes(
+        'redis.image.sha is required for embedded datastore image immutability'
+      ) &&
       helmHelpers.includes('sha256:<64 lowercase hex characters>'),
-    'production Helm images must fail closed without immutable SHA references'
+    'Helm images must fail closed without immutable SHA references'
   );
 
   const requiredTemplates = [
@@ -433,6 +447,14 @@ for (const environment of environments) {
   if (environment.expectEmbeddedDatastores) {
     assert(postgresStatefulSet, `${environment.name}: expected embedded PostgreSQL statefulset`);
     assert(redisStatefulSet, `${environment.name}: expected embedded Redis statefulset`);
+    assert(
+      /^.+@sha256:[a-f0-9]{64}$/.test(postgresStatefulSet.spec.template.spec.containers[0].image),
+      `${environment.name}: PostgreSQL image must be pinned by digest`
+    );
+    assert(
+      /^.+@sha256:[a-f0-9]{64}$/.test(redisStatefulSet.spec.template.spec.containers[0].image),
+      `${environment.name}: Redis image must be pinned by digest`
+    );
   } else {
     assert(
       !postgresStatefulSet,

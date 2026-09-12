@@ -68,6 +68,22 @@ app.kubernetes.io/component: spa
 {{- default (printf "%s-redis" (include "cvg-his-v2.fullname" .)) .Values.redis.existingSecret }}
 {{- end }}
 
+{{- define "cvg-his-v2.postgresql.image" -}}
+{{- $registry := .Values.postgresql.image.registry | default "docker.io" -}}
+{{- $repository := required "postgresql.image.repository is required" .Values.postgresql.image.repository -}}
+{{- $sha := required "postgresql.image.sha is required for embedded datastore image immutability" .Values.postgresql.image.sha -}}
+{{- if not (regexMatch "^sha256:[a-f0-9]{64}$" $sha) -}}{{- fail "postgresql.image.sha must match sha256:<64 lowercase hex characters>" -}}{{- end -}}
+{{- printf "%s/%s@%s" $registry $repository $sha -}}
+{{- end }}
+
+{{- define "cvg-his-v2.redis.image" -}}
+{{- $registry := .Values.redis.image.registry | default "docker.io" -}}
+{{- $repository := required "redis.image.repository is required" .Values.redis.image.repository -}}
+{{- $sha := required "redis.image.sha is required for embedded datastore image immutability" .Values.redis.image.sha -}}
+{{- if not (regexMatch "^sha256:[a-f0-9]{64}$" $sha) -}}{{- fail "redis.image.sha must match sha256:<64 lowercase hex characters>" -}}{{- end -}}
+{{- printf "%s/%s@%s" $registry $repository $sha -}}
+{{- end }}
+
 {{- define "cvg-his-v2.api.secretName" -}}
 {{- default (printf "%s-api" (include "cvg-his-v2.fullname" .)) .Values.api.auth.existingSecret }}
 {{- end }}

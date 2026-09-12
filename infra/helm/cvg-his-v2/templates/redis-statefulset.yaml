@@ -27,7 +27,7 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: redis
-          image: redis:7-alpine
+          image: {{ include "cvg-his-v2.redis.image" . }}
           args: ["redis-server", "--appendonly", "yes"]
           ports:
             - name: redis

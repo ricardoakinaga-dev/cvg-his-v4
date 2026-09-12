@@ -74,6 +74,24 @@ test('production image helpers require immutable digests instead of tag fallback
   assert.match(helpers, /if eq \.Values\.global\.environment "production"/);
 });
 
+test('embedded datastore helpers require immutable digests instead of tag fallback', () => {
+  const helpers = readFileSync(
+    resolve(repositoryRoot, 'infra/helm/cvg-his-v2/templates/_helpers.tpl'),
+    'utf8'
+  );
+  const values = readFileSync(resolve(repositoryRoot, 'infra/helm/cvg-his-v2/values.yaml'), 'utf8');
+
+  assert.match(
+    helpers,
+    /postgresql\.image\.sha is required for embedded datastore image immutability/
+  );
+  assert.match(helpers, /redis\.image\.sha is required for embedded datastore image immutability/);
+  assert.match(values, /postgresql:\s[\s\S]*?sha:\s*"sha256:[a-f0-9]{64}"/);
+  assert.match(values, /redis:\s[\s\S]*?sha:\s*"sha256:[a-f0-9]{64}"/);
+  assert.doesNotMatch(helpers, /postgresql\.image\.tag \| default/);
+  assert.doesNotMatch(helpers, /redis\.image\.tag \| default/);
+});
+
 test('embedded PostgreSQL requires separate API and worker passwords', () => {
   const secrets = readFileSync(
     resolve(repositoryRoot, 'infra/helm/cvg-his-v2/templates/secrets.yaml'),

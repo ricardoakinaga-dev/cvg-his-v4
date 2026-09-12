@@ -8,7 +8,7 @@
 
 services:
   postgres-e2e:
-    image: postgres:16-alpine
+    image: postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
     environment:
       POSTGRES_DB: cvg_his_e2e
       POSTGRES_USER: postgres
@@ -31,7 +31,7 @@ services:
     restart: 'no'
 
   redis-e2e:
-    image: redis:7-alpine
+    image: redis@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
     ports:
       - '6381:6379'
     healthcheck:

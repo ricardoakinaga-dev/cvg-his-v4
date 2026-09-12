@@ -10,19 +10,30 @@ política no repositório não prova que um artefato publicado foi verificado.
 
 ## Estado e decisão
 
-Os workflows ativos usam referências imutáveis para actions e as bases Docker
-canônicas são verificadas por digest. O guard local
-`pnpm validate:supply-chain` passou para 113 referências de actions e seis
-imagens. Mantemos o gate fail-closed para evidência de publicação, em vez de
+Os workflows ativos usam referências imutáveis para actions e imagens de
+serviço; Compose e imagens estáticas do Helm também são verificadas por digest,
+enquanto imagens construídas localmente ficam restritas ao namespace explícito
+`cvg-his-v2-*`/`cvg-his-v4-*`. O guard local
+`pnpm validate:supply-chain` passou para 113 referências de actions, 13 imagens
+de workflow, 15 imagens Compose, zero imagens Helm estáticas e seis bases
+Docker. Mantemos o gate fail-closed para evidência de publicação, em vez de
 promover uma execução local a prova de registry ou de assinatura.
+
+O collector OpenTelemetry do Compose foi corrigido para uma referência existente
+e imutável: a tag legada `0.124.1` não está disponível no registry; o digest
+adotado corresponde à publicação `0.129.1` e deve ser reavaliado junto com a
+configuração de observabilidade antes de um deploy.
 
 ## Arquivos e evidências
 
 - Política: [`docs/security/SUPPLY_CHAIN_POLICY.md`](../security/SUPPLY_CHAIN_POLICY.md).
 - Guard: `scripts/validate-supply-chain.mjs` e o job `Repository Guards`.
+- Contrato do guard: `scripts/validate-supply-chain.test.mjs` cobre referências
+  mutáveis em services, Compose e Helm e a exceção restrita de imagens locais.
 - Proveniência/SBOM: `scripts/generate-image-attestation-evidence.mjs` e o
   workflow de release.
-- Candidato observado: `c7336ac0f6a909c10d07797c36814f0b321c6d5c`.
+- Candidato observado: a ser reancorado no commit funcional de supply-chain; o
+  snapshot anterior `c7336ac0f6a909c10d07797c36814f0b321c6d5c` é histórico.
 
 ## Verificação
 

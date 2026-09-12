@@ -14,8 +14,11 @@
    `git:`, `git+`, raw HTTP URLs, `*` or `latest` in package manifests.
 3. Security fixes take priority over grouping or release convenience. A major
    update requires explicit Dependency Dashboard approval in Renovate.
-4. GitHub Actions and container bases remain pinned by immutable commit/image
-   digest and are checked by `pnpm validate:supply-chain`.
+4. GitHub Actions, workflow service images, Compose images, Helm static images
+   and container bases remain pinned by immutable commit/image digest and are
+   checked by `pnpm validate:supply-chain`. Compose images built by this
+   repository are allowed only under the explicit `cvg-his-v2-*`/`cvg-his-v4-*`
+   local-image namespace; external images never use a mutable tag.
 5. New packages require a review of vulnerability exposure, provenance,
    licensing, maintenance signal and whether an existing workspace capability
    already solves the problem. The review belongs in the pull request; the
