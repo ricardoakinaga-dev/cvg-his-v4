@@ -241,7 +241,7 @@ Key files:
   $(find "$BACKUP_DIR/storage" -maxdepth 1 -type f | sort)
 
 Next validation step:
-  docker run --rm -v "$BACKUP_DIR:/backup" postgres:16-alpine pg_restore -l /backup/database/*.dump
+  docker run --rm -v "$BACKUP_DIR:/backup" postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685 pg_restore -l /backup/database/*.dump
 EOF
 }
 

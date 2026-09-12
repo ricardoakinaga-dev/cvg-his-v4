@@ -354,7 +354,7 @@ Saida esperada por execucao:
 Validacao minima do backup:
 
 ```bash
-docker run --rm -v /var/backups/cvg-his-v2/<backup-id>:/backup postgres:16-alpine \
+docker run --rm -v /var/backups/cvg-his-v2/<backup-id>:/backup postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685 \
   pg_restore -l /backup/database/cvg_his_v2.dump
 
 tar -tzf /var/backups/cvg-his-v2/<backup-id>/storage/file-storage.tar.gz | head

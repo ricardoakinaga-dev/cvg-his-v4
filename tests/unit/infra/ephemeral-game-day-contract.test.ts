@@ -11,7 +11,9 @@ describe('ephemeral game-day contract', () => {
   it('runs periodically against disposable PostgreSQL and Redis from an exact main SHA', () => {
     expect(workflow).toContain("cron: '0 13 1 */3 *'");
     expect(workflow).toContain('POSTGRES_DB: cvg_his_v2_game_day');
-    expect(workflow).toContain('image: redis:7-alpine');
+    expect(workflow).toContain(
+      'image: redis@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf'
+    );
     expect(workflow).toContain('git merge-base --is-ancestor "${REQUESTED_SHA}" origin/main');
     expect(workflow).toContain('NODE_ENV: test');
     expect(workflow).toContain("API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'");

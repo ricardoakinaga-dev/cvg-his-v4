@@ -258,7 +258,7 @@ validate_bundle() {
     sha256sum -c SHA256SUMS
   ) | tee "$REPORT_DIR/checksums.txt"
 
-  docker run --rm -v "$BUNDLE_DIR:/backup:ro" postgres:16-alpine \
+  docker run --rm -v "$BUNDLE_DIR:/backup:ro" postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685 \
     pg_restore -l "/backup/database/$(basename "$DUMP_FILE")" \
     > "$REPORT_DIR/dump-toc.txt"
 
@@ -309,7 +309,7 @@ start_disposable_postgres() {
     -e POSTGRES_DB=postgres \
     -v "$PG_VOLUME:/var/lib/postgresql/data" \
     -v "$BUNDLE_DIR:/backup:ro" \
-    postgres:16-alpine >/dev/null
+    postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685 >/dev/null
 
   local attempt=0
   until docker exec "$PG_CONTAINER" pg_isready -U "$RESTORE_USER" -d postgres >/dev/null 2>&1; do

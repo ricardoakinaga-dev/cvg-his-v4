@@ -30,6 +30,10 @@ function dockerfiles(directory) {
   return filesUnder(directory, (name) => name === 'Dockerfile' || name.startsWith('Dockerfile.'));
 }
 
+function runtimeScriptFiles(directory) {
+  return filesUnder(directory, (name) => /\.(?:mjs|sh)$/.test(name));
+}
+
 function composeFiles(directory) {
   return readdirSync(directory, { withFileTypes: true })
     .filter((entry) => entry.isFile() && /^docker-compose(?:\.[^.]+)?\.ya?ml$/.test(entry.name))
@@ -73,6 +77,7 @@ export function inspectSupplyChain({ rootDirectory = root } = {}) {
   let composeImageCount = 0;
   let helmImageCount = 0;
   let dockerBaseCount = 0;
+  let runtimeImageCount = 0;
 
   for (const path of workflowPaths) {
     const content = readFileSync(path, 'utf8');
@@ -120,9 +125,27 @@ export function inspectSupplyChain({ rootDirectory = root } = {}) {
     }
   }
 
+  const runtimeScriptsRoot = resolve(rootDirectory, 'infra/scripts');
+  for (const path of runtimeScriptFiles(runtimeScriptsRoot)) {
+    const content = readFileSync(path, 'utf8');
+    for (const match of content.matchAll(
+      /(?<![/:])\b(?:postgres|redis)(?::[0-9][^\s'"`\\)]*|@sha256:[0-9a-f]{64})/g
+    )) {
+      runtimeImageCount += 1;
+      scanImageReference(findings, match[0], path, 'runtime script', rootDirectory);
+    }
+  }
+
   return {
     findings,
-    counts: { actionCount, workflowImageCount, composeImageCount, helmImageCount, dockerBaseCount }
+    counts: {
+      actionCount,
+      workflowImageCount,
+      composeImageCount,
+      helmImageCount,
+      dockerBaseCount,
+      runtimeImageCount
+    }
   };
 }
 
@@ -133,10 +156,9 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
   console.log(`Supply-chain Compose images scanned: ${result.counts.composeImageCount}`);
   console.log(`Supply-chain Helm static images scanned: ${result.counts.helmImageCount}`);
   console.log(`Supply-chain Docker base images scanned: ${result.counts.dockerBaseCount}`);
+  console.log(`Supply-chain runtime script images scanned: ${result.counts.runtimeImageCount}`);
   if (result.findings.length === 0) {
-    console.log(
-      'PASS: all external actions, workflow/Compose/Helm images and Docker bases are immutable.'
-    );
+    console.log('PASS: all external actions and container images are immutable.');
   } else {
     console.error(`FAIL: ${result.findings.length} mutable supply-chain reference(s) found.`);
     for (const finding of result.findings) console.error(`- ${finding}`);

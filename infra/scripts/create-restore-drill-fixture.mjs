@@ -273,7 +273,7 @@ function createDatabaseFixture() {
     '-e',
     'POSTGRES_DB=postgres',
     ...(profile === 'representative' ? ['-p', '127.0.0.1::5432'] : []),
-    'postgres:16-alpine'
+    'postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685'
   ]);
 
   waitForPostgres();

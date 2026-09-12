@@ -271,7 +271,7 @@ async function startRedisContainer(): Promise<void> {
     redisContainerLabel,
     '-p',
     `127.0.0.1:${publishedPort}:6379`,
-    'redis:7-alpine'
+    'redis@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf'
   ]);
   if (containerId.length === 0) {
     throw new Error(`Docker did not return an ID for ${redisContainerName}.`);
