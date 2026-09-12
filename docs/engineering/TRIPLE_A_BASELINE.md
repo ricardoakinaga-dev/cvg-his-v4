@@ -4,11 +4,9 @@
 
 O snapshot corrente está reconciliado em
 [`docs/triple-a/15-current-baseline.md`](../triple-a/15-current-baseline.md):
-`f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c`, que endurece a redaction recursiva
-do logging estruturado. A documentação sucede o candidato de assurance
+`a258b3ceec6a22a0853d1022af40bdd6057a786b`, que endurece a redaction recursiva do logging estruturado, o boundary de workflow e a verificação de tenant. A documentação sucede o candidato de assurance
 `0d475dee`; `HEAD`, `main` e `origin/main` coincidem e o rollback remoto está
-preservado. O [CI #154](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695196945) foi disparado antes desta reancoragem e não é prova
-terminal do snapshot. O gate local completo histórico permanece `BLOCKED / NOT
+preservado. O [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) pertence ao commit documental anterior e não é prova terminal do snapshot. O gate local completo histórico permanece `BLOCKED / NOT
 PROVEN`, score `55`, critical `57` e `15` P0; target, recovery, UAT, attestation,
 governança e autoridade de release continuam sem prova.
 

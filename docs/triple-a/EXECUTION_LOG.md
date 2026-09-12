@@ -653,3 +653,11 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - `@cvg-his-v2/shared-logging` passou `16/16` testes; Prettier e `git diff --check` passaram.
 - O [CI #154](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695196945) foi disparado antes da reconciliação documental e não foi promovido. Os snapshots correntes foram reancorados no SHA de código e esta atualização deve gerar uma nova execução terminal.
 - O veredito continua `BLOCKED / NOT PROVEN`; nenhum threshold ou resultado histórico foi transferido.
+
+
+## 2026-09-12T13:26:00Z — hardening de workflow, tenant e reancoragem
+
+- O candidato `a258b3ceec6a22a0853d1022af40bdd6057a786b` adiciona validação de metadata operacional, redaction de payloads de eventos, isolamento do tick quando `failClaim` rejeita e verificação explícita do contexto de tenant no PostgreSQL.
+- Testes focados de workflows, worker, tenant-context, módulos de relatórios e API passaram; OpenAPI e contrato clínico passaram.
+- O [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) pertence ao commit documental anterior `e6edb6f8` e não foi promovido. Os snapshots correntes foram reancorados neste SHA e esta atualização deve gerar uma nova execução terminal.
+- O veredito continua `BLOCKED / NOT PROVEN`; nenhum threshold ou resultado histórico foi transferido.

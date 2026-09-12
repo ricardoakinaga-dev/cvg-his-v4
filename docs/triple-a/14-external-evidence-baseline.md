@@ -5,15 +5,14 @@
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA de código atual é
-> `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c`, com o snapshot documental anterior
-> `0d475dee358eab9621e5497db9929b7010ed09eb`. O [CI #154](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695196945) foi disparado
-> antes desta reconciliação, estava em andamento e não é promovido como prova.
+> `a258b3ceec6a22a0853d1022af40bdd6057a786b`, com o candidato de código anterior `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c` e o snapshot documental anterior
+> `0d475dee358eab9621e5497db9929b7010ed09eb`. O [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) pertence ao commit documental anterior e não é promovido como prova.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c` (hardening de logging; rollback preservado).
-**Current CI:** [CI #154](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695196945) — execução disparada antes da reancoragem, sem resultado terminal aceito; nova execução será vinculada a este snapshot.
+**Current snapshot:** `a258b3ceec6a22a0853d1022af40bdd6057a786b` (hardening de logging, workflow e tenant; rollback preservado).
+**Current CI:** [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) — commit documental anterior, sem resultado promovido; nova execução será vinculada a este snapshot.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-12T13:02:52Z
+**Observation:** 2026-09-12T13:26:00Z
 
 **Current local execution:** o gate estrito completo do HEAD documental `c1059e6c` executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A suíte crítica local passou `615` testes PostgreSQL e `11` suítes de processo. A reprodução da API clínica canônica passou `2/2` em PostgreSQL real; a validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
 

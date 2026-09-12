@@ -1,21 +1,21 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `main@f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c`
-(hardening de redaction recursiva do logging estruturado; o snapshot documental
+**Candidate funcional avaliado:** `main@a258b3ceec6a22a0853d1022af40bdd6057a786b`
+(hardening de logging, workflow e tenant; o candidato anterior é `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c` e o snapshot documental
 anterior é `0d475dee358eab9621e5497db9929b7010ed09eb`)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
 ## Executive Summary
 
-O candidato preserva o modular monolith e adiciona redaction recursiva de chaves
+O candidato preserva o modular monolith, adiciona redaction recursiva de chaves
 sensíveis, mensagens, erros estruturados, objetos aninhados e referências
-circulares. O pacote compartilhado passou `16/16` testes locais. O gate estrito
+circulares, protege transições de worker e verifica o contexto de tenant no banco. O pacote compartilhado passou `16/16` testes locais. O gate estrito
 histórico ficou `BLOCKED` (`55/57/15`) e as provas externas de target, recovery,
 attestation, UAT, governança, performance e autoridade de release continuam
-abertas. O [CI #154](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695196945) foi disparado antes da reancoragem documental e não é
+abertas. O [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) pertence ao commit documental anterior e não é
 promovido como prova; esta reconciliação deve gerar uma nova execução vinculada
-ao SHA atual. Nenhum threshold foi relaxado e não há autorização para declarar
+ao SHA `a258b3ce`. Nenhum threshold foi relaxado e não há autorização para declarar
 `main green`, release produtivo ou `TRIPLE-A VERIFIED`.
 
 ## Atualização terminal — isolamento da prova clínica

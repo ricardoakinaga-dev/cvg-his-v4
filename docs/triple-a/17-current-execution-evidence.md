@@ -2,7 +2,7 @@
 
 ## Candidato de código observado em 2026-09-12T13:02:52Z
 
-- SHA de código e documentação: `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c` (hardening de logging estruturado); a documentação reancorada sucede o candidato de assurance `0d475dee358eab9621e5497db9929b7010ed09eb` e o candidato funcional/workflow anterior é `553078be60c963ffb7cab5c45c130912e5e299b8`.
+- SHA de código e documentação: `a258b3ceec6a22a0853d1022af40bdd6057a786b` (hardening conjunto de logging, workflow e tenant); a documentação reancorada sucede o candidato de código anterior `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c` e o candidato de assurance `0d475dee358eab9621e5497db9929b7010ed09eb` e o candidato funcional/workflow anterior é `553078be60c963ffb7cab5c45c130912e5e299b8`.
 - `HEAD`, `main` e `origin/main` coincidem; rollback preservado em
   `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
@@ -25,7 +25,7 @@ autoridade de release.
 
 ## CI remoto e reancoragem
 
-A execução [CI #154](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695196945) foi disparada pelo SHA `f2e2da4c` antes da reconciliação dos snapshots e não é usada como prova. Esta atualização documental deve disparar uma nova execução com os guards vinculados ao candidato correto.
+O [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) pertence ao commit documental anterior `e6edb6f8` e não é usado como prova do SHA `a258b3ce`. Esta atualização deve disparar uma nova execução com os guards vinculados ao candidato correto.
 
 
 O [CI #143](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34678150409)
@@ -78,7 +78,7 @@ relaxado.
 O [CI #153](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34693263252)
 permanece como histórico do descendente documental anterior `9955b8b5`; terminou
 `failure` com `15/16` jobs verdes e falha exclusiva de Performance/k6. Nenhuma
-evidência parcial ou de outro SHA é transferida para `f2e2da4c`.
+evidência parcial ou de outro SHA é transferida para `a258b3ce`.
 
 ## Recovery e target
 
