@@ -41,7 +41,10 @@ const SNAPSHOT_DOCUMENTS = [
 ];
 
 const DOCUMENTATION_ONLY_PREFIX = 'docs/triple-a/';
-const DOCUMENTATION_ONLY_PATHS = new Set(['docs/engineering/TRIPLE_A_BASELINE.md']);
+const DOCUMENTATION_ONLY_PATHS = new Set([
+  'docs/README.md',
+  'docs/engineering/TRIPLE_A_BASELINE.md'
+]);
 
 function isDocumentationOnlyPath(path) {
   return path.startsWith(DOCUMENTATION_ONLY_PREFIX) || DOCUMENTATION_ONLY_PATHS.has(path);

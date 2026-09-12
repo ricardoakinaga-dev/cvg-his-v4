@@ -47,6 +47,19 @@ test('accepts the canonical engineering baseline reconciliation path', () => {
   );
 });
 
+test('accepts the documentation index reconciliation path', () => {
+  assert.deepEqual(
+    validateCurrentSnapshot({
+      headSha: head,
+      candidateSha: parent,
+      candidateIsAncestor: true,
+      changedPathsSinceCandidate: ['docs/README.md'],
+      documents: documents(parent)
+    }),
+    []
+  );
+});
+
 test('rejects a code commit whose current snapshot still points to its parent', () => {
   const errors = validateCurrentSnapshot({
     headSha: head,
