@@ -31,3 +31,7 @@ Constraints, transactions, concurrency, RLS, roles, indexes and migrations.
 ## Required closure
 
 Attach authenticated runtime RLS/role probes, query-plan/index evidence for critical paths, concurrency results for billing/inventory/workflow, and migration/restore rehearsal artifacts.
+
+## Atualização do candidato funcional — CI #137
+
+O candidato `1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689` passou o [CI #137](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34667412200) com `16/16` jobs. Os checks remotos não substituem probes autenticados de RLS/roles, planos de consulta, concorrência no target ou ensaio de restore/rollback. Este parecer permanece **BLOCKED / NOT PROVEN**.

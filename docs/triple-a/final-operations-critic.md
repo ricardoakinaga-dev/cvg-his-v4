@@ -31,3 +31,7 @@ Backup, restore, deploy, rollback, observability, alerts, on-call and runbooks.
 ## Required closure
 
 Generate current SHA-bound CI/release artifacts, execute target restore/RPO/RTO and soak drills, rehearse deploy/rollback, verify alert delivery/on-call and attach release authority.
+
+## Atualização do candidato funcional — CI #137
+
+O candidato `1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689` passou o [CI #137](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34667412200) com `16/16` jobs, inclusive Performance/k6. O Docker restore drill local continua bloqueado e não há envelopes de target para backup/restore, soak, deploy/rollback, alertas ou autoridade. Este parecer permanece **BLOCKED / NOT PROVEN**.

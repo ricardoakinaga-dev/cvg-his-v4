@@ -570,3 +570,12 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - O CI [#135](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34663821242) terminou `failure` com `15/16` jobs verdes; somente Performance/k6 falhou. O E2E clínico canônico, a validação de usabilidade e a finalização dos diagnósticos de performance passaram.
 - O restore drill real permaneceu bloqueado pelo acesso negado ao Docker daemon. Nenhuma evidência externa, UAT, target, attestation, deploy/rollback ou autoridade humana foi promovida.
 - Estado: **BLOCKED / NOT PROVEN**. Nenhum threshold foi relaxado e nenhum claim `TRIPLE-A VERIFIED` foi emitido.
+
+## 2026-09-12T02:53:43Z — CI terminal verde do candidato funcional `1e0077a3`
+
+- O commit funcional `1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689` foi publicado em `main` por fast-forward, sem force-push; `HEAD`, `main` e `origin/main` coincidiram na captura. A branch `origin/fix/state-of-art-ci-assurance@fe5406c2` segue preservada para rollback.
+- O [CI #137](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34667412200) terminou `success` com `16/16` jobs: Typecheck, SAST, Secret Scan, Dependency Audit, Repository Guards, Lint, OpenAPI, Coverage, Build, API Contract, Unit, Integration, Critical Process Windows, Performance/k6, E2E SPA/usabilidade e Visual.
+- O gate local completo `pnpm release:triple-a` executou checks e build e retornou `BLOCKED`, score `54`, critical `54`, `16` P0 abertos, `claim=NOT PROVEN` e `publication_allowed=false`; envelopes externos ausentes permaneceram fail-closed.
+- O candidato adiciona validação estrita de envelopes e fontes de evidência, readiness fail-closed e correção do contrato de artefatos do release. Os testes de contrato direcionados (`28` testes Vitest) e os testes Node dos geradores (`2/2`) passaram.
+- O CI verde não prova branch protection, RLS/roles no target, recovery/restore, deploy/rollback, soak, UAT, attestation ou autoridade de release. Nenhum threshold foi relaxado e nenhum claim `TRIPLE-A VERIFIED` foi emitido.
+- Estado terminal do candidato: **BLOCKED / NOT PROVEN**. Próximo passo de fechamento: coletar envelopes SHA-bound autenticados no target e aprovações humanas exigidas pelo prompt.

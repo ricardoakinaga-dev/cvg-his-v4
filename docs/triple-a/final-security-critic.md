@@ -32,3 +32,7 @@ Authentication and authorization boundaries, tenant/RLS controls, webhooks, secr
 ## Required closure
 
 Attach authenticated branch/ruleset JSON, runtime role/RLS probes, current registry/SBOM/provenance/signature evidence and a green exact-SHA CI run. Keep this critic NOT PROVEN until those artifacts are independently checked.
+
+## Atualização do candidato funcional — CI #137
+
+O candidato `1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689` possui [CI #137](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34667412200) verde com `16/16` jobs. A execução não fornece branch/ruleset autenticado, probes de RLS/roles no target, SBOM/proveniência assinada ou autoridade de release. Este crítico permanece **BLOCKED / NOT PROVEN**.

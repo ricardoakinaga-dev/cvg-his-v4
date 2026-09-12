@@ -31,3 +31,7 @@ Clinical workflow safety, owner/patient context, encounters, triage, records, pr
 ## Required closure
 
 Run the current candidate golden/negative clinical matrix against disposable PostgreSQL with captured audit outputs, execute the worker crash/restart proof, and attach the four-profile hospital UAT package with named approvers.
+
+## Atualização do candidato funcional — CI #137
+
+O candidato `1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689` passou o [CI #137](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34667412200) com `16/16` jobs. E2E SPA/usabilidade e Integration passaram, mas isso não demonstra a matriz clínica completa, o efeito durável do worker, RLS no target ou UAT humano. O parecer clínico continua **BLOCKED / NOT PROVEN**.

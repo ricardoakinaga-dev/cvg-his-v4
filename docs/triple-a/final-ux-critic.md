@@ -30,3 +30,7 @@ Recepção, clínica, internação, administração, desktop, tablet, mobile, ac
 ## Required closure
 
 Run the frozen browser/accessibility inventory on the exact current SHA and attach four-profile UAT with named reviewers and accepted visual baselines.
+
+## Atualização do candidato funcional — CI #137
+
+O candidato `1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689` passou E2E SPA/usabilidade e Visual no [CI #137](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34667412200), que terminou `16/16` verde. Isso não substitui revisão independente de acessibilidade, responsividade, baselines visuais aceitos e UAT humano. Este crítico permanece **BLOCKED / NOT PROVEN**.

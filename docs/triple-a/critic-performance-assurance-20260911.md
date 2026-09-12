@@ -44,12 +44,12 @@ O perfil `operational-minimum-v1` usou 60 VUs, PostgreSQL pool
 
 No artefato remoto, os SLOs de latência falharam nestes valores:
 
-| Métrica | p95 | Alvo |
-| --- | ---: | ---: |
-| API | 232,29 ms | < 200 ms |
-| Query | 250,55 ms | < 150 ms |
-| Write | 311,55 ms | < 300 ms |
-| Billing | 274,55 ms | < 250 ms |
+| Métrica   |       p95 |     Alvo |
+| --------- | --------: | -------: |
+| API       | 232,29 ms | < 200 ms |
+| Query     | 250,55 ms | < 150 ms |
+| Write     | 311,55 ms | < 300 ms |
+| Billing   | 274,55 ms | < 250 ms |
 | Inventory | 276,47 ms | < 200 ms |
 
 Autenticação (26,84 ms), p99 da API (302,81 ms), erros HTTP (0%),
@@ -60,6 +60,15 @@ check nominal produziu cada falha.
 Uma reprodução local do mesmo perfil, com PostgreSQL/Redis reais, 4 CPUs e o
 mesmo limite de pool, passou 9/9 SLOs. Essa reprodução é histórica do SHA
 `55ff8a52` e não substitui a execução remota do candidato `68600d6a`.
+
+## Atualização do candidato funcional — CI #137
+
+O candidato funcional `1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689` passou o
+[CI #137](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34667412200)
+com `16/16` jobs, incluindo Performance/k6. Esse resultado é específico do
+SHA e não transfere os números dos runs históricos acima. O gate local permanece
+`BLOCKED / NOT PROVEN` (`54/54/16`) porque o pacote externo completo, target e
+autoridade de release continuam ausentes; nenhum threshold foi alterado.
 
 **Decisão histórica:** não alterar thresholds, carga ou comportamento de
 produto para mascarar a falha; a variação não demonstrou defeito determinístico

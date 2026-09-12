@@ -1,27 +1,27 @@
 # Baseline corrente — State of Art
 
-Observado em `2026-09-12T01:40:26Z`, no candidato `c7336ac0f6a909c10d07797c36814f0b321c6d5c`.
-Este arquivo é uma fotografia do estado corrente; históricos anteriores não
-substituem evidência do SHA atual.
+Observado em `2026-09-12T02:53:43Z`, no candidato funcional
+`1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689`. Este arquivo é uma fotografia do
+estado corrente; históricos anteriores não substituem evidência do candidato.
 
-| Campo           | Evidência atual                                                                                                                                                             |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| current_sha     | `c7336ac0f6a909c10d07797c36814f0b321c6d5c`                                                                                                                                  |
-| main_sha        | `c7336ac0f6a909c10d07797c36814f0b321c6d5c` (`HEAD == origin/main`)                                                                                                          |
-| worktree        | Limpo na captura; artefatos de release permanecem ignorados                                                                                                                 |
-| rollback        | `origin/fix/state-of-art-ci-assurance@fe5406c2`; sem force-push                                                                                                             |
-| ci_run          | [#135](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34663821242), `failure`; 15/16 jobs verdes                                                             |
-| ci_failure      | [Performance/k6](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34663821242/job/103473632130); os demais jobs, inclusive E2E clínico, concluíram com sucesso |
-| overall_score   | `50` no gate estrito local                                                                                                                                                  |
-| critical_score  | `46` no gate estrito local                                                                                                                                                  |
-| open_p0         | `19` no gate estrito local                                                                                                                                                  |
-| local_gate      | `TRIPLE_A_RUN_BUILD=0 pnpm release:triple-a`: `BLOCKED`, `claim=NOT PROVEN`, `publication_allowed=false`                                                                    |
-| implemented     | Diagnósticos k6, breakdown por endpoint, guards de supply chain, workflow/worker, timelines, RLS estático, políticas operacionais e documentação requerida                  |
-| verified_local  | `pnpm test`, `pnpm lint`, `pnpm typecheck`, `pnpm build`, secret scan, docs, supply chain e backup estático: PASS; E2E clínico `2/2`; critical `66/615`; processo `11/11`   |
-| verified_remote | CI #135: segurança, build, unit, integration, visual, contratos, Windows e E2E: PASS; performance SLO: FAIL                                                                 |
-| verified_target | `NOT PROVEN`                                                                                                                                                                |
-| blocked         | Performance SLO remoto; restore/DR real por Docker indisponível; target, attestation, deploy/rollback, UAT e autoridade humana                                              |
-| not_proven      | Qualquer claim de release Triple-A, score ≥97, critical ≥95 ou zero P0                                                                                                      |
+| Campo           | Evidência atual                                                                                                                                                           |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| current_sha     | `1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689` (candidato funcional)                                                                                                          |
+| main_sha        | `1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689` (`HEAD == origin/main` na captura)                                                                                             |
+| worktree        | Limpo na captura; artefatos de release permanecem ignorados                                                                                                               |
+| rollback        | `origin/fix/state-of-art-ci-assurance@fe5406c2`; sem force-push                                                                                                           |
+| ci_run          | [#137](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34667412200), `success`; 16/16 jobs verdes                                                           |
+| ci_failure      | Nenhum job obrigatório falhou; E2E SPA/usabilidade, integração e Performance/k6 concluíram com sucesso                                                                    |
+| overall_score   | `54` no gate estrito local com checks e build executados                                                                                                                  |
+| critical_score  | `54` no gate estrito local                                                                                                                                                |
+| open_p0         | `16` no gate estrito local                                                                                                                                                |
+| local_gate      | `pnpm release:triple-a`: `BLOCKED`, `claim=NOT PROVEN`, `publication_allowed=false`                                                                                       |
+| implemented     | Diagnósticos k6, breakdown por endpoint, guards de supply chain, workflow/worker, timelines, RLS estático, políticas operacionais e documentação requerida                |
+| verified_local  | `pnpm test`, `pnpm lint`, `pnpm typecheck`, `pnpm build`, secret scan, docs, supply chain e backup estático: PASS; E2E clínico `2/2`; critical `66/615`; processo `11/11` |
+| verified_remote | CI #137: segurança, build, unit, integration, visual, contratos, Windows, E2E e performance: PASS                                                                         |
+| verified_target | `NOT PROVEN`                                                                                                                                                              |
+| blocked         | Restore/DR real por Docker indisponível; target, attestation, deploy/rollback, UAT, branch governance e autoridade humana                                                 |
+| not_proven      | Qualquer claim de release Triple-A, score ≥97, critical ≥95 ou zero P0                                                                                                    |
 
 ## Decisão
 

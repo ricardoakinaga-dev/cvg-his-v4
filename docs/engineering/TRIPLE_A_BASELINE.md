@@ -1,14 +1,14 @@
 # CVG HIS — Triple-A Baseline
 
-## Candidato vigente — 2026-09-12T01:40:26Z
+## Candidato funcional vigente — 2026-09-12T02:53:43Z
 
 O snapshot corrente está reconciliado em
 [`docs/triple-a/15-current-baseline.md`](../triple-a/15-current-baseline.md):
-`c7336ac0f6a909c10d07797c36814f0b321c6d5c`, `HEAD == origin/main`, CI #135
-falhou somente no SLO de Performance/k6 e o gate local registrou
-`BLOCKED / NOT PROVEN`, score `50`, critical `46` e `19` P0. Este documento
+`1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689`, `HEAD == origin/main` na captura,
+CI #137 terminou verde em 16/16 jobs e o gate local registrou
+`BLOCKED / NOT PROVEN`, score `54`, critical `54` e `16` P0. Este documento
 mantém as fotografias históricas abaixo como contexto e não as promove como
-prova do candidato atual.
+prova de target ou release do candidato funcional.
 
 ## Reconciliação corrente — 2026-09-12T00:08:01Z
 
@@ -31,19 +31,19 @@ Uma evidência só pode sustentar um critério quando estiver vinculada ao commi
 
 ## 2. Saúde atual observada
 
-| Área | Evidência atual | Resultado | Limitação |
-|---|---|---|---|
-| Integridade documental e namespaces | `pnpm docs:validate`, `pnpm validate:namespaces`, `pnpm validate:migration-source` | PASS | Validação estática |
-| Contratos/OpenAPI | `pnpm validate:openapi` | PASS; 414 paths, 518 schemas | Não substitui teste de runtime |
-| Tenant/RLS | `pnpm validate:rls` | PASS estático; 168/169 tabelas protegidas, 1 exceção documentada | Não prova isolamento sob conexão/runtime real |
-| Deploy surface | `pnpm validate:deploy-surface` | PASS estático; 157 arquivos canônicos | Não prova rollout/rollback |
-| Secrets | `pnpm security:secrets` | PASS | Não cobre toda a cadeia de supply chain |
-| Type safety | `pnpm typecheck` | PASS; 67/68 projetos reportados | Não prova regras clínicas/runtime |
-| Lint | `pnpm lint` | PASS | Não prova acessibilidade/UX |
-| Build | `pnpm build` | PASS; API, SPA e worker; SPA 810 módulos | Não prova imagem reprodutível/deploy |
-| Complexidade | `pnpm complexity:check` | PASS local | `AppointmentsListPage.vue` foi reduzida para 3045 linhas ao extrair o tema escuro para CSS; todos os hotspots do manifesto dentro do orçamento |
-| Helm | `pnpm validate:helm` | PARTIAL | Binário Helm ausente; somente validação estática |
-| Testes completos | `pnpm test` concluído com exit 0; workspace 67/68; SPA 211 arquivos/1865 testes, API 576 testes; worker e módulos concluídos | PASS local | Avisos jsdom de navegação/scrollTo; não substitui critical DB, E2E, recovery ou target evidence |
+| Área                                | Evidência atual                                                                                                              | Resultado                                                        | Limitação                                                                                                                                      |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Integridade documental e namespaces | `pnpm docs:validate`, `pnpm validate:namespaces`, `pnpm validate:migration-source`                                           | PASS                                                             | Validação estática                                                                                                                             |
+| Contratos/OpenAPI                   | `pnpm validate:openapi`                                                                                                      | PASS; 414 paths, 518 schemas                                     | Não substitui teste de runtime                                                                                                                 |
+| Tenant/RLS                          | `pnpm validate:rls`                                                                                                          | PASS estático; 168/169 tabelas protegidas, 1 exceção documentada | Não prova isolamento sob conexão/runtime real                                                                                                  |
+| Deploy surface                      | `pnpm validate:deploy-surface`                                                                                               | PASS estático; 157 arquivos canônicos                            | Não prova rollout/rollback                                                                                                                     |
+| Secrets                             | `pnpm security:secrets`                                                                                                      | PASS                                                             | Não cobre toda a cadeia de supply chain                                                                                                        |
+| Type safety                         | `pnpm typecheck`                                                                                                             | PASS; 67/68 projetos reportados                                  | Não prova regras clínicas/runtime                                                                                                              |
+| Lint                                | `pnpm lint`                                                                                                                  | PASS                                                             | Não prova acessibilidade/UX                                                                                                                    |
+| Build                               | `pnpm build`                                                                                                                 | PASS; API, SPA e worker; SPA 810 módulos                         | Não prova imagem reprodutível/deploy                                                                                                           |
+| Complexidade                        | `pnpm complexity:check`                                                                                                      | PASS local                                                       | `AppointmentsListPage.vue` foi reduzida para 3045 linhas ao extrair o tema escuro para CSS; todos os hotspots do manifesto dentro do orçamento |
+| Helm                                | `pnpm validate:helm`                                                                                                         | PARTIAL                                                          | Binário Helm ausente; somente validação estática                                                                                               |
+| Testes completos                    | `pnpm test` concluído com exit 0; workspace 67/68; SPA 211 arquivos/1865 testes, API 576 testes; worker e módulos concluídos | PASS local                                                       | Avisos jsdom de navegação/scrollTo; não substitui critical DB, E2E, recovery ou target evidence                                                |
 
 ## 3. Pontos fortes existentes
 

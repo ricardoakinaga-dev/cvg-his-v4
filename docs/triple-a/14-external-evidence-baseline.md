@@ -5,19 +5,19 @@
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA atual é
-> `c7336ac0f6a909c10d07797c36814f0b321c6d5`, o CI é #135 e o veredito é
+> `1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689`, o CI é #137 e o veredito é
 > `BLOCKED / NOT PROVEN`; nenhum dado abaixo é transferido.
 
-**Current snapshot:** `68600d6a55dcf18bd04c28ff3ee7528cc686efdb` (código funcional; a reconciliação documental acompanha o candidato); `main`/`origin/main` sincronizados no momento da validação.
-**Current CI:** [#129](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250) — `failure`, 15/16 jobs; somente Performance falhou
+**Current snapshot:** `1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689` (código funcional; a reconciliação documental acompanha o candidato); `main`/`origin/main` sincronizados no momento da validação.
+**Current CI:** [#137](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34667412200) — `success`, 16/16 jobs verdes
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-11T22:12:14Z
+**Observation:** 2026-09-12T02:53:43Z
 
-**Current local execution:** o gate estrito no snapshot executou checks estáticos, typecheck, lint e build com PASS; `pnpm test:coverage` terminou com 2.525 testes passados e 1 skipped, E2E clínico `2/2` e SPA focada `32/32`. A evidência local não substitui o CI pinned nem o ambiente alvo.
+**Current local execution:** o gate estrito no snapshot executou checks, typecheck, lint e build; a validação local não substitui o CI pinned nem o ambiente alvo. O CI #137 também passou por Unit, Integration, E2E SPA/usabilidade, Visual e Performance/k6.
 
-**Current strict gate:** `pnpm release:triple-a` no HEAD retornou `BLOCKED / NOT PROVEN`, score `54`, critical `54`, `16` P0 abertos e `publication_allowed=false`; a avaliação derivada do quality bar foi `31/33/7`.
+**Current strict gate:** `pnpm release:triple-a` no HEAD retornou `BLOCKED / NOT PROVEN`, score `54`, critical `54`, `16` P0 abertos, `claim=NOT PROVEN` e `publication_allowed=false`.
 
-The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. The exact current run #129 failed in `Run k6 benchmark`/`Check SLO results`; the Windows package-manager contract and E2E SPA passed. The performance artifact and its access limitation are reconciled in [critic-performance-assurance-20260911.md](./critic-performance-assurance-20260911.md). Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
+The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. Historical run #129 failed in `Run k6 benchmark`/`Check SLO results`; the current run #137 passed the published CI jobs, including Performance/k6. The performance evidence and its access limitation are reconciled in [critic-performance-assurance-20260911.md](./critic-performance-assurance-20260911.md). Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
 
 ## Current candidate implementation delta
 
@@ -69,12 +69,12 @@ fail-closed observation, not release authorization.
 
 ## Candidate integrity
 
-| Probe | Result | Evidence |
-|---|---|---|
-| Code candidate SHA | PASS | `cd7399f91bf3c3eda53e4598443acdbc9ff6d3b1` |
-| Evidence/control-plane reconciliation | PASS | Files are bound to the candidate and validated by `.agent/verification.jsonl#VER-TRIPLE-A-BASELINE-20260910-CURRENT-CD7399-FINAL`. |
-| Local strict release gate | PASS_WITH_CONDITIONS / NOT AUTHORIZED | `TRIPLE_A_RELEASE_EVIDENCE.json`: `score=43`, `critical_score=23`, `open_p0=27`, `publication_allowed=false`. |
-| Prompt byte identity | PASS | `cmp` and SHA-256 against the supplied attachment. |
+| Probe                                 | Result                                | Evidence                                                                                                                           |
+| ------------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Code candidate SHA                    | PASS                                  | `cd7399f91bf3c3eda53e4598443acdbc9ff6d3b1`                                                                                         |
+| Evidence/control-plane reconciliation | PASS                                  | Files are bound to the candidate and validated by `.agent/verification.jsonl#VER-TRIPLE-A-BASELINE-20260910-CURRENT-CD7399-FINAL`. |
+| Local strict release gate             | PASS_WITH_CONDITIONS / NOT AUTHORIZED | `TRIPLE_A_RELEASE_EVIDENCE.json`: `score=43`, `critical_score=23`, `open_p0=27`, `publication_allowed=false`.                      |
+| Prompt byte identity                  | PASS                                  | `cmp` and SHA-256 against the supplied attachment.                                                                                 |
 
 ## Remote GitHub state
 
@@ -82,9 +82,9 @@ The repository is public, the default branch is `main`, and Actions is active.
 The latest code-candidate push created executable jobs. The public run page was
 observed without authenticated logs:
 
-| Workflow | Run | Result | Public evidence |
-|---|---:|---|---|
-| CI | `34431492523` / run 49 | `FAILURE`; Unit, Performance, Visual, E2E SPA and Windows contract failed; Integration passed | [run](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34431492523) |
+| Workflow |                    Run | Result                                                                                        | Public evidence                                                                  |
+| -------- | ---------------------: | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| CI       | `34431492523` / run 49 | `FAILURE`; Unit, Performance, Visual, E2E SPA and Windows contract failed; Integration passed | [run](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34431492523) |
 
 The earlier pre-fix run identified a concrete defect, which is now addressed by
 the current candidate:
@@ -100,11 +100,11 @@ current verification record, and must be reproduced before release evaluation.
 
 ## Branch governance probe
 
-| Probe | HTTP/result | Classification |
-|---|---|---|
-| `GET /branches/main/protection` | `401 Requires authentication` | `NOT PROVEN` |
-| `GET /rulesets` | `200`, empty public response | `NOT PROVEN`; absence of a visible ruleset is not proof of complete governance. |
-| Authenticated owner/admin configuration | Not available in this workspace | `BLOCKED` |
+| Probe                                   | HTTP/result                     | Classification                                                                  |
+| --------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------- |
+| `GET /branches/main/protection`         | `401 Requires authentication`   | `NOT PROVEN`                                                                    |
+| `GET /rulesets`                         | `200`, empty public response    | `NOT PROVEN`; absence of a visible ruleset is not proof of complete governance. |
+| Authenticated owner/admin configuration | Not available in this workspace | `BLOCKED`                                                                       |
 
 Required checks, review requirements, stale-branch policy, force-push policy,
 and bypass ownership therefore remain external obligations. The release gate
@@ -177,24 +177,24 @@ Integration, E2E SPA and Visual Regression all completed successfully.
 
 The public job records for this run are:
 
-| Job | GitHub job ID | Result |
-| --- | ---: | --- |
-| Typecheck | 103087020407 | success |
-| SAST | 103087020668 | success |
-| Secret Scan | 103087020616 | success |
-| Dependency Audit | 103087020625 | success |
-| Lint | 103088449974 | success |
-| Validate OpenAPI | 103088449972 | success |
-| Repository Guards | 103088450037 | success |
-| Coverage | 103088449975 | success |
-| Build | 103089362590 | success |
-| API Contract Tests | 103089953995 | success |
-| Unit Tests | 103089954012 | success |
-| Critical Process Runner (Windows) | 103089953911 | success |
-| Integration Tests | 103089953936 | success |
-| Performance (k6 SLOs) | 103089953902 | failure |
-| E2E Tests (SPA) | 103089954107 | success |
-| Visual Regression | 103089954022 | success |
+| Job                               | GitHub job ID | Result  |
+| --------------------------------- | ------------: | ------- |
+| Typecheck                         |  103087020407 | success |
+| SAST                              |  103087020668 | success |
+| Secret Scan                       |  103087020616 | success |
+| Dependency Audit                  |  103087020625 | success |
+| Lint                              |  103088449974 | success |
+| Validate OpenAPI                  |  103088449972 | success |
+| Repository Guards                 |  103088450037 | success |
+| Coverage                          |  103088449975 | success |
+| Build                             |  103089362590 | success |
+| API Contract Tests                |  103089953995 | success |
+| Unit Tests                        |  103089954012 | success |
+| Critical Process Runner (Windows) |  103089953911 | success |
+| Integration Tests                 |  103089953936 | success |
+| Performance (k6 SLOs)             |  103089953902 | failure |
+| E2E Tests (SPA)                   |  103089954107 | success |
+| Visual Regression                 |  103089954022 | success |
 
 The performance artifact is `performance-k6-report`, ID `10178201156`, with
 download digest
@@ -245,24 +245,24 @@ Secret Scan, Dependency Audit, Lint, OpenAPI, Repository Guards, Coverage,
 Build, API Contract, Unit, Windows, Integration, E2E SPA and Visual Regression
 passed. Performance (k6 SLOs) is the only failure. The public job records are:
 
-| Job | GitHub job ID | Result |
-| --- | ---: | --- |
-| Typecheck | 103101620881 | success |
-| SAST | 103101620961 | success |
-| Secret Scan | 103101621132 | success |
-| Dependency Audit | 103101621103 | success |
-| Repository Guards | 103102976205 | success |
-| Lint | 103102976236 | success |
-| Coverage | 103102976250 | success |
-| Validate OpenAPI | 103102976265 | success |
-| Build | 103103844770 | success |
-| E2E Tests (SPA) | 103104313730 | success |
-| API Contract Tests | 103104313786 | success |
-| Integration Tests | 103104313793 | success |
-| Critical Process Runner (Windows) | 103104313798 | success |
-| Performance (k6 SLOs) | 103104313847 | failure |
-| Unit Tests | 103104313869 | success |
-| Visual Regression | 103104313894 | success |
+| Job                               | GitHub job ID | Result  |
+| --------------------------------- | ------------: | ------- |
+| Typecheck                         |  103101620881 | success |
+| SAST                              |  103101620961 | success |
+| Secret Scan                       |  103101621132 | success |
+| Dependency Audit                  |  103101621103 | success |
+| Repository Guards                 |  103102976205 | success |
+| Lint                              |  103102976236 | success |
+| Coverage                          |  103102976250 | success |
+| Validate OpenAPI                  |  103102976265 | success |
+| Build                             |  103103844770 | success |
+| E2E Tests (SPA)                   |  103104313730 | success |
+| API Contract Tests                |  103104313786 | success |
+| Integration Tests                 |  103104313793 | success |
+| Critical Process Runner (Windows) |  103104313798 | success |
+| Performance (k6 SLOs)             |  103104313847 | failure |
+| Unit Tests                        |  103104313869 | success |
+| Visual Regression                 |  103104313894 | success |
 
 The Windows contract passed after the startup budget was raised from 30s to a
 finite 60s. The preceding run had measured a legitimate cold start of 34.435s
@@ -315,24 +315,24 @@ contract and Performance (k6 SLOs).
 
 The final run's jobs were:
 
-| Job | GitHub job ID | Result |
-| --- | ---: | --- |
-| Typecheck | 103115063370 | success |
-| SAST | 103115063431 | success |
-| Secret Scan | 103115063379 | success |
-| Dependency Audit | 103115063264 | success |
-| Validate OpenAPI | 103116303506 | success |
-| Coverage | 103116303518 | success |
-| Lint | 103116303522 | success |
-| Repository Guards | 103116303542 | success |
-| Build | 103117125070 | success |
-| Critical Process Runner (Windows) | 103117672515 | success |
-| Integration Tests | 103117672520 | success |
-| Unit Tests | 103117672525 | success |
-| API Contract Tests | 103117672533 | success |
-| E2E Tests (SPA) | 103117672562 | success |
-| Visual Regression | 103117672569 | success |
-| Performance (k6 SLOs) | 103117672669 | success |
+| Job                               | GitHub job ID | Result  |
+| --------------------------------- | ------------: | ------- |
+| Typecheck                         |  103115063370 | success |
+| SAST                              |  103115063431 | success |
+| Secret Scan                       |  103115063379 | success |
+| Dependency Audit                  |  103115063264 | success |
+| Validate OpenAPI                  |  103116303506 | success |
+| Coverage                          |  103116303518 | success |
+| Lint                              |  103116303522 | success |
+| Repository Guards                 |  103116303542 | success |
+| Build                             |  103117125070 | success |
+| Critical Process Runner (Windows) |  103117672515 | success |
+| Integration Tests                 |  103117672520 | success |
+| Unit Tests                        |  103117672525 | success |
+| API Contract Tests                |  103117672533 | success |
+| E2E Tests (SPA)                   |  103117672562 | success |
+| Visual Regression                 |  103117672569 | success |
+| Performance (k6 SLOs)             |  103117672669 | success |
 
 The `performance-k6-report` artifact is ID `10181401056`, digest
 `sha256:b772a7a377be6c14eb407561ba74e226b7ad88aed6e5f45c5f85d4040384c926`.

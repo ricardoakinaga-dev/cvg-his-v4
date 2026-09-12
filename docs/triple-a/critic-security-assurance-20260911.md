@@ -41,3 +41,12 @@ CI, RLS runtime, deploy, recovery, UAT, attestation e autoridade.
 Este relatório é um parecer independente de lacunas, não uma aprovação. O
 estado de segurança/release deve permanecer bloqueado até evidências SHA-bound
 autenticadas e uma nova execução remota terminalmente verde.
+
+## Atualização do candidato funcional — CI #137
+
+O candidato `1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689` passou o
+[CI #137](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34667412200)
+com `16/16` jobs verdes. A execução cobre os checks publicados do workflow, mas
+não fornece branch governance autenticada, RLS/roles no target, SBOM/proveniência
+assinada, attestation ou autoridade humana. O parecer permanece
+`BLOCKED / NOT PROVEN` e o gate local registra `54/54/16`.

@@ -41,3 +41,11 @@ Este relatório é evidência independente de lacunas, não aprovação. O gate 
 continuar bloqueado até a execução PostgreSQL/processual no SHA exato e até um
 teste de efeito durável demonstrar exatamente um efeito material após
 SIGKILL/reclaim.
+
+## Atualização do candidato funcional — CI #137
+
+No SHA `1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689`, o [CI #137](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34667412200)
+terminou verde com `16/16` jobs, incluindo Integration, Unit, Critical Process
+Windows e E2E SPA. Isso não substitui o envelope externo de PostgreSQL/worker,
+efeito durável, recovery, RLS ou UAT. O gate permanece `BLOCKED / NOT PROVEN`
+com `16` P0 abertos.
