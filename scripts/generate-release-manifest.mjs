@@ -105,7 +105,17 @@ export function generateReleaseManifest({
     throw new Error('release estrito exige digests de API, worker e SPA');
   }
 
-  const excluded = new Set(['release-manifest.json', 'CHECKSUMS.sha256']);
+  const canonicalSbomPath = resolve(resolvedOutputDir, 'sbom.cyclonedx.json');
+  const requiredSbomPath = resolve(resolvedOutputDir, 'sbom.cdx.json');
+  if (existsSync(canonicalSbomPath)) {
+    writeFileSync(requiredSbomPath, readFileSync(canonicalSbomPath));
+  }
+
+  const excluded = new Set([
+    'release-manifest.json',
+    'enterprise-release-manifest.json',
+    'CHECKSUMS.sha256'
+  ]);
   const files = readdirSync(resolvedOutputDir, { withFileTypes: true })
     .filter((entry) => entry.isFile() && !excluded.has(entry.name))
     .map((entry) => {
@@ -118,6 +128,7 @@ export function generateReleaseManifest({
     .sort((a, b) => a.path.localeCompare(b.path));
 
   const sbom = files.find((file) => basename(file.path) === 'sbom.cyclonedx.json');
+  const sbomAlias = files.find((file) => basename(file.path) === 'sbom.cdx.json');
   if (requireImageDigests && !sbom) throw new Error('release estrito exige sbom.cyclonedx.json');
   const sourceBundle = files.find((file) => /^source-[0-9a-f]{40}\.tar\.gz$/.test(basename(file.path)));
   const migrations = migrationState(rootDir);
@@ -151,16 +162,20 @@ export function generateReleaseManifest({
     images: normalizedImages,
     files,
     sbom: sbom?.path ?? null,
+    sbom_alias: sbomAlias?.path ?? null,
     attestation_references: attestationReferences,
     evidence_references: evidenceReferences,
   };
 
   const manifestPath = resolve(resolvedOutputDir, 'release-manifest.json');
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  const manifestAliasPath = resolve(resolvedOutputDir, 'enterprise-release-manifest.json');
+  writeFileSync(manifestAliasPath, readFileSync(manifestPath));
 
   const checksumEntries = [
     ...files,
     { path: toPosix(relative(rootDir, manifestPath)), sha256: sha256(manifestPath) },
+    { path: toPosix(relative(rootDir, manifestAliasPath)), sha256: sha256(manifestAliasPath) },
   ].sort((a, b) => a.path.localeCompare(b.path));
   const checksumsPath = resolve(resolvedOutputDir, 'CHECKSUMS.sha256');
   writeFileSync(
@@ -168,7 +183,7 @@ export function generateReleaseManifest({
     `${checksumEntries.map((file) => `${file.sha256}  ${basename(file.path)}`).join('\n')}\n`
   );
 
-  return { manifest, manifestPath, checksumsPath };
+  return { manifest, manifestPath, manifestAliasPath, checksumsPath };
 }
 
 const invokedAsScript = process.argv[1]

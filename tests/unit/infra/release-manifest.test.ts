@@ -32,10 +32,14 @@ describe('release manifest', () => {
     expect(result.manifest.images).toHaveLength(3);
     expect(result.manifest.images[0].immutable_reference).toBe(`ghcr.io/cvg/api@${digest}`);
     expect(result.manifest.sbom).toBe('artifacts/release/sbom.cyclonedx.json');
+    expect(result.manifest.sbom_alias).toBe('artifacts/release/sbom.cdx.json');
+    expect(readFileSync(resolve(rootDir, 'artifacts/release/sbom.cdx.json'), 'utf8')).toBe('{}\n');
+    expect(readFileSync(result.manifestAliasPath, 'utf8')).toBe(readFileSync(result.manifestPath, 'utf8'));
     expect(result.manifest.source_hash).toBeTruthy();
     expect(result.manifest.migration_state.runner).toBe('packages/db/src/migrate.ts');
     expect(result.manifest.attestation_references).toEqual([]);
     expect(readFileSync(result.checksumsPath, 'utf8')).toContain('release-manifest.json');
+    expect(readFileSync(result.checksumsPath, 'utf8')).toContain('enterprise-release-manifest.json');
   });
 
   it('fails closed when a strict release lacks an image digest', () => {
@@ -91,6 +95,20 @@ describe('release manifest', () => {
       });
 
       expect(verifyReleaseManifest({ rootDir, outputDir, commitSha: '3'.repeat(40) }).status).toBe('PASS');
+
+      rmSync(resolve(outputDir, 'enterprise-release-manifest.json'));
+      expect(verifyReleaseManifest({ rootDir, outputDir, commitSha: '3'.repeat(40) }).status).toBe('FAIL');
+      generateReleaseManifest({
+        rootDir,
+        outputDir,
+        commitSha: '3'.repeat(40),
+        requireImageDigests: true,
+        images: ['api', 'worker', 'spa'].map((component) => ({
+          component,
+          reference: `ghcr.io/cvg/${component}:sha`,
+          digest,
+        })),
+      });
 
       const manifestPath = resolve(outputDir, 'release-manifest.json');
       const tamperedManifest = JSON.parse(readFileSync(manifestPath, 'utf8'));

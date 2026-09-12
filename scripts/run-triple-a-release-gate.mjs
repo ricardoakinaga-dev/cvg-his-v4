@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
-import { relative, resolve, sep } from 'node:path';
+import { basename, relative, resolve, sep } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const DEFAULT_OUTPUT_DIR = 'artifacts/release';
@@ -730,6 +730,21 @@ export function verifyReleaseManifest({ rootDir, outputDir, commitSha }) {
       && isSafeEvidencePath(rootDir, sbomPath)
       && Boolean(sbomFile)
       && sbomFile?.sha256 === sha256(resolve(rootDir, sbomPath));
+    const sbomAliasPath = manifest.sbom_alias;
+    const sbomAliasFile = typeof sbomAliasPath === 'string'
+      ? manifest.files?.find((file) => file?.path === sbomAliasPath)
+      : undefined;
+    const sbomAliasMatches = typeof sbomAliasPath === 'string'
+      && basename(sbomAliasPath) === 'sbom.cdx.json'
+      && isSafeEvidencePath(rootDir, sbomAliasPath)
+      && Boolean(sbomAliasFile)
+      && sbomAliasFile?.sha256 === sha256(resolve(rootDir, sbomAliasPath))
+      && typeof sbomPath === 'string'
+      && isSafeEvidencePath(rootDir, sbomPath)
+      && readFileSync(resolve(rootDir, sbomAliasPath), 'utf8') === readFileSync(resolve(rootDir, sbomPath), 'utf8');
+    const manifestAliasPath = resolve(outputDir, 'enterprise-release-manifest.json');
+    const manifestAliasMatches = existsSync(manifestAliasPath)
+      && readFileSync(manifestAliasPath, 'utf8') === readFileSync(manifestPath, 'utf8');
     const sourcePath = manifest.source?.path;
     const sourceFile = typeof sourcePath === 'string'
       ? manifest.files?.find((file) => file?.path === sourcePath)
@@ -787,6 +802,8 @@ export function verifyReleaseManifest({ rootDir, outputDir, commitSha }) {
       && completeImages
       && sbom.valid
       && sbomDigestMatches
+      && sbomAliasMatches
+      && manifestAliasMatches
       && sourceDigestMatches
       && migrationStateValid
       && attestationReferencesValid

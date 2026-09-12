@@ -189,6 +189,7 @@ assertUniqueBomRefs(sbom.components);
 
 const sbomPath = join(outputPath, 'sbom.cyclonedx.json');
 writeFileSync(sbomPath, `${JSON.stringify(sbom, null, 2)}\n`);
+writeFileSync(join(outputPath, 'sbom.cdx.json'), readFileSync(sbomPath));
 
 const report = {
   generatedAt: new Date().toISOString(),
