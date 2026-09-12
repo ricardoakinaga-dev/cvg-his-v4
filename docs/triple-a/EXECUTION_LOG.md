@@ -676,3 +676,12 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - Testes focados de workflows, worker, tenant-context, módulos de relatórios e API passaram; OpenAPI e contrato clínico passaram.
 - O [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) pertence ao commit documental anterior `e6edb6f8` e não foi promovido. Os snapshots correntes foram reancorados neste SHA e esta atualização deve gerar uma nova execução terminal.
 - O veredito continua `BLOCKED / NOT PROVEN`; nenhum threshold ou resultado histórico foi transferido.
+
+
+## 2026-09-12T14:10:35Z — checkpoint para encerramento seguro
+
+- A árvore de trabalho está limpa em `main`, com `HEAD` e `origin/main` em `bb72bebe`.
+- O código funcional permanece ancorado em `6462323f0a8f311f57da201e35e3d66994996391`; o checkpoint é documental e não altera o candidato funcional.
+- O [CI #159](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34698297705) está `in_progress`; o resultado terminal deve ser conferido na retomada.
+- `pnpm docs:validate` e `git diff --check` passaram antes desta atualização.
+- Estado: **BLOCKED / NOT PROVEN** até existirem todas as evidências externas exigidas pelo quality bar.

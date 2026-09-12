@@ -1,6 +1,6 @@
 # Checkpoint — merge seguro e auditoria
 
-**Registrado em:** `2026-09-12T14:07:47Z`
+**Registrado em:** `2026-09-12T14:10:35Z`
 **Repositório:** `https://github.com/ricardoakinaga-dev/cvg-his-v4`
 **Código integrado:** `6462323f0a8f311f57da201e35e3d66994996391`
 
@@ -21,7 +21,7 @@
 
 ## CI e decisão
 
-O [CI #159](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34698297705) foi disparado para o SHA integrado e estava **pendente** no momento do checkpoint. O [CI #158](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34698026588) é o run anterior do candidato visual `9b772152`.
+O [CI #159](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34698297705) foi disparado para o SHA integrado e está **em execução** no momento deste checkpoint. O [CI #158](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34698026588) é o run anterior do candidato visual `9b772152`.
 
 O estado de release continua **BLOCKED / NOT PROVEN**: permanecem sem prova target, recovery/restore, UAT, attestation, governança, deploy/rollback, performance remota, cobertura visual global, SCA avançada e autoridade de release. Não declarar `main green` ou `TRIPLE-A VERIFIED` antes das evidências externas exigidas pelo quality bar.
 
