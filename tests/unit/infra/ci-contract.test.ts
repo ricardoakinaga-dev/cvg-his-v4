@@ -254,8 +254,11 @@ describe('CI repository guardrails', () => {
     );
 
     expect(job).toContain('run: pnpm test:db:start');
-    expect(job).toContain('run: pnpm test');
+    expect(job).toContain('pnpm test 2>&1 | tee unit-test.log');
     expect(job).toContain('REQUIRE_TEST_DB: 1');
+    expect(job).toContain('name: Upload unit-test diagnostics');
+    expect(job).toContain('path: unit-test.log');
+    expect(job).toContain('if-no-files-found: error');
     expect(job).toContain('name: Run critical process runner contract');
     expect(job).toContain(
       'run: pnpm exec vitest run tests/unit/infra/critical-process-suite-contract.test.ts --config vitest.config.ts --no-file-parallelism'
