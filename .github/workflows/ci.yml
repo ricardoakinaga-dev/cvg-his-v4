@@ -214,6 +214,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          # The repository guards compare the current docs against the
+          # historical candidate commit. Keep the ancestry available in CI;
+          # a shallow checkout would make a valid snapshot look unrelated.
+          fetch-depth: 0
 
       - name: Verify clean checkout
         run: node scripts/assert-clean-checkout.mjs
