@@ -2,7 +2,7 @@
 
 **Registrado em:** `2026-09-12T14:40:32Z`
 **Repositório:** `https://github.com/ricardoakinaga-dev/cvg-his-v4`
-**Código integrado:** `d848843173bca9a94b8c1f2914d3a3654eb4ce84`
+**Código integrado:** `f24b90a8a50839b6a8853d66ef8ab4b7754092e0`
 
 ## Estado do Git
 
@@ -20,7 +20,7 @@
 - O outbox agora publica e verifica envelope versionado com `eventId`, `schemaVersion`, `actor`, `correlationId`, `causationId`, `occurredAt` e `sourceModule`; a migração `0170` compatibiliza registros legados.
 - O crosswalk `18-master-prompt-crosswalk.json` liga as 61 fases do prompt congelado às 76 linhas da matriz, validando hashes e requisitos explícitos.
 - Evidência local adicional: barramento de eventos `28/28` testes; crosswalk `5/5` testes; `pnpm validate:prompt-traceability` passou.
-- Evidência local do supply chain: guard `PASS` com 113 actions, 13 imagens de workflow, 15 imagens Compose e seis bases Docker; testes de regressão `3/3`; Helm render permanece pendente sem o binário v3.15.4/daemon Docker local.
+- Evidência local do supply chain: guard `PASS` com 113 actions, 13 imagens de workflow, 15 imagens Compose, seis bases Docker e quatro referências em scripts operacionais; testes de regressão `4/4`; Helm render permanece pendente sem o binário v3.15.4/daemon Docker local.
 - Evidência local: design system `53/53` testes; PWA `2/2`; manifesto `3/3`; typecheck do design system e SPA; build PWA da SPA com `814` módulos; `pnpm docs:validate` e `git diff --check` passaram.
 
 ## CI e decisão
@@ -39,4 +39,4 @@ pnpm docs:validate
 git diff --check
 ```
 
-Depois, abrir o CI do candidato `d8488431` e conferir o resultado terminal no SHA exato. Só aceitar merge/release quando todos os jobs obrigatórios e as provas externas exigidas pelo quality bar estiverem presentes.
+Depois, abrir o CI do candidato `f24b90a8` e conferir o resultado terminal no SHA exato. Só aceitar merge/release quando todos os jobs obrigatórios e as provas externas exigidas pelo quality bar estiverem presentes.

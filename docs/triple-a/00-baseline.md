@@ -5,12 +5,12 @@
 O baseline autoritativo do candidato atual está em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md):
-`d848843173bca9a94b8c1f2914d3a3654eb4ce84`, commit de pins imutáveis de deployment que sucede o envelope de eventos versionado, o crosswalk normativo e o hardening conjunto de logging, workflow e tenant. A documentação corrente sucede o candidato de assurance
+`f24b90a8a50839b6a8853d66ef8ab4b7754092e0`, commit de pins imutáveis de deployment que sucede o envelope de eventos versionado, o crosswalk normativo e o hardening conjunto de logging, workflow e tenant. A documentação corrente sucede o candidato de assurance
 `0d475dee358eab9621e5497db9929b7010ed09eb`; `HEAD == main == origin/main`,
 com rollback preservado. O gate local estrito histórico permanece `BLOCKED`
 com `55/57/15` (score/critical/open P0) e claim `NOT PROVEN`.
 
-O [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) pertence ao commit documental anterior e não tem resultado terminal aceito para `d8488431`. A reconciliação desta fotografia deve gerar uma nova execução CI com os
+O [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) pertence ao commit documental anterior e não tem resultado terminal aceito para `f24b90a8`. A reconciliação desta fotografia deve gerar uma nova execução CI com os
 guards vinculados ao SHA correto. Nenhum resultado parcial ou histórico é
 promovido; target, recovery, UAT, attestation, governança e autoridade de
 release continuam `NOT PROVEN`.

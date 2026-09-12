@@ -700,7 +700,15 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 ## 2026-09-12T14:40:32Z — supply chain pinado no candidato `d8488431`
 
 - O commit funcional `d848843173bca9a94b8c1f2914d3a3654eb4ce84` fixa por digest as imagens externas de workflow, Compose, Helm e bases Docker, restringe a exceção às imagens locais `cvg-his-v2-*`/`cvg-his-v4-*` e exige digest para PostgreSQL/Redis embedded no chart.
-- Evidência local: `pnpm validate:supply-chain` passou com 113 actions, 13 imagens de workflow, 15 imagens Compose e seis bases Docker; o contrato do guard passou `3/3`; os testes estáticos do Helm passaram `10/10`; secret scan, política de dependências, crosswalk e `git diff --check` passaram.
+- Evidência local: `pnpm validate:supply-chain` passou com 113 actions, 13 imagens de workflow, 15 imagens Compose, seis bases Docker e quatro referências em scripts operacionais; o contrato do guard passou `4/4`; os testes estáticos do Helm passaram `10/10`; secret scan, política de dependências, crosswalk e `git diff --check` passaram.
 - A tag OTel `0.124.1` foi corrigida porque não existe no registry; o digest adotado corresponde a `0.129.1` e fica registrado como risco de compatibilidade de observabilidade.
 - O render real do Helm v3.15.4 não foi executado nesta estação por ausência do binário e de acesso ao daemon Docker; o workflow continua exigindo a versão fixada e falhará fechado se ela não estiver disponível.
 - O CI #159 e runs anteriores pertencem a candidatos anteriores; o push do snapshot atual deve gerar CI novo no SHA exato. Estado: **BLOCKED / NOT PROVEN**.
+
+
+## 2026-09-12T14:59:00Z — regressão de contrato corrigida no candidato `f24b90a8`
+
+- O candidato `f24b90a8a50839b6a8853d66ef8ab4b7754092e0` atualiza os contratos que ainda esperavam tags mutáveis, fixa as imagens usadas pelos drills operacionais e amplia o guard para scripts `infra/scripts`.
+- A execução local passou: guard supply-chain com 113 actions, 13 imagens de workflow, 15 imagens Compose, seis bases Docker e quatro referências de scripts; regressões `4/4`; contratos de game-day/restore `12/12`; shell/node syntax, Prettier, secret scan e `git diff --check`.
+- O CI #162 no SHA documental anterior `ddf9ebc6` falhou nos contratos por essa expectativa antiga (`redis:7-alpine`) e foi cancelado pelos commits corretivos; nenhum resultado parcial foi promovido.
+- Estado: **BLOCKED / NOT PROVEN** até o novo CI executar no SHA exato e concluir o render Helm, os guards e os jobs dependentes.
