@@ -3,7 +3,9 @@
 Fonte da missão desta execução: [prompt State of Art preservado](./MASTER_PROMPT_STATE_OF_ART.md).
 O quality bar mantém como fonte congelada o [prompt histórico](./MASTER_PROMPT.md),
 declarado em `QUALITY_BAR_V1.json`; o gate valida o caminho e o SHA declarados
-pelo próprio quality bar. Os dois documentos são preservados deliberadamente:
+pelo próprio quality bar. O [crosswalk normativo](./18-master-prompt-crosswalk.md)
+liga cada uma das 61 fases do prompt congelado às 76 linhas operacionais desta
+matriz e valida os hashes, títulos, trechos e requisitos explícitos. Os dois documentos são preservados deliberadamente:
 o primeiro contém a missão expandida desta execução e o segundo mantém a
 proveniência da régua congelada sem misturar candidatos ou alterar thresholds.
 A tabela mantém o escopo completo. “NOT PROVEN” significa que a aceitação

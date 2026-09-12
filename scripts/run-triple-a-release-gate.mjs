@@ -43,6 +43,7 @@ const EXECUTABLE_CHECKS = [
   ['Supply-chain pins', 'pnpm', ['validate:supply-chain']],
   ['Dependency policy', 'pnpm', ['validate:dependencies']],
   ['Clinical workflow schema', 'pnpm', ['validate:clinical-workflow']],
+  ['Prompt traceability', 'pnpm', ['validate:prompt-traceability']],
   ['Secret scan', 'pnpm', ['security:secrets']],
   ['Complexity budget', 'pnpm', ['complexity:check']],
 ];

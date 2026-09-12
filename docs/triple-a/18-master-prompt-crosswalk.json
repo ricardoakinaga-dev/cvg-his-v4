@@ -1,0 +1,1166 @@
+{
+  "schema_version": 1,
+  "crosswalk_id": "CVG-HIS-MASTER-PROMPT-CROSSWALK-V1",
+  "precedence": "MASTER_PROMPT.md is the frozen quality-bar source; MASTER_PROMPT_STATE_OF_ART.md is the expanded execution mission. This crosswalk preserves both and does not change thresholds.",
+  "source_prompt": {
+    "path": "docs/triple-a/MASTER_PROMPT.md",
+    "sha256": "95270384800c87fcbe7e823a41a7b57834ddaac274914226745f7fdc5137197a",
+    "phase_count": 61
+  },
+  "expanded_mission": {
+    "path": "docs/triple-a/MASTER_PROMPT_STATE_OF_ART.md",
+    "sha256": "872014ed989fa4b565bbab5293009c13ef6437104204cbf39c876e64a593f745"
+  },
+  "traceability_matrix": {
+    "path": "docs/triple-a/16-requirement-traceability.md",
+    "ids": [
+      "F00",
+      "F01",
+      "F02",
+      "F03",
+      "F04",
+      "F05",
+      "F06",
+      "F07",
+      "F08",
+      "F09",
+      "F10",
+      "F11",
+      "F12",
+      "F13",
+      "F14",
+      "F15",
+      "F16",
+      "F17",
+      "F18",
+      "F19",
+      "F20",
+      "F21",
+      "F22",
+      "F23",
+      "F24",
+      "F25",
+      "F26",
+      "F27",
+      "F28",
+      "F29",
+      "F30",
+      "F31",
+      "F32",
+      "F33",
+      "F34",
+      "F35",
+      "F36",
+      "F37",
+      "F38",
+      "F39",
+      "F40",
+      "F41",
+      "F42",
+      "F43",
+      "F44",
+      "F45",
+      "F46",
+      "F47",
+      "F48",
+      "F49",
+      "F50",
+      "F51",
+      "F52",
+      "F53",
+      "F54",
+      "F55",
+      "F56",
+      "F57",
+      "F58",
+      "F59",
+      "F60",
+      "F61",
+      "F62",
+      "F63",
+      "F64",
+      "F65",
+      "F66",
+      "F67",
+      "F68",
+      "F69",
+      "F70",
+      "F71",
+      "F72",
+      "F73",
+      "F74",
+      "F75"
+    ]
+  },
+  "required_literal_artifacts": [
+    "artifacts/release/sbom.cdx.json",
+    "artifacts/release/enterprise-release-manifest.json",
+    "artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json"
+  ],
+  "unmapped_prompt_phases": [
+    {
+      "id": "MP-57",
+      "reason": "Feature flags have no dedicated F00–F75 row; the gap remains explicit and is retained in the final audit."
+    }
+  ],
+  "phases": [
+    {
+      "id": "MP-00",
+      "phase": 0,
+      "title": "RECONHECIMENTO E BASELINE",
+      "source_start_line": 108,
+      "source_end_line": 173,
+      "source_sha256": "a855fb8942112c73d8d6ba4f06b322889a0235829f134ac8790dcc371bfa138b",
+      "requirements": [
+        "Auditar o repositório real, arquitetura, testes, documentação, CI e trilhos de deploy antes de alterar código.",
+        "Registrar baseline com strengths, weaknesses, riscos e dívidas sem promover evidência indireta."
+      ],
+      "traceability_ids": ["F00"],
+      "status": "PARTIAL",
+      "acceptance": {
+        "commands": ["git status --short --branch", "pnpm docs:validate"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-01",
+      "phase": 1,
+      "title": "GREEN MAIN / RELEASE INTEGRITY",
+      "source_start_line": 174,
+      "source_end_line": 223,
+      "source_sha256": "0a96e45505aae6f140a5fd753344d4f4532865eaf7282b01060001a3842deede",
+      "requirements": [
+        "Manter a main verde com gates obrigatórios explícitos para qualidade, segurança, dados, deploy e release.",
+        "Bloquear merge, release e hotfix quando os critérios de integridade não forem satisfeitos."
+      ],
+      "traceability_ids": ["F01", "F02", "F03", "F04", "F05", "F06"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm docs:validate"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-02",
+      "phase": 2,
+      "title": "SUPPLY CHAIN SECURITY",
+      "source_start_line": 224,
+      "source_end_line": 317,
+      "source_sha256": "f0ea92649fb97c9d85153005dfaa87599af4e76f57e5e44938a32653fe083141",
+      "requirements": [
+        "Fixar Actions e imagens por referência imutável e revisar dependências, SCA, SBOM, container security, provenance e signing.",
+        "Preservar evidência verificável e fail-closed para qualquer scanner ausente ou incompleto."
+      ],
+      "traceability_ids": ["F27", "F28", "F29", "F30", "F62"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm validate:supply-chain", "pnpm validate:dependencies"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-03",
+      "phase": 3,
+      "title": "RELEASE MANIFEST IMUTÁVEL",
+      "source_start_line": 318,
+      "source_end_line": 348,
+      "source_sha256": "23f9fa794d1d3c1949a35b215f6353f778a2c0fb17ead633bd6e0ccdc75fc27d",
+      "requirements": [
+        "Gerar manifesto de release imutável com artefatos, hashes, SBOM e identidade do candidato.",
+        "Emitir literalmente os artefatos sbom.cdx.json e enterprise-release-manifest.json."
+      ],
+      "traceability_ids": ["F05", "F48", "F73"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm release:manifest"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-04",
+      "phase": 4,
+      "title": "CI/CD STATE OF ART",
+      "source_start_line": 349,
+      "source_end_line": 381,
+      "source_sha256": "f0d4a06cb0db8c43eb54cf562b9880d52e0803c910aa7a336690f565d79406dc",
+      "requirements": [
+        "Executar CI determinístico, cross-platform e com gates de typecheck, lint, build, testes, contratos e operações.",
+        "Manter os checks obrigatórios ligados ao mesmo SHA candidato."
+      ],
+      "traceability_ids": ["F01", "F02", "F03", "F04"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm typecheck", "pnpm lint", "pnpm build"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-05",
+      "phase": 5,
+      "title": "CLINICAL CRITICALITY MATRIX",
+      "source_start_line": 382,
+      "source_end_line": 442,
+      "source_sha256": "3f22a266b584e9ca3dcd79183931b3034c793870670a9963151d31f01ed1682e",
+      "requirements": [
+        "Classificar criticidade clínica P0, P1 e P2 com ownership, riscos e critérios de aceitação."
+      ],
+      "traceability_ids": ["F14"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm test:critical"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-06",
+      "phase": 6,
+      "title": "CLINICAL CRITICAL PATH ASSURANCE",
+      "source_start_line": 443,
+      "source_end_line": 471,
+      "source_sha256": "693ff6a5005737d63b5870941c2aa26e7611b503f48e64e864d11b8a78ac0d68",
+      "requirements": [
+        "Provar caminhos clínicos golden e negative com invariantes de segurança, tenant, auditoria e idempotência."
+      ],
+      "traceability_ids": ["F15", "F16", "F17"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm test:critical", "pnpm test:e2e"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-07",
+      "phase": 7,
+      "title": "WORKER RELIABILITY",
+      "source_start_line": 472,
+      "source_end_line": 518,
+      "source_sha256": "477e0843f8435837bf92bf151c26c2b216b53bf8b2c78cedddad10a2c74b71f6",
+      "requirements": [
+        "Garantir worker idempotente, leases, fencing, heartbeat, crash recovery e isolamento de falhas por tarefa."
+      ],
+      "traceability_ids": ["F07", "F08", "F09", "F10", "F11"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm validate:clinical-workflow"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-08",
+      "phase": 8,
+      "title": "DEAD LETTER / RETRY GOVERNANCE",
+      "source_start_line": 519,
+      "source_end_line": 537,
+      "source_sha256": "0ab7f06b9414bcfd50c360b7bcc622efb4c100a69fb38ab4eabaf912f38540ee",
+      "requirements": [
+        "Governar retry, backoff, DLQ, replay, dedupe e limites operacionais com evidência executável."
+      ],
+      "traceability_ids": ["F12", "F13"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm validate:clinical-workflow"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-09",
+      "phase": 9,
+      "title": "WORKFLOW ENGINE",
+      "source_start_line": 538,
+      "source_end_line": 585,
+      "source_sha256": "808c07c9047e63ef010a349b2d5626c5fcef25b7a1eb90284fba081874e9273d",
+      "requirements": [
+        "Manter workflow engine transacional, versionado, auditável e seguro para tarefas clínicas."
+      ],
+      "traceability_ids": ["F07", "F08", "F09", "F10", "F60"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm validate:clinical-workflow"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-10",
+      "phase": 10,
+      "title": "REMINDER ENGINE",
+      "source_start_line": 586,
+      "source_end_line": 617,
+      "source_sha256": "d2e5e10b11182b657a2240dab314b43a90ac96d2c7982830652dde1e73e27ee8",
+      "requirements": [
+        "Criar reminder engine configurável, com retry e escalation; não codificar regra fixa para Bob."
+      ],
+      "traceability_ids": ["F07", "F54"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm test:critical"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-11",
+      "phase": 11,
+      "title": "HANDOVER / PASSAGEM DE PLANTÃO",
+      "source_start_line": 618,
+      "source_end_line": 653,
+      "source_sha256": "0a7ccec008ea457b6bd6bf41d41ff6c85745dc58c89ed4c64999e1c38baed608",
+      "requirements": [
+        "Modelar handover por patient, encounter, condition, treatment, alerts, diagnostics, procedures, medications, reassessment, tasks, teams, outgoing/incoming staff, timestamp e acknowledgement.",
+        "Publicar handover.created, handover.updated, handover.ready, handover.acknowledged e handover.overdue versionados."
+      ],
+      "traceability_ids": ["F55"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm --filter @cvg-his-v2/module-event-bus test"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-12",
+      "phase": 12,
+      "title": "CLINICAL EVENT TIMELINE",
+      "source_start_line": 654,
+      "source_end_line": 704,
+      "source_sha256": "97d67383e67b7beb109f5558a6a147534096ee49a56b0626282dc6f30904f650",
+      "requirements": [
+        "Projetar ClinicalEvent como projeção operacional sem substituir fontes soberanas, com accountId, patientId, encounterId, type, sourceModule, actor, occurredAt, correlationId, causationId, summary e metadata segura."
+      ],
+      "traceability_ids": ["F47", "F61"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm --filter @cvg-his-v2/module-event-bus test"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-13",
+      "phase": 13,
+      "title": "EVENT GOVERNANCE",
+      "source_start_line": 705,
+      "source_end_line": 737,
+      "source_sha256": "30910bb0c994eac6f101be9954b56ae0df6a348596f2eef1b97f24ad47d50ebe",
+      "requirements": [
+        "Padronizar name, schema version, eventId, occurredAt, accountId, actor, correlationId, causationId e payload versionado.",
+        "Definir compatibilidade, depreciação, replay, ordering, duplication e out-of-order handling."
+      ],
+      "traceability_ids": ["F61", "F64"],
+      "status": "PARTIAL",
+      "acceptance": {
+        "commands": ["pnpm --filter @cvg-his-v2/module-event-bus test"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-14",
+      "phase": 14,
+      "title": "AUDIT IMMUTABILITY",
+      "source_start_line": 738,
+      "source_end_line": 758,
+      "source_sha256": "2ac2da5e8facdd8cb9b81d0c7ae6d20e3f714114d0649f10e19c6452cd7e5cf3",
+      "requirements": [
+        "Manter auditoria imutável, verificável e vinculada ao ator, tenant, operação e correlação."
+      ],
+      "traceability_ids": ["F17", "F68"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm test:critical"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-15",
+      "phase": 15,
+      "title": "RBAC + TENANT + RLS ASSURANCE",
+      "source_start_line": 759,
+      "source_end_line": 782,
+      "source_sha256": "66f68477c02fa86563070a16f5ad9fc9ef9d9943097b3bdd1b34f01c00b5b890",
+      "requirements": [
+        "Provar RBAC, tenant isolation e RLS com runtime, roles, privilégios e matriz de acesso."
+      ],
+      "traceability_ids": ["F18", "F19", "F20"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm validate:rls"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-16",
+      "phase": 16,
+      "title": "MFA / API KEYS / SERVICE PRINCIPALS",
+      "source_start_line": 783,
+      "source_end_line": 807,
+      "source_sha256": "1b27bfe93903f9476249dd6a11ae13afa8f8910ee724bae29b436e3ebecdbe08",
+      "requirements": [
+        "Proteger MFA, API keys e service principals com rotação, escopo mínimo e vínculo de ator."
+      ],
+      "traceability_ids": ["F22", "F26"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm test:critical"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-17",
+      "phase": 17,
+      "title": "ATTACHMENT SECURITY",
+      "source_start_line": 808,
+      "source_end_line": 829,
+      "source_sha256": "85551595ef553ee5baabfbe58939e3a36f8205975b678c929c46cb4253726ed2",
+      "requirements": [
+        "Proteger anexos contra path traversal, MIME spoofing, malware, tamanho excessivo e acesso cross-tenant."
+      ],
+      "traceability_ids": ["F25"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm security:enterprise"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-18",
+      "phase": 18,
+      "title": "WEBHOOK SECURITY",
+      "source_start_line": 830,
+      "source_end_line": 850,
+      "source_sha256": "c54db6902c4e464689127c8ef32fb323d70626f026c9a35861f4e8e5b41c0a9a",
+      "requirements": [
+        "Proteger webhooks com assinatura, replay defense, idempotência, timeout, retry e isolamento."
+      ],
+      "traceability_ids": ["F24"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm security:enterprise"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-19",
+      "phase": 19,
+      "title": "API HARDENING",
+      "source_start_line": 851,
+      "source_end_line": 871,
+      "source_sha256": "e3ba32b0c04f2317334e08a9376b74a9c048beb80d1755ff27043ce2361b9ed2",
+      "requirements": [
+        "Endurecer API com autenticação, autorização, validação, rate limits, headers, erros e contratos."
+      ],
+      "traceability_ids": ["F23"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm validate:openapi"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-20",
+      "phase": 20,
+      "title": "OBSERVABILITY TECHNICAL",
+      "source_start_line": 872,
+      "source_end_line": 891,
+      "source_sha256": "c3e2cc186bdbbdafa56957c70bce450037af13d71214ec39646fa87a3aab0889",
+      "requirements": [
+        "Instrumentar API e worker com logs estruturados, métricas, traces e correlação ponta a ponta."
+      ],
+      "traceability_ids": ["F45", "F46"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm governance:observability"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-21",
+      "phase": 21,
+      "title": "OBSERVABILITY HOSPITALAR",
+      "source_start_line": 892,
+      "source_end_line": 917,
+      "source_sha256": "aa9fa065fc049c3e3f19c59c5db3650bee3fe53cc1eb0263b71796702cc9d715",
+      "requirements": [
+        "Provar observabilidade hospitalar para fluxo clínico, alertas, retenção e operação on-call."
+      ],
+      "traceability_ids": ["F47", "F48"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm governance:observability"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-22",
+      "phase": 22,
+      "title": "SLO / SLI",
+      "source_start_line": 918,
+      "source_end_line": 948,
+      "source_sha256": "324ee918207f95ce6ee20ae5135be6a8422a0337437f537c417fcd69fe3fc203",
+      "requirements": [
+        "Definir SLO/SLI mensuráveis para API, worker, banco, filas e jornada clínica."
+      ],
+      "traceability_ids": ["F49"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm governance:observability"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-23",
+      "phase": 23,
+      "title": "ERROR BUDGET",
+      "source_start_line": 949,
+      "source_end_line": 963,
+      "source_sha256": "d00d19341a41e919851678d47d632d86f30e780489c552713c374a312f9e4373",
+      "requirements": [
+        "Operar error budget com política de consumo, alertas, freeze de mudanças e owners."
+      ],
+      "traceability_ids": ["F49"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm governance:observability"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-24",
+      "phase": 24,
+      "title": "BACKUP / RESTORE",
+      "source_start_line": 964,
+      "source_end_line": 991,
+      "source_sha256": "cca4567c6cdf2778e91f51ebecdaf2755f943491850ea9a049dbe7554b607b39",
+      "requirements": [
+        "Executar backup consistente, criptografado, retido e verificável conforme RPO/RTO."
+      ],
+      "traceability_ids": ["F38", "F39", "F40", "F41"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm ops:backup:check"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-25",
+      "phase": 25,
+      "title": "RESTORE DRILLS",
+      "source_start_line": 992,
+      "source_end_line": 1009,
+      "source_sha256": "b041651e4ddee127433cea1ae45029615bf490834e1fcc1fd3096ad1613f2b95",
+      "requirements": [
+        "Executar restore drills reais, inclusive corrupção e mismatch de migration, com tempos medidos."
+      ],
+      "traceability_ids": ["F39", "F40", "F41"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm ops:restore:drill:v2"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-26",
+      "phase": 26,
+      "title": "CHAOS / GAME DAYS",
+      "source_start_line": 1010,
+      "source_end_line": 1032,
+      "source_sha256": "c2f865be882310e22429d0bd21ee41368d5ab7c7381440462286e2d373c3dcea",
+      "requirements": [
+        "Executar chaos/game days para restart, falha de dependência, leases, filas, banco e providers."
+      ],
+      "traceability_ids": ["F39", "F69"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm ops:game-day:ephemeral"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-27",
+      "phase": 27,
+      "title": "PERFORMANCE",
+      "source_start_line": 1033,
+      "source_end_line": 1059,
+      "source_sha256": "e5bc0ffdec8887a73605f867808aab8937868fceee1b5de73ee99d9b6657738e",
+      "requirements": [
+        "Certificar performance, carga hospitalar realista, query latency, pool, Redis, worker e storage."
+      ],
+      "traceability_ids": ["F31", "F32", "F33", "F34", "F35"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm benchmark:k6"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-28",
+      "phase": 28,
+      "title": "CONCURRENCY ASSURANCE",
+      "source_start_line": 1060,
+      "source_end_line": 1083,
+      "source_sha256": "4ec574f9817b8f6900224cb9d27e62ad620529d786820d432ae1aa3a2620f7b9",
+      "requirements": [
+        "Provar concorrência, locking, idempotência e invariantes em operações financeiras e clínicas."
+      ],
+      "traceability_ids": ["F09", "F21"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm test:critical"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-29",
+      "phase": 29,
+      "title": "DATABASE INTEGRITY",
+      "source_start_line": 1084,
+      "source_end_line": 1102,
+      "source_sha256": "1063366ddf2aaa6b282b3d4758fd5e52ab976d7585a160a11b6e790741acff4d",
+      "requirements": [
+        "Proteger integridade do banco com constraints, transações, RLS, índices e invariantes."
+      ],
+      "traceability_ids": ["F20"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm test:critical"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-30",
+      "phase": 30,
+      "title": "MIGRATION SAFETY",
+      "source_start_line": 1103,
+      "source_end_line": 1123,
+      "source_sha256": "5813234de021da165ac7b982e5fe6e0a2a23e6ed24d906f5af467f46adfec264",
+      "requirements": [
+        "Garantir migration safety, source of truth único, compatibilidade e rollback seguro."
+      ],
+      "traceability_ids": ["F44"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm validate:migration-source"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-31",
+      "phase": 31,
+      "title": "FRONTEND CLINICAL UX",
+      "source_start_line": 1124,
+      "source_end_line": 1152,
+      "source_sha256": "a495d0217482da5d938f78263cc3bc1e3279614c605c058c5073232880c358a0",
+      "requirements": [
+        "Validar UX clínica responsiva, estados operacionais, fluxos críticos e tratamento de erro."
+      ],
+      "traceability_ids": ["F50", "F51", "F53", "F54"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm test:e2e:spa"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-32",
+      "phase": 32,
+      "title": "PATIENT 360",
+      "source_start_line": 1153,
+      "source_end_line": 1177,
+      "source_sha256": "4889b68d01972b6b59e5366931d726164402a358afacaedec52ab9339b3719b7",
+      "requirements": [
+        "Construir Patient 360 coerente, auditável, tenant-safe e útil para decisão clínica."
+      ],
+      "traceability_ids": ["F53"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm test:e2e:spa"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-33",
+      "phase": 33,
+      "title": "ACCESSIBILITY",
+      "source_start_line": 1178,
+      "source_end_line": 1194,
+      "source_sha256": "56ee10c043c636da6ea85c6da5f9537d0a971eb66f29dc85d6e459913f8666c6",
+      "requirements": [
+        "Cumprir acessibilidade com teclado, foco, semântica, contraste, touch targets e leitor de tela."
+      ],
+      "traceability_ids": ["F52"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm test:usability-certification"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-34",
+      "phase": 34,
+      "title": "DESIGN SYSTEM",
+      "source_start_line": 1195,
+      "source_end_line": 1214,
+      "source_sha256": "1b1372bb6fe29c7449395119b49967df70f76787bd59ef3dfcfeab9227510846",
+      "requirements": [
+        "Manter design system consistente, tokens, componentes, estados e regressão visual."
+      ],
+      "traceability_ids": ["F52"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm test:visual"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-35",
+      "phase": 35,
+      "title": "MODULE BOUNDARY ENFORCEMENT",
+      "source_start_line": 1215,
+      "source_end_line": 1234,
+      "source_sha256": "4448728da9ddd00aa17c00d63ff12be34ecdd9f1bf563026cab873d3e0ed21d7",
+      "requirements": [
+        "Impor fronteiras de módulos, direção de dependências e ausência de imports legados indevidos."
+      ],
+      "traceability_ids": ["F58"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm validate:namespaces"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-36",
+      "phase": 36,
+      "title": "CONTRACTS SCALABILITY",
+      "source_start_line": 1235,
+      "source_end_line": 1258,
+      "source_sha256": "377b42b49bf23cd266c37878e91b1f87f39cb017300969ff7708d2a6883b08a5",
+      "requirements": [
+        "Escalar contratos com versionamento, compatibilidade, OpenAPI, eventos e consumidores."
+      ],
+      "traceability_ids": ["F61"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm validate:openapi"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-37",
+      "phase": 37,
+      "title": "COMPOSITION ROOT",
+      "source_start_line": 1259,
+      "source_end_line": 1281,
+      "source_sha256": "608154fdd9419cfddc1427fa7d5b0a5631e5371f74ddcf3fc1f40f8d2ca9e714",
+      "requirements": [
+        "Manter composition root explícita, única e testável para API, SPA, worker e módulos."
+      ],
+      "traceability_ids": ["F59"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm architecture:evidence"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-38",
+      "phase": 38,
+      "title": "DEPENDENCY GOVERNANCE",
+      "source_start_line": 1282,
+      "source_end_line": 1307,
+      "source_sha256": "a7f841aac3df42cb0dc6892785d16bd6eb321b2f42c101f58ab3fa6272cb3f54",
+      "requirements": [
+        "Governar dependências com lockfile, política, vulnerabilidades, licenças, provenance e manutenção."
+      ],
+      "traceability_ids": ["F62"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm validate:dependencies"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-39",
+      "phase": 39,
+      "title": "RENOVATE",
+      "source_start_line": 1308,
+      "source_end_line": 1323,
+      "source_sha256": "c584db452fa9f5e3f148fb1c7d8c2d83fa66816aff57853e6ef32f9961dc4b8d",
+      "requirements": [
+        "Operar Renovate com agrupamento seguro, digest pinning, revisão e sem merge automático cego."
+      ],
+      "traceability_ids": ["F62"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm validate:supply-chain"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-40",
+      "phase": 40,
+      "title": "REPOSITORY HYGIENE",
+      "source_start_line": 1324,
+      "source_end_line": 1346,
+      "source_sha256": "e5e6b57a6c5e9a24bbe9a6ebf359f4a9aaf27583436cab1b3be14f5941375a8f",
+      "requirements": [
+        "Manter higiene do repositório, sem artefatos secretos, estado indefinido ou crescimento de histórico."
+      ],
+      "traceability_ids": ["F63"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm check:clean-checkout"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-41",
+      "phase": 41,
+      "title": "DOCUMENTATION GOVERNANCE",
+      "source_start_line": 1347,
+      "source_end_line": 1369,
+      "source_sha256": "27ea264d8609afd6929d555b1b4a91c704ddaa7ee7cad3ea9f0e1b026a81e23b",
+      "requirements": [
+        "Governar documentação viva, owners, revisão, links, evidências e sincronização com código."
+      ],
+      "traceability_ids": ["F64", "F65"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm docs:validate"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-42",
+      "phase": 42,
+      "title": "ADR GOVERNANCE",
+      "source_start_line": 1370,
+      "source_end_line": 1385,
+      "source_sha256": "edb004e62954115dd5ea22efe7dac9b2080b7beeaad970779e19b8a3358d6358",
+      "requirements": [
+        "Registrar ADRs para decisões de arquitetura, clinical timeline, handover, jobs, eventos, supply chain e release assurance."
+      ],
+      "traceability_ids": ["F64"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm docs:validate"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-43",
+      "phase": 43,
+      "title": "DEPLOYMENT HARDENING",
+      "source_start_line": 1386,
+      "source_end_line": 1403,
+      "source_sha256": "d74d01406a7db89abf5664ea17fb84672db74c86e95b029a5999876f2e03f8f3",
+      "requirements": [
+        "Endurecer deploy, rollout, migrations, readiness, health checks, rollback e identidade de imagem."
+      ],
+      "traceability_ids": ["F42", "F43", "F44"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm deploy:check"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-44",
+      "phase": 44,
+      "title": "COMPOSE HARDENING",
+      "source_start_line": 1404,
+      "source_end_line": 1422,
+      "source_sha256": "2a4001d251ffa9d26525b4d9abcbee8c04bf1cded35b3b7f2021b326a3af76e5",
+      "requirements": [
+        "Endurecer Compose para ambientes locais e de teste, com secrets, healthchecks, rede e volumes seguros."
+      ],
+      "traceability_ids": ["F42", "F43", "F44"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["docker compose -f docker-compose.v2.yml config --quiet"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-45",
+      "phase": 45,
+      "title": "HELM HARDENING",
+      "source_start_line": 1423,
+      "source_end_line": 1442,
+      "source_sha256": "300e1eec48d8c83af74a816c80122af4a5958224963860ce6f2bea4d680c2ad6",
+      "requirements": [
+        "Endurecer Helm com valores seguros, probes, securityContext, RBAC, imagens por digest e upgrade."
+      ],
+      "traceability_ids": ["F42", "F43", "F44"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm validate:helm"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-46",
+      "phase": 46,
+      "title": "RELEASE IDENTITY",
+      "source_start_line": 1443,
+      "source_end_line": 1458,
+      "source_sha256": "f3d27e5c54ee8a855c49defd57f5f06dac309c8b2add53a8fabccad14ca6fd93",
+      "requirements": [
+        "Vincular release identity a SHA, versão, imagem, SBOM, provenance, attestation e autoridade."
+      ],
+      "traceability_ids": ["F30", "F71"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm release:attestation-evidence"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-47",
+      "phase": 47,
+      "title": "ENTERPRISE RELEASE GATE",
+      "source_start_line": 1459,
+      "source_end_line": 1492,
+      "source_sha256": "b4856d217e2899ddfffa6c93349927bbdee12147339556fd40c969f1f97ef636",
+      "requirements": [
+        "Executar enterprise release gate fail-closed com todos os checks e evidências do candidato."
+      ],
+      "traceability_ids": ["F71"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm release:triple-a"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-48",
+      "phase": 48,
+      "title": "RELEASE EVIDENCE",
+      "source_start_line": 1493,
+      "source_end_line": 1521,
+      "source_sha256": "ef74a18e775d9686d2af716423dd8c222a123927808caa6121a035286694c3d0",
+      "requirements": [
+        "Gerar pacote de release evidence com hashes, manifest, CI, segurança, testes, operações e limitações."
+      ],
+      "traceability_ids": ["F05", "F73"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm evidence:triple-a:package"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-49",
+      "phase": 49,
+      "title": "TRIPLE-A SCORECARD",
+      "source_start_line": 1522,
+      "source_end_line": 1554,
+      "source_sha256": "82e1266cdcfe382efa95e92cc065e6fa241d60db9133c28b6781df1f65154fec",
+      "requirements": [
+        "Calcular scorecard objetivo com dimensões, mínimos, P0 aberto e status de publicação."
+      ],
+      "traceability_ids": ["F74"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm release:triple-a"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-50",
+      "phase": 50,
+      "title": "PRODUCTION CERTIFICATION",
+      "source_start_line": 1555,
+      "source_end_line": 1614,
+      "source_sha256": "ae52849c39bec168746a464755f1bf60377a705d9899a0a1308b3c3bb26ff80c",
+      "requirements": [
+        "Certificar produção somente com preflight, funcional, reliability, recovery, performance, security, soak e UAT humano."
+      ],
+      "traceability_ids": ["F56", "F57", "F71", "F73", "F75"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm test:usability-certification"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-51",
+      "phase": 51,
+      "title": "TESTE DE SOAK",
+      "source_start_line": 1615,
+      "source_end_line": 1634,
+      "source_sha256": "c465b0988064480d44dc518ee51b2a8191763075dc51d1cd70b0c90cb31c7791",
+      "requirements": [
+        "Executar soak de 24h e 72h com métricas, limites e ausência de crescimento não controlado."
+      ],
+      "traceability_ids": ["F36", "F37"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm test:critical:soak"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-52",
+      "phase": 52,
+      "title": "SECURITY TEST MATRIX",
+      "source_start_line": 1635,
+      "source_end_line": 1660,
+      "source_sha256": "d95c27ecdb63f40fe75c85f5e24b7210539fad3689a9b88cdeaf0a0be7f38d10",
+      "requirements": [
+        "Executar matriz de testes de segurança incluindo SAST, secrets, SCA, RLS, API, webhooks, anexos e auth."
+      ],
+      "traceability_ids": ["F66"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm security:enterprise"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-53",
+      "phase": 53,
+      "title": "FAILURE MODE ANALYSIS",
+      "source_start_line": 1661,
+      "source_end_line": 1689,
+      "source_sha256": "4805c98bb9960a827a2c06d418e2fdbb264582813b9d6c1296cc221c53c3b09f",
+      "requirements": [
+        "Manter failure mode analysis com severidade, detecção, mitigação, owner e teste de recuperação."
+      ],
+      "traceability_ids": ["F67", "F68", "F69", "F70"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm release:triple-a"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-54",
+      "phase": 54,
+      "title": "CLINICAL SAFETY INVARIANTS",
+      "source_start_line": 1690,
+      "source_end_line": 1708,
+      "source_sha256": "67891ef27d03bbc3c31c143dedbbe2a76f1120a426320dacf149d5420e8d389b",
+      "requirements": [
+        "Impor invariantes de segurança clínica e proibir transições que possam causar dano silencioso."
+      ],
+      "traceability_ids": ["F17"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm test:critical"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-55",
+      "phase": 55,
+      "title": "IDEMPOTENCY MATRIX",
+      "source_start_line": 1709,
+      "source_end_line": 1727,
+      "source_sha256": "9d23a6ea9920a19a14be5f465ff314118a487973ea5db51bb15a4dd8b98f1aef",
+      "requirements": [
+        "Provar idempotência por endpoint, comando, evento, provider, retry e replay."
+      ],
+      "traceability_ids": ["F08", "F09", "F10", "F11", "F12", "F13"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm test:critical"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-56",
+      "phase": 56,
+      "title": "EXTERNAL INTEGRATION CONTRACTS",
+      "source_start_line": 1728,
+      "source_end_line": 1745,
+      "source_sha256": "ff3f89723dc3b742b54a056ce6ea972c029fa1e4776f4086382c725eca85957e",
+      "requirements": [
+        "Formalizar contratos externos com timeout, retry, circuit breaker, fallback, versionamento e segredo mínimo."
+      ],
+      "traceability_ids": ["F61"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm release:triple-a"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-57",
+      "phase": 57,
+      "title": "FEATURE FLAGS",
+      "source_start_line": 1746,
+      "source_end_line": 1759,
+      "source_sha256": "0c1329ec7a0960e475fab44cd18895226f092f005b0e983c165f9ae20efaee61",
+      "requirements": [
+        "Governar feature flags com owner, default seguro, rollout, auditoria, expiry e remoção."
+      ],
+      "traceability_ids": [],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm governance:audit"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-58",
+      "phase": 58,
+      "title": "PRIVACY / LGPD",
+      "source_start_line": 1760,
+      "source_end_line": 1776,
+      "source_sha256": "18d562990e273df419ba9dd7ad857f08c50d925fee724748042af730efc9ec1e",
+      "requirements": [
+        "Cumprir privacidade/LGPD com minimização, finalidade, retenção, exportação, eliminação e trilha de acesso."
+      ],
+      "traceability_ids": ["F17", "F23", "F25", "F66"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm governance:lgpd"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-59",
+      "phase": 59,
+      "title": "LOGGING SECURITY",
+      "source_start_line": 1777,
+      "source_end_line": 1792,
+      "source_sha256": "f5dbc8464213426efedf4177386d5bab58146298d47564017645dc53c51e5b88",
+      "requirements": [
+        "Garantir logging seguro com redaction recursiva, correlação, integridade, retenção e ausência de segredo/PHI indevida."
+      ],
+      "traceability_ids": ["F45", "F46", "F66"],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm security:enterprise"],
+        "artifacts": []
+      }
+    },
+    {
+      "id": "MP-60",
+      "phase": 60,
+      "title": "FINAL CLEANUP",
+      "source_start_line": 1793,
+      "source_end_line": 2221,
+      "source_sha256": "7a88c3fcad40ff5dba0c8a46bf268e94c1d00b35ae9d57bef84d8b92172ec723",
+      "requirements": [
+        "Executar cleanup final: remover dívida conhecida, sincronizar docs, fechar gates e preservar evidência histórica."
+      ],
+      "traceability_ids": [
+        "F63",
+        "F64",
+        "F65",
+        "F66",
+        "F67",
+        "F68",
+        "F69",
+        "F70",
+        "F71",
+        "F72",
+        "F73",
+        "F74",
+        "F75"
+      ],
+      "status": "NOT PROVEN",
+      "acceptance": {
+        "commands": ["pnpm release:triple-a"],
+        "artifacts": []
+      }
+    }
+  ]
+}

@@ -20,10 +20,12 @@ reproduzível, integrado, seguro, acessível e operável com régua Triplo AAA.
 6. [Evidência do critical gate de 07/09](engineering/CRITICAL_GATE_2026-09-07.md) — `PASS_BOUNDED` local: 65/65 arquivos, 594/594 testes e 10/10 processos; limites de target e recertificação preservados.
 7. [Evidência E2E SPA de 07/09](engineering/E2E_SPA_2026-09-07.md) — `PASS_BOUNDED` scoped: 9/9 jornadas contra PostgreSQL/Redis reais, com cleanup sem erro.
 8. [Baseline corrente](triple-a/15-current-baseline.md) e [evidência corrente](triple-a/17-current-execution-evidence.md) — candidato funcional `1e0077a3`, CI #137 verde e limitações explícitas.
-9. [Relatório final de assurance](triple-a/FINAL_REPORT.md), [scorecard](triple-a/13-final-scorecard.md) e [execution log](triple-a/EXECUTION_LOG.md).
+9. [Crosswalk do prompt congelado](triple-a/18-master-prompt-crosswalk.md) — 61 fases do prompt, 76 linhas da matriz, hashes e aceitação executável.
+10. [Relatório final de assurance](triple-a/FINAL_REPORT.md), [scorecard](triple-a/13-final-scorecard.md) e [execution log](triple-a/EXECUTION_LOG.md).
 
 As entradas numeradas de [`triple-a/MASTER_PROMPT.md`](triple-a/MASTER_PROMPT.md) seguem as fases do prompt
-preservado. Cada documento separa implementação local de verificação remota e
+preservado; o [crosswalk](triple-a/18-master-prompt-crosswalk.md) é a referência
+normativa da correspondência com a matriz expandida. Cada documento separa implementação local de verificação remota e
 target; `BLOCKED`/`NOT PROVEN` não é convertido em aprovação.
 
 O selo “Triplo AAA” é aspiracional e só poderá ser usado após nota global ≥95,
