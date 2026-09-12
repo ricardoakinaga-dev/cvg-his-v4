@@ -1,6 +1,6 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `main@9b77215290d3ea6d506d558ae211e567debe161a`
+**Candidate funcional avaliado:** `main@6462323f0a8f311f57da201e35e3d66994996391`
 (hardening de logging, workflow e tenant; o candidato anterior é `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c` e o snapshot documental
 anterior é `0d475dee358eab9621e5497db9929b7010ed09eb`)
 

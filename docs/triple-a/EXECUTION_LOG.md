@@ -656,11 +656,18 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 
 ## 2026-09-12T14:01:26Z — hardening visual e acessibilidade no candidato `9b772152`
 
-- O commit `9b77215290d3c3c0e3ebf237aa9e295ac2ebf5d4` endurece os componentes clínicos `DsDatePicker` e `DsTimePicker` com dialog/grid/list semantics, `aria-expanded`/`aria-controls`, foco roving, setas, Escape e restauração de foco. Alvos de toque passaram a respeitar `--touch-min` de 44 px; a seleção usa token de ação com contraste adequado.
+- O commit `9b77215290d3ea6d506d558ae211e567debe161a` endurece os componentes clínicos `DsDatePicker` e `DsTimePicker` com dialog/grid/list semantics, `aria-expanded`/`aria-controls`, foco roving, setas, Escape e restauração de foco. Alvos de toque passaram a respeitar `--touch-min` de 44 px; a seleção usa token de ação com contraste adequado.
 - O shell móvel preserva controles de 44 px em viewports de até 360 px. O toast PWA/offline ganhou nome acessível, live regions, foco visível, controles de 44 px e limpeza do timer de auto-dismiss.
 - Evidência local: design system `53/53` testes; PWA `2/2`; typecheck do design system e SPA; build PWA da SPA com `814` módulos; `git diff --check` passou.
 - O [CI #158](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34698026588) foi disparado para este SHA e estava `pending` na captura. O [CI #157](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34697258502) ainda era o run anterior do candidato `72cfcfb8`.
 - O veredito continua `BLOCKED / NOT PROVEN`: cobertura visual global, target, recovery, UAT, governança, attestation, deploy/rollback, performance remota e autoridade de release continuam sem prova suficiente. Nenhum threshold foi relaxado e nenhum claim `TRIPLE-A VERIFIED` foi emitido.
+
+## 2026-09-12T14:07:47Z — aliases canônicos de artefatos de release no candidato `6462323f`
+
+- O commit `6462323f0a8f311f57da201e35e3d66994996391` passa a emitir `artifacts/release/sbom.cdx.json` junto ao SBOM CycloneDX legado, e `artifacts/release/enterprise-release-manifest.json` junto ao manifesto compatível. Os dois aliases são byte-identical, entram no checksum e o gate de release falha fechado se estiverem ausentes ou divergentes.
+- `tests/unit/infra/release-manifest.test.ts` passou `3/3`; os três scripts alterados passaram `node --check`; `git diff --check` passou.
+- O [CI #159](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34698297705) foi disparado para este SHA e estava `pending` na captura. O [CI #158](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34698026588) corresponde ao candidato visual anterior.
+- O veredito continua `BLOCKED / NOT PROVEN`: dependências/SCA avançadas, target, recovery, UAT, governança, attestation, deploy/rollback, performance remota, cobertura visual global e autoridade de release continuam sem prova suficiente. Nenhum threshold foi relaxado e nenhum claim `TRIPLE-A VERIFIED` foi emitido.
 
 
 ## 2026-09-12T13:26:00Z — hardening de workflow, tenant e reancoragem
