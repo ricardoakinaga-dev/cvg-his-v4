@@ -874,7 +874,11 @@ jobs:
           POSTGRES_POOL_MIN: '8'
         run: |
           pnpm --filter @cvg-his-v2/api run build
-          pnpm --filter @cvg-his-v2/api run dev &
+          # Measure the compiled release artifact. Running the tsx development
+          # entrypoint here adds JIT/transpilation overhead and makes the
+          # blocking latency SLO depend on the test runner rather than the
+          # production-shaped process.
+          node apps/api/dist/index.js &
           API_PID=$!
           echo "API_PID=$API_PID" >> $GITHUB_ENV
           for i in $(seq 1 60); do
