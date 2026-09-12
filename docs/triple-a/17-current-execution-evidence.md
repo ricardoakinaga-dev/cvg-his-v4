@@ -1,6 +1,6 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato funcional observado em 2026-09-12T07:25:20Z
+## Candidato funcional observado em 2026-09-12T08:02:13Z
 
 - SHA de código e documentação: `56a18736d7870033c11fb263f68fba98c4b739fc`.
 - `HEAD`, `main` e `origin/main` coincidem; rollback preservado em
@@ -32,7 +32,11 @@ passaram; somente Performance/k6 falhou em `Run k6 benchmark`/`Check SLO results
 Esse resultado não é transferido para `56a18736`; nenhum threshold foi relaxado.
 O CI #144 do pai documental `da5dd244` falhou em `Repository Guards` porque o
 checkout raso impediu validar a ancestralidade do snapshot. O candidato atual
-passa a solicitar `fetch-depth: 0`; a correção ainda aguarda CI exata.
+passa a solicitar `fetch-depth: 0`; a correção foi exercitada no CI seguinte.
+O [CI #145](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34680830958)
+no `main@66a605be` confirmou a correção do guard e terminou com 15/16 jobs
+verdes; E2E, integração e os demais checks passaram, mas Performance/k6 falhou.
+O SLO remoto permanece sem prova de aprovação.
 
 ## Recovery e target
 

@@ -1,6 +1,6 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-12T07:25:20Z
+## Snapshot vigente — 2026-09-12T08:02:13Z
 
 O baseline autoritativo do candidato atual está em
 [`15-current-baseline.md`](./15-current-baseline.md) e
@@ -13,7 +13,9 @@ passaram, mas esse resultado não é transferido para o novo commit de governan�
 O CI #144 do commit documental pai `da5dd244` registrou falha no job
 `Repository Guards`: o checkout raso não permitia provar a ancestralidade do
 snapshot; o candidato atual corrige o checkout com `fetch-depth: 0`. Ainda não
-há CI exata do candidato atual.
+há CI verde do candidato atual: o CI #145, no `main@66a605be` (descendente
+documental do candidato), terminou com 15/16 jobs verdes e falha exclusiva em
+Performance/k6; E2E e integração passaram.
 As seções abaixo são
 histórico append-only; seus SHAs e scores não são evidência do candidato atual.
 

@@ -16,6 +16,8 @@ vigente é `56a18736d7870033c11fb263f68fba98c4b739fc`, com gate local estrito
 exata para `56a18736`. O CI #144 do pai documental `da5dd244` também falhou
 em `Repository Guards` porque o checkout raso ocultou a ancestralidade do
 snapshot; o candidato atual fixa o checkout com `fetch-depth: 0`.
+O CI #145 do descendente documental `66a605be` passou em 15/16 jobs, mas falhou
+exclusivamente em Performance/k6; E2E e integração passaram.
 Essas provas continuam abaixo da aceitação integral porque faltam CI terminal,
 target, governança, UAT e autoridade de release. A [fotografia atual](./15-current-baseline.md)
 contém SHA, CI e lacunas medidas.

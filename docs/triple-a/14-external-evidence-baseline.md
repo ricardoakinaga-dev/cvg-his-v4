@@ -9,13 +9,15 @@
 > `82ff6eec` e terminou `failure` somente em Performance/k6. O CI #144 pertence
 > ao pai documental `da5dd244` e falhou em `Repository Guards` porque o
 > checkout raso ocultou a ancestralidade do snapshot; o candidato atual corrige
-> esse contrato com `fetch-depth: 0`. Não há CI exata para este commit e o
-> veredito é `BLOCKED / NOT PROVEN`; nenhum dado abaixo é transferido.
+> esse contrato com `fetch-depth: 0`. O CI #145, no descendente documental
+> `66a605be`, fornece a execução remota do código e terminou `failure` com
+> 15/16 jobs verdes e falha exclusiva em Performance/k6; o veredito é
+> `BLOCKED / NOT PROVEN`; nenhum dado abaixo é transferido como aprovação.
 
 **Current snapshot:** `56a18736d7870033c11fb263f68fba98c4b739fc` (código e documentação; `HEAD == origin/main`, rollback preservado).
-**Current CI:** [#143](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34678150409) — run do pai `82ff6eec`, `failure`, 15/16 jobs passaram e somente Performance/k6 falhou. O [#144](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34680215070), no pai documental `da5dd244`, falhou em `Repository Guards` por checkout raso; CI exata do commit atual ainda não comprovada.
+**Current CI:** [#145](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34680830958) — `main@66a605be`, 15/16 jobs passaram, E2E e integração incluídos, e somente Performance/k6 falhou. O #144 anterior, no pai documental `da5dd244`, falhou em `Repository Guards` por checkout raso; o guard foi corrigido, mas o SLO de performance continua bloqueando a certificação.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-12T07:25:20Z
+**Observation:** 2026-09-12T08:02:13Z
 
 **Current local execution:** o gate estrito completo do pai `82ff6eec` executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A suíte crítica local passou `615` testes PostgreSQL e `11` suítes de processo. A validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
 
