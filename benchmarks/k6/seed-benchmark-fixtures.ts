@@ -9,17 +9,61 @@ if (!databaseUrl) {
 }
 
 const permissions = [
-  { id: '00000000-0000-4000-8000-000000000101', key: 'auth.session.read', description: 'Read current authenticated session.' },
-  { id: '00000000-0000-4000-8000-000000000102', key: 'owners.read', description: 'Read owner records.' },
-  { id: '00000000-0000-4000-8000-000000000103', key: 'patients.read', description: 'Read patient records.' },
-  { id: '00000000-0000-4000-8000-000000000104', key: 'staff.read', description: 'Read staff records.' },
-  { id: '00000000-0000-4000-8000-000000000105', key: 'encounters.read', description: 'Read encounters.' },
-  { id: '00000000-0000-4000-8000-000000000106', key: 'scheduling.read', description: 'Read scheduling data.' },
-  { id: '00000000-0000-4000-8000-000000000107', key: 'billing.read', description: 'Read billing records.' },
-  { id: '00000000-0000-4000-8000-000000000108', key: 'billing.manage', description: 'Manage billing records.' },
-  { id: '00000000-0000-4000-8000-000000000109', key: 'inventory.read', description: 'Read inventory items.' },
-  { id: '00000000-0000-4000-8000-00000000010a', key: 'inventory.manage', description: 'Manage inventory items.' },
-  { id: '00000000-0000-4000-8000-00000000010b', key: 'medical-records.read', description: 'Read medical records.' }
+  {
+    id: '00000000-0000-4000-8000-000000000101',
+    key: 'auth.session.read',
+    description: 'Read current authenticated session.'
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000102',
+    key: 'owners.read',
+    description: 'Read owner records.'
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000103',
+    key: 'patients.read',
+    description: 'Read patient records.'
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000104',
+    key: 'staff.read',
+    description: 'Read staff records.'
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000105',
+    key: 'encounters.read',
+    description: 'Read encounters.'
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000106',
+    key: 'scheduling.read',
+    description: 'Read scheduling data.'
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000107',
+    key: 'billing.read',
+    description: 'Read billing records.'
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000108',
+    key: 'billing.manage',
+    description: 'Manage billing records.'
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000109',
+    key: 'inventory.read',
+    description: 'Read inventory items.'
+  },
+  {
+    id: '00000000-0000-4000-8000-00000000010a',
+    key: 'inventory.manage',
+    description: 'Manage inventory items.'
+  },
+  {
+    id: '00000000-0000-4000-8000-00000000010b',
+    key: 'medical-records.read',
+    description: 'Read medical records.'
+  }
 ] as const;
 
 const roles = [
@@ -108,6 +152,15 @@ const BENCHMARK_OWNER_ID = '00000000-0000-4000-8000-000000000401';
 const BENCHMARK_PATIENT_ID = '00000000-0000-4000-8000-000000000402';
 const BENCHMARK_ENCOUNTER_ID = '00000000-0000-4000-8000-000000000403';
 
+type FixtureTable = 'users' | 'owners' | 'patients' | 'encounters';
+
+const BENCHMARK_FIXTURE_KEYS: readonly { table: FixtureTable; id: string }[] = [
+  ...users.map((user) => ({ table: 'users' as const, id: user.id })),
+  { table: 'owners', id: BENCHMARK_OWNER_ID },
+  { table: 'patients', id: BENCHMARK_PATIENT_ID },
+  { table: 'encounters', id: BENCHMARK_ENCOUNTER_ID }
+];
+
 async function ensurePermissions(client: InstanceType<typeof Client>) {
   for (const permission of permissions) {
     await client.query(
@@ -168,16 +221,10 @@ async function ensureRoles(client: InstanceType<typeof Client>) {
 async function ensureUsers(
   client: InstanceType<typeof Client>
 ): Promise<{ accountId: string; adminUserId: string }> {
-  const accountRow = await client.query<{ id: string }>(
-    'SELECT id FROM accounts WHERE is_active = true ORDER BY created_at ASC LIMIT 1'
-  );
-  const accountId = process.env.ACCOUNT_ID ?? accountRow.rows[0]?.id;
-
-  if (!accountId) {
-    throw new Error('No active account found for benchmark fixture');
-  }
+  const accountId = await resolveBenchmarkAccount(client);
 
   for (const user of users) {
+    await assertFixtureOwnership(client, 'users', user.id, accountId, user.email);
     await client.query(
       `
         INSERT INTO users (id, account_id, username, email, password_hash, full_name, is_active, created_at, updated_at)
@@ -230,11 +277,122 @@ async function ensureUsers(
   return { accountId, adminUserId };
 }
 
+async function resolveBenchmarkAccount(client: InstanceType<typeof Client>): Promise<string> {
+  const requestedAccountId = process.env.ACCOUNT_ID?.trim() || undefined;
+  const requestedAccountSlug = process.env.ACCOUNT_SLUG?.trim() || undefined;
+
+  if (requestedAccountId) {
+    return findActiveAccountOrThrow(
+      client,
+      'SELECT id FROM accounts WHERE id = $1 AND is_active = true LIMIT 1',
+      [requestedAccountId],
+      `ACCOUNT_ID=${requestedAccountId}`
+    );
+  }
+
+  if (requestedAccountSlug) {
+    return findActiveAccountOrThrow(
+      client,
+      'SELECT id FROM accounts WHERE slug = $1 AND is_active = true LIMIT 1',
+      [requestedAccountSlug],
+      `ACCOUNT_SLUG=${requestedAccountSlug}`
+    );
+  }
+
+  // A previous version selected an arbitrary active account. Preserve an
+  // already-created benchmark fixture set when it is coherent, while making
+  // a fresh database resolve to the canonical account created by db/seed.ts.
+  const fixtureAccountIds = await findExistingFixtureAccountIds(client);
+  if (fixtureAccountIds.length > 1) {
+    throw new Error(
+      `Benchmark fixture IDs belong to multiple accounts (${fixtureAccountIds.join(', ')}); refusing to merge them`
+    );
+  }
+  if (fixtureAccountIds.length === 1) {
+    return findActiveAccountOrThrow(
+      client,
+      'SELECT id FROM accounts WHERE id = $1 AND is_active = true LIMIT 1',
+      [fixtureAccountIds[0]],
+      `existing benchmark fixtures in account ${fixtureAccountIds[0]}`
+    );
+  }
+
+  return findActiveAccountOrThrow(
+    client,
+    'SELECT id FROM accounts WHERE slug = $1 AND is_active = true LIMIT 1',
+    ['default'],
+    'ACCOUNT_SLUG=default'
+  );
+}
+
+async function findActiveAccountOrThrow(
+  client: InstanceType<typeof Client>,
+  query: string,
+  values: readonly unknown[],
+  selector: string
+): Promise<string> {
+  const accountRow = await client.query<{ id: string }>(query, values);
+  const accountId = accountRow.rows[0]?.id;
+  if (!accountId) {
+    throw new Error(`No active account found for ${selector}`);
+  }
+  return accountId;
+}
+
+async function findExistingFixtureAccountIds(
+  client: InstanceType<typeof Client>
+): Promise<string[]> {
+  const accountIds = new Set<string>();
+  for (const fixture of BENCHMARK_FIXTURE_KEYS) {
+    const result = await client.query<{ account_id: string }>(
+      `SELECT account_id FROM ${fixture.table} WHERE id = $1 LIMIT 1`,
+      [fixture.id]
+    );
+    const accountId = result.rows[0]?.account_id;
+    if (accountId) accountIds.add(accountId);
+  }
+  return [...accountIds];
+}
+
+/**
+ * Fixture IDs are intentionally stable so the k6 script can avoid discovery
+ * requests. Never move an existing row from another tenant while repairing a
+ * dirty benchmark database; fail closed and require an explicit cleanup.
+ */
+async function assertFixtureOwnership(
+  client: InstanceType<typeof Client>,
+  table: FixtureTable,
+  id: string,
+  accountId: string,
+  label: string
+): Promise<void> {
+  const existing = await client.query<{ account_id: string }>(
+    `SELECT account_id FROM ${table} WHERE id = $1 LIMIT 1`,
+    [id]
+  );
+  const existingAccountId = existing.rows[0]?.account_id;
+  if (existingAccountId && existingAccountId !== accountId) {
+    throw new Error(
+      `Benchmark fixture ${label} (${id}) belongs to account ${existingAccountId}; refusing to reassign it to ${accountId}`
+    );
+  }
+}
+
 async function ensureDomainFixtures(
   client: InstanceType<typeof Client>,
   accountId: string,
   adminUserId: string
 ) {
+  await assertFixtureOwnership(client, 'owners', BENCHMARK_OWNER_ID, accountId, 'owner');
+  await assertFixtureOwnership(client, 'patients', BENCHMARK_PATIENT_ID, accountId, 'patient');
+  await assertFixtureOwnership(
+    client,
+    'encounters',
+    BENCHMARK_ENCOUNTER_ID,
+    accountId,
+    'encounter'
+  );
+
   await client.query(
     `
       INSERT INTO owners (

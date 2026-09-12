@@ -43,42 +43,72 @@ const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/i;
 const VALID_STATUSES = new Set(['PASS', 'FAIL', 'BLOCKED', 'NOT_EVALUATED', 'NOT_PROVEN']);
 const DEFAULT_MAX_AGE_HOURS = 7 * 24;
 
-const SOURCE_ENV_BY_PACKAGE = {
-  'branch-governance.json': ['TRIPLE_A_BRANCH_PROTECTION_EVIDENCE'],
-  'security-evidence.json': ['TRIPLE_A_SECURITY_EVIDENCE'],
-  'rls-runtime.json': ['TRIPLE_A_RLS_RUNTIME_EVIDENCE'],
-  'clinical-e2e.json': ['TRIPLE_A_CLINICAL_E2E_EVIDENCE', 'TRIPLE_A_AUDIT_EVIDENCE'],
-  'workflow-reliability.json': [
-    'TRIPLE_A_WORKFLOW_POSTGRES_EVIDENCE',
-    'TRIPLE_A_WORKER_CRASH_EVIDENCE'
+/**
+ * Every package input is explicit about its environment override and its
+ * release-file fallback. Inputs in the same array are required together. The
+ * previous implementation selected either all environment values or all
+ * release files, which allowed a valid workflow/deployment envelope to hide a
+ * missing companion (for example, worker crash or Helm evidence).
+ *
+ * A configured environment value always wins for its input, including an
+ * invalid value. This is deliberate: an explicit but malformed PASS source
+ * must not silently fall back to an older file and become PASS.
+ */
+const SOURCE_INPUTS_BY_PACKAGE = {
+  'release-manifest.json': [{ files: ['release-manifest.json'] }],
+  'quality-scorecard.json': [{ files: ['TRIPLE_A_RELEASE_EVIDENCE.json'] }],
+  'ci-evidence.json': [{ environment: 'TRIPLE_A_CI_EVIDENCE', files: ['ci-evidence.json'] }],
+  'branch-governance.json': [
+    {
+      environment: 'TRIPLE_A_BRANCH_PROTECTION_EVIDENCE',
+      files: ['branch-governance-evidence.json', 'branch-governance.json']
+    }
   ],
-  'uat.json': ['TRIPLE_A_UAT_EVIDENCE'],
-  'performance.json': ['TRIPLE_A_PERFORMANCE_EVIDENCE'],
-  'soak.json': ['TRIPLE_A_SOAK_EVIDENCE'],
-  'backup-restore.json': ['TRIPLE_A_BACKUP_EVIDENCE'],
-  'deployment.json': ['TRIPLE_A_DEPLOY_EVIDENCE', 'TRIPLE_A_HELM_EVIDENCE'],
-  'rollback.json': ['TRIPLE_A_ROLLBACK_EVIDENCE'],
-  'attestations.json': ['TRIPLE_A_IMAGE_ATTESTATION_EVIDENCE'],
-  'ci-evidence.json': ['TRIPLE_A_CI_EVIDENCE']
-};
-
-const RELEASE_SOURCE_BY_PACKAGE = {
-  'release-manifest.json': ['release-manifest.json'],
-  'ci-evidence.json': ['ci-evidence.json'],
-  'security-evidence.json': ['security-evidence.json'],
-  'attestations.json': ['image-attestation-evidence.json'],
-  'final-verdict.json': ['TRIPLE_A_RELEASE_EVIDENCE.json'],
-  'quality-scorecard.json': ['TRIPLE_A_RELEASE_EVIDENCE.json'],
-  'branch-governance.json': ['branch-governance-evidence.json', 'branch-governance.json'],
-  'rls-runtime.json': ['rls-runtime-evidence.json'],
-  'clinical-e2e.json': ['clinical-e2e-evidence.json', 'audit-evidence.json'],
-  'workflow-reliability.json': ['workflow-postgres-evidence.json', 'worker-crash-evidence.json'],
-  'uat.json': ['uat-evidence.json'],
-  'performance.json': ['performance-evidence.json'],
-  'soak.json': ['soak-evidence.json'],
-  'backup-restore.json': ['backup-restore-evidence.json'],
-  'deployment.json': ['deployment-evidence.json', 'helm-evidence.json'],
-  'rollback.json': ['rollback-evidence.json']
+  'security-evidence.json': [
+    { environment: 'TRIPLE_A_SECURITY_EVIDENCE', files: ['security-evidence.json'] }
+  ],
+  'rls-runtime.json': [
+    { environment: 'TRIPLE_A_RLS_RUNTIME_EVIDENCE', files: ['rls-runtime-evidence.json'] }
+  ],
+  'clinical-e2e.json': [
+    {
+      environment: 'TRIPLE_A_CLINICAL_E2E_EVIDENCE',
+      files: ['clinical-e2e-evidence.json']
+    },
+    { environment: 'TRIPLE_A_AUDIT_EVIDENCE', files: ['audit-evidence.json'] }
+  ],
+  'workflow-reliability.json': [
+    {
+      environment: 'TRIPLE_A_WORKFLOW_POSTGRES_EVIDENCE',
+      files: ['workflow-postgres-evidence.json']
+    },
+    {
+      environment: 'TRIPLE_A_WORKER_CRASH_EVIDENCE',
+      files: ['worker-crash-evidence.json']
+    }
+  ],
+  'uat.json': [{ environment: 'TRIPLE_A_UAT_EVIDENCE', files: ['uat-evidence.json'] }],
+  'performance.json': [
+    { environment: 'TRIPLE_A_PERFORMANCE_EVIDENCE', files: ['performance-evidence.json'] }
+  ],
+  'soak.json': [{ environment: 'TRIPLE_A_SOAK_EVIDENCE', files: ['soak-evidence.json'] }],
+  'backup-restore.json': [
+    { environment: 'TRIPLE_A_BACKUP_EVIDENCE', files: ['backup-restore-evidence.json'] }
+  ],
+  'deployment.json': [
+    { environment: 'TRIPLE_A_DEPLOY_EVIDENCE', files: ['deployment-evidence.json'] },
+    { environment: 'TRIPLE_A_HELM_EVIDENCE', files: ['helm-evidence.json'] }
+  ],
+  'rollback.json': [
+    { environment: 'TRIPLE_A_ROLLBACK_EVIDENCE', files: ['rollback-evidence.json'] }
+  ],
+  'attestations.json': [
+    {
+      environment: 'TRIPLE_A_IMAGE_ATTESTATION_EVIDENCE',
+      files: ['image-attestation-evidence.json']
+    }
+  ],
+  'final-verdict.json': [{ files: ['TRIPLE_A_RELEASE_EVIDENCE.json'] }]
 };
 
 function git(rootDir, args) {
@@ -274,20 +304,44 @@ function sourceFor({
   commitSha,
   environment = process.env
 }) {
-  const configuredNames = SOURCE_ENV_BY_PACKAGE[packageName] ?? [];
-  const configuredPaths = configuredNames
-    .map((name) => ({ name, value: environment[name] }))
-    .filter((entry) => entry.value);
-  const candidateNames = RELEASE_SOURCE_BY_PACKAGE[packageName] ?? [];
-  const candidates =
-    configuredPaths.length > 0
-      ? configuredPaths.map((entry) => ({ name: entry.name, path: entry.value }))
-      : candidateNames
-          .map((name) => ({ name, path: resolve(rootDir, releaseOutputDir, name) }))
-          .filter((entry) => existsSync(entry.path));
-  if (candidates.length === 0) return null;
+  const inputs = SOURCE_INPUTS_BY_PACKAGE[packageName] ?? [];
+  if (inputs.length === 0) return null;
 
-  const sources = candidates.map(({ name, path }) => {
+  const candidates = inputs.map((input) => {
+    const hasConfiguredValue =
+      input.environment &&
+      Object.prototype.hasOwnProperty.call(environment, input.environment) &&
+      environment[input.environment] !== undefined &&
+      environment[input.environment] !== null;
+    if (hasConfiguredValue) {
+      return { name: input.environment, path: environment[input.environment] };
+    }
+
+    const fallback = (input.files ?? [])
+      .map((name) => ({ name, path: resolve(rootDir, releaseOutputDir, name) }))
+      .find((entry) => existsSync(entry.path));
+    return (
+      fallback ?? {
+        name: input.environment ?? input.files?.[0] ?? packageName,
+        path: null,
+        missing: true
+      }
+    );
+  });
+
+  const hasAnySource = candidates.some((candidate) => candidate.path !== null);
+  if (!hasAnySource) return null;
+
+  const sources = candidates.map(({ name, path, missing }) => {
+    if (missing || path === null) {
+      return {
+        name,
+        path: null,
+        status: 'NOT_PROVEN',
+        reason:
+          'Fonte obrigatória não foi fornecida por variável de ambiente nem arquivo de release.'
+      };
+    }
     const sourcePath = safeLocalPath(rootDir, path);
     if (!sourcePath) {
       return {
@@ -306,8 +360,11 @@ function sourceFor({
     : sources.every((source) => source.status === 'PASS')
       ? 'PASS'
       : (sources.find((source) => source.status === 'BLOCKED')?.status ?? 'NOT_PROVEN');
+  const sourcePaths = sources
+    .map((source) => source.path)
+    .filter((path) => typeof path === 'string');
   return {
-    path: sources.map((source) => source.path),
+    path: sourcePaths,
     status,
     reason: sources.map((source) => `${source.name}: ${source.reason}`).join(' ')
   };

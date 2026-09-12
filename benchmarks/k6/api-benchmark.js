@@ -59,8 +59,7 @@ const TEST_USER = {
 // The performance seed creates these rows in the disposable tenant. Keeping the
 // IDs deterministic lets every VU exercise detail and encounter-scoped routes
 // without manufacturing a not-found response that would fail http_req_failed.
-const BENCHMARK_PATIENT_ID =
-  __ENV.BENCHMARK_PATIENT_ID ?? '00000000-0000-4000-8000-000000000402';
+const BENCHMARK_PATIENT_ID = __ENV.BENCHMARK_PATIENT_ID ?? '00000000-0000-4000-8000-000000000402';
 const BENCHMARK_ENCOUNTER_ID =
   __ENV.BENCHMARK_ENCOUNTER_ID ?? '00000000-0000-4000-8000-000000000403';
 
@@ -111,8 +110,12 @@ export function setup() {
 export default function (data) {
   const token = data.token;
   const accountId = data.accountId ?? FALLBACK_ACCOUNT_ID;
-  let patientId = BENCHMARK_PATIENT_ID;
-  let encounterId = BENCHMARK_ENCOUNTER_ID;
+  // Keep detail and encounter-scoped requests bound to the rows prepared by
+  // the benchmark seed. List endpoints intentionally remain part of the
+  // workload, but their first row is not a stable fixture: a dirty database
+  // may return an older patient or a closed encounter first.
+  const patientId = BENCHMARK_PATIENT_ID;
+  const encounterId = BENCHMARK_ENCOUNTER_ID;
   const headers = {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${token}`,
@@ -174,17 +177,6 @@ export default function (data) {
     const listStart = Date.now();
     const listRes = http.get(`${BASE_URL}/patients?page=1&limit=1`, { headers });
     queryPatientsListLatency.add(Date.now() - listStart);
-    if (listRes.status === 200) {
-      try {
-        const body = JSON.parse(listRes.body);
-        if (body.items && body.items.length > 0) {
-          patientId = body.items[0].id;
-        } else if (body.data && body.data.length > 0) {
-          patientId = body.data[0].id;
-        }
-      } catch {}
-    }
-
     const detailStart = Date.now();
     const res = http.get(`${BASE_URL}/patients/${patientId}`, { headers });
 
@@ -255,14 +247,6 @@ export default function (data) {
     check(encRes, {
       'billing encounter lookup returns 200': (r) => r.status === 200
     });
-    if (encRes.status === 200) {
-      try {
-        const body = JSON.parse(encRes.body);
-        const items = body.items ?? body.data ?? [];
-        if (items.length > 0) encounterId = items[0].id;
-      } catch {}
-    }
-
     // Keep the lookup in the query SLO; the billing metric covers the mutation only.
     const billingStart = Date.now();
     const res = http.post(

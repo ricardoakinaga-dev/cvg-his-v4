@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -14,6 +14,7 @@ const benchmarkSeed = readFileSync(
   resolve(root, 'benchmarks/k6/seed-benchmark-fixtures.ts'),
   'utf8'
 );
+const benchmarkResultsDirectory = resolve(root, 'benchmarks/k6/results');
 const catalog = JSON.parse(readFileSync(resolve(root, 'benchmarks/k6/slos.json'), 'utf8'));
 
 function job(source: string, name: string) {
@@ -60,7 +61,9 @@ describe('performance and SLO gate', () => {
     expect(benchmark).toContain('api_availability:');
     expect(benchmark).toContain("data.metrics['http_req_failed']");
     expect(benchmark).toContain("direction: 'gte'");
-    expect(benchmark).toContain('evaluateThreshold(config.actual, config.target, config.direction)');
+    expect(benchmark).toContain(
+      'evaluateThreshold(config.actual, config.target, config.direction)'
+    );
     expect(benchmark).toContain('authLatency.add(loginRes.timings.duration)');
     expect(benchmark).toContain("new Trend('health_latency_ms')");
     expect(benchmark).toContain("new Trend('query_patients_list_latency_ms')");
@@ -92,6 +95,23 @@ describe('performance and SLO gate', () => {
     expect(benchmarkSeed).toContain('INSERT INTO patients');
     expect(benchmarkSeed).toContain('INSERT INTO encounters');
     expect(benchmarkSeed).toContain("status: 'active'");
+  });
+
+  it('keeps encounter-scoped requests on deterministic fixtures in dirty databases', () => {
+    expect(benchmark).toContain('const patientId = BENCHMARK_PATIENT_ID');
+    expect(benchmark).toContain('const encounterId = BENCHMARK_ENCOUNTER_ID');
+    expect(benchmark).not.toContain('patientId = body.items[0].id');
+    expect(benchmark).not.toContain('encounterId = items[0].id');
+    expect(benchmarkSeed).toContain(
+      'const requestedAccountSlug = process.env.ACCOUNT_SLUG?.trim() || undefined'
+    );
+    expect(benchmarkSeed).toContain("['default']");
+    expect(benchmarkSeed).not.toContain('ORDER BY created_at ASC LIMIT 1');
+    expect(benchmarkSeed).toContain('assertFixtureOwnership(');
+    expect(benchmarkSeed).toContain("'encounters'");
+    expect(benchmarkSeed).toContain('BENCHMARK_ENCOUNTER_ID');
+    expect(benchmarkSeed).toContain('refusing to reassign it');
+    expect(existsSync(benchmarkResultsDirectory)).toBe(true);
   });
 
   it('protects target endurance behind approval, HTTPS and explicit disposable-target confirmation', () => {
