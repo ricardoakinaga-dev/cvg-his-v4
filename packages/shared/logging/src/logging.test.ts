@@ -8,7 +8,11 @@ function captureStdout(run: () => void): string {
   const originalWrite = process.stdout.write.bind(process.stdout);
   let output = '';
 
-  process.stdout.write = ((chunk: string | Uint8Array, encoding?: BufferEncoding | ((error?: Error | null) => void), callback?: (error?: Error | null) => void) => {
+  process.stdout.write = ((
+    chunk: string | Uint8Array,
+    encoding?: BufferEncoding | ((error?: Error | null) => void),
+    callback?: (error?: Error | null) => void
+  ) => {
     output += typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8');
     if (typeof encoding === 'function') {
       encoding();
@@ -164,4 +168,55 @@ test('logger emits trace context from active span together with request correlat
   assert.equal(payload.correlationId, 'req-123');
   assert.equal(payload.traceId, '1234567890abcdef1234567890abcdef');
   assert.equal(payload.spanId, '1234567890abcdef');
+});
+
+test('logger recursively redacts sensitive keys, messages and nested values', () => {
+  const logger = createLogger('security-test');
+  const circular: Record<string, unknown> = {};
+  circular.self = circular;
+  const context: LogContext = {
+    safe: 'visible',
+    authorization: 'Bearer top-level-secret',
+    nested: {
+      refreshToken: 'refresh-secret',
+      'x-api-key': 'api-secret',
+      email: 'clinician@example.invalid',
+      body: {
+        password: 'password-secret',
+        note: 'owner@example.invalid'
+      }
+    },
+    circular
+  };
+
+  const output = captureStdout(() => {
+    logger.info('received token=message-secret', context);
+  });
+
+  const payload = JSON.parse(output.trim()) as Record<string, any>;
+  assert.equal(payload.safe, 'visible');
+  assert.equal(payload.authorization, '[REDACTED]');
+  assert.equal(payload.nested.refreshToken, '[REDACTED]');
+  assert.equal(payload.nested['x-api-key'], '[REDACTED]');
+  assert.equal(payload.nested.body.password, '[REDACTED]');
+  assert.equal(payload.nested.email, '[REDACTED]');
+  assert.equal(payload.nested.body.note, '[REDACTED]');
+  assert.equal(payload.circular.self, '[CIRCULAR]');
+  assert.match(payload.message, /token=\[REDACTED\]/);
+});
+
+test('logger sanitizes structured errors without discarding safe diagnostics', () => {
+  const logger = createLogger('security-test');
+  const error = new Error('request failed: authorization=Bearer error-secret');
+  Object.assign(error, { code: 'UPSTREAM_TIMEOUT', token: 'error-token' });
+
+  const output = captureStdout(() => {
+    logger.info('error captured', { error });
+  });
+
+  const payload = JSON.parse(output.trim()) as Record<string, any>;
+  assert.equal(payload.error.code, 'UPSTREAM_TIMEOUT');
+  assert.equal(payload.error.token, undefined);
+  assert.match(payload.error.message, /authorization=\[REDACTED\]/);
+  assert.doesNotMatch(JSON.stringify(payload), /error-secret|error-token/);
 });

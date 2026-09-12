@@ -58,35 +58,78 @@ function serializeError(err: unknown): Record<string, unknown> {
   return { value: String(err) };
 }
 
-function sanitize(value: unknown): unknown {
-  if (typeof value !== 'string') return value;
-  const sensitivePatterns = [
-    /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
-    /\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/g,
-    /password["\s:]+\S+/gi,
-    /token["\s:]+\S+/gi,
-    /secret["\s:]+\S+/gi,
-    /authorization["\s:]+\S+/gi
-  ];
+const REDACTED = '[REDACTED]';
+const CIRCULAR_VALUE = '[CIRCULAR]';
+const MAX_SANITIZE_DEPTH = 8;
+
+const SENSITIVE_KEY_PATTERN =
+  /(?:pass(?:word|phrase)?|secret|token|authorization|cookie|api[-_]?key|client[-_]?secret|access[-_]?token|refresh[-_]?token|id[-_]?token|private[-_]?key|webhook[-_]?signature)/i;
+
+const SENSITIVE_TEXT_PATTERNS = [
+  /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi,
+  /(\b(?:password|passphrase|secret|token|authorization|api[-_]?key|client[-_]?secret|access[-_]?token|refresh[-_]?token)\b\s*[:=]\s*)("[^"]*"|'[^']*'|[^\s,;}]+)/gi,
+  /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
+  /\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/g
+];
+
+function sanitizeString(value: string): string {
   let sanitized = value;
-  for (const pattern of sensitivePatterns) {
-    sanitized = sanitized.replace(pattern, '[REDACTED]');
+  for (const pattern of SENSITIVE_TEXT_PATTERNS) {
+    sanitized = sanitized.replace(pattern, (_match, prefix: unknown) =>
+      typeof prefix === 'string' ? `${prefix}${REDACTED}` : REDACTED
+    );
   }
+  return sanitized;
+}
+
+function isSensitiveKey(key: string): boolean {
+  return SENSITIVE_KEY_PATTERN.test(key);
+}
+
+function sanitizeValue(value: unknown, depth = 0, seen = new WeakSet<object>()): unknown {
+  if (typeof value === 'string') return sanitizeString(value);
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value === 'boolean' ||
+    typeof value === 'number'
+  ) {
+    return value;
+  }
+  if (typeof value === 'bigint') return value.toString();
+  if (typeof value === 'symbol' || typeof value === 'function') return String(value);
+  if (depth >= MAX_SANITIZE_DEPTH) return REDACTED;
+
+  if (value instanceof Error) {
+    return sanitizeValue(serializeError(value), depth + 1, seen);
+  }
+  if (value instanceof Date) return value.toISOString();
+  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) return REDACTED;
+
+  if (typeof value !== 'object') return String(value);
+  if (seen.has(value)) return CIRCULAR_VALUE;
+  seen.add(value);
+
+  let sanitized: unknown;
+  if (Array.isArray(value)) {
+    sanitized = value.map((item) => sanitizeValue(item, depth + 1, seen));
+  } else {
+    const record: Record<string, unknown> = {};
+    for (const [key, entry] of Object.entries(value)) {
+      record[key] = isSensitiveKey(key) ? REDACTED : sanitizeValue(entry, depth + 1, seen);
+    }
+    sanitized = record;
+  }
+
+  seen.delete(value);
   return sanitized;
 }
 
 function sanitizeContext(context?: LogContext): Record<string, unknown> {
   if (!context) return {};
-  const sanitized: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(context)) {
-    if (key === 'error') {
-      sanitized[key] = serializeError(value);
-    } else if (key === 'payload' || key === 'body' || key === 'headers') {
-      sanitized[key] = sanitize(String(value));
-    } else {
-      sanitized[key] = value;
-    }
-  }
+  const value = sanitizeValue(context);
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const sanitized = value as Record<string, unknown>;
 
   const correlationId =
     typeof sanitized.correlationId === 'string' ? sanitized.correlationId : undefined;
@@ -123,7 +166,7 @@ function write(level: LogLevel, message: string, context?: LogContext): void {
   const sanitized = sanitizeContext(context);
   const payload = {
     level,
-    message,
+    message: sanitizeString(message),
     timestamp: nowIso(),
     pid: process.pid,
     ...getTraceLogContext(),
