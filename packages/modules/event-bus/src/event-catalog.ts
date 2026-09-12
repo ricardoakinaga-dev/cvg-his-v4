@@ -78,6 +78,15 @@ export const INPATIENT_DISCHARGED = 'inpatient.discharged';
 export const INPATIENT_BED_CHANGED = 'inpatient.bed_changed';
 export const INPATIENT_PROGRESS_NOTE_ADDED = 'inpatient.progress_note_added';
 
+// Shift handover lifecycle. These events are intentionally versioned through
+// EVENT_SCHEMA_VERSIONS below so projections can evolve without changing the
+// sovereign handover tables.
+export const HANDOVER_CREATED = 'handover.created';
+export const HANDOVER_UPDATED = 'handover.updated';
+export const HANDOVER_READY = 'handover.ready';
+export const HANDOVER_ACKNOWLEDGED = 'handover.acknowledged';
+export const HANDOVER_OVERDUE = 'handover.overdue';
+
 /* ===========================
    INVENTORY EVENTS
    =========================== */
@@ -165,6 +174,11 @@ export const EVENT_CATALOG: readonly string[] = [
   INPATIENT_DISCHARGED,
   INPATIENT_BED_CHANGED,
   INPATIENT_PROGRESS_NOTE_ADDED,
+  HANDOVER_CREATED,
+  HANDOVER_UPDATED,
+  HANDOVER_READY,
+  HANDOVER_ACKNOWLEDGED,
+  HANDOVER_OVERDUE,
   // Inventory
   INVENTORY_CONSUMPTION_CREATED,
   STOCK_MOVED,
@@ -194,12 +208,13 @@ export const EVENT_CATALOG: readonly string[] = [
   USER_LOGIN_MFA_REQUIRED,
   USER_LOGOUT,
   USER_MFA_ENABLED,
-  USER_MFA_DISABLED,
+  USER_MFA_DISABLED
 ] as const;
 
 export const EVENT_COUNT = EVENT_CATALOG.length as number;
 
-// 45 events catalogued — exceeds the 30+ blueprint requirement
+// The catalog exceeds the 30+ event blueprint requirement and includes the
+// complete handover lifecycle needed by the clinical timeline projection.
 void EVENT_COUNT;
 
 /**
@@ -229,7 +244,7 @@ export const EVENTS_BY_DOMAIN: Record<string, readonly string[]> = {
     MEDICAL_RECORD_UPDATED,
     PRESCRIPTION_CREATED,
     PRESCRIPTION_EXECUTED,
-    PRESCRIPTION_CANCELLED,
+    PRESCRIPTION_CANCELLED
   ],
   scheduling: [
     APPOINTMENT_CREATED,
@@ -239,13 +254,20 @@ export const EVENTS_BY_DOMAIN: Record<string, readonly string[]> = {
     QUEUE_ENTRY_ADDED,
     QUEUE_ENTRY_REMOVED,
     QUEUE_ENTRY_CALLED,
-    QUEUE_ENTRY_NO_SHOW,
+    QUEUE_ENTRY_NO_SHOW
   ],
   inpatient: [
     INPATIENT_ADMITTED,
     INPATIENT_DISCHARGED,
     INPATIENT_BED_CHANGED,
-    INPATIENT_PROGRESS_NOTE_ADDED,
+    INPATIENT_PROGRESS_NOTE_ADDED
+  ],
+  handover: [
+    HANDOVER_CREATED,
+    HANDOVER_UPDATED,
+    HANDOVER_READY,
+    HANDOVER_ACKNOWLEDGED,
+    HANDOVER_OVERDUE
   ],
   inventory: [
     INVENTORY_CONSUMPTION_CREATED,
@@ -253,7 +275,7 @@ export const EVENTS_BY_DOMAIN: Record<string, readonly string[]> = {
     STOCK_LOW,
     STOCK_REORDER_TRIGGERED,
     PRODUCT_CREATED,
-    PRODUCT_UPDATED,
+    PRODUCT_UPDATED
   ],
   billing: [
     RECEIVABLE_PAID,
@@ -266,19 +288,23 @@ export const EVENTS_BY_DOMAIN: Record<string, readonly string[]> = {
     PAYMENT_PIX_FAILED,
     PAYMENT_CARD_INTENT_CREATED,
     PAYMENT_CARD_COMPLETED,
-    PAYMENT_CARD_FAILED,
+    PAYMENT_CARD_FAILED
   ],
   notifications: [
     NOTIFICATION_SENT,
     NOTIFICATION_FAILED,
     NOTIFICATION_WHATSAPP_RECEIVED,
-    NOTIFICATION_WHATSAPP_DELIVERED,
+    NOTIFICATION_WHATSAPP_DELIVERED
   ],
-  access: [
-    USER_LOGIN,
-    USER_LOGIN_MFA_REQUIRED,
-    USER_LOGOUT,
-    USER_MFA_ENABLED,
-    USER_MFA_DISABLED,
-  ],
+  access: [USER_LOGIN, USER_LOGIN_MFA_REQUIRED, USER_LOGOUT, USER_MFA_ENABLED, USER_MFA_DISABLED]
 };
+
+/**
+ * Version registry for the public event envelope. A new payload contract must
+ * be introduced with a new number and a compatibility note in the governance
+ * document; consumers must continue accepting the previous version during a
+ * deprecation window.
+ */
+export const EVENT_SCHEMA_VERSIONS: Readonly<Record<string, number>> = Object.freeze(
+  Object.fromEntries(EVENT_CATALOG.map((eventType) => [eventType, 1]))
+);

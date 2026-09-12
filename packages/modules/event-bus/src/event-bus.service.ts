@@ -17,6 +17,12 @@ import type {
   OutboxRepository,
   RetryClaimInput
 } from './outbox.interface.js';
+import {
+  assertEventEnvelopeMatches,
+  buildEventEnvelopeMetadata,
+  mergeEventEnvelopeMetadata,
+  type EventActor
+} from './event-envelope.js';
 
 export type { OutboxEvent, OutboxRepository } from './outbox.interface.js';
 
@@ -26,6 +32,10 @@ export interface CreateOutboxEventInput {
   moduleName: ModuleName;
   eventType: string;
   payload: Record<string, unknown>;
+  actor?: EventActor;
+  causationId?: string | null;
+  schemaVersion?: number;
+  occurredAt?: string;
   maxAttempts?: number;
   scheduledAt?: string;
 }
@@ -668,8 +678,20 @@ export class EventBusService {
     if (payloadAccountId && payloadAccountId !== accountId) {
       throw new Error('Outbox payload account does not match event account');
     }
+    const eventId = randomUUID();
+    const envelope = buildEventEnvelopeMetadata({
+      eventId,
+      eventType: input.eventType,
+      accountId: accountId as AccountId,
+      sourceModule: input.moduleName,
+      correlationId: input.correlationId,
+      actor: input.actor,
+      causationId: input.causationId,
+      schemaVersion: input.schemaVersion,
+      occurredAt: input.occurredAt
+    });
     const event: OutboxEvent = {
-      id: randomUUID(),
+      id: eventId,
       accountId: accountId as AccountId,
       correlationId: input.correlationId,
       moduleName: input.moduleName,
@@ -677,7 +699,7 @@ export class EventBusService {
       payload: {
         ...input.payload,
         accountId,
-        _meta: { ...payloadMeta, accountId }
+        _meta: mergeEventEnvelopeMetadata(payloadMeta, envelope)
       },
       status: 'pending',
       attempts: 0,
@@ -722,15 +744,15 @@ export class EventBusService {
         );
 
         try {
+          const envelope = assertEventEnvelopeMatches(event.payload, {
+            eventId: event.id,
+            eventType: event.eventType,
+            accountId: event.accountId,
+            sourceModule: event.moduleName,
+            correlationId: event.correlationId
+          });
           const payloadAccountId = event.payload['accountId'];
-          const rawMeta = event.payload['_meta'];
-          if (!rawMeta || typeof rawMeta !== 'object' || Array.isArray(rawMeta)) {
-            throw new Error(
-              'Outbox payload _meta must be an object with the claimed event account'
-            );
-          }
-          const metaAccountId = (rawMeta as Record<string, unknown>)['accountId'];
-          if (payloadAccountId !== event.accountId || metaAccountId !== event.accountId) {
+          if (payloadAccountId !== event.accountId || envelope.accountId !== event.accountId) {
             throw new Error('Outbox payload account does not match claimed event account');
           }
           await this.#withLeaseHeartbeat(claim, async () => {

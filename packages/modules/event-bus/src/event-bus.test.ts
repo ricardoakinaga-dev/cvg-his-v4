@@ -302,7 +302,7 @@ test('EventBusService subscribe calls handler when event is processed', async ()
     handledEvents.push(event);
   });
 
-  await service.publish({
+  const published = await service.publish({
     accountId: mockAccountId,
     correlationId: mockCorrelationId,
     moduleName: mockModuleName,
@@ -314,10 +314,18 @@ test('EventBusService subscribe calls handler when event is processed', async ()
 
   assert.equal(handledEvents.length, 1);
   assert.equal(handledEvents[0].eventType, 'test.event');
-  assert.deepEqual(handledEvents[0].payload, {
-    key: 'value',
+  assert.equal(handledEvents[0].payload.key, 'value');
+  assert.equal(handledEvents[0].payload.accountId, mockAccountId);
+  assert.deepEqual(handledEvents[0].payload._meta, {
     accountId: mockAccountId,
-    _meta: { accountId: mockAccountId }
+    eventId: published.id,
+    eventType: 'test.event',
+    schemaVersion: 1,
+    occurredAt: published.createdAt,
+    sourceModule: mockModuleName,
+    actor: { type: 'system', id: 'event-bus' },
+    correlationId: mockCorrelationId,
+    causationId: null
   });
 
   unsubscribe();
