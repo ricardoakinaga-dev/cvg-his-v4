@@ -1,8 +1,8 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato funcional observado em 2026-09-12T11:43:00Z
+## Candidato de assurance observado em 2026-09-12T12:10:47Z
 
-- SHA de código e documentação: `553078be60c963ffb7cab5c45c130912e5e299b8` (código/workflow); documentação corrente em commits documentais posteriores.
+- SHA de código e documentação: `0d475dee358eab9621e5497db9929b7010ed09eb` (guard de snapshot e reconciliação documental); o candidato funcional/workflow anterior é `553078be60c963ffb7cab5c45c130912e5e299b8`.
 - `HEAD`, `main` e `origin/main` coincidem; rollback preservado em
   `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
@@ -29,7 +29,7 @@ O [CI #143](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/346781
 é o run do candidato funcional pai `82ff6eec` e terminou `failure` com `15/16`
 jobs verdes: E2E SPA, integração, segurança, build, visual e demais checks
 passaram; somente Performance/k6 falhou em `Run k6 benchmark`/`Check SLO results`.
-Esse resultado não é transferido para `553078be`; nenhum threshold foi relaxado.
+Esse resultado não é transferido para `0d475dee`; nenhum threshold foi relaxado.
 O CI #144 do pai documental `da5dd244` falhou em `Repository Guards` porque o
 checkout raso impediu validar a ancestralidade do snapshot. O candidato atual
 passa a solicitar `fetch-depth: 0`; a correção foi exercitada no CI seguinte.
@@ -71,6 +71,11 @@ As métricas detalhadas não estão disponíveis sem credencial. A mudança
 evidência hospedada continua falha. Runs anteriores do mesmo código/workflow
 alternaram entre verde e falha em runners diferentes; nenhum threshold foi
 relaxado.
+
+O [CI #152](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34692643050)
+é a execução exata de `0d475dee` e permanece `in_progress` nesta captura. Seus
+resultados só poderão ser promovidos depois do estado terminal; nenhuma prova de
+outro SHA é transferida para este candidato.
 
 ## Recovery e target
 

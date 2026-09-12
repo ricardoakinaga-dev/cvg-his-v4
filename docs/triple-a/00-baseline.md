@@ -1,12 +1,13 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-12T11:43:00Z
+## Snapshot vigente — 2026-09-12T12:10:47Z
 
 O baseline autoritativo do candidato atual está em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md):
-`553078be60c963ffb7cab5c45c130912e5e299b8` (código/workflow), com a documentação
-corrente em commits documentais posteriores; `HEAD == main == origin/main`,
+`0d475dee358eab9621e5497db9929b7010ed09eb` (candidato de assurance; o candidato
+funcional/workflow anterior é `553078be60c963ffb7cab5c45c130912e5e299b8`), com a documentação
+corrente neste SHA; `HEAD == main == origin/main`,
 gate local estrito `BLOCKED` com `55/57/15` (score/critical/open P0) e claim
 `NOT PROVEN`. O CI #143 do candidato funcional pai `82ff6eec` terminou
 `failure` somente em Performance/k6; os outros 15 jobs, incluindo E2E SPA,
@@ -21,7 +22,8 @@ Performance/k6 e integração passaram. O candidato
 `8273ecb5` terminou verde com `16/16` jobs, incluindo essa prova canônica. O
 CI #149 no SHA `553078be` terminou `failure` em `Repository Guards` porque os
 snapshots ainda apontavam para o candidato anterior. A reconciliação documental
-foi publicada e o CI #151 terminou `failure` somente em Performance/k6, com
+foi publicada. O CI #152 no SHA `0d475dee` está `in_progress`; nenhum resultado
+parcial é promovido. O CI #151 terminou `failure` somente em Performance/k6, com
 `15/16` jobs passando, incluindo os guards, integração, E2E e visual. O
 artefato remoto tem digest `sha256:84b09a10162af819504fe8e269a84d498f1927aee9189af553ff3f8086390afa`.
 Nenhum threshold foi relaxado.

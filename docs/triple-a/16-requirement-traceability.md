@@ -10,13 +10,14 @@ A tabela mantém o escopo completo. “NOT PROVEN” significa que a aceitação
 integral da fase não foi demonstrada no candidato corrente; não significa
 que o código esteja ausente. Evidência local, CI e alvo são avaliados separadamente.
 Os registros históricos abaixo mencionam candidatos anteriores. A fotografia
-vigente é o candidato de código/workflow `553078be60c963ffb7cab5c45c130912e5e299b8`,
-com documentação corrente em descendentes que alteraram somente
+vigente é o candidato de assurance `0d475dee358eab9621e5497db9929b7010ed09eb`,
+com candidato funcional/workflow anterior `553078be60c963ffb7cab5c45c130912e5e299b8`
+e documentação corrente no SHA de assurance, que alterou somente
 `docs/triple-a`, gate local estrito `55/57/15` no descendente documental
 `c1059e6c` e suíte crítica local `615 + 11` aprovada. O CI #151 no descendente
 documental `fecb70ca` passou os guards e as suítes remotas, mas falhou
-exclusivamente em Performance/k6; não há CI remoto terminal verde para o
-candidato de código/workflow atual. O CI #149 no SHA `553078be` falhou em
+exclusivamente em Performance/k6. O CI #152 no SHA `0d475dee` está em execução;
+não há CI remoto terminal verde para o candidato de assurance atual. O CI #149 no SHA `553078be` falhou em
 `Repository Guards` porque os snapshots ainda apontavam para o candidato
 anterior; a reconciliação documental posterior corrigiu essa identidade. O
 checkout do workflow agora usa `fetch-depth: 0` para provar a ancestralidade.

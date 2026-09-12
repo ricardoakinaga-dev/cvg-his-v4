@@ -1,6 +1,6 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `main@553078be60c963ffb7cab5c45c130912e5e299b8` (código/workflow; documentação corrente em commits documentais posteriores)
+**Candidate funcional avaliado:** `main@0d475dee358eab9621e5497db9929b7010ed09eb` (candidato de assurance: guard de snapshot e reconciliação documental; candidato funcional/workflow anterior `553078be60c963ffb7cab5c45c130912e5e299b8`)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -49,7 +49,7 @@ remota e pelos gates externos de target e release.
 | Testing              | LOCAL PASS                   | suíte workspace, critical e E2E clínico                                                                                                 |
 | Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas                                                                                                |
 | Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                                                                                                           |
-| CI/CD                | BLOQUEADO no SHA atual       | CI #151 terminou `failure` somente em Performance/k6 com `15/16` jobs verdes; #147 confirmou historicamente outro candidato com `16/16` |
+| CI/CD                | BLOQUEADO no SHA atual       | CI #152 está `in_progress` no SHA exato; #151 terminou `failure` somente em Performance/k6 com `15/16` jobs verdes; #147 confirmou historicamente outro candidato com `16/16` |
 | Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                                                                                                         |
 | Recovery             | BLOCKED                      | Docker impediu restore drill real                                                                                                       |
 | Frontend             | BOUNDED PASS                 | E2E/visual/a11y no CI                                                                                                                   |

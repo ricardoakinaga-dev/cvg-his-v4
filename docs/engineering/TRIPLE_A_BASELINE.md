@@ -1,14 +1,13 @@
 # CVG HIS — Triple-A Baseline
 
-## Snapshot de código/workflow vigente — 2026-09-12T11:43:00Z
+## Snapshot de assurance vigente — 2026-09-12T12:10:47Z
 
 O snapshot corrente está reconciliado em
 [`docs/triple-a/15-current-baseline.md`](../triple-a/15-current-baseline.md):
-`553078be60c963ffb7cab5c45c130912e5e299b8`. O `HEAD` documental atual é
-`b4afda3c71c4684f971e2b14929f11921fe6065a`, em `main` e `origin/main`, e os
-commits posteriores ao candidato de código/workflow alteraram somente
-`docs/triple-a`. O CI #151 no descendente documental `fecb70ca` terminou com
-`15/16` jobs e falha exclusiva em Performance/k6; o gate local completo
+`0d475dee358eab9621e5497db9929b7010ed09eb`. O candidato funcional/workflow
+anterior é `553078be60c963ffb7cab5c45c130912e5e299b8`; o `HEAD` atual em `main`
+e `origin/main` é o SHA de assurance. O CI #152 está em execução no SHA exato;
+o CI #151 no descendente documental `fecb70ca` terminou com `15/16` jobs e falha exclusiva em Performance/k6; o gate local completo
 registrado no descendente documental `c1059e6c` ficou `BLOCKED / NOT PROVEN`,
 score `55`, critical `57` e `15` P0. Este documento mantém as fotografias
 históricas abaixo como contexto e não as promove como prova de target ou

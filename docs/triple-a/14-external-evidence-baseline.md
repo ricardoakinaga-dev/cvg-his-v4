@@ -5,11 +5,11 @@
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA de código/workflow é
-> `553078be60c963ffb7cab5c45c130912e5e299b8`, com documentação corrente em
-> commits documentais posteriores. O CI #151 no descendente documental terminou `failure` somente
-> em Performance/k6; os outros `15/16` jobs, incluindo E2E SPA, integração e
-> visual, passaram. O artefato público tem digest
-> `sha256:84b09a10162af819504fe8e269a84d498f1927aee9189af553ff3f8086390afa`. O CI #149 no SHA de código/workflow foi bloqueado em
+> `0d475dee358eab9621e5497db9929b7010ed09eb`, com o candidato funcional/workflow anterior
+> `553078be60c963ffb7cab5c45c130912e5e299b8`. O CI #152 é a execução exata deste
+> SHA e permanece `in_progress`; nenhum resultado parcial é promovido. O CI #151
+> no descendente documental terminou `failure` somente em Performance/k6; os
+> outros `15/16` jobs passaram. O CI #149 no SHA de código/workflow foi bloqueado em
 > `Repository Guards` porque os snapshots ainda apontavam para o candidato
 > anterior; essa documentação foi então reconciliada. O CI #144 pertence ao pai
 > documental `da5dd244` e falhou em `Repository Guards` porque o checkout raso
@@ -22,10 +22,10 @@
 > (`Run k6 benchmark` exit `99`, `Check SLO results` exit `1`). Nenhum threshold
 > foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `553078be60c963ffb7cab5c45c130912e5e299b8` (candidato de código/workflow; documentação corrente em reconciliação, rollback preservado).
-**Current CI:** [#151](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34690210769) — `main@fecb70ca` terminou `failure` somente em `Performance (k6 SLOs)`; `15/16` jobs passaram, incluindo `Repository Guards`, Integration, E2E SPA e Visual Regression. O benchmark terminou com exit `99` e o parser com exit `1`. O artefato público do job é `performance-k6-report` (digest `sha256:84b09a10162af819504fe8e269a84d498f1927aee9189af553ff3f8086390afa`); os valores detalhados não estão disponíveis sem credencial. Nenhum PASS parcial é promovido.
+**Current snapshot:** `0d475dee358eab9621e5497db9929b7010ed09eb` (candidato de assurance; candidato funcional/workflow anterior `553078be60c963ffb7cab5c45c130912e5e299b8`, rollback preservado).
+**Current CI:** [#152](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34692643050) — `main@0d475dee` está `in_progress`; nenhum resultado parcial é promovido.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-12T11:43:00Z
+**Observation:** 2026-09-12T12:10:47Z
 
 **Current local execution:** o gate estrito completo do HEAD documental `c1059e6c` executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A suíte crítica local passou `615` testes PostgreSQL e `11` suítes de processo. A reprodução da API clínica canônica passou `2/2` em PostgreSQL real; a validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
 
