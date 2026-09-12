@@ -262,6 +262,16 @@ describe('CI repository guardrails', () => {
     expect(job).not.toContain('run: node packages/db/src/migrate.ts');
   });
 
+  it('fails closed when PostgreSQL or SPA readiness never succeeds', () => {
+    expect((workflow.match(/if \[ "\$ready" -ne 1 \]; then/g) ?? []).length).toBeGreaterThanOrEqual(
+      6
+    );
+    expect(
+      (workflow.match(/echo "PostgreSQL did not become ready"/g) ?? []).length
+    ).toBeGreaterThanOrEqual(4);
+    expect((workflow.match(/echo "❌ SPA did not become ready"/g) ?? []).length).toBe(2);
+  });
+
   it('runs the API OpenAPI contract through the integration test configuration', () => {
     const jobStart = workflow.indexOf('  api-contract-tests:');
     expect(jobStart).toBeGreaterThan(-1);

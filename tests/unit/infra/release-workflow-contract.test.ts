@@ -17,7 +17,11 @@ describe('immutable release workflow contract', () => {
   });
 
   it('publishes all images by SHA with SBOM and provenance', () => {
-    expect(workflow.match(/cvg-his-v4-(api|worker|spa):\$\{\{ github\.event\.workflow_run\.head_sha \}\}/g)).toHaveLength(3);
+    expect(
+      workflow.match(
+        /cvg-his-v4-(api|worker|spa):\$\{\{ github\.event\.workflow_run\.head_sha \}\}/g
+      )
+    ).toHaveLength(3);
     expect(workflow.match(/provenance: mode=max/g)).toHaveLength(3);
     expect(workflow.match(/sbom: true/g)).toHaveLength(3);
     expect(workflow.match(/actions\/attest-build-provenance@[0-9a-f]{40}/g)).toHaveLength(3);
@@ -30,7 +34,9 @@ describe('immutable release workflow contract', () => {
     expect(workflow).toContain('CI_RUN_ID: ${{ github.event.workflow_run.id }}');
     expect(workflow).toContain("RELEASE_REQUIRE_IMAGE_DIGESTS: '1'");
     expect(workflow).toContain('run: pnpm release:manifest');
-    expect(workflow).toContain('path: artifacts/release/');
+    expect(workflow).toContain('path: |');
+    expect(workflow).toContain('            artifacts/release/');
+    expect(workflow).toContain('            artifacts/triple-a/');
     expect(workflow).toContain('if-no-files-found: error');
   });
 
@@ -39,15 +45,21 @@ describe('immutable release workflow contract', () => {
     const gateIndex = workflow.indexOf('name: Run blocking Triple-A release gate');
     expect(attestationIndex).toBeGreaterThan(-1);
     expect(workflow).toContain('run: pnpm release:attestation-evidence');
-    expect(workflow).toContain('TRIPLE_A_IMAGE_ATTESTATION_EVIDENCE: artifacts/release/image-attestation-evidence.json');
+    expect(workflow).toContain(
+      'TRIPLE_A_IMAGE_ATTESTATION_EVIDENCE: artifacts/release/image-attestation-evidence.json'
+    );
     expect(gateIndex).toBeGreaterThan(attestationIndex);
   });
 
   it('cryptographically verifies each published OCI image before the blocking gate', () => {
     expect(workflow.match(/gh attestation verify "oci:\/\/ghcr\.io\//g)).toHaveLength(3);
-    expect(workflow.match(/--format json > artifacts\/release\/[a-z]+-attestation-verification\.json/g)).toHaveLength(3);
+    expect(
+      workflow.match(/--format json > artifacts\/release\/[a-z]+-attestation-verification\.json/g)
+    ).toHaveLength(3);
     expect(workflow.match(/--signer-workflow "\$\{SIGNER_WORKFLOW\}"/g)).toHaveLength(3);
-    expect(workflow.match(/--source-ref main --source-digest "\$\{RELEASE_SHA\}"/g)).toHaveLength(3);
+    expect(workflow.match(/--source-ref main --source-digest "\$\{RELEASE_SHA\}"/g)).toHaveLength(
+      3
+    );
     expect(workflow).toContain('GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}');
   });
 
@@ -70,8 +82,8 @@ describe('immutable release workflow contract', () => {
     const preflight = workflow.slice(preflightIndex, firstPublishIndex);
 
     expect(preflightIndex).toBeGreaterThan(-1);
-    expect(workflow).toContain('TRIPLE_A_PREPUBLICATION: \'1\'');
-    expect(workflow).not.toContain('TRIPLE_A_ADVISORY: \'1\'');
+    expect(workflow).toContain("TRIPLE_A_PREPUBLICATION: '1'");
+    expect(workflow).not.toContain("TRIPLE_A_ADVISORY: '1'");
     expect(workflow).toContain('run: pnpm release:triple-a');
     expect(preflight).toContain('TRIPLE_A_EVIDENCE_COMMIT_SHA: ${{ env.RELEASE_SHA }}');
     expect(preflight).toContain('TRIPLE_A_CI_EVIDENCE: artifacts/release/ci-evidence.json');

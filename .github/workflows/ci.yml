@@ -412,10 +412,18 @@ jobs:
 
       - name: Wait for PostgreSQL
         run: |
+          ready=0
           for i in $(seq 1 30); do
-            pg_isready -h localhost -p 5433 -U postgres && break
+            if pg_isready -h localhost -p 5433 -U postgres; then
+              ready=1
+              break
+            fi
             sleep 1
           done
+          if [ "$ready" -ne 1 ]; then
+            echo "PostgreSQL did not become ready"
+            exit 1
+          fi
 
       - name: Apply migrations
         env:
@@ -679,10 +687,18 @@ jobs:
 
       - name: Wait for PostgreSQL
         run: |
+          ready=0
           for i in $(seq 1 30); do
-            pg_isready -h localhost -p 5433 -U postgres && break
+            if pg_isready -h localhost -p 5433 -U postgres; then
+              ready=1
+              break
+            fi
             sleep 1
           done
+          if [ "$ready" -ne 1 ]; then
+            echo "PostgreSQL did not become ready"
+            exit 1
+          fi
 
       - name: Run integration tests
         env:
@@ -1034,10 +1050,18 @@ jobs:
 
       - name: Wait for PostgreSQL
         run: |
+          ready=0
           for i in $(seq 1 30); do
-            pg_isready -h localhost -p 5434 -U postgres -d cvg_his_e2e && break
+            if pg_isready -h localhost -p 5434 -U postgres -d cvg_his_e2e; then
+              ready=1
+              break
+            fi
             sleep 1
           done
+          if [ "$ready" -ne 1 ]; then
+            echo "PostgreSQL did not become ready"
+            exit 1
+          fi
 
       - name: Apply DB schema and seed
         env:
@@ -1112,13 +1136,19 @@ jobs:
       - name: Wait for SPA health
         run: |
           echo "⏳ Waiting for SPA to be healthy..."
+          ready=0
           for i in $(seq 1 30); do
             if curl -fsS http://localhost:3002/ >/dev/null 2>&1; then
               echo "✅ SPA is healthy (port 3002)"
+              ready=1
               break
             fi
             sleep 2
           done
+          if [ "$ready" -ne 1 ]; then
+            echo "❌ SPA did not become ready"
+            exit 1
+          fi
 
       - name: Run SPA E2E tests
         env:
@@ -1282,10 +1312,18 @@ jobs:
 
       - name: Wait for PostgreSQL
         run: |
+          ready=0
           for i in $(seq 1 30); do
-            pg_isready -h localhost -p 5434 -U postgres -d cvg_his_e2e && break
+            if pg_isready -h localhost -p 5434 -U postgres -d cvg_his_e2e; then
+              ready=1
+              break
+            fi
             sleep 1
           done
+          if [ "$ready" -ne 1 ]; then
+            echo "PostgreSQL did not become ready"
+            exit 1
+          fi
 
       - name: Apply DB schema and seed
         env:
@@ -1353,13 +1391,19 @@ jobs:
       - name: Wait for SPA health
         run: |
           echo "⏳ Waiting for SPA to be healthy..."
+          ready=0
           for i in $(seq 1 30); do
             if curl -fsS http://localhost:3002/ >/dev/null 2>&1; then
               echo "✅ SPA is healthy (port 3002)"
+              ready=1
               break
             fi
             sleep 2
           done
+          if [ "$ready" -ne 1 ]; then
+            echo "❌ SPA did not become ready"
+            exit 1
+          fi
 
       - name: Run visual regression tests
         env:
