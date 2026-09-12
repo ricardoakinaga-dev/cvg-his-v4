@@ -3,14 +3,14 @@
 **Registrado em:** `2026-09-12T15:34:47Z`
 **Repositório:** `https://github.com/ricardoakinaga-dev/cvg-his-v4`
 **Código integrado:** `e605597c73a54e7d4c001fad6c5a83806d22d4ba`
-**Commit documental atual:** `ae30e3df9612aae5e4b281b7b90ebbcca777b614`
+**Commit documental de referência do CI #164:** `ae30e3df9612aae5e4b281b7b90ebbcca777b614`
 
 ## Estado do Git
 
 - Branch ativa: `main`; o código foi publicado por fast-forward, sem force-push.
 - `main` e `origin/main` apontam para o commit funcional que contém os pins imutáveis de deployment, o envelope de eventos e o crosswalk validado; este checkpoint será publicado junto da reconciliação documental, sem force-push.
 - O rollback remoto continua preservado em `origin/fix/state-of-art-ci-assurance@fe5406c23c515585629060e0dc01b91f2d113d65`, ancestral do código integrado.
-- A árvore de trabalho estava limpa antes desta atualização documental; `main` e `origin/main` apontavam para `ae30e3df`.
+- A árvore de trabalho estava limpa antes desta atualização documental; o checkpoint foi publicado por fast-forward a partir de `ae30e3df`.
 
 ## Mudanças validadas
 
@@ -42,4 +42,4 @@ git diff --check
 pnpm test
 ```
 
-Depois, abrir o CI do commit documental `ae30e3df` e conferir o resultado terminal no SHA exato. Investigar a divergência do job remoto `Unit Tests` antes de qualquer nova promoção. Só aceitar merge/release quando todos os jobs obrigatórios e as provas externas exigidas pelo quality bar estiverem presentes.
+Depois, abrir o workflow disparado pelo último commit de `main` e conferir o resultado terminal no SHA exato. Investigar a divergência do job remoto `Unit Tests` antes de qualquer nova promoção. Só aceitar merge/release quando todos os jobs obrigatórios e as provas externas exigidas pelo quality bar estiverem presentes.
