@@ -19,7 +19,7 @@ reproduzível, integrado, seguro, acessível e operável com régua Triplo AAA.
 5. [Quality Bar](engineering/QUALITY_BAR.md) e [matriz de evidências](engineering/REQUIREMENT_EVIDENCE_MATRIX.md) — gates que impedem que uma nota ou um arquivo substitua prova.
 6. [Evidência do critical gate de 07/09](engineering/CRITICAL_GATE_2026-09-07.md) — `PASS_BOUNDED` local: 65/65 arquivos, 594/594 testes e 10/10 processos; limites de target e recertificação preservados.
 7. [Evidência E2E SPA de 07/09](engineering/E2E_SPA_2026-09-07.md) — `PASS_BOUNDED` scoped: 9/9 jornadas contra PostgreSQL/Redis reais, com cleanup sem erro.
-8. [Baseline corrente](triple-a/15-current-baseline.md) e [evidência corrente](triple-a/17-current-execution-evidence.md) — candidato funcional `1e0077a3`, CI #137 verde e limitações explícitas.
+8. [Baseline corrente](triple-a/15-current-baseline.md) e [evidência corrente](triple-a/17-current-execution-evidence.md) — candidato `6010b983`, envelope de eventos e crosswalk validados, com limitações explícitas.
 9. [Crosswalk do prompt congelado](triple-a/18-master-prompt-crosswalk.md) — 61 fases do prompt, 76 linhas da matriz, hashes e aceitação executável.
 10. [Relatório final de assurance](triple-a/FINAL_REPORT.md), [scorecard](triple-a/13-final-scorecard.md) e [execution log](triple-a/EXECUTION_LOG.md).
 

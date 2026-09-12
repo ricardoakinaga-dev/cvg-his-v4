@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `main@6462323f0a8f311f57da201e35e3d66994996391`
-(hardening de logging, workflow e tenant; o candidato anterior é `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c` e o snapshot documental
+**Candidate funcional avaliado:** `main@6010b98320e37139b530cfb2a22b041ca18b6401`
+(envelope de eventos versionado, crosswalk normativo e hardening de logging, workflow e tenant; o candidato anterior é `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c` e o snapshot documental
 anterior é `0d475dee358eab9621e5497db9929b7010ed09eb`)
 
 **Verdict:** **BLOCKED / NOT PROVEN**

@@ -5,7 +5,7 @@
 O baseline autoritativo do candidato atual está em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md):
-`6462323f0a8f311f57da201e35e3d66994996391`, commit de hardening conjunto de logging, workflow e tenant. A documentação corrente sucede o candidato de assurance
+`6010b98320e37139b530cfb2a22b041ca18b6401`, commit de envelope de eventos versionado e crosswalk normativo, que sucede o hardening conjunto de logging, workflow e tenant. A documentação corrente sucede o candidato de assurance
 `0d475dee358eab9621e5497db9929b7010ed09eb`; `HEAD == main == origin/main`,
 com rollback preservado. O gate local estrito histórico permanece `BLOCKED`
 com `55/57/15` (score/critical/open P0) e claim `NOT PROVEN`.

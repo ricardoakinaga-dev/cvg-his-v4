@@ -685,3 +685,13 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - O [CI #159](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34698297705) está `in_progress`; o resultado terminal deve ser conferido na retomada.
 - `pnpm docs:validate` e `git diff --check` passaram antes desta atualização.
 - Estado: **BLOCKED / NOT PROVEN** até existirem todas as evidências externas exigidas pelo quality bar.
+
+
+## 2026-09-12T14:29:00Z — envelope de eventos e crosswalk normativo no candidato `6010b983`
+
+- O candidato `6010b98320e37139b530cfb2a22b041ca18b6401` adiciona envelope versionado ao outbox, valida identidade/tenant/ator/causalidade antes do consumo e inclui a migração compatível `0170_outbox_event_envelope.sql` para registros legados.
+- O catálogo passou a incluir o ciclo completo de handover: `handover.created`, `handover.updated`, `handover.ready`, `handover.acknowledged` e `handover.overdue`. A governança está documentada em `docs/architecture/EVENT_GOVERNANCE.md`.
+- O crosswalk `docs/triple-a/18-master-prompt-crosswalk.json` preserva hashes, linhas e requisitos das 61 fases do `MASTER_PROMPT.md`, cobre as 76 linhas `F00`–`F75` e mantém feature flags como lacuna explícita.
+- Evidência local: módulo de eventos `28/28` testes, crosswalk `5/5` testes, typecheck do módulo, `pnpm validate:prompt-traceability`, `pnpm validate:migration-source`, `pnpm docs:validate` e `git diff --check` passaram.
+- O CI #159 é de candidato anterior `6462323f` e não foi transferido. A publicação do snapshot atual deve gerar uma execução nova no SHA exato; nenhum resultado histórico será promovido.
+- Estado: **BLOCKED / NOT PROVEN**. O envelope e o crosswalk fecham invariantes locais, mas não provam target, UAT, recovery, performance, attestation, governança de branch ou autoridade de release.
