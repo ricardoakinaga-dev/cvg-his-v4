@@ -1,27 +1,29 @@
 # Checkpoint — merge seguro e auditoria
 
-**Registrado em:** `2026-09-12T13:26:00Z`
+**Registrado em:** `2026-09-12T13:48:06Z`
 **Repositório:** `https://github.com/ricardoakinaga-dev/cvg-his-v4`
-**Candidato de código:** `a258b3ceec6a22a0853d1022af40bdd6057a786b`
+**Código integrado:** `72cfcfb86730a63006f2212bd6211c48915bc657`
 
 ## Estado do Git
 
-- Branch ativa: `main`; o candidato anterior publicado era `e6edb6f8`; esta reconciliação será publicada por fast-forward, sem force-push.
-- Rollback remoto preservado em `origin/fix/state-of-art-ci-assurance@fe5406c23c515585629060e0dc01b91f2d113d65`.
-- O snapshot documental anterior apontava para `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c`; esta atualização reancora as evidências no hardening de logging, workflow e tenant.
+- Branch ativa: `main`; o código foi publicado por fast-forward, sem force-push.
+- `main` e `origin/main` apontam para `72cfcfb8`.
+- O rollback remoto continua preservado em `origin/fix/state-of-art-ci-assurance@fe5406c23c515585629060e0dc01b91f2d113d65`, ancestral do código integrado.
+- A árvore de trabalho estava limpa no momento deste checkpoint.
 
 ## Mudanças validadas
 
 - Redaction recursiva e validação de metadata operacional em tarefas; payloads de eventos são redigidos antes da persistência e na resposta HTTP.
 - Falha de `failClaim` não aborta o tick do worker: há métrica `transition_failed`, o estado não é classificado como retry/DLQ sem confirmação e os claims seguintes continuam.
 - `withTenantQueryExplicit` verifica `current_setting('app.current_account_id')` antes de executar o callback; mismatch faz rollback e impede execução.
-- Testes locais: workflows `16/16`, worker completo, tenant-context `9/9`, módulos financial `28/28`, inventory `54/54`, owners `49/49`, services `21/21`, patients `55/55`, commissions `18/18`, API workflow routes `4/4`; OpenAPI `421` paths e contrato clínico válidos.
+- Os doubles de workflow e o hash do manifesto de cobertura foram alinhados à nova verificação de tenant.
+- Validações locais: workflows `16/16`; cobertura `233` arquivos, `2.532` testes, `82,47%` de linhas; guards estáticos `62/62`; worker completo; tenant-context `9/9`; módulos financial `28/28`, inventory `54/54`, owners `49/49`, services `21/21`, patients `55/55`, commissions `18/18`; API workflow routes `4/4`; OpenAPI `421` paths; documentação válida.
 
 ## CI e decisão
 
-O [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) pertence ao commit documental anterior `e6edb6f8` e não é promovido como evidência do candidato `a258b3ce`. O push desta reconciliação deve gerar nova execução terminal com os guards vinculados ao SHA correto.
+O [CI #157](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34697258502) foi disparado para o SHA integrado e estava **em andamento** no momento do checkpoint. O [CI #156](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34696525185), do commit anterior, foi cancelado quando o novo push entrou na fila.
 
-O estado continua **BLOCKED / NOT PROVEN**: o gate local histórico é `55/57/15`, e permanecem sem prova target, recovery/restore, UAT, attestation, governança, deploy/rollback, performance remota e autoridade de release. Não declarar `main green` ou `TRIPLE-A VERIFIED`.
+O estado de release continua **BLOCKED / NOT PROVEN**: permanecem sem prova target, recovery/restore, UAT, attestation, governança, deploy/rollback, performance remota e autoridade de release. Não declarar `main green` ou `TRIPLE-A VERIFIED` antes das evidências externas exigidas pelo quality bar.
 
 ## Retomada após fechar o aplicativo
 
@@ -33,6 +35,4 @@ pnpm docs:validate
 git diff --check
 ```
 
-Depois, abrir o CI disparado por esta reconciliação. Só aceitar merge/release quando
-o SHA exato estiver com todos os jobs obrigatórios verdes e as provas externas
-exigidas pelo quality bar estiverem presentes.
+Depois, abrir o [CI #157](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34697258502) e conferir o resultado terminal no SHA `72cfcfb8`. Só aceitar merge/release quando o SHA exato estiver com todos os jobs obrigatórios verdes e as provas externas exigidas pelo quality bar estiverem presentes.
