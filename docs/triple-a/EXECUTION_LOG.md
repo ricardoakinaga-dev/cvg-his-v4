@@ -554,3 +554,10 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - O [CI #131](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34656290327) executado no SHA `6fe76696240925ad550d05cd38a14a5239f50abc` terminou `success` com `16/16` jobs verdes. SAST, Secret Scan, Typecheck, Dependency Audit, Repository Guards, Lint, OpenAPI, Coverage, Build, API Contract, Performance, E2E SPA, Visual, Unit, Integration e o contrato Windows passaram.
 - Este resultado fecha a verificação remota do commit documental e confirma que a alteração publicada não introduziu regressão nos checks do workflow. Ele não substitui manifest/security evidence de publicação, runtime no target, backup/restore, UAT, governança, attestation ou autoridade de release.
 - O gate local permanece **BLOCKED / NOT PROVEN**, com `55/57/15`, e nenhum claim `TRIPLE-A VERIFIED` é emitido.
+
+
+## 2026-09-12T00:08:01Z — CI terminal do snapshot `3fa9ad78`
+
+- O [CI #132](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34658653993) executado no SHA `3fa9ad7832236e661618436b9cd68c6c145d4d51` terminou `failure` com `15/16` jobs verdes. SAST, Secret Scan, Typecheck, Dependency Audit, Repository Guards, Lint, OpenAPI, Coverage, Build, API Contract, E2E SPA, Visual, Unit, Integration e o contrato Windows passaram; somente `Performance (k6 SLOs)` falhou no [job 103458570170](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34658653993/job/103458570170), nos passos do benchmark/SLO.
+- O CI #131 anterior terminou `success` com `16/16` jobs verdes; os resultados permanecem vinculados aos respectivos SHAs e não são transferidos. Nenhum threshold foi relaxado.
+- O gate local permanece **BLOCKED / NOT PROVEN**, com `55/57/15`, e nenhum claim `TRIPLE-A VERIFIED` é emitido.

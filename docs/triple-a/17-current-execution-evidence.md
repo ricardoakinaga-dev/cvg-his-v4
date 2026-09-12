@@ -1,6 +1,6 @@
 # Evidência de execução corrente — State of Art
 
-Observado em `2026-09-11T23:33:28Z` na reconciliação documental `6fe76696240925ad550d05cd38a14a5239f50abc`; o gate estrito local foi executado no checkout de código equivalente `3054d6388becd9a262b2cd45fadbabc086c1ed75`. O worktree ficou limpo após as execuções; os artefatos de gate permanecem ignorados pelo Git.
+Observado em `2026-09-12T00:08:01Z` na reconciliação documental `3fa9ad7832236e661618436b9cd68c6c145d4d51`; o gate estrito local foi executado no checkout de código equivalente `3054d6388becd9a262b2cd45fadbabc086c1ed75`. O worktree ficou limpo após as execuções; os artefatos de gate permanecem ignorados pelo Git.
 
 ## Validações locais do candidato
 
@@ -31,13 +31,13 @@ que terminou `failure` com o mesmo padrão: os checks de código passaram e
 Nenhuma métrica de artefato inacessível foi inventada e nenhum threshold foi
 relaxado.
 
-Depois da publicação desta reconciliação, o [CI #131](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34656290327) do SHA `6fe76696` terminou `success` com `16/16` jobs verdes, incluindo Performance, Integration, E2E SPA, Unit, Visual, API Contract e o contrato Windows. Esse run fecha a verificação do commit documental; não transfere por si só as evidências externas ainda ausentes do gate de release.
+O [CI #131](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34656290327) do SHA anterior `6fe76696` terminou `success` com `16/16` jobs verdes. O [CI #132](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34658653993) do SHA corrente `3fa9ad78` terminou `failure` com `15/16` jobs verdes; somente Performance falhou no [job 103458570170](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34658653993/job/103458570170). Integration, E2E SPA, Unit, Visual, API Contract e o contrato Windows passaram. Nenhum threshold foi relaxado e o run não transfere por si só as evidências externas ainda ausentes do gate de release.
 
 ## Gate estrito
 
 `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` executou documentação, validações
 estáticas, typecheck, lint, build e a suíte workspace no checkout de código
-equivalente `3054d638`; o commit `6fe76696` só acrescenta esta reconciliação documental. O JSON
+equivalente `3054d638`; os commits `6fe76696` e `3fa9ad78` só acrescentam reconciliação documental. O JSON
 `artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json` registrou `CMD-17 Unit tests`
 como PASS, mas os critérios externos continuam `NOT_RUN`; por isso o gate
 permaneceu bloqueado e não autoriza publicação.

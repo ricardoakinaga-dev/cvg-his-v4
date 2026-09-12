@@ -1,14 +1,14 @@
 # CVG HIS — Triple-A Baseline
 
-## Reconciliação corrente — 2026-09-11T23:33:28Z
+## Reconciliação corrente — 2026-09-12T00:08:01Z
 
-- **Snapshot de evidência:** `6fe76696240925ad550d05cd38a14a5239f50abc`; o gate local equivalente foi executado em `3054d6388becd9a262b2cd45fadbabc086c1ed75`, o código funcional avaliado está em `68600d6a55dcf18bd04c28ff3ee7528cc686efdb` e a branch `origin/fix/state-of-art-ci-assurance` permanece em `fe5406c2` para rollback reversível.
-- **CI:** [#131](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34656290327) terminou `success` com `16/16` jobs verdes no snapshot documental; [#130](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34653388064) e [#129](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34650926250) permanecem históricos com falha somente em Performance. Nenhum threshold foi relaxado.
+- **Snapshot de evidência:** `3fa9ad7832236e661618436b9cd68c6c145d4d51`; o gate local equivalente foi executado em `3054d6388becd9a262b2cd45fadbabc086c1ed75`, o código funcional avaliado está em `68600d6a55dcf18bd04c28ff3ee7528cc686efdb` e a branch `origin/fix/state-of-art-ci-assurance` permanece em `fe5406c2` para rollback reversível.
+- **CI:** [#132](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34658653993) terminou `failure` com `15/16` jobs verdes; somente Performance falhou. O [#131](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34656290327) anterior terminou verde, e #130/#129 permanecem históricos com falha somente em Performance. Nenhum threshold foi relaxado.
 - **Estado:** **BLOCKED / NOT PROVEN**. Nenhum score histórico é transferido e nenhum claim é permitido.
 - **Gate estrito:** `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` no checkout equivalente `3054d638` retornou `BLOCKED`, score `55`, critical `57`, `15` P0 abertos e `publication_allowed=false`; a avaliação derivada do quality bar foi `31/33/7`.
 - **Local:** `pnpm test` passou; a execução crítica local passou `66/615` testes PostgreSQL, `11/11` processos críticos com Redis pinned e `2/2` jornadas clínicas canônicas. Docker e o binário Helm continuam indisponíveis nesta sessão; PostgreSQL e Redis locais foram usados explicitamente.
 - **Mudanças de controle:** o candidato mantém o guard de identidade crítica dentro do orçamento congelado e preserva a política fail-closed de produtores de tarefas de workflow, a prova canônica de internação, métricas clínicas agregadas e relações ARIA estáveis.
-- **Performance:** os CIs #129 e #130 falharam somente no job k6; o CI #131 passou com Performance verde. Os artefatos detalhados dos failures exigem acesso autenticado. A análise independente não comprovou causa determinística de código; o próximo ciclo deve coletar pressão de pool/DB/CPU e breakdown por check.
+- **Performance:** os CIs #129, #130 e #132 falharam somente no job k6; o CI #131 passou com Performance verde. Os artefatos detalhados dos failures exigem acesso autenticado. A análise independente não comprovou causa determinística de código; o próximo ciclo deve coletar pressão de pool/DB/CPU e breakdown por check.
 - **Externo ainda aberto:** branch governance, Windows nativo reproduzido, RLS/runtime no alvo, workflow PostgreSQL, worker crash recovery, recovery/soak, restore/RPO/RTO, deploy/rollback, attestation, UAT e autoridade de release.
 
 As seções seguintes preservam a fotografia histórica e não devem ser lidas como evidência do SHA atual sem uma execução nova vinculada ao commit.
