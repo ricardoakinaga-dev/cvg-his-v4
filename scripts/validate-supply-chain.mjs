@@ -68,6 +68,145 @@ function scanImageReference(
   return true;
 }
 
+const releaseImageArchives = ['/tmp/api-image.tar', '/tmp/worker-image.tar', '/tmp/spa-image.tar'];
+
+function workflowSteps(content) {
+  return content.split(/(?=^\s{6}- name:)/m).filter((section) => /^\s{6}- name:/.test(section));
+}
+
+export function inspectReleaseWorkflowPolicy(
+  content,
+  path = '.github/workflows/release-artifacts.yml'
+) {
+  const findings = [];
+  const steps = workflowSteps(content);
+  const prepublicationGateIndex = content.indexOf('name: Run pre-publication candidate assurance');
+  const blockingGateIndex = content.indexOf('name: Run blocking Triple-A release gate');
+  const scannerSteps = steps.filter((step) =>
+    /uses:\s*aquasecurity\/trivy-action@[0-9a-f]{40}\b/.test(step)
+  );
+  const publicationMatches = [
+    ...content.matchAll(/^\s*push:\s*true\s*$/gm),
+    ...content.matchAll(
+      /^\s*(?:docker\s+(?:image\s+)?push|docker\s+buildx\s+build\b.*--push|oras\s+(?:cp|copy)\b).*$/gm
+    )
+  ].sort((left, right) => (left.index ?? 0) - (right.index ?? 0));
+  const firstPublicationIndex = publicationMatches[0]?.index ?? -1;
+
+  if (prepublicationGateIndex < 0) {
+    findings.push(`${path}: release workflow has no blocking pre-publication assurance gate`);
+  }
+  if (blockingGateIndex < 0) {
+    findings.push(`${path}: release workflow has no blocking final Triple-A gate`);
+  }
+
+  const quarantineReferences =
+    content.match(
+      /^\s*(?:API|WORKER|SPA)_CANDIDATE_IMAGE:\s*ghcr\.io\/.*:quarantine-\$\{\{ github\.run_id \}\}-\$\{\{ github\.event\.workflow_run\.head_sha \}\}\s*$/gm
+    ) ?? [];
+  if (quarantineReferences.length !== releaseImageArchives.length) {
+    findings.push(`${path}: all image candidates must use run-scoped quarantine tags`);
+  }
+
+  const digestOnlyRepositories =
+    content.match(
+      /^\s*(?:API|WORKER|SPA)_IMAGE:\s*ghcr\.io\/\$\{\{ github\.repository_owner \}\}\/cvg-his-v4-(?:api|worker|spa)\s*$/gm
+    ) ?? [];
+  if (digestOnlyRepositories.length !== releaseImageArchives.length) {
+    findings.push(`${path}: release image references must be repository names without tags`);
+  }
+
+  if (scannerSteps.length !== releaseImageArchives.length) {
+    findings.push(
+      `${path}: release workflow must scan exactly ${releaseImageArchives.length} image candidates with a SHA-pinned Trivy action`
+    );
+  }
+
+  for (const archive of releaseImageArchives) {
+    if (!content.includes(`outputs: type=oci,dest=${archive}`)) {
+      findings.push(
+        `${path}: release image candidate ${archive} is not built as a local OCI archive`
+      );
+    }
+    const scannerStep = scannerSteps.find((step) => step.includes(`input: ${archive}`));
+    if (!scannerStep) {
+      findings.push(
+        `${path}: release image candidate ${archive} is not scanned before publication`
+      );
+      continue;
+    }
+    if (!/^\s*scanners:\s*vuln\s*$/m.test(scannerStep)) {
+      findings.push(
+        `${path}: vulnerability scanner for ${archive} does not explicitly enable vuln scanning`
+      );
+    }
+    if (!/^\s*severity:\s*(?:HIGH,CRITICAL|CRITICAL,HIGH)\s*$/m.test(scannerStep)) {
+      findings.push(
+        `${path}: vulnerability scanner for ${archive} does not block HIGH and CRITICAL findings`
+      );
+    }
+    if (!/^\s*exit-code:\s*['"]?1['"]?\s*$/m.test(scannerStep)) {
+      findings.push(`${path}: vulnerability scanner for ${archive} is not fail-closed`);
+    }
+    if (!/^\s*ignore-unfixed:\s*['"]?false['"]?\s*$/m.test(scannerStep)) {
+      findings.push(
+        `${path}: vulnerability scanner for ${archive} ignores an unspecified vulnerability set`
+      );
+    }
+  }
+
+  if (/^\s*push:\s*true\s*$/m.test(content)) {
+    findings.push(`${path}: release images must not be rebuilt and pushed after local scanning`);
+  }
+
+  if (firstPublicationIndex < 0) {
+    findings.push(`${path}: release workflow has no explicit image publication step`);
+  } else {
+    const lastScannerIndex = Math.max(
+      ...scannerSteps.map((step) => content.indexOf(step) + step.length),
+      -1
+    );
+    if (prepublicationGateIndex < 0 || firstPublicationIndex < prepublicationGateIndex) {
+      findings.push(`${path}: image publication occurs before the pre-publication assurance gate`);
+    }
+    if (lastScannerIndex < 0 || firstPublicationIndex < lastScannerIndex) {
+      findings.push(`${path}: image publication occurs before all vulnerability scans complete`);
+    }
+  }
+
+  if (
+    /^\s*(?:run:\s*)?(?:oras\s+(?:cp|copy)\b.*"\$\{(?:API|WORKER|SPA)_IMAGE\}"|(?:oras|docker)\s+tag\b).*$/m.test(
+      content
+    )
+  ) {
+    findings.push(`${path}: release repository references must never be published as mutable tags`);
+  }
+
+  for (const artifactStepName of [
+    'name: Generate complete Triple-A evidence package',
+    'name: Publish certified release manifest and evidence'
+  ]) {
+    const artifactStep = steps.find((step) => step.includes(artifactStepName));
+    if (!artifactStep || content.indexOf(artifactStep) < blockingGateIndex) {
+      findings.push(
+        `${path}: ${artifactStepName.slice(6)} occurs before the blocking Triple-A gate`
+      );
+    } else if (/^\s*if:\s*always\(\)\s*$/m.test(artifactStep)) {
+      findings.push(
+        `${path}: ${artifactStepName.slice(6)} may expose a release manifest after a failed gate`
+      );
+    }
+  }
+
+  if (!/oras\s+(?:cp|copy)\s+--recursive\s+--from-oci-layout/.test(content)) {
+    findings.push(
+      `${path}: vetted OCI candidates are not published recursively from their scanned layouts`
+    );
+  }
+
+  return findings;
+}
+
 export function inspectSupplyChain({ rootDirectory = root } = {}) {
   const findings = [];
   const workflowRoot = resolve(rootDirectory, '.github/workflows');
@@ -95,6 +234,9 @@ export function inspectSupplyChain({ rootDirectory = root } = {}) {
     for (const match of content.matchAll(/^\s*image:\s*([^\s#]+)(?:\s+#.*)?$/gm)) {
       workflowImageCount += 1;
       scanImageReference(findings, match[1], path, 'workflow', rootDirectory);
+    }
+    if (relativeWorkflow === '.github/workflows/release-artifacts.yml') {
+      findings.push(...inspectReleaseWorkflowPolicy(content, relativeWorkflow));
     }
   }
 

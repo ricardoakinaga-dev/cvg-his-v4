@@ -11,7 +11,7 @@ info:
 
     ## Common Headers
     - `x-correlation-id`: Optional correlation ID for request tracing (auto-generated if not provided)
-    - `x-tenant-id`: Multi-tenant account identifier (default: system account)
+    - `x-tenant-id`: Accepted only by explicitly trusted internal tooling; public requests derive tenant/account scope from the authenticated session or API key
     - `x-branch-id`: Optional branch/facility identifier
 
     ## Error Response Format
@@ -996,6 +996,7 @@ paths:
         Invalidates the current session and clears the HttpOnly refresh cookie.
         A refreshToken body field is accepted only for non-browser legacy clients.
       tags: [Authentication]
+      security: []
       requestBody:
         content:
           application/json:
@@ -1041,6 +1042,88 @@ paths:
         '401':
           description: Not authenticated
 
+  /auth/sessions:
+    get:
+      operationId: listAuthSessions
+      summary: List the current user's sessions
+      tags: [Authentication]
+      responses:
+        '200':
+          description: Active and historical sessions visible to the authenticated user
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Session'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout-all-others:
+    post:
+      operationId: revokeOtherAuthSessions
+      summary: Revoke every session except the current session
+      tags: [Authentication]
+      responses:
+        '200':
+          description: Other sessions revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [revokedSessions, keptSessionId]
+                properties:
+                  revokedSessions:
+                    type: integer
+                    minimum: 0
+                  keptSessionId:
+                    type: string
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/sessions/{sessionId}/revoke:
+    post:
+      operationId: revokeAuthSession
+      summary: Revoke one session owned by the current user
+      tags: [Authentication]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session revocation result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [revoked, sessionId]
+                properties:
+                  revoked:
+                    type: boolean
+                  sessionId:
+                    type: string
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /auth/login/mfa:
     post:
       operationId: authMfaComplete
@@ -1056,7 +1139,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [userId, token]
+              required: [userId, token, challengeId]
               properties:
                 userId:
                   type: string
@@ -1254,6 +1337,266 @@ paths:
                     type: array
                     items:
                       type: string
+
+  /auth/mfa/webauthn/setup:
+    get:
+      operationId: beginWebAuthnRegistration
+      summary: Create WebAuthn credential registration options
+      tags: [Authentication, MFA]
+      parameters:
+        - name: x-rp-id
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Relying-party identifier; defaults to localhost
+      responses:
+        '200':
+          description: Registration options and server-side challenge
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebAuthnOptionsResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: WebAuthn feature is disabled
+        '501':
+          description: WebAuthn service is not configured
+    post:
+      operationId: completeWebAuthnRegistration
+      summary: Verify and register a WebAuthn credential
+      tags: [Authentication, MFA]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [credentialId, attestationObject, clientDataJSON]
+              properties:
+                credentialId:
+                  type: string
+                attestationObject:
+                  type: string
+                clientDataJSON:
+                  type: string
+      responses:
+        '200':
+          description: Credential registered
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, credentialId]
+                properties:
+                  success:
+                    type: boolean
+                  credentialId:
+                    type: string
+        '400':
+          description: Registration challenge is missing or expired
+        '401':
+          description: Not authenticated
+        '403':
+          description: WebAuthn feature is disabled
+        '501':
+          description: WebAuthn service is not configured
+
+  /auth/mfa/webauthn/authenticate:
+    post:
+      operationId: beginWebAuthnAuthentication
+      summary: Create WebAuthn assertion options
+      tags: [Authentication, MFA]
+      parameters:
+        - name: x-rp-id
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Relying-party identifier; defaults to localhost
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                credentialId:
+                  type: string
+      responses:
+        '200':
+          description: Assertion options and server-side challenge
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebAuthnOptionsResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: WebAuthn feature is disabled
+        '501':
+          description: WebAuthn service is not configured
+
+  /auth/mfa/webauthn/assert:
+    post:
+      operationId: verifyWebAuthnAssertion
+      summary: Verify a WebAuthn assertion
+      tags: [Authentication, MFA]
+      parameters:
+        - name: x-rp-id
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Relying-party identifier; defaults to localhost
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [credentialId, authenticatorData, clientDataJSON, signature]
+              properties:
+                credentialId:
+                  type: string
+                authenticatorData:
+                  type: string
+                clientDataJSON:
+                  type: string
+                signature:
+                  type: string
+                userHandle:
+                  type: string
+      responses:
+        '200':
+          description: Assertion verified
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+        '400':
+          description: Assertion challenge is missing or expired
+        '401':
+          description: Not authenticated or assertion verification failed
+        '403':
+          description: WebAuthn feature is disabled
+        '501':
+          description: WebAuthn service is not configured
+
+  /auth/oidc/login:
+    get:
+      operationId: beginOidcLogin
+      summary: Start OIDC Authorization Code flow with PKCE
+      tags: [Authentication]
+      security: []
+      parameters:
+        - name: x-oidc-redirect-uri
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uri
+          description: Redirect URI stored with this authorization attempt
+      responses:
+        '302':
+          description: Redirect to the configured identity provider
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+                format: uri
+        '403':
+          description: OIDC login feature is disabled
+        '501':
+          description: OIDC is not configured
+
+  /auth/oidc/callback:
+    get:
+      operationId: completeOidcLogin
+      summary: Exchange an OIDC authorization code using the stored PKCE state
+      tags: [Authentication]
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error_description
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tokens returned by the identity provider and optional user information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OidcCallbackResponse'
+        '400':
+          description: Provider error, invalid callback parameters, or invalid or expired state
+        '403':
+          description: OIDC login feature is disabled
+        '501':
+          description: OIDC is not configured
+        '502':
+          description: Identity-provider token exchange failed
+
+  /auth/oidc/logout:
+    post:
+      operationId: oidcLogout
+      summary: Build the configured OIDC end-session redirect
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idTokenHint:
+                  type: string
+      responses:
+        '200':
+          description: No provider end-session endpoint is configured
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '302':
+          description: Redirect to the configured identity-provider end-session endpoint
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+                format: uri
+        '501':
+          description: OIDC is not configured
 
   /lgpd/consent:
     get:
@@ -17870,6 +18213,7 @@ components:
 
     Session:
       type: object
+      required: [sessionId, userId, accountId, createdAt, expiresAt, authTime, refreshExpiresAt, active]
       properties:
         sessionId:
           type: string
@@ -17880,9 +18224,55 @@ components:
         accountId:
           type: string
           format: uuid
+        createdAt:
+          type: string
+          format: date-time
         expiresAt:
           type: string
           format: date-time
+        authTime:
+          type: string
+          format: date-time
+        refreshExpiresAt:
+          type: string
+          format: date-time
+        active:
+          type: boolean
+
+    WebAuthnOptionsResponse:
+      type: object
+      required: [publicKeyOptions, challenge]
+      properties:
+        publicKeyOptions:
+          type: object
+          additionalProperties: true
+        challenge:
+          type: string
+
+    OidcCallbackResponse:
+      type: object
+      required: [tokens, userInfo]
+      properties:
+        tokens:
+          type: object
+          required: [accessToken, tokenType, expiresIn, scope]
+          properties:
+            accessToken:
+              type: string
+            idToken:
+              type: string
+            refreshToken:
+              type: string
+            tokenType:
+              type: string
+            expiresIn:
+              type: integer
+            scope:
+              type: string
+        userInfo:
+          type: object
+          nullable: true
+          additionalProperties: true
 
     AccessInfo:
       type: object

@@ -11,16 +11,118 @@
  * 6. No duplicate operationIds
  * 7. All paths have valid HTTP methods
  * 8. Schema references resolve to defined schemas
+ * 9. Critical auth runtime routes and OpenAPI operations match bidirectionally
  *
- * Usage: node scripts/validate-openapi.js [path]
+ * Usage: node scripts/validate-openapi.js [openapi-path] [auth-routes-source-path]
  */
 
 import { readFileSync } from 'fs';
+import ts from 'typescript';
 import { parse } from 'yaml';
 
 const VALID_HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options'];
+const AUTH_ROUTES_SOURCE_PATH = 'apps/api/src/routes/auth-routes.ts';
+
+function isCriticalAuthPath(routePath) {
+  return (
+    routePath === '/auth/session' ||
+    routePath === '/auth/sessions' ||
+    routePath === '/auth/logout-all-others' ||
+    routePath.startsWith('/auth/sessions/') ||
+    routePath.startsWith('/auth/mfa/webauthn/') ||
+    routePath.startsWith('/auth/oidc/')
+  );
+}
+
+function extractCriticalRuntimeAuthOperations(source) {
+  const operations = new Set();
+  const sourceFile = ts.createSourceFile(
+    AUTH_ROUTES_SOURCE_PATH,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  const revokeMatchers = new Set();
+
+  function flattenConjunction(expression) {
+    if (ts.isBinaryExpression(expression) && expression.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
+      return [...flattenConjunction(expression.left), ...flattenConjunction(expression.right)];
+    }
+    return [expression];
+  }
+
+  function equalityValue(expression, leftText) {
+    if (!ts.isBinaryExpression(expression) || expression.operatorToken.kind !== ts.SyntaxKind.EqualsEqualsEqualsToken) {
+      return undefined;
+    }
+    const left = expression.left.getText(sourceFile);
+    const right = expression.right;
+    if (left === leftText && ts.isStringLiteral(right)) return right.text;
+    if (expression.right.getText(sourceFile) === leftText && ts.isStringLiteral(expression.left)) {
+      return expression.left.text;
+    }
+    return undefined;
+  }
+
+  function visit(node, unreachable = false) {
+    if (!unreachable && ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+      const initializer = node.initializer.getText(sourceFile);
+      if (/^pathname\.match\(\/\^\\\/auth\\\/sessions\\\/\(\[\^\/\]\+\)\\\/revoke\$\/\)$/.test(initializer)) {
+        revokeMatchers.add(node.name.text);
+      }
+    }
+
+    if (ts.isIfStatement(node)) {
+      const operands = flattenConjunction(node.expression);
+      const isTriviallyUnreachable = operands.some(
+        (operand) => operand.kind === ts.SyntaxKind.FalseKeyword
+      );
+      if (!unreachable && !isTriviallyUnreachable) {
+        const routePath = operands.map((operand) => equalityValue(operand, 'pathname')).find(Boolean);
+        const method = operands
+          .map((operand) => equalityValue(operand, 'request.method'))
+          .find((value) => VALID_HTTP_METHODS.includes(value?.toLowerCase()));
+
+        if (routePath && method && isCriticalAuthPath(routePath)) {
+          operations.add(`${method} ${routePath}`);
+        }
+
+        const matcher = operands.find(
+          (operand) => ts.isIdentifier(operand) && revokeMatchers.has(operand.text)
+        );
+        if (matcher && method === 'POST') {
+          operations.add('POST /auth/sessions/{sessionId}/revoke');
+        }
+      }
+
+      ts.forEachChild(node.expression, (child) => visit(child, unreachable));
+      visit(node.thenStatement, unreachable || isTriviallyUnreachable);
+      if (node.elseStatement) visit(node.elseStatement, unreachable);
+      return;
+    }
+
+    ts.forEachChild(node, (child) => visit(child, unreachable));
+  }
+
+  visit(sourceFile);
+
+  return operations;
+}
+
+function extractCriticalOpenApiAuthOperations(doc) {
+  const operations = new Set();
+  for (const [routePath, pathItem] of Object.entries(doc.paths || {})) {
+    if (!isCriticalAuthPath(routePath) || !pathItem || typeof pathItem !== 'object') continue;
+    for (const method of VALID_HTTP_METHODS) {
+      if (pathItem[method]) operations.add(`${method.toUpperCase()} ${routePath}`);
+    }
+  }
+  return operations;
+}
 
 const path = process.argv[2] || 'apps/api/src/openapi.yaml';
+const authRoutesSourcePath = process.argv[3] || AUTH_ROUTES_SOURCE_PATH;
 
 let errors = [];
 
@@ -105,6 +207,22 @@ try {
   for (const ref of allRefs) {
     if (!definedSchemas.has(ref)) {
       errors.push(`Referenced schema "${ref}" is not defined in components.schemas`);
+    }
+  }
+
+  // 8. Critical auth runtime/OpenAPI coverage. Keep this sourced from the handler so a newly
+  // added session, WebAuthn, or OIDC route cannot silently remain undocumented.
+  const authRoutesSource = readFileSync(authRoutesSourcePath, 'utf-8');
+  const runtimeAuthOperations = extractCriticalRuntimeAuthOperations(authRoutesSource);
+  const documentedAuthOperations = extractCriticalOpenApiAuthOperations(doc);
+  for (const operation of runtimeAuthOperations) {
+    if (!documentedAuthOperations.has(operation)) {
+      errors.push(`Critical runtime auth operation is missing from OpenAPI: ${operation}`);
+    }
+  }
+  for (const operation of documentedAuthOperations) {
+    if (!runtimeAuthOperations.has(operation)) {
+      errors.push(`Critical OpenAPI auth operation has no runtime route: ${operation}`);
     }
   }
 

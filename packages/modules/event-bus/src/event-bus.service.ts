@@ -679,6 +679,7 @@ export class EventBusService {
       throw new Error('Outbox payload account does not match event account');
     }
     const eventId = randomUUID();
+    const createdAt = nowIso();
     const envelope = buildEventEnvelopeMetadata({
       eventId,
       eventType: input.eventType,
@@ -688,7 +689,7 @@ export class EventBusService {
       actor: input.actor,
       causationId: input.causationId,
       schemaVersion: input.schemaVersion,
-      occurredAt: input.occurredAt
+      occurredAt: input.occurredAt ?? createdAt
     });
     const event: OutboxEvent = {
       id: eventId,
@@ -704,10 +705,10 @@ export class EventBusService {
       status: 'pending',
       attempts: 0,
       maxAttempts: input.maxAttempts ?? 3,
-      scheduledAt: input.scheduledAt ?? nowIso(),
+      scheduledAt: input.scheduledAt ?? createdAt,
       processedAt: null,
       error: null,
-      createdAt: nowIso()
+      createdAt
     };
 
     await this.#repository.create(event);

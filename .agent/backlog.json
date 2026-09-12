@@ -40,6 +40,12 @@
       "evidence_refs": [
         "scripts/run-triple-a-release-gate.mjs",
         "scripts/generate-image-attestation-evidence.mjs",
+        ".github/workflows/release-artifacts.yml",
+        "scripts/validate-supply-chain.mjs",
+        "tests/unit/infra/release-workflow-contract.test.ts",
+        "docs/2026-09-12-auditoria-repositorio-cvg-his-v4.md",
+        "docs/2026-09-12-roadmap-erp-state-of-art-triplo-aaa.md",
+        "docs/2026-09-12-backlog-correcao-gaps-triplo-aaa.md",
         "tests/unit/infra/triple-a-release-gate.test.ts",
         "docs/triple-a/12-release-gate.md",
         "docs/triple-a/15-current-baseline.md",
@@ -49,11 +55,11 @@
         "docs/triple-a/16-requirement-traceability.md"
       ],
       "next_action": {
-        "id": "TRIPLE-A-RELEASE-CONTROL:RECONCILE-CI-116",
+        "id": "TRIPLE-A-RELEASE-CONTROL:INTEGRATE-REMEDIATION-20260912",
         "kind": "VERIFY",
-        "summary": "Reconciliar o CI exato 34609488994 do HEAD e8d7eaec: 15/16 jobs passaram e Performance falhou; preservar o bloqueio sem inventar métricas.",
-        "target": ".github/workflows/ci.yml; docs/triple-a/15-current-baseline.md; docs/triple-a/FINAL_REPORT.md; .agent/verification.jsonl",
-        "completion_signal": "Run 34609488994 permanece vinculado ao HEAD com Performance registrada como falha observável; release continua BLOCKED até CI verde e provas externas, target, UAT e autoridade existirem."
+        "summary": "Integrar e verificar a primeira onda local de remediação em OpenAPI/auth, supply chain, pacote visual e higiene do typecheck, preservando o bloqueio das provas externas.",
+        "target": ".agent/plans/repository-state-of-art-remediation-execplan.md; docs/2026-09-12-auditoria-repositorio-cvg-his-v4.md; .github/workflows/release-artifacts.yml; apps/api/src/openapi.yaml",
+        "completion_signal": "Checks focais e crítica independente aprovam os slices locais; release permanece BLOCKED até existir candidato commitado com CI exato e as provas target, UAT, performance, recuperação e autoridade."
       }
     },
     {

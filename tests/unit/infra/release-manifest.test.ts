@@ -22,9 +22,9 @@ describe('release manifest', () => {
       pipelineUrl: 'https://example.test/run/1',
       requireImageDigests: true,
       images: [
-        { component: 'api', reference: 'ghcr.io/cvg/api:sha', digest },
-        { component: 'worker', reference: 'ghcr.io/cvg/worker:sha', digest },
-        { component: 'spa', reference: 'ghcr.io/cvg/spa:sha', digest },
+        { component: 'api', reference: 'ghcr.io/cvg/api', digest },
+        { component: 'worker', reference: 'ghcr.io/cvg/worker', digest },
+        { component: 'spa', reference: 'ghcr.io/cvg/spa', digest },
       ],
     });
 
@@ -89,7 +89,7 @@ describe('release manifest', () => {
         requireImageDigests: true,
         images: ['api', 'worker', 'spa'].map((component) => ({
           component,
-          reference: `ghcr.io/cvg/${component}:sha`,
+          reference: `ghcr.io/cvg/${component}`,
           digest,
         })),
       });
@@ -105,7 +105,7 @@ describe('release manifest', () => {
         requireImageDigests: true,
         images: ['api', 'worker', 'spa'].map((component) => ({
           component,
-          reference: `ghcr.io/cvg/${component}:sha`,
+          reference: `ghcr.io/cvg/${component}`,
           digest,
         })),
       });

@@ -368,11 +368,17 @@ function imageManifestByComponent(manifest) {
 function immutableImageReference(image) {
   const reference = image?.reference;
   const digest = image?.digest;
-  if (typeof reference !== 'string' || typeof digest !== 'string') return null;
+  if (
+    typeof reference !== 'string'
+    || reference.length === 0
+    || reference.includes('@')
+    || typeof digest !== 'string'
+    || !/^sha256:[0-9a-f]{64}$/.test(digest)
+  ) return null;
   const lastColon = reference.lastIndexOf(':');
   const lastSlash = reference.lastIndexOf('/');
-  if (lastColon <= lastSlash) return null;
-  return `${reference.slice(0, lastColon)}@${digest}`;
+  const repository = lastColon > lastSlash ? reference.slice(0, lastColon) : reference;
+  return `${repository}@${digest}`;
 }
 
 function readReleaseManifest(outputDir) {

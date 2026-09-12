@@ -12,6 +12,8 @@ Esta é a fonte ativa para decisão, execução e acompanhamento do programa. O
 objetivo é elevar o ERP de uma base extensa em construção para um candidato
 reproduzível, integrado, seguro, acessível e operável com régua Triplo AAA.
 
+**Snapshot corrente de 12/09/2026:** [auditoria do repositório](2026-09-12-auditoria-repositorio-cvg-his-v4.md), [roadmap de remediação](2026-09-12-roadmap-erp-state-of-art-triplo-aaa.md) e [backlog de correção dos GAPs](2026-09-12-backlog-correcao-gaps-triplo-aaa.md). O candidato `31fde3c4` está em **69/100, FAIL / não elegível a Triplo AAA**; os documentos de 06/09 permanecem como programa-base e histórico de decomposição.
+
 1. [Relatório de estado atual](2026-09-06-relatorio-estado-atual-erp-cvg-his-v4.md) — 67 itens pontuados, baseline **75/100, NO-GO**, com revalidação técnica de 07/09 no adendo.
 2. [Plano executivo State of Art / Triplo AAA](2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md) — objetivos, investimento, gates, governança e decisões necessárias.
 3. [Roadmap State of Art / Triplo AAA](2026-09-06-roadmap-erp-state-of-art-triplo-aaa.md) — fases relativas a T0, caminho crítico, marcos e trajetória de maturidade.

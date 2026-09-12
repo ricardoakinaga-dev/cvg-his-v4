@@ -1490,6 +1490,100 @@ test('handleAuthRoutes GET /auth/oidc/callback rejects tampered stateless state'
   assert.equal(response.bodyJson<{ code: string }>().code, 'INVALID_STATE');
 });
 
+test('handleAuthRoutes GET /auth/oidc/callback normalizes OAuth tokens and fetches userinfo', async () => {
+  const response = new MockResponse();
+  const oidcStateStore = createInMemoryOidcStateStore();
+  const state = oidcStateStore.create({
+    codeChallenge: 'code-challenge',
+    codeVerifier: 'code-verifier',
+    redirectUri: 'https://app.example.com/auth/callback',
+    createdAt: Date.now()
+  });
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ url: string; authorization?: string }> = [];
+
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input);
+    const headers = new Headers(init?.headers);
+    requests.push({ url, authorization: headers.get('authorization') ?? undefined });
+    if (url.endsWith('/token')) {
+      return new Response(
+        JSON.stringify({
+          access_token: 'provider-access-token',
+          id_token: 'provider-id-token',
+          token_type: 'Bearer',
+          expires_in: 3600,
+          scope: 'openid profile email'
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      );
+    }
+    return new Response(JSON.stringify({ sub: 'provider-user', email: 'user@example.com' }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    });
+  }) as typeof fetch;
+
+  try {
+    const handled = await handleAuthRoutes(
+      '/auth/oidc/callback',
+      {
+        method: 'GET',
+        url: `/auth/oidc/callback?code=authorization-code&state=${encodeURIComponent(state)}`,
+        headers: { host: 'localhost' },
+        socket: { remoteAddress: '127.0.0.1' }
+      } as never,
+      response as never,
+      'corr-auth-oidc-callback-success',
+      {
+        auth: {} as never,
+        authRateLimiter: {} as never,
+        logger: { error: () => {} },
+        appName: 'test-app',
+        featureFlags: { authOidcEnabled: true, authWebauthnEnabled: false },
+        webauthnChallenges: new Map(),
+        webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+        oidcConfig: {
+          issuer: 'https://issuer.example.com',
+          clientId: 'client-id',
+          clientSecret: 'client-secret',
+          redirectUri: 'https://app.example.com/auth/callback',
+          scope: 'openid profile email',
+          authorizationEndpoint: 'https://issuer.example.com/auth',
+          tokenEndpoint: 'https://issuer.example.com/token',
+          userinfoEndpoint: 'https://issuer.example.com/userinfo'
+        },
+        oidcStateStore,
+        oidcStateTtlMs: 60_000,
+        requirePrincipal: () => createPrincipal(),
+        appendAudit: () => {}
+      }
+    );
+
+    assert.equal(handled, true);
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.bodyJson(), {
+      tokens: {
+        accessToken: 'provider-access-token',
+        idToken: 'provider-id-token',
+        tokenType: 'Bearer',
+        expiresIn: 3600,
+        scope: 'openid profile email'
+      },
+      userInfo: { sub: 'provider-user', email: 'user@example.com' }
+    });
+    assert.deepEqual(requests, [
+      { url: 'https://issuer.example.com/token', authorization: undefined },
+      {
+        url: 'https://issuer.example.com/userinfo',
+        authorization: 'Bearer provider-access-token'
+      }
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('handleAuthRoutes POST /auth/mfa/webauthn/setup rejects expired registration challenge', async () => {
   const principal = createPrincipal();
   const response = new MockResponse();

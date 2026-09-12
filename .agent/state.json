@@ -15,12 +15,15 @@
   "risk_level": "CRITICAL",
   "blast_radius": "CROSS_SYSTEM",
   "status": "BLOCKED",
-  "active_execplan": ".agent/plans/external-assurance-closure-execplan.md",
+  "active_execplan": ".agent/plans/repository-state-of-art-remediation-execplan.md",
   "active_task": "TRIPLE-A-RELEASE-CONTROL",
   "verification_state": "PARTIAL",
-  "repository_state": "main and origin/main are synchronized at e8d7eaec35004c9492db78920c8652c8171bfd1e; exact HEAD CI run 34609488994 is terminal failure with 15/16 jobs and Performance failing at Run k6 benchmark/Check SLO results; bounded local evidence and focused accessibility/gate tests pass without replacing target evidence; rollback branch origin/fix/state-of-art-ci-assurance remains preserved",
+  "repository_state": "the 2026-09-12 remediation wave is committed in the candidate containing this state; focused OpenAPI/auth, supply-chain, usability-package, design-system and workspace checks pass locally, while exact-candidate remote CI and target evidence remain pending and non-transferable",
   "instruction_scope_refs": [
-    ".agent/plans/external-assurance-closure-execplan.md",
+    ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "docs/2026-09-12-auditoria-repositorio-cvg-his-v4.md",
+    "docs/2026-09-12-roadmap-erp-state-of-art-triplo-aaa.md",
+    "docs/2026-09-12-backlog-correcao-gaps-triplo-aaa.md",
     "docs/triple-a/MASTER_PROMPT_EXTERNAL_CLOSURE.md",
     "docs/triple-a/MASTER_PROMPT.md",
     "docs/triple-a/14-external-evidence-baseline.md",
@@ -34,13 +37,14 @@
     "docs/triple-a/16-requirement-traceability.md"
   ],
   "last_gate_record": null,
-  "last_event_id": "EVT-TRIPLE-A-RELEASE-CONTROL-CI116-TERMINAL-20260911",
-  "state_revision": 23,
+  "last_event_id": "EVT-TRIPLE-A-REMEDIATION-RECOVERY-20260912",
+  "state_revision": 24,
   "next_gate": "VERIFIED",
-  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:RECONCILE-CI-116",
+  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:INTEGRATE-REMEDIATION-20260912",
   "blocked_by": [
-    "Exact HEAD CI run 34609488994 is terminal failure with 15/16 jobs; Performance (k6 SLOs) failed at Run k6 benchmark and Check SLO results",
-    "Current target evidence, UAT, soak24/72h, branch governance, image attestations, release authority and the strict 97/95/zero-P0 quality bar remain unproven"
+    "The remediation wave is uncommitted and has no exact-candidate CI, registry, image-attestation or deployment evidence",
+    "PostgreSQL-backed visual execution is unavailable locally at 127.0.0.1:5433, so browser screenshots and Axe evidence were not produced",
+    "Current target evidence, UAT, k6, restore/game-day, soak24/72h, branch governance, release authority and the strict 97/95/zero-P0 quality bar remain unproven"
   ],
   "human_approval_required": [
     "production deployment or rollback",
@@ -49,5 +53,5 @@
     "destructive backup/restore/chaos drills on shared infrastructure",
     "final release authority and Triple-A certification"
   ],
-  "updated_at": "2026-09-11T14:53:11Z"
+  "updated_at": "2026-09-12T18:31:11Z"
 }

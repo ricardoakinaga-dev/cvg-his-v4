@@ -16,6 +16,9 @@ const execFileAsync = promisify(execFile);
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const candidateSha = '1234567890abcdef1234567890abcdef12345678';
 const hospitalCandidateSha = '844596fc55d9e189a2e7be19ecac7b170a6acced';
+const inheritedCandidateSha = 'b60743d83586a780dbd2c3afbc2e1c1283ae4519';
+const missingInventoryCandidateSha = 'd88272ca2b0db7b8eafa90cb3918127a8908b935';
+const unexpectedInventoryCandidateSha = '79b8074622f0f012c248099ce231711b0244e894';
 
 function identity(prefix) {
   return { name: `${prefix} Silva`, corporateId: `${prefix.toLowerCase()}-1042` };
@@ -147,6 +150,68 @@ test('generates a 15-snapshot visual review package from immutable Git blobs', a
   assert.equal(new Set(manifest.items.map((item) => item.after.sha256)).size, 15);
   assert.match(html, /Pacote de revisão visual hospitalar/);
   assert.match(html, /Classificação e decisão formal/);
+});
+
+test('generates a review package when the candidate inherits unchanged baselines', async () => {
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), 'cvg-visual-review-inherited-'));
+  await execFileAsync(
+    process.execPath,
+    [
+      'scripts/generate-usability-visual-review-package.mjs',
+      inheritedCandidateSha,
+      temporaryDirectory,
+      hospitalCandidateSha
+    ],
+    { cwd: rootDir, env: process.env }
+  );
+  const manifest = JSON.parse(await readFile(join(temporaryDirectory, 'manifest.json'), 'utf8'));
+  assert.equal(manifest.baseSha, hospitalCandidateSha);
+  assert.equal(manifest.candidateSha, inheritedCandidateSha);
+  assert.equal(manifest.snapshotCount, 15);
+  assert.deepEqual(
+    [...new Set(manifest.items.map((item) => item.change))],
+    ['inherited-unchanged']
+  );
+  assert.ok(manifest.items.every((item) => item.before.sha256 === item.after.sha256));
+  assert.ok(
+    manifest.items.every(
+      (item) =>
+        item.before.width === item.after.width && item.before.height === item.after.height
+    )
+  );
+});
+
+test('rejects a candidate missing required visual baselines', async () => {
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), 'cvg-visual-review-missing-'));
+  await assert.rejects(
+    execFileAsync(
+      process.execPath,
+      [
+        'scripts/generate-usability-visual-review-package.mjs',
+        missingInventoryCandidateSha,
+        temporaryDirectory,
+        missingInventoryCandidateSha
+      ],
+      { cwd: rootDir, env: process.env }
+    ),
+    /Candidate required visual inventory mismatch/
+  );
+});
+
+test('rejects unexpected visual snapshot changes outside the review contract', async () => {
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), 'cvg-visual-review-unexpected-'));
+  await assert.rejects(
+    execFileAsync(
+      process.execPath,
+      [
+        'scripts/generate-usability-visual-review-package.mjs',
+        unexpectedInventoryCandidateSha,
+        temporaryDirectory
+      ],
+      { cwd: rootDir, env: process.env }
+    ),
+    /Changed visual inventory mismatch/
+  );
 });
 
 test('rejects a candidate SHA mismatch', () => {

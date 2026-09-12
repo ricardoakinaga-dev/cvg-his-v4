@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
-import { parse } from 'yaml';
-import { parse as parseYaml } from 'yaml';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join, resolve } from 'path';
+import { spawnSync } from 'child_process';
+import { parse, stringify } from 'yaml';
 
 /**
  * OpenAPI Runtime Contract Tests
@@ -97,7 +99,10 @@ describe('OpenAPI Contract Tests', () => {
 
       function extractRefs(obj: unknown, refs: string[] = []): string[] {
         if (!obj || typeof obj !== 'object') return refs;
-        if ((obj as Record<string, unknown>).$ref && typeof (obj as Record<string, unknown>).$ref === 'string') {
+        if (
+          (obj as Record<string, unknown>).$ref &&
+          typeof (obj as Record<string, unknown>).$ref === 'string'
+        ) {
           const ref = (obj as Record<string, unknown>).$ref as string;
           const match = ref.match(/#\/components\/schemas\/([A-Za-z0-9_]+)/);
           if (match) refs.push(match[1]);
@@ -135,13 +140,109 @@ describe('OpenAPI Contract Tests', () => {
     it('should have at least one security scheme when auth endpoints exist', () => {
       const spec = loadSpec();
       const authPaths = Object.entries(spec.paths).filter(([, pathObj]) => {
-        return Object.keys(pathObj).some((m) =>
-          ['post', 'put', 'patch', 'delete'].includes(m)
-        );
+        return Object.keys(pathObj).some((m) => ['post', 'put', 'patch', 'delete'].includes(m));
       });
 
       if (authPaths.length > 0) {
         expect(spec.components?.securitySchemes).toBeDefined();
+      }
+    });
+
+    it('documents every critical session, WebAuthn, and OIDC runtime operation', () => {
+      const spec = loadSpec();
+      const expectedOperations = [
+        ['get', '/auth/session'],
+        ['get', '/auth/sessions'],
+        ['post', '/auth/logout-all-others'],
+        ['post', '/auth/sessions/{sessionId}/revoke'],
+        ['get', '/auth/mfa/webauthn/setup'],
+        ['post', '/auth/mfa/webauthn/setup'],
+        ['post', '/auth/mfa/webauthn/authenticate'],
+        ['post', '/auth/mfa/webauthn/assert'],
+        ['get', '/auth/oidc/login'],
+        ['get', '/auth/oidc/callback'],
+        ['post', '/auth/oidc/logout']
+      ] as const;
+
+      for (const [method, routePath] of expectedOperations) {
+        expect(
+          spec.paths[routePath]?.[method],
+          `${method.toUpperCase()} ${routePath}`
+        ).toBeDefined();
+      }
+
+      for (const [method, routePath] of [
+        ['get', '/auth/oidc/login'],
+        ['get', '/auth/oidc/callback'],
+        ['post', '/auth/oidc/logout']
+      ] as const) {
+        expect(spec.paths[routePath][method].security).toEqual([]);
+      }
+      expect(spec.paths['/auth/mfa/webauthn/setup'].get.security).toBeUndefined();
+      expect(spec.paths['/auth/sessions'].get.security).toBeUndefined();
+    });
+
+    it('rejects a known-bad spec with a critical runtime auth operation missing', () => {
+      const spec = loadSpec();
+      delete spec.paths['/auth/oidc/callback'];
+      const fixtureDirectory = mkdtempSync(join(tmpdir(), 'cvg-openapi-known-bad-'));
+      const fixturePath = join(fixtureDirectory, 'openapi.yaml');
+
+      try {
+        writeFileSync(fixturePath, stringify(spec));
+        const result = spawnSync(
+          process.execPath,
+          [resolve('scripts/validate-openapi.js'), fixturePath],
+          { cwd: process.cwd(), encoding: 'utf8' }
+        );
+
+        expect(result.status).toBe(1);
+        expect(`${result.stdout}${result.stderr}`).toContain(
+          'Critical runtime auth operation is missing from OpenAPI: GET /auth/oidc/callback'
+        );
+      } finally {
+        rmSync(fixtureDirectory, { recursive: true, force: true });
+      }
+    });
+
+    it.each([
+      {
+        name: 'a leading false guard',
+        replacement: (condition: string) => `// ${condition}\n  if (false && pathname === '/auth/oidc/callback' && request.method === 'GET') {`,
+        suffix: ''
+      },
+      {
+        name: 'a trailing false guard',
+        replacement: (condition: string) => `// ${condition}\n  if (pathname === '/auth/oidc/callback' && request.method === 'GET' && false) {`,
+        suffix: ''
+      },
+      {
+        name: 'a false ancestor guard',
+        replacement: (condition: string) => `// ${condition}\n  if (false) {\n  ${condition}`,
+        suffix: '\n}'
+      }
+    ])('does not count commented routes or $name as runtime operations', ({ replacement, suffix }) => {
+      const fixtureDirectory = mkdtempSync(join(tmpdir(), 'cvg-auth-routes-known-bad-'));
+      const fixturePath = join(fixtureDirectory, 'auth-routes.ts');
+      const realCondition = "if (pathname === '/auth/oidc/callback' && request.method === 'GET') {";
+      const source = readFileSync('apps/api/src/routes/auth-routes.ts', 'utf8');
+      const falseGuardedSource = `${source.replace(realCondition, replacement(realCondition))}${suffix}`;
+
+      expect(falseGuardedSource).not.toBe(source);
+      try {
+        writeFileSync(fixturePath, falseGuardedSource);
+        const result = spawnSync(
+          process.execPath,
+          [resolve('scripts/validate-openapi.js'), resolve(OPENAPI_SPEC_PATH), fixturePath],
+          { cwd: process.cwd(), encoding: 'utf8' }
+        );
+
+        expect(result.status).toBe(1);
+        expect(`${result.stdout}${result.stderr}`).toContain(
+          'Critical OpenAPI auth operation has no runtime route: GET /auth/oidc/callback'
+        );
+      } finally {
+        rmSync(fixtureDirectory, { recursive: true, force: true });
       }
     });
 
@@ -186,7 +287,7 @@ describe('OpenAPI Contract Tests', () => {
       const response = await fetch(`${runtimeUrl}/openapi.json`);
       expect(response.ok).toBe(true);
 
-      const runtimeSpec = await response.json() as Record<string, unknown>;
+      const runtimeSpec = (await response.json()) as Record<string, unknown>;
 
       // Compare key fields
       expect(runtimeSpec.openapi).toBe(staticSpec.openapi);

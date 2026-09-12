@@ -56,14 +56,14 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
-function compareExactInventory(actual, expected) {
+function compareExactInventory(actual, expected, label = 'Visual inventory') {
   const actualSet = new Set(actual);
   const expectedSet = new Set(expected);
   const missing = expected.filter((item) => !actualSet.has(item));
   const unexpected = actual.filter((item) => !expectedSet.has(item));
   if (missing.length || unexpected.length || actualSet.size !== actual.length) {
     throw new Error(
-      `Visual inventory mismatch. Missing: ${missing.join(', ') || 'none'}. ` +
+      `${label} mismatch. Missing: ${missing.join(', ') || 'none'}. ` +
         `Unexpected/duplicate: ${unexpected.join(', ') || 'none'}.`
     );
   }
@@ -78,10 +78,27 @@ const outputDirectory = resolve(
   outputInput || join('artifacts', 'playwright', candidateSha, 'visual-review')
 );
 
+const candidateSnapshots = gitText([
+  'ls-tree',
+  '-r',
+  '--name-only',
+  candidateSha,
+  '--',
+  snapshotRoot
+])
+  .split('\n')
+  .filter((path) => path.endsWith('.png'))
+  .map((path) => basename(path));
+compareExactInventory(
+  candidateSnapshots.filter((snapshot) => REQUIRED_VISUAL_SNAPSHOTS.includes(snapshot)),
+  REQUIRED_VISUAL_SNAPSHOTS,
+  'Candidate required visual inventory'
+);
+
 const changedPaths = gitText([
   'diff',
   '--name-only',
-  '--diff-filter=AM',
+  '--diff-filter=ACDMRT',
   baseSha,
   candidateSha,
   '--',
@@ -90,7 +107,15 @@ const changedPaths = gitText([
   .split('\n')
   .filter(Boolean);
 const changedSnapshots = changedPaths.map((path) => basename(path));
-compareExactInventory(changedSnapshots, REQUIRED_VISUAL_SNAPSHOTS);
+const unexpectedChangedSnapshots = changedSnapshots.filter(
+  (snapshot) => !REQUIRED_VISUAL_SNAPSHOTS.includes(snapshot)
+);
+if (unexpectedChangedSnapshots.length || new Set(changedSnapshots).size !== changedSnapshots.length) {
+  throw new Error(
+    `Changed visual inventory mismatch. Unexpected/duplicate: ${unexpectedChangedSnapshots.join(', ') || 'duplicate entry'}.`
+  );
+}
+const changedSnapshotSet = new Set(changedSnapshots);
 
 await Promise.all([
   mkdir(join(outputDirectory, 'before'), { recursive: true }),
@@ -111,6 +136,7 @@ for (const snapshot of REQUIRED_VISUAL_SNAPSHOTS) {
   items.push({
     snapshot,
     path,
+    change: changedSnapshotSet.has(snapshot) ? 'changed' : 'inherited-unchanged',
     classification: 'pending-product-ux',
     decision: 'pending',
     before: { sha256: sha256(before), ...beforeDimensions },
@@ -133,6 +159,7 @@ const cards = items
     (item, index) => `<article class="review-card" id="snapshot-${index + 1}">
   <h2>${index + 1}. ${escapeHtml(item.snapshot)}</h2>
   <p><code>${escapeHtml(item.path)}</code></p>
+  <p>Estado no intervalo: <strong>${escapeHtml(item.change)}</strong></p>
   <div class="comparison">
     <figure><figcaption>Antes — ${escapeHtml(baseSha.slice(0, 12))}</figcaption><img src="before/${encodeURIComponent(item.snapshot)}" alt="Baseline anterior de ${escapeHtml(item.snapshot)}"></figure>
     <figure><figcaption>Depois — ${escapeHtml(candidateSha.slice(0, 12))}</figcaption><img src="after/${encodeURIComponent(item.snapshot)}" alt="Baseline candidata de ${escapeHtml(item.snapshot)}"></figure>

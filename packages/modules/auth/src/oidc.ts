@@ -20,6 +20,7 @@ export interface OIDCConfig {
   readonly userinfoEndpoint?: string;
   readonly endSessionEndpoint?: string;
   readonly jwksUri?: string;
+  readonly requestTimeoutMs?: number;
 }
 
 export interface PKCEPair {
@@ -45,6 +46,28 @@ export interface OIDCTokenResponse {
   readonly scope: string;
 }
 
+export interface OIDCTokenEndpointResponse {
+  readonly access_token: string;
+  readonly id_token?: string;
+  readonly refresh_token?: string;
+  readonly token_type: string;
+  readonly expires_in: number;
+  readonly scope?: string;
+}
+
+export type OIDCTokenExchangeErrorCode = 'TOKEN_ENDPOINT_ERROR' | 'INVALID_TOKEN_RESPONSE';
+
+export class OIDCTokenExchangeError extends Error {
+  override readonly name = 'OIDCTokenExchangeError';
+
+  constructor(
+    readonly code: OIDCTokenExchangeErrorCode,
+    message: string
+  ) {
+    super(message);
+  }
+}
+
 export interface OIDCUserInfo {
   readonly sub: string;
   readonly email?: string;
@@ -54,6 +77,27 @@ export interface OIDCUserInfo {
   readonly familyName?: string;
   readonly picture?: string;
   readonly locale?: string;
+}
+
+interface OIDCUserInfoEndpointResponse {
+  readonly sub: string;
+  readonly email?: string;
+  readonly email_verified?: boolean;
+  readonly name?: string;
+  readonly given_name?: string;
+  readonly family_name?: string;
+  readonly picture?: string;
+  readonly locale?: string;
+}
+
+const DEFAULT_OIDC_REQUEST_TIMEOUT_MS = 5_000;
+
+function providerRequestSignal(config: OIDCConfig): AbortSignal {
+  const timeoutMs = config.requestTimeoutMs ?? DEFAULT_OIDC_REQUEST_TIMEOUT_MS;
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 30_000) {
+    throw new Error('OIDC request timeout must be an integer between 1 and 30000 milliseconds');
+  }
+  return AbortSignal.timeout(timeoutMs);
 }
 
 /**
@@ -70,11 +114,7 @@ export function generatePKCE(): PKCEPair {
 /**
  * Build OIDC authorization URL.
  */
-export function buildAuthorizationUrl(
-  config: OIDCConfig,
-  state: string,
-  pkce: PKCEPair
-): string {
+export function buildAuthorizationUrl(config: OIDCConfig, state: string, pkce: PKCEPair): string {
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: config.clientId,
@@ -111,15 +151,71 @@ export async function exchangeCodeForTokens(
       'Content-Type': 'application/x-www-form-urlencoded',
       Accept: 'application/json'
     },
-    body: body.toString()
+    body: body.toString(),
+    signal: providerRequestSignal(config)
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Token exchange failed: ${response.status} ${error}`);
+    throw new OIDCTokenExchangeError(
+      'TOKEN_ENDPOINT_ERROR',
+      `OIDC token endpoint rejected the token exchange (${response.status})`
+    );
   }
 
-  return response.json() as Promise<OIDCTokenResponse>;
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new OIDCTokenExchangeError(
+      'INVALID_TOKEN_RESPONSE',
+      'OIDC token endpoint returned an invalid JSON response'
+    );
+  }
+
+  return normalizeTokenEndpointResponse(payload, config.scope);
+}
+
+function normalizeTokenEndpointResponse(
+  payload: unknown,
+  requestedScope: string
+): OIDCTokenResponse {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw invalidTokenResponse();
+  }
+
+  const wire = payload as Partial<Record<keyof OIDCTokenEndpointResponse, unknown>>;
+  if (
+    !isNonEmptyString(wire.access_token) ||
+    !isNonEmptyString(wire.token_type) ||
+    typeof wire.expires_in !== 'number' ||
+    !Number.isInteger(wire.expires_in) ||
+    wire.expires_in < 0 ||
+    (wire.scope !== undefined && typeof wire.scope !== 'string') ||
+    (wire.id_token !== undefined && typeof wire.id_token !== 'string') ||
+    (wire.refresh_token !== undefined && typeof wire.refresh_token !== 'string')
+  ) {
+    throw invalidTokenResponse();
+  }
+
+  return {
+    accessToken: wire.access_token,
+    tokenType: wire.token_type,
+    expiresIn: wire.expires_in,
+    scope: wire.scope ?? requestedScope,
+    ...(wire.id_token === undefined ? {} : { idToken: wire.id_token }),
+    ...(wire.refresh_token === undefined ? {} : { refreshToken: wire.refresh_token })
+  };
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0;
+}
+
+function invalidTokenResponse(): OIDCTokenExchangeError {
+  return new OIDCTokenExchangeError(
+    'INVALID_TOKEN_RESPONSE',
+    'OIDC token endpoint returned an invalid token response'
+  );
 }
 
 /**
@@ -137,14 +233,47 @@ export async function fetchUserInfo(
     headers: {
       Authorization: `Bearer ${accessToken}`,
       Accept: 'application/json'
-    }
+    },
+    signal: providerRequestSignal(config)
   });
 
   if (!response.ok) {
     throw new Error(`UserInfo fetch failed: ${response.status}`);
   }
 
-  return response.json() as Promise<OIDCUserInfo>;
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new Error('OIDC UserInfo endpoint returned an invalid JSON response');
+  }
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('OIDC UserInfo endpoint returned an invalid response');
+  }
+  const wire = payload as Partial<Record<keyof OIDCUserInfoEndpointResponse, unknown>>;
+  if (
+    !isNonEmptyString(wire.sub)
+    || (wire.email !== undefined && typeof wire.email !== 'string')
+    || (wire.email_verified !== undefined && typeof wire.email_verified !== 'boolean')
+    || (wire.name !== undefined && typeof wire.name !== 'string')
+    || (wire.given_name !== undefined && typeof wire.given_name !== 'string')
+    || (wire.family_name !== undefined && typeof wire.family_name !== 'string')
+    || (wire.picture !== undefined && typeof wire.picture !== 'string')
+    || (wire.locale !== undefined && typeof wire.locale !== 'string')
+  ) {
+    throw new Error('OIDC UserInfo endpoint returned an invalid response');
+  }
+
+  return {
+    sub: wire.sub,
+    ...(wire.email === undefined ? {} : { email: wire.email }),
+    ...(wire.email_verified === undefined ? {} : { emailVerified: wire.email_verified }),
+    ...(wire.name === undefined ? {} : { name: wire.name }),
+    ...(wire.given_name === undefined ? {} : { givenName: wire.given_name }),
+    ...(wire.family_name === undefined ? {} : { familyName: wire.family_name }),
+    ...(wire.picture === undefined ? {} : { picture: wire.picture }),
+    ...(wire.locale === undefined ? {} : { locale: wire.locale })
+  };
 }
 
 /**
