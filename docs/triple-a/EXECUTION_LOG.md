@@ -645,3 +645,11 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - A única falha foi `Performance (k6 SLOs)`: `Run k6 benchmark` terminou com exit `99` e `Check SLO results` com exit `1`. O artefato `performance-k6-report` tem digest `sha256:d2ca8e3123e7b98125dde6fd5222fac42901ebf3ca80ab215ecc603bc68438ab`.
 - O guard aceitou a deriva documental e confirmou que a superfície executável do descendente permanece vinculada ao candidato `0d475dee`. Nenhum resultado parcial ou histórico foi promovido como PASS.
 - Estado: **BLOCKED / NOT PROVEN**. O gate local `55/57/15`, target, recovery, governança, UAT, attestation, deploy/rollback e autoridade de release continuam sem evidência suficiente.
+
+
+## 2026-09-12T13:02:52Z — hardening de logging e reancoragem
+
+- O candidato `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c` adiciona redaction recursiva de chaves sensíveis, mensagens, erros, objetos aninhados e ciclos.
+- `@cvg-his-v2/shared-logging` passou `16/16` testes; Prettier e `git diff --check` passaram.
+- O [CI #154](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695196945) foi disparado antes da reconciliação documental e não foi promovido. Os snapshots correntes foram reancorados no SHA de código e esta atualização deve gerar uma nova execução terminal.
+- O veredito continua `BLOCKED / NOT PROVEN`; nenhum threshold ou resultado histórico foi transferido.

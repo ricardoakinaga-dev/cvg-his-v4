@@ -4,28 +4,16 @@
 > snapshots históricos. Para o candidato vigente, use
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
-> [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA de código/workflow é
-> `0d475dee358eab9621e5497db9929b7010ed09eb`, com o candidato funcional/workflow anterior
-> `553078be60c963ffb7cab5c45c130912e5e299b8`. O CI #153 no descendente
-> documental `9955b8b5` terminou `failure` com `15/16` jobs verdes; somente
-> Performance/k6 falhou. O artefato `performance-k6-report` tem digest
-> `sha256:d2ca8e3123e7b98125dde6fd5222fac42901ebf3ca80ab215ecc603bc68438ab`. O CI #149 no SHA de código/workflow foi bloqueado em
-> `Repository Guards` porque os snapshots ainda apontavam para o candidato
-> anterior; essa documentação foi então reconciliada. O CI #144 pertence ao pai
-> documental `da5dd244` e falhou em `Repository Guards` porque o checkout raso
-> ocultou a ancestralidade do snapshot; o candidato atual corrige esse contrato
-> com `fetch-depth: 0`. O CI #145, no descendente documental `697c6efa`, fornece a
-> execução remota anterior e terminou `failure` no passo de API E2E clínico
-> canônico. O CI #147 no descendente documental `8273ecb5` terminou `success`
-> com `16/16` jobs verdes, incluindo a prova canônica isolada; o CI #148 no
-> descendente `f9cc660a` terminou `failure` somente em Performance/k6
-> (`Run k6 benchmark` exit `99`, `Check SLO results` exit `1`). Nenhum threshold
-> foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
+> [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA de código atual é
+> `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c`, com o snapshot documental anterior
+> `0d475dee358eab9621e5497db9929b7010ed09eb`. O [CI #154](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695196945) foi disparado
+> antes desta reconciliação, estava em andamento e não é promovido como prova.
+> Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `0d475dee358eab9621e5497db9929b7010ed09eb` (candidato de assurance; candidato funcional/workflow anterior `553078be60c963ffb7cab5c45c130912e5e299b8`, rollback preservado).
-**Current CI:** [#153](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34693263252) — `main@9955b8b5` terminou `failure` com `15/16` jobs verdes; somente `Performance (k6 SLOs)` falhou. O artefato `performance-k6-report` tem digest `sha256:d2ca8e3123e7b98125dde6fd5222fac42901ebf3ca80ab215ecc603bc68438ab`.
+**Current snapshot:** `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c` (hardening de logging; rollback preservado).
+**Current CI:** [CI #154](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695196945) — execução disparada antes da reancoragem, sem resultado terminal aceito; nova execução será vinculada a este snapshot.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-12T12:55:00Z
+**Observation:** 2026-09-12T13:02:52Z
 
 **Current local execution:** o gate estrito completo do HEAD documental `c1059e6c` executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A suíte crítica local passou `615` testes PostgreSQL e `11` suítes de processo. A reprodução da API clínica canônica passou `2/2` em PostgreSQL real; a validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
 
@@ -35,6 +23,7 @@ The previous external-assurance sections below are historical snapshots. Their S
 
 ## Current candidate implementation delta
 
+- O logger compartilhado agora redige recursivamente chaves sensíveis, mensagens, erros estruturados, objetos aninhados e referências circulares; `@cvg-his-v2/shared-logging` passou 16/16 testes locais.
 - The prepublication gate now evaluates an explicit phase and marks criteria that require a published target as `NOT_APPLICABLE`; they are excluded from the phase denominator and critical/P0 counts without weakening the postpublication quality bar.
 - The release workflow passes an exact-SHA CI evidence envelope to the gate and verifies the immutable CI run before prepublication evaluation.
 - OCI identity parsing rejects registry/tag substitution, SearchSelect exposes stable combobox/listbox relationships, and k6 artifacts include sanitized runner provenance.

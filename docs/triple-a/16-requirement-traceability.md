@@ -7,24 +7,17 @@ pelo próprio quality bar. Os dois documentos são preservados deliberadamente:
 o primeiro contém a missão expandida desta execução e o segundo mantém a
 proveniência da régua congelada sem misturar candidatos ou alterar thresholds.
 A tabela mantém o escopo completo. “NOT PROVEN” significa que a aceitação
-integral da fase não foi demonstrada no candidato corrente; não significa
-que o código esteja ausente. Evidência local, CI e alvo são avaliados separadamente.
-Os registros históricos abaixo mencionam candidatos anteriores. A fotografia
-vigente é o candidato de assurance `0d475dee358eab9621e5497db9929b7010ed09eb`,
-com candidato funcional/workflow anterior `553078be60c963ffb7cab5c45c130912e5e299b8`
-e documentação corrente no SHA de assurance, que alterou somente
-`docs/triple-a`, gate local estrito `55/57/15` no descendente documental
-`c1059e6c` e suíte crítica local `615 + 11` aprovada. O CI #151 no descendente
-documental `fecb70ca` passou os guards e as suítes remotas, mas falhou
-exclusivamente em Performance/k6. O CI #153 no descendente documental
-`9955b8b5` passou os guards e terminou com `15/16` jobs verdes; Performance/k6
-falhou. Não há CI remoto terminal verde para o candidato de assurance atual. O CI #149 no SHA `553078be` falhou em
-`Repository Guards` porque os snapshots ainda apontavam para o candidato
-anterior; a reconciliação documental posterior corrigiu essa identidade. O
-checkout do workflow agora usa `fetch-depth: 0` para provar a ancestralidade.
-Essas provas continuam abaixo da aceitação integral porque faltam CI terminal,
-target, governança, UAT e autoridade de release. A [fotografia atual](./15-current-baseline.md)
-contém SHA, CI e lacunas medidas.
+integral da fase não foi demonstrada no candidato corrente; não significa que o
+código esteja ausente. Evidência local, CI e alvo são avaliados separadamente.
+A fotografia vigente é o candidato de código
+`f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c`, com hardening de logging estruturado;
+a documentação sucede o candidato de assurance `0d475dee` e o candidato
+funcional/workflow `553078be60c963ffb7cab5c45c130912e5e299b8`. O [CI #154](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695196945)
+foi disparado antes da reancoragem e não possui resultado terminal aceito. O
+último CI terminal histórico passou os guards e falhou exclusivamente em
+Performance/k6; não há CI verde atual, target, governança, UAT ou autoridade de
+release comprovados. A [fotografia atual](./15-current-baseline.md) contém SHA,
+CI e lacunas medidas.
 
 ## Reconciliação histórica do candidato funcional — 2026-09-12
 

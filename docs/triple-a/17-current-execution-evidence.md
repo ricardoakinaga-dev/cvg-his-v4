@@ -1,8 +1,8 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato de assurance observado em 2026-09-12T12:55:00Z
+## Candidato de código observado em 2026-09-12T13:02:52Z
 
-- SHA de código e documentação: `0d475dee358eab9621e5497db9929b7010ed09eb` (guard de snapshot e reconciliação documental); o candidato funcional/workflow anterior é `553078be60c963ffb7cab5c45c130912e5e299b8`.
+- SHA de código e documentação: `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c` (hardening de logging estruturado); a documentação reancorada sucede o candidato de assurance `0d475dee358eab9621e5497db9929b7010ed09eb` e o candidato funcional/workflow anterior é `553078be60c963ffb7cab5c45c130912e5e299b8`.
 - `HEAD`, `main` e `origin/main` coincidem; rollback preservado em
   `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
@@ -23,7 +23,10 @@ Esses resultados são bounded ao ambiente local. A execução k6 usou um banco
 descartável local e não é promovida para target, UAT, branch protection ou
 autoridade de release.
 
-## CI remoto do mesmo SHA
+## CI remoto e reancoragem
+
+A execução [CI #154](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695196945) foi disparada pelo SHA `f2e2da4c` antes da reconciliação dos snapshots e não é usada como prova. Esta atualização documental deve disparar uma nova execução com os guards vinculados ao candidato correto.
+
 
 O [CI #143](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34678150409)
 é o run do candidato funcional pai `82ff6eec` e terminou `failure` com `15/16`
@@ -73,12 +76,9 @@ alternaram entre verde e falha em runners diferentes; nenhum threshold foi
 relaxado.
 
 O [CI #153](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34693263252)
-é a execução terminal do descendente documental `9955b8b5`, cuja superfície
-executável é a do candidato `0d475dee`. Terminou `failure` com `15/16` jobs
-verdes; somente `Performance (k6 SLOs)` falhou em `Run k6 benchmark` (exit `99`)
-e `Check SLO results` (exit `1`). O artefato `performance-k6-report` tem digest
-`sha256:d2ca8e3123e7b98125dde6fd5222fac42901ebf3ca80ab215ecc603bc68438ab`.
-Nenhuma evidência parcial ou de outro SHA é transferida para este candidato.
+permanece como histórico do descendente documental anterior `9955b8b5`; terminou
+`failure` com `15/16` jobs verdes e falha exclusiva de Performance/k6. Nenhuma
+evidência parcial ou de outro SHA é transferida para `f2e2da4c`.
 
 ## Recovery e target
 

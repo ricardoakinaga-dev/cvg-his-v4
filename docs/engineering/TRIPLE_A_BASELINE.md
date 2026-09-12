@@ -1,17 +1,16 @@
 # CVG HIS — Triple-A Baseline
 
-## Snapshot de assurance vigente — 2026-09-12T12:55:00Z
+## Snapshot de assurance vigente — 2026-09-12T13:02:52Z
 
 O snapshot corrente está reconciliado em
 [`docs/triple-a/15-current-baseline.md`](../triple-a/15-current-baseline.md):
-`0d475dee358eab9621e5497db9929b7010ed09eb`. O candidato funcional/workflow
-anterior é `553078be60c963ffb7cab5c45c130912e5e299b8`; o `HEAD` atual em `main`
-e `origin/main` é o SHA de assurance. O CI #153 no descendente documental
-`9955b8b5` terminou com `15/16` jobs e falha exclusiva em Performance/k6; o gate local completo
-registrado no descendente documental `c1059e6c` ficou `BLOCKED / NOT PROVEN`,
-score `55`, critical `57` e `15` P0. Este documento mantém as fotografias
-históricas abaixo como contexto e não as promove como prova de target ou
-release do candidato.
+`f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c`, que endurece a redaction recursiva
+do logging estruturado. A documentação sucede o candidato de assurance
+`0d475dee`; `HEAD`, `main` e `origin/main` coincidem e o rollback remoto está
+preservado. O [CI #154](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695196945) foi disparado antes desta reancoragem e não é prova
+terminal do snapshot. O gate local completo histórico permanece `BLOCKED / NOT
+PROVEN`, score `55`, critical `57` e `15` P0; target, recovery, UAT, attestation,
+governança e autoridade de release continuam sem prova.
 
 ## Reconciliação corrente — 2026-09-12T00:08:01Z
 

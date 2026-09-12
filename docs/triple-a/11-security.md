@@ -11,9 +11,18 @@ Fontes: [`docs/security/SECURITY_TEST_MATRIX.md`](../security/SECURITY_TEST_MATR
 `packages/security`, `packages/tenant-context`, `packages/secrets`,
 `.semgrep.yml` e `.secretlintrc.json`.
 
-Os jobs públicos do CI `#135` passaram. A prova de roles/RLS no target,
+O último CI terminal histórico confirmou os jobs de segurança, mas a execução
+vinculada ao novo snapshot ainda está pendente. A prova de roles/RLS no target,
 attestation, revisão humana independente, providers e governança de branch
 continua ausente; nenhum claim `TRIPLE-A VERIFIED` é autorizado.
+
+## Atualização de logging — 2026-09-12T13:02:52Z
+
+No SHA `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c`, o logger compartilhado passou
+a redigir recursivamente chaves sensíveis e seus valores, mensagens com tokens,
+e-mails e CPF, erros estruturados, objetos aninhados, valores profundos e
+referências circulares. Os testes do pacote `@cvg-his-v2/shared-logging`
+passaram `16/16`; essa prova é local e não substitui CI, target ou attestation.
 
 ## Registro obrigatório do prompt
 

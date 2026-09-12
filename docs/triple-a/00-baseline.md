@@ -1,36 +1,21 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-12T12:55:00Z
+## Snapshot vigente — 2026-09-12T13:02:52Z
 
 O baseline autoritativo do candidato atual está em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md):
-`0d475dee358eab9621e5497db9929b7010ed09eb` (candidato de assurance; o candidato
-funcional/workflow anterior é `553078be60c963ffb7cab5c45c130912e5e299b8`), com a documentação
-corrente neste SHA; `HEAD == main == origin/main`,
-gate local estrito `BLOCKED` com `55/57/15` (score/critical/open P0) e claim
-`NOT PROVEN`. O CI #143 do candidato funcional pai `82ff6eec` terminou
-`failure` somente em Performance/k6; os outros 15 jobs, incluindo E2E SPA,
-passaram, mas esse resultado não é transferido para o novo commit de governança.
-O CI #144 do commit documental pai `da5dd244` registrou falha no job
-`Repository Guards`: o checkout raso não permitia provar a ancestralidade do
-snapshot; o candidato atual corrige o checkout com `fetch-depth: 0`.
-O CI #146, no `main@697c6efa` (descendente documental anterior), terminou
-`failure` porque o passo de API E2E clínico canônico falhou; a suíte SPA,
-Performance/k6 e integração passaram. O candidato
-`a3354f02` isola o banco/API da prova canônica; o CI #147 no SHA documental
-`8273ecb5` terminou verde com `16/16` jobs, incluindo essa prova canônica. O
-CI #149 no SHA `553078be` terminou `failure` em `Repository Guards` porque os
-snapshots ainda apontavam para o candidato anterior. A reconciliação documental
-foi publicada. O CI #153 no descendente documental `9955b8b5` terminou
-`failure` somente em Performance/k6, com `15/16` jobs passando; nenhum resultado
-parcial é promovido. O artefato tem digest
-`sha256:d2ca8e3123e7b98125dde6fd5222fac42901ebf3ca80ab215ecc603bc68438ab`. O CI #151 terminou `failure` somente em Performance/k6, com
-`15/16` jobs passando, incluindo os guards, integração, E2E e visual. O
-artefato remoto tem digest `sha256:84b09a10162af819504fe8e269a84d498f1927aee9189af553ff3f8086390afa`.
-Nenhum threshold foi relaxado.
-As seções abaixo são
-histórico append-only; seus SHAs e scores não são evidência do candidato atual.
+`f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c`, commit de hardening de logging
+estruturado. A documentação corrente sucede o candidato de assurance
+`0d475dee358eab9621e5497db9929b7010ed09eb`; `HEAD == main == origin/main`,
+com rollback preservado. O gate local estrito histórico permanece `BLOCKED`
+com `55/57/15` (score/critical/open P0) e claim `NOT PROVEN`.
+
+O [CI #154](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695196945) foi disparado antes da reancoragem e não tem resultado terminal
+aceito. A reconciliação desta fotografia deve gerar uma nova execução CI com os
+guards vinculados ao SHA correto. Nenhum resultado parcial ou histórico é
+promovido; target, recovery, UAT, attestation, governança e autoridade de
+release continuam `NOT PROVEN`.
 
 ## Registro obrigatório do prompt
 

@@ -1,42 +1,22 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `main@0d475dee358eab9621e5497db9929b7010ed09eb` (candidato de assurance: guard de snapshot e reconciliação documental; candidato funcional/workflow anterior `553078be60c963ffb7cab5c45c130912e5e299b8`)
+**Candidate funcional avaliado:** `main@f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c`
+(hardening de redaction recursiva do logging estruturado; o snapshot documental
+anterior é `0d475dee358eab9621e5497db9929b7010ed09eb`)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
 ## Executive Summary
 
-O candidato preserva o modular monolith e recebeu controles incrementais de
-workflow/worker, jornadas clínicas canônicas, observabilidade, supply chain,
-diagnóstico de performance, readiness fail-closed, fixtures k6 determinísticas
-e fechamento fail-closed do pacote de evidência. O gate local completo ficou
-`BLOCKED` (`55/57/15`); o CI #143 do candidato pai `82ff6eec` terminou `failure`
-somente em Performance/k6, com os outros 15 jobs, incluindo E2E SPA, aprovados.
-O CI #144 do pai documental `da5dd244` falhou em `Repository Guards` porque o
-checkout raso ocultou a ancestralidade do snapshot; o candidato atual corrige
-esse checkout. O [CI #146](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34682262401)
-no `main@697c6efa` terminou `failure` no passo de API E2E clínico canônico. O
-candidato `a3354f02` isolou o banco/API da prova canônica e o [CI #147](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34684079972)
-no SHA exato publicado `8273ecb5` terminou `success` com `16/16` jobs verdes,
-incluindo a suíte SPA e `Run canonical clinical API E2E`. O [CI #149](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34687849607)
-no SHA `553078be` falhou em `Repository Guards` porque os snapshots
-documentais ainda apontavam para o candidato anterior; essa identidade foi
-reconciliada no descendente documental. O [CI #151](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34690210769)
-terminou `failure` somente em Performance/k6, com `15/16` jobs passando,
-incluindo guards, integração, E2E SPA e regressão visual. O benchmark terminou
-com exit `99` e o parser com exit `1`; o artefato público
-`performance-k6-report` tem digest
-`sha256:84b09a10162af819504fe8e269a84d498f1927aee9189af553ff3f8086390afa`;
-as métricas detalhadas não estão disponíveis sem credencial. Runs anteriores do
-mesmo código/workflow alternaram entre verde e falha em runners diferentes.
-
-O [CI #153](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34693263252)
-no descendente documental `9955b8b5` terminou `failure` com `15/16` jobs
-verdes. Typecheck, SAST, Secret Scan, Dependency Audit, Lint, OpenAPI,
-Repository Guards, Coverage, Build, API Contract, Unit, Windows, Integration,
-E2E SPA e Visual passaram; somente Performance/k6 falhou com exit `99` no
-benchmark e exit `1` no parser. O artefato `performance-k6-report` tem digest
-`sha256:d2ca8e3123e7b98125dde6fd5222fac42901ebf3ca80ab215ecc603bc68438ab`.
+O candidato preserva o modular monolith e adiciona redaction recursiva de chaves
+sensíveis, mensagens, erros estruturados, objetos aninhados e referências
+circulares. O pacote compartilhado passou `16/16` testes locais. O gate estrito
+histórico ficou `BLOCKED` (`55/57/15`) e as provas externas de target, recovery,
+attestation, UAT, governança, performance e autoridade de release continuam
+abertas. O [CI #154](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695196945) foi disparado antes da reancoragem documental e não é
+promovido como prova; esta reconciliação deve gerar uma nova execução vinculada
+ao SHA atual. Nenhum threshold foi relaxado e não há autorização para declarar
+`main green`, release produtivo ou `TRIPLE-A VERIFIED`.
 
 ## Atualização terminal — isolamento da prova clínica
 
