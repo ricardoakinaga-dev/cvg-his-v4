@@ -1,6 +1,6 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `main@5b0f1b0905bbf472a78626dd61e126361f6b7435`
+**Candidate funcional avaliado:** `main@ede3a1d8b88a3a259f123349c672a13253851800`
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -10,7 +10,7 @@ O candidato preserva o modular monolith e recebeu controles incrementais de
 workflow/worker, jornadas clínicas canônicas, observabilidade, supply chain,
 diagnóstico de performance, readiness fail-closed, fixtures k6 determinísticas
 e fechamento fail-closed do pacote de evidência. O gate local completo ficou
-`BLOCKED` (`55/57/15`); ainda não havia CI remoto para este SHA na captura.
+`BLOCKED` (`55/57/15`); o CI exato #141 ainda está em execução.
 
 ## Scorecard
 
@@ -21,14 +21,14 @@ e fechamento fail-closed do pacote de evidência. O gate local completo ficou
 | Testing              | LOCAL PASS                   | suíte workspace, critical e E2E clínico         |
 | Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas        |
 | Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                   |
-| CI/CD                | PENDENTE NO SHA ATUAL        | CI remoto novo ainda não executado; #140 anterior falhou em Performance/k6 |
+| CI/CD                | PENDENTE NO SHA ATUAL        | CI #141 do SHA atual ainda não terminalizou; #140 anterior falhou em Performance/k6 |
 | Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                 |
 | Recovery             | BLOCKED                      | Docker impediu restore drill real               |
 | Frontend             | BOUNDED PASS                 | E2E/visual/a11y no CI                           |
 | Database             | PARTIAL                      | testes locais; RLS target não provado           |
 | Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas        |
 | Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes       |
-| Overall              | `55`, critical `57`, `15 P0` | gate estrito local com checks, build e testes   |
+| Overall              | `55`, critical `57`, `15 P0` | gate estrito local no SHA atual com checks, build e testes   |
 
 ## P0 Findings
 

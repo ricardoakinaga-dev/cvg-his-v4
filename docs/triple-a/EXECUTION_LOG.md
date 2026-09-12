@@ -1,5 +1,22 @@
 # Triple-A — Execution Log
 
+## 2026-09-12T05:52:49Z — candidato `ede3a1d8` / CI #141 em execução
+
+- **Candidato:** `main@ede3a1d8b88a3a259f123349c672a13253851800`; `HEAD` e
+  `origin/main` coincidem, rollback remoto preservado e nenhum force-push foi
+  usado.
+- **Gate local:** `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` terminou
+  `BLOCKED`, score `55`, critical `57`, `open_p0=15`,
+  `publication_allowed=false` e claim `NOT PROVEN` no SHA exato.
+- **Suíte crítica:** PostgreSQL descartável `615/615` testes e runner de
+  processos `11/11` suítes passaram com Redis local explicitamente configurado.
+- **CI:** [#141](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34675471468)
+  é o run exato do candidato e ainda está `In progress`; o resultado não é
+  transferido do #137 verde nem do #140 falho em SHA anterior.
+- **Decisão:** manter `BLOCKED / NOT PROVEN`; target, governança, recovery,
+  attestation, deploy/rollback, soak, UAT e autoridade de release continuam
+  sem evidência externa autenticada.
+
 ## 2026-09-11T22:12:14Z — CI #129 / auditoria de performance no candidato `68600d6a`
 
 - **Candidato:** `main@68600d6a55dcf18bd04c28ff3ee7528cc686efdb`; `HEAD` e

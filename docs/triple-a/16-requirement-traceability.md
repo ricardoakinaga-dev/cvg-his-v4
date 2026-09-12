@@ -9,16 +9,14 @@ proveniência da régua congelada sem misturar candidatos ou alterar thresholds.
 A tabela mantém o escopo completo. “NOT PROVEN” significa que a aceitação
 integral da fase não foi demonstrada no candidato corrente; não significa
 que o código esteja ausente. Evidência local, CI e alvo são avaliados separadamente.
-A implementação corrente `c7336ac0f6a909c10d07797c36814f0b321c6d5c` adiciona
-diagnósticos de performance ao gate k6, breakdown por endpoint e a
-documentação obrigatória da execução. As jornadas clínicas canônicas passam
-localmente e os gauges clínicos são compostos no `/metrics` sem labels de
-tenant. Essas provas continuam abaixo da aceitação integral porque o CI #135
-falhou no SLO de performance e ainda faltam target, governança, UAT e
-autoridade de release.
-A [fotografia atual](./15-current-baseline.md) contém SHA, CI e lacunas medidas.
+Os registros históricos abaixo mencionam candidatos anteriores. A fotografia
+vigente é `ede3a1d8b88a3a259f123349c672a13253851800`, com gate local estrito
+`55/57/15`, suíte crítica local `615 + 11` aprovada e CI #141 ainda em execução.
+Essas provas continuam abaixo da aceitação integral porque faltam CI terminal,
+target, governança, UAT e autoridade de release. A [fotografia atual](./15-current-baseline.md)
+contém SHA, CI e lacunas medidas.
 
-## Reconciliação do candidato funcional — 2026-09-12
+## Reconciliação histórica do candidato funcional — 2026-09-12
 
 O candidato funcional vigente é `1e0077a3d8f7a10ea5e53d7d9f8f0fdee2dca689`.
 O [CI #137](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34667412200)

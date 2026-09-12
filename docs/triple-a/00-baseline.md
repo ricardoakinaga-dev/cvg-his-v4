@@ -1,15 +1,14 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-12T05:15:00Z
+## Snapshot vigente — 2026-09-12T05:52:49Z
 
 O baseline autoritativo do candidato atual está em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md):
-`5b0f1b0905bbf472a78626dd61e126361f6b7435`, com fast-forward preparado para
-`main`, gate local estrito `BLOCKED` com `55/57/15` (score/critical/open P0) e
-claim `NOT PROVEN`. Não havia CI remoto do novo SHA na captura. As seções
-abaixo são histórico append-only; seus SHAs e scores não são evidência do
-candidato funcional atual.
+`ede3a1d8b88a3a259f123349c672a13253851800`, com `HEAD == main == origin/main`,
+gate local estrito `BLOCKED` com `55/57/15` (score/critical/open P0) e claim
+`NOT PROVEN`. O CI exato #141 ainda está em execução. As seções abaixo são
+histórico append-only; seus SHAs e scores não são evidência do candidato atual.
 
 ## Registro obrigatório do prompt
 

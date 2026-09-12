@@ -5,15 +5,15 @@
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA atual é
-> `5b0f1b0905bbf472a78626dd61e126361f6b7435`; ainda não há CI remoto desse
-> SHA e o veredito é `BLOCKED / NOT PROVEN`; nenhum dado abaixo é transferido.
+> `ede3a1d8b88a3a259f123349c672a13253851800`; o CI exato #141 ainda está em
+> execução e o veredito é `BLOCKED / NOT PROVEN`; nenhum dado abaixo é transferido.
 
-**Current snapshot:** `5b0f1b0905bbf472a78626dd61e126361f6b7435` (código funcional; a reconciliação documental acompanha o candidato); fast-forward para `main` preparado, push pendente na observação.
-**Current CI:** nenhum run remoto do novo SHA; o último [#140](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34672193141) — `failure`, 15/16 jobs, somente Performance/k6
+**Current snapshot:** `ede3a1d8b88a3a259f123349c672a13253851800` (código e documentação; `HEAD == origin/main`, rollback preservado).
+**Current CI:** [#141](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34675471468) — `In progress`; o último [#140](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34672193141) — `failure`, 15/16 jobs, somente Performance/k6
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-12T05:15:00Z
+**Observation:** 2026-09-12T05:52:49Z
 
-**Current local execution:** o gate estrito no snapshot executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
+**Current local execution:** o gate estrito no snapshot executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A suíte crítica local passou `615` testes PostgreSQL e `11` suítes de processo. A validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
 
 **Current strict gate:** `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` no HEAD retornou `BLOCKED / NOT PROVEN`, score `55`, critical `57`, `15` P0 abertos, `claim=NOT PROVEN` e `publication_allowed=false`.
 
