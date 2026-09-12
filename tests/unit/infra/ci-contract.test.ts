@@ -100,6 +100,29 @@ describe('CI repository guardrails', () => {
     expect(job).toContain('playwright-1.58.2-chromium');
   });
 
+  it('isolates canonical clinical API evidence from the mutating SPA database', () => {
+    const jobStart = workflow.indexOf('  test-e2e-spa:');
+    expect(jobStart).toBeGreaterThan(-1);
+    const nextJobOffset = workflow.slice(jobStart + 3).search(/\n {2}[a-z0-9-]+:\n/);
+    const job = workflow.slice(
+      jobStart,
+      nextJobOffset === -1 ? undefined : jobStart + 3 + nextJobOffset
+    );
+    const canonicalStep = job.indexOf('      - name: Run canonical clinical API E2E');
+    expect(canonicalStep).toBeGreaterThan(-1);
+    const canonical = job.slice(canonicalStep);
+
+    expect(job).toContain('name: Prepare isolated canonical API E2E database');
+    expect(job).toContain('cvg_his_e2e_canonical');
+    expect(canonical).toContain('API_URL: http://localhost:3113');
+    expect(canonical).toContain('BASE_URL: http://localhost:3113');
+    expect(canonical).toContain(
+      'E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e_canonical'
+    );
+    expect(canonical).not.toContain('http://localhost:3001');
+    expect(canonical).not.toContain('cvg_his_e2e\n');
+  });
+
   it('seeds every principal required by the PostgreSQL tenant and RBAC journeys', () => {
     const jobStart = workflow.indexOf('  test-e2e-spa:');
     expect(jobStart).toBeGreaterThan(-1);
