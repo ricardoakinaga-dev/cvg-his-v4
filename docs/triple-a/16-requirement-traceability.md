@@ -10,7 +10,7 @@ A tabela mantém o escopo completo. “NOT PROVEN” significa que a aceitação
 integral da fase não foi demonstrada no candidato corrente; não significa que o
 código esteja ausente. Evidência local, CI e alvo são avaliados separadamente.
 A fotografia vigente é o candidato de código
-`72cfcfb86730a63006f2212bd6211c48915bc657`, com hardening conjunto de logging, workflow e tenant;
+`9b77215290d3ea6d506d558ae211e567debe161a`, com hardening conjunto de logging, workflow e tenant;
 a documentação sucede o candidato de assurance `0d475dee` e o candidato
 funcional/workflow `553078be60c963ffb7cab5c45c130912e5e299b8`. O [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) pertence ao commit documental anterior e não possui resultado terminal aceito para `a258b3ce`. O
 último CI terminal histórico passou os guards e falhou exclusivamente em

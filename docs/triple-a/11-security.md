@@ -18,7 +18,7 @@ continua ausente; nenhum claim `TRIPLE-A VERIFIED` é autorizado.
 
 ## Atualização de logging — 2026-09-12T13:02:52Z
 
-No SHA `72cfcfb86730a63006f2212bd6211c48915bc657`, o logger compartilhado passou
+No SHA `9b77215290d3ea6d506d558ae211e567debe161a`, o logger compartilhado passou
 a redigir recursivamente chaves sensíveis e seus valores, mensagens com tokens,
 e-mails e CPF, erros estruturados, objetos aninhados, valores profundos e
 referências circulares. Os testes do pacote `@cvg-his-v2/shared-logging`

@@ -2,7 +2,7 @@
 
 ## Candidato de código observado em 2026-09-12T13:02:52Z
 
-- SHA de código e documentação: `72cfcfb86730a63006f2212bd6211c48915bc657` (hardening conjunto de logging, workflow e tenant); a documentação reancorada sucede o candidato de código anterior `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c` e o candidato de assurance `0d475dee358eab9621e5497db9929b7010ed09eb` e o candidato funcional/workflow anterior é `553078be60c963ffb7cab5c45c130912e5e299b8`.
+- SHA de código e documentação: `9b77215290d3ea6d506d558ae211e567debe161a` (hardening conjunto de logging, workflow e tenant); a documentação reancorada sucede o candidato de código anterior `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c` e o candidato de assurance `0d475dee358eab9621e5497db9929b7010ed09eb` e o candidato funcional/workflow anterior é `553078be60c963ffb7cab5c45c130912e5e299b8`.
 - `HEAD`, `main` e `origin/main` coincidem; rollback preservado em
   `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.

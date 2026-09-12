@@ -654,6 +654,14 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - O [CI #154](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695196945) foi disparado antes da reconciliação documental e não foi promovido. Os snapshots correntes foram reancorados no SHA de código e esta atualização deve gerar uma nova execução terminal.
 - O veredito continua `BLOCKED / NOT PROVEN`; nenhum threshold ou resultado histórico foi transferido.
 
+## 2026-09-12T14:01:26Z — hardening visual e acessibilidade no candidato `9b772152`
+
+- O commit `9b77215290d3c3c0e3ebf237aa9e295ac2ebf5d4` endurece os componentes clínicos `DsDatePicker` e `DsTimePicker` com dialog/grid/list semantics, `aria-expanded`/`aria-controls`, foco roving, setas, Escape e restauração de foco. Alvos de toque passaram a respeitar `--touch-min` de 44 px; a seleção usa token de ação com contraste adequado.
+- O shell móvel preserva controles de 44 px em viewports de até 360 px. O toast PWA/offline ganhou nome acessível, live regions, foco visível, controles de 44 px e limpeza do timer de auto-dismiss.
+- Evidência local: design system `53/53` testes; PWA `2/2`; typecheck do design system e SPA; build PWA da SPA com `814` módulos; `git diff --check` passou.
+- O [CI #158](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34698026588) foi disparado para este SHA e estava `pending` na captura. O [CI #157](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34697258502) ainda era o run anterior do candidato `72cfcfb8`.
+- O veredito continua `BLOCKED / NOT PROVEN`: cobertura visual global, target, recovery, UAT, governança, attestation, deploy/rollback, performance remota e autoridade de release continuam sem prova suficiente. Nenhum threshold foi relaxado e nenhum claim `TRIPLE-A VERIFIED` foi emitido.
+
 
 ## 2026-09-12T13:26:00Z — hardening de workflow, tenant e reancoragem
 
