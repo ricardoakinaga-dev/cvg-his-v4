@@ -127,7 +127,7 @@
     "validate:supply-chain": "node scripts/validate-supply-chain.mjs",
     "validate:dependencies": "node scripts/validate-dependency-policy.mjs",
     "validate:clinical-workflow": "node scripts/validate-clinical-workflow-schema.mjs",
-    "docs:validate": "node scripts/validate-documentation.mjs",
+    "docs:validate": "node scripts/validate-documentation.mjs && node scripts/check-triple-a-current-snapshot.mjs",
     "external:check": "node scripts/check-external-dependencies.mjs",
     "evidence:check": "node scripts/check-evidence-cadence.mjs",
     "review:usability:visual": "node scripts/generate-usability-visual-review-package.mjs",
