@@ -2,7 +2,7 @@
 
 ## Candidato de código observado em 2026-09-12T14:40:32Z
 
-- SHA de código e documentação: `e605597c73a54e7d4c001fad6c5a83806d22d4ba` (pins imutáveis de deployment, envelope de eventos versionado, crosswalk normativo e hardening conjunto de logging/workflow/tenant); a documentação reancorada sucede o candidato de código anterior `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c` e o candidato de assurance `0d475dee358eab9621e5497db9929b7010ed09eb` e o candidato funcional/workflow anterior é `553078be60c963ffb7cab5c45c130912e5e299b8`.
+- SHA de código e documentação: `49569934f9c4c25df98cc0d18203b57db1433440` (onda local de remediação OpenAPI/OIDC, supply chain, pacote visual, outbox e controles). Evidência de candidatos anteriores permanece histórica e não é transferida.
 - `HEAD`, `main` e `origin/main` coincidem; rollback preservado em
   `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.

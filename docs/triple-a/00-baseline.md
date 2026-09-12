@@ -5,7 +5,7 @@
 O baseline autoritativo do candidato atual está em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md):
-`e605597c73a54e7d4c001fad6c5a83806d22d4ba`, commit de pins imutáveis de deployment que sucede o envelope de eventos versionado, o crosswalk normativo e o hardening conjunto de logging, workflow e tenant. A documentação corrente sucede o candidato de assurance
+`49569934f9c4c25df98cc0d18203b57db1433440`, candidato da onda local de remediação OpenAPI/OIDC, supply chain, pacote visual, outbox e controles. A documentação corrente sucede o candidato de assurance
 `0d475dee358eab9621e5497db9929b7010ed09eb`; `HEAD == main == origin/main`,
 com rollback preservado. O gate local estrito histórico permanece `BLOCKED`
 com `55/57/15` (score/critical/open P0) e claim `NOT PROVEN`.

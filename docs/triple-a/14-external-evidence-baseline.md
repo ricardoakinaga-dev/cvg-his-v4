@@ -5,11 +5,11 @@
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA de código atual é
-> `e605597c73a54e7d4c001fad6c5a83806d22d4ba`, com o candidato de código anterior `f2e2da4cab80917d7c6bea0ddf1e55d58eb6821c` e o snapshot documental anterior
+> `49569934f9c4c25df98cc0d18203b57db1433440`, com evidência anterior preservada apenas como histórico e o snapshot documental anterior
 > `0d475dee358eab9621e5497db9929b7010ed09eb`. O [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) pertence ao commit documental anterior e não é promovido como prova.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `e605597c73a54e7d4c001fad6c5a83806d22d4ba` (pins imutáveis de deployment, envelope de eventos, crosswalk e hardening de logging/workflow/tenant; rollback preservado).
+**Current snapshot:** `49569934f9c4c25df98cc0d18203b57db1433440` (onda local de remediação; provas externas e autoridade de release continuam `NOT PROVEN`).
 **Current CI:** [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) — commit documental anterior, sem resultado promovido; nova execução será vinculada a este snapshot.
 **Current status:** **BLOCKED / NOT PROVEN**
 **Observation:** 2026-09-12T13:26:00Z
