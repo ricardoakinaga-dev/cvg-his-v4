@@ -158,6 +158,9 @@ test('DatabaseInventoryInvoicesReportSource enforces tenant scope and explicit d
     connect: async () => ({
       query: async (query: string) => {
         clientQueries.push(query);
+        if (query.includes("current_setting('app.current_account_id'")) {
+          return { rows: [{ matches: true }] };
+        }
         return { rows: [] };
       },
       release: () => undefined
@@ -168,6 +171,7 @@ test('DatabaseInventoryInvoicesReportSource enforces tenant scope and explicit d
   assert.deepEqual(clientQueries, [
     'BEGIN',
     "SELECT set_config('app.current_account_id', $1, true)",
+    "SELECT current_setting('app.current_account_id', true) = $1 AS matches",
     'COMMIT'
   ]);
 });

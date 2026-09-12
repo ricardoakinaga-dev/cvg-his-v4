@@ -49,7 +49,8 @@ test('worker runner claims and completes registered clinical task handlers', asy
     retried: 0,
     deadLettered: 0,
     leaseLost: 0,
-    handlerMissing: 0
+    handlerMissing: 0,
+    transitionFailed: 0
   });
   assert.equal(handled, 1);
   assert.equal((await service.list(ACCOUNT))[0]?.status, 'completed');
@@ -123,4 +124,36 @@ test('worker runner renews a long-running lease before publishing completion', a
   assert.equal(result.completed, 1);
   assert.equal(result.leaseLost, 0);
   assert.ok(heartbeatCount >= 1);
+});
+
+test('worker runner isolates a failure-transition error and continues the tick', async () => {
+  const service = new WorkflowTaskService({ now: () => '2026-09-09T10:00:00.000Z' });
+  await createTask(service, 'runner-transition-error-1');
+  await createTask(service, 'runner-transition-error-2');
+  const originalFailClaim = service.failClaim.bind(service);
+  let failCalls = 0;
+  service.failClaim = async (...args) => {
+    failCalls += 1;
+    if (failCalls === 1) throw new Error('database unavailable');
+    return originalFailClaim(...args);
+  };
+  const handled: string[] = [];
+  const result = await runWorkflowTaskTick({
+    service, accountId: ACCOUNT, workerId: 'worker-a', correlationId: CORRELATION,
+    now: () => '2026-09-09T10:00:00.000Z', limit: 2,
+    handlers: new Map([['clinical.follow_up', async (task) => {
+      handled.push(task.id);
+      if (handled.length === 1) throw new Error('handler failed');
+    }]])
+  });
+  assert.equal(result.claimed, 2);
+  assert.equal(result.completed, 1);
+  assert.equal(result.transitionFailed, 1);
+  assert.equal(result.retried, 0);
+  assert.equal(result.deadLettered, 0);
+  assert.equal(result.leaseLost, 0);
+  assert.equal(handled.length, 2);
+  const tasks = await service.list(ACCOUNT);
+  assert.equal(tasks.filter((task) => task.status === 'completed').length, 1);
+  assert.equal(tasks.filter((task) => task.status === 'processing').length, 1);
 });

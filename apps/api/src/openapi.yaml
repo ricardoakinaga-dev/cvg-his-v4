@@ -17092,6 +17092,7 @@ components:
         metadata:
           type: object
           additionalProperties: true
+          description: Operational metadata only; secrets, credentials and clinical or personal narratives are rejected at the domain boundary.
         attempts:
           type: integer
           minimum: 0
@@ -17205,6 +17206,7 @@ components:
         payload:
           type: object
           additionalProperties: true
+          description: Lifecycle payloads are operational and redact sensitive values before they cross the API boundary.
         occurredAt:
           type: string
           format: date-time
@@ -17268,6 +17270,7 @@ components:
         metadata:
           type: object
           additionalProperties: true
+          description: Operational metadata only; secrets, credentials and clinical or personal narratives are rejected at the domain boundary.
         maxAttempts:
           type: integer
           minimum: 1

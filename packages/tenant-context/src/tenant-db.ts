@@ -106,6 +106,13 @@ export async function withTenantQueryExplicit<T>(
     await client.query('BEGIN');
     transactionStarted = true;
     await client.query("SELECT set_config('app.current_account_id', $1, true)", [accountId]);
+    const verification = await client.query<{ matches: boolean }>(
+      "SELECT current_setting('app.current_account_id', true) = $1 AS matches",
+      [accountId]
+    );
+    if (verification.rows[0]?.matches !== true) {
+      throw new Error('Failed to establish tenant database context');
+    }
     const result = await fn(client);
     commitAttempted = true;
     await client.query('COMMIT');

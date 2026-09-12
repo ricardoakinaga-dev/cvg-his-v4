@@ -17,6 +17,9 @@ test('DatabaseAdvancePaymentsReportSource uses UTC half-open date boundaries', a
       if (text.includes("set_config('app.current_account_id'")) {
         return { rows: [], rowCount: 1 };
       }
+      if (text.includes("current_setting('app.current_account_id'")) {
+        return { rows: [{ matches: true }], rowCount: 1 };
+      }
       return { rows: [], rowCount: 0 };
     },
     release: () => undefined

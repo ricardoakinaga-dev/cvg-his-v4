@@ -176,6 +176,23 @@ test('serializes concurrent in-memory creates for one idempotency key', async ()
   assert.equal((await service.events(ACCOUNT_A, results[0]!.id)).length, 1);
 });
 
+test('workflow lifecycle events redact sensitive operational error payloads', async () => {
+  const { service } = createService();
+  const task = await service.create(ACCOUNT_A, USER, input('event-redaction'));
+  const claim = (await service.claimDue({
+    accountId: ACCOUNT_A,
+    workerId: 'worker-a',
+    correlationId: 'workflow-test-correlation' as never,
+    now: '2026-09-09T10:00:00.000Z',
+    limit: 1,
+    leaseMs: 60_000
+  }))[0]!;
+  await service.failClaim(claim, 'token=secret-value email=person@example.com');
+  const event = (await service.events(ACCOUNT_A, task.id)).at(-1)!;
+  assert.equal(event.eventType, 'retry_scheduled');
+  assert.equal(event.payload?.error, 'token=[REDACTED] email=[REDACTED]');
+});
+
 test('acknowledges and completes a task while preserving lifecycle events', async () => {
   const { service } = createService();
   const created = await service.create(ACCOUNT_A, USER, {
@@ -460,6 +477,14 @@ test('supports cancellation and reopening through rescheduling', async () => {
   await assert.rejects(
     () => service.create(ACCOUNT_A, USER, { ...input('invalid-metadata-size'), metadata: { blob: 'x'.repeat(65 * 1024) } }),
     ValidationError
+  );
+  await assert.rejects(
+    () => service.create(ACCOUNT_A, USER, { ...input('invalid-sensitive-metadata'), metadata: { apiToken: 'secret' } }),
+    /prohibited sensitive field/
+  );
+  await assert.rejects(
+    () => service.create(ACCOUNT_A, USER, { ...input('invalid-clinical-metadata'), metadata: { clinicalNote: 'patient narrative' } }),
+    /prohibited sensitive field/
   );
   await assert.rejects(
     () => service.create(ACCOUNT_A, USER, { ...input('invalid-attempts'), maxAttempts: 51 }),

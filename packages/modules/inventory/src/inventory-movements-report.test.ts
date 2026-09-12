@@ -167,6 +167,9 @@ test('DatabaseInventoryMovementsReportSource enforces the active tenant and data
     connect: async () => ({
       query: async (query: string) => {
         clientQueries.push(query);
+        if (query.includes("current_setting('app.current_account_id'")) {
+          return { rows: [{ matches: true }] };
+        }
         return { rows: [] };
       },
       release: () => undefined
@@ -177,6 +180,7 @@ test('DatabaseInventoryMovementsReportSource enforces the active tenant and data
   assert.deepEqual(clientQueries, [
     'BEGIN',
     "SELECT set_config('app.current_account_id', $1, true)",
+    "SELECT current_setting('app.current_account_id', true) = $1 AS matches",
     'COMMIT'
   ]);
 });

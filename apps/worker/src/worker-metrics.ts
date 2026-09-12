@@ -127,7 +127,8 @@ export type WorkflowTaskMetricOutcome =
   | 'completed'
   | 'retried'
   | 'dead_lettered'
-  | 'lease_lost';
+  | 'lease_lost'
+  | 'transition_failed';
 
 export const workflowTasksTotal = new Counter({
   name: 'worker_clinical_workflow_tasks_total',

@@ -66,6 +66,9 @@ function createPool(rows: readonly Record<string, unknown>[]): Pool {
       if (text.includes("set_config('app.current_account_id'")) {
         return { rows: [], rowCount: 1 };
       }
+      if (text.includes("current_setting('app.current_account_id'")) {
+        return { rows: [{ matches: true }], rowCount: 1 };
+      }
       assert.deepEqual(values, [
         '22222222-2222-4222-8222-222222222222',
         'report-execution',

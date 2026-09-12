@@ -38,6 +38,7 @@ export interface WorkflowTaskTickResult {
   readonly deadLettered: number;
   readonly leaseLost: number;
   readonly handlerMissing: number;
+  readonly transitionFailed: number;
 }
 
 function normalizeWorkerId(workerId: string): string {
@@ -82,7 +83,8 @@ export async function runWorkflowTaskTick(
     retried: 0,
     deadLettered: 0,
     leaseLost: 0,
-    handlerMissing: 0
+    handlerMissing: 0,
+    transitionFailed: 0
   };
 
   for (const claim of claims) {
@@ -137,11 +139,32 @@ export async function runWorkflowTaskTick(
       }
     } catch (error) {
       if (heartbeatInFlight) await heartbeatInFlight;
-      const transitioned = !leaseLost && await options.service.failClaim(
-        activeClaim,
-        error instanceof Error ? error.message : String(error)
-      );
-      if (!transitioned) {
+      let transitioned = false;
+      let transitionError: unknown;
+      let transitionFailed = false;
+      if (!leaseLost) {
+        try {
+          transitioned = await options.service.failClaim(
+            activeClaim,
+            error instanceof Error ? error.message : String(error)
+          );
+        } catch (failureTransitionError) {
+          transitionError = failureTransitionError;
+          transitionFailed = true;
+          result.transitionFailed += 1;
+          recordWorkflowTaskMetric('transition_failed');
+          options.logger?.error('workflow task failure transition failed', {
+            accountId: options.accountId,
+            taskId: claim.task.id,
+            taskType: claim.task.taskType,
+            workerId,
+            error: failureTransitionError
+          });
+        }
+      }
+      if (transitionFailed) {
+        // Durable state is unknown; do not classify this claim as retried or DLQ.
+      } else if (!transitioned) {
         result.leaseLost += 1;
         recordWorkflowTaskMetric('lease_lost');
         options.logger?.warn('workflow task lease lost before failure transition', {

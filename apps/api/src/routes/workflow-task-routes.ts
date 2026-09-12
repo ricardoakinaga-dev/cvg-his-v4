@@ -4,6 +4,7 @@ import {
   assertWorkflowTaskWorkerPolicy,
   EMPTY_WORKFLOW_TASK_WORKER_REGISTRY,
   WorkflowTaskService,
+  redactWorkflowData,
   type CreateWorkflowTaskInput,
   type WorkflowTaskId,
   type WorkflowTaskListFilters,
@@ -146,7 +147,7 @@ function publicTask(task: WorkflowTaskSummary): Record<string, unknown> {
     leaseVersion: _leaseVersion,
     ...safe
   } = task;
-  return safe;
+  return { ...safe, metadata: redactWorkflowData(safe.metadata) };
 }
 
 function filtersFromRequest(request: IncomingMessage): WorkflowTaskListFilters {
@@ -245,7 +246,10 @@ export async function handleWorkflowTaskRoutes(
       riskLevel: 'low',
       correlationId
     });
-    return json(response, 200, { items: events, count: events.length });
+    return json(response, 200, {
+      items: events.map((event) => ({ ...event, payload: redactWorkflowData(event.payload) })),
+      count: events.length
+    });
   }
 
   const actionMatch = pathname.match(/^\/workflow-tasks\/([^/]+)\/(acknowledge|complete|cancel|replay)$/);

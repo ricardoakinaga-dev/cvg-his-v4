@@ -85,6 +85,91 @@ function stableJson(value: unknown): string {
   return JSON.stringify(value) ?? 'null';
 }
 
+const WORKFLOW_REDACTED = '[REDACTED]';
+const MAX_METADATA_DEPTH = 4;
+const MAX_METADATA_KEYS = 64;
+const MAX_METADATA_ARRAY_ITEMS = 64;
+const SENSITIVE_METADATA_KEY_PATTERN = /(?:password|passphrase|secret|token|authorization|cookie|api[-_]?key|client[-_]?secret|access[-_]?token|refresh[-_]?token|id[-_]?token|private[-_]?key|webhook[-_]?signature|email|phone|address|narrative|diagnos|prescription|clinical|medical|cpf|ssn|birth|allerg|symptom)/i;
+const SENSITIVE_METADATA_TEXT_PATTERNS = [
+  /\bBearer\s+[A-Za-z0-9._~+/=-]+/i,
+  /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/,
+  /\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/
+];
+
+function metadataValidationError(path: string, message: string): ValidationError {
+  return new ValidationError(`metadata ${message}`, { path });
+}
+
+function validateOperationalMetadataValue(value: unknown, path: string, depth: number, seen: WeakSet<object>): void {
+  if (value === null || typeof value === 'boolean') return;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw metadataValidationError(path, 'must contain finite numbers');
+    return;
+  }
+  if (typeof value === 'string') {
+    if (value.length > 1024) throw metadataValidationError(path, 'string values must contain at most 1024 characters');
+    if (SENSITIVE_METADATA_TEXT_PATTERNS.some((pattern) => pattern.test(value))) {
+      throw metadataValidationError(path, 'contains prohibited sensitive content');
+    }
+    return;
+  }
+  if (typeof value !== 'object') throw metadataValidationError(path, 'contains an unsupported value');
+  if (seen.has(value)) throw metadataValidationError(path, 'cannot contain circular references');
+  if (depth >= MAX_METADATA_DEPTH) throw metadataValidationError(path, `cannot exceed ${MAX_METADATA_DEPTH} nested levels`);
+  seen.add(value);
+  if (Array.isArray(value)) {
+    if (value.length > MAX_METADATA_ARRAY_ITEMS) throw metadataValidationError(path, `arrays cannot contain more than ${MAX_METADATA_ARRAY_ITEMS} items`);
+    value.forEach((item, index) => validateOperationalMetadataValue(item, `${path}[${index}]`, depth + 1, seen));
+  } else {
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (entries.length > MAX_METADATA_KEYS) throw metadataValidationError(path, `objects cannot contain more than ${MAX_METADATA_KEYS} keys`);
+    for (const [key, item] of entries) {
+      if (!key || key.length > 64) throw metadataValidationError(path, 'keys must contain at most 64 characters');
+      if (SENSITIVE_METADATA_KEY_PATTERN.test(key)) throw metadataValidationError(`${path}.${key}`, 'contains a prohibited sensitive field');
+      validateOperationalMetadataValue(item, `${path}.${key}`, depth + 1, seen);
+    }
+  }
+  seen.delete(value);
+}
+
+function validateOperationalMetadata(metadata: unknown): asserts metadata is Readonly<Record<string, unknown>> {
+  if (typeof metadata !== 'object' || Array.isArray(metadata) || metadata === null) {
+    throw new ValidationError('metadata must be a JSON object');
+  }
+  validateOperationalMetadataValue(metadata, 'metadata', 0, new WeakSet<object>());
+}
+
+function redactWorkflowValue(value: unknown, depth = 0, seen = new WeakSet<object>()): unknown {
+  if (typeof value === 'string') {
+    let result = value;
+    result = result.replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/gi, WORKFLOW_REDACTED);
+    result = result.replace(/(\b(?:password|passphrase|secret|token|authorization|api[-_]?key|client[-_]?secret|access[-_]?token|refresh[-_]?token)\b\s*[:=]\s*)("[^"]*"|'[^']*'|[^\s,;}]+)/gi, `$1${WORKFLOW_REDACTED}`);
+    result = result.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, WORKFLOW_REDACTED);
+    return result.replace(/\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/g, WORKFLOW_REDACTED);
+  }
+  if (value === null || value === undefined || typeof value === 'boolean' || typeof value === 'number') return value;
+  if (depth >= 8) return WORKFLOW_REDACTED;
+  if (typeof value !== 'object') return String(value);
+  if (seen.has(value)) return '[CIRCULAR]';
+  seen.add(value);
+  let result: unknown;
+  if (Array.isArray(value)) result = value.map((item) => redactWorkflowValue(item, depth + 1, seen));
+  else {
+    const record: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      record[key] = SENSITIVE_METADATA_KEY_PATTERN.test(key) ? WORKFLOW_REDACTED : redactWorkflowValue(item, depth + 1, seen);
+    }
+    result = record;
+  }
+  seen.delete(value);
+  return result;
+}
+
+/** Redacts workflow event/task data at the API boundary without logging raw payloads. */
+export function redactWorkflowData(value: unknown): unknown {
+  return redactWorkflowValue(value);
+}
+
 function fingerprint(input: {
   readonly taskType: string;
   readonly title: string;
@@ -146,7 +231,7 @@ function transitionEvent(task: WorkflowTaskSummary, eventType: WorkflowTaskTrans
     correlationId: task.correlationId,
     causationId: task.causationId,
     occurredAt,
-    payload
+    payload: payload ? redactWorkflowValue(payload) as Record<string, unknown> : undefined
   };
 }
 
@@ -216,9 +301,7 @@ export class WorkflowTaskService {
       throw new ValidationError('ownerId must contain at most 160 characters');
     }
     const metadata = input.metadata ?? {};
-    if (typeof metadata !== 'object' || Array.isArray(metadata) || metadata === null) {
-      throw new ValidationError('metadata must be a JSON object');
-    }
+    validateOperationalMetadata(metadata);
     if (Buffer.byteLength(stableJson(metadata), 'utf8') > 64 * 1024) {
       throw new ValidationError('metadata must contain at most 64 KiB');
     }
