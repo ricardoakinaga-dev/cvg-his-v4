@@ -2644,12 +2644,12 @@ async function handleLogout() {
   .topbar__collapse-btn,
   .topbar__icon-btn,
   .topbar__logout-btn {
-    width: 40px;
-    height: 40px;
+    width: var(--touch-min, 44px);
+    height: var(--touch-min, 44px);
   }
 
   .topbar__brand-logo {
-    flex-basis: 40px;
+    flex-basis: var(--touch-min, 44px);
   }
 
   .topbar__profile {
@@ -2658,7 +2658,7 @@ async function handleLogout() {
   }
 
   .topbar__logout-btn {
-    min-height: 40px;
+    min-height: var(--touch-min, 44px);
   }
 }
 

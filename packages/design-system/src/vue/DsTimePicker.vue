@@ -7,6 +7,7 @@
 
     <div class="ds-time-picker__input-wrapper">
       <input
+        ref="inputRef"
         :id="pickerId"
         type="text"
         :value="formattedValue"
@@ -14,7 +15,10 @@
         :disabled="disabled"
         :readonly="true"
         :aria-invalid="!!error"
-        :aria-describedby="error ? pickerId + '-error' : undefined"
+        :aria-describedby="descriptionId"
+        aria-haspopup="dialog"
+        :aria-expanded="isOpen"
+        :aria-controls="dropdownId"
         class="ds-time-picker__input"
         @click="toggleDropdown"
         @keydown.enter.prevent="toggleDropdown"
@@ -26,6 +30,9 @@
         :disabled="disabled"
         @click="toggleDropdown"
         aria-label="Abrir seletor de horario"
+        aria-haspopup="dialog"
+        :aria-expanded="isOpen"
+        :aria-controls="dropdownId"
       >
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -35,12 +42,25 @@
 
     <Teleport to="body">
       <Transition name="fade">
-        <div v-if="isOpen" class="ds-time-picker__dropdown" ref="dropdownRef">
-          <div class="ds-time-picker__header">
+        <div
+          v-if="isOpen"
+          :id="dropdownId"
+          class="ds-time-picker__dropdown"
+          ref="dropdownRef"
+          role="dialog"
+          aria-modal="true"
+          :aria-labelledby="dropdownTitleId"
+          @keydown.esc.prevent="closeDropdown()"
+        >
+          <h2 :id="dropdownTitleId" class="ds-time-picker__sr-only">Selecionar horário</h2>
+          <div class="ds-time-picker__header" role="tablist" aria-label="Unidade do horário">
             <button
               type="button"
               class="ds-time-picker__unit-btn ds-time-picker__unit-btn--hours"
               :class="{ 'ds-time-picker__unit-btn--active': activeUnit === 'hours' }"
+              :aria-selected="activeUnit === 'hours'"
+              :aria-controls="hoursPanelId"
+              role="tab"
               @click="activeUnit = 'hours'"
             >
               Horas
@@ -49,6 +69,9 @@
               type="button"
               class="ds-time-picker__unit-btn ds-time-picker__unit-btn--minutes"
               :class="{ 'ds-time-picker__unit-btn--active': activeUnit === 'minutes' }"
+              :aria-selected="activeUnit === 'minutes'"
+              :aria-controls="minutesPanelId"
+              role="tab"
               @click="activeUnit = 'minutes'"
             >
               Minutos
@@ -56,26 +79,50 @@
           </div>
 
           <div class="ds-time-picker__scroll-container" ref="scrollContainer">
-            <div v-if="activeUnit === 'hours'" class="ds-time-picker__values">
+            <div
+              v-if="activeUnit === 'hours'"
+              :id="hoursPanelId"
+              class="ds-time-picker__values"
+              role="tabpanel"
+              aria-label="Horas"
+            >
               <button
                 v-for="h in 24"
                 :key="h - 1"
                 type="button"
                 class="ds-time-picker__value"
                 :class="{ 'ds-time-picker__value--selected': hours === h - 1 }"
+                :data-option-index="h - 1"
+                :aria-selected="hours === h - 1"
+                :tabindex="hours === h - 1 ? 0 : -1"
+                role="option"
+                :aria-label="`${String(h - 1).padStart(2, '0')} horas`"
                 @click="selectHours(h - 1)"
+                @keydown="handleOptionKeydown($event, 'hours', h - 1)"
               >
                 {{ String(h - 1).padStart(2, '0') }}
               </button>
             </div>
-            <div v-else class="ds-time-picker__values">
+            <div
+              v-else
+              :id="minutesPanelId"
+              class="ds-time-picker__values"
+              role="tabpanel"
+              aria-label="Minutos"
+            >
               <button
                 v-for="m in 12"
                 :key="(m - 1) * 5"
                 type="button"
                 class="ds-time-picker__value"
                 :class="{ 'ds-time-picker__value--selected': minutes === (m - 1) * 5 }"
+                :data-option-index="m - 1"
+                :aria-selected="minutes === (m - 1) * 5"
+                :tabindex="minutes === (m - 1) * 5 ? 0 : -1"
+                role="option"
+                :aria-label="`${String((m - 1) * 5).padStart(2, '0')} minutos`"
                 @click="selectMinutes((m - 1) * 5)"
+                @keydown="handleOptionKeydown($event, 'minutes', m - 1)"
               >
                 {{ String((m - 1) * 5).padStart(2, '0') }}
               </button>
@@ -93,14 +140,14 @@
     <p v-if="error" :id="pickerId + '-error'" class="ds-time-picker__error" role="alert">
       {{ error }}
     </p>
-    <p v-if="hint && !error" class="ds-time-picker__hint">
+    <p v-if="hint && !error" :id="pickerId + '-hint'" class="ds-time-picker__hint">
       {{ hint }}
     </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
+import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 
 const [modelValue, modifiers] = defineModel<string>({
   set(value) {
@@ -139,9 +186,19 @@ const emit = defineEmits<{
 
 const generatedPickerId = `ds-time-picker-${Math.random().toString(36).slice(2, 8)}`;
 const pickerId = computed(() => props.id || generatedPickerId);
+const dropdownId = computed(() => `${pickerId.value}-dropdown`);
+const dropdownTitleId = computed(() => `${dropdownId.value}-title`);
+const hoursPanelId = computed(() => `${dropdownId.value}-hours`);
+const minutesPanelId = computed(() => `${dropdownId.value}-minutes`);
+const descriptionId = computed(() => {
+  if (props.error) return `${pickerId.value}-error`;
+  if (props.hint) return `${pickerId.value}-hint`;
+  return undefined;
+});
 const isOpen = ref(false);
 const dropdownRef = ref<HTMLElement | null>(null);
 const scrollContainer = ref<HTMLElement | null>(null);
+const inputRef = ref<HTMLInputElement | null>(null);
 const activeUnit = ref<'hours' | 'minutes'>('hours');
 
 const selectedTime = computed(() => {
@@ -160,13 +217,22 @@ const formattedValue = computed(() => {
   return `${h}:${m}`;
 });
 
+function focusSelectedOption() {
+  nextTick(() => {
+    const option = dropdownRef.value?.querySelector<HTMLElement>('[role="option"][aria-selected="true"]');
+    option?.focus({ preventScroll: true });
+  });
+}
+
 function toggleDropdown() {
   if (props.disabled) return;
   isOpen.value = !isOpen.value;
+  if (isOpen.value) focusSelectedOption();
 }
 
-function closeDropdown() {
+function closeDropdown(restoreFocus = true) {
   isOpen.value = false;
+  if (restoreFocus) nextTick(() => inputRef.value?.focus({ preventScroll: true }));
 }
 
 function selectHours(h: number) {
@@ -199,6 +265,26 @@ function clearTime() {
   closeDropdown();
 }
 
+function handleOptionKeydown(event: KeyboardEvent, type: 'hours' | 'minutes', index: number) {
+  if (event.key === 'Enter' || event.key === ' ') return;
+  const count = type === 'hours' ? 24 : 12;
+  const movement: Record<string, number> = {
+    ArrowLeft: -1,
+    ArrowRight: 1,
+    ArrowUp: -4,
+    ArrowDown: 4,
+    Home: -index,
+    End: count - 1 - index
+  };
+  const delta = movement[event.key];
+  if (delta === undefined) return;
+  event.preventDefault();
+  const targetIndex = index + delta;
+  const selector = `[role="option"][data-option-index="${targetIndex}"]`;
+  const target = dropdownRef.value?.querySelector<HTMLElement>(selector);
+  target?.focus({ preventScroll: true });
+}
+
 function updateModelValue() {
   modelValue.value = `${String(hours.value).padStart(2, '0')}:${String(minutes.value).padStart(2, '0')}`;
 }
@@ -215,6 +301,10 @@ function handleClickOutside(event: MouseEvent) {
 watch(selectedTime, (newTime) => {
   hours.value = newTime.hours;
   minutes.value = newTime.minutes;
+});
+
+watch(activeUnit, () => {
+  if (isOpen.value) focusSelectedOption();
 });
 
 onMounted(() => {
@@ -264,7 +354,7 @@ onUnmounted(() => {
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease;
-  min-height: 40px;
+  min-height: var(--touch-min, 44px);
   cursor: pointer;
 }
 
@@ -286,8 +376,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: var(--touch-min, 44px);
+  height: var(--touch-min, 44px);
   padding: 0;
   background: transparent;
   border: none;
@@ -339,6 +429,7 @@ onUnmounted(() => {
 .ds-time-picker__unit-btn {
   flex: 1;
   padding: 8px;
+  min-height: var(--touch-min, 44px);
   font-size: 13px;
   font-weight: 500;
   background: var(--color-bg-subtle, #f1f5f9);
@@ -379,6 +470,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: var(--touch-min, 44px);
   padding: 8px;
   font-size: 14px;
   font-weight: 500;
@@ -395,8 +487,18 @@ onUnmounted(() => {
 }
 
 .ds-time-picker__value--selected {
-  background: var(--color-primary-500, #3b82f6) !important;
-  color: white !important;
+  background: var(--color-primary-700, #066b80) !important;
+  color: var(--color-text-inverse, #ffffff) !important;
+}
+
+.ds-time-picker__input:focus-visible,
+.ds-time-picker__icon-btn:focus-visible,
+.ds-time-picker__unit-btn:focus-visible,
+.ds-time-picker__value:focus-visible,
+.ds-time-picker__now-btn:focus-visible,
+.ds-time-picker__clear-btn:focus-visible {
+  outline: 3px solid var(--color-focus-ring, rgba(15, 168, 184, 0.42));
+  outline-offset: 2px;
 }
 
 /* Footer */
@@ -410,6 +512,7 @@ onUnmounted(() => {
 
 .ds-time-picker__now-btn,
 .ds-time-picker__clear-btn {
+  min-height: var(--touch-min, 44px);
   padding: 6px 12px;
   font-size: 13px;
   font-weight: 500;
@@ -461,6 +564,18 @@ onUnmounted(() => {
   font-size: 12px;
   color: var(--color-text-muted, #94a3b8);
   font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
+}
+
+.ds-time-picker__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* Transitions */

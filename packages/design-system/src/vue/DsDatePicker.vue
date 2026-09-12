@@ -7,6 +7,7 @@
 
     <div class="ds-date-picker__input-wrapper">
       <input
+        ref="inputRef"
         :id="pickerId"
         type="text"
         :value="formattedValue"
@@ -14,7 +15,10 @@
         :disabled="disabled"
         :readonly="true"
         :aria-invalid="!!error"
-        :aria-describedby="error ? pickerId + '-error' : undefined"
+        :aria-describedby="descriptionId"
+        aria-haspopup="dialog"
+        :aria-expanded="isOpen"
+        :aria-controls="calendarId"
         class="ds-date-picker__input"
         @click="toggleCalendar"
         @keydown.enter.prevent="toggleCalendar"
@@ -26,6 +30,9 @@
         :disabled="disabled"
         @click="toggleCalendar"
         aria-label="Abrir calendario"
+        aria-haspopup="dialog"
+        :aria-expanded="isOpen"
+        :aria-controls="calendarId"
       >
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -35,14 +42,25 @@
 
     <Teleport to="body">
       <Transition name="fade">
-        <div v-if="isOpen" class="ds-date-picker__calendar" ref="calendarRef">
+        <div
+          v-if="isOpen"
+          :id="calendarId"
+          class="ds-date-picker__calendar"
+          ref="calendarRef"
+          role="dialog"
+          aria-modal="true"
+          :aria-labelledby="calendarTitleId"
+          @keydown.esc.prevent="closeCalendar()"
+        >
           <div class="ds-date-picker__calendar-header">
             <button type="button" class="ds-date-picker__nav-btn" @click="previousMonth" aria-label="Mes anterior">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <span class="ds-date-picker__current-month">{{ monthYearLabel }}</span>
+            <span :id="calendarTitleId" class="ds-date-picker__current-month" aria-live="polite">
+              {{ monthYearLabel }}
+            </span>
             <button type="button" class="ds-date-picker__nav-btn" @click="nextMonth" aria-label="Proximo mes">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -50,30 +68,43 @@
             </button>
           </div>
 
-          <div class="ds-date-picker__weekdays">
-            <span v-for="day in weekdays" :key="day" class="ds-date-picker__weekday">{{ day }}</span>
+          <div class="ds-date-picker__weekdays" role="row">
+            <span
+              v-for="day in weekdays"
+              :key="day.short"
+              class="ds-date-picker__weekday"
+              role="columnheader"
+              :aria-label="day.long"
+            >{{ day.short }}</span>
           </div>
 
-          <div class="ds-date-picker__days">
-            <span
-              v-for="(day, index) in calendarDays"
-              :key="index"
-              class="ds-date-picker__day"
-              :class="{
-                'ds-date-picker__day--empty': !day,
-                'ds-date-picker__day--selected': isSelected(day),
-                'ds-date-picker__day--today': isToday(day),
-                'ds-date-picker__day--disabled': isDisabled(day),
-                'ds-date-picker__day--other-month': isOtherMonth(day)
-              }"
-              :tabindex="day && !isDisabled(day) ? 0 : -1"
-              :aria-selected="isSelected(day)"
-              :aria-disabled="isDisabled(day)"
-              @click="day && !isDisabled(day) && selectDate(day)"
-              @keydown.enter="day && !isDisabled(day) && selectDate(day)"
-            >
-              {{ day ? day.getDate() : '' }}
-            </span>
+          <div class="ds-date-picker__days" role="grid" :aria-label="`Dias de ${monthYearLabel}`">
+            <template v-for="(day, index) in calendarDays" :key="index">
+              <span v-if="!day" class="ds-date-picker__day ds-date-picker__day--empty" aria-hidden="true" />
+              <button
+                v-else
+                type="button"
+                class="ds-date-picker__day"
+                :class="{
+                  'ds-date-picker__day--selected': isSelected(day),
+                  'ds-date-picker__day--today': isToday(day),
+                  'ds-date-picker__day--disabled': isDisabled(day),
+                  'ds-date-picker__day--other-month': isOtherMonth(day)
+                }"
+                :data-day-index="index"
+                :data-selected="isSelected(day) ? 'true' : 'false'"
+                :tabindex="dayTabIndex(day, index)"
+                :aria-label="formatDayLabel(day)"
+                :aria-selected="isSelected(day)"
+                :aria-current="isToday(day) ? 'date' : undefined"
+                :disabled="isDisabled(day)"
+                role="gridcell"
+                @click="selectDate(day)"
+                @keydown="handleDayKeydown($event, day, index)"
+              >
+                {{ day.getDate() }}
+              </button>
+            </template>
           </div>
 
           <div v-if="showTime" class="ds-date-picker__time-section">
@@ -111,14 +142,14 @@
     <p v-if="error" :id="pickerId + '-error'" class="ds-date-picker__error" role="alert">
       {{ error }}
     </p>
-    <p v-if="hint && !error" class="ds-date-picker__hint">
+    <p v-if="hint && !error" :id="pickerId + '-hint'" class="ds-date-picker__hint">
       {{ hint }}
     </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
+import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 
 const [modelValue, modifiers] = defineModel<string | Date | null>({
   set(value) {
@@ -165,10 +196,26 @@ const emit = defineEmits<{
 
 const generatedPickerId = `ds-date-picker-${Math.random().toString(36).slice(2, 8)}`;
 const pickerId = computed(() => props.id || generatedPickerId);
+const calendarId = computed(() => `${pickerId.value}-calendar`);
+const calendarTitleId = computed(() => `${calendarId.value}-title`);
+const descriptionId = computed(() => {
+  if (props.error) return `${pickerId.value}-error`;
+  if (props.hint) return `${pickerId.value}-hint`;
+  return undefined;
+});
 const isOpen = ref(false);
 const calendarRef = ref<HTMLElement | null>(null);
+const inputRef = ref<HTMLInputElement | null>(null);
 
-const weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const weekdays = [
+  { short: 'Dom', long: 'Domingo' },
+  { short: 'Seg', long: 'Segunda-feira' },
+  { short: 'Ter', long: 'Terça-feira' },
+  { short: 'Qua', long: 'Quarta-feira' },
+  { short: 'Qui', long: 'Quinta-feira' },
+  { short: 'Sex', long: 'Sexta-feira' },
+  { short: 'Sáb', long: 'Sábado' }
+];
 
 const currentMonth = ref(new Date());
 
@@ -222,16 +269,29 @@ const calendarDays = computed(() => {
   return days;
 });
 
+function focusCalendarDay() {
+  nextTick(() => {
+    const target =
+      calendarRef.value?.querySelector<HTMLElement>('[data-selected="true"]') ??
+      calendarRef.value?.querySelector<HTMLElement>('[data-day-index]');
+    target?.focus({ preventScroll: true });
+  });
+}
+
 function toggleCalendar() {
   if (props.disabled) return;
   isOpen.value = !isOpen.value;
   if (isOpen.value && selectedDate.value) {
     currentMonth.value = new Date(selectedDate.value.getFullYear(), selectedDate.value.getMonth(), 1);
+    focusCalendarDay();
+  } else if (isOpen.value) {
+    focusCalendarDay();
   }
 }
 
-function closeCalendar() {
+function closeCalendar(restoreFocus = true) {
   isOpen.value = false;
+  if (restoreFocus) nextTick(() => inputRef.value?.focus({ preventScroll: true }));
 }
 
 function previousMonth() {
@@ -285,6 +345,49 @@ function isDisabled(day: Date | null): boolean {
 function isOtherMonth(day: Date | null): boolean {
   if (!day) return false;
   return day.getMonth() !== currentMonth.value.getMonth();
+}
+
+function dayTabIndex(day: Date, index: number): number {
+  if (isDisabled(day)) return -1;
+  const selectedIndex = calendarDays.value.findIndex((candidate) => isSelected(candidate));
+  if (selectedIndex >= 0) return selectedIndex === index ? 0 : -1;
+  const firstAvailableIndex = calendarDays.value.findIndex(
+    (candidate) => candidate !== null && !isDisabled(candidate)
+  );
+  return firstAvailableIndex === index ? 0 : -1;
+}
+
+function formatDayLabel(day: Date): string {
+  return day.toLocaleDateString(props.locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+}
+
+function handleDayKeydown(event: KeyboardEvent, day: Date, index: number) {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    selectDate(day);
+    return;
+  }
+
+  const movement: Record<string, number> = {
+    ArrowLeft: -1,
+    ArrowRight: 1,
+    ArrowUp: -7,
+    ArrowDown: 7,
+    Home: -index,
+    End: calendarDays.value.length - 1 - index
+  };
+  const delta = movement[event.key];
+  if (delta === undefined) return;
+  event.preventDefault();
+
+  const targetIndex = index + delta;
+  const target = calendarRef.value?.querySelector<HTMLElement>(`[data-day-index="${targetIndex}"]`);
+  if (target && !target.hasAttribute('disabled')) target.focus({ preventScroll: true });
 }
 
 function selectDate(day: Date) {
@@ -393,7 +496,7 @@ onUnmounted(() => {
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease;
-  min-height: 40px;
+  min-height: var(--touch-min, 44px);
   cursor: pointer;
 }
 
@@ -415,8 +518,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: var(--touch-min, 44px);
+  height: var(--touch-min, 44px);
   padding: 0;
   background: transparent;
   border: none;
@@ -470,8 +573,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--touch-min, 44px);
+  height: var(--touch-min, 44px);
   padding: 0;
   background: transparent;
   border: none;
@@ -523,10 +626,14 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: var(--touch-min, 44px);
+  min-width: var(--touch-min, 44px);
+  height: var(--touch-min, 44px);
+  padding: 0;
   font-size: 14px;
   color: var(--color-text, #0f172a);
+  background: transparent;
+  border: none;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -546,8 +653,8 @@ onUnmounted(() => {
 }
 
 .ds-date-picker__day--selected {
-  background: var(--color-primary-500, #3b82f6) !important;
-  color: white !important;
+  background: var(--color-primary-700, #066b80) !important;
+  color: var(--color-text-inverse, #ffffff) !important;
   font-weight: 600;
 }
 
@@ -558,6 +665,15 @@ onUnmounted(() => {
 
 .ds-date-picker__day--other-month {
   color: var(--color-text-muted, #94a3b8);
+}
+
+.ds-date-picker__day:focus-visible,
+.ds-date-picker__nav-btn:focus-visible,
+.ds-date-picker__icon-btn:focus-visible,
+.ds-date-picker__today-btn:focus-visible,
+.ds-date-picker__clear-btn:focus-visible {
+  outline: 3px solid var(--color-focus-ring, rgba(15, 168, 184, 0.42));
+  outline-offset: 2px;
 }
 
 /* Time Section */

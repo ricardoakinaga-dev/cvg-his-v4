@@ -1,21 +1,35 @@
 <template>
   <Teleport to="body">
     <Transition name="slide-up">
-      <div v-if="showUpdateToast" class="pwa-toast" role="alert">
-        <div class="toast-icon">
+      <div
+        v-if="showUpdateToast"
+        class="pwa-toast"
+        role="alert"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-labelledby="pwa-update-toast-title"
+        aria-describedby="pwa-update-toast-message"
+      >
+        <div class="toast-icon" aria-hidden="true">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
         </div>
         <div class="toast-content">
-          <p class="toast-title">{{ title }}</p>
-          <p class="toast-message">{{ message }}</p>
+          <p id="pwa-update-toast-title" class="toast-title">{{ title }}</p>
+          <p id="pwa-update-toast-message" class="toast-message">{{ message }}</p>
         </div>
         <div class="toast-actions">
           <button v-if="action" type="button" class="toast-btn primary" @click="handleAction">
             {{ action.text }}
           </button>
-          <button v-if="dismissible" type="button" class="toast-btn secondary" @click="handleDismiss">
+          <button
+            v-if="dismissible"
+            type="button"
+            class="toast-btn secondary"
+            aria-label="Dispensar notificação de atualização"
+            @click="handleDismiss"
+          >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -26,8 +40,8 @@
 
     <!-- Offline Banner -->
     <Transition name="slide-down">
-      <div v-if="isOffline" class="offline-banner" role="alert">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div v-if="isOffline" class="offline-banner" role="alert" aria-live="polite" aria-atomic="true">
+        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414" />
         </svg>
         <span>Você está offline. Algumas funcionalidades podem estar limitadas.</span>
@@ -37,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { usePWA, useNetworkStatus } from '@/composables/usePWA';
 
 const {
@@ -53,6 +67,7 @@ const title = ref('Atualização disponível');
 const message = ref('Uma nova versão está pronta para ser instalada.');
 const action = ref<{ text: string; handler: () => void } | null>(null);
 const dismissible = ref(true);
+let autoDismissTimer: ReturnType<typeof setTimeout> | undefined;
 
 const handleAction = () => {
   if (action.value) {
@@ -63,6 +78,14 @@ const handleAction = () => {
 
 const handleDismiss = () => {
   showUpdateToast.value = false;
+};
+
+const scheduleAutoDismiss = () => {
+  if (autoDismissTimer) clearTimeout(autoDismissTimer);
+  autoDismissTimer = setTimeout(() => {
+    showUpdateToast.value = false;
+    autoDismissTimer = undefined;
+  }, 30000);
 };
 
 watch(needRefresh, (newVal) => {
@@ -76,10 +99,7 @@ watch(needRefresh, (newVal) => {
     dismissible.value = true;
     showUpdateToast.value = true;
 
-    // Auto-dismiss after 30 seconds if not dismissed
-    setTimeout(() => {
-      showUpdateToast.value = false;
-    }, 30000);
+    scheduleAutoDismiss();
   }
 });
 
@@ -99,6 +119,10 @@ onMounted(() => {
   if (!needRefresh.value) {
     showUpdateToast.value = false;
   }
+});
+
+onUnmounted(() => {
+  if (autoDismissTimer) clearTimeout(autoDismissTimer);
 });
 </script>
 
@@ -167,6 +191,8 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 6px 12px;
+  min-width: var(--touch-min, 44px);
+  min-height: var(--touch-min, 44px);
   border: none;
   border-radius: 6px;
   font-size: 12px;
@@ -188,6 +214,11 @@ onMounted(() => {
   background: var(--color-surface-hover, rgba(255, 255, 255, 0.1));
   color: var(--color-text, #e7eef8);
   padding: 6px;
+}
+
+.toast-btn:focus-visible {
+  outline: 3px solid var(--color-focus-ring, rgba(15, 168, 184, 0.42));
+  outline-offset: 2px;
 }
 
 .toast-btn.secondary:hover {
