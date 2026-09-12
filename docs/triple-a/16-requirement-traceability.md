@@ -10,10 +10,12 @@ A tabela mantém o escopo completo. “NOT PROVEN” significa que a aceitação
 integral da fase não foi demonstrada no candidato corrente; não significa
 que o código esteja ausente. Evidência local, CI e alvo são avaliados separadamente.
 Os registros históricos abaixo mencionam candidatos anteriores. A fotografia
-vigente é `4d6739f2892fd5782e6b3a26158fc4d748d1bf1a`, com gate local estrito
+vigente é `56a18736d7870033c11fb263f68fba98c4b739fc`, com gate local estrito
 `55/57/15`, suíte crítica local `615 + 11` aprovada. O CI #143 do pai
 `82ff6eec` terminou com falha exclusiva em Performance/k6; não há ainda CI
-exata para `4d6739f2`.
+exata para `56a18736`. O CI #144 do pai documental `da5dd244` também falhou
+em `Repository Guards` porque o checkout raso ocultou a ancestralidade do
+snapshot; o candidato atual fixa o checkout com `fetch-depth: 0`.
 Essas provas continuam abaixo da aceitação integral porque faltam CI terminal,
 target, governança, UAT e autoridade de release. A [fotografia atual](./15-current-baseline.md)
 contém SHA, CI e lacunas medidas.

@@ -1,8 +1,8 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato funcional observado em 2026-09-12T07:04:29Z
+## Candidato funcional observado em 2026-09-12T07:25:20Z
 
-- SHA de código e documentação: `4d6739f2892fd5782e6b3a26158fc4d748d1bf1a`.
+- SHA de código e documentação: `56a18736d7870033c11fb263f68fba98c4b739fc`.
 - `HEAD`, `main` e `origin/main` coincidem; rollback preservado em
   `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
@@ -29,7 +29,10 @@ O [CI #143](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/346781
 é o run do candidato funcional pai `82ff6eec` e terminou `failure` com `15/16`
 jobs verdes: E2E SPA, integração, segurança, build, visual e demais checks
 passaram; somente Performance/k6 falhou em `Run k6 benchmark`/`Check SLO results`.
-Esse resultado não é transferido para `4d6739f2`; nenhum threshold foi relaxado.
+Esse resultado não é transferido para `56a18736`; nenhum threshold foi relaxado.
+O CI #144 do pai documental `da5dd244` falhou em `Repository Guards` porque o
+checkout raso impediu validar a ancestralidade do snapshot. O candidato atual
+passa a solicitar `fetch-depth: 0`; a correção ainda aguarda CI exata.
 
 ## Recovery e target
 

@@ -5,14 +5,17 @@
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA atual é
-> `4d6739f2892fd5782e6b3a26158fc4d748d1bf1a`; o CI #143 pertence ao pai
-> `82ff6eec` e terminou `failure` somente em Performance/k6; não há CI exata
-> para este commit e o veredito é `BLOCKED / NOT PROVEN`; nenhum dado abaixo é transferido.
+> `56a18736d7870033c11fb263f68fba98c4b739fc`; o CI #143 pertence ao pai
+> `82ff6eec` e terminou `failure` somente em Performance/k6. O CI #144 pertence
+> ao pai documental `da5dd244` e falhou em `Repository Guards` porque o
+> checkout raso ocultou a ancestralidade do snapshot; o candidato atual corrige
+> esse contrato com `fetch-depth: 0`. Não há CI exata para este commit e o
+> veredito é `BLOCKED / NOT PROVEN`; nenhum dado abaixo é transferido.
 
-**Current snapshot:** `4d6739f2892fd5782e6b3a26158fc4d748d1bf1a` (código e documentação; `HEAD == origin/main`, rollback preservado).
-**Current CI:** [#143](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34678150409) — run do pai `82ff6eec`, `failure`, 15/16 jobs passaram e somente Performance/k6 falhou; CI exata do commit atual ainda não comprovada
+**Current snapshot:** `56a18736d7870033c11fb263f68fba98c4b739fc` (código e documentação; `HEAD == origin/main`, rollback preservado).
+**Current CI:** [#143](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34678150409) — run do pai `82ff6eec`, `failure`, 15/16 jobs passaram e somente Performance/k6 falhou. O [#144](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34680215070), no pai documental `da5dd244`, falhou em `Repository Guards` por checkout raso; CI exata do commit atual ainda não comprovada.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-12T07:04:29Z
+**Observation:** 2026-09-12T07:25:20Z
 
 **Current local execution:** o gate estrito completo do pai `82ff6eec` executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A suíte crítica local passou `615` testes PostgreSQL e `11` suítes de processo. A validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
 
