@@ -1,15 +1,15 @@
 # Checkpoint — merge seguro e auditoria
 
-**Registrado em:** `2026-09-12T11:43:31Z`
+**Registrado em:** `2026-09-12T11:56:59Z`
 **Repositório:** `https://github.com/ricardoakinaga-dev/cvg-his-v4`
 **Commit inicial do checkpoint:** `f2fd6556` (`[skip ci]`)
 
 ## Estado do Git
 
 - Branch ativa: `main`.
-- SHA auditado antes deste arquivo: `fecb70cad2f7c25fb08c09262547ecac51fc049c`.
+- SHA documental corrente: `00683b312506733ff350c2a104cec04d0dc98bd8`.
 - O estado auditado foi publicado em `main` por commits documentais com
-  `[skip ci]`; consulte `git rev-parse HEAD` ao retomar para o SHA mais recente.
+  `[skip ci]`; este SHA está sincronizado com `origin/main`.
 - Worktree limpo no momento do checkpoint.
 - Nenhum force-push foi usado.
 - Rollback remoto preservado em `origin/fix/state-of-art-ci-assurance`:
@@ -23,6 +23,8 @@
 2. `4b49c4ef` — vincula os snapshots de assurance à correção do workflow.
 3. `fecb70ca` — reconcilia os snapshots com o CI terminal mais recente e registra
    o estado bloqueado sem relaxar thresholds.
+4. `00683b31` — vincula o gate estrito documentado ao snapshot local completo
+   `c1059e6c`, mantendo a decisão `BLOCKED / NOT PROVEN`.
 
 ## Validações concluídas
 
@@ -31,6 +33,10 @@
 - Reprodução local do k6, inclusive com watcher de diagnóstico de 5 s e
   `GOMAXPROCS=1`: `9/9` SLOs, erros `0%`, disponibilidade `100%`.
 - A execução local não substitui a prova no runner hospedado.
+- O gate estrito local completo no snapshot `c1059e6c` terminou `BLOCKED`, com
+  `score=55`, `critical_score=57`, `open_p0=15`, `claim=NOT PROVEN` e
+  `publication_allowed=false`. Artefatos de release ignorados e antigos são
+  rejeitados por vínculo de SHA; não foram promovidos como evidência atual.
 
 ## CI para retomar
 
