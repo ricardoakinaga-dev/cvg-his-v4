@@ -1,8 +1,8 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato funcional observado em 2026-09-12T09:15:44Z
+## Candidato funcional observado em 2026-09-12T09:50:58Z
 
-- SHA de código e documentação: `a3354f021d7046ad345f5aad89d16ab0ef9c1be3` (código/workflow); documentação publicada em `8273ecb5c7ea9afd759fdde86c91fe073ba64f94`.
+- SHA de código e documentação: `a3354f021d7046ad345f5aad89d16ab0ef9c1be3` (código/workflow); documentação publicada em `8273ecb5c7ea9afd759fdde86c91fe073ba64f94` e `f9cc660a085793bffee9a45ccbeb3d004a755a70`.
 - `HEAD`, `main` e `origin/main` coincidem; rollback preservado em
   `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
@@ -45,6 +45,13 @@ banco mutável da suíte SPA. O [CI #147](https://github.com/ricardoakinaga-dev/
 no SHA exato publicado `8273ecb5`, confirmou a correção: `16/16` jobs verdes,
 SPA E2E verde e `Run canonical clinical API E2E` concluído com sucesso em
 `8s`, além de Performance/k6, integração, unidade, visual, guards e segurança.
+O [CI #148](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34685632858),
+no descendente documental `f9cc660a`, manteve E2E SPA, API clínica canônica,
+integração, unidade, visual e demais checks verdes, mas falhou no job
+Performance/k6: `Run k6 benchmark` exit `99` e `Check SLO results` exit `1`.
+Esse resultado não transfere falha para o código/workflow de `a3354f02`, que
+permanece confirmado pelo #147; ele mantém o snapshot atual `BLOCKED` até uma
+execução k6 terminal verde.
 
 ## Recovery e target
 

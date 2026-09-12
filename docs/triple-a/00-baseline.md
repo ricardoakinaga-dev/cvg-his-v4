@@ -1,12 +1,12 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-12T09:15:44Z
+## Snapshot vigente — 2026-09-12T09:50:58Z
 
 O baseline autoritativo do candidato atual está em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md):
 `a3354f021d7046ad345f5aad89d16ab0ef9c1be3` (código/workflow), com a documentação
-publicada em `8273ecb5c7ea9afd759fdde86c91fe073ba64f94` e `HEAD == main == origin/main`,
+publicada em `8273ecb5c7ea9afd759fdde86c91fe073ba64f94` e `f9cc660a085793bffee9a45ccbeb3d004a755a70`; `HEAD == main == origin/main`,
 gate local estrito `BLOCKED` com `55/57/15` (score/critical/open P0) e claim
 `NOT PROVEN`. O CI #143 do candidato funcional pai `82ff6eec` terminou
 `failure` somente em Performance/k6; os outros 15 jobs, incluindo E2E SPA,
@@ -18,22 +18,24 @@ O CI #146, no `main@697c6efa` (descendente documental anterior), terminou
 `failure` porque o passo de API E2E clínico canônico falhou; a suíte SPA,
 Performance/k6 e integração passaram. O candidato
 `a3354f02` isola o banco/API da prova canônica; o CI #147 no SHA documental
-`8273ecb5` terminou verde com `16/16` jobs, incluindo essa prova canônica.
+`8273ecb5` terminou verde com `16/16` jobs, incluindo essa prova canônica. O
+CI #148 no descendente documental `f9cc660a` terminou `failure` somente em
+Performance/k6, com `15/16` jobs verdes.
 As seções abaixo são
 histórico append-only; seus SHAs e scores não são evidência do candidato atual.
 
 ## Registro obrigatório do prompt
 
-| Campo              | Registro                                                                                                                                                                               |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Problema           | Estabelecer arquitetura, forças, dívidas e riscos antes da implementação.                                                                                                              |
-| Estado anterior    | Baselines misturavam candidatos e não distinguiam local, CI e target.                                                                                                                  |
-| Decisão            | Usar este índice histórico com o snapshot corrente em `15-current-baseline.md`.                                                                                                        |
-| Implementação      | Prompt preservado, quality bar congelado, matriz e ledger append-only.                                                                                                                 |
-| Arquivos alterados | `docs/triple-a/MASTER_PROMPT.md`, `QUALITY_BAR_V1.json`, `15-current-baseline.md`, `17-current-execution-evidence.md`, `.github/workflows/ci.yml`.                                     |
-| Testes             | `pnpm docs:validate`; gate local e verificações de qualidade do candidato.                                                                                                             |
-| Evidências         | CI #147 `16/16` verde no SHA `8273ecb5`, gate local `55/57/15` herdado da execução completa no pai, seed/k6 locais e artefato estrito `BLOCKED`; gates de target permanecem sem prova. |
-| Riscos residuais   | Evidência de target, recovery, governança, UAT e autoridade humana ausente.                                                                                                            |
+| Campo              | Registro                                                                                                                                                                                                                                                         |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Problema           | Estabelecer arquitetura, forças, dívidas e riscos antes da implementação.                                                                                                                                                                                        |
+| Estado anterior    | Baselines misturavam candidatos e não distinguiam local, CI e target.                                                                                                                                                                                            |
+| Decisão            | Usar este índice histórico com o snapshot corrente em `15-current-baseline.md`.                                                                                                                                                                                  |
+| Implementação      | Prompt preservado, quality bar congelado, matriz e ledger append-only.                                                                                                                                                                                           |
+| Arquivos alterados | `docs/triple-a/MASTER_PROMPT.md`, `QUALITY_BAR_V1.json`, `15-current-baseline.md`, `17-current-execution-evidence.md`, `.github/workflows/ci.yml`.                                                                                                               |
+| Testes             | `pnpm docs:validate`; gate local e verificações de qualidade do candidato.                                                                                                                                                                                       |
+| Evidências         | CI #147 `16/16` verde no código/workflow, CI #148 com falha exclusiva de Performance/k6 no descendente documental, gate local `55/57/15` herdado da execução completa no pai, seed/k6 locais e artefato estrito `BLOCKED`; gates de target permanecem sem prova. |
+| Riscos residuais   | Evidência de target, recovery, governança, UAT e autoridade humana ausente.                                                                                                                                                                                      |
 
 ## Reconciliação corrente — 2026-09-11T22:12:14Z
 

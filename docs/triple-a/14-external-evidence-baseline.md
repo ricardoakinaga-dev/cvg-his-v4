@@ -13,13 +13,14 @@
 > `697c6efa`, fornece a execução remota anterior e terminou `failure` no passo
 > de API E2E clínico canônico. O CI #147 no descendente documental `8273ecb5`
 > terminou `success` com `16/16` jobs verdes, incluindo a prova canônica isolada;
-> nenhum dado histórico é transferido como aprovação. O veredito geral continua
-> `BLOCKED / NOT PROVEN` por gates externos de target, recovery e autoridade.
+> o CI #148 no descendente `f9cc660a` terminou `failure` somente em Performance/k6
+> (`Run k6 benchmark` exit `99`, `Check SLO results` exit `1`). Nenhum threshold
+> foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
 **Current snapshot:** `a3354f021d7046ad345f5aad89d16ab0ef9c1be3` (candidato de código/workflow; a documentação corrente é descendente documental, rollback preservado).
-**Current CI:** [#147](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34684079972) — `main@8273ecb5` terminou `success` com `16/16` jobs verdes, incluindo a suíte SPA, a prova clínica canônica isolada em banco/API próprios, Performance/k6, integração, guards, segurança, build e visual.
+**Current CI:** [#148](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34685632858) — `main@f9cc660a` terminou `failure` com `15/16` jobs verdes; E2E SPA, a prova clínica canônica isolada em banco/API próprios, integração, guards, segurança, build e visual passaram. O #147 anterior confirmou o código/workflow com `16/16`; o #148 falhou apenas em Performance/k6.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-12T09:15:44Z
+**Observation:** 2026-09-12T09:50:58Z
 
 **Current local execution:** o gate estrito completo do pai `82ff6eec` executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A suíte crítica local passou `615` testes PostgreSQL e `11` suítes de processo. A reprodução da API clínica canônica passou `2/2` em PostgreSQL real; a validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
 
@@ -158,7 +159,7 @@ this snapshot the following required runtime/external proofs remain open:
 - `TRIPLE_A_SKIP_EXECUTION=1 pnpm release:triple-a` remains fail-closed with `BLOCKED`, `score=42`, `critical_score=20`, `open_p0=28`, `claim=NOT PROVEN` and `publication_allowed=false`. The generated ignored artifact is diagnostic only and is not a certification package.
 - A disposable PostgreSQL cluster used for the targeted E2E was stopped after verification. No production database, real patient/PHI data, external provider credential or shared destructive drill was used.
 
-The current external baseline therefore remains `BLOCKED / NOT PROVEN`. CI #147 is a terminal exact-SHA green job inventory, but independent runtime clinical, worker crash, RLS, recovery, performance/soak, UAT, branch-governance, image-attestation and authority evidence remain open.
+The current external baseline therefore remains `BLOCKED / NOT PROVEN`. CI #148 is a terminal exact-SHA inventory with a failed remote k6 SLO gate; CI #147 remains the terminal green inventory for the code/workflow candidate. Independent runtime clinical, worker crash, RLS, recovery, performance/soak, UAT, branch-governance, image-attestation and authority evidence remain open.
 
 ## Terminal reconciliation — CI #58 / local candidate
 

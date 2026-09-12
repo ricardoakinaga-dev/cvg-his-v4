@@ -1,6 +1,6 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `main@a3354f021d7046ad345f5aad89d16ab0ef9c1be3` (documentação publicada em `8273ecb5c7ea9afd759fdde86c91fe073ba64f94`)
+**Candidate funcional avaliado:** `main@a3354f021d7046ad345f5aad89d16ab0ef9c1be3` (documentação publicada em `8273ecb5c7ea9afd759fdde86c91fe073ba64f94` e `f9cc660a085793bffee9a45ccbeb3d004a755a70`)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -18,7 +18,9 @@ esse checkout. O [CI #146](https://github.com/ricardoakinaga-dev/cvg-his-v4/acti
 no `main@697c6efa` terminou `failure` no passo de API E2E clínico canônico. O
 candidato `a3354f02` isolou o banco/API da prova canônica e o [CI #147](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34684079972)
 no SHA exato publicado `8273ecb5` terminou `success` com `16/16` jobs verdes,
-incluindo a suíte SPA e `Run canonical clinical API E2E`.
+incluindo a suíte SPA e `Run canonical clinical API E2E`. O [CI #148](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34685632858)
+no descendente documental `f9cc660a` manteve `15/16` jobs verdes, mas falhou
+somente em Performance/k6.
 
 ## Atualização terminal — isolamento da prova clínica
 
@@ -26,26 +28,27 @@ O CI #146 falhou no passo de API E2E canônico depois de a suíte SPA passar. A
 reprodução local com PostgreSQL real passou as duas jornadas. O workflow agora
 prepara `cvg_his_e2e_canonical` e executa a API canônica em `3113`, separada do
 banco mutável da suíte SPA. O contrato CI passou `18/18`; o CI #147 confirmou
-essa correção em `8s`. O veredito geral permanece **BLOCKED / NOT PROVEN** por
-gates externos de target e release.
+essa correção em `8s`. O #148 falhou nos SLOs remotos de k6, sem alteração de
+threshold. O veredito geral permanece **BLOCKED / NOT PROVEN** por performance
+remota e pelos gates externos de target e release.
 
 ## Scorecard
 
-| Área                 | Estado atual                 | Evidência                                                                                                                            |
-| -------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Architecture         | BOUNDED PASS                 | guards e contratos locais                                                                                                            |
-| Security             | PARTIAL                      | SAST, secrets, dependency audit e testes locais                                                                                      |
-| Testing              | LOCAL PASS                   | suíte workspace, critical e E2E clínico                                                                                              |
-| Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas                                                                                             |
-| Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                                                                                                        |
-| CI/CD                | PASS no SHA atual            | CI #147 terminou `success` com `16/16` jobs, incluindo API E2E clínico canônico isolado; gates de release externos continuam abertos |
-| Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                                                                                                      |
-| Recovery             | BLOCKED                      | Docker impediu restore drill real                                                                                                    |
-| Frontend             | BOUNDED PASS                 | E2E/visual/a11y no CI                                                                                                                |
-| Database             | PARTIAL                      | testes locais; RLS target não provado                                                                                                |
-| Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas                                                                                             |
-| Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes                                                                                            |
-| Overall              | `55`, critical `57`, `15 P0` | gate estrito local no pai `82ff6eec` com checks, build e testes                                                                      |
+| Área                 | Estado atual                 | Evidência                                                                                                                  |
+| -------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Architecture         | BOUNDED PASS                 | guards e contratos locais                                                                                                  |
+| Security             | PARTIAL                      | SAST, secrets, dependency audit e testes locais                                                                            |
+| Testing              | LOCAL PASS                   | suíte workspace, critical e E2E clínico                                                                                    |
+| Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas                                                                                   |
+| Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                                                                                              |
+| CI/CD                | BLOQUEADO no SHA atual       | CI #148 terminou `failure` em Performance/k6 com `15/16` jobs verdes; #147 confirmou o código/workflow clínico com `16/16` |
+| Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                                                                                            |
+| Recovery             | BLOCKED                      | Docker impediu restore drill real                                                                                          |
+| Frontend             | BOUNDED PASS                 | E2E/visual/a11y no CI                                                                                                      |
+| Database             | PARTIAL                      | testes locais; RLS target não provado                                                                                      |
+| Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas                                                                                   |
+| Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes                                                                                  |
+| Overall              | `55`, critical `57`, `15 P0` | gate estrito local no pai `82ff6eec` com checks, build e testes                                                            |
 
 ## P0 Findings
 
