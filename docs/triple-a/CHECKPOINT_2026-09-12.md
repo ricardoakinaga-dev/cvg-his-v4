@@ -1,6 +1,6 @@
 # Checkpoint — merge seguro e auditoria
 
-**Registrado em:** `2026-09-12T11:32:02Z`
+**Registrado em:** `2026-09-12T11:43:31Z`
 **Repositório:** `https://github.com/ricardoakinaga-dev/cvg-his-v4`
 **Commit inicial do checkpoint:** `f2fd6556` (`[skip ci]`)
 
@@ -39,9 +39,11 @@ Run atual: [CI #151](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/ru
 No último polling, o run tinha:
 
 - Passado: Typecheck, SAST, Secret Scan, Dependency Audit, Lint, OpenAPI,
-  Repository Guards, Coverage, Build, API Contract, Unit, Windows e Visual.
-- Falhado: `Performance (k6 SLOs)`.
-- Ainda executando: Integration Tests e E2E Tests (SPA).
+  Repository Guards, Coverage, Build, API Contract, Unit, Windows, Integration,
+  E2E SPA e Visual.
+- Falhado: `Performance (k6 SLOs)` — benchmark exit `99`, parser exit `1`.
+- Artefato: `performance-k6-report`, digest
+  `sha256:84b09a10162af819504fe8e269a84d498f1927aee9189af553ff3f8086390afa`.
 
 O run anterior [CI #150](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34688526421)
 terminou com `15/16` jobs verdes e a mesma falha exclusiva de Performance/k6.
@@ -59,6 +61,6 @@ git log --oneline -4 --decorate
 pnpm docs:validate
 ```
 
-Depois, abrir o run #151 acima e registrar os estados finais de Integration e
-E2E. Se a documentação for atualizada com esse resultado, use um commit
-documental com `[skip ci]` para não iniciar uma cadeia de CI desnecessária.
+Depois, abrir o run #151 acima para consultar os logs e o artefato de Performance.
+A documentação corrente já registra o estado terminal; novos registros
+documentais devem usar `[skip ci]` para não iniciar uma cadeia de CI desnecessária.

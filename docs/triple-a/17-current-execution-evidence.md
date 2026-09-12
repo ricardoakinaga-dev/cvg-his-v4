@@ -1,8 +1,8 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato funcional observado em 2026-09-12T11:03:00Z
+## Candidato funcional observado em 2026-09-12T11:43:00Z
 
-- SHA de código e documentação: `553078be60c963ffb7cab5c45c130912e5e299b8` (código/workflow); documentação corrente publicada no descendente `4b49c4ef529a43344887f621f9d6ac2ebd969bb0`.
+- SHA de código e documentação: `553078be60c963ffb7cab5c45c130912e5e299b8` (código/workflow); documentação corrente em commits documentais posteriores.
 - `HEAD`, `main` e `origin/main` coincidem; rollback preservado em
   `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
@@ -60,15 +60,17 @@ da alteração do workflow/contrato. Os jobs Typecheck, SAST, Secret Scan,
 Dependency Audit, Coverage e OpenAPI passaram; nenhum resultado parcial é
 promovido. A reconciliação foi publicada no descendente `4b49c4ef`.
 
-O [CI #150](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34688526421),
-no descendente documental `4b49c4ef`, terminou `failure` somente em
-`Performance (k6 SLOs)`: `15/16` jobs passaram, incluindo Repository Guards,
-Integration, E2E SPA e Visual Regression. O job remoto publicou o artefato
-`performance-k6-report` com digest
-`sha256:a9cac2efa9318590c27dae16cc3296c8c71d54693fa7ab2d4fc23e9c32d764ed`;
-as métricas detalhadas não estão disponíveis sem credencial. A mudança
+O [CI #151](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34690210769),
+no SHA `fecb70ca`, terminou `failure` somente em `Performance (k6 SLOs)`:
+`15/16` jobs passaram, incluindo Repository Guards, Integration, E2E SPA e
+Visual Regression. O benchmark terminou com exit `99` e o parser com exit `1`;
+o job remoto publicou o artefato `performance-k6-report` com digest
+`sha256:84b09a10162af819504fe8e269a84d498f1927aee9189af553ff3f8086390afa`.
+As métricas detalhadas não estão disponíveis sem credencial. A mudança
 `GOMAXPROCS=1` e o watcher de diagnóstico passaram na reprodução local, mas a
-evidência hospedada continua falha e nenhum threshold foi relaxado.
+evidência hospedada continua falha. Runs anteriores do mesmo código/workflow
+alternaram entre verde e falha em runners diferentes; nenhum threshold foi
+relaxado.
 
 ## Recovery e target
 
