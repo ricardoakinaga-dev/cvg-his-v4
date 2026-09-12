@@ -32,8 +32,8 @@ configuração de observabilidade antes de um deploy.
   mutáveis em services, Compose e Helm e a exceção restrita de imagens locais.
 - Proveniência/SBOM: `scripts/generate-image-attestation-evidence.mjs` e o
   workflow de release.
-- Candidato observado: a ser reancorado no commit funcional de supply-chain; o
-  snapshot anterior `c7336ac0f6a909c10d07797c36814f0b321c6d5c` é histórico.
+- Candidato observado: `d848843173bca9a94b8c1f2914d3a3654eb4ce84`; o snapshot
+  anterior `c7336ac0f6a909c10d07797c36814f0b321c6d5c` é histórico.
 
 ## Verificação
 
@@ -56,8 +56,23 @@ licença/abandono de dependências continuam `NOT PROVEN` para uma release.
 | Implementação      | Pins imutáveis, guard central e workflow de provenance/SBOM.                                                 |
 | Arquivos alterados | `.github/workflows`, `scripts/validate-supply-chain.mjs`, `scripts/generate-image-attestation-evidence.mjs`. |
 | Testes             | `pnpm validate:supply-chain`; secret scan; guards de release.                                                |
-| Evidências         | Resultado local no SHA `c7336ac0`; CI #135 nos jobs de segurança.                                            |
+| Evidências         | Guard local no SHA `d8488431`; CI novo do candidato ainda pendente.                                          |
 | Riscos residuais   | Registry scan, assinatura, licença/abandono e attestation de imagem ainda sem prova externa.                 |
+
+## Atualização do candidato de supply chain — 2026-09-12T14:40:32Z
+
+- O candidato `d848843173bca9a94b8c1f2914d3a3654eb4ce84` fixa por digest as
+  imagens externas de services do workflow, Compose, Helm e bases Docker; as
+  imagens locais de Compose permanecem limitadas ao namespace `cvg-his-v2-*`/
+  `cvg-his-v4-*`.
+- O guard `pnpm validate:supply-chain` passou com 113 actions, 13 imagens de
+  workflow, 15 imagens Compose, zero imagens Helm estáticas e seis bases Docker;
+  o contrato de regressão passou `3/3`. Os testes estáticos do Helm passaram
+  `10/10`; o render com Helm v3.15.4 permanece pendente neste ambiente sem
+  binário/daemon Docker.
+- O digest do collector OTel corresponde à publicação existente `0.129.1`, pois
+  a tag legada `0.124.1` não está disponível no registry. Esta mudança de
+  versão exige revisão de observabilidade antes de deploy.
 
 ## Atualização do candidato funcional — 2026-09-12T02:53:43Z
 

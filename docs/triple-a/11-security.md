@@ -16,9 +16,9 @@ vinculada ao novo snapshot ainda está pendente. A prova de roles/RLS no target,
 attestation, revisão humana independente, providers e governança de branch
 continua ausente; nenhum claim `TRIPLE-A VERIFIED` é autorizado.
 
-## Atualização de logging — 2026-09-12T13:02:52Z
+## Atualização de logging — 2026-09-12T14:40:32Z
 
-No SHA `6010b98320e37139b530cfb2a22b041ca18b6401`, o logger compartilhado passou
+No SHA `d848843173bca9a94b8c1f2914d3a3654eb4ce84`, o logger compartilhado passou
 a redigir recursivamente chaves sensíveis e seus valores, mensagens com tokens,
 e-mails e CPF, erros estruturados, objetos aninhados, valores profundos e
 referências circulares. Os testes do pacote `@cvg-his-v2/shared-logging`

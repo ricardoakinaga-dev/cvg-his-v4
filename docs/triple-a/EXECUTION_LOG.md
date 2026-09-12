@@ -695,3 +695,12 @@ Próxima prova: CI completo do novo candidato; source acceptance não fecha runt
 - Evidência local: módulo de eventos `28/28` testes, crosswalk `5/5` testes, typecheck do módulo, `pnpm validate:prompt-traceability`, `pnpm validate:migration-source`, `pnpm docs:validate` e `git diff --check` passaram.
 - O CI #159 é de candidato anterior `6462323f` e não foi transferido. A publicação do snapshot atual deve gerar uma execução nova no SHA exato; nenhum resultado histórico será promovido.
 - Estado: **BLOCKED / NOT PROVEN**. O envelope e o crosswalk fecham invariantes locais, mas não provam target, UAT, recovery, performance, attestation, governança de branch ou autoridade de release.
+
+
+## 2026-09-12T14:40:32Z — supply chain pinado no candidato `d8488431`
+
+- O commit funcional `d848843173bca9a94b8c1f2914d3a3654eb4ce84` fixa por digest as imagens externas de workflow, Compose, Helm e bases Docker, restringe a exceção às imagens locais `cvg-his-v2-*`/`cvg-his-v4-*` e exige digest para PostgreSQL/Redis embedded no chart.
+- Evidência local: `pnpm validate:supply-chain` passou com 113 actions, 13 imagens de workflow, 15 imagens Compose e seis bases Docker; o contrato do guard passou `3/3`; os testes estáticos do Helm passaram `10/10`; secret scan, política de dependências, crosswalk e `git diff --check` passaram.
+- A tag OTel `0.124.1` foi corrigida porque não existe no registry; o digest adotado corresponde a `0.129.1` e fica registrado como risco de compatibilidade de observabilidade.
+- O render real do Helm v3.15.4 não foi executado nesta estação por ausência do binário e de acesso ao daemon Docker; o workflow continua exigindo a versão fixada e falhará fechado se ela não estiver disponível.
+- O CI #159 e runs anteriores pertencem a candidatos anteriores; o push do snapshot atual deve gerar CI novo no SHA exato. Estado: **BLOCKED / NOT PROVEN**.
