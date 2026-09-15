@@ -11,6 +11,7 @@ import type {
   FinancialPayableStatus,
   FinancialPayablesService
 } from '@cvg-his-v2/module-financial';
+import { ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
@@ -60,6 +61,12 @@ function manualSettlementDisabledResponse(correlationId: string) {
 function normalizePage(value: string | null, fallback: number): number {
   const parsed = Number(value ?? String(fallback));
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function parseReceivableStatus(value: string | null): 'open' | 'settled' | undefined {
+  if (value === null || value === '') return undefined;
+  if (value === 'open' || value === 'settled') return value;
+  throw new ValidationError('status must be open or settled', { value });
 }
 
 function parsePayableStatus(value: string | null): FinancialPayableStatus | undefined {
@@ -987,11 +994,15 @@ export async function handleFinancialRoutes(
     const status = url.searchParams.get('status');
     const encounterId = url.searchParams.get('encounterId');
     const search = url.searchParams.get('search');
+    const dueFrom = url.searchParams.get('dueFrom') || undefined;
+    const dueTo = url.searchParams.get('dueTo') || undefined;
     const result = await encounterFinancial.listReceivables({
       accountId: principal.user.accountId as never,
-      status: status === 'open' || status === 'settled' ? status : undefined,
+      status: parseReceivableStatus(status),
       encounterId: encounterId ? (encounterId as never) : undefined,
       search: search ?? undefined,
+      ...(dueFrom ? { dueFrom } : {}),
+      ...(dueTo ? { dueTo } : {}),
       page: normalizePage(url.searchParams.get('page'), 1),
       pageSize: normalizePage(url.searchParams.get('pageSize'), 20)
     });

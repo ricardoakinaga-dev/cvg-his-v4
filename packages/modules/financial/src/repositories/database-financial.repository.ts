@@ -372,6 +372,14 @@ export class DatabaseEncounterFinancialRepository implements EncounterFinancialR
         params.push(filters.encounterId);
         clauses.push(`encounter_id = $${params.length}`);
       }
+      if (filters?.dueFrom) {
+        params.push(filters.dueFrom);
+        clauses.push(`due_at >= ($${params.length}::date AT TIME ZONE 'UTC')`);
+      }
+      if (filters?.dueTo) {
+        params.push(filters.dueTo);
+        clauses.push(`due_at < (($${params.length}::date + interval '1 day') AT TIME ZONE 'UTC')`);
+      }
 
       const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
       const result = await client.query(

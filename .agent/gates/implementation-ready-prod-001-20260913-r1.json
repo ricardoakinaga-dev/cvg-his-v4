@@ -1,0 +1,78 @@
+{
+  "authority": {
+    "actor": "lead executor da retomada PROD-001-R1 (nao autoridade de release)",
+    "decision": "Coerencia de controle da retomada: 47 cartoes representados, acao unica PROD-003-R1, PASS historicos preservados com escopo; nenhuma decisao de negocio, operacao, raiz de confianca externa ou certificacao e tomada por este registro.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar a cada mudanca de codigo, contrato, fonte critica, evidencia, produtor autorizado ou decisao pendente; expira nos reparos 002-R1 a 005-R1 e na integracao do candidato final.",
+    "required": false,
+    "scope": "Retomada pos-reauditoria checkpoint PROD-001-005 (CP-04): reconciliacao de controle com 47 PROD no modelo canonico; produto, UAT, operacao e autoridade permanecem fora deste gate",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "Escopo, dependencias e criterios de aceite dos 47 cartoes PROD-001-047 e dos reparos R1 (001-R1 a 005-R1) estao definidos e rastreaveis ao roadmap, backlog e ExecPlan ativo, com transicoes declaradas e sem renumeracao.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md",
+        ".agent/plans/repository-state-of-art-remediation-execplan.md",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Representacao de controle, nao aceite funcional: 001-003 PARCIAIS, 004-005 REABERTOS, 006-047 planejados."
+    },
+    {
+      "id": "IR-002",
+      "description": "Ownership unico (Lead), superficie .agent/ExecPlan e limites de autoridade estao explicitos; acao unica PROD-001:PROD-001-R1-RECOVERY em estado, backlog, marcador e primeiro passo; decisoes externas continuam bloqueantes.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/state.json",
+        ".agent/execution-log.jsonl",
+        "docs/2026-09-13-reauditoria-checkpoint-prod-001-005.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Este gate nao aprova produto, UAT, operacao, raiz de confianca externa ou release; autoridades humanas/externas permanecem."
+    },
+    {
+      "id": "IR-003",
+      "description": "Abordagem de verificacao e destinos de evidencia por tentativa (comando/saida/hash/revisao) sao executaveis; PASS historicos preservados com escopo; narrativa rev12/246; checker 11/11 e revisao semantica independente.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl",
+        "docs/engineering/critical-coverage-scope.json",
+        "artifacts/remediation/PROD-001/attempt-20260913T154133Z-R1/REPORT.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Evidencia por tentativa em artifacts/ (ignorado pelo Git) exige retencao duravel de PROD-002-R1; cobertura critica segue FAIL 246."
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json",
+    ".agent/state.json",
+    ".agent/execution-log.jsonl",
+    ".agent/verification.jsonl",
+    ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "docs/2026-09-13-reauditoria-checkpoint-prod-001-005.md",
+    "docs/2026-09-13-backlog-prontidao-producao.md"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Executar PROD-003-R1 (harness reproduzivel) e na sequencia 004-R1/005-R1, 002-R1 e 006-009; manter o release bloqueado.",
+  "record_id": "GATE-IR-PROD-001-20260913-R1",
+  "residual_risk": "MEDIUM",
+  "revalidation_triggers": [
+    "Qualquer alteracao em .agent/**, ExecPlan, manifesto critico, shards, codigo de produto ou documentos correntes.",
+    "Reparos 002-R1 a 005-R1, nova reauditoria, CI exato, evidencia target, produtor operacional ou decisao de autoridade."
+  ],
+  "scope": "Retomada pos-reauditoria checkpoint PROD-001-005 (CP-04): reconciliacao de controle com 47 PROD no modelo canonico; produto, UAT, operacao e autoridade permanecem fora deste gate",
+  "scope_ref": "PROD-001",
+  "supersedes": null,
+  "timestamp": "2026-09-13T15:46:00Z",
+  "version": 1,
+  "conditions": []
+}

@@ -60,6 +60,18 @@ describe('OwnersService', () => {
       expect(owner.administrativeNotes).toBe('VIP client');
     });
 
+    it('does not treat an owner in another account as a duplicate', () => {
+      service.create(ACCOUNT_ID, makeOwner({ fullName: 'Shared Identity' }));
+
+      const otherAccountOwner = service.create(
+        ACCOUNT_ID_2,
+        makeOwner({ fullName: 'Shared Identity' })
+      );
+
+      expect(otherAccountOwner.fullName).toBe('Shared Identity');
+      expect(service.list().filter((owner) => owner.fullName === 'Shared Identity')).toHaveLength(2);
+    });
+
     it('creates owner with Vetus operational fields', () => {
       const owner = service.create(ACCOUNT_ID, {
         fullName: 'Cliente Vetus',
@@ -272,6 +284,24 @@ describe('OwnersService', () => {
       const created = service.create(ACCOUNT_ID, makeOwner({ documentId: '111.111.111-11' }));
       const updated = service.update(created.id, { documentId: '999.999.999-99' });
       expect(updated.documentId).toBe('999.999.999-99');
+    });
+
+    it('rejects an update that creates a duplicate owner identity', () => {
+      const existing = service.create(
+        ACCOUNT_ID,
+        makeOwner({ fullName: 'Existing Owner', documentId: '111.111.111-11' })
+      );
+      const candidate = service.create(
+        ACCOUNT_ID,
+        makeOwner({ fullName: 'Candidate Owner', documentId: '222.222.222-22' })
+      );
+
+      expect(() =>
+        service.update(candidate.id, {
+          fullName: existing.fullName,
+          documentId: existing.documentId
+        })
+      ).toThrow(ConflictError);
     });
 
     it('updates status', () => {

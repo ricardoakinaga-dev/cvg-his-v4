@@ -78,3 +78,43 @@ test('reads and verifies an envelope against the outbox event identity', () => {
     /event envelope eventId does not match/
   );
 });
+
+test('measures identifiers as Unicode characters, matching PostgreSQL char_length', () => {
+  const maxIdentifier = '😀'.repeat(255);
+
+  assert.doesNotThrow(() =>
+    buildEventEnvelopeMetadata({
+      eventId: maxIdentifier,
+      eventType: 'handover.ready',
+      accountId,
+      sourceModule,
+      correlationId,
+      actor: { type: 'system', id: maxIdentifier },
+      causationId: maxIdentifier
+    })
+  );
+  assert.throws(
+    () =>
+      buildEventEnvelopeMetadata({
+        eventId: `${maxIdentifier}😀`,
+        eventType: 'handover.ready',
+        accountId,
+        sourceModule,
+        correlationId
+      }),
+    /Event id must contain 1 to 255 characters/
+  );
+});
+
+test('accepts and preserves an ISO timestamp without a timezone', () => {
+  const envelope = buildEventEnvelopeMetadata({
+    eventId: 'evt-envelope-local-time',
+    eventType: 'handover.ready',
+    accountId,
+    sourceModule,
+    correlationId,
+    occurredAt: '2026-01-15T10:00'
+  });
+
+  assert.equal(envelope.occurredAt, '2026-01-15T10:00');
+});

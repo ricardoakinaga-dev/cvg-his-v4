@@ -21,6 +21,12 @@ export interface TenantCommandInput<T> {
   readonly command: () => Promise<T>;
   /** Runs inside the tenant transaction before idempotency lookup or replay. */
   readonly beforeIdempotency?: () => Promise<void>;
+  /**
+   * Runs inside the tenant transaction only when a completed idempotent
+   * response is about to be replayed (PROD-005/A02). Throwing denies the
+   * replay; first executions never run this hook.
+   */
+  readonly beforeReplay?: () => Promise<void>;
   /** Runs after the owned transaction has rolled back so hot caches can be rehydrated. */
   readonly onRollback?: () => Promise<void>;
   /** Runs after the owned transaction has committed so hot caches reflect durable state. */
@@ -105,6 +111,11 @@ export function createTenantCommandRunner(options: {
         input.beforeIdempotency
           ? async () => {
               await input.beforeIdempotency!();
+            }
+          : undefined,
+        input.beforeReplay
+          ? async () => {
+              await input.beforeReplay!();
             }
           : undefined
       );

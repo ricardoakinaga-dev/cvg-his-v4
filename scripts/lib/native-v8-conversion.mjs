@@ -1,4 +1,6 @@
 import { createRequire } from 'node:module';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseAstAsync } from 'vitest/node';
 import { validateRawCoverageEntry } from './raw-coverage-validation.mjs';
@@ -12,6 +14,42 @@ const { TraceMap, decodedMappings, encodedMappings, traceSegment } = coverageReq
 const { convert } = await import(coverageRequire.resolve('ast-v8-to-istanbul'));
 const { mergeFunctionCovs } = coverageRequire('@bcoe/v8-coverage');
 const { canonicalizeLineEnds } = require('./critical-coverage-json-reporter.cjs');
+
+/**
+ * ast-v8-to-istanbul 0.3.x fills raw V8 ranges inclusively (it consumes
+ * `endOffset - 1` as the last covered offset); 1.x treats `endOffset` as
+ * exclusive. Applying the wrong semantics silently drops zero-hit branch
+ * arms, so the decision is derived from the installed version and any
+ * unrecognized major fails closed instead of guessing.
+ */
+export function converterEndOffsetSemantics(version) {
+  if (typeof version !== 'string' || !/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version))
+    throw new Error(`unsupported ast-v8-to-istanbul version: ${String(version)}`);
+  const major = Number(version.split('.')[0]);
+  if (major === 0) return { version, inclusiveEndOffsets: true };
+  if (major === 1) return { version, inclusiveEndOffsets: false };
+  throw new Error(`unsupported ast-v8-to-istanbul version: ${version}`);
+}
+
+export function detectConverterEndOffsetSemantics() {
+  let directory = dirname(coverageRequire.resolve('ast-v8-to-istanbul'));
+  for (;;) {
+    const candidate = join(directory, 'package.json');
+    if (existsSync(candidate)) {
+      let manifest;
+      try {
+        manifest = JSON.parse(readFileSync(candidate, 'utf8'));
+      } catch (error) {
+        throw new Error(`invalid ast-v8-to-istanbul manifest: ${error.message}`);
+      }
+      if (manifest.name === 'ast-v8-to-istanbul') return converterEndOffsetSemantics(manifest.version);
+    }
+    const parent = dirname(directory);
+    if (parent === directory) break;
+    directory = parent;
+  }
+  throw new Error('unable to determine the installed ast-v8-to-istanbul version');
+}
 
 function strictMappings(encoded) {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -287,19 +325,24 @@ export async function convertNativeScript({ coverage, code, sourceMap, sources }
   const { originals, sourceContents } = validateNativeSourceMap({ code, sourceMap, sources });
   const ast = await parseAstAsync(code);
   validateNativeCoverage(coverage, code.length, soleFullSpanFunction(ast, code.length));
-  // V8 endOffset is exclusive; this converter version uses inclusive fills.
-  // Adapt coordinates on a copy, preserving raw evidence and exact hit counts.
-  const inclusiveCoverage = {
-    ...coverage,
-    functions: coverage.functions.map((fn) => ({
-      ...fn,
-      ranges: fn.ranges.map((range) => {
-        if (range.endOffset === range.startOffset)
-          throw new Error('empty V8 range cannot be converted');
-        return { ...range, endOffset: range.endOffset - 1 };
-      })
-    }))
-  };
+  // V8 endOffset is exclusive. Versions 0.3.x of the converter fill ranges
+  // inclusively, so they need the `endOffset - 1` adaptation; 1.x consumes the
+  // raw exclusive ranges. Always work on a copy to preserve raw evidence and
+  // exact hit counts, and never guess when the installed semantics are unknown.
+  const semantics = detectConverterEndOffsetSemantics();
+  const converterCoverage = semantics.inclusiveEndOffsets
+    ? {
+        ...coverage,
+        functions: coverage.functions.map((fn) => ({
+          ...fn,
+          ranges: fn.ranges.map((range) => {
+            if (range.endOffset === range.startOffset)
+              throw new Error('empty V8 range cannot be converted');
+            return { ...range, endOffset: range.endOffset - 1 };
+          })
+        }))
+      }
+    : structuredClone(coverage);
   // 0.3.12's property/method handlers query the prefix instead of its function
   // expression. Adjust only the private AST lookup offset; retain the key's
   // declaration coordinates, body, source bytes, maps and raw counters.
@@ -330,7 +373,7 @@ export async function convertNativeScript({ coverage, code, sourceMap, sources }
   }
   const result = await convert({
     code,
-    coverage: inclusiveCoverage,
+    coverage: converterCoverage,
     sourceMap: { ...converterCoordinateMap(code, sourceMap), sourcesContent: sourceContents },
     ast
   });

@@ -162,6 +162,52 @@ function parseMfaLoginRequest(payload: unknown, correlationId: string): MfaLogin
   };
 }
 
+function parseRequiredStringFields(
+  payload: unknown,
+  fields: readonly string[],
+  correlationId: string
+): Record<string, string> {
+  if (!isJsonObject(payload)) {
+    throw new ValidationError('Request body must be a JSON object', { correlationId });
+  }
+
+  const fieldSpecs: Record<string, { type: 'string'; required: true; minLength: 1 }> = {};
+  for (const field of fields) {
+    fieldSpecs[field] = { type: 'string', required: true, minLength: 1 };
+  }
+  validateRequestBody(payload, fieldSpecs, correlationId);
+
+  const parsed: Record<string, string> = {};
+  for (const field of fields) {
+    parsed[field] = requireNonEmptyString(payload[field], field);
+  }
+  return parsed;
+}
+
+function parseOptionalStringFields(
+  payload: unknown,
+  fields: readonly string[],
+  correlationId: string
+): Record<string, string | undefined> {
+  if (!isJsonObject(payload)) {
+    throw new ValidationError('Request body must be a JSON object', { correlationId });
+  }
+
+  const fieldSpecs: Record<string, { type: 'string'; required: false }> = {};
+  for (const field of fields) {
+    fieldSpecs[field] = { type: 'string', required: false };
+  }
+  validateRequestBody(payload, fieldSpecs, correlationId);
+
+  const parsed: Record<string, string | undefined> = {};
+  for (const field of fields) {
+    if (payload[field] !== undefined) {
+      parsed[field] = requireNonEmptyString(payload[field], field);
+    }
+  }
+  return parsed;
+}
+
 interface OidcStateValue {
   codeChallenge: string;
   codeVerifier: string;
@@ -861,8 +907,12 @@ export async function handleAuthRoutes(
     if (!mfaService) {
       return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'MFA not configured' });
     }
-    const payload = (await readJsonBody(request)) as { challengeId: string };
-    const challengeId = requireNonEmptyString(payload.challengeId, 'challengeId');
+    const payload = parseRequiredStringFields(
+      await readJsonBody(request),
+      ['challengeId'],
+      correlationId
+    );
+    const challengeId = payload.challengeId;
     const setup = await auth.beginMfaEnrollment(challengeId, appName, correlationId);
     return sendJson(response, 200, setup);
   }
@@ -872,9 +922,13 @@ export async function handleAuthRoutes(
     if (!mfaService) {
       return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'MFA not configured' });
     }
-    const payload = (await readJsonBody(request)) as { challengeId: string; token: string };
-    const challengeId = requireNonEmptyString(payload.challengeId, 'challengeId');
-    const token = requireNonEmptyString(payload.token, 'token');
+    const payload = parseRequiredStringFields(
+      await readJsonBody(request),
+      ['challengeId', 'token'],
+      correlationId
+    );
+    const challengeId = payload.challengeId;
+    const token = payload.token;
     const result = await auth.confirmMfaEnrollment(challengeId, token, correlationId);
     return sendAuthSession(response, result, handlers);
   }
@@ -900,7 +954,7 @@ export async function handleAuthRoutes(
     if (!mfaService) {
       return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'MFA not configured' });
     }
-    const payload = (await readJsonBody(request)) as { token: string };
+    const payload = parseRequiredStringFields(await readJsonBody(request), ['token'], correlationId);
     const record = await mfaService.confirmSetup(
       principal.user.accountId,
       principal.user.id,
@@ -937,7 +991,7 @@ export async function handleAuthRoutes(
     if (!mfaService) {
       return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'MFA not configured' });
     }
-    const payload = (await readJsonBody(request)) as { token: string };
+    const payload = parseRequiredStringFields(await readJsonBody(request), ['token'], correlationId);
     await mfaService.disableMfa(principal.user.accountId, principal.user.id, payload.token);
     appendAudit(
       principal.user.id,
@@ -1010,11 +1064,11 @@ export async function handleAuthRoutes(
     if (!featureFlags.authWebauthnEnabled) {
       return sendJson(response, 403, { code: 'FLAG_DISABLED', message: 'WebAuthn is not enabled' });
     }
-    const payload = (await readJsonBody(request)) as {
-      credentialId: string;
-      attestationObject: string;
-      clientDataJSON: string;
-    };
+    const payload = parseRequiredStringFields(
+      await readJsonBody(request),
+      ['credentialId', 'attestationObject', 'clientDataJSON'],
+      correlationId
+    );
     const challengeResult = await consumeStoredWebAuthnChallenge(
       webauthnChallengeStore,
       webauthnChallenges,
@@ -1066,7 +1120,11 @@ export async function handleAuthRoutes(
     if (!featureFlags.authWebauthnEnabled) {
       return sendJson(response, 403, { code: 'FLAG_DISABLED', message: 'WebAuthn is not enabled' });
     }
-    const payload = (await readJsonBody(request)) as { credentialId?: string };
+    const payload = parseOptionalStringFields(
+      await readJsonBody(request),
+      ['credentialId'],
+      correlationId
+    );
     const rpId = request.headers['x-rp-id']?.toString() ?? 'localhost';
     const { publicKeyOptions, challenge } = await webauthnService.generateAuthenticationOptions(
       principal.user.accountId,
@@ -1100,12 +1158,19 @@ export async function handleAuthRoutes(
     if (!featureFlags.authWebauthnEnabled) {
       return sendJson(response, 403, { code: 'FLAG_DISABLED', message: 'WebAuthn is not enabled' });
     }
-    const payload = (await readJsonBody(request)) as {
-      credentialId: string;
-      authenticatorData: string;
-      clientDataJSON: string;
-      signature: string;
-      userHandle?: string;
+    const rawPayload = await readJsonBody(request);
+    const requiredPayload = parseRequiredStringFields(
+      rawPayload,
+      ['credentialId', 'authenticatorData', 'clientDataJSON', 'signature'],
+      correlationId
+    );
+    const optionalPayload = parseOptionalStringFields(rawPayload, ['userHandle'], correlationId);
+    const payload = {
+      credentialId: requiredPayload.credentialId,
+      authenticatorData: requiredPayload.authenticatorData,
+      clientDataJSON: requiredPayload.clientDataJSON,
+      signature: requiredPayload.signature,
+      userHandle: optionalPayload.userHandle
     };
     const challengeResult = await consumeStoredWebAuthnChallenge(
       webauthnChallengeStore,

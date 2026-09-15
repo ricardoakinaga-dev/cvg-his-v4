@@ -35,6 +35,18 @@ export type FinancialPayablePaymentMethod =
   | 'other';
 export type FinancialPayableReconciliationStatus = 'not_required' | 'pending' | 'reconciled';
 
+function normalizeReceivableCalendarDate(value: string | undefined, field: string): string | undefined {
+  if (value === undefined || value === '') return undefined;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new ValidationError(`${field} must be an ISO calendar date`);
+  }
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+    throw new ValidationError(`${field} must be an ISO calendar date`);
+  }
+  return value;
+}
+
 export interface EncounterFinancialAccountRecord {
   readonly id: string;
   readonly accountId: AccountId;
@@ -92,6 +104,10 @@ export interface EncounterReceivableListFilters {
   readonly status?: EncounterReceivableStatus;
   readonly encounterId?: EncounterId;
   readonly search?: string;
+  /** Inclusive UTC calendar lower bound for the receivable due date. */
+  readonly dueFrom?: string;
+  /** Inclusive UTC calendar upper bound for the receivable due date. */
+  readonly dueTo?: string;
 }
 
 export interface FinancialPayableRecord {
@@ -488,6 +504,18 @@ export class InMemoryEncounterFinancialRepository implements EncounterFinancialR
     }
     if (filters?.encounterId) {
       items = items.filter((item) => item.encounterId === filters.encounterId);
+    }
+    if (filters?.dueFrom) {
+      items = items.filter((item) => {
+        const dueDate = item.dueAt?.slice(0, 10);
+        return Boolean(dueDate && dueDate >= filters.dueFrom!);
+      });
+    }
+    if (filters?.dueTo) {
+      items = items.filter((item) => {
+        const dueDate = item.dueAt?.slice(0, 10);
+        return Boolean(dueDate && dueDate <= filters.dueTo!);
+      });
     }
     return items.sort(
       (left, right) =>
@@ -1392,16 +1420,25 @@ export class EncounterFinancialService {
     readonly status?: EncounterReceivableStatus;
     readonly encounterId?: EncounterId;
     readonly search?: string;
+    readonly dueFrom?: string;
+    readonly dueTo?: string;
     readonly page?: number;
     readonly pageSize?: number;
   }) {
     const page = Math.max(1, params.page ?? 1);
     const pageSize = Math.max(1, Math.min(100, params.pageSize ?? 20));
     const search = params.search?.trim().toLowerCase();
+    const dueFrom = normalizeReceivableCalendarDate(params.dueFrom, 'dueFrom');
+    const dueTo = normalizeReceivableCalendarDate(params.dueTo, 'dueTo');
+    if (dueFrom && dueTo && dueFrom > dueTo) {
+      throw new ValidationError('dueFrom must be before or equal to dueTo');
+    }
     const receivables = await this.#repository.listReceivables({
       accountId: params.accountId,
       status: params.status,
-      encounterId: params.encounterId
+      encounterId: params.encounterId,
+      dueFrom,
+      dueTo
     });
 
     const data = [];
@@ -1492,6 +1529,7 @@ export class EncounterFinancialService {
       total,
       openCount,
       settledCount,
+      totalOriginal: roundCurrency(data.reduce((sum, item) => sum + item.amountOriginal, 0)),
       totalOutstanding,
       totalSettled
     };

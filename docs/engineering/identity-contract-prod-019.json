@@ -1,0 +1,625 @@
+{
+  "schemaVersion": 1,
+  "contractId": "PROD-019-IDENTITY-CONTRACT",
+  "status": "PROPOSED_PENDING_AUTHORITY",
+  "product": "CVG-HIS-V4",
+  "scope": {
+    "mode": "CONTRACT_ONLY",
+    "provider": "NONE_SELECTED",
+    "functionalChangesAllowed": false,
+    "realCredentialsAllowed": false,
+    "realProviderEvidence": "NOT_AVAILABLE",
+    "browserTokenStorage": "FORBIDDEN"
+  },
+  "owners": {
+    "product": "UNASSIGNED_PENDING_AUTHORITY",
+    "security": "UNASSIGNED_PENDING_AUTHORITY",
+    "implementation": "lead"
+  },
+  "sourceRefs": [
+    "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+    "docs/2026-09-12-ma04-status-e-proxima-tarefa.md",
+    "docs/2026-09-12-ma08-decisao-e-despacho-proposto.md",
+    "docs/2026-09-12-avaliacao-profunda-release-triplo-aaa.md",
+    "docs/019-contrato-identidade-corporativa.md",
+    "packages/modules/auth/src/oidc.ts",
+    "apps/api/src/routes/auth-routes.ts",
+    "apps/api/src/server.ts"
+  ],
+  "decisionPolicy": {
+    "recommendationsAreBinding": false,
+    "emailIsAnIdentityKey": false,
+    "defaultDecisionStatus": "PENDING_AUTHORITY",
+    "requiredAuthorityBeforeImplementation": [
+      "Product",
+      "Security"
+    ],
+    "providerSelection": "PENDING_AUTHORITY"
+  },
+  "invariants": [
+    {
+      "id": "external_identity_key",
+      "rule": "A identidade externa imutável é a tupla issuer + sub; os dois valores são comparados de forma exata e normalizados somente conforme a especificação OIDC aplicável."
+    },
+    {
+      "id": "no_email_binding",
+      "rule": "Email, email_verified, nome ou qualquer claim mutável nunca cria, reconcilia ou reassocia uma identidade ERP."
+    },
+    {
+      "id": "issuer_allowlist",
+      "rule": "Somente issuers aprovados por ambiente e tenant podem ser usados; discovery, JWKS e endpoints são derivados do issuer aprovado."
+    },
+    {
+      "id": "redirect_allowlist",
+      "rule": "redirect_uri e return_to precisam ser valores exatos de uma allowlist versionada; entrada do navegador não pode abrir redirect arbitrário."
+    },
+    {
+      "id": "state_pkce_nonce",
+      "rule": "Cada transação usa state de uso único, PKCE S256 e nonce correlacionado; ausência, expiração, troca ou replay encerra sem sessão."
+    },
+    {
+      "id": "signed_id_token",
+      "rule": "O ID token precisa ter assinatura e claims iss, aud/azp, exp, iat e nonce verificadas contra issuer e JWKS aprovados antes de qualquer vínculo."
+    },
+    {
+      "id": "fail_closed_mapping",
+      "rule": "Identidade desconhecida, inativa, ambígua ou sem tenant autorizado é negada sem provisionamento implícito e sem sessão parcial."
+    },
+    {
+      "id": "no_browser_tokens",
+      "rule": "Access token, refresh token, client secret e ID token não são persistidos em URL, localStorage, sessionStorage ou cookie legível por JavaScript."
+    },
+    {
+      "id": "mfa_policy",
+      "rule": "A política de MFA do ERP para perfis sensíveis não é dispensada apenas porque o IdP declarou autenticação; a decisão de assurance é de Segurança."
+    },
+    {
+      "id": "refresh_rotation",
+      "rule": "Refresh tokens, se adotados no servidor, têm rotação, detecção de reuse, revogação e limpeza no logout; segredo não aparece em logs."
+    },
+    {
+      "id": "generic_errors",
+      "rule": "Falhas externas e de mapeamento retornam erro genérico ao usuário e logs saneados com correlation id, sem claims, tokens, códigos ou identificadores crus."
+    }
+  ],
+  "choices": [
+    {
+      "id": "C1",
+      "title": "Issuer, discovery e confiança do IdP",
+      "question": "Quais issuers OIDC são confiáveis por ambiente e como discovery/JWKS são atualizados?",
+      "status": "PENDING_AUTHORITY",
+      "owner": "Product + Security",
+      "validity": {
+        "reviewBy": "2026-10-15",
+        "expiresOn": "2026-12-31",
+        "basis": "Revisar antes de qualquer provider real ou mudança de login."
+      },
+      "recommendation": {
+        "optionId": "C1-O1",
+        "nonBinding": true,
+        "rationale": "Allowlist explícita por ambiente reduz issuer mix-up e torna a rotação de JWKS auditável."
+      },
+      "options": [
+        {
+          "id": "C1-O1",
+          "label": "Allowlist explícita por ambiente",
+          "implications": "Um issuer aprovado por configuração de ambiente, discovery com TLS e JWKS cacheado com rotação observável.",
+          "evidenceRequired": [
+            "Documento de autoridade com issuer e ambiente.",
+            "Discovery/JWKS real do provider em sandbox aprovado."
+          ]
+        },
+        {
+          "id": "C1-O2",
+          "label": "Allowlist multi-issuer",
+          "implications": "Vários issuers podem ser aceitos, mas cada issuer precisa de tenant, algoritmo e JWKS independentes.",
+          "evidenceRequired": [
+            "Matriz issuer-tenant assinada por Product/Security.",
+            "Teste de issuer mix-up entre todos os issuers permitidos."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C2",
+      "title": "Chave de identidade externa e tenant",
+      "question": "Como issuer, subject e tenant ERP serão vinculados sem depender de email?",
+      "status": "PENDING_AUTHORITY",
+      "owner": "Product + Security",
+      "validity": {
+        "reviewBy": "2026-10-15",
+        "expiresOn": "2026-12-31",
+        "basis": "A decisão precisa preceder schema, migração e testes de integração."
+      },
+      "recommendation": {
+        "optionId": "C2-O1",
+        "nonBinding": true,
+        "rationale": "Uma tabela de vínculo interno com issuer + sub evita colisão de email e mantém tenant como dado ERP autorizado."
+      },
+      "options": [
+        {
+          "id": "C2-O1",
+          "label": "Mapeamento interno issuer-sub",
+          "implications": "A relação externa é uma chave composta única; tenant, status e roles vêm de registros ERP autorizados.",
+          "evidenceRequired": [
+            "Modelo/migração do vínculo externo.",
+            "Testes de colisão, tenant errado, inativo e identidade ambígua."
+          ]
+        },
+        {
+          "id": "C2-O2",
+          "label": "Tenant por claim do IdP",
+          "implications": "Claim de tenant só pode ser aceito com issuer, audience, allowlist e reconciliação interna explícitos.",
+          "evidenceRequired": [
+            "Contrato do claim e sua autoridade.",
+            "Teste de claim ausente, alterado e emitido por issuer diferente."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C3",
+      "title": "Provisionamento e allowlist",
+      "question": "Usuários externos precisam ser pré-cadastrados ou podem ser provisionados just-in-time?",
+      "status": "PENDING_AUTHORITY",
+      "owner": "Product + Security",
+      "validity": {
+        "reviewBy": "2026-10-15",
+        "expiresOn": "2026-12-31",
+        "basis": "Não criar conta ou vínculo até a política de ciclo de vida ser aprovada."
+      },
+      "recommendation": {
+        "optionId": "C3-O1",
+        "nonBinding": true,
+        "rationale": "Pré-provisionamento reduz tomada de conta e mantém autorização no ERP."
+      },
+      "options": [
+        {
+          "id": "C3-O1",
+          "label": "Somente pré-provisionado",
+          "implications": "Apenas issuer + sub previamente autorizados entram; email não é fallback e desconhecidos são negados.",
+          "evidenceRequired": [
+            "Lista/fluxo de aprovação de vínculos sem dados reais no repositório.",
+            "Teste de usuário desconhecido e revogado."
+          ]
+        },
+        {
+          "id": "C3-O2",
+          "label": "JIT com allowlist",
+          "implications": "Provisionamento limitado a grupos/claims aprovados, revisão de owner e estado inicial sem permissões elevadas.",
+          "evidenceRequired": [
+            "Política de grupos, owner e expiração.",
+            "Teste de claim mutável, grupo indevido e rollback de provisionamento."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C4",
+      "title": "MFA e assurance",
+      "question": "Quando o ERP exige MFA próprio e quando uma assurance do IdP pode ser aceita?",
+      "status": "PENDING_AUTHORITY",
+      "owner": "Product + Security",
+      "validity": {
+        "reviewBy": "2026-10-15",
+        "expiresOn": "2026-12-31",
+        "basis": "A política deve ser assinada antes de habilitar perfis sensíveis."
+      },
+      "recommendation": {
+        "optionId": "C4-O1",
+        "nonBinding": true,
+        "rationale": "Step-up ERP para perfis sensíveis reduz dependência de claims de assurance heterogêneas."
+      },
+      "options": [
+        {
+          "id": "C4-O1",
+          "label": "Step-up ERP sensível",
+          "implications": "Perfis privilegiados e ações clínicas/financeiras exigem MFA ERP conforme matriz de risco.",
+          "evidenceRequired": [
+            "Matriz role-ação-MFA aprovada.",
+            "Teste de login SSO sem MFA e de step-up expirado."
+          ]
+        },
+        {
+          "id": "C4-O2",
+          "label": "Assurance do IdP",
+          "implications": "acr/amr só substitui step-up com valores, issuer e freshness aprovados; ausência nega ou exige step-up.",
+          "evidenceRequired": [
+            "Contrato de acr/amr do provider.",
+            "Teste de claim ausente, fraco, stale e emitido fora da allowlist."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C5",
+      "title": "Sessão ERP e manuseio de tokens",
+      "question": "Como o callback cria uma sessão ERP e onde ficam tokens externos durante sua vida útil?",
+      "status": "PENDING_AUTHORITY",
+      "owner": "Product + Security",
+      "validity": {
+        "reviewBy": "2026-10-15",
+        "expiresOn": "2026-12-31",
+        "basis": "A sessão final depende das decisões de tenant, MFA, revogação e SPA."
+      },
+      "recommendation": {
+        "optionId": "C5-O1",
+        "nonBinding": true,
+        "rationale": "Sessão backend com cookie HttpOnly evita expor tokens OIDC à SPA e centraliza revogação."
+      },
+      "options": [
+        {
+          "id": "C5-O1",
+          "label": "Sessão backend",
+          "implications": "Callback valida a identidade e emite sessão ERP HttpOnly, Secure e SameSite adequada; tokens externos ficam no servidor ou são descartados.",
+          "evidenceRequired": [
+            "Contrato de cookie, sessão e TTL.",
+            "Teste browser/API sem token em URL, storage, logs ou resposta indevida."
+          ]
+        },
+        {
+          "id": "C5-O2",
+          "label": "Bearer na SPA",
+          "implications": "A SPA recebe e protege access token; exige threat model, armazenamento transitório, CSP e revogação compatível.",
+          "evidenceRequired": [
+            "Threat model aprovado para XSS e exfiltração.",
+            "Teste de armazenamento, refresh, logout e replay."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C6",
+      "title": "Redirect, logout e recuperação",
+      "question": "Quais callbacks, return_to e mecanismos de logout são permitidos?",
+      "status": "PENDING_AUTHORITY",
+      "owner": "Product + Security",
+      "validity": {
+        "reviewBy": "2026-10-15",
+        "expiresOn": "2026-12-31",
+        "basis": "A allowlist deve acompanhar o domínio e o runtime efetivamente autorizados."
+      },
+      "recommendation": {
+        "optionId": "C6-O1",
+        "nonBinding": true,
+        "rationale": "Callbacks e retornos exatos por ambiente, com logout coordenado, evitam open redirect e sessões órfãs."
+      },
+      "options": [
+        {
+          "id": "C6-O1",
+          "label": "Allowlist exata por ambiente",
+          "implications": "redirect_uri e return_to são comparados byte a byte; logout invalida sessão ERP e revoga o vínculo externo quando aplicável.",
+          "evidenceRequired": [
+            "Matriz de origins/callbacks aprovada.",
+            "Teste open redirect, callback trocado, logout e retorno expirado."
+          ]
+        },
+        {
+          "id": "C6-O2",
+          "label": "Allowlist por tenant",
+          "implications": "Cada tenant pode ter callback próprio, mas a seleção vem do vínculo ERP e nunca de URL arbitrária.",
+          "evidenceRequired": [
+            "Registro tenant-origin com owner e expiração.",
+            "Teste de cross-tenant return_to e remoção de origin."
+          ]
+        }
+      ]
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "title": "Issuer e discovery",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "must": [
+        "Resolver discovery somente a partir de issuer aprovado e protegido por TLS.",
+        "Verificar issuer exato, endpoints e JWKS; tratar rotação e indisponibilidade com fail-closed.",
+        "Não aceitar endpoints ou algoritmos escolhidos por input do navegador."
+      ],
+      "acceptanceEvidence": [
+        "Configuração aprovada por ambiente/tenant sem segredo.",
+        "Discovery e JWKS de sandbox autorizado, incluindo rotação.",
+        "Teste negativo de issuer mix-up e endpoint alterado."
+      ]
+    },
+    {
+      "id": "R2",
+      "title": "State, PKCE e nonce",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "must": [
+        "Gerar state imprevisível de uso único, correlacionado ao navegador e ao redirect permitido.",
+        "Usar PKCE com S256 e verifier mantido apenas no lado confiável.",
+        "Gerar nonce por transação, validar no ID token e expirar state/nonce sem reuso."
+      ],
+      "acceptanceEvidence": [
+        "Teste de ausência, troca, expiração e replay de state.",
+        "Teste de code_verifier ausente/trocado e nonce ausente/trocado.",
+        "Medição do TTL de state de 600000 ms no código e no runtime autorizado."
+      ]
+    },
+    {
+      "id": "R3",
+      "title": "Código, token e claims",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "must": [
+        "Aceitar código uma única vez e trocar somente no endpoint derivado de discovery.",
+        "Verificar assinatura do ID token por JWKS aprovado, algoritmo permitido, iss, aud/azp, exp, iat e nonce.",
+        "Se UserInfo for usado, exigir coerência de sub e nunca usá-lo para substituir a verificação do ID token."
+      ],
+      "acceptanceEvidence": [
+        "Provider sandbox com tokens válidos, expirados, assinatura inválida e claims incompatíveis.",
+        "Teste de replay de código e de substituição de ID token.",
+        "Prova de que nenhuma sessão é criada antes das verificações."
+      ]
+    },
+    {
+      "id": "R4",
+      "title": "Mapeamento e provisionamento",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "must": [
+        "Usar issuer + sub como chave externa única e estável.",
+        "Negar associação por email, inclusive email_verified, e negar vínculo ambíguo ou alterado.",
+        "Aplicar política C3 para pré-provisionamento/JIT e registrar owner, status e tenant no ERP."
+      ],
+      "acceptanceEvidence": [
+        "Modelo e migração do vínculo externo revisados.",
+        "Casos de email igual em tenants diferentes, sub novo, sub revogado e vínculo duplicado.",
+        "Auditoria saneada do motivo de negação sem claims ou tokens."
+      ]
+    },
+    {
+      "id": "R5",
+      "title": "Sessão, MFA e tenant",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "must": [
+        "Criar somente sessão ERP autenticada após R1-R4 e vínculo ativo.",
+        "Derivar tenant, roles e permissões do ERP; não confiar em email ou role livre do IdP.",
+        "Aplicar C4 e invalidar sessão quando MFA, usuário, tenant ou vínculo não forem válidos."
+      ],
+      "acceptanceEvidence": [
+        "Teste HTTP/browser ponta a ponta em tenant correto e tenant errado.",
+        "Teste de role sensível sem MFA, step-up e expiração.",
+        "Prova de cookie/sessão sem tokens em URL, storage, logs ou payload não protegido."
+      ]
+    },
+    {
+      "id": "R6",
+      "title": "Refresh, revogação, logout e recuperação",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "must": [
+        "Se houver refresh server-side, rotacionar token, detectar reuse, revogar cadeia e limitar TTL conforme autoridade.",
+        "Logout deve invalidar sessão ERP e, quando suportado, executar revogação/logout do provider; a mesma feature flag governa login, callback e logout.",
+        "Timeout, cancelamento, indisponibilidade e recuperação não podem deixar sessão parcial, efeito duplicado ou segredo em logs."
+      ],
+      "acceptanceEvidence": [
+        "Testes de refresh válido, reuse, revogação, logout local/remoto e sessão expirada.",
+        "Teste de timeout/outage/cancelamento com limpeza e ausência de efeitos tardios.",
+        "Runbook de recuperação, auditoria e feature flag aprovado."
+      ]
+    }
+  ],
+  "temporalCriteria": {
+    "stateTtlMs": {
+      "value": 600000,
+      "status": "OBSERVED_CURRENT_NOT_ACCEPTED",
+      "sourceRef": "apps/api/src/server.ts",
+      "meaning": "TTL observado para state; permanece requisito a ser medido no fluxo integrado."
+    },
+    "providerCallTimeoutMs": {
+      "default": 5000,
+      "maximum": 30000,
+      "status": "OBSERVED_CURRENT_NOT_ACCEPTED",
+      "sourceRef": "packages/modules/auth/src/oidc.ts",
+      "meaning": "Timeout por chamada observado; ainda não é deadline ponta a ponta."
+    },
+    "authorizationCode": {
+      "value": "SINGLE_USE",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "meaning": "Replay deve falhar antes de criar sessão."
+    },
+    "nonce": {
+      "value": "PER_TRANSACTION_SINGLE_USE",
+      "status": "REQUIRED_PENDING_AUTHORITY"
+    },
+    "sessionTtlMs": {
+      "value": null,
+      "status": "PENDING_AUTHORITY",
+      "meaning": "TTL ERP não deve ser inventado neste slice."
+    },
+    "refreshRotation": {
+      "value": "REQUIRED_IF_REFRESH_IS_USED",
+      "status": "REQUIRED_PENDING_AUTHORITY"
+    },
+    "endToEndDeadlineMs": {
+      "value": null,
+      "status": "PENDING_AUTHORITY",
+      "meaning": "A autoridade deve fixar orçamento único para browser, API e provider."
+    }
+  },
+  "threatModel": [
+    {
+      "id": "THR-001",
+      "scenario": "CSRF ou state ausente/trocado",
+      "control": "State imprevisível, único, associado à sessão e com TTL.",
+      "failClosed": true
+    },
+    {
+      "id": "THR-002",
+      "scenario": "Interceptação de código",
+      "control": "PKCE S256, verifier confiável e código single-use.",
+      "failClosed": true
+    },
+    {
+      "id": "THR-003",
+      "scenario": "Issuer mix-up ou discovery não autorizado",
+      "control": "Allowlist por ambiente/tenant e issuer exato.",
+      "failClosed": true
+    },
+    {
+      "id": "THR-004",
+      "scenario": "Substituição de ID token ou JWKS",
+      "control": "Assinatura, algoritmo, iss, aud/azp, exp, iat, nonce e JWKS aprovado.",
+      "failClosed": true
+    },
+    {
+      "id": "THR-005",
+      "scenario": "Colisão de email e tomada de conta",
+      "control": "Chave issuer + sub; email nunca vincula identidade.",
+      "failClosed": true
+    },
+    {
+      "id": "THR-006",
+      "scenario": "Confusão de tenant ou privilégio",
+      "control": "Tenant e roles vêm do ERP e do vínculo aprovado.",
+      "failClosed": true
+    },
+    {
+      "id": "THR-007",
+      "scenario": "Open redirect ou retorno externo",
+      "control": "redirect_uri e return_to exatos em allowlist versionada.",
+      "failClosed": true
+    },
+    {
+      "id": "THR-008",
+      "scenario": "Replay de callback, refresh ou logout",
+      "control": "Uso único, rotação, reuse detection e invalidação de sessão.",
+      "failClosed": true
+    },
+    {
+      "id": "THR-009",
+      "scenario": "Exfiltração de token em URL, storage ou log",
+      "control": "Sessão backend, cookies protegidos e logging redacting-first.",
+      "failClosed": true
+    },
+    {
+      "id": "THR-010",
+      "scenario": "Provider lento, indisponível ou cancelado",
+      "control": "Timeout/cancelamento por etapa e orçamento ponta a ponta aprovado.",
+      "failClosed": true
+    }
+  ],
+  "failureCases": [
+    {
+      "id": "FAIL-001",
+      "trigger": "state ausente, expirado, trocado ou já consumido",
+      "expected": "Negar callback e não criar sessão.",
+      "evidence": "Teste HTTP com quatro variantes e log saneado."
+    },
+    {
+      "id": "FAIL-002",
+      "trigger": "PKCE verifier ausente ou incompatível",
+      "expected": "Negar troca e não persistir tokens.",
+      "evidence": "Teste de code_verifier alterado."
+    },
+    {
+      "id": "FAIL-003",
+      "trigger": "nonce ausente ou divergente",
+      "expected": "Negar ID token e não criar sessão.",
+      "evidence": "Token sintético assinado no sandbox com nonce inválido."
+    },
+    {
+      "id": "FAIL-004",
+      "trigger": "issuer, audience, azp, exp, iat, algoritmo ou assinatura inválidos",
+      "expected": "Negar antes do mapeamento.",
+      "evidence": "Matriz de claims inválidas e JWKS rotacionado."
+    },
+    {
+      "id": "FAIL-005",
+      "trigger": "código OAuth reutilizado",
+      "expected": "Primeiro uso permitido conforme provider; replay negado sem sessão adicional.",
+      "evidence": "Duas chamadas com o mesmo código e contagem de sessões."
+    },
+    {
+      "id": "FAIL-006",
+      "trigger": "issuer + sub desconhecido, duplicado, inativo ou revogado",
+      "expected": "Negar fail-closed sem criar usuário por email.",
+      "evidence": "Fixtures de vínculo ausente, ambíguo e revogado."
+    },
+    {
+      "id": "FAIL-007",
+      "trigger": "email igual em outro tenant ou email_verified alterado",
+      "expected": "Não reassociar; negar ou exigir vínculo administrativo explícito.",
+      "evidence": "Teste de colisão cross-tenant."
+    },
+    {
+      "id": "FAIL-008",
+      "trigger": "tenant/role claim ausente, inesperado ou de issuer errado",
+      "expected": "Derivar do ERP ou negar; nunca elevar permissão.",
+      "evidence": "Matriz de claims e roles conflitantes."
+    },
+    {
+      "id": "FAIL-009",
+      "trigger": "redirect_uri ou return_to fora da allowlist",
+      "expected": "Negar e manter retorno em origem segura.",
+      "evidence": "Teste de open redirect, encoding e origem parecida."
+    },
+    {
+      "id": "FAIL-010",
+      "trigger": "timeout, outage ou cancelamento do provider",
+      "expected": "Interromper trabalho, limpar estado transitório e não criar sessão parcial.",
+      "evidence": "Probe controlado com timeout e cancelamento observáveis."
+    },
+    {
+      "id": "FAIL-011",
+      "trigger": "refresh reuse, revogação ou sessão expirada",
+      "expected": "Invalidar cadeia/sessão e exigir autenticação novamente.",
+      "evidence": "Teste de rotação, reuse detection e expiração."
+    },
+    {
+      "id": "FAIL-012",
+      "trigger": "logout local/remoto falha ou feature flag diverge",
+      "expected": "Não anunciar logout completo; invalidar sessão local e emitir alerta operacional saneado.",
+      "evidence": "Teste de logout parcial e verificação da flag única."
+    }
+  ],
+  "observedImplementation": {
+    "available": [
+      "OIDC config e endpoints são derivados de variáveis de ambiente no servidor.",
+      "State distribuído usa TTL observado de 600000 ms; o modo stateless usa assinatura configurada.",
+      "oidc.ts implementa PKCE, autorização, troca de código, UserInfo e timeout por chamada."
+    ],
+    "gaps": [
+      "Não há prova neste slice de verificação completa de assinatura/JWKS e claims do ID token.",
+      "O callback observado devolve tokens/UserInfo e não prova sessão ERP, vínculo issuer + sub ou tenant/RBAC.",
+      "Não há jornada SPA OIDC comprovada nem provider sandbox autorizado.",
+      "O timeout observado é por chamada e não comprova deadline ponta a ponta/cancelamento do callback."
+    ],
+    "boundary": "Esses fatos orientam requisitos; não são aceitação e não autorizam habilitar SSO."
+  },
+  "acceptanceGate": {
+    "status": "PENDING_AUTHORITY",
+    "requiredBefore": [
+      "PROD-020",
+      "PROD-021"
+    ],
+    "requiredAuthorities": [
+      {
+        "role": "Product",
+        "status": "PENDING_AUTHORITY",
+        "decision": "Escolher C1-C6 e assinar escopo, tenant, provisioning, MFA, sessão e logout."
+      },
+      {
+        "role": "Security",
+        "status": "PENDING_AUTHORITY",
+        "decision": "Aprovar threat model, invariantes, MFA, armazenamento, revogação e evidência."
+      }
+    ],
+    "requiredEvidence": [
+      "Discovery/JWKS e configuração do provider em sandbox autorizado.",
+      "Testes backend/API/DB/SPA para R1-R6 e falhas FAIL-001 a FAIL-012.",
+      "Modelo de vínculo externo e tenant/RBAC revisado.",
+      "Medições de TTL, timeout, deadline, sessão, refresh, logout e recuperação.",
+      "Crítica independente fresh no mesmo candidato e autoridade formal."
+    ],
+    "localEvidenceAvailable": [
+      "Contrato JSON, documento explicativo, validador good/bad e lint local.",
+      "Leitura de fontes OIDC existentes e lacunas registradas."
+    ],
+    "externalEvidenceMissing": [
+      "Provider/issuer real ou sandbox autorizado.",
+      "Decisões assinadas por Product/Security.",
+      "Integração funcional e evidência de browser/API/DB/tenant."
+    ],
+    "promotionRule": "Este contrato pode ser IMPLEMENTED/REVIEW_REQUIRED localmente, mas não pode promover PROD-019 a DONE, PROD-020/021 ou Triple-A."
+  }
+}

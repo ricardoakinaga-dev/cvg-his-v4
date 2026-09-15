@@ -1,10 +1,15 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { reconcileRuntimeRoles } from '../../../packages/db/src/reconcile-runtime-roles.js';
+import {
+  buildEventEnvelopeMetadata,
+  readEventEnvelopeMetadata
+} from '../../../packages/modules/event-bus/src/index.js';
 import {
   DatabaseCardTransactionRepository,
   DatabasePixTransactionRepository
@@ -26,6 +31,10 @@ import { ADMIN_DB_URL, TEST_DB_URL } from '../../setup/env.js';
 import { runTsxFileSync } from '../../helpers/run-tsx-file.js';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
+const MIGRATION_0172 = readFileSync(
+  resolve(ROOT, 'packages/db/migrations/0172_outbox_event_envelope_full_validity_backfill.sql'),
+  'utf8'
+);
 const suffix = randomUUID().replaceAll('-', '').slice(0, 16);
 const scratchDatabase = `cvg_worker_events_${process.pid}_${suffix}`;
 const apiRole = `cvg_worker_events_api_${suffix}`;
@@ -244,7 +253,14 @@ async function insertOutboxEvent(
       JSON.stringify({
         ...input.payload,
         accountId: input.accountId,
-        _meta: { accountId: input.accountId }
+        _meta: buildEventEnvelopeMetadata({
+          eventId: input.id,
+          eventType: input.eventType,
+          accountId: input.accountId as never,
+          sourceModule: 'worker-events-test' as never,
+          correlationId: input.correlationId as never,
+          actor: { type: 'system', id: 'worker-events-test' }
+        })
       })
     ]
   );
@@ -567,10 +583,209 @@ describe('worker event consumers with PostgreSQL and RLS', () => {
     await expect(
       runWithTenantContext(
         { tenantId: accountB, accountId: accountB, correlationId: randomUUID() },
-        () => workerEventBus.getEvent(accountAFixture.accountId, accountAFixture.patientEventId)
+        () =>
+          workerEventBus.getEvent(
+            accountAFixture.accountId as never,
+            accountAFixture.patientEventId
+          )
       )
     ).rejects.toThrow('Outbox administration account does not match tenant context');
   });
+
+  it('runs a migrated legacy envelope through the production worker composition', async () => {
+    const eventId = randomUUID();
+    const correlationId = randomUUID();
+    await scratchAdmin.query(
+      `INSERT INTO outbox_events (
+         id, account_id, correlation_id, module_name, event_type, payload,
+         status, attempts, max_attempts, scheduled_at, created_at
+       ) VALUES ($1, $2, $3, 'legacy-envelope', 'patient.created', $4::jsonb,
+                 'pending', 0, 1, now(), now())`,
+      [
+        eventId,
+        accountA,
+        correlationId,
+        JSON.stringify({ legacy: true, _meta: { actor: { type: 'system', id: 'legacy-outbox' } } })
+      ]
+    );
+
+    await scratchAdmin.query(MIGRATION_0172);
+    const migrated = await scratchAdmin.query<{ payload: Record<string, unknown>; status: string }>(
+      'SELECT payload, status FROM outbox_events WHERE account_id = $1 AND id = $2',
+      [accountA, eventId]
+    );
+    expect(migrated.rows).toHaveLength(1);
+    expect(() => readEventEnvelopeMetadata(migrated.rows[0]!.payload)).not.toThrow();
+    expect(migrated.rows[0]!.payload._meta).toMatchObject({
+      eventId,
+      eventType: 'patient.created',
+      accountId: accountA,
+      correlationId
+    });
+
+    await processForAccount(accountAFixture);
+
+    const completed = await scratchAdmin.query(
+      'SELECT status, attempts FROM outbox_events WHERE account_id = $1 AND id = $2',
+      [accountA, eventId]
+    );
+    const inbox = await scratchAdmin.query(
+      `SELECT COUNT(*)::int AS count FROM inbox_events
+        WHERE account_id = $1 AND event_id = $2`,
+      [accountA, eventId]
+    );
+    const deliveries = await scratchAdmin.query(
+      `SELECT COUNT(*)::int AS count FROM webhook_deliveries
+        WHERE account_id = $1 AND event = 'patient.created'
+          AND payload -> 'data' -> '_meta' ->> 'eventId' = $2`,
+      [accountA, eventId]
+    );
+    expect(completed.rows).toEqual([{ status: 'completed', attempts: 1 }]);
+    expect(inbox.rows).toEqual([{ count: 3 }]);
+    expect(deliveries.rows).toEqual([{ count: 1 }]);
+
+    await scratchAdmin.query(
+      `UPDATE outbox_events
+          SET status = 'pending', attempts = 0, processed_at = NULL,
+              scheduled_at = now(), error = NULL
+        WHERE account_id = $1 AND id = $2`,
+      [accountA, eventId]
+    );
+    await Promise.all([
+      processForAccount(accountAFixture, workerEventBus),
+      processForAccount(accountAFixture, workerEventBusPeer)
+    ]);
+
+    const replayInbox = await scratchAdmin.query(
+      `SELECT COUNT(*)::int AS count FROM inbox_events
+        WHERE account_id = $1 AND event_id = $2`,
+      [accountA, eventId]
+    );
+    const replayDeliveries = await scratchAdmin.query(
+      `SELECT COUNT(*)::int AS count FROM webhook_deliveries
+        WHERE account_id = $1 AND event = 'patient.created'
+          AND payload -> 'data' -> '_meta' ->> 'eventId' = $2`,
+      [accountA, eventId]
+    );
+    const replayOutbox = await scratchAdmin.query(
+      'SELECT status, attempts FROM outbox_events WHERE account_id = $1 AND id = $2',
+      [accountA, eventId]
+    );
+    expect(replayInbox.rows).toEqual([{ count: 3 }]);
+    expect(replayDeliveries.rows).toEqual([{ count: 1 }]);
+    expect(replayOutbox.rows).toEqual([{ status: 'completed', attempts: 1 }]);
+  }, 60_000);
+
+  it('creates a canonical envelope through the UOW and consumes it through the production worker', async () => {
+    if (!bootstrap.unitOfWork) throw new Error('worker bootstrap did not expose a tenant UOW');
+    const unitOfWork = bootstrap.unitOfWork;
+    const eventType = 'patient.created';
+    const correlationId = randomUUID();
+    const created = await runWithTenantContext(
+      {
+        tenantId: accountA,
+        accountId: accountA,
+        userId: accountAFixture.actorUserId,
+        correlationId
+      },
+      () =>
+        unitOfWork.execute(
+          {
+            accountId: accountA,
+            actorUserId: accountAFixture.actorUserId,
+            correlationId,
+            operation: 'worker-events-test.uow-outbox',
+            idempotencyKey: randomUUID()
+          },
+          { scenario: 'uow-created-envelope' },
+          async (transaction) => ({
+            eventId: await transaction.outbox.append({
+              moduleName: 'worker-events-test',
+              eventType,
+              payload: {
+                patientId: randomUUID(),
+                name: 'UOW-created patient'
+              }
+            })
+          })
+        )
+    );
+    expect(created.replayed).toBe(false);
+    const eventId = created.value.eventId;
+    const persisted = await scratchAdmin.query<{
+      readonly payload: Record<string, unknown>;
+      readonly status: string;
+      readonly attempts: number;
+    }>('SELECT payload, status, attempts FROM outbox_events WHERE account_id = $1 AND id = $2', [
+      accountA,
+      eventId
+    ]);
+    expect(persisted.rows).toHaveLength(1);
+    expect(persisted.rows[0]!.status).toBe('pending');
+    const envelope = readEventEnvelopeMetadata(persisted.rows[0]!.payload);
+    expect(envelope).toMatchObject({
+      eventId,
+      eventType,
+      accountId: accountA,
+      sourceModule: 'worker-events-test',
+      actor: { type: 'user', id: accountAFixture.actorUserId },
+      correlationId,
+      schemaVersion: 1,
+      causationId: null
+    });
+
+    await processForAccount(accountAFixture);
+
+    const completed = await scratchAdmin.query(
+      'SELECT status, attempts FROM outbox_events WHERE account_id = $1 AND id = $2',
+      [accountA, eventId]
+    );
+    const inbox = await scratchAdmin.query(
+      `SELECT COUNT(*)::int AS count FROM inbox_events
+        WHERE account_id = $1 AND event_id = $2`,
+      [accountA, eventId]
+    );
+    const deliveries = await scratchAdmin.query(
+      `SELECT COUNT(*)::int AS count FROM webhook_deliveries
+        WHERE account_id = $1 AND event = $2
+          AND payload -> 'data' -> '_meta' ->> 'eventId' = $3`,
+      [accountA, eventType, eventId]
+    );
+    expect(completed.rows).toEqual([{ status: 'completed', attempts: 1 }]);
+    expect(inbox.rows).toEqual([{ count: 3 }]);
+    expect(deliveries.rows).toEqual([{ count: 1 }]);
+
+    await scratchAdmin.query(
+      `UPDATE outbox_events
+          SET status = 'pending', attempts = 0, processed_at = NULL,
+              scheduled_at = now(), error = NULL
+        WHERE account_id = $1 AND id = $2`,
+      [accountA, eventId]
+    );
+    await Promise.all([
+      processForAccount(accountAFixture, workerEventBus),
+      processForAccount(accountAFixture, workerEventBusPeer)
+    ]);
+
+    const replayInbox = await scratchAdmin.query(
+      `SELECT COUNT(*)::int AS count FROM inbox_events
+        WHERE account_id = $1 AND event_id = $2`,
+      [accountA, eventId]
+    );
+    const replayDeliveries = await scratchAdmin.query(
+      `SELECT COUNT(*)::int AS count FROM webhook_deliveries
+        WHERE account_id = $1 AND event = $2
+          AND payload -> 'data' -> '_meta' ->> 'eventId' = $3`,
+      [accountA, eventType, eventId]
+    );
+    const replayOutbox = await scratchAdmin.query(
+      'SELECT status, attempts FROM outbox_events WHERE account_id = $1 AND id = $2',
+      [accountA, eventId]
+    );
+    expect(replayInbox.rows).toEqual([{ count: 3 }]);
+    expect(replayDeliveries.rows).toEqual([{ count: 1 }]);
+    expect(replayOutbox.rows).toEqual([{ status: 'completed', attempts: 1 }]);
+  }, 60_000);
 
   it('claims webhook deliveries once across workers and keeps retry state durable', async () => {
     expect(bootstrap.webhookDeliveryExecutor).toBeDefined();

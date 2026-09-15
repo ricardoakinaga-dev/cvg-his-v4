@@ -491,7 +491,51 @@ for (const mapped of [false, true])
       assert.deepEqual(Object.values(entry.f), [1, 0]);
       assert.ok(Object.values(entry.s).includes(0));
       assert.equal(result.convertedScripts, 1);
+      assert.deepEqual(result.uncoveredObservations, []);
       assert.equal(JSON.stringify(input), before);
+      // A process killed without a coverage flush is reported, not treated as
+      // measured; the same dead-PID observations are never converted.
+      const orphanPid = process.pid + 1;
+      const orphanCode = 'function orphan(){return 0;}';
+      const orphan = {
+        schemaVersion: 1,
+        kind: 'executed-script-observation',
+        pid: orphanPid,
+        threadId: 0,
+        scriptId: '999999',
+        url: runtimeUrl,
+        code: orphanCode,
+        sha256: hash(orphanCode)
+      };
+      const tolerant = await collectProcessCoverage({
+        ...input,
+        observations: [
+          ...input.observations,
+          {
+            name: `executed-script-${orphanPid}-0-999999.json`,
+            text: JSON.stringify(orphan)
+          }
+        ]
+      });
+      assert.deepEqual(tolerant.uncoveredObservations, [
+        { pid: orphanPid, count: 1, urls: [runtimeUrl] }
+      ]);
+      assert.deepEqual(tolerant.coverage, result.coverage);
+      // Partial flush is still fatal: a PID that produced coverage must match
+      // every observation it emitted.
+      await assert.rejects(
+        collectProcessCoverage({
+          ...input,
+          observations: [
+            ...input.observations,
+            {
+              name: `executed-script-${process.pid}-0-888888.json`,
+              text: JSON.stringify({ ...orphan, pid: process.pid, scriptId: '888888' })
+            }
+          ]
+        }),
+        /unmatched executed observation/
+      );
       for (const record of [...input.observations, ...input.reports])
         writeFileSync(`/proc/self/fd/${rawDescriptor}/${record.name}`, record.text, {
           flag: 'wx',

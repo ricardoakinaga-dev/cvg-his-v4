@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

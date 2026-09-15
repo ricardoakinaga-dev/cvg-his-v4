@@ -62,8 +62,7 @@ describe('navigation groups', () => {
       'Esteira de Exames',
       'Vacinas e Vermífugos',
       'Orçamentos',
-      'Resgate de Pontos',
-      'Vendas (beta)'
+      'Resgate de Pontos'
     ]);
     expect(findSectionItemLabels('atendimento', 'Internação')).toEqual(['Internação', 'Diárias de Internação', 'Setores']);
     expect(findSectionItemLabels('atendimento', 'Cadastros')).toEqual([
@@ -127,7 +126,8 @@ describe('navigation groups', () => {
     expect(findMatchingNavItem('/workflow-tasks')?.label).toBe('Pendências clínicas');
     expect(findMatchingNavItem('/exam-orders')?.label).toBe('Esteira de Exames');
     expect(findMatchingNavItem('/exam-results')?.label).toBe('Resultados API');
-    expect(findMatchingNavItem('/sales/beta')?.label).toBe('Vendas (beta)');
+    expect(findMatchingNavItem('/sales/beta')?.path).toBe('/sales');
+    expect(findMatchingNavItem('/sales/beta')?.label).toBe('Vendas');
     expect(findMatchingNavItem('/pix')?.label).toBe('PIX');
     expect(findMatchingNavItem('/reports')?.label).toBe('Visão por Domínio');
     expect(findMatchingNavItem('/relatorios/financeiros/fluxo-de-caixa')?.label).toBe('Fluxo de Caixa');
@@ -153,7 +153,6 @@ describe('navigation groups', () => {
         '/vaccines-dewormers',
         '/quotes',
         '/loyalty',
-        '/sales/beta',
         '/inpatient',
         '/encounters',
         '/medical-records',

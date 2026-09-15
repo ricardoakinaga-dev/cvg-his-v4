@@ -26,6 +26,7 @@ function createPoolDouble(options?: {
   idempotencyMode?: 'inserted' | 'completed' | 'conflict' | 'in_progress' | 'missing';
 }) {
   const queries: string[] = [];
+  let lastOutboxValues: unknown[] | undefined;
   let lastRequestHash: unknown;
   const query = vi.fn(async (text: string, values?: unknown[]): Promise<QueryResult> => {
     queries.push(text.replace(/\s+/g, ' ').trim());
@@ -40,39 +41,51 @@ function createPoolDouble(options?: {
       if (options?.idempotencyMode && options.idempotencyMode !== 'inserted') {
         return queryResult();
       }
-      return queryResult([{
-        request_hash: values?.[4],
-        actor_user_id: values?.[3],
-        status: 'processing',
-        response_body: null
-      }]);
+      return queryResult([
+        {
+          request_hash: values?.[4],
+          actor_user_id: values?.[3],
+          status: 'processing',
+          response_body: null
+        }
+      ]);
     }
     if (text.includes('SELECT request_hash')) {
       if (options?.idempotencyMode === 'completed') {
-        return queryResult([{
-          request_hash: lastRequestHash,
-          actor_user_id: '11111111-1111-1111-1111-111111111111',
-          status: 'completed',
-          response_body: { replayed: true }
-        }]);
+        return queryResult([
+          {
+            request_hash: lastRequestHash,
+            actor_user_id: '11111111-1111-1111-1111-111111111111',
+            status: 'completed',
+            response_body: { replayed: true }
+          }
+        ]);
       }
       if (options?.idempotencyMode === 'conflict') {
-        return queryResult([{
-          request_hash: 'different-request-hash',
-          actor_user_id: '11111111-1111-1111-1111-111111111111',
-          status: 'processing',
-          response_body: null
-        }]);
+        return queryResult([
+          {
+            request_hash: 'different-request-hash',
+            actor_user_id: '11111111-1111-1111-1111-111111111111',
+            status: 'processing',
+            response_body: null
+          }
+        ]);
       }
       if (options?.idempotencyMode === 'in_progress') {
-        return queryResult([{
-          request_hash: lastRequestHash,
-          actor_user_id: '11111111-1111-1111-1111-111111111111',
-          status: 'processing',
-          response_body: null
-        }]);
+        return queryResult([
+          {
+            request_hash: lastRequestHash,
+            actor_user_id: '11111111-1111-1111-1111-111111111111',
+            status: 'processing',
+            response_body: null
+          }
+        ]);
       }
       return queryResult([]);
+    }
+    if (text.includes('INSERT INTO outbox_events')) {
+      lastOutboxValues = values;
+      return queryResult();
     }
     return queryResult();
   });
@@ -85,7 +98,16 @@ function createPoolDouble(options?: {
     }
   } as unknown as PoolClient;
   const pool = { connect: vi.fn(async () => client) } as unknown as Pool;
-  return { pool, client, queries, query, release };
+  return {
+    pool,
+    client,
+    queries,
+    query,
+    release,
+    get lastOutboxValues() {
+      return lastOutboxValues;
+    }
+  };
 }
 
 describe('TenantUnitOfWork', () => {
@@ -161,7 +183,9 @@ describe('TenantUnitOfWork', () => {
     const { pool } = createPoolDouble();
     const unitOfWork = createTenantUnitOfWork(pool);
     let resume!: () => void;
-    const gate = new Promise<void>((resolve) => { resume = resolve; });
+    const gate = new Promise<void>((resolve) => {
+      resume = resolve;
+    });
     let detached!: Promise<unknown>;
 
     await unitOfWork.execute(
@@ -174,11 +198,11 @@ describe('TenantUnitOfWork', () => {
       },
       {},
       async () => {
-        detached = gate.then(() => runInTenantTransaction(
-          pool,
-          'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-          async () => ({ ok: true })
-        ));
+        detached = gate.then(() =>
+          runInTenantTransaction(pool, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', async () => ({
+            ok: true
+          }))
+        );
         return { ok: true };
       }
     );
@@ -216,14 +240,10 @@ describe('TenantUnitOfWork', () => {
     const { pool } = createPoolDouble();
     let retainedClient!: PoolClient;
 
-    await runInTenantTransaction(
-      pool,
-      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-      async (client) => {
-        retainedClient = client;
-        return { ok: true };
-      }
-    );
+    await runInTenantTransaction(pool, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', async (client) => {
+      retainedClient = client;
+      return { ok: true };
+    });
 
     expect(() => retainedClient.query('SELECT 1')).toThrow('no longer active');
   });
@@ -233,21 +253,22 @@ describe('TenantUnitOfWork', () => {
     const { pool: otherPool } = createPoolDouble();
     const unitOfWork = createTenantUnitOfWork(pool);
 
-    await expect(unitOfWork.execute(
-      {
-        accountId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-        actorUserId: '11111111-1111-1111-1111-111111111111',
-        correlationId: 'corr-pool',
-        operation: 'test.pool',
-        idempotencyKey: 'idem-pool'
-      },
-      {},
-      async () => runInTenantTransaction(
-        otherPool,
-        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-        async () => ({ ok: true })
+    await expect(
+      unitOfWork.execute(
+        {
+          accountId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+          actorUserId: '11111111-1111-1111-1111-111111111111',
+          correlationId: 'corr-pool',
+          operation: 'test.pool',
+          idempotencyKey: 'idem-pool'
+        },
+        {},
+        async () =>
+          runInTenantTransaction(otherPool, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', async () => ({
+            ok: true
+          }))
       )
-    )).rejects.toThrow('cannot change database pool');
+    ).rejects.toThrow('cannot change database pool');
   });
 
   it('rejects a nested idempotent command', async () => {
@@ -261,14 +282,16 @@ describe('TenantUnitOfWork', () => {
       idempotencyKey: 'idem-outer'
     };
 
-    await expect(unitOfWork.execute(context, {}, async () => {
-      await unitOfWork.execute(
-        { ...context, operation: 'test.inner', idempotencyKey: 'idem-inner' },
-        {},
-        async () => ({ ok: true })
-      );
-      return { ok: true };
-    })).rejects.toThrow('Nested idempotent unit of work commands are not supported');
+    await expect(
+      unitOfWork.execute(context, {}, async () => {
+        await unitOfWork.execute(
+          { ...context, operation: 'test.inner', idempotencyKey: 'idem-inner' },
+          {},
+          async () => ({ ok: true })
+        );
+        return { ok: true };
+      })
+    ).rejects.toThrow('Nested idempotent unit of work commands are not supported');
   });
 });
 
@@ -282,7 +305,11 @@ describe('hashIdempotencyPayload', () => {
     const rightHash = hashIdempotencyPayload(right);
 
     expect(leftHash).toBe(rightHash);
-    expect(leftHash).toBe(createHash('sha256').update(JSON.stringify({ amount: 10, patient: { alerts: ['allergy'], id: 'p1' } })).digest('hex'));
+    expect(leftHash).toBe(
+      createHash('sha256')
+        .update(JSON.stringify({ amount: 10, patient: { alerts: ['allergy'], id: 'p1' } }))
+        .digest('hex')
+    );
     expect(left).toEqual(snapshot);
   });
 
@@ -316,9 +343,12 @@ describe('hashIdempotencyPayload', () => {
   it('rejects unsupported values, non-plain objects and oversized requests', () => {
     expect(() => hashIdempotencyPayload(undefined as never)).toThrow('unsupported value');
     expect(() => hashIdempotencyPayload(new Date() as never)).toThrow('plain objects');
-    expect(() => hashIdempotencyPayload({ value: 'x'.repeat(1024 * 1024) })).toThrow('exceeds 1 MiB');
-    expect(() => hashIdempotencyPayload(Array.from({ length: 100_001 }, () => 1) as never))
-      .toThrow('too complex');
+    expect(() => hashIdempotencyPayload({ value: 'x'.repeat(1024 * 1024) })).toThrow(
+      'exceeds 1 MiB'
+    );
+    expect(() => hashIdempotencyPayload(Array.from({ length: 100_001 }, () => 1) as never)).toThrow(
+      'too complex'
+    );
   });
 });
 
@@ -340,41 +370,77 @@ describe('TenantUnitOfWork validation and idempotency branches', () => {
   ])('rejects an invalid %s before opening a database connection', async (_label, patch) => {
     const { pool } = createPoolDouble();
     const unitOfWork = createTenantUnitOfWork(pool);
-    await expect(unitOfWork.execute({ ...baseContext, ...patch }, {}, async () => ({ ok: true })))
-      .rejects.toThrow();
+    await expect(
+      unitOfWork.execute({ ...baseContext, ...patch }, {}, async () => ({ ok: true }))
+    ).rejects.toThrow();
     expect(pool.connect).not.toHaveBeenCalled();
+  });
+
+  it('uses Unicode character lengths for database text limits', async () => {
+    const { pool } = createPoolDouble();
+    const unitOfWork = createTenantUnitOfWork(pool);
+    const maxIdempotencyKey = '😀'.repeat(255);
+
+    await expect(
+      unitOfWork.execute({ ...baseContext, idempotencyKey: maxIdempotencyKey }, {}, async () => ({
+        ok: true
+      }))
+    ).resolves.toMatchObject({ replayed: false });
+    expect(pool.connect).toHaveBeenCalledOnce();
+
+    const secondPool = createPoolDouble().pool;
+    const secondUnitOfWork = createTenantUnitOfWork(secondPool);
+    await expect(
+      secondUnitOfWork.execute(
+        { ...baseContext, idempotencyKey: `${maxIdempotencyKey}😀` },
+        {},
+        async () => ({ ok: true })
+      )
+    ).rejects.toThrow('Idempotency key must contain 1 to 255 characters');
+    expect(secondPool.connect).not.toHaveBeenCalled();
   });
 
   it('rejects an invalid account in the direct transaction helper', async () => {
     const { pool } = createPoolDouble();
-    await expect(runInTenantTransaction(pool, 'invalid', async () => ({ ok: true })))
-      .rejects.toThrow('valid account id');
+    await expect(
+      runInTenantTransaction(pool, 'invalid', async () => ({ ok: true }))
+    ).rejects.toThrow('valid account id');
   });
 
   it('fails closed when PostgreSQL does not confirm the tenant context', async () => {
     const { pool, queries } = createPoolDouble({ verificationMatches: false });
     const unitOfWork = createTenantUnitOfWork(pool);
-    await expect(unitOfWork.execute(baseContext, {}, async () => ({ ok: true })))
-      .rejects.toThrow('Failed to establish tenant database context');
+    await expect(unitOfWork.execute(baseContext, {}, async () => ({ ok: true }))).rejects.toThrow(
+      'Failed to establish tenant database context'
+    );
     expect(queries).toContain('ROLLBACK');
   });
 
   it('replays completed requests and rejects conflicts, in-progress and missing records', async () => {
-    const completed = createTenantUnitOfWork(createPoolDouble({ idempotencyMode: 'completed' }).pool);
-    await expect(completed.execute(baseContext, {}, async () => ({ ok: false })))
-      .resolves.toEqual({ value: { replayed: true }, replayed: true });
+    const completed = createTenantUnitOfWork(
+      createPoolDouble({ idempotencyMode: 'completed' }).pool
+    );
+    await expect(completed.execute(baseContext, {}, async () => ({ ok: false }))).resolves.toEqual({
+      value: { replayed: true },
+      replayed: true
+    });
 
     const conflict = createTenantUnitOfWork(createPoolDouble({ idempotencyMode: 'conflict' }).pool);
-    await expect(conflict.execute(baseContext, {}, async () => ({ ok: true })))
-      .rejects.toThrow('different request');
+    await expect(conflict.execute(baseContext, {}, async () => ({ ok: true }))).rejects.toThrow(
+      'different request'
+    );
 
-    const inProgress = createTenantUnitOfWork(createPoolDouble({ idempotencyMode: 'in_progress' }).pool);
-    await expect(inProgress.execute(baseContext, {}, async () => ({ ok: true })))
-      .rejects.toThrow('still processing');
+    const inProgress = createTenantUnitOfWork(
+      createPoolDouble({ idempotencyMode: 'in_progress' }).pool
+    );
+    await expect(inProgress.execute(baseContext, {}, async () => ({ ok: true }))).rejects.toThrow(
+      'still processing'
+    );
 
     const missing = createTenantUnitOfWork(createPoolDouble({ idempotencyMode: 'missing' }).pool);
-    await expect(missing.execute(baseContext, {}, async () => ({ ok: true })))
-      .rejects.toThrow('could not be acquired');
+    await expect(missing.execute(baseContext, {}, async () => ({ ok: true }))).rejects.toThrow(
+      'could not be acquired'
+    );
   });
 
   it('fails closed when a completed replay belongs to another actor', async () => {
@@ -389,8 +455,65 @@ describe('TenantUnitOfWork validation and idempotency branches', () => {
     ).rejects.toBeInstanceOf(IdempotencyActorConflictError);
   });
 
+  it('PROD-005/A02: re-authorizes a completed replay when beforeReplay is provided', async () => {
+    const { pool } = createPoolDouble({ idempotencyMode: 'completed' });
+    const unitOfWork = createTenantUnitOfWork(pool);
+    const seen: string[] = [];
+    await expect(
+      unitOfWork.execute(
+        baseContext,
+        {},
+        async () => ({ ok: false }),
+        undefined,
+        async () => {
+          seen.push('replay-guard');
+        }
+      )
+    ).resolves.toEqual({ value: { replayed: true }, replayed: true });
+    expect(seen).toEqual(['replay-guard']);
+  });
+
+  it('PROD-005/A02: denies the cached response when replay re-authorization fails', async () => {
+    const { pool } = createPoolDouble({ idempotencyMode: 'completed' });
+    const unitOfWork = createTenantUnitOfWork(pool);
+    let commandRan = false;
+    await expect(
+      unitOfWork.execute(
+        baseContext,
+        {},
+        async () => {
+          commandRan = true;
+          return { ok: true };
+        },
+        undefined,
+        async () => {
+          throw new Error('permission revoked');
+        }
+      )
+    ).rejects.toThrow('permission revoked');
+    expect(commandRan).toBe(false);
+  });
+
+  it('PROD-005/A02: never runs beforeReplay on first execution', async () => {
+    const { pool } = createPoolDouble();
+    const unitOfWork = createTenantUnitOfWork(pool);
+    let replayRan = false;
+    const result = await unitOfWork.execute(
+      baseContext,
+      {},
+      async () => ({ ok: true }),
+      undefined,
+      async () => {
+        replayRan = true;
+      }
+    );
+    expect(result.replayed).toBe(false);
+    expect(replayRan).toBe(false);
+  });
+
   it('executes transactional outbox, inbox and audit contracts with explicit metadata', async () => {
-    const { pool, queries } = createPoolDouble();
+    const poolDouble = createPoolDouble();
+    const { pool, queries } = poolDouble;
     const unitOfWork = createTenantUnitOfWork(pool);
     const scheduledAt = new Date('2026-08-07T12:00:00.000Z');
     const result = await unitOfWork.execute(baseContext, {}, async (transaction) => {
@@ -422,35 +545,60 @@ describe('TenantUnitOfWork validation and idempotency branches', () => {
     expect(queries.some((query) => query.includes('INSERT INTO outbox_events'))).toBe(true);
     expect(queries.some((query) => query.includes('INSERT INTO inbox_events'))).toBe(true);
     expect(queries.some((query) => query.includes('INSERT INTO audit_events'))).toBe(true);
+    const persistedPayload = JSON.parse(String(poolDouble.lastOutboxValues?.[5])) as Record<
+      string,
+      unknown
+    >;
+    expect(persistedPayload).toMatchObject({
+      source: 'test',
+      accountId: baseContext.accountId,
+      _meta: {
+        eventId: 'outbox-explicit-id',
+        eventType: 'test.event',
+        schemaVersion: 1,
+        accountId: baseContext.accountId,
+        sourceModule: 'test-module',
+        actor: { type: 'user', id: baseContext.actorUserId },
+        correlationId: baseContext.correlationId,
+        causationId: null,
+        trace: 'trace-1'
+      }
+    });
   });
 
   it('rejects invalid outbox names and oversized idempotency responses', async () => {
     const { pool } = createPoolDouble();
     const unitOfWork = createTenantUnitOfWork(pool);
-    await expect(unitOfWork.execute(baseContext, {}, async (transaction) => {
-      await transaction.outbox.append({
-        moduleName: '',
-        eventType: 'test.event',
-        payload: {}
-      });
-      return { ok: true };
-    })).rejects.toThrow('Outbox module name');
+    await expect(
+      unitOfWork.execute(baseContext, {}, async (transaction) => {
+        await transaction.outbox.append({
+          moduleName: '',
+          eventType: 'test.event',
+          payload: {}
+        });
+        return { ok: true };
+      })
+    ).rejects.toThrow('Outbox module name');
 
-    await expect(unitOfWork.execute(
-      { ...baseContext, idempotencyKey: 'idem-large-response' },
-      {},
-      async () => 'x'.repeat(256 * 1024)
-    )).rejects.toThrow('exceeds 256 KiB');
+    await expect(
+      unitOfWork.execute({ ...baseContext, idempotencyKey: 'idem-large-response' }, {}, async () =>
+        'x'.repeat(256 * 1024)
+      )
+    ).rejects.toThrow('exceeds 256 KiB');
   });
 
   it('reuses the active tenant transaction and rejects a different account', async () => {
     const { pool } = createPoolDouble();
     const unitOfWork = createTenantUnitOfWork(pool);
     await unitOfWork.execute(baseContext, {}, async () => {
-      await expect(runInTenantTransaction(pool, baseContext.accountId, async () => ({ ok: true })))
-        .resolves.toEqual({ ok: true });
-      await expect(runInTenantTransaction(pool, 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', async () => ({ ok: true })))
-        .rejects.toThrow('cannot change account');
+      await expect(
+        runInTenantTransaction(pool, baseContext.accountId, async () => ({ ok: true }))
+      ).resolves.toEqual({ ok: true });
+      await expect(
+        runInTenantTransaction(pool, 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', async () => ({
+          ok: true
+        }))
+      ).rejects.toThrow('cannot change account');
       return { ok: true };
     });
   });

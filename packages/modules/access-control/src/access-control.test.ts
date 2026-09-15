@@ -1,17 +1,104 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { getPoolMock, queryMock, withTenantQueryMock } = vi.hoisted(() => {
+  const queryMock = vi.fn();
+  const getPoolMock = vi.fn(() => ({ query: queryMock }));
+  const withTenantQueryMock = vi.fn(
+    async (
+      _pool: unknown,
+      callback: (client: { query: typeof queryMock }) => Promise<unknown>
+    ) => callback({ query: queryMock })
+  );
+  return { getPoolMock, queryMock, withTenantQueryMock };
+});
+
+vi.mock('@cvg-his-v2/shared-database', () => ({ getPool: getPoolMock }));
+vi.mock('@cvg-his-v2/tenant-context', () => ({ withTenantQuery: withTenantQueryMock }));
 
 import { ForbiddenError } from '@cvg-his-v2/shared-errors';
 
 import { AccessControlService } from './index.js';
-import { AbacEngine } from './abac.js';
+import {
+  AbacEngine,
+  resolveAttribute,
+  type AbacPolicy,
+  type ActorAttributes,
+  type EnvironmentAttributes,
+  type PolicyCondition,
+  type ResourceAttributes
+} from './abac.js';
 import type { AccessTeamSummary, AccountId, UserId, UserSummary } from '@cvg-his-v2/shared-types';
-import type {
-  AccessControlRepository,
-  AccessMembershipRecord,
-  AccessPermissionAssignmentRecord,
-  PermissionRecord,
-  RoleRecord
+import {
+  DatabaseAccessControlRepository,
+  type AccessControlRepository,
+  type AccessMembershipRecord,
+  type AccessPermissionAssignmentRecord,
+  type PermissionRecord,
+  type RoleRecord
 } from './repositories/database-access-control.repository.js';
+
+function dbResult(rows: readonly Record<string, unknown>[] = [], rowCount = rows.length) {
+  return { rows, rowCount };
+}
+
+function createAbacContext(): {
+  actor: ActorAttributes;
+  resource: ResourceAttributes;
+  environment: EnvironmentAttributes;
+} {
+  const accountId = 'acc_abac' as AccountId;
+  return {
+    actor: {
+      userId: 'user_abac' as UserId,
+      accountId,
+      roleCodes: ['admin', 'ops'],
+      department: 'clinical',
+      branchIds: ['branch-a'],
+      teamIds: ['team-a'],
+      sectorIds: ['sector-a'],
+      sectorCodes: ['icu'],
+      isActive: true
+    },
+    resource: {
+      resourceType: 'owner',
+      resourceId: 'owner-abac',
+      accountId,
+      branchId: 'branch-a',
+      sectorCode: 'icu',
+      status: 'closed',
+      createdByUserId: 'user_abac' as UserId
+    },
+    environment: {
+      timestamp: '2026-04-18T12:00:00.000Z',
+      dayOfWeek: 6,
+      hourOfDay: 12,
+      ipAddress: '10.0.0.7',
+      userAgent: 'access-control-test'
+    }
+  };
+}
+
+function evaluateAbacCondition(condition: PolicyCondition): boolean {
+  const context = createAbacContext();
+  const policy: AbacPolicy = {
+    id: 'abac-test',
+    name: 'ABAC test policy',
+    description: 'ABAC operator coverage policy',
+    version: 1,
+    resourceTypes: ['owner'],
+    actionCodes: ['test.action'],
+    rules: [{ description: 'test condition', conditions: [condition], effect: 'permit' }],
+    combiningAlgorithm: 'first-deny',
+    enabled: true,
+    tags: ['test']
+  };
+  return new AbacEngine({ policies: [policy] }).evaluate(
+    'test.action',
+    context.actor,
+    context.resource,
+    context.environment
+  ).permitted;
+}
 
 describe('AccessControlService', () => {
   let service: AccessControlService;
@@ -1430,6 +1517,895 @@ describe('AccessControlService', () => {
           hourOfDay: 22
         }
       )
-    ).toThrow(ForbiddenError);
+      ).toThrow(ForbiddenError);
+  });
+
+  it('builds the permission matrix for every routine action family', async () => {
+    const matrixAccountId = 'acc_matrix' as AccountId;
+    const permissionCodes = [
+      'matrix.admin',
+      'matrix.manage',
+      'matrix.read',
+      'matrix.view',
+      'matrix.consult',
+      'matrix.list',
+      'matrix.write',
+      'matrix.create',
+      'matrix.insert',
+      'matrix.update',
+      'matrix.edit',
+      'matrix.review',
+      'matrix.delete',
+      'matrix.remove',
+      'matrix.archive',
+      'matrix.cancel',
+      'matrix.execute',
+      'matrix.run',
+      'matrix.settle',
+      'matrix.pay',
+      'matrix.release',
+      'matrix.unknown',
+      'standalone'
+    ];
+    const repository = {
+      findAllRoles: async () => [],
+      findAllPermissions: async () =>
+        permissionCodes.map((key, index) => ({
+          id: `permission_${index}` as never,
+          key,
+          createdAt: '2026-01-01T00:00:00.000Z'
+        })),
+      findAllTeams: async () => [],
+      findAllSectors: async () => [],
+      findTeamMemberships: async () => [],
+      findSectorMemberships: async () => [],
+      findRolesByUser: async () => [],
+      findPermissionAssignments: async () => [
+        {
+          accountId: matrixAccountId,
+          subjectType: 'user' as const,
+          subjectId: userId,
+          permissionCode: 'matrix.read',
+          effect: 'allow' as const,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z'
+        },
+        {
+          accountId: matrixAccountId,
+          subjectType: 'team' as const,
+          subjectId: 'team_matrix',
+          permissionCode: 'matrix.read',
+          effect: 'deny' as const,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z'
+        },
+        {
+          accountId: matrixAccountId,
+          subjectType: 'sector' as const,
+          subjectId: 'sector_matrix',
+          permissionCode: 'matrix.read',
+          effect: 'allow' as const,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z'
+        }
+      ]
+    } as unknown as AccessControlRepository;
+
+    const matrixService = new AccessControlService({ repository });
+    await matrixService.hydrateFromDatabase(matrixAccountId);
+    const matrix = matrixService.getModulePermissionMatrix(matrixAccountId);
+
+    expect(matrix.find((entry) => entry.module === 'matrix')).toMatchObject({
+      module: 'matrix',
+      actions: {
+        consult: true,
+        insert: true,
+        update: true,
+        delete: true,
+        execute: true,
+        admin: true
+      },
+      coverageStatus: 'complete',
+      userOverrideCount: 1,
+      teamOverrideCount: 1,
+      sectorOverrideCount: 1
+    });
+    expect(matrix.find((entry) => entry.module === 'standalone')).toMatchObject({
+      actions: {
+        consult: true,
+        insert: false,
+        update: false,
+        delete: false,
+        execute: false,
+        admin: false
+      },
+      coverageStatus: 'read-only'
+    });
+  });
+});
+
+describe('AbacEngine condition evaluation', () => {
+  it('evaluates scalar, collection, numeric and string operators', () => {
+    expect(evaluateAbacCondition({ attribute: 'resource.status', operator: 'eq', value: 'CLOSED' })).toBe(
+      true
+    );
+    expect(evaluateAbacCondition({ attribute: 'environment.hourOfDay', operator: 'eq', value: 12 })).toBe(
+      true
+    );
+    expect(evaluateAbacCondition({ attribute: 'environment.hourOfDay', operator: 'eq', value: '12' })).toBe(
+      false
+    );
+    expect(evaluateAbacCondition({ attribute: 'resource.status', operator: 'neq', value: 'open' })).toBe(
+      true
+    );
+    expect(evaluateAbacCondition({ attribute: 'environment.hourOfDay', operator: 'neq', value: 12 })).toBe(
+      false
+    );
+
+    expect(
+      evaluateAbacCondition({
+        attribute: 'actor.roleCodes',
+        operator: 'in',
+        value: ['OPS']
+      })
+    ).toBe(true);
+    expect(
+      evaluateAbacCondition({
+        attribute: 'resource.status',
+        operator: 'in',
+        value: ['closed']
+      })
+    ).toBe(true);
+    expect(
+      evaluateAbacCondition({
+        attribute: 'environment.hourOfDay',
+        operator: 'in',
+        value: [12] as unknown as readonly string[]
+      })
+    ).toBe(true);
+    expect(
+      evaluateAbacCondition({
+        attribute: 'actor.roleCodes',
+        operator: 'nin',
+        value: ['reception']
+      })
+    ).toBe(true);
+    expect(
+      evaluateAbacCondition({
+        attribute: 'resource.status',
+        operator: 'nin',
+        value: ['closed']
+      })
+    ).toBe(false);
+    expect(
+      evaluateAbacCondition({
+        attribute: 'environment.hourOfDay',
+        operator: 'nin',
+        value: [12] as unknown as readonly string[]
+      })
+    ).toBe(false);
+    expect(
+      evaluateAbacCondition({
+        attribute: 'resource.status',
+        operator: 'in',
+        value: 'not-a-list' as unknown as readonly string[]
+      })
+    ).toBe(false);
+    expect(
+      evaluateAbacCondition({
+        attribute: 'resource.status',
+        operator: 'nin',
+        value: 'not-a-list' as unknown as readonly string[]
+      })
+    ).toBe(true);
+
+    expect(evaluateAbacCondition({ attribute: 'environment.hourOfDay', operator: 'gt', value: 11 })).toBe(
+      true
+    );
+    expect(evaluateAbacCondition({ attribute: 'environment.hourOfDay', operator: 'gte', value: 12 })).toBe(
+      true
+    );
+    expect(evaluateAbacCondition({ attribute: 'environment.hourOfDay', operator: 'lt', value: 13 })).toBe(
+      true
+    );
+    expect(evaluateAbacCondition({ attribute: 'environment.hourOfDay', operator: 'lte', value: 12 })).toBe(
+      true
+    );
+    expect(
+      evaluateAbacCondition({ attribute: 'environment.hourOfDay', operator: 'between', value: [7, 12] })
+    ).toBe(true);
+    expect(
+      evaluateAbacCondition({
+        attribute: 'environment.hourOfDay',
+        operator: 'not_between',
+        value: [13, 20]
+      })
+    ).toBe(true);
+    expect(
+      evaluateAbacCondition({
+        attribute: 'environment.hourOfDay',
+        operator: 'between',
+        value: [12] as unknown as [number, number]
+      })
+    ).toBe(false);
+
+    expect(
+      evaluateAbacCondition({ attribute: 'actor.roleCodes', operator: 'has', value: 'ADMIN' })
+    ).toBe(false);
+    expect(
+      evaluateAbacCondition({ attribute: 'actor.roleCodes', operator: 'has', value: 'admin' })
+    ).toBe(true);
+    expect(
+      evaluateAbacCondition({ attribute: 'resource.status', operator: 'has', value: 'los' })
+    ).toBe(true);
+    expect(
+      evaluateAbacCondition({
+        attribute: 'environment.hourOfDay',
+        operator: 'has',
+        value: 12 as unknown as string
+      })
+    ).toBe(false);
+    expect(
+      evaluateAbacCondition({ attribute: 'actor.roleCodes', operator: 'nhas', value: 'reception' })
+    ).toBe(true);
+    expect(
+      evaluateAbacCondition({ attribute: 'resource.status', operator: 'nhas', value: 'open' })
+    ).toBe(true);
+    expect(
+      evaluateAbacCondition({
+        attribute: 'environment.hourOfDay',
+        operator: 'nhas',
+        value: 12 as unknown as string
+      })
+    ).toBe(true);
+
+    expect(
+      evaluateAbacCondition({ attribute: 'environment.ipAddress', operator: 'regex', value: '^10\\.' })
+    ).toBe(true);
+    expect(
+      evaluateAbacCondition({ attribute: 'environment.ipAddress', operator: 'regex', value: '[' })
+    ).toBe(false);
+    expect(
+      evaluateAbacCondition({
+        attribute: 'environment.hourOfDay',
+        operator: 'regex',
+        value: '12'
+      })
+    ).toBe(false);
+    expect(
+      evaluateAbacCondition({ attribute: 'resource.status', operator: 'startsWith', value: 'cl' })
+    ).toBe(true);
+    expect(
+      evaluateAbacCondition({ attribute: 'resource.status', operator: 'endsWith', value: 'sed' })
+    ).toBe(true);
+    expect(
+      evaluateAbacCondition({ attribute: 'resource.status', operator: 'startsWith', value: 'open' })
+    ).toBe(false);
+    expect(
+      evaluateAbacCondition({
+        attribute: 'environment.hourOfDay',
+        operator: 'endsWith',
+        value: '12'
+      })
+    ).toBe(false);
+  });
+
+  it('resolves attributes and referenced condition values across all sources', () => {
+    const context = createAbacContext();
+
+    expect(resolveAttribute('actor.roleCodes', context.actor, context.resource, context.environment)).toEqual([
+      'admin',
+      'ops'
+    ]);
+    expect(resolveAttribute('resource.status', context.actor, context.resource, context.environment)).toBe(
+      'closed'
+    );
+    expect(
+      resolveAttribute('environment.ipAddress', context.actor, context.resource, context.environment)
+    ).toBe('10.0.0.7');
+    expect(resolveAttribute('meta.timestamp', context.actor, context.resource, context.environment)).toBeTypeOf(
+      'number'
+    );
+    expect(resolveAttribute('unknown.value', context.actor, context.resource, context.environment)).toBeUndefined();
+
+    expect(
+      evaluateAbacCondition({
+        attribute: 'actor.department',
+        operator: 'eq',
+        value: '{{resource.status}}'
+      })
+    ).toBe(false);
+    expect(
+      evaluateAbacCondition({
+        attribute: 'actor.branchIds',
+        operator: 'has',
+        value: '{{resource.branchId}}'
+      })
+    ).toBe(true);
+    expect(
+      evaluateAbacCondition({
+        attribute: 'actor.roleCodes',
+        operator: 'has',
+        value: ['{{resource.status}}'] as unknown as string
+      })
+    ).toBe(false);
+  });
+
+  it('fails closed or permits according to engine state and combining algorithms', () => {
+    const context = createAbacContext();
+    const action = 'test.action';
+    const resource = context.resource;
+    const environment = context.environment;
+    const actor = context.actor;
+    const makePolicy = (
+      combiningAlgorithm: AbacPolicy['combiningAlgorithm'],
+      conditions: readonly PolicyCondition[],
+      effect: 'permit' | 'deny' = 'permit',
+      extraRules: AbacPolicy['rules'] = []
+    ): AbacPolicy => ({
+      id: `policy-${combiningAlgorithm}`,
+      name: `Policy ${combiningAlgorithm}`,
+      description: 'combining algorithm coverage',
+      version: 1,
+      resourceTypes: ['owner'],
+      actionCodes: [action],
+      rules: [
+        { description: `${effect} rule`, conditions, effect },
+        ...extraRules
+      ],
+      combiningAlgorithm,
+      enabled: true,
+      tags: []
+    });
+
+    expect(new AbacEngine({ enabled: false }).evaluate(action, actor, resource, environment)).toMatchObject({
+      permitted: true,
+      evaluatedPolicies: []
+    });
+    expect(
+      new AbacEngine().evaluate(action, { ...actor, isActive: false }, resource, environment)
+    ).toMatchObject({ permitted: false, reason: 'Actor is inactive' });
+    expect(
+      new AbacEngine().evaluate(action, actor, { ...resource, accountId: 'acc_other' as AccountId }, environment)
+    ).toMatchObject({ permitted: false, reason: 'Cross-account ABAC access is not allowed' });
+    expect(
+      new AbacEngine().evaluate('unmatched.action', actor, resource, environment)
+    ).toMatchObject({ permitted: true, evaluatedPolicies: [] });
+
+    const denyCondition: PolicyCondition = { attribute: 'actor.roleCodes', operator: 'has', value: 'ops' };
+    const permitCondition: PolicyCondition = { attribute: 'actor.roleCodes', operator: 'has', value: 'admin' };
+    expect(
+      new AbacEngine({ policies: [makePolicy('first-deny', [denyCondition], 'deny')] }).evaluate(
+        action,
+        actor,
+        resource,
+        environment
+      )
+    ).toMatchObject({ permitted: false, matchedPolicy: 'policy-first-deny' });
+    expect(
+      new AbacEngine({ policies: [makePolicy('first-deny', [permitCondition])] }).evaluate(
+        action,
+        actor,
+        resource,
+        environment
+      )
+    ).toMatchObject({ permitted: true });
+
+    expect(
+      new AbacEngine({ policies: [makePolicy('first-permit', [denyCondition], 'deny')] }).evaluate(
+        action,
+        actor,
+        resource,
+        environment
+      )
+    ).toMatchObject({ permitted: false });
+    expect(
+      new AbacEngine({ policies: [makePolicy('first-permit', [permitCondition])] }).evaluate(
+        action,
+        actor,
+        resource,
+        environment
+      )
+    ).toMatchObject({ permitted: true });
+
+    expect(
+      new AbacEngine({ policies: [makePolicy('deny-over-permit', [permitCondition])] }).evaluate(
+        action,
+        actor,
+        resource,
+        environment
+      )
+    ).toMatchObject({ permitted: true });
+    expect(
+      new AbacEngine({
+        policies: [
+          makePolicy('deny-over-permit', [permitCondition], 'permit', [
+            { description: 'deny rule', conditions: [denyCondition], effect: 'deny' }
+          ])
+        ]
+      }).evaluate(action, actor, resource, environment)
+    ).toMatchObject({ permitted: false });
+    expect(
+      new AbacEngine({ policies: [makePolicy('deny-over-permit', [denyCondition], 'deny')] }).evaluate(
+        action,
+        actor,
+        resource,
+        environment
+      )
+    ).toMatchObject({ permitted: false });
+
+    const noMatch = makePolicy('first-deny', [
+      { attribute: 'resource.status', operator: 'eq', value: 'open' }
+    ]);
+    expect(new AbacEngine({ policies: [noMatch] }).evaluate(action, actor, resource, environment)).toMatchObject({
+      permitted: false,
+      evaluatedPolicies: ['policy-first-deny']
+    });
+    expect(
+      new AbacEngine({
+        policies: [
+          {
+            ...makePolicy('first-deny', [
+              { attribute: 'resource.status', operator: 'eq', value: 'open' }
+            ]),
+            rules: [
+              {
+                description: 'unmatched rule',
+                conditions: [{ attribute: 'resource.status', operator: 'eq', value: 'open' }],
+                effect: 'permit'
+              },
+              { description: 'matched rule', conditions: [permitCondition], effect: 'permit' }
+            ]
+          }
+        ]
+      }).evaluate(action, actor, resource, environment)
+    ).toMatchObject({ permitted: true, matchedRule: 'matched rule' });
+  });
+});
+
+describe('DatabaseAccessControlRepository', () => {
+  const accountId = 'account-db' as AccountId;
+  const createdAt = '2026-01-01T00:00:00.000Z';
+
+  beforeEach(() => {
+    queryMock.mockReset();
+    queryMock.mockResolvedValue(dbResult());
+    getPoolMock.mockClear();
+    withTenantQueryMock.mockClear();
+  });
+
+  it('persists and maps roles, permissions and user role assignments', async () => {
+    const roleRow = {
+      id: 'role-1',
+      name: 'admin-role',
+      description: null,
+      created_at: createdAt,
+      permission_codes: ['users.read', null]
+    };
+    const permissionRow = {
+      id: 'permission-1',
+      key: 'users.read',
+      description: null,
+      created_at: createdAt
+    };
+    queryMock
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([roleRow]))
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([roleRow]))
+      .mockResolvedValueOnce(dbResult([roleRow]))
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([permissionRow]))
+      .mockResolvedValueOnce(dbResult([permissionRow]))
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([permissionRow]))
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([roleRow]))
+      .mockResolvedValueOnce(dbResult([{ id: 'user-1' }, { id: 'user-2' }]));
+
+    const repository = new DatabaseAccessControlRepository();
+    await repository.createRole({
+      id: 'role-1' as never,
+      code: 'admin-role',
+      name: 'ignored display name',
+      createdAt,
+      permissionCodes: []
+    });
+    expect(await repository.findRoleById('missing' as never)).toBeNull();
+    expect(await repository.findRoleById('role-1' as never)).toEqual({
+      id: 'role-1',
+      code: 'admin-role',
+      name: 'Admin Role',
+      description: undefined,
+      createdAt,
+      permissionCodes: ['users.read']
+    });
+    expect(await repository.findRoleByName('missing')).toBeNull();
+    expect(await repository.findRoleByName('admin-role')).toEqual(
+      expect.objectContaining({ code: 'admin-role', name: 'Admin Role' })
+    );
+    expect(await repository.findAllRoles()).toHaveLength(1);
+
+    await repository.createPermission({
+      id: 'permission-1' as never,
+      key: 'users.read',
+      createdAt
+    });
+    expect(await repository.findPermissionByKey('missing')).toBeNull();
+    expect(await repository.findPermissionByKey('users.read')).toEqual({
+      id: 'permission-1',
+      key: 'users.read',
+      description: undefined,
+      createdAt
+    });
+    expect(await repository.findAllPermissions()).toEqual([
+      { id: 'permission-1', key: 'users.read', description: undefined, createdAt }
+    ]);
+
+    await repository.addPermissionToRole('role-1' as never, 'permission-1' as never);
+    await repository.removePermissionFromRole('role-1' as never, 'permission-1' as never);
+    expect(await repository.findPermissionsByRole('role-1' as never)).toHaveLength(1);
+    await repository.assignRoleToUser('user-1', 'role-1' as never);
+    await repository.removeRoleFromUser('user-1', 'role-1' as never);
+    expect(await repository.findRolesByUser('user-1')).toHaveLength(1);
+    expect(await repository.findUserIdsByAccount(accountId)).toEqual(['user-1', 'user-2']);
+  });
+
+  it('maps account-scoped teams and sectors across create, update and list paths', async () => {
+    const teamRow = {
+      id: 'team-1',
+      account_id: accountId,
+      code: 'team-one',
+      name: 'Team One',
+      description: null,
+      is_active: false,
+      created_at: createdAt,
+      updated_at: createdAt
+    };
+    const activeTeamRow = {
+      ...teamRow,
+      id: 'team-2',
+      code: 'team-two',
+      name: 'Team Two',
+      description: 'Team description',
+      is_active: true
+    };
+    const sectorRow = {
+      id: 'sector-1',
+      account_id: accountId,
+      code: 'sector-one',
+      name: 'Sector One',
+      description: null,
+      is_active: false,
+      created_at: createdAt,
+      updated_at: createdAt
+    };
+    const activeSectorRow = {
+      ...sectorRow,
+      id: 'sector-2',
+      code: 'sector-two',
+      name: 'Sector Two',
+      description: 'Sector description',
+      is_active: true
+    };
+    queryMock
+      .mockResolvedValueOnce(dbResult([{ token: 'token-1' }]))
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([teamRow]))
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([activeTeamRow]))
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([teamRow, activeTeamRow]))
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([sectorRow]))
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([activeSectorRow]))
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([sectorRow, activeSectorRow]));
+
+    const repository = new DatabaseAccessControlRepository();
+    expect(await repository.getAccountChangeToken(accountId)).toBe('token-1');
+    expect(await repository.getAccountChangeToken(accountId)).toBe('');
+
+    const createdTeam = await repository.createTeam({
+      accountId,
+      code: 'created-team',
+      name: 'Created Team',
+      description: null
+    });
+    expect(createdTeam).toMatchObject({
+      accountId,
+      code: 'created-team',
+      name: 'Created Team',
+      description: undefined,
+      status: 'active'
+    });
+
+    await expect(repository.updateTeam('missing-team' as never, {})).rejects.toThrow(
+      'Access team not found'
+    );
+    const updatedTeam = await repository.updateTeam('team-1' as never, {
+      code: 'team-renamed',
+      name: 'Renamed Team',
+      description: null,
+      isActive: false
+    });
+    expect(updatedTeam).toMatchObject({
+      id: 'team-1',
+      description: undefined,
+      status: 'inactive',
+      code: 'team-renamed',
+      name: 'Renamed Team'
+    });
+    expect(await repository.updateTeam('team-2' as never, {})).toMatchObject({
+      id: 'team-2',
+      description: 'Team description',
+      status: 'active'
+    });
+    expect(await repository.findAllTeams(accountId)).toHaveLength(2);
+
+    const createdSector = await repository.createSector({
+      accountId,
+      code: 'created-sector',
+      name: 'Created Sector',
+      description: null
+    });
+    expect(createdSector).toMatchObject({
+      accountId,
+      code: 'created-sector',
+      name: 'Created Sector',
+      description: undefined,
+      status: 'active'
+    });
+    await expect(repository.updateSector('missing-sector' as never, {})).rejects.toThrow(
+      'Access sector not found'
+    );
+    const updatedSector = await repository.updateSector('sector-1' as never, {
+      code: 'sector-renamed',
+      name: 'Renamed Sector',
+      description: null,
+      isActive: false
+    });
+    expect(updatedSector).toMatchObject({
+      id: 'sector-1',
+      description: undefined,
+      status: 'inactive',
+      code: 'sector-renamed',
+      name: 'Renamed Sector'
+    });
+    expect(await repository.updateSector('sector-2' as never, {})).toMatchObject({
+      id: 'sector-2',
+      description: 'Sector description',
+      status: 'active'
+    });
+    expect(await repository.findAllSectors(accountId)).toHaveLength(2);
+  });
+
+  it('enforces account ownership while replacing memberships and maps membership rows', async () => {
+    queryMock
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([], 0))
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([], 1))
+      .mockResolvedValueOnce(dbResult([], 1))
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([], 0))
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([], 1))
+      .mockResolvedValueOnce(dbResult([], 1))
+      .mockResolvedValueOnce(
+        dbResult([{ user_id: 'user-1', team_id: 'team-1', created_at: createdAt }])
+      )
+      .mockResolvedValueOnce(
+        dbResult([{ user_id: 'user-1', sector_id: 'sector-1', created_at: createdAt }])
+      );
+
+    const repository = new DatabaseAccessControlRepository();
+    await expect(repository.replaceUserTeams('user-1' as never, ['team-1' as never])).rejects.toThrow(
+      "Access team does not belong to the user's account"
+    );
+    await repository.replaceUserTeams('user-1' as never, ['team-1' as never, 'team-2' as never]);
+    await expect(
+      repository.replaceUserSectors('user-1' as never, ['sector-1' as never])
+    ).rejects.toThrow("Access sector does not belong to the user's account");
+    await repository.replaceUserSectors('user-1' as never, [
+      'sector-1' as never,
+      'sector-2' as never
+    ]);
+
+    expect(await repository.findTeamMemberships(accountId)).toEqual([
+      {
+        userId: 'user-1',
+        subjectType: 'team',
+        subjectId: 'team-1',
+        createdAt
+      }
+    ]);
+    expect(await repository.findSectorMemberships(accountId)).toEqual([
+      {
+        userId: 'user-1',
+        subjectType: 'sector',
+        subjectId: 'sector-1',
+        createdAt
+      }
+    ]);
+  });
+
+  it('handles user, team and sector permission assignments and removals', async () => {
+    const permissionRow = {
+      id: 'permission-1',
+      key: 'users.read',
+      description: 'Read users',
+      created_at: createdAt
+    };
+    queryMock
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([permissionRow]))
+      .mockResolvedValueOnce(dbResult([], 0))
+      .mockResolvedValueOnce(dbResult([permissionRow]))
+      .mockResolvedValueOnce(dbResult([], 1))
+      .mockResolvedValueOnce(dbResult([permissionRow]))
+      .mockResolvedValueOnce(dbResult([], 0))
+      .mockResolvedValueOnce(dbResult([permissionRow]))
+      .mockResolvedValueOnce(dbResult([], 1))
+      .mockResolvedValueOnce(dbResult([permissionRow]))
+      .mockResolvedValueOnce(dbResult([], 0))
+      .mockResolvedValueOnce(dbResult([permissionRow]))
+      .mockResolvedValueOnce(dbResult([], 1))
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([permissionRow]))
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([permissionRow]))
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(dbResult([permissionRow]))
+      .mockResolvedValueOnce(dbResult())
+      .mockResolvedValueOnce(
+        dbResult([
+          {
+            account_id: accountId,
+            subject_type: 'user',
+            subject_id: 'user-1',
+            permission_code: 'users.read',
+            effect: 'allow',
+            created_at: createdAt,
+            updated_at: createdAt
+          },
+          {
+            account_id: accountId,
+            subject_type: 'team',
+            subject_id: 'team-1',
+            permission_code: 'users.read',
+            effect: 'deny',
+            created_at: createdAt,
+            updated_at: createdAt
+          },
+          {
+            account_id: accountId,
+            subject_type: 'sector',
+            subject_id: 'sector-1',
+            permission_code: 'users.read',
+            effect: 'allow',
+            created_at: createdAt,
+            updated_at: createdAt
+          }
+        ])
+      );
+
+    const repository = new DatabaseAccessControlRepository();
+    await expect(
+      repository.upsertPermissionAssignment({
+        accountId,
+        subjectType: 'user',
+        subjectId: 'user-1',
+        permissionCode: 'missing.permission',
+        effect: 'allow'
+      })
+    ).rejects.toThrow('Permission not found');
+    await expect(
+      repository.upsertPermissionAssignment({
+        accountId,
+        subjectType: 'user',
+        subjectId: 'user-1',
+        permissionCode: 'users.read',
+        effect: 'allow'
+      })
+    ).rejects.toThrow('Access user permission belongs to another account');
+    await repository.upsertPermissionAssignment({
+      accountId,
+      subjectType: 'user',
+      subjectId: 'user-1',
+      permissionCode: 'users.read',
+      effect: 'allow'
+    });
+    await expect(
+      repository.upsertPermissionAssignment({
+        accountId,
+        subjectType: 'team',
+        subjectId: 'team-1',
+        permissionCode: 'users.read',
+        effect: 'deny'
+      })
+    ).rejects.toThrow('Access team permission belongs to another account');
+    await repository.upsertPermissionAssignment({
+      accountId,
+      subjectType: 'team',
+      subjectId: 'team-1',
+      permissionCode: 'users.read',
+      effect: 'deny'
+    });
+    await expect(
+      repository.upsertPermissionAssignment({
+        accountId,
+        subjectType: 'sector',
+        subjectId: 'sector-1',
+        permissionCode: 'users.read',
+        effect: 'allow'
+      })
+    ).rejects.toThrow('Access sector permission belongs to another account');
+    await repository.upsertPermissionAssignment({
+      accountId,
+      subjectType: 'sector',
+      subjectId: 'sector-1',
+      permissionCode: 'users.read',
+      effect: 'allow'
+    });
+
+    await repository.removePermissionAssignment({
+      subjectType: 'user',
+      subjectId: 'user-1',
+      permissionCode: 'missing.permission'
+    });
+    await repository.removePermissionAssignment({
+      subjectType: 'user',
+      subjectId: 'user-1',
+      permissionCode: 'users.read'
+    });
+    await repository.removePermissionAssignment({
+      subjectType: 'team',
+      subjectId: 'team-1',
+      permissionCode: 'users.read'
+    });
+    await repository.removePermissionAssignment({
+      subjectType: 'sector',
+      subjectId: 'sector-1',
+      permissionCode: 'users.read'
+    });
+
+    expect(await repository.findPermissionAssignments(accountId)).toEqual([
+      {
+        accountId,
+        subjectType: 'user',
+        subjectId: 'user-1',
+        permissionCode: 'users.read',
+        effect: 'allow',
+        createdAt,
+        updatedAt: createdAt
+      },
+      {
+        accountId,
+        subjectType: 'team',
+        subjectId: 'team-1',
+        permissionCode: 'users.read',
+        effect: 'deny',
+        createdAt,
+        updatedAt: createdAt
+      },
+      {
+        accountId,
+        subjectType: 'sector',
+        subjectId: 'sector-1',
+        permissionCode: 'users.read',
+        effect: 'allow',
+        createdAt,
+        updatedAt: createdAt
+      }
+    ]);
   });
 });

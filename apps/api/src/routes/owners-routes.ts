@@ -5,15 +5,13 @@ import type { ResourceAttributes } from '@cvg-his-v2/module-access-control';
 import type { EncountersService } from '@cvg-his-v2/module-encounters';
 import type { OwnersService } from '@cvg-his-v2/module-owners';
 import type { PatientsService } from '@cvg-his-v2/module-patients';
-import type {
-  CreateOwnerRequest,
-  UpdateOwnerRequest
-} from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
 
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
+import { parseCreateOwnerRequest, parseUpdateOwnerRequest } from '../registry-request-boundaries.js';
+import { parseListPagination } from '../request-boundaries.js';
 
 export interface OwnersRoutesHandlers {
   owners: OwnersService;
@@ -88,6 +86,13 @@ export async function handleOwnersRoutes(
       );
     }
 
+    const total = items.length;
+    const pagination = parseListPagination(url);
+    if (pagination) {
+      const start = (pagination.page - 1) * pagination.pageSize;
+      items = items.slice(start, start + pagination.pageSize);
+    }
+
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -100,7 +105,11 @@ export async function handleOwnersRoutes(
       correlationId
     });
 
-    return json(response, 200, { items });
+    return json(
+      response,
+      200,
+      pagination ? { items, page: pagination.page, pageSize: pagination.pageSize, total } : { items }
+    );
   }
 
   // POST /owners - Create owner
@@ -119,7 +128,7 @@ export async function handleOwnersRoutes(
         request
       );
     }
-    const body = (await readJsonBody(request)) as CreateOwnerRequest;
+    const body = parseCreateOwnerRequest(await readJsonBody(request), correlationId);
 
     const owner = owners.create(principal.user.accountId, body);
     await owners.waitForPersistence();
@@ -249,7 +258,7 @@ export async function handleOwnersRoutes(
         request
       );
     }
-    const body = (await readJsonBody(request)) as UpdateOwnerRequest;
+    const body = parseUpdateOwnerRequest(await readJsonBody(request), correlationId);
     const existing = owners.getOrThrow(ownerId as never);
     if (existing.accountId !== principal.user.accountId) {
       throw new NotFoundError('Owner not found', { ownerId });

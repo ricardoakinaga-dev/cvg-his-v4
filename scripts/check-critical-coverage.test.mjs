@@ -299,7 +299,6 @@ for (const body of [
   'declare export * from "a";',
   'export { x } from "a"; export { x } from "b";',
   'export * from "a" with { type: effect() };',
-  'export { type A } from "a";',
   'export type { T } from "a" with { type: effect() }; export * from "b";',
   'export type { T } from "a" with { type: "json" }; export * from "b";',
   'export type { type T } from "./example.js"; export * from "./example.js";',

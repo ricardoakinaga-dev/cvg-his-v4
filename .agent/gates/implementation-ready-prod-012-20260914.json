@@ -1,0 +1,66 @@
+{
+  "authority": {
+    "actor": "lead executor do programa state-of-art (nao autoridade de release)",
+    "decision": "Entrada em PROD-012-R2: produtor executado com PASS rev27; aceitar escopo e registrar; promocoes no fluxo do gate.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar a cada mudanca de bytes.",
+    "required": false,
+    "scope": "Entrada em PROD-012 (evidencia Vue especializada): dependencias satisfeitas",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "011-R2 executado (SQL passed rev27); 012-R2 executado (Vue PASS run efa62a6f); dependencias 003/010 relaxadas explicitamente.",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-PROD-012-R2-20260914"
+      ],
+      "id": "IR-001",
+      "limitations": "Gate de entrada, nao de saida.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "25/25 rotas com renderer/acao reais; consumer PASS; published true; diagnostico documentado.",
+      "evidence_refs": [
+        "artifacts/state-of-art/PROD-012/attempt-20260915T012000Z-R2/REPORT.md"
+      ],
+      "id": "IR-002",
+      "limitations": "Promocao no fluxo do gate.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Riscos mapeados; release BLOCKED.",
+      "evidence_refs": [
+        ".agent/state.json"
+      ],
+      "id": "IR-003",
+      "limitations": "Nao aprova release.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json",
+    ".agent/state.json"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Aceitar 011/012 e despachar 013.",
+  "record_id": "GATE-IR-PROD-012-20260914",
+  "residual_risk": "MEDIUM",
+  "revalidation_triggers": [
+    "Qualquer alteracao em bytes."
+  ],
+  "scope": "Entrada em PROD-012 (evidencia Vue especializada): dependencias satisfeitas",
+  "scope_ref": "PROD-012",
+  "supersedes": null,
+  "timestamp": "2026-09-15T01:38:29Z",
+  "version": 1,
+  "conditions": []
+}

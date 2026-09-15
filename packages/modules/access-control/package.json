@@ -25,6 +25,6 @@
     "test": "cd ../../.. && vitest run packages/modules/access-control/src/*.test.ts"
   },
   "devDependencies": {
-    "vitest": "^3.2.7"
+    "vitest": "^4.1.11"
   }
 }

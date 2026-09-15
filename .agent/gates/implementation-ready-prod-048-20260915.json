@@ -1,0 +1,69 @@
+{
+  "authority": {
+    "actor": "lead executor do programa state-of-art (nao autoridade de privacidade, retencao ou release)",
+    "decision": "Entrada em PROD-048-R1: auditoria redacting-first de PII documental em docs/vetus/guides e raizes relacionadas, sem publicar valores, reescrever Git ou remover acervo; tratamento final permanece sob Segurança/DPO.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar ao iniciar/concluir PROD-048-R1 e a cada alteracao de escopo ou bytes documentais.",
+    "required": false,
+    "scope": "Entrada em PROD-048 (scanner e inventario restrito de documentacao): dependencia PROD-001 satisfeita",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "PROD-001 DONE e dependencia direta satisfeita; o programa segue BLOCKED por gates externos, sem promover esta entrada a release.",
+      "evidence_refs": [
+        ".agent/backlog.json",
+        ".agent/verification.jsonl#VER-PROD-001-R2-20260914"
+      ],
+      "id": "IR-001",
+      "limitations": "Gate de entrada, nao de saida e nao e decisao de tratamento de dados.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Escopo fixado: scanner textual redacting-first, caminhos existentes e ausentes, categorias/localizacao/tamanho/digest; valores de candidatos nunca entram em ledger ou relatorio publicado.",
+      "evidence_refs": [
+        ".agent/backlog.json",
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "id": "IR-002",
+      "limitations": "Imagens e acervo historico ausente exigem classificacao de limite; revisao de ACL, retencao e descarte depende de dono autorizado.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Execucao somente local e read-only sobre os documentos auditados; sem credenciais, PHI, provider, deploy, push, reescrita de Git ou exclusao indiscriminada.",
+      "evidence_refs": [
+        ".agent/state.json"
+      ],
+      "id": "IR-003",
+      "limitations": "Nao aprova privacidade, seguranca, retencao, restauracao, produto, release ou Triplo AAA.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json",
+    ".agent/state.json"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Executar PROD-048-R1 (scanner redacting-first e inventario restrito).",
+  "record_id": "GATE-IR-PROD-048-20260915",
+  "residual_risk": "MEDIUM",
+  "revalidation_triggers": [
+    "Inicio e conclusao de PROD-048-R1.",
+    "Qualquer alteracao no escopo ou nos documentos auditados."
+  ],
+  "scope": "Entrada em PROD-048 (scanner e inventario restrito de documentacao): dependencia PROD-001 satisfeita",
+  "scope_ref": "PROD-048",
+  "supersedes": null,
+  "timestamp": "2026-09-15T13:15:05Z",
+  "version": 1,
+  "conditions": []
+}

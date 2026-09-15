@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "132d0f6eb8e1721ff15ee26fd4ea3f9c6ce5c75c",
+  "head": "324099e5a54537ca1349f3310639c3a12afbae36",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -44,6 +44,7 @@
   "nativeTests": {
     "native-api": [
       "apps/api/src/canonical-db-runtime.test.ts",
+      "apps/api/src/clinical-operational-metrics.test.ts",
       "apps/api/src/consumers/billing.consumer.test.ts",
       "apps/api/src/consumers/consumer-registry.test.ts",
       "apps/api/src/consumers/payments.consumer.test.ts",
@@ -109,6 +110,7 @@
       "apps/api/src/routes/vetus-import-routes.test.ts",
       "apps/api/src/routes/webhooks-routes.test.ts",
       "apps/api/src/routes/whatsapp-routes.test.ts",
+      "apps/api/src/routes/workflow-task-routes.test.ts",
       "apps/api/src/runtime.test.ts",
       "apps/api/src/server.test.ts",
       "apps/api/src/setup-provisioning.test.ts",
@@ -126,7 +128,8 @@
       "apps/worker/src/report-delivery-provider.test.ts",
       "apps/worker/src/runner.test.ts",
       "apps/worker/src/scheduled-report-filters.test.ts",
-      "apps/worker/src/worker-report-identity.test.ts"
+      "apps/worker/src/worker-report-identity.test.ts",
+      "apps/worker/src/workflow-task-runner.test.ts"
     ]
   },
   "files": [
@@ -282,7 +285,7 @@
     },
     {
       "path": "apps/api/src/helpers/auth-helpers.ts",
-      "sha256": "46f2a7950035eb16cd8f05497ed07200cde57622b1763d858a53c950cdf1c4aa",
+      "sha256": "21b10c94380e2d1169c8fa399a91ecbb6a0decfcda512ef4c89d6298ba224f4b",
       "components": [
         "auth",
         "http-routes"
@@ -555,7 +558,7 @@
     },
     {
       "path": "apps/api/src/routes/auth-routes.ts",
-      "sha256": "bebc3c9d30ba7572d1caff6fffd0f0f79b3d56867acc8cd756006bac412787a0",
+      "sha256": "bc051d602c7e3af57a894b53f16244710e16207a2c9f6758904a41716d9ae078",
       "components": [
         "auth",
         "http-routes"
@@ -693,7 +696,7 @@
     },
     {
       "path": "apps/api/src/routes/financial-routes.ts",
-      "sha256": "5de7f65981cc76360a0ccfa1815206ab3c2c248487129b82d55736c9e7fbeaf8",
+      "sha256": "c127138cc12cebe7a75035154a92f1659420947bf9861676cb0c459527f26acb",
       "components": [
         "billing-cash",
         "http-routes"
@@ -1063,7 +1066,7 @@
     },
     {
       "path": "apps/api/src/server.ts",
-      "sha256": "d870d9707524c3cffea00417acef4cf8f090202aa1540f3868416670c4b2cd29",
+      "sha256": "f48eeaf652f10cb4c66b2a8a2042410c04627af6555cab5f860f9d0c48b94b67",
       "components": [
         "http-routes"
       ],
@@ -1123,7 +1126,7 @@
     },
     {
       "path": "apps/spa/src/pages/billing/BillingListPage.vue",
-      "sha256": "c3121327e6e8b1599afd8fd82850c63317edd7b227889556e59582205c26a130",
+      "sha256": "b7061b71dd727ec6492563fede7fef00d1f3755a79814fa73d52d038b2811320",
       "components": [
         "billing-cash"
       ],
@@ -1312,6 +1315,16 @@
       "review": null
     },
     {
+      "path": "apps/spa/src/pages/webhooks/webhook-delivery-helpers.ts",
+      "sha256": "b2aa0caec1975662960e39e3151301ff28ef998362e2838519684a29e4342304",
+      "components": [
+        "webhooks"
+      ],
+      "applicability": "javascript-metrics",
+      "justification": null,
+      "review": null
+    },
+    {
       "path": "apps/spa/src/pages/webhooks/WebhookDetailPage.vue",
       "sha256": "8b93e112d14372412baa2eea338b4bc2189c73bd73f80cb2419e9f5805a5dc22",
       "components": [
@@ -1338,16 +1351,6 @@
         "webhooks"
       ],
       "applicability": "pending-specialized-instrumentation",
-      "justification": null,
-      "review": null
-    },
-    {
-      "path": "apps/spa/src/pages/webhooks/webhook-delivery-helpers.ts",
-      "sha256": "b2aa0caec1975662960e39e3151301ff28ef998362e2838519684a29e4342304",
-      "components": [
-        "webhooks"
-      ],
-      "applicability": "javascript-metrics",
       "justification": null,
       "review": null
     },
@@ -1423,7 +1426,7 @@
     },
     {
       "path": "apps/spa/src/services/financialReceivables.ts",
-      "sha256": "9c2194637c8b8bbd47896230f790aedbcc941b31948e8a810febd03b98e61bbd",
+      "sha256": "dbd5bc3f587887547a7e308d3b8f7106fcdb632cb0b2b84bd640169ae63da037",
       "components": [
         "billing-cash"
       ],
@@ -1533,7 +1536,7 @@
     },
     {
       "path": "apps/spa/src/types/financialReceivables.ts",
-      "sha256": "c68d27e6555aeaf39c5118b212fe0a16c6ebdeed2217e8ebb04180358b22cd4e",
+      "sha256": "42807bff3732d3567775279414fe061a60b21d55dc0d8d0eb74651f7ea2463eb",
       "components": [
         "billing-cash"
       ],
@@ -1635,7 +1638,7 @@
     },
     {
       "path": "packages/contracts/src/encounterFinancial.ts",
-      "sha256": "b6ed118d54fdf70384182d261aef4730e5dffb8a7bcbf07c2556404f1c5b5f10",
+      "sha256": "c202d114db70db0649f6d2a082bf6068bb5cb8a578a9cec41491fedc167535e7",
       "components": [
         "records"
       ],
@@ -1669,8 +1672,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "historical-sql-artifact",
+      "justification": "Historical SQL artifact retained for byte-level accountability; excluded from the executable migration rail.",
       "review": null
     },
     {
@@ -1679,8 +1682,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "historical-sql-artifact",
+      "justification": "Historical SQL artifact retained for byte-level accountability; excluded from the executable migration rail.",
       "review": null
     },
     {
@@ -1689,8 +1692,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1699,8 +1702,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1709,8 +1712,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1719,8 +1722,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "historical-sql-artifact",
+      "justification": "Historical SQL artifact retained for byte-level accountability; excluded from the executable migration rail.",
       "review": null
     },
     {
@@ -1729,8 +1732,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1739,8 +1742,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1749,8 +1752,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1759,8 +1762,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "historical-sql-artifact",
+      "justification": "Historical SQL artifact retained for byte-level accountability; excluded from the executable migration rail.",
       "review": null
     },
     {
@@ -1769,8 +1772,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1779,8 +1782,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "historical-sql-artifact",
+      "justification": "Historical SQL artifact retained for byte-level accountability; excluded from the executable migration rail.",
       "review": null
     },
     {
@@ -1789,8 +1792,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1799,8 +1802,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "historical-sql-artifact",
+      "justification": "Historical SQL artifact retained for byte-level accountability; excluded from the executable migration rail.",
       "review": null
     },
     {
@@ -1809,8 +1812,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1820,8 +1823,8 @@
         "roles-rls",
         "webhooks"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1830,8 +1833,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1840,8 +1843,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1850,8 +1853,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1861,8 +1864,8 @@
         "roles-rls",
         "pix"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1872,8 +1875,8 @@
         "roles-rls",
         "pix"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1884,8 +1887,8 @@
         "billing-cash",
         "records"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1894,8 +1897,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1904,8 +1907,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "historical-sql-artifact",
+      "justification": "Historical SQL artifact retained for byte-level accountability; excluded from the executable migration rail.",
       "review": null
     },
     {
@@ -1914,8 +1917,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1924,8 +1927,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1934,8 +1937,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1944,8 +1947,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1955,8 +1958,8 @@
         "roles-rls",
         "billing-cash"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1966,8 +1969,8 @@
         "roles-rls",
         "billing-cash"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1977,8 +1980,8 @@
         "roles-rls",
         "records"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1987,8 +1990,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -1997,8 +2000,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2007,8 +2010,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2017,8 +2020,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2027,8 +2030,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2037,8 +2040,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2047,8 +2050,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2057,8 +2060,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2067,8 +2070,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2077,8 +2080,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2087,8 +2090,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2097,8 +2100,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2107,8 +2110,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2117,8 +2120,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2127,8 +2130,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2137,8 +2140,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2147,8 +2150,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2157,8 +2160,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2167,8 +2170,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2177,8 +2180,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2188,8 +2191,8 @@
         "roles-rls",
         "billing-cash"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2198,8 +2201,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2208,8 +2211,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2219,8 +2222,8 @@
         "roles-rls",
         "billing-cash"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2229,8 +2232,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2240,8 +2243,8 @@
         "roles-rls",
         "billing-cash"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2251,8 +2254,8 @@
         "roles-rls",
         "inpatient"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2261,8 +2264,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2271,8 +2274,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2281,8 +2284,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2291,8 +2294,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2301,8 +2304,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2311,8 +2314,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2321,8 +2324,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2331,8 +2334,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2341,8 +2344,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2351,8 +2354,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2361,8 +2364,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2371,8 +2374,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2381,8 +2384,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2391,8 +2394,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2402,8 +2405,8 @@
         "roles-rls",
         "webhooks"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2412,8 +2415,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2422,8 +2425,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2433,8 +2436,8 @@
         "roles-rls",
         "records"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2445,8 +2448,8 @@
         "inpatient",
         "records"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2456,8 +2459,8 @@
         "roles-rls",
         "records"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2467,8 +2470,8 @@
         "roles-rls",
         "records"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2478,8 +2481,8 @@
         "roles-rls",
         "inpatient"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2489,8 +2492,8 @@
         "roles-rls",
         "inpatient"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2500,8 +2503,8 @@
         "roles-rls",
         "inpatient"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2512,8 +2515,8 @@
         "billing-cash",
         "inpatient"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2522,8 +2525,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2532,8 +2535,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2542,8 +2545,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2552,8 +2555,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2563,8 +2566,8 @@
         "roles-rls",
         "inpatient"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2574,8 +2577,8 @@
         "roles-rls",
         "billing-cash"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2584,8 +2587,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2594,8 +2597,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2604,8 +2607,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2614,8 +2617,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2624,8 +2627,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2634,8 +2637,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2644,8 +2647,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2654,8 +2657,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2664,8 +2667,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2674,8 +2677,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2684,8 +2687,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2694,8 +2697,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2705,8 +2708,8 @@
         "roles-rls",
         "prescriptions"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2715,8 +2718,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2725,8 +2728,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2735,8 +2738,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2745,8 +2748,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2755,8 +2758,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2765,8 +2768,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2775,8 +2778,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2785,8 +2788,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2795,8 +2798,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2805,8 +2808,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2815,8 +2818,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2825,8 +2828,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2835,8 +2838,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2846,8 +2849,8 @@
         "roles-rls",
         "records"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2857,8 +2860,8 @@
         "roles-rls",
         "records"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2868,8 +2871,8 @@
         "roles-rls",
         "records"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2879,8 +2882,8 @@
         "roles-rls",
         "pix"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2890,8 +2893,8 @@
         "roles-rls",
         "pix"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2900,8 +2903,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2911,8 +2914,8 @@
         "roles-rls",
         "pix"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2923,8 +2926,8 @@
         "billing-cash",
         "inpatient"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2934,8 +2937,8 @@
         "roles-rls",
         "inpatient"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2944,8 +2947,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2954,8 +2957,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2965,8 +2968,8 @@
         "roles-rls",
         "records"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2975,8 +2978,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2985,8 +2988,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -2995,8 +2998,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3006,8 +3009,8 @@
         "roles-rls",
         "records"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3017,8 +3020,8 @@
         "roles-rls",
         "pix"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3028,8 +3031,8 @@
         "roles-rls",
         "webhooks"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3038,8 +3041,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3048,8 +3051,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3058,8 +3061,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3068,8 +3071,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3078,8 +3081,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3089,8 +3092,8 @@
         "roles-rls",
         "billing-cash"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3099,8 +3102,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3109,8 +3112,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3119,8 +3122,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3129,8 +3132,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3139,8 +3142,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3149,8 +3152,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3160,8 +3163,8 @@
         "roles-rls",
         "billing-cash"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3170,8 +3173,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3180,8 +3183,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3190,8 +3193,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3200,8 +3203,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3210,8 +3213,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3220,8 +3223,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3230,8 +3233,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3241,8 +3244,8 @@
         "roles-rls",
         "billing-cash"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3251,8 +3254,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3262,8 +3265,8 @@
         "roles-rls",
         "records"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3273,8 +3276,8 @@
         "roles-rls",
         "records"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3283,8 +3286,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3294,8 +3297,8 @@
         "roles-rls",
         "prescriptions"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3304,8 +3307,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3314,8 +3317,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3324,8 +3327,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3334,8 +3337,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3344,8 +3347,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3354,8 +3357,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3364,8 +3367,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3374,8 +3377,8 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3384,8 +3387,108 @@
       "components": [
         "roles-rls"
       ],
-      "applicability": "pending-specialized-instrumentation",
-      "justification": null,
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
+      "review": null
+    },
+    {
+      "path": "packages/db/migrations/0163_force_report_runtime_rls.sql",
+      "components": [
+        "roles-rls"
+      ],
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
+      "review": null,
+      "sha256": "ddd7ea73d439ecd62857393976094969a909f60e69b9c332d9bac68f22612295",
+      "applicability": "sql-migration-evidence"
+    },
+    {
+      "path": "packages/db/migrations/0164_allow_billing_item_cascade_delete.sql",
+      "components": [
+        "roles-rls"
+      ],
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
+      "review": null,
+      "sha256": "874e03aca4e4f67eead58ff89ab00144597f33565e6e729bb30201b74070d7da",
+      "applicability": "sql-migration-evidence"
+    },
+    {
+      "path": "packages/db/migrations/0165_idempotency_actor_binding.sql",
+      "components": [
+        "roles-rls"
+      ],
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
+      "review": null,
+      "sha256": "e5693f6e7248366e8366cc7fa8a5c69c3ac2fe36002165616eebc2f67dc3a7f7",
+      "applicability": "sql-migration-evidence"
+    },
+    {
+      "path": "packages/db/migrations/0166_clinical_workflow_tasks.sql",
+      "components": [
+        "roles-rls"
+      ],
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
+      "review": null,
+      "sha256": "cb436def534f658d72aa2053f625391dc48a7689d0f81211ce40c635928a9dc5",
+      "applicability": "sql-migration-evidence"
+    },
+    {
+      "path": "packages/db/migrations/0167_clinical_workflow_permissions.sql",
+      "components": [
+        "roles-rls"
+      ],
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
+      "review": null,
+      "sha256": "3d2d0e03a50a03d2dbcee914ec77592211cfe65f464a8a44b7b63f8811d59c0d",
+      "applicability": "sql-migration-evidence"
+    },
+    {
+      "path": "packages/db/migrations/0168_clinical_workflow_event_governance.sql",
+      "components": [
+        "roles-rls"
+      ],
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
+      "review": null,
+      "sha256": "0816779f7be9f35adb439925ae9009d2e38d189ea540f1fe1141c74f775b55c3",
+      "applicability": "sql-migration-evidence"
+    },
+    {
+      "path": "packages/db/migrations/0169_clinical_workflow_event_order.sql",
+      "components": [
+        "roles-rls"
+      ],
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
+      "review": null,
+      "sha256": "def80d012d90a913655c96fd3f6502dafc8e62d065b48063880ca391e1a6bdd2",
+      "applicability": "sql-migration-evidence"
+    },
+    {
+      "path": "packages/db/migrations/0170_outbox_event_envelope.sql",
+      "components": [
+        "roles-rls"
+      ],
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
+      "review": null,
+      "sha256": "281c2dfb302134c3e1b6dd1325b759a75155a92ed750af626e392d8cbd71df1b",
+      "applicability": "sql-migration-evidence"
+    },
+    {
+      "path": "packages/db/migrations/0171_outbox_event_envelope_backfill_correction.sql",
+      "sha256": "95d33bd3fc361b2c5355eef41229a4a5b231d61e91a19112ef98aa694f4a1e60",
+      "components": [
+        "roles-rls"
+      ],
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
+      "review": null
+    },
+    {
+      "path": "packages/db/migrations/0172_outbox_event_envelope_full_validity_backfill.sql",
+      "sha256": "a7c3e0c73529a398be8c215158fa923a4186bda5c821a5970a6bf9eb82f05908",
+      "components": [
+        "roles-rls"
+      ],
+      "applicability": "sql-migration-evidence",
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
       "review": null
     },
     {
@@ -3682,8 +3785,8 @@
       "review": null
     },
     {
-      "path": "packages/db/src/schema/counterSales.ts",
-      "sha256": "a7c38227835186e4946ffffb11834575c5a8e7f63ba8176103c64ba6bc7ea188",
+      "path": "packages/db/src/schema/counter_sale_number_sequences.ts",
+      "sha256": "0c694d9c6bb251822eeba2afcc09a64d0257acdded3f9c2857de16382b5e3087",
       "components": [
         "roles-rls"
       ],
@@ -3692,8 +3795,8 @@
       "review": null
     },
     {
-      "path": "packages/db/src/schema/counter_sale_number_sequences.ts",
-      "sha256": "0c694d9c6bb251822eeba2afcc09a64d0257acdded3f9c2857de16382b5e3087",
+      "path": "packages/db/src/schema/counterSales.ts",
+      "sha256": "a7c38227835186e4946ffffb11834575c5a8e7f63ba8176103c64ba6bc7ea188",
       "components": [
         "roles-rls"
       ],
@@ -4541,7 +4644,7 @@
     },
     {
       "path": "packages/modules/auth/src/oidc.ts",
-      "sha256": "004f803cb722e2d74a9bdfaa1a7ac7a5fd25750c850aab68faa8b8d5c2e01d69",
+      "sha256": "a4acbf9c00620a6e29e10546f3b9bf0676d82fe4d6beb8694b6be3be0ef6c690",
       "components": [
         "auth"
       ],
@@ -4864,7 +4967,7 @@
     },
     {
       "path": "packages/modules/financial/src/index.ts",
-      "sha256": "dac67667d130d782f259c13def0b6bf2f368d52ae0e1204cd04f2f9dec3ae633",
+      "sha256": "4071457ec12b57712cc49bdfc0dec5056f839e9f4a590ad40a30b4e6f2813394",
       "components": [
         "billing-cash"
       ],
@@ -4894,7 +4997,7 @@
     },
     {
       "path": "packages/modules/financial/src/repositories/database-financial.repository.ts",
-      "sha256": "d9d4c5700e8f97ff1aa6aef882a679d993309314eceee4414c9078ba3da02812",
+      "sha256": "aa5a6e2e51683e59a5ca506de3c9b038e75a2f485ca1eaa46def86c46d02ced1",
       "components": [
         "billing-cash",
         "repositories"
@@ -5663,7 +5766,7 @@
     },
     {
       "path": "packages/tenant-context/src/query-helpers.ts",
-      "sha256": "4b8022f4945c94efcc43692b2515197665c0fa814202dc870a4b7a4ac1b7131c",
+      "sha256": "c04afa2b166e728804a12e48ce8e0f8c2a2baee541d57674ac83bf6344c1e654",
       "components": [
         "roles-rls"
       ],
@@ -6004,7 +6107,31 @@
     "tests/unit/tenant-context/middleware.test.ts",
     "tests/unit/worker/health-contract.test.ts",
     "tests/unit/worker/pix-payment-dispatch-guards.test.ts",
-    "tests/unit/worker/pix-payment-dispatch-normalization.test.ts"
+    "tests/unit/worker/pix-payment-dispatch-normalization.test.ts",
+    "packages/contracts/src/__tests__/encounterFinancial.test.ts",
+    "packages/modules/auth/src/oidc.test.ts",
+    "packages/modules/financial/src/advance-payments-report.test.ts",
+    "packages/shared/auth-sdk/src/auth-sdk.test.ts",
+    "packages/tenant-context/src/tenant-db.test.ts",
+    "tests/unit/api/auth-dispatch-contract.test.ts",
+    "apps/spa/src/pages/finance/__tests__/FinanceOperationPage.test.ts",
+    "apps/spa/src/pages/inpatient/__tests__/InpatientDetailPage.test.ts",
+    "apps/spa/src/pages/inventory/__tests__/CompanySectorsPage.test.ts",
+    "apps/spa/src/pages/inventory/__tests__/InventoryPriceAdjustmentsPage.test.ts",
+    "apps/spa/src/pages/inventory/__tests__/InventoryPriceAuditPage.test.ts",
+    "apps/spa/src/pages/inventory/__tests__/PriceTablesAndPosPage.test.ts",
+    "apps/spa/src/pages/loyalty/LoyaltyPage.test.ts",
+    "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+    "apps/spa/src/pages/rh/__tests__/RhOperationalPages.test.ts",
+    "apps/spa/src/pages/webhooks/__tests__/WebhookDeliveryHelpers.test.ts",
+    "apps/spa/src/pages/webhooks/__tests__/WebhooksListPage.test.ts",
+    "apps/spa/src/services/__tests__/advance-payments.test.ts",
+    "apps/spa/src/services/__tests__/encounter.test.ts",
+    "apps/spa/src/services/__tests__/pix.test.ts",
+    "apps/spa/src/services/__tests__/prescriptions.test.ts",
+    "tests/integration/database/outbox-legacy-envelope-worker.test.ts",
+    "apps/spa/src/services/__tests__/critical-service-contracts.test.ts",
+    "tests/unit/db/canonical-schema-catalog.test.ts"
   ],
   "executionInputs": [
     ".eslintrc.cjs",
@@ -7283,10 +7410,10 @@
     "packages/design-system/src/vue/index.ts",
     "packages/design-system/src/vue/shims-vue.d.ts",
     "packages/design-system/src/vue/types.ts",
-    "packages/design-system/stories/DsBadge.stories.vue",
-    "packages/design-system/stories/DsButton.stories.vue",
-    "packages/design-system/stories/DsCard.stories.vue",
-    "packages/design-system/stories/DsInput.stories.vue",
+    "packages/design-system/stories/DsBadge.stories.ts",
+    "packages/design-system/stories/DsButton.stories.ts",
+    "packages/design-system/stories/DsCard.stories.ts",
+    "packages/design-system/stories/DsInput.stories.ts",
     "packages/design-system/tests/DsSpinner.test.ts",
     "packages/design-system/tests/setup/global-setup.ts",
     "packages/design-system/tsconfig.json",
@@ -8122,7 +8249,41 @@
     "vitest.config.ts",
     "vitest.critical-coverage.config.ts",
     "vitest.integration.config.ts",
-    "vitest.unit.config.ts"
+    "vitest.unit.config.ts",
+    "apps/worker/src/workflow-task-runner.test.ts",
+    "apps/api/src/clinical-operational-metrics.test.ts",
+    "apps/api/src/routes/workflow-task-routes.test.ts",
+    "packages/modules/auth/src/oidc.test.ts",
+    "packages/modules/financial/src/advance-payments-report.test.ts",
+    "packages/tenant-context/src/tenant-db.test.ts",
+    "tests/unit/api/auth-dispatch-contract.test.ts",
+    "scripts/lib/critical-shard-classification.mjs",
+    "scripts/lib/critical-coverage-include.mjs",
+    "apps/spa/src/services/__tests__/pix.test.ts",
+    "apps/api/src/clinical-operational-metrics.ts",
+    "apps/api/src/helpers/authorization-transaction-lock.ts",
+    "apps/api/src/helpers/idempotency-authorization.ts",
+    "apps/api/src/helpers/initialized-database-pool.ts",
+    "apps/api/src/helpers/workflow-task-runtime.ts",
+    "apps/api/src/request-boundaries.ts",
+    "apps/api/src/routes/workflow-task-routes.ts",
+    "apps/worker/src/account-job-runner.ts",
+    "apps/worker/src/workflow-task-runner.ts",
+    "packages/modules/event-bus/src/event-envelope.ts",
+    "packages/modules/event-bus/src/event-envelope.test.ts",
+    "packages/modules/workflows/src/index.ts",
+    "packages/modules/workflows/src/repository.ts",
+    "packages/modules/workflows/src/types.ts",
+    "packages/modules/workflows/src/workflows.test.ts",
+    "packages/db/src/schema/clinical_workflow_tasks.ts",
+    "apps/api/src/helpers/api-key-rate-limit-guard.ts",
+    "tests/integration/database/outbox-legacy-envelope-worker.test.ts",
+    "packages/shared/types/src/event-envelope.ts",
+    "scripts/run-sql-migration-evidence.mjs",
+    "scripts/lib/sql-migration-evidence.mjs",
+    "scripts/reconcile-sql-migration-scope.mjs",
+    "apps/spa/src/services/__tests__/critical-service-contracts.test.ts",
+    "tests/unit/db/canonical-schema-catalog.test.ts"
   ],
   "scopeHistory": [
     {
@@ -9484,6 +9645,706 @@
           "sha256": "4feff8cfdb71d1c5fc6c60bcf4484d44aa0b293865e6b410df5bbe4a95b822fb"
         }
       ]
+    },
+    {
+      "manifestRevision": 1,
+      "observedAt": "2026-09-12T19:31:35.232Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "fe5af7224090af10861cb52fd1ab4c59fdcb248a7728bfcb8109a96f8673ef4c",
+      "preservedManifest": "artifacts/remediation/MA-02/attempt-1/critical-scope-before-fe5af7224090af10861cb52fd1ab4c59fdcb248a7728bfcb8109a96f8673ef4c.json",
+      "previousSourceSetSha256": null,
+      "sourceSetSha256": "8a25dbf49bbd2d9061602413d2c19e942a983eec4e01eda044dd18a37d563595",
+      "reason": "MA-02/REM-006: oidc.ts changed in 49569934 (OIDC hardening + tests) after the frozen identity 132d0f6e; refresh only that source identity, separate source set digest, manifest revision and collection commit; prior coverage shards stay STALE and are not recertified.",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "packages/modules/auth/src/oidc.ts",
+          "before": "004f803cb722e2d74a9bdfaa1a7ac7a5fd25750c850aab68faa8b8d5c2e01d69",
+          "after": "a4acbf9c00620a6e29e10546f3b9bf0676d82fe4d6beb8694b6be3be0ef6c690"
+        }
+      ]
+    },
+    {
+      "manifestRevision": 2,
+      "observedAt": "2026-09-12T21:19:34.183Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "67b5995b182ae44a1d7869c65fdbe12cc671b5ba7db0abc8e8e320aa227af034",
+      "preservedManifest": "artifacts/remediation/MA-02-F-INPUTS/attempt-1/critical-scope-before-67b5995b182ae44a1d7869c65fdbe12cc671b5ba7db0abc8e8e320aa227af034.json",
+      "previousSourceSetSha256": "8a25dbf49bbd2d9061602413d2c19e942a983eec4e01eda044dd18a37d563595",
+      "sourceSetSha256": "8a25dbf49bbd2d9061602413d2c19e942a983eec4e01eda044dd18a37d563595",
+      "reason": "MA-02-F-INPUTS: reconciliar executionInputs renomeados no commit 696d7dd5 (DsBadge/DsButton/DsCard/DsInput .vue -> .ts) que bloqueavam snapshotInputs de todos os runners; fontes medidas, inventários de teste e thresholds inalterados.",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [
+        {
+          "from": "packages/design-system/stories/DsBadge.stories.vue",
+          "to": "packages/design-system/stories/DsBadge.stories.ts"
+        },
+        {
+          "from": "packages/design-system/stories/DsButton.stories.vue",
+          "to": "packages/design-system/stories/DsButton.stories.ts"
+        },
+        {
+          "from": "packages/design-system/stories/DsCard.stories.vue",
+          "to": "packages/design-system/stories/DsCard.stories.ts"
+        },
+        {
+          "from": "packages/design-system/stories/DsInput.stories.vue",
+          "to": "packages/design-system/stories/DsInput.stories.ts"
+        }
+      ],
+      "inputsAdded": [],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": null,
+      "executionInputsSha256": "dc58ae934a3845e707c5bbbcfeac54e8addc49a667a3d198053ba19ec01441bf"
+    },
+    {
+      "manifestRevision": 3,
+      "observedAt": "2026-09-12T22:45:57.960Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "406d7c7641414789df6d2142016e059df1f01fd6fcac129446ef5f7b3c03c0e7",
+      "preservedManifest": "artifacts/remediation/MA-02-F-NATIVE/attempt-20260912T2210Z/critical-scope-before-406d7c7641414789df6d2142016e059df1f01fd6fcac129446ef5f7b3c03c0e7.json",
+      "previousSourceSetSha256": "8a25dbf49bbd2d9061602413d2c19e942a983eec4e01eda044dd18a37d563595",
+      "sourceSetSha256": "8a25dbf49bbd2d9061602413d2c19e942a983eec4e01eda044dd18a37d563595",
+      "reason": "MA-02-F-NATIVE: reconciliar nativeTests com a descoberta AST canonica compartilhada; adicionar 3 testes node:test omitidos a nativeTests e executionInputs; files/sourceSetSha256, processTests, requiredShards, thresholds e as 193 fontes especializadas permanecem inalterados.",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "apps/worker/src/workflow-task-runner.test.ts",
+        "apps/api/src/clinical-operational-metrics.test.ts",
+        "apps/api/src/routes/workflow-task-routes.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "dc58ae934a3845e707c5bbbcfeac54e8addc49a667a3d198053ba19ec01441bf",
+      "executionInputsSha256": "530835b4ecab1a3d557cfda1fc1db98cd7882c46f597484a16dbf2ffd63e4245",
+      "nativeChanged": [
+        {
+          "shard": "native-worker",
+          "added": [
+            "apps/worker/src/workflow-task-runner.test.ts"
+          ],
+          "removed": []
+        },
+        {
+          "shard": "native-api",
+          "added": [
+            "apps/api/src/clinical-operational-metrics.test.ts",
+            "apps/api/src/routes/workflow-task-routes.test.ts"
+          ],
+          "removed": []
+        }
+      ]
+    },
+    {
+      "manifestRevision": 4,
+      "observedAt": "2026-09-13T01:20:11.344Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "8f622ac2ad7adde3c3c74f12e8327d37c3f82157d0506673ac5d45d45998c357",
+      "preservedManifest": "artifacts/remediation/MA-02-F-DISPATCH/attempt-20260913T0120Z/critical-scope-before-8f622ac2ad7adde3c3c74f12e8327d37c3f82157d0506673ac5d45d45998c357.json",
+      "previousSourceSetSha256": "8a25dbf49bbd2d9061602413d2c19e942a983eec4e01eda044dd18a37d563595",
+      "sourceSetSha256": "8a25dbf49bbd2d9061602413d2c19e942a983eec4e01eda044dd18a37d563595",
+      "reason": "MA-02-F-DISPATCH: reconciliar inventario Vitest com descoberta AST canonica; inclui auth-dispatch-contract e cinco suites omitidas; executionInputs acompanham; files/thresholds/shards inalterados",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "packages/modules/auth/src/oidc.test.ts",
+        "packages/modules/financial/src/advance-payments-report.test.ts",
+        "packages/tenant-context/src/tenant-db.test.ts",
+        "tests/unit/api/auth-dispatch-contract.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "530835b4ecab1a3d557cfda1fc1db98cd7882c46f597484a16dbf2ffd63e4245",
+      "executionInputsSha256": "f6b59fd3426176c98f3d0b51c8ad31da4eec0854af83ac033005a9eb0645e1f9",
+      "vitestAdded": [
+        "packages/contracts/src/__tests__/encounterFinancial.test.ts",
+        "packages/modules/auth/src/oidc.test.ts",
+        "packages/modules/financial/src/advance-payments-report.test.ts",
+        "packages/shared/auth-sdk/src/auth-sdk.test.ts",
+        "packages/tenant-context/src/tenant-db.test.ts",
+        "tests/unit/api/auth-dispatch-contract.test.ts"
+      ],
+      "vitestRemoved": []
+    },
+    {
+      "manifestRevision": 5,
+      "observedAt": "2026-09-13T01:41:13.816Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "37bf73246e57dd733fa137cd9ca5905ef848f796cb673cca4abc58eaf47e8038",
+      "preservedManifest": "artifacts/remediation/MA-02-F-DISPATCH/attempt-20260913T0141Z/critical-scope-before-37bf73246e57dd733fa137cd9ca5905ef848f796cb673cca4abc58eaf47e8038.json",
+      "previousSourceSetSha256": "8a25dbf49bbd2d9061602413d2c19e942a983eec4e01eda044dd18a37d563595",
+      "sourceSetSha256": "8a25dbf49bbd2d9061602413d2c19e942a983eec4e01eda044dd18a37d563595",
+      "reason": "MA-02-F-DISPATCH round1: incluir suites SPA que importam fontes criticas; adicionar dependencias de runtime do shard (classificacao e include de coverage) a executionInputs; files/thresholds/193 fontes inalterados",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "scripts/lib/critical-shard-classification.mjs",
+        "scripts/lib/critical-coverage-include.mjs",
+        "apps/spa/src/services/__tests__/pix.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "f6b59fd3426176c98f3d0b51c8ad31da4eec0854af83ac033005a9eb0645e1f9",
+      "executionInputsSha256": "8150353ae7fb718475798b0accd287019cf9662179b0018f3f713c8d017e3f37",
+      "vitestAdded": [
+        "apps/spa/src/pages/finance/__tests__/FinanceOperationPage.test.ts",
+        "apps/spa/src/pages/inpatient/__tests__/InpatientDetailPage.test.ts",
+        "apps/spa/src/pages/inventory/__tests__/CompanySectorsPage.test.ts",
+        "apps/spa/src/pages/inventory/__tests__/InventoryPriceAdjustmentsPage.test.ts",
+        "apps/spa/src/pages/inventory/__tests__/InventoryPriceAuditPage.test.ts",
+        "apps/spa/src/pages/inventory/__tests__/PriceTablesAndPosPage.test.ts",
+        "apps/spa/src/pages/loyalty/LoyaltyPage.test.ts",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "apps/spa/src/pages/rh/__tests__/RhOperationalPages.test.ts",
+        "apps/spa/src/pages/webhooks/__tests__/WebhookDeliveryHelpers.test.ts",
+        "apps/spa/src/pages/webhooks/__tests__/WebhooksListPage.test.ts",
+        "apps/spa/src/services/__tests__/advance-payments.test.ts",
+        "apps/spa/src/services/__tests__/encounter.test.ts",
+        "apps/spa/src/services/__tests__/pix.test.ts",
+        "apps/spa/src/services/__tests__/prescriptions.test.ts"
+      ],
+      "vitestRemoved": []
+    },
+    {
+      "manifestRevision": 6,
+      "observedAt": "2026-09-13T02:37:08.104Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "0e6cd24dc66882a9246ae71f64108a646d7d0f6cce15732d52f528bf27cf249c",
+      "preservedManifest": "artifacts/remediation/MA-05-CRITICAL-PROCESS/attempt-20260913T0237Z/critical-scope-before-0e6cd24dc66882a9246ae71f64108a646d7d0f6cce15732d52f528bf27cf249c.json",
+      "previousSourceSetSha256": "8a25dbf49bbd2d9061602413d2c19e942a983eec4e01eda044dd18a37d563595",
+      "sourceSetSha256": "8a25dbf49bbd2d9061602413d2c19e942a983eec4e01eda044dd18a37d563595",
+      "reason": "MA-05-critical-process: reconciliar fontes novas alcancaveis a partir dos artefatos gerados (workflow tasks, event envelope, workflows, request boundaries); nenhuma mudanca em files/thresholds/193 especializadas",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "apps/api/src/clinical-operational-metrics.ts",
+        "apps/api/src/helpers/authorization-transaction-lock.ts",
+        "apps/api/src/helpers/idempotency-authorization.ts",
+        "apps/api/src/helpers/initialized-database-pool.ts",
+        "apps/api/src/helpers/workflow-task-runtime.ts",
+        "apps/api/src/request-boundaries.ts",
+        "apps/api/src/routes/workflow-task-routes.ts",
+        "apps/worker/src/account-job-runner.ts",
+        "apps/worker/src/workflow-task-runner.ts",
+        "packages/modules/event-bus/src/event-envelope.ts",
+        "packages/modules/event-bus/src/event-envelope.test.ts",
+        "packages/modules/workflows/src/index.ts",
+        "packages/modules/workflows/src/repository.ts",
+        "packages/modules/workflows/src/types.ts",
+        "packages/modules/workflows/src/workflows.test.ts",
+        "packages/db/src/schema/clinical_workflow_tasks.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "8150353ae7fb718475798b0accd287019cf9662179b0018f3f713c8d017e3f37",
+      "executionInputsSha256": "ecc76008e66ddaec465821784fc151e95a2f78d75109a3e3f2705dfcd1cebfa3"
+    },
+    {
+      "manifestRevision": 7,
+      "observedAt": "2026-09-13T04:43:24.226Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "7d165d0d1660278319ec600102cbbfb1958e5c57f956393f795975ae108e7033",
+      "preservedManifest": "artifacts/remediation/MA-05-INTEGRATION-FIXES/attempt-20260913T0443Z/critical-scope-before-7d165d0d1660278319ec600102cbbfb1958e5c57f956393f795975ae108e7033.json",
+      "previousSourceSetSha256": "8a25dbf49bbd2d9061602413d2c19e942a983eec4e01eda044dd18a37d563595",
+      "sourceSetSha256": "ac8fcf066508e33eae1fb90dc7b55a73e8fe65fc88261a6561e49df87de6e081",
+      "reason": "MA05-INTEGRATION-FIXES: adicionar guard compartilhado de consumo unico do rate limit (dependencia de runtime de server/auth-helpers)",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/helpers/auth-helpers.ts",
+          "before": "46f2a7950035eb16cd8f05497ed07200cde57622b1763d858a53c950cdf1c4aa",
+          "after": "c43a1a26f60a63d9d945e10f03fe3c462d4e2ed28451b5a4b9da4d501234a30f"
+        },
+        {
+          "path": "apps/api/src/server.ts",
+          "before": "d870d9707524c3cffea00417acef4cf8f090202aa1540f3868416670c4b2cd29",
+          "after": "164e595935cb45252e72f443f0753e62d5d4168024cf9f25a5a2a8d6a0418f09"
+        }
+      ],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "apps/api/src/helpers/api-key-rate-limit-guard.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "ecc76008e66ddaec465821784fc151e95a2f78d75109a3e3f2705dfcd1cebfa3",
+      "executionInputsSha256": "dc266fcbfead38596b3587480057ef86154723a632ff3326489894ae5b92cdce"
+    },
+    {
+      "manifestRevision": 8,
+      "observedAt": "2026-09-13T05:15:50.815Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "f40efee4065f37c9503d5c8b5077df4928ef33f869e7c2e380df3664f0612106",
+      "preservedManifest": "artifacts/remediation/MA-05-INTEGRATION-FIXES/attempt-20260913T0515Z-source/critical-scope-before-f40efee4065f37c9503d5c8b5077df4928ef33f869e7c2e380df3664f0612106.json",
+      "previousSourceSetSha256": "ac8fcf066508e33eae1fb90dc7b55a73e8fe65fc88261a6561e49df87de6e081",
+      "sourceSetSha256": "23093d8851ecb7c341ee39cb153d57900d4aa36949a409a906aabc3585878799",
+      "reason": "MA05-INTEGRATION-FIXES: atualizar identidade de server.ts apos delegar a autorizacao de API key ao helper compartilhado (consumo unico do rate limit); files/thresholds/193 fontes sem mudanca de escopo",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/server.ts",
+          "before": "164e595935cb45252e72f443f0753e62d5d4168024cf9f25a5a2a8d6a0418f09",
+          "after": "a3a330533ef2431f55ce4d1724da8af193745ff2813b63486020c0b192a5d617"
+        }
+      ]
+    },
+    {
+      "manifestRevision": 9,
+      "observedAt": "2026-09-13T05:42:09.617Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "a7ff9f2b350c973c9bfe3048130311cbff277f6189b810647198539f3d0d9516",
+      "preservedManifest": "artifacts/remediation/MA-05-INTEGRATION-FIXES/attempt-20260913T0542Z-final/critical-scope-before-a7ff9f2b350c973c9bfe3048130311cbff277f6189b810647198539f3d0d9516.json",
+      "previousSourceSetSha256": "23093d8851ecb7c341ee39cb153d57900d4aa36949a409a906aabc3585878799",
+      "sourceSetSha256": "0a5883cbf634be991f3d35e45cc9081b66b2f7c1d8b699a255fd10461e74e707",
+      "reason": "MA05-INTEGRATION-FIXES: limpeza final de imports/variaveis nao usadas apos a delegacao da autorizacao; sem mudanca funcional",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/helpers/auth-helpers.ts",
+          "before": "c43a1a26f60a63d9d945e10f03fe3c462d4e2ed28451b5a4b9da4d501234a30f",
+          "after": "21b10c94380e2d1169c8fa399a91ecbb6a0decfcda512ef4c89d6298ba224f4b"
+        },
+        {
+          "path": "apps/api/src/server.ts",
+          "before": "a3a330533ef2431f55ce4d1724da8af193745ff2813b63486020c0b192a5d617",
+          "after": "5e2148aa253c8885f88feffe6c455b42d9ef1be716f552f0d4407a9c8f4189c6"
+        }
+      ]
+    },
+    {
+      "manifestRevision": 10,
+      "observedAt": "2026-09-13T13:55:21.510Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "44fb1176a6d0bc351471c7d2f67df07f744d4e9b5f39456e6cb3e50cad8a9144",
+      "preservedManifest": "artifacts/remediation/PROD-004/attempt-20260913T141500Z/critical-scope-before-rev9.json",
+      "previousSourceSetSha256": "0a5883cbf634be991f3d35e45cc9081b66b2f7c1d8b699a255fd10461e74e707",
+      "sourceSetSha256": "3b909abef54df1c5efa4fd627a0b4887b04463c3ab438540ce0c483fe00ee891",
+      "reason": "PROD-004/A01: register forward-only envelope backfill correction 0171 (components roles-rls, pending-specialized-instrumentation); 0170 bytes untouched",
+      "added": [
+        "packages/db/migrations/0171_outbox_event_envelope_backfill_correction.sql"
+      ],
+      "removed": [],
+      "changed": []
+    },
+    {
+      "manifestRevision": 11,
+      "observedAt": "2026-09-13T14:42:44.367Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "fe40a44a3bd109e422764865020e73a2613e47c240ecc2b80c30f6ccc22c592c",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-fe40a44a3bd109e422764865020e73a2613e47c240ecc2b80c30f6ccc22c592c.json",
+      "previousSourceSetSha256": "3b909abef54df1c5efa4fd627a0b4887b04463c3ab438540ce0c483fe00ee891",
+      "sourceSetSha256": "4dc901d86521c5a6da1d86856b972879f5d5d15c0c230150ea81b6eeee0c5586",
+      "reason": "PROD-005/A02: re-authorize every protected replay (beforeReplay hook, full mutation-permission inventory, fail-closed unmapped deny) and register the change",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/server.ts",
+          "before": "5e2148aa253c8885f88feffe6c455b42d9ef1be716f552f0d4407a9c8f4189c6",
+          "after": "85111ab4927e28802eec5ccd351ec996be9fe249fff19719d4ca558d5dfbd55a"
+        }
+      ]
+    },
+    {
+      "manifestRevision": 12,
+      "observedAt": "2026-09-13T14:48:44.831Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "d5591897f5eb4af9bb099b322dff0ddc3c6a6039afe6143addcd6ee0494fcd57",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-d5591897f5eb4af9bb099b322dff0ddc3c6a6039afe6143addcd6ee0494fcd57.json",
+      "previousSourceSetSha256": "4dc901d86521c5a6da1d86856b972879f5d5d15c0c230150ea81b6eeee0c5586",
+      "sourceSetSha256": "0b636b86ba08d431bfc522563f13f43aa0c240ec51a47e4cfc0505947a1551ed",
+      "reason": "PROD-005/A02: extract replay guard to helper (complexity budget 8335 kept), final wiring",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/server.ts",
+          "before": "85111ab4927e28802eec5ccd351ec996be9fe249fff19719d4ca558d5dfbd55a",
+          "after": "bfaa95bca340e74bd1f2ecff85ff10bc49c7b92943314c0a66e9088a0df79484"
+        }
+      ]
+    },
+    {
+      "manifestRevision": 13,
+      "observedAt": "2026-09-13T17:45:27Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "8953597d8a64a8414823911d0a36ceb8fe7c15cfb8dc28bf8e08751beba95b62",
+      "preservedManifest": "artifacts/remediation/PROD-004/attempt-20260913T174500Z-R1/critical-scope-before-rev12.json",
+      "previousSourceSetSha256": "0b636b86ba08d431bfc522563f13f43aa0c240ec51a47e4cfc0505947a1551ed",
+      "sourceSetSha256": "6d0398b9757ed4125f947b0dd7abf143ad6741151149aeebd8566af5ad1a8200",
+      "reason": "PROD-004-R1/CP-01: register full-validity backfill 0172 (roles-rls, pending-specialized-instrumentation). observedAt corrected from 17:55:00Z (hardcoded in error) to preserved-copy mtime 17:45:27Z; disclosed in REPORT.",
+      "added": [
+        "packages/db/migrations/0172_outbox_event_envelope_full_validity_backfill.sql"
+      ],
+      "removed": [],
+      "changed": []
+    },
+    {
+      "manifestRevision": 14,
+      "observedAt": "2026-09-13T17:45:36.576Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "002f9d492d0d18855cfe8f76dc2d0ab91c0a79f432c1a99850e59e4e383258ba",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-002f9d492d0d18855cfe8f76dc2d0ab91c0a79f432c1a99850e59e4e383258ba.json",
+      "previousSourceSetSha256": "6d0398b9757ed4125f947b0dd7abf143ad6741151149aeebd8566af5ad1a8200",
+      "sourceSetSha256": "6d0398b9757ed4125f947b0dd7abf143ad6741151149aeebd8566af5ad1a8200",
+      "reason": "PROD-004-R1: reconcile worker regression test importing frozen critical sources",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "tests/integration/database/outbox-legacy-envelope-worker.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "dc266fcbfead38596b3587480057ef86154723a632ff3326489894ae5b92cdce",
+      "executionInputsSha256": "491a8220174b0f7d21ca4050b6954b178dbb8b2b89ebc76247580cfd7be4b052",
+      "vitestAdded": [
+        "tests/integration/database/outbox-legacy-envelope-worker.test.ts"
+      ],
+      "vitestRemoved": []
+    },
+    {
+      "manifestRevision": 15,
+      "observedAt": "2026-09-13T18:49:42.617Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "b92ff775a8b55d34940010243356816cfa2124d312bb3fe3297336c3b4880f89",
+      "preservedManifest": "artifacts/remediation/PROD-004/attempt-20260913T174500Z-R1/critical-scope-before-b92ff775a8b55d34940010243356816cfa2124d312bb3fe3297336c3b4880f89.json",
+      "previousSourceSetSha256": "6d0398b9757ed4125f947b0dd7abf143ad6741151149aeebd8566af5ad1a8200",
+      "sourceSetSha256": "91cd4db71182d1d8fb6ccc594a50f06093828519cd2fb3c44b635801cb5a27ea",
+      "reason": "PROD-004-R1: finalize full-validity fixpoint and worker evidence after independent review",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "packages/db/migrations/0172_outbox_event_envelope_full_validity_backfill.sql",
+          "before": "df121b205878dc019ae43bafee293ca92a8960875000e64d53ad64f20751f6f9",
+          "after": "7035e0ace52c71d7e90f98ad77aecd7896059836b3f1de9084d6b1f3804a01c9"
+        }
+      ]
+    },
+    {
+      "manifestRevision": 16,
+      "observedAt": "2026-09-13T18:57:03.219Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "5e2e1514997aadfd8078a8228e0fd9452847c962a84accf62d7ade796c3c8a41",
+      "preservedManifest": "artifacts/remediation/PROD-004/attempt-20260913T174500Z-R1/critical-scope-before-5e2e1514997aadfd8078a8228e0fd9452847c962a84accf62d7ade796c3c8a41.json",
+      "previousSourceSetSha256": "91cd4db71182d1d8fb6ccc594a50f06093828519cd2fb3c44b635801cb5a27ea",
+      "sourceSetSha256": "f470264ed063aacd67fc36e2afb11472f7e900978981e4881eff163c4801b804",
+      "reason": "PROD-004-R1: scope RETURNING assertions to fixture account while preserving global atomic backfill",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "packages/db/migrations/0172_outbox_event_envelope_full_validity_backfill.sql",
+          "before": "7035e0ace52c71d7e90f98ad77aecd7896059836b3f1de9084d6b1f3804a01c9",
+          "after": "75be3f07449ba8d6cbefa3633fd79f44fc6eceda78e0be5da97593c5565af62b"
+        }
+      ]
+    },
+    {
+      "manifestRevision": 17,
+      "observedAt": "2026-09-13T19:40:25.532Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "c1db16ecb58efa094d0518fec29a1a0938e3e227e91f277d4d92dee757172de3",
+      "preservedManifest": "artifacts/remediation/PROD-004/attempt-20260913T174500Z-R1/critical-scope-before-c1db16ecb58efa094d0518fec29a1a0938e3e227e91f277d4d92dee757172de3.json",
+      "previousSourceSetSha256": "f470264ed063aacd67fc36e2afb11472f7e900978981e4881eff163c4801b804",
+      "sourceSetSha256": "69be8cb7bb9eb510cab8c55bc7b47ae083e92e7f8014e29f1c9200886d856400",
+      "reason": "PROD-004-R1: align full-validity predicate with worker account and raw identifier contract",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "packages/db/migrations/0172_outbox_event_envelope_full_validity_backfill.sql",
+          "before": "75be3f07449ba8d6cbefa3633fd79f44fc6eceda78e0be5da97593c5565af62b",
+          "after": "646dce45de53ea85f70f6f7d2242c7eb0dc2ce02558b376ffb753bd7dafdba9c"
+        }
+      ]
+    },
+    {
+      "manifestRevision": 18,
+      "observedAt": "2026-09-13T20:21:16.374Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "2ad1419e4ced91bfb9432de8adf98ec5ef1f6f32aa328c59120fac29a3d5a374",
+      "preservedManifest": "artifacts/remediation/PROD-004/attempt-20260913T174500Z-R1/critical-scope-before-2ad1419e4ced91bfb9432de8adf98ec5ef1f6f32aa328c59120fac29a3d5a374.json",
+      "previousSourceSetSha256": "69be8cb7bb9eb510cab8c55bc7b47ae083e92e7f8014e29f1c9200886d856400",
+      "sourceSetSha256": "bcdb0a1f0fdbdd4f94ec88b7686a8d23cede5bdbaf6fae42606840227dcfdb8e",
+      "reason": "PROD-004-R1: close correlation equality, safe schema branching, and assertion-backed fixture coverage",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "packages/db/migrations/0172_outbox_event_envelope_full_validity_backfill.sql",
+          "before": "646dce45de53ea85f70f6f7d2242c7eb0dc2ce02558b376ffb753bd7dafdba9c",
+          "after": "c3ab8c7880154ea1a3ad0c9cdedc326df45cdce1eed8d845f9ec7514aaeb324b"
+        }
+      ]
+    },
+    {
+      "manifestRevision": 19,
+      "observedAt": "2026-09-13T23:39:02.293Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "2fada9f259a069f795c256018ccfbe3033cda720d7ed8b9b4a4d69d7232da71b",
+      "preservedManifest": "artifacts/remediation/PROD-004/attempt-20260913T174500Z-R1/critical-scope-before-2fada9f259a069f795c256018ccfbe3033cda720d7ed8b9b4a4d69d7232da71b.json",
+      "previousSourceSetSha256": "bcdb0a1f0fdbdd4f94ec88b7686a8d23cede5bdbaf6fae42606840227dcfdb8e",
+      "sourceSetSha256": "69179be7b63052f6b2c2a97cdb3371438cce047de53bc604f97fdce00467cea6",
+      "reason": "Align PROD-004 envelope parser and 0172 occurredAt/Unicode contracts; add production-composition worker proof",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "packages/db/migrations/0172_outbox_event_envelope_full_validity_backfill.sql",
+          "before": "c3ab8c7880154ea1a3ad0c9cdedc326df45cdce1eed8d845f9ec7514aaeb324b",
+          "after": "a7c3e0c73529a398be8c215158fa923a4186bda5c821a5970a6bf9eb82f05908"
+        }
+      ]
+    },
+    {
+      "manifestRevision": 20,
+      "observedAt": "2026-09-14T01:12:07.086Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "d3a0b879f960ecb72b41c0e203183c2a6a13ebc2443c1636a95387df0c61a6f4",
+      "preservedManifest": "artifacts/remediation/PROD-004/attempt-20260913T174500Z-R1/critical-scope-before-d3a0b879f960ecb72b41c0e203183c2a6a13ebc2443c1636a95387df0c61a6f4.json",
+      "previousSourceSetSha256": "69179be7b63052f6b2c2a97cdb3371438cce047de53bc604f97fdce00467cea6",
+      "sourceSetSha256": "69179be7b63052f6b2c2a97cdb3371438cce047de53bc604f97fdce00467cea6",
+      "reason": "PROD-004-R1/CP-01: centralizar o envelope canonico para que TenantUnitOfWork e EventBus usem a mesma validacao",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "packages/shared/types/src/event-envelope.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "491a8220174b0f7d21ca4050b6954b178dbb8b2b89ebc76247580cfd7be4b052",
+      "executionInputsSha256": "4e8f11ca97a2e1f644b2fd31da6ae411ee1513d4d1378bf1c469e71258ddb384"
+    },
+    {
+      "manifestRevision": 21,
+      "observedAt": "2026-09-14T03:41:04.003Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "1364017182d2f39f0b5f254e78451845f36d5e374efe5e24c8c2c9794e4d25fa",
+      "preservedManifest": "artifacts/remediation/PROD-004-009/manifest-refresh-20260914/critical-scope-before-1364017182d2f39f0b5f254e78451845f36d5e374efe5e24c8c2c9794e4d25fa.json",
+      "previousSourceSetSha256": "69179be7b63052f6b2c2a97cdb3371438cce047de53bc604f97fdce00467cea6",
+      "sourceSetSha256": "183a3e145164940e34d1469389081af9ad71ec6e1b049d20cd00b698e3ab0f3e",
+      "reason": "Reconcile frozen critical source identities after PROD-004/005/006-009 remediation",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/routes/financial-routes.ts",
+          "before": "5de7f65981cc76360a0ccfa1815206ab3c2c248487129b82d55736c9e7fbeaf8",
+          "after": "c127138cc12cebe7a75035154a92f1659420947bf9861676cb0c459527f26acb"
+        },
+        {
+          "path": "apps/api/src/server.ts",
+          "before": "bfaa95bca340e74bd1f2ecff85ff10bc49c7b92943314c0a66e9088a0df79484",
+          "after": "f40acf45040fb6ed208b4c1127765d5be42e7e9869a0fab5a84489515a936a31"
+        },
+        {
+          "path": "apps/spa/src/pages/billing/BillingListPage.vue",
+          "before": "c3121327e6e8b1599afd8fd82850c63317edd7b227889556e59582205c26a130",
+          "after": "996370c73b6f1decef50b1ce75f474ab9d13bba5170d134b2b0fa2454dbe3256"
+        },
+        {
+          "path": "apps/spa/src/services/financialReceivables.ts",
+          "before": "9c2194637c8b8bbd47896230f790aedbcc941b31948e8a810febd03b98e61bbd",
+          "after": "dbd5bc3f587887547a7e308d3b8f7106fcdb632cb0b2b84bd640169ae63da037"
+        },
+        {
+          "path": "apps/spa/src/types/financialReceivables.ts",
+          "before": "c68d27e6555aeaf39c5118b212fe0a16c6ebdeed2217e8ebb04180358b22cd4e",
+          "after": "42807bff3732d3567775279414fe061a60b21d55dc0d8d0eb74651f7ea2463eb"
+        },
+        {
+          "path": "packages/contracts/src/encounterFinancial.ts",
+          "before": "b6ed118d54fdf70384182d261aef4730e5dffb8a7bcbf07c2556404f1c5b5f10",
+          "after": "c202d114db70db0649f6d2a082bf6068bb5cb8a578a9cec41491fedc167535e7"
+        },
+        {
+          "path": "packages/modules/financial/src/index.ts",
+          "before": "dac67667d130d782f259c13def0b6bf2f368d52ae0e1204cd04f2f9dec3ae633",
+          "after": "4071457ec12b57712cc49bdfc0dec5056f839e9f4a590ad40a30b4e6f2813394"
+        },
+        {
+          "path": "packages/modules/financial/src/repositories/database-financial.repository.ts",
+          "before": "d9d4c5700e8f97ff1aa6aef882a679d993309314eceee4414c9078ba3da02812",
+          "after": "43b71bcbefa044d825bca95b9ae28ce2b780d4db6aab44e802e885074386cf80"
+        }
+      ]
+    },
+    {
+      "manifestRevision": 22,
+      "observedAt": "2026-09-14T04:48:54.915Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "e82f9ec74a4ed312fcce43ec129fc3c4a50199e714cddec3af5c1bacbb08788c",
+      "preservedManifest": "artifacts/remediation/PROD-004-009/manifest-refresh-20260914-final/critical-scope-before-e82f9ec74a4ed312fcce43ec129fc3c4a50199e714cddec3af5c1bacbb08788c.json",
+      "previousSourceSetSha256": "183a3e145164940e34d1469389081af9ad71ec6e1b049d20cd00b698e3ab0f3e",
+      "sourceSetSha256": "9e111cb6407722dac2b391a29a5218d0e0205145fed37d8e460aaa5fb0cdfddb",
+      "reason": "Reconcile frozen critical source identities after replay, UTC financial and visual quality remediation",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/server.ts",
+          "before": "f40acf45040fb6ed208b4c1127765d5be42e7e9869a0fab5a84489515a936a31",
+          "after": "a6ade2c4625d1c638d617ebf2a63e6595aca70e287ad3bb1dae15c11167d4cbf"
+        },
+        {
+          "path": "apps/spa/src/pages/billing/BillingListPage.vue",
+          "before": "996370c73b6f1decef50b1ce75f474ab9d13bba5170d134b2b0fa2454dbe3256",
+          "after": "b7061b71dd727ec6492563fede7fef00d1f3755a79814fa73d52d038b2811320"
+        },
+        {
+          "path": "packages/modules/financial/src/repositories/database-financial.repository.ts",
+          "before": "43b71bcbefa044d825bca95b9ae28ce2b780d4db6aab44e802e885074386cf80",
+          "after": "aa5a6e2e51683e59a5ca506de3c9b038e75a2f485ca1eaa46def86c46d02ced1"
+        }
+      ]
+    },
+    {
+      "manifestRevision": 23,
+      "observedAt": "2026-09-14T04:55:03.396Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "4a66c92db679f5f518dd8d7c84be565d13bf9dcc9b9fe1d540e073578f6e2c6e",
+      "preservedManifest": "artifacts/remediation/PROD-004-009/manifest-refresh-20260914-final2/critical-scope-before-4a66c92db679f5f518dd8d7c84be565d13bf9dcc9b9fe1d540e073578f6e2c6e.json",
+      "previousSourceSetSha256": "9e111cb6407722dac2b391a29a5218d0e0205145fed37d8e460aaa5fb0cdfddb",
+      "sourceSetSha256": "ac6d38bcb5ff1d159dcc029b496419bdf00646834668adfc5e161cba67970fc1",
+      "reason": "Reconcile server hotspot budget-preserving replay resolver extraction",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/server.ts",
+          "before": "a6ade2c4625d1c638d617ebf2a63e6595aca70e287ad3bb1dae15c11167d4cbf",
+          "after": "f48eeaf652f10cb4c66b2a8a2042410c04627af6555cab5f860f9d0c48b94b67"
+        }
+      ]
+    },
+    {
+      "manifestRevision": 24,
+      "observedAt": "2026-09-14T06:05:10.528Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "d05900a872cc306639ebe80f1164afd457b5cc42d80fef212a28113545a251e1",
+      "preservedManifest": "artifacts/remediation/PROD-011/manifest-refresh/critical-scope-before-d05900a872cc306639ebe80f1164afd457b5cc42d80fef212a28113545a251e1.json",
+      "previousSourceSetSha256": "ac6d38bcb5ff1d159dcc029b496419bdf00646834668adfc5e161cba67970fc1",
+      "sourceSetSha256": "4352427368c1f35e088800f87818d22963bb3caf06027a003c93f1bbe60f55a2",
+      "reason": "Reconcile PROD-011 SQL active runner inventory while retaining historical SQL bytes",
+      "added": [
+        "packages/db/migrations/0163_force_report_runtime_rls.sql",
+        "packages/db/migrations/0164_allow_billing_item_cascade_delete.sql",
+        "packages/db/migrations/0165_idempotency_actor_binding.sql",
+        "packages/db/migrations/0166_clinical_workflow_tasks.sql",
+        "packages/db/migrations/0167_clinical_workflow_permissions.sql",
+        "packages/db/migrations/0168_clinical_workflow_event_governance.sql",
+        "packages/db/migrations/0169_clinical_workflow_event_order.sql",
+        "packages/db/migrations/0170_outbox_event_envelope.sql"
+      ],
+      "removed": [],
+      "changed": [],
+      "sqlScopeBefore": {
+        "manifestSqlCount": 170,
+        "rootSqlCount": 168,
+        "rootActiveCount": 163,
+        "rootHistoricalCount": 5,
+        "hiddenHistoricalCount": 2
+      },
+      "sqlScopeAfter": {
+        "manifestSqlCount": 178,
+        "canonicalActiveCount": 171,
+        "historicalArtifactCount": 7
+      },
+      "executionInputsAdded": [
+        "scripts/run-sql-migration-evidence.mjs",
+        "scripts/lib/sql-migration-evidence.mjs",
+        "scripts/reconcile-sql-migration-scope.mjs"
+      ],
+      "executionInputsSha256": "5e0bffbaf928ce41c83ae3f81598853bb4bd44e10952bdfc129a584161b2b246"
+    },
+    {
+      "manifestRevision": 25,
+      "observedAt": "2026-09-14T07:14:51.771Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "746aad82fa181a6298871658b122c5732801ab7b40ff18a4779aab18075ea940",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-746aad82fa181a6298871658b122c5732801ab7b40ff18a4779aab18075ea940.json",
+      "previousSourceSetSha256": "4352427368c1f35e088800f87818d22963bb3caf06027a003c93f1bbe60f55a2",
+      "sourceSetSha256": "4352427368c1f35e088800f87818d22963bb3caf06027a003c93f1bbe60f55a2",
+      "reason": "Add canonical schema and critical SPA service contract coverage",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "apps/spa/src/services/__tests__/critical-service-contracts.test.ts",
+        "tests/unit/db/canonical-schema-catalog.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "5e0bffbaf928ce41c83ae3f81598853bb4bd44e10952bdfc129a584161b2b246",
+      "executionInputsSha256": "0aa90f2f46999d0eb69616aabfffdc8d4d31d254ce79a6fdaf2aa57cd8e138cc",
+      "vitestAdded": [
+        "apps/spa/src/services/__tests__/critical-service-contracts.test.ts",
+        "tests/unit/db/canonical-schema-catalog.test.ts"
+      ],
+      "vitestRemoved": []
+    },
+    {
+      "manifestRevision": 26,
+      "observedAt": "2026-09-14T08:07:45.698Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "13d2667df71e17cb67ca51fd2a3fd9ca29194fc8adb4f5f5ce75125ee4d78691",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-13d2667df71e17cb67ca51fd2a3fd9ca29194fc8adb4f5f5ce75125ee4d78691.json",
+      "previousSourceSetSha256": "4352427368c1f35e088800f87818d22963bb3caf06027a003c93f1bbe60f55a2",
+      "sourceSetSha256": "23e97d88e9b7f40bb4024fa70931181c9313307a4939a4e4330cefb3716cfe79",
+      "reason": "Record final tenant predicate composition fix before immutable critical evidence recollection",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "packages/tenant-context/src/query-helpers.ts",
+          "before": "4b8022f4945c94efcc43692b2515197665c0fa814202dc870a4b7a4ac1b7131c",
+          "after": "c04afa2b166e728804a12e48ce8e0f8c2a2baee541d57674ac83bf6344c1e654"
+        }
+      ]
+    },
+    {
+      "manifestRevision": 27,
+      "observedAt": "2026-09-14T08:41:07.562Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "5522501d3d8264450adea598c45086b6bfe2148a44478dd529e769b250c43cd6",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-5522501d3d8264450adea598c45086b6bfe2148a44478dd529e769b250c43cd6.json",
+      "previousSourceSetSha256": "23e97d88e9b7f40bb4024fa70931181c9313307a4939a4e4330cefb3716cfe79",
+      "sourceSetSha256": "23e97d88e9b7f40bb4024fa70931181c9313307a4939a4e4330cefb3716cfe79",
+      "reason": "Record final service contract fixture type correction before immutable critical evidence recollection",
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    {
+      "manifestRevision": 28,
+      "observedAt": "2026-09-15T04:44:17.337Z",
+      "collectionCommit": "324099e5a54537ca1349f3310639c3a12afbae36",
+      "previousManifestSha256": "533b6df26d7aa6304f7fe9af0bd8926acf7bad4b0fe0b72b7f75cb5be8161577",
+      "preservedManifest": "artifacts/state-of-art/PROD-014/attempt-20260915T044500Z-S1-auth-routes/critical-scope-before-533b6df26d7aa6304f7fe9af0bd8926acf7bad4b0fe0b72b7f75cb5be8161577.json",
+      "previousSourceSetSha256": "23e97d88e9b7f40bb4024fa70931181c9313307a4939a4e4330cefb3716cfe79",
+      "sourceSetSha256": "5029a4d1421d57b17440a59d2a9529724542fc505f3785ec8e4ee5afabda44b4",
+      "reason": "PROD-014 S1: reconciliar auth-routes apos hardening de validacao e cobertura de limites",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/routes/auth-routes.ts",
+          "before": "bebc3c9d30ba7572d1caff6fffd0f0f79b3d56867acc8cd756006bac412787a0",
+          "after": "bc051d602c7e3af57a894b53f16244710e16207a2c9f6758904a41716d9ae078"
+        }
+      ]
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -10416,5 +11277,61 @@
       "archivePath": "legado/packages/shared/database/src/migrations/026_clinical_handoff_completion.sql",
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
-  ]
+  ],
+  "manifestRevision": 28,
+  "sourceSetSha256": "5029a4d1421d57b17440a59d2a9529724542fc505f3785ec8e4ee5afabda44b4",
+  "executionInputsSha256": "0aa90f2f46999d0eb69616aabfffdc8d4d31d254ce79a6fdaf2aa57cd8e138cc",
+  "specializedEvidence": {
+    "sql": {
+      "schemaVersion": 1,
+      "sourceDirectory": "packages/db/migrations",
+      "expectedMigrationCount": 171,
+      "contractualMigrationCount": 169,
+      "forwardOnlyAdditions": [
+        "packages/db/migrations/0171_outbox_event_envelope_backfill_correction.sql",
+        "packages/db/migrations/0172_outbox_event_envelope_full_validity_backfill.sql"
+      ],
+      "expectedArtifactCount": 178,
+      "historicalArtifactCount": 7,
+      "acceptedArtifactPath": "artifacts/remediation/PROD-011/sql-migration-evidence/accepted/evidence.json",
+      "requiredPhases": [
+        "cleanApply",
+        "upgrade",
+        "reexecution",
+        "failureRecovery",
+        "invariants"
+      ],
+      "producerPath": "scripts/run-sql-migration-evidence.mjs",
+      "verifierPath": "scripts/lib/sql-migration-evidence.mjs",
+      "scopeReconciliation": {
+        "previousObservedScope": {
+          "manifestSqlCount": 170,
+          "rootSqlCount": 168,
+          "rootActiveCount": 163,
+          "rootHistoricalCount": 5,
+          "hiddenHistoricalCount": 2
+        },
+        "previousHistoricalPaths": [
+          "packages/db/migrations/.backup-meta-fix/0014_luxuriant_mantis.sql",
+          "packages/db/migrations/.isolated-drift/0018_outgoing_leopardon.sql",
+          "packages/db/migrations/0003_rls_core_tables.revert.sql",
+          "packages/db/migrations/0006_rls_lgpd_tables.revert.sql",
+          "packages/db/migrations/0007_text_to_uuid_tables.revert.sql",
+          "packages/db/migrations/0008_rls_text_based_tables.revert.sql",
+          "packages/db/migrations/0017_fiscal_tables.seed.sql"
+        ],
+        "addedCanonicalActivePaths": [
+          "packages/db/migrations/0163_force_report_runtime_rls.sql",
+          "packages/db/migrations/0164_allow_billing_item_cascade_delete.sql",
+          "packages/db/migrations/0165_idempotency_actor_binding.sql",
+          "packages/db/migrations/0166_clinical_workflow_tasks.sql",
+          "packages/db/migrations/0167_clinical_workflow_permissions.sql",
+          "packages/db/migrations/0168_clinical_workflow_event_governance.sql",
+          "packages/db/migrations/0169_clinical_workflow_event_order.sql",
+          "packages/db/migrations/0170_outbox_event_envelope.sql"
+        ],
+        "excludedFromRunner": "revert, seed, hidden drift and backup SQL remain byte-accountable historical artifacts"
+      }
+    }
+  }
 }

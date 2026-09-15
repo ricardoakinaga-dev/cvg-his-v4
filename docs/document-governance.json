@@ -2,22 +2,70 @@
   "schema_version": 1,
   "current_documents": {
     "baseline": {
-      "path": "docs/2026-09-06-relatorio-estado-atual-erp-cvg-his-v4.md",
-      "effective_date": "2026-09-07"
+      "path": "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
+      "effective_date": "2026-09-15"
     },
     "plan": {
-      "path": "docs/2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md",
-      "effective_date": "2026-09-07"
+      "path": "docs/2026-09-14-plano-executivo-state-of-art-triplo-aaa.md",
+      "effective_date": "2026-09-14"
     },
     "roadmap": {
-      "path": "docs/2026-09-06-roadmap-erp-state-of-art-triplo-aaa.md",
-      "effective_date": "2026-09-07"
+      "path": "docs/2026-09-15-roadmap-pos-checkpoint-state-of-art-triplo-aaa.md",
+      "effective_date": "2026-09-15"
     },
     "backlog": {
-      "path": "docs/2026-09-06-backlog-erp-state-of-art-triplo-aaa.md",
-      "effective_date": "2026-09-07"
+      "path": "docs/2026-09-15-backlog-pos-checkpoint-state-of-art-triplo-aaa.md",
+      "effective_date": "2026-09-15"
     }
   },
-  "historical_documents": [],
-  "linked_indexes": ["docs/README.md", "docs/430-fonte-de-verdade-documental.md"]
+  "historical_documents": [
+    {
+      "path": "docs/2026-09-14-relatorio-completo-estado-construcao.md",
+      "superseded_by": "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md"
+    },
+    {
+      "path": "docs/2026-09-14-roadmap-state-of-art-triplo-aaa.md",
+      "superseded_by": "docs/2026-09-15-roadmap-pos-checkpoint-state-of-art-triplo-aaa.md"
+    },
+    {
+      "path": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+      "superseded_by": "docs/2026-09-15-backlog-pos-checkpoint-state-of-art-triplo-aaa.md"
+    },
+    {
+      "path": "docs/2026-09-06-relatorio-estado-atual-erp-cvg-his-v4.md",
+      "superseded_by": "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md"
+    },
+    {
+      "path": "docs/2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md",
+      "superseded_by": "docs/2026-09-14-plano-executivo-state-of-art-triplo-aaa.md"
+    },
+    {
+      "path": "docs/2026-09-06-roadmap-erp-state-of-art-triplo-aaa.md",
+      "superseded_by": "docs/2026-09-15-roadmap-pos-checkpoint-state-of-art-triplo-aaa.md"
+    },
+    {
+      "path": "docs/2026-09-06-backlog-erp-state-of-art-triplo-aaa.md",
+      "superseded_by": "docs/2026-09-15-backlog-pos-checkpoint-state-of-art-triplo-aaa.md"
+    },
+    {
+      "path": "docs/2026-09-13-relatorio-estado-atual-erp-cvg-his-v4.md",
+      "superseded_by": "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md"
+    },
+    {
+      "path": "docs/2026-09-13-plano-executivo-prontidao-producao.md",
+      "superseded_by": "docs/2026-09-14-plano-executivo-state-of-art-triplo-aaa.md"
+    },
+    {
+      "path": "docs/2026-09-13-roadmap-prontidao-producao.md",
+      "superseded_by": "docs/2026-09-15-roadmap-pos-checkpoint-state-of-art-triplo-aaa.md"
+    },
+    {
+      "path": "docs/2026-09-13-backlog-prontidao-producao.md",
+      "superseded_by": "docs/2026-09-15-backlog-pos-checkpoint-state-of-art-triplo-aaa.md"
+    }
+  ],
+  "linked_indexes": [
+    "docs/README.md",
+    "docs/430-fonte-de-verdade-documental.md"
+  ]
 }

@@ -1,4 +1,4 @@
-import { type AnyColumn, eq, type SQL, type Table } from 'drizzle-orm';
+import { and, type AnyColumn, eq, type SQL, type Table } from 'drizzle-orm';
 import { requireAccountId, requireTenantId, type TenantContext } from './context.js';
 
 export interface TenantQueryOptions {
@@ -15,10 +15,9 @@ export function tenantFilter(table: Table, options: TenantQueryOptions): SQL {
     conditions.push(eq(options.tenantIdColumn as AnyColumn, tenantId));
   }
 
-  return conditions.reduce((acc, cond) => {
-    // @ts-expect-error drizzle sql composition
-    return acc.and(cond);
-  });
+  const predicate = and(...conditions);
+  if (!predicate) throw new Error('Tenant filter must contain an account condition');
+  return predicate;
 }
 
 export function getTenantAccountId(): string {

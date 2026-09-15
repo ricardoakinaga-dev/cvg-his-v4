@@ -120,6 +120,65 @@ describe('financial-routes', () => {
     expect(response.bodyJson<{ totalOutstanding: number }>().totalOutstanding).toBe(120);
   });
 
+  it('passes the inclusive due-date range and rejects unsupported statuses', async () => {
+    const response = new MockResponse();
+    const listReceivables = vi.fn(async () => ({
+      data: [],
+      page: 1,
+      pageSize: 20,
+      total: 0,
+      openCount: 0,
+      settledCount: 0,
+      totalOriginal: 0,
+      totalOutstanding: 0,
+      totalSettled: 0
+    }));
+
+    await handleFinancialRoutes(
+      '/financial/receivables',
+      {
+        method: 'GET',
+        url: '/financial/receivables?dueFrom=2026-04-01&dueTo=2026-04-30&page=2&pageSize=10'
+      } as never,
+      response as never,
+      'corr-financial-due-range',
+      {
+        encounterFinancial: { listReceivables } as never,
+        billing: {} as never,
+        audit: { write: vi.fn() } as never,
+        pixTransactions: { list: vi.fn() } as never,
+        requirePrincipal: vi.fn(() => createPrincipal() as never)
+      }
+    );
+
+    expect(listReceivables).toHaveBeenCalledWith({
+      accountId: 'acc-1',
+      status: undefined,
+      encounterId: undefined,
+      search: undefined,
+      dueFrom: '2026-04-01',
+      dueTo: '2026-04-30',
+      page: 2,
+      pageSize: 10
+    });
+
+    await expect(
+      handleFinancialRoutes(
+        '/financial/receivables',
+        { method: 'GET', url: '/financial/receivables?status=cancelled' } as never,
+        new MockResponse() as never,
+        'corr-financial-cancelled',
+        {
+          encounterFinancial: { listReceivables } as never,
+          billing: {} as never,
+          audit: { write: vi.fn() } as never,
+          pixTransactions: { list: vi.fn() } as never,
+          requirePrincipal: vi.fn(() => createPrincipal() as never)
+        }
+      )
+    ).rejects.toThrow('status must be open or settled');
+  });
+
   it('returns encounter financial summary with billing.read permission', async () => {
     const response = new MockResponse();
     const getSummary = vi.fn(async () => ({

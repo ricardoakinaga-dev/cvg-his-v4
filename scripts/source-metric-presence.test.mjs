@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   isRuntimeReexportOnly,
+  isTypeOnlySource,
   assertSourceMetricPresence
 } from './lib/source-metric-presence.mjs';
 
@@ -76,4 +77,33 @@ test('empty metrics require the exact authenticated original while measured zero
     /empty executable/
   );
   assert.doesNotThrow(() => assertSourceMetricPresence({ ...entry, f: { 0: 0 } }, {}));
+});
+
+test('type-only classification is structural and fail-closed for runtime syntax', () => {
+  for (const source of [
+    'export interface Owner { id: string }',
+    'type OwnerId = string;',
+    'import type { Owner } from "./owner.js";',
+    'import { type Owner } from "./owner.js";',
+    'export type { Owner } from "./owner.js";',
+    'export { type Owner } from "./owner.js";',
+    'declare function loadOwner(): Promise<unknown>;',
+    'declare const owner: unknown;'
+  ]) {
+    assert.equal(isTypeOnlySource(source), true, source);
+  }
+
+  for (const source of [
+    '',
+    'import "./side-effect.js";',
+    'import { Owner } from "./owner.js";',
+    'import Owner, { type OwnerId } from "./owner.js";',
+    'export { Owner } from "./owner.js";',
+    'export const owner = {};',
+    'export function loadOwner() {}',
+    'export enum Species { Dog }',
+    'interface Owner { id: string }\nexport const version = 1;'
+  ]) {
+    assert.equal(isTypeOnlySource(source), false, source);
+  }
 });

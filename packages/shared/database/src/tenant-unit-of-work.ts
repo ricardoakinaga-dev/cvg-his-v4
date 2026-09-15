@@ -1,6 +1,14 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
+import {
+  buildEventEnvelopeMetadata,
+  mergeEventEnvelopeMetadata,
+  type AccountId,
+  type CorrelationId,
+  type EventActor,
+  type ModuleName
+} from '@cvg-his-v2/shared-types';
 
 import { createScopedDatabaseClient, type DatabaseClient } from './client.js';
 import {
@@ -30,6 +38,10 @@ export interface TransactionalOutboxInput {
   readonly moduleName: string;
   readonly eventType: string;
   readonly payload: Readonly<Record<string, unknown>>;
+  readonly actor?: EventActor;
+  readonly causationId?: string | null;
+  readonly schemaVersion?: number;
+  readonly occurredAt?: string;
   readonly maxAttempts?: number;
   readonly scheduledAt?: Date;
 }
@@ -77,7 +89,8 @@ export interface TenantUnitOfWork {
     context: TenantUnitOfWorkExecutionContext,
     requestPayload: JsonValue,
     command: (transaction: TenantTransactionContext) => Promise<T>,
-    beforeIdempotency?: (transaction: TenantTransactionContext) => Promise<void>
+    beforeIdempotency?: (transaction: TenantTransactionContext) => Promise<void>,
+    beforeReplay?: (transaction: TenantTransactionContext) => Promise<void>
   ): Promise<TenantUnitOfWorkResult<T>>;
 }
 
@@ -93,6 +106,11 @@ const MAX_REQUEST_BYTES = 1024 * 1024;
 const MAX_RESPONSE_BYTES = 256 * 1024;
 const MAX_JSON_DEPTH = 64;
 const MAX_JSON_NODES = 100_000;
+
+function characterLength(value: string): number {
+  // PostgreSQL varchar limits count Unicode code points, not UTF-16 code units.
+  return Array.from(value).length;
+}
 
 export class IdempotencyConflictError extends Error {
   public readonly code = 'IDEMPOTENCY_CONFLICT';
@@ -178,29 +196,28 @@ export function hashIdempotencyPayload(payload: JsonValue): string {
 function assertTransactionExecutionContext(context: TenantTransactionExecutionContext): void {
   if (!UUID_PATTERN.test(context.accountId))
     throw new Error('Tenant unit of work requires a valid account id');
-  if (!context.actorUserId || context.actorUserId.length > 255)
+  if (!context.actorUserId || characterLength(context.actorUserId) > 255)
     throw new Error('Tenant unit of work requires an actor user id');
-  if (!context.correlationId || context.correlationId.length > 255)
+  if (!context.correlationId || characterLength(context.correlationId) > 255)
     throw new Error('Tenant unit of work requires a correlation id');
 }
 
 function assertExecutionContext(context: TenantUnitOfWorkExecutionContext): void {
   assertTransactionExecutionContext(context);
-  if (!context.operation || context.operation.length > 128)
+  if (!context.operation || characterLength(context.operation) > 128)
     throw new Error('Idempotency operation must contain 1 to 128 characters');
-  if (!context.idempotencyKey || context.idempotencyKey.length > 255)
+  if (!context.idempotencyKey || characterLength(context.idempotencyKey) > 255)
     throw new Error('Idempotency key must contain 1 to 255 characters');
 }
 
 function assertName(value: string, label: string, maximum: number): void {
-  if (!value || value.length > maximum)
+  if (!value || characterLength(value) > maximum)
     throw new Error(`${label} must contain 1 to ${maximum} characters`);
 }
 
 function createGuardedPoolClient(client: PoolClient, isActive: () => boolean): PoolClient {
   const blockedProperties = new Set<PropertyKey>(['connection', 'connect', 'end', 'release']);
-  let guardedClient!: PoolClient;
-  guardedClient = new Proxy(client, {
+  const guardedClient = new Proxy(client, {
     get(target, property) {
       if (blockedProperties.has(property)) {
         throw new Error('Tenant transaction client lifecycle is managed by the unit of work');
@@ -336,14 +353,25 @@ function createTransactionContext(
         if (metaAccountId !== undefined && metaAccountId !== context.accountId) {
           throw new Error('Outbox payload metadata account does not match transaction account');
         }
+        const id = input.id ?? randomUUID();
+        const envelope = buildEventEnvelopeMetadata({
+          eventId: id,
+          eventType: input.eventType,
+          accountId: context.accountId as AccountId,
+          sourceModule: input.moduleName as ModuleName,
+          correlationId: context.correlationId as CorrelationId,
+          actor: input.actor ?? { type: 'user', id: context.actorUserId },
+          causationId: input.causationId,
+          schemaVersion: input.schemaVersion,
+          occurredAt: input.occurredAt
+        });
         const payload = canonicalize({
           ...input.payload,
           accountId: context.accountId,
-          _meta: { ...payloadMeta, accountId: context.accountId }
+          _meta: mergeEventEnvelopeMetadata(payloadMeta, envelope)
         });
         if (Buffer.byteLength(payload, 'utf8') > MAX_REQUEST_BYTES)
           throw new Error('Outbox payload exceeds 1 MiB');
-        const id = input.id ?? randomUUID();
         await client.query(
           `INSERT INTO outbox_events
              (id, account_id, correlation_id, module_name, event_type, payload, status,
@@ -414,7 +442,8 @@ export function createTenantUnitOfWork(pool: Pool): TenantUnitOfWork {
       context: TenantUnitOfWorkExecutionContext,
       requestPayload: JsonValue,
       command: (transaction: TenantTransactionContext) => Promise<T>,
-      beforeIdempotency?: (transaction: TenantTransactionContext) => Promise<void>
+      beforeIdempotency?: (transaction: TenantTransactionContext) => Promise<void>,
+      beforeReplay?: (transaction: TenantTransactionContext) => Promise<void>
     ): Promise<TenantUnitOfWorkResult<T>> {
       if (getDatabaseTransactionScope()) {
         throw new Error('Nested idempotent unit of work commands are not supported');
@@ -466,6 +495,12 @@ export function createTenantUnitOfWork(pool: Pool): TenantUnitOfWork {
           if (record.status === 'completed') {
             if (!record.actor_user_id || record.actor_user_id !== context.actorUserId) {
               throw new IdempotencyActorConflictError();
+            }
+            // Re-authorization boundary (PROD-005/A02): a cached response must
+            // never be returned without re-evaluating the caller's current
+            // permission. First executions are unaffected; only replays run this.
+            if (beforeReplay) {
+              await tenantTransactionStorage.run(transaction, () => beforeReplay(transaction));
             }
             return { value: record.response_body as T, replayed: true };
           }

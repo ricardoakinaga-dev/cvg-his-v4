@@ -1,0 +1,67 @@
+{
+  "authority": {
+    "actor": "lead executor do programa state-of-art (nao autoridade de release)",
+    "decision": "Entrada em PROD-004-R2: revalidar primeiro (capturar 0172 + consumidor, reproduzir negativas historicas CP-01 no candidato rev27); implementar somente ante contraprova atual; forward-only, sem editar 0170/0171.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar ao concluir 004-R2 e a cada mudanca de bytes.",
+    "required": false,
+    "scope": "Entrada em PROD-004-R1 (envelopes parciais + worker): dependencias satisfeitas",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "003-R2 aceito no escopo (harness 2x PASS); 061 verde isolado; PG privado 5433 ativo; dependencia integral 003->004 relaxada explicitamente p/ revalidacao-first rev27.",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-PROD-003-R2-REVIEW-20260914"
+      ],
+      "id": "IR-001",
+      "limitations": "Gate de entrada, nao de saida. R1-13/09 (START sem conclusao) preservado como historico.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Alvo fixado: 0171/0172 + consumidor de envelope legado preservados no worktree (untracked, sem edicao); matriz ausente/vazio/null/parcial/corrompido + worker real nas mesmas linhas.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "id": "IR-002",
+      "limitations": "Revalidacao primeiro; implementacao so ante contraprova atual.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Riscos mapeados: nunca editar migration aplicada (0170/0171); release BLOCKED.",
+      "evidence_refs": [
+        ".agent/state.json"
+      ],
+      "id": "IR-003",
+      "limitations": "Nao aprova dados ou release.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json",
+    ".agent/state.json"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Executar PROD-004-R2 revalidacao-first.",
+  "record_id": "GATE-IR-PROD-004-20260914-R2",
+  "residual_risk": "MEDIUM",
+  "revalidation_triggers": [
+    "Inicio e conclusao de 004-R2.",
+    "Qualquer alteracao em bytes."
+  ],
+  "scope": "Entrada em PROD-004-R1 (envelopes parciais + worker): dependencias satisfeitas",
+  "scope_ref": "PROD-004",
+  "supersedes": "GATE-IR-PROD-004-20260913-R2",
+  "timestamp": "2026-09-15T01:03:40Z",
+  "version": 1,
+  "conditions": []
+}

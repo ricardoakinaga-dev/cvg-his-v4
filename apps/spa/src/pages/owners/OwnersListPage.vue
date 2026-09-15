@@ -8,8 +8,16 @@
       :primary-action="headerPrimaryAction"
     />
 
-    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
+    <DsAlert
+      v-if="error && displayedOwners.length > 0"
+      variant="danger"
+      dismissible
+      @dismiss="error = ''"
+    >
       {{ error }}
+      <DsButton type="button" variant="secondary" :loading="loading" @click="load">
+        Tentar novamente
+      </DsButton>
     </DsAlert>
 
     <form class="search-shell" @submit.prevent="load">
@@ -104,7 +112,9 @@
               <span>{{ primaryContact(owner) }}</span>
             </div>
             <div class="fact-row">
-              <span class="fact-row__label">Animais do {{ clinicalLabels.tutor.singularLower }}</span>
+              <span class="fact-row__label"
+                >Animais do {{ clinicalLabels.tutor.singularLower }}</span
+              >
               <span>{{ patientsByOwner(owner.id).length }}</span>
             </div>
             <div class="fact-row">
@@ -202,12 +212,40 @@
       </div>
     </section>
 
+    <section v-else-if="loading" class="owners-loading-state" role="status" aria-live="polite">
+      <div class="owners-loading-state__icon" aria-hidden="true">TU</div>
+      <h2>Carregando tutores</h2>
+      <p>Consultando os tutores e os animais vinculados.</p>
+    </section>
+
+    <section
+      v-else-if="error"
+      class="owners-error-state"
+      role="alert"
+      aria-labelledby="owners-error-title"
+    >
+      <div class="owners-error-state__icon" aria-hidden="true">!</div>
+      <h2 id="owners-error-title">{{ errorTitle }}</h2>
+      <p>{{ errorDescription }}</p>
+      <DsButton type="button" variant="primary" :loading="loading" @click="load">
+        Tentar novamente
+      </DsButton>
+    </section>
+
+    <DsCard v-else-if="hasActiveFilters" class="empty-state" variant="elevated">
+      <div class="empty-state__icon">TU</div>
+      <h2 class="empty-state__title">Nenhum tutor corresponde aos filtros</h2>
+      <p class="empty-state__description">
+        Revise os filtros aplicados para consultar novamente os tutores.
+      </p>
+    </DsCard>
+
     <DsCard v-else class="empty-state" variant="elevated">
       <div class="empty-state__icon">TU</div>
       <h2 class="empty-state__title">Nenhum {{ clinicalLabels.tutor.singularLower }} encontrado</h2>
       <p class="empty-state__description">
-        Cadastre o primeiro {{ clinicalLabels.tutor.singularLower }} para vincular animais e sustentar agenda, atendimento e
-        prontuário.
+        Cadastre o primeiro {{ clinicalLabels.tutor.singularLower }} para vincular animais e
+        sustentar agenda, atendimento e prontuário.
       </p>
       <div class="empty-state__actions">
         <DsButton tag="a" to="/owners/new" variant="primary">+ Cadastrar tutor</DsButton>
@@ -218,7 +256,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
 import type { OwnerContact, OwnerSummary } from '@/types/owner';
@@ -241,6 +279,7 @@ type SortMode = 'recent' | 'name' | 'patients';
 
 const loading = ref(false);
 const error = ref('');
+const errorStatus = ref<number | null>(null);
 const showAdvanced = ref(false);
 const owners = ref<OwnerSummary[]>([]);
 const patients = ref<PatientSummary[]>([]);
@@ -287,6 +326,22 @@ const resultSummary = computed(() => {
   const last = displayedOwners.value.length;
   return `Mostrando ${first} - ${last} de ${owners.value.length} resultados`;
 });
+
+const hasActiveFilters = computed(
+  () => Boolean(filters.search.trim()) || filters.status !== 'all' || filters.financial !== 'all'
+);
+const errorTitle = computed(() =>
+  errorStatus.value !== null && errorStatus.value >= 500
+    ? 'Serviço de tutores indisponível'
+    : `Não foi possível carregar ${clinicalLabels.tutor.pluralLower}`
+);
+const errorDescription = computed(() =>
+  errorStatus.value !== null && errorStatus.value >= 500
+    ? 'A consulta de tutores falhou temporariamente. Tente novamente.'
+    : error.value
+);
+let requestSequence = 0;
+let disposed = false;
 
 const headerSecondaryActions = computed(() => [
   {
@@ -343,8 +398,10 @@ function initials(name: string): string {
 }
 
 async function load() {
+  const requestId = ++requestSequence;
   loading.value = true;
   error.value = '';
+  errorStatus.value = null;
 
   try {
     const [ownersResponse, patientsResponse] = await Promise.all([
@@ -356,17 +413,31 @@ async function load() {
       patientService.list()
     ]);
 
+    if (disposed || requestId !== requestSequence) return;
     owners.value = ownersResponse;
     patients.value = patientsResponse;
   } catch (err: unknown) {
+    if (disposed || requestId !== requestSequence) return;
+    errorStatus.value = readErrorStatus(err);
     error.value =
       err instanceof Error ? err.message : `Erro ao carregar ${clinicalLabels.tutor.pluralLower}`;
   } finally {
-    loading.value = false;
+    if (!disposed && requestId === requestSequence) loading.value = false;
   }
 }
 
+function readErrorStatus(errorValue: unknown): number | null {
+  if (!errorValue || typeof errorValue !== 'object') return null;
+  const status = (errorValue as { status?: unknown }).status;
+  return typeof status === 'number' ? status : null;
+}
+
 onMounted(load);
+
+onBeforeUnmount(() => {
+  disposed = true;
+  requestSequence += 1;
+});
 </script>
 
 <style scoped>
@@ -620,6 +691,57 @@ onMounted(load);
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.owners-loading-state,
+.owners-error-state {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 28px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 16px;
+  background: var(--color-surface, #ffffff);
+  text-align: center;
+}
+
+.owners-loading-state__icon,
+.owners-error-state__icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  font-weight: 800;
+}
+
+.owners-loading-state__icon {
+  color: var(--color-text-secondary, #475569);
+  background: var(--color-bg-subtle, #f8fafc);
+}
+
+.owners-loading-state h2,
+.owners-error-state h2 {
+  margin: 0;
+  color: var(--color-text, #0f172a);
+  font-size: 18px;
+}
+
+.owners-loading-state p,
+.owners-error-state p {
+  margin: 0 0 8px;
+  color: var(--color-text-muted, #64748b);
+  line-height: 1.45;
+}
+
+.owners-error-state {
+  border-color: var(--color-danger-200, #fecaca);
+  background: var(--color-danger-50, #fef2f2);
+}
+
+.owners-error-state__icon {
+  color: var(--color-danger-700, #b91c1c);
+  background: var(--color-danger-100, #fee2e2);
 }
 
 .empty-state {

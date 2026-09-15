@@ -61,6 +61,7 @@ const mockReceivablesResponse = {
   total: 2,
   openCount: 1,
   settledCount: 1,
+  totalOriginal: 850,
   totalOutstanding: 250,
   totalSettled: 600
 };
@@ -88,7 +89,6 @@ describe('BillingListPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Contas a Receber');
-    expect(wrapper.text()).toContain('Gerar Conta Avulsa');
     expect(wrapper.text()).toContain('recebimento do atendimento');
     expect(wrapper.text()).toContain('Cliente');
     expect(wrapper.text()).toContain('Vencimento entre');
@@ -104,6 +104,9 @@ describe('BillingListPage', () => {
     expect(wrapper.text()).toContain('João Silva');
     expect(wrapper.text()).toContain('Maria Santos');
     expect(wrapper.text()).toContain('R$\u00A0250,00');
+    expect(wrapper.text()).toContain('R$\u00A0850,00');
+    expect(wrapper.text()).toContain('Esse é um estado financeiro esperado');
+    expect(wrapper.findAll('.ds-stat-card--error')).toHaveLength(0);
     expect(wrapper.text()).not.toContain('Dashboard Financeiro');
     expect(mockListReceivables).toHaveBeenCalledWith({
       search: '',
@@ -111,6 +114,140 @@ describe('BillingListPage', () => {
       page: 1,
       pageSize: 20
     });
+  });
+
+  it('uses the backend page contract for pagination and displays the filtered range', async () => {
+    const firstPageRows = Array.from({ length: 20 }, (_, index) => ({
+      ...mockReceivablesResponse.data[0],
+      id: `recv-page-${index + 1}`,
+      encounterId: `enc-page-${index + 1}`,
+      ownerName: `Cliente ${index + 1}`,
+      installmentLabel: `Parcela ${index + 1}/1`,
+      amountOriginal: 100,
+      amountPaid: 0,
+      amountOutstanding: 100,
+      totalAmount: 100
+    }));
+    const secondPageRow = {
+      ...firstPageRows[0],
+      id: 'recv-page-21',
+      encounterId: 'enc-page-21',
+      ownerName: 'Cliente 21'
+    };
+
+    mockListReceivables
+      .mockResolvedValueOnce({
+        ...mockReceivablesResponse,
+        data: firstPageRows,
+        page: 1,
+        total: 21,
+        totalOriginal: 2100,
+        totalOutstanding: 2100,
+        totalSettled: 0
+      })
+      .mockResolvedValueOnce({
+        ...mockReceivablesResponse,
+        data: [secondPageRow],
+        page: 2,
+        total: 21,
+        totalOriginal: 2100,
+        totalOutstanding: 2100,
+        totalSettled: 0
+      });
+
+    const BillingListPage = (await import('../BillingListPage.vue')).default;
+    const wrapper = mount(BillingListPage);
+
+    await flushPromises();
+    expect(wrapper.findAll('tbody tr')).toHaveLength(20);
+    expect(wrapper.text()).toContain('Página 1 de 2');
+    expect(wrapper.text()).toContain('1–20 de 21 títulos');
+    expect(wrapper.text()).toContain('R$\u00A02.100,00');
+
+    await wrapper.find('button[aria-label="Próxima página"]').trigger('click');
+    await flushPromises();
+
+    expect(mockListReceivables).toHaveBeenLastCalledWith({
+      search: '',
+      status: '',
+      page: 2,
+      pageSize: 20
+    });
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1);
+    expect(wrapper.text()).toContain('Cliente 21');
+    expect(wrapper.text()).toContain('Página 2 de 2');
+    expect(wrapper.text()).toContain('21–21 de 21 títulos');
+  });
+
+  it('sends supported status filters and resets the page to one', async () => {
+    const BillingListPage = (await import('../BillingListPage.vue')).default;
+    const wrapper = mount(BillingListPage);
+
+    await flushPromises();
+    await wrapper.find('#receivable-status').setValue('open');
+    await wrapper.find('form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(mockListReceivables).toHaveBeenLastCalledWith({
+      search: '',
+      status: 'open',
+      page: 1,
+      pageSize: 20
+    });
+  });
+
+  it('sends due filters to the backend and exposes only contract statuses', async () => {
+    const BillingListPage = (await import('../BillingListPage.vue')).default;
+    const wrapper = mount(BillingListPage);
+
+    await flushPromises();
+    await wrapper.find('#receivable-due-from').setValue('2026-04-01');
+    await wrapper.find('#receivable-due-to').setValue('2026-04-30');
+    await wrapper.find('form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(mockListReceivables).toHaveBeenLastCalledWith({
+      search: '',
+      status: '',
+      dueFrom: '2026-04-01',
+      dueTo: '2026-04-30',
+      page: 1,
+      pageSize: 20
+    });
+    expect(wrapper.find('#receivable-status option[value="cancelled"]').exists()).toBe(false);
+  });
+
+  it('does not let an older response replace a newer filter result', async () => {
+    let resolveInitial: (value: typeof mockReceivablesResponse) => void = () => undefined;
+    let resolveFiltered: (value: typeof mockReceivablesResponse) => void = () => undefined;
+    const initialRequest = new Promise<typeof mockReceivablesResponse>((resolve) => {
+      resolveInitial = resolve;
+    });
+    const filteredRequest = new Promise<typeof mockReceivablesResponse>((resolve) => {
+      resolveFiltered = resolve;
+    });
+    mockListReceivables.mockReset();
+    mockListReceivables.mockReturnValueOnce(initialRequest).mockReturnValueOnce(filteredRequest);
+
+    const BillingListPage = (await import('../BillingListPage.vue')).default;
+    const wrapper = mount(BillingListPage);
+
+    await wrapper.find('#receivable-status').setValue('open');
+    await wrapper.find('form').trigger('submit.prevent');
+
+    resolveFiltered({
+      ...mockReceivablesResponse,
+      data: [{ ...mockReceivablesResponse.data[0], ownerName: 'Resultado novo' }],
+      page: 1,
+      total: 1
+    });
+    await flushPromises();
+    expect(wrapper.text()).toContain('Resultado novo');
+
+    resolveInitial(mockReceivablesResponse);
+    await flushPromises();
+    expect(wrapper.text()).toContain('Resultado novo');
+    expect(wrapper.text()).not.toContain('Maria Santos');
   });
 
   it('shows empty and error states with accounts receivable wording', async () => {
@@ -125,7 +262,8 @@ describe('BillingListPage', () => {
     const errorWrapper = mount(BillingListPage);
 
     await flushPromises();
-    expect(errorWrapper.text()).toContain('Falha financeira');
+    expect(errorWrapper.text()).toContain('Não foi possível carregar contas a receber');
+    expect(errorWrapper.text()).toContain('Tentar novamente');
   });
 
   it('links each receivable to the encounter billing detail', async () => {
@@ -155,6 +293,8 @@ describe('BillingListPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).not.toContain('Baixar contas em lote');
+    expect(wrapper.text()).not.toContain('Gerar Conta Avulsa');
+    expect(wrapper.text()).toContain('decisão explícita de Produto/Financeiro');
     expect(wrapper.findAll('button').some((button) => button.text() === 'Baixar')).toBe(false);
     expect(wrapper.find('input[type="checkbox"]').exists()).toBe(false);
   });

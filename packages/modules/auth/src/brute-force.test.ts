@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'vitest';
+import { test, vi } from 'vitest';
 import { BruteForceProtection } from './brute-force.js';
 
 test('BruteForceProtection: isPasswordLocked returns false for new identifier', () => {
@@ -166,4 +166,54 @@ test('BruteForceProtection: getMfaFailureCount returns correct count', () => {
   bf.recordMfaFailure('user1');
   bf.recordMfaFailure('user1');
   assert.equal(bf.getMfaFailureCount('user1'), 2);
+});
+
+test('BruteForceProtection: exposes configured durations and expires lockouts', () => {
+  vi.useFakeTimers();
+  try {
+    const bf = new BruteForceProtection({
+      maxAttempts: 2,
+      lockoutDurationSeconds: 10,
+      trackingWindowSeconds: 5
+    });
+
+    assert.equal(bf.getMaxAttempts(), 2);
+    assert.equal(bf.getLockoutDurationMs(), 10_000);
+    assert.equal(bf.getTrackingWindowMs(), 5_000);
+    assert.equal(bf.getRemainingLockSeconds('user1'), 0);
+
+    bf.recordPasswordFailure('user1');
+    bf.recordPasswordFailure('user1');
+    assert.equal(bf.isPasswordLocked('user1'), true);
+
+    vi.advanceTimersByTime(10_001);
+    assert.equal(bf.isPasswordLocked('user1'), false);
+    assert.equal(bf.getRemainingLockSeconds('user1'), 0);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('BruteForceProtection: cleans stale password and MFA records during writes', () => {
+  vi.useFakeTimers();
+  try {
+    const bf = new BruteForceProtection({
+      maxAttempts: 3,
+      lockoutDurationSeconds: 10,
+      trackingWindowSeconds: 5
+    });
+
+    bf.recordPasswordFailure('stale-password');
+    bf.recordMfaFailure('stale-mfa');
+    vi.advanceTimersByTime(5_001);
+    bf.recordPasswordFailure('fresh-password');
+    bf.recordMfaFailure('fresh-mfa');
+
+    assert.equal(bf.getFailureCount('stale-password'), 0);
+    assert.equal(bf.getMfaFailureCount('stale-mfa'), 0);
+    assert.equal(bf.getFailureCount('fresh-password'), 1);
+    assert.equal(bf.getMfaFailureCount('fresh-mfa'), 1);
+  } finally {
+    vi.useRealTimers();
+  }
 });

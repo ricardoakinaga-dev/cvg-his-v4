@@ -13,11 +13,10 @@ const checked = (root, path) => {
   return result;
 };
 
-// Call after a successful current-source build, and again after test execution.
-// A snapshot alone does not establish that compiled code came from that build.
-export function snapshotNativeInventory(root, app, expectedTests) {
+export const NATIVE_TEST_SHARDS = Object.freeze({ 'native-api': 'api', 'native-worker': 'worker' });
+
+export function discoverNativeTestSources(root, app) {
   if (!['worker', 'api'].includes(app)) throw new Error('unsupported native application');
-  if (!Array.isArray(expectedTests) || !expectedTests.length || new Set(expectedTests).size !== expectedTests.length) throw new Error('nonempty unique frozen native inventory required');
   const prefix = `apps/${app}/src/`;
   const sourceRoot = resolveContainedPath(root, prefix);
   if (!sourceRoot.ok) throw new Error('native source root is unavailable or external');
@@ -45,8 +44,18 @@ export function snapshotNativeInventory(root, app, expectedTests) {
     }
   };
   walk(sourceRoot.absolute);
+  return discovered.sort();
+}
+
+// Call after a successful current-source build, and again after test execution.
+// A snapshot alone does not establish that compiled code came from that build.
+export function snapshotNativeInventory(root, app, expectedTests) {
+  if (!['worker', 'api'].includes(app)) throw new Error('unsupported native application');
+  if (!Array.isArray(expectedTests) || !expectedTests.length || new Set(expectedTests).size !== expectedTests.length) throw new Error('nonempty unique frozen native inventory required');
+  const prefix = `apps/${app}/src/`;
+  const discovered = discoverNativeTestSources(root, app);
   const expected = [...expectedTests].sort();
-  if (expected.some((path) => typeof path !== 'string' || !path.startsWith(prefix) || !path.endsWith('.test.ts')) || JSON.stringify(expected) !== JSON.stringify(discovered.sort())) throw new Error('frozen native inventory differs from discovered test files');
+  if (expected.some((path) => typeof path !== 'string' || !path.startsWith(prefix) || !path.endsWith('.test.ts')) || JSON.stringify(expected) !== JSON.stringify(discovered)) throw new Error('frozen native inventory differs from discovered test files');
   return expected.map((sourcePath) => {
     const source = checked(root, sourcePath);
     const generatedPath = sourcePath.replace(prefix, `apps/${app}/dist/`).replace(/\.ts$/, '.js');

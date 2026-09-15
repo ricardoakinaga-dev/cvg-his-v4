@@ -1,0 +1,79 @@
+{
+  "record_id": "GATE-IR-TRIPLE-A-RELEASE-CONTROL-20260912-R3",
+  "timestamp": "2026-09-12T20:23:25Z",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "Primeira frente local de remediacao Triplo AAA (MA-01, MA-02, MA-03) do CVG-HIS-V4; target, UAT, sob e autoridade permanecem fora deste gate",
+  "scope_ref": "TRIPLE-A-RELEASE-CONTROL",
+  "version": 2,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "Escopo, dependencias e criterios de aceite dos slices locais MA-01, MA-02, MA-03/R1 e MA-04 estao definidos e rastreaveis ao roadmap, backlog e ExecPlan ativo.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/2026-09-12-roadmap-backlog-multiagente-release-triplo-aaa.md",
+        ".agent/plans/repository-state-of-art-remediation-execplan.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "O escopo cobre somente os primeiros pacotes locais; MA-05 e seguintes dependem de despacho, ambiente e locks proprios."
+    },
+    {
+      "id": "IR-002",
+      "description": "Ownership de arquivos, locks de superficie compartilhada e limites de autoridade estao explicitos; decisoes externas continuam bloqueantes.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/2026-09-12-backlog-correcao-gaps-triplo-aaa.md",
+        ".agent/plans/repository-state-of-art-remediation-execplan.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Este gate nao aprova risco de negocio, UAT, SLO/RPO/RTO, raiz de confianca de produtores operacionais nem publicacao; essas autoridades permanecem humanas e externas."
+    },
+    {
+      "id": "IR-003",
+      "description": "A abordagem de verificacao e os destinos de evidencia sao executaveis no caminho publico de construcao, avaliacao e exportacao, com conhecidos bons e ruins; a promocao por flag de ambiente foi removida e PASS operacional exige verificador externo efetivo e conteudo adequado.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "scripts/run-triple-a-release-gate.mjs",
+        "tests/unit/infra/triple-a-release-gate.test.ts",
+        "docs/triple-a/12-release-gate.md",
+        ".agent/verification.jsonl"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Os testes provam o contrato local de confianca com verificador simulado isolado; o PASS operacional real permanece PARTIAL enquanto `gh`, produtores legitimados e decisao de autoridade nao existirem."
+    }
+  ],
+  "evidence": [
+    "docs/2026-09-12-roadmap-backlog-multiagente-release-triplo-aaa.md",
+    "docs/triple-a/12-release-gate.md",
+    ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    ".agent/archive/20260912-controller-migration/manifest.json",
+    "artifacts/remediation/MA-03-R1/attempt-1/known-bad-before.log",
+    "artifacts/remediation/MA-03-R1/attempt-1/known-bad-after.log",
+    "artifacts/remediation/MA-03-R1/attempt-1/gate-tests-r1.log",
+    "artifacts/remediation/MA-03-R1/attempt-1/known-good-simulated.log"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "lead executor da frente local MA-01..MA-03/R1 (nao autoridade de release)",
+    "scope": "Primeira frente local de remediacao Triplo AAA (MA-01, MA-02, MA-03) do CVG-HIS-V4; target, UAT, sob e autoridade permanecem fora deste gate",
+    "decision": "Prontidao de implementacao local dos slices definidos, incluindo o reparo de fronteira de confianca MA-03-R1; nenhuma decisao de negocio, operacao, raiz de confianca externa ou certificacao e tomada por este registro.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar a cada mudanca de codigo, contrato, fonte critica, evidencia, produtor autorizado ou decisao pendente; expira na integracao do candidato final."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS",
+  "next_action": "Submeter o repositorio MA-03-R1 a critico fresco read-only com execucao dos testes focados; manter o release bloqueado e as decisoes de raiz de confianca pendentes.",
+  "revalidation_triggers": [
+    "Qualquer commit ou alteracao em fontes criticas, gate de release, .agent/** ou documentos correntes.",
+    "Mudanca na lista de workflows assinantes, no anchor de evidencia fora do GitHub Actions ou na politica de revogacao.",
+    "Novo candidato, CI exato, evidencia target, produtor operacional ou decisao de autoridade."
+  ],
+  "supersedes": "GATE-IR-TRIPLE-A-RELEASE-CONTROL-20260912-R2"
+}

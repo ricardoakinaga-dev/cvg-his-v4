@@ -404,6 +404,7 @@ export class PatientsService {
 
     const duplicate = this.list().find(
       (patient) =>
+        patient.accountId === accountId &&
         patient.name.toLowerCase() === name.toLowerCase() &&
         patient.primaryOwnerId === primaryOwnerId
     );
@@ -498,9 +499,25 @@ export class PatientsService {
       });
     }
 
+    const nextName =
+      payload.name !== undefined ? requireNonEmptyString(payload.name, 'name') : current.name;
+    const duplicate = this.list().find(
+      (patient) =>
+        patient.id !== patientId &&
+        patient.accountId === current.accountId &&
+        patient.name.toLowerCase() === nextName.toLowerCase() &&
+        patient.primaryOwnerId === nextPrimaryOwnerId
+    );
+
+    if (duplicate) {
+      throw new ConflictError('Possible duplicate patient detected', {
+        patientId: duplicate.id
+      });
+    }
+
     const updated: PatientSummary = {
       ...current,
-      name: payload.name !== undefined ? requireNonEmptyString(payload.name, 'name') : current.name,
+      name: nextName,
       species:
         payload.species !== undefined
           ? requireNonEmptyString(payload.species, 'species')

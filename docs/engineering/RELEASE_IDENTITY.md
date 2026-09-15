@@ -24,6 +24,15 @@ CANONICAL_HEALTH_PATHS=/health,/ready,/live,/health/ready,/health/live
 - API and worker health contracts are `/health`, `/ready`, `/live`, with the
   `/health/ready` and `/health/live` aliases retained for compatibility.
 
+## Environment precedence
+
+The environment-to-runtime contract is
+docs/engineering/environment-runtime-matrix.json. docker-compose.v2.yml is
+the host-based production-like rehearsal/cutover surface; staging and
+production use infra/helm/cvg-his-v2 with their environment values as the
+primary Kubernetes target. This distinction preserves compatibility names
+without making a local Compose run evidence of a target deployment.
+
 ## Compatibility and legacy policy
 
 - The current package namespace `@cvg-his-v2/*`, Docker names and Helm chart

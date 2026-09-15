@@ -14,6 +14,11 @@ Este documento descreve a trilha oficial para instalar e publicar o stack canoni
 
 ## Regra central
 
+Este runbook descreve a instalação e o cutover host-based com Compose. Para
+staging e produção em Kubernetes, a precedência é a matriz PROD-049 e a
+superfície Helm de ADR-011; não se deve aplicar este comando de Compose ao
+cluster Kubernetes nem inferir que um rehearsal local é deploy em alvo.
+
 Nao usar trilhas `apps/his-*` como deploy oficial.
 
 Nao reutilizar imagens, containers ou nomes de servico legados do programa antigo.
@@ -22,7 +27,7 @@ Nao reutilizar imagens, containers ou nomes de servico legados do programa antig
 
 ## Stack oficial obrigatoria
 
-O deploy oficial do projeto atual usa exclusivamente:
+A trilha oficial host-based de rehearsal/cutover usa:
 
 - `docker-compose.v2.yml`
 - `apps/api/Dockerfile`

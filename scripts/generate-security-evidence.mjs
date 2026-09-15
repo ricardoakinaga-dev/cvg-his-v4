@@ -1,5 +1,5 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 
@@ -143,7 +143,7 @@ function assertUniqueBomRefs(components) {
 
 function validateSemgrepCi() {
   const ci = readText('.github/workflows/ci.yml');
-  const sastJob = ci.match(/  sast:\n[\s\S]*?(?=\n  [a-zA-Z0-9_-]+:|\n$)/)?.[0] ?? '';
+  const sastJob = ci.match(/\x20{2}sast:\n[\s\S]*?(?=\n\x20{2}[a-zA-Z0-9_-]+:|\n$)/)?.[0] ?? '';
   const checks = [
     ['job sast existe', Boolean(sastJob)],
     ['usa semgrep container pinned by digest', /container:\s*\n\s+image:\s*semgrep\/semgrep@sha256:[0-9a-f]{64}(?:\s|$)/.test(sastJob)],
@@ -190,6 +190,7 @@ assertUniqueBomRefs(sbom.components);
 const sbomPath = join(outputPath, 'sbom.cyclonedx.json');
 writeFileSync(sbomPath, `${JSON.stringify(sbom, null, 2)}\n`);
 writeFileSync(join(outputPath, 'sbom.cdx.json'), readFileSync(sbomPath));
+const sbomDigest = createHash('sha256').update(readFileSync(sbomPath)).digest('hex');
 
 const report = {
   generatedAt: new Date().toISOString(),
@@ -200,7 +201,8 @@ const report = {
   semgrepCi: semgrepChecks,
   sbom: {
     path: relative(root, sbomPath),
-    components: sbom.components.length
+    components: sbom.components.length,
+    sha256: sbomDigest
   }
 };
 

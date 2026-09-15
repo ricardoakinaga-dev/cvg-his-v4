@@ -4,18 +4,18 @@ import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { EncountersService } from '@cvg-his-v2/module-encounters';
 import type { OwnersService } from '@cvg-his-v2/module-owners';
 import type { PatientsService } from '@cvg-his-v2/module-patients';
-import type {
-  CreateOwnerPatientLinkRequest,
-  MergePatientRequest,
-  CreatePatientRequest,
-  UpdatePatientRequest,
-  UpdateOwnerPatientLinkRequest
-} from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal, MasterSearchOwnerResult } from '@cvg-his-v2/shared-types';
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
 
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
+import {
+  parseCreateOwnerPatientLinkRequest,
+  parseCreatePatientRequest,
+  parseMergePatientRequest,
+  parseUpdateOwnerPatientLinkRequest,
+  parseUpdatePatientRequest
+} from '../registry-request-boundaries.js';
 import { parseListPagination } from '../request-boundaries.js';
 
 export interface PatientsRoutesHandlers {
@@ -159,6 +159,7 @@ export async function handlePatientsRoutes(
       items = items.filter((p) => p.status === status);
     }
 
+    const total = items.length;
     const pagination = parseListPagination(url);
     if (pagination) {
       const start = (pagination.page - 1) * pagination.pageSize;
@@ -177,13 +178,17 @@ export async function handlePatientsRoutes(
       correlationId
     });
 
-    return json(response, 200, { items });
+    return json(
+      response,
+      200,
+      pagination ? { items, page: pagination.page, pageSize: pagination.pageSize, total } : { items }
+    );
   }
 
   // POST /patients - Create patient
   if (pathname === '/patients' && method === 'POST') {
     const principal = await requirePrincipal(request, 'patients.manage');
-    const body = (await readJsonBody(request)) as CreatePatientRequest;
+    const body = parseCreatePatientRequest(await readJsonBody(request), correlationId);
     if (owners) {
       const owner = owners.getOrThrow(body.primaryOwnerId as never);
       if (owner.accountId !== principal.user.accountId) {
@@ -237,7 +242,7 @@ export async function handlePatientsRoutes(
     if (source.accountId !== principal.user.accountId) {
       throw new NotFoundError('Patient not found', { patientId: sourcePatientId });
     }
-    const payload = (await readJsonBody(request)) as MergePatientRequest;
+    const payload = parseMergePatientRequest(await readJsonBody(request), correlationId);
     const target = patients.getOrThrow(payload.targetPatientId as never);
     if (target.accountId !== principal.user.accountId) {
       throw new NotFoundError('Patient not found', { patientId: payload.targetPatientId });
@@ -343,7 +348,7 @@ export async function handlePatientsRoutes(
 
     const principal = await requirePrincipal(request, 'patients.manage');
     const patientId = match[1];
-    const body = (await readJsonBody(request)) as UpdatePatientRequest;
+    const body = parseUpdatePatientRequest(await readJsonBody(request), correlationId);
     const existing = patients.getOrThrow(patientId as never);
     if (existing.accountId !== principal.user.accountId) {
       throw new NotFoundError('Patient not found', { patientId });
@@ -451,7 +456,7 @@ export async function handlePatientsRoutes(
 
   if (pathname === '/owner-patient-links' && method === 'POST') {
     const principal = await requirePrincipal(request, 'patients.manage');
-    const payload = (await readJsonBody(request)) as CreateOwnerPatientLinkRequest;
+    const payload = parseCreateOwnerPatientLinkRequest(await readJsonBody(request), correlationId);
     const patient = patients.getOrThrow(payload.patientId as never);
     if (patient.accountId !== principal.user.accountId) {
       throw new NotFoundError('Patient not found', { patientId: payload.patientId });
@@ -483,7 +488,10 @@ export async function handlePatientsRoutes(
   const linkMatch = pathname.match(/^\/owner-patient-links\/([^/]+)$/);
   if (linkMatch && method === 'PATCH') {
     const principal = await requirePrincipal(request, 'patients.manage');
-    const payload = (await readJsonBody(request)) as UpdateOwnerPatientLinkRequest;
+    const payload = parseUpdateOwnerPatientLinkRequest(
+      await readJsonBody(request),
+      correlationId
+    );
     const link = patients.updateLink(
       principal.user.accountId as never,
       linkMatch[1] as never,

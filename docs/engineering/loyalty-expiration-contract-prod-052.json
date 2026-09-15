@@ -1,0 +1,635 @@
+{
+  "schemaVersion": 1,
+  "contractId": "PROD-052-LOYALTY-EXPIRATION-CONTRACT",
+  "status": "PROPOSED_PENDING_AUTHORITY",
+  "product": "CVG-HIS-V4",
+  "scope": {
+    "mode": "CONTRACT_ONLY",
+    "balanceMutationAllowed": false,
+    "migrationAllowed": false,
+    "provider": "NONE",
+    "realDataAllowed": false,
+    "currentBehaviorInterpretation": "OBSERVATION_NOT_VIOLATION"
+  },
+  "owners": {
+    "product": "UNASSIGNED_PENDING_AUTHORITY",
+    "finance": "UNASSIGNED_PENDING_AUTHORITY",
+    "implementation": "lead"
+  },
+  "sourceRefs": [
+    "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+    "docs/2026-09-14-plano-executivo-state-of-art-triplo-aaa.md",
+    "docs/052-contrato-expiracao-pontos.md",
+    "packages/modules/commercial/src/index.ts",
+    "packages/modules/commercial/src/commercial.test.ts",
+    "packages/db/migrations/0021_commercial_loyalty_price_pdv.sql",
+    "packages/db/migrations/0022_commercial_rls.sql",
+    "apps/api/src/routes/commercial-routes.ts",
+    "apps/api/src/routes/commercial-routes.test.ts",
+    "apps/spa/src/pages/loyalty/LoyaltyPage.vue"
+  ],
+  "decisionPolicy": {
+    "recommendationsAreBinding": false,
+    "balancesMayBeMutated": false,
+    "currentBehaviorIsViolation": false,
+    "defaultDecisionStatus": "PENDING_AUTHORITY",
+    "requiredAuthorityBeforeImplementation": [
+      "Product",
+      "Finance"
+    ],
+    "implementationDependency": "PROD-053",
+    "noBalanceWritesInThisSlice": true
+  },
+  "invariants": [
+    {
+      "id": "tenant_scoped_ledger",
+      "rule": "Todo lançamento, saldo, resgate e restituição é escopado ao account_id/tenant autorizado; nenhuma leitura ou escrita cruza tenants."
+    },
+    {
+      "id": "ledger_not_rewritten",
+      "rule": "Lançamentos concedidos não são editados, apagados ou reclassificados silenciosamente; correções usam eventos reversores vinculados."
+    },
+    {
+      "id": "expiry_reference_instant",
+      "rule": "A validade usa um instante de avaliação e uma timezone/política explicitamente escolhidos; o sistema não mistura relógio local implícito com TIMESTAMPTZ."
+    },
+    {
+      "id": "expiry_boundary_explicit",
+      "rule": "O contrato declara se expiresAt é limite exclusivo ou inclusivo e o teste cobre exatamente a igualdade do corte."
+    },
+    {
+      "id": "expired_not_available",
+      "rule": "Pontos expirados não compõem availablePoints nem podem ser consumidos; a projeção registra o motivo sem apagar o histórico."
+    },
+    {
+      "id": "blocked_not_available",
+      "rule": "Pontos bloqueados, revogados ou sob disputa não ficam disponíveis para resgate até decisão autorizada."
+    },
+    {
+      "id": "integer_points",
+      "rule": "Pontuação é inteira, não zero para lançamentos, e ajustes negativos exigem origem, motivo, autorização e rastreabilidade."
+    },
+    {
+      "id": "deterministic_consumption_order",
+      "rule": "A ordem de consumo é uma decisão explícita e determinística, com desempate estável por identificador/proveniência."
+    },
+    {
+      "id": "legacy_cutover_preserved",
+      "rule": "Saldo legado não recebe expiresAt inventado; cutover, janela de transição e saldo sem origem aguardam decisão e snapshot aprovado."
+    },
+    {
+      "id": "reversal_preserves_provenance",
+      "rule": "Restituição e cancelamento adicionam reversão vinculada ao lançamento/resgate original e preservam o expiresAt original ou a nova concessão conforme política."
+    },
+    {
+      "id": "idempotent_balance_projection",
+      "rule": "Reprocessamento, retry e consulta repetida não duplicam concessão, expiração, resgate ou restituição."
+    },
+    {
+      "id": "no_balance_mutation_in_r1",
+      "rule": "A tarefa PROD-052 não escreve, recalcula, migra, expira ou ajusta saldos; somente contrato, observação e validação estrutural podem ser produzidos."
+    }
+  ],
+  "choices": [
+    {
+      "id": "C1",
+      "title": "Regra de vencimento",
+      "question": "Pontos expiram, nunca expiram ou seguem a política do programa/origem?",
+      "status": "PENDING_AUTHORITY",
+      "owner": "Product + Finance",
+      "validity": {
+        "reviewBy": "2026-10-15",
+        "expiresOn": "2026-12-31",
+        "basis": "Revisar antes de PROD-053 e antes de qualquer cálculo de saldo."
+      },
+      "recommendation": {
+        "optionId": "C1-O3",
+        "nonBinding": true,
+        "rationale": "Política explícita por programa/origem evita hardcode e permite exceções auditáveis sem alterar lançamentos históricos."
+      },
+      "options": [
+        {
+          "id": "C1-O1",
+          "label": "Sem vencimento",
+          "implications": "expiresAt fica nulo por contrato e somente bloqueio, resgate ou reversão reduz disponibilidade.",
+          "evidenceRequired": [
+            "Decisão de negócio sobre passivo e saldo indefinido.",
+            "Teste de ponto nulo sem expiração em períodos distintos."
+          ]
+        },
+        {
+          "id": "C1-O2",
+          "label": "Prazo fixo por concessão",
+          "implications": "Cada concessão recebe prazo determinado pelo contrato; a origem precisa registrar a regra aplicada.",
+          "evidenceRequired": [
+            "Política aprovada com período e exceções.",
+            "Teste de cálculo e snapshot do expiresAt."
+          ]
+        },
+        {
+          "id": "C1-O3",
+          "label": "Política por programa/origem",
+          "implications": "Programa e sourceType determinam a regra; alterações futuras não reescrevem concessões já emitidas.",
+          "evidenceRequired": [
+            "Matriz programa-origem-regra assinada.",
+            "Teste de mudança de política sem drift histórico."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C2",
+      "title": "Relógio e timezone",
+      "question": "O vencimento é comparado por instante UTC ou por data civil no timezone do tenant?",
+      "status": "PENDING_AUTHORITY",
+      "owner": "Product + Finance",
+      "validity": {
+        "reviewBy": "2026-10-15",
+        "expiresOn": "2026-12-31",
+        "basis": "A escolha deve preceder fixtures temporais e relatórios."
+      },
+      "recommendation": {
+        "optionId": "C2-O2",
+        "nonBinding": true,
+        "rationale": "Persistir o instante em UTC e declarar a timezone do tenant para cortes civis reduz ambiguidades de horário de verão."
+      },
+      "options": [
+        {
+          "id": "C2-O1",
+          "label": "Instante UTC",
+          "implications": "expiresAt é comparado contra clock UTC monotônico/autoridade; o usuário vê a conversão apenas na apresentação.",
+          "evidenceRequired": [
+            "Contrato de clock e timezone de apresentação.",
+            "Teste em offsets diferentes e transição de horário."
+          ]
+        },
+        {
+          "id": "C2-O2",
+          "label": "UTC com timezone tenant",
+          "implications": "Persistência é UTC, mas a data de corte usa timezone aprovada por tenant e versionada no lançamento.",
+          "evidenceRequired": [
+            "Matriz tenant-timezone aprovada.",
+            "Teste de meia-noite, DST e timezone ausente."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C3",
+      "title": "Corte temporal e igualdade",
+      "question": "Um ponto no instante exato de expiresAt ainda pode ser usado?",
+      "status": "PENDING_AUTHORITY",
+      "owner": "Product + Finance",
+      "validity": {
+        "reviewBy": "2026-10-15",
+        "expiresOn": "2026-12-31",
+        "basis": "A fronteira deve ser idêntica na projeção, API, UI e consumo."
+      },
+      "recommendation": {
+        "optionId": "C3-O1",
+        "nonBinding": true,
+        "rationale": "Limite exclusivo produz uma regra simples: disponível somente enquanto avaliação < expiresAt."
+      },
+      "options": [
+        {
+          "id": "C3-O1",
+          "label": "Limite exclusivo",
+          "implications": "availableAt expiresAt é falso; expiresAt nulo permanece sem vencimento conforme C1.",
+          "evidenceRequired": [
+            "Tabela de fronteiras before/equal/after.",
+            "Teste com clock controlado na igualdade."
+          ]
+        },
+        {
+          "id": "C3-O2",
+          "label": "Limite inclusivo",
+          "implications": "A disponibilidade inclui o instante final; exige precisão de armazenamento e apresentação sem arredondamento enganoso.",
+          "evidenceRequired": [
+            "Precisão e unidade aprovadas.",
+            "Teste de igualdade, truncamento e conversão de timezone."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C4",
+      "title": "Ordem de consumo",
+      "question": "Quando um tutor possui vários lotes, qual lote é consumido primeiro?",
+      "status": "PENDING_AUTHORITY",
+      "owner": "Product + Finance",
+      "validity": {
+        "reviewBy": "2026-10-15",
+        "expiresOn": "2026-12-31",
+        "basis": "A regra deve ser compatível com resgate, restituição e auditoria."
+      },
+      "recommendation": {
+        "optionId": "C4-O1",
+        "nonBinding": true,
+        "rationale": "FEFO reduz perda de pontos, desde que o desempate e o comportamento de lotes sem vencimento sejam definidos."
+      },
+      "options": [
+        {
+          "id": "C4-O1",
+          "label": "FEFO determinístico",
+          "implications": "Menor expiresAt primeiro; nulos por último; empate por createdAt e id/proveniência.",
+          "evidenceRequired": [
+            "Regra de desempate e nulos aprovada.",
+            "Teste concorrente com lotes iguais e expirados."
+          ]
+        },
+        {
+          "id": "C4-O2",
+          "label": "FIFO de concessão",
+          "implications": "Lote mais antigo primeiro, independentemente do vencimento; pode aumentar expiração não consumida.",
+          "evidenceRequired": [
+            "Impacto financeiro e de experiência aprovado.",
+            "Teste de ordem com expiresAt invertido."
+          ]
+        },
+        {
+          "id": "C4-O3",
+          "label": "Escolha manual",
+          "implications": "Operador escolhe lotes disponíveis; exige permissão, explicação e prevenção de seleção de expirados.",
+          "evidenceRequired": [
+            "Matriz de permissão e auditoria.",
+            "Teste de manipulação e seleção cross-tenant."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C5",
+      "title": "Saldo legado e cutover",
+      "question": "Como tratar pontos existentes sem expiresAt e lançamentos de origem incompleta?",
+      "status": "PENDING_AUTHORITY",
+      "owner": "Product + Finance",
+      "validity": {
+        "reviewBy": "2026-10-15",
+        "expiresOn": "2026-12-31",
+        "basis": "Nenhuma migração ou expiração retroativa ocorre nesta tarefa."
+      },
+      "recommendation": {
+        "optionId": "C5-O1",
+        "nonBinding": true,
+        "rationale": "Manter o legado como estado explicitamente não classificado preserva saldo e evita inventar prazo."
+      },
+      "options": [
+        {
+          "id": "C5-O1",
+          "label": "Preservar sem prazo",
+          "implications": "Saldo legado permanece sem expiresAt até decisão; relatórios distinguem origem legada de nova concessão.",
+          "evidenceRequired": [
+            "Inventário de campos e saldo legado aprovado.",
+            "Teste de projeção sem expiresAt e auditoria de origem."
+          ]
+        },
+        {
+          "id": "C5-O2",
+          "label": "Cutover com snapshot",
+          "implications": "Saldo é congelado em snapshot e recebe classificação explícita em migração autorizada, com reconciliação.",
+          "evidenceRequired": [
+            "Janela, snapshot, rollback e owner aprovados.",
+            "Prova de contagem/saldo antes e depois sem perda."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C6",
+      "title": "Restituição, cancelamento e reversão",
+      "question": "Como devolver pontos após cancelamento sem criar saldo ou prazo incoerente?",
+      "status": "PENDING_AUTHORITY",
+      "owner": "Product + Finance",
+      "validity": {
+        "reviewBy": "2026-10-15",
+        "expiresOn": "2026-12-31",
+        "basis": "A regra deve ser fechada antes de PROD-053 implementar resgates."
+      },
+      "recommendation": {
+        "optionId": "C6-O1",
+        "nonBinding": true,
+        "rationale": "Reversão append-only mantém o vínculo ao lançamento/resgate e evita editar o passado."
+      },
+      "options": [
+        {
+          "id": "C6-O1",
+          "label": "Reversão vinculada",
+          "implications": "Adiciona lançamento reversor com origem do resgate e preserva o expiresAt original quando ainda válido.",
+          "evidenceRequired": [
+            "Regra de janela e vencimento após reversão.",
+            "Teste de cancelamento repetido e resgate parcialmente revertido."
+          ]
+        },
+        {
+          "id": "C6-O2",
+          "label": "Nova concessão",
+          "implications": "Restituição cria novo lote com novo expiresAt; exige justificativa e não pode parecer saldo original.",
+          "evidenceRequired": [
+            "Política de novo prazo aprovada.",
+            "Teste de origem, auditoria e idempotência da nova concessão."
+          ]
+        }
+      ]
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "title": "Regra de expiração",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "must": [
+        "Escolher C1 e materializar a regra no programa/origem sem hardcode implícito.",
+        "Persistir expiresAt ou a ausência autorizada junto ao lançamento, sem reclassificar concessões antigas.",
+        "Projetar ponto expirado fora de availablePoints e mantê-lo auditável."
+      ],
+      "acceptanceEvidence": [
+        "Decisão Product/Finance assinada.",
+        "Fixtures before/equal/after e nulo.",
+        "Teste API/DB/UI do mesmo lote."
+      ]
+    },
+    {
+      "id": "R2",
+      "title": "Relógio, timezone e corte",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "must": [
+        "Escolher C2 e C3, fixando clock, unidade, timezone e igualdade de expiresAt.",
+        "Usar um instante de avaliação consistente entre saldo, resgate, relatório e retry.",
+        "Falhar fechadamente quando timezone, expiresAt ou precisão obrigatória forem inválidos."
+      ],
+      "acceptanceEvidence": [
+        "Contrato de clock/timezone/cutoff.",
+        "Teste de igualdade, meia-noite, DST/offset e clock ausente.",
+        "Medição registrada em API/DB e apresentação."
+      ]
+    },
+    {
+      "id": "R3",
+      "title": "Projeção de saldo",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "must": [
+        "Separar disponível, bloqueado, expirado, resgatado, revertido e legado conforme a política aprovada.",
+        "Impedir saldo disponível negativo por combinação de lançamentos, resgates, expiração e cancelamento.",
+        "Não interpretar a projeção atual como regra aceita antes de validar a política."
+      ],
+      "acceptanceEvidence": [
+        "Tabela de casos e oracle Product/Finance.",
+        "Teste de soma por tenant e tutor com estados mistos.",
+        "Reconciliação de saldo antes/depois sem escrita em PROD-052."
+      ]
+    },
+    {
+      "id": "R4",
+      "title": "Ordem e concorrência do consumo",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "must": [
+        "Escolher C4 com desempate estável e excluir lotes expirados/bloqueados.",
+        "Consumir cada lote no máximo uma vez por operação idempotente e impedir corrida de saldo.",
+        "Preservar a origem dos lotes consumidos para restituição e auditoria."
+      ],
+      "acceptanceEvidence": [
+        "Decisão de ordem e desempate.",
+        "Teste concorrente API/DB com dois resgates.",
+        "Reconciliação de lotes, resgate e saldo."
+      ]
+    },
+    {
+      "id": "R5",
+      "title": "Legado e cutover",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "must": [
+        "Escolher C5 e distinguir saldo legado sem origem de concessão nova.",
+        "Não inventar prazo retroativo, apagar histórico ou ajustar saldo por este contrato.",
+        "Se houver migração posterior, exigir snapshot, contagem, rollback e owner."
+      ],
+      "acceptanceEvidence": [
+        "Inventário de campos/linhas e dataset sintético aprovado.",
+        "Plano de cutover ou decisão de preservação.",
+        "Prova de contagens e valores reconciliados."
+      ]
+    },
+    {
+      "id": "R6",
+      "title": "Restituição e reversão",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "must": [
+        "Escolher C6 e vincular reversão/cancelamento à concessão ou resgate original.",
+        "Distinguir reversão de novo bônus, preservar expiresAt conforme regra e impedir dupla restituição.",
+        "Auditar motivo, ator, origem, tenant e estado sem editar o lançamento original."
+      ],
+      "acceptanceEvidence": [
+        "Decisão Product/Finance e matriz de cancelamento parcial/total.",
+        "Teste de retry, cancelamento repetido, resgate expirado e restituição após corte.",
+        "Reconciliação de ledger e auditoria."
+      ]
+    }
+  ],
+  "temporalCriteria": {
+    "expiresAtInput": {
+      "value": "OPTIONAL_NULLABLE",
+      "status": "OBSERVED_CURRENT_NOT_ACCEPTED",
+      "sourceRef": "packages/modules/commercial/src/index.ts",
+      "meaning": "A API de awardPoints aceita expiresAt nulo/ausente; isso não define a política de vencimento."
+    },
+    "storedType": {
+      "value": "TIMESTAMPTZ",
+      "status": "OBSERVED_CURRENT_NOT_ACCEPTED",
+      "sourceRef": "packages/db/migrations/0021_commercial_loyalty_price_pdv.sql",
+      "meaning": "A coluna SQL é TIMESTAMPTZ; a semântica de comparação ainda depende de C2/C3."
+    },
+    "evaluationInstant": {
+      "value": null,
+      "status": "PENDING_AUTHORITY",
+      "meaning": "Clock e instante de avaliação não devem ser inventados no contrato local."
+    },
+    "timezone": {
+      "value": null,
+      "status": "PENDING_AUTHORITY"
+    },
+    "cutoffBoundary": {
+      "value": null,
+      "status": "PENDING_AUTHORITY"
+    },
+    "legacyCutoverDate": {
+      "value": null,
+      "status": "PENDING_AUTHORITY"
+    },
+    "consumptionTieBreak": {
+      "value": null,
+      "status": "PENDING_AUTHORITY"
+    }
+  },
+  "observedImplementation": {
+    "available": [
+      "A tabela loyalty_points guarda expires_at nullable TIMESTAMPTZ, source_type, source_id, is_blocked, created_at e account_id.",
+      "awardPoints aceita expiresAt e o adaptador SQL o persiste quando informado.",
+      "getLoyaltyBalance separa pontos blocked, soma lançamentos não bloqueados, subtrai resgates não cancelados e limita availablePoints ao mínimo zero.",
+      "redeemPoints verifica somente availablePoints agregado; o código observado não materializa uma ordem de lotes."
+    ],
+    "gaps": [
+      "A projeção observada não contém regra explícita de comparação de expiresAt.",
+      "Não há contrato vigente de timezone, corte, ordem de consumo, saldo legado ou restituição.",
+      "Não há decisão Product/Financeiro nem evidência de saldo/DB/API em target para essa semântica."
+    ],
+    "boundary": "As observações delimitam o contrato; não são acusação de violação nem autorização para alterar saldo."
+  },
+  "scenarioMatrix": [
+    {
+      "id": "SCN-001",
+      "case": "expiresAt ausente/nulo",
+      "expected": "Comportamento somente após C1; preservar como caso explícito, sem prazo inventado.",
+      "evidence": "Fixture de concessão sem expiresAt."
+    },
+    {
+      "id": "SCN-002",
+      "case": "avaliação antes do corte",
+      "expected": "Disponibilidade conforme C1-C3.",
+      "evidence": "Clock controlado."
+    },
+    {
+      "id": "SCN-003",
+      "case": "avaliação exatamente no corte",
+      "expected": "Resultado conforme limite inclusivo/exclusivo escolhido em C3.",
+      "evidence": "Teste de igualdade."
+    },
+    {
+      "id": "SCN-004",
+      "case": "avaliação depois do corte",
+      "expected": "Lote fora de availablePoints e indisponível para consumo.",
+      "evidence": "Teste de expiração."
+    },
+    {
+      "id": "SCN-005",
+      "case": "lote bloqueado e expirado",
+      "expected": "Não consumir nem contar como disponível; motivos permanecem distinguíveis.",
+      "evidence": "Matriz blocked/expired."
+    },
+    {
+      "id": "SCN-006",
+      "case": "vários lotes com prazos diferentes",
+      "expected": "Ordem e desempate conforme C4, sem duplicidade.",
+      "evidence": "Teste FEFO/FIFO controlado."
+    },
+    {
+      "id": "SCN-007",
+      "case": "saldo legado sem origem ou expiresAt",
+      "expected": "Tratamento conforme C5, sem prazo retroativo inventado.",
+      "evidence": "Snapshot sintético e reconciliação."
+    },
+    {
+      "id": "SCN-008",
+      "case": "cancelamento e restituição parcial/total",
+      "expected": "Reversão vinculada conforme C6, uma única vez.",
+      "evidence": "Teste de ledger e auditoria."
+    },
+    {
+      "id": "SCN-009",
+      "case": "retry/replay do mesmo resgate",
+      "expected": "Nenhum consumo ou restituição duplicado.",
+      "evidence": "Teste de idempotência."
+    },
+    {
+      "id": "SCN-010",
+      "case": "tenant/timezone/clock inválido",
+      "expected": "Falhar fechadamente sem escrita de saldo.",
+      "evidence": "Teste negativo de contexto."
+    }
+  ],
+  "failureCases": [
+    {
+      "id": "FAIL-001",
+      "trigger": "expiresAt malformado, impossível ou com timezone inválido",
+      "expected": "Rejeitar operação; não criar ou alterar saldo.",
+      "evidence": "Teste de entrada negativa."
+    },
+    {
+      "id": "FAIL-002",
+      "trigger": "clock ausente, não confiável ou divergente entre leitura e consumo",
+      "expected": "Falhar ou usar fonte autorizada; não consumir sob semântica desconhecida.",
+      "evidence": "Teste de clock controlado."
+    },
+    {
+      "id": "FAIL-003",
+      "trigger": "avaliação na igualdade do corte",
+      "expected": "Aplicar uma única regra C3, sem arredondamento implícito.",
+      "evidence": "Caso before/equal/after."
+    },
+    {
+      "id": "FAIL-004",
+      "trigger": "lote expirado selecionado para resgate",
+      "expected": "Negar ou selecionar próximo lote permitido; nenhum efeito parcial.",
+      "evidence": "Teste de seleção."
+    },
+    {
+      "id": "FAIL-005",
+      "trigger": "tenant ou owner de outra conta",
+      "expected": "Negar sem revelar saldo, lote ou motivo sensível.",
+      "evidence": "Teste RLS/API cross-tenant."
+    },
+    {
+      "id": "FAIL-006",
+      "trigger": "dois resgates concorrentes consumindo o mesmo lote",
+      "expected": "Um efeito autorizado no máximo; outro recebe conflito/retry seguro.",
+      "evidence": "Teste concorrente DB/API."
+    },
+    {
+      "id": "FAIL-007",
+      "trigger": "retry do resgate, cancelamento ou restituição",
+      "expected": "Idempotência por operação/origem; sem duplicar lançamento reversor.",
+      "evidence": "Teste de replay."
+    },
+    {
+      "id": "FAIL-008",
+      "trigger": "saldo legado sem classificação",
+      "expected": "Aplicar C5; não inventar expiresAt, não apagar histórico.",
+      "evidence": "Teste de cutover bloqueado."
+    },
+    {
+      "id": "FAIL-009",
+      "trigger": "regra de programa alterada após concessão",
+      "expected": "Lançamento existente mantém sua semântica/proveniência; nova regra vale só conforme contrato.",
+      "evidence": "Teste de imutabilidade histórica."
+    },
+    {
+      "id": "FAIL-010",
+      "trigger": "restituição após o lote original expirar",
+      "expected": "Aplicar C6 explicitamente; não reativar saldo sem política e autorização.",
+      "evidence": "Matriz de restituição pós-corte."
+    }
+  ],
+  "acceptanceGate": {
+    "status": "PENDING_AUTHORITY",
+    "requiredBefore": [
+      "PROD-053"
+    ],
+    "requiredAuthorities": [
+      {
+        "role": "Product",
+        "status": "PENDING_AUTHORITY",
+        "decision": "Escolher C1-C6 e aprovar impacto de experiência, saldo legado e restituição."
+      },
+      {
+        "role": "Finance",
+        "status": "PENDING_AUTHORITY",
+        "decision": "Aprovar passivo, janela temporal, reconciliação, cutover e efeitos financeiros."
+      }
+    ],
+    "requiredEvidence": [
+      "Contrato assinado e oracle de casos temporais.",
+      "Dataset legado/sintético autorizado e decisão de cutover.",
+      "Implementação posterior em PROD-053 com API/DB concorrente e idempotência.",
+      "Reconciliação de ledger/saldo e auditoria de restituição.",
+      "Crítica independente fresh no mesmo candidato."
+    ],
+    "localEvidenceAvailable": [
+      "Contrato comparativo, documento, validador good/bad e observações estruturais.",
+      "Schema, service, routes e testes existentes inspecionados."
+    ],
+    "externalEvidenceMissing": [
+      "Decisão Product/Finance assinada.",
+      "Oracle de saldo e política de legado.",
+      "Implementação e prova comportamental de PROD-053."
+    ],
+    "promotionRule": "PROD-052 pode ser IMPLEMENTED/REVIEW_REQUIRED localmente, mas não altera saldos, não promove PROD-053 e não prova Triple-A."
+  }
+}

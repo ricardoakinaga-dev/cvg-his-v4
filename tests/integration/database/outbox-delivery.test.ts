@@ -6,6 +6,7 @@ import {
   DatabaseOutboxRepository,
   EventBusService,
   TenantUnitOfWorkConsumerGuard,
+  buildEventEnvelopeMetadata,
   type OutboxEvent,
   type OutboxRepository
 } from '../../../packages/modules/event-bus/src/index.js';
@@ -75,6 +76,7 @@ describe('outbox delivery leases', () => {
   async function insertEvents(count: number): Promise<readonly string[]> {
     const ids = Array.from({ length: count }, () => randomUUID());
     for (const id of ids) {
+      const correlationId = randomUUID();
       await adminPool.query(
         `INSERT INTO outbox_events
            (id, account_id, correlation_id, module_name, event_type, payload, status,
@@ -83,8 +85,19 @@ describe('outbox delivery leases', () => {
         [
           id,
           ACCOUNT_ID,
-          randomUUID(),
-          JSON.stringify({ accountId: ACCOUNT_ID, id, _meta: { accountId: ACCOUNT_ID } })
+          correlationId,
+          JSON.stringify({
+            accountId: ACCOUNT_ID,
+            id,
+            _meta: buildEventEnvelopeMetadata({
+              eventId: id,
+              eventType: 'test.delivery',
+              accountId: ACCOUNT_ID,
+              sourceModule: 'test',
+              correlationId,
+              actor: { type: 'system', id: 'outbox-delivery-test' }
+            })
+          })
         ]
       );
     }

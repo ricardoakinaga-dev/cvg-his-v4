@@ -289,6 +289,10 @@ jobs:
           pnpm validate:migration-source
           pnpm validate:rls
           pnpm validate:deploy-surface
+          pnpm validate:environment-runtime
+          pnpm validate:identity-contract
+          pnpm validate:loyalty-expiration-contract
+          pnpm validate:behavioral-parity-contract
           pnpm validate:dependencies
           pnpm docs:validate
           pnpm complexity:check
@@ -327,6 +331,8 @@ jobs:
           node --test scripts/run-security-audit.test.mjs
           node --test scripts/validate-supply-chain.test.mjs
           node --test scripts/process-reexport-coverage.test.mjs scripts/source-metric-presence.test.mjs scripts/check-critical-coverage.test.mjs
+          node --test scripts/refresh-critical-source-manifest.test.mjs scripts/run-critical-coverage-shard.test.mjs scripts/promote-critical-shard.test.mjs
+          node --test scripts/run-native-critical-coverage.test.mjs scripts/native-v8-line-terminators.test.mjs scripts/native-v8-conversion-semantics.test.mjs scripts/process-v8-conversion.test.mjs scripts/process-coverage-collection.test.mjs
           pnpm vetus:parity:test
 
       - name: Validate process runtime contracts
@@ -805,6 +811,238 @@ jobs:
         with:
           name: coverage-report
           path: coverage/
+          retention-days: 30
+
+  critical-coverage-gate:
+    name: Critical Coverage Gate
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+    permissions:
+      contents: read
+    env:
+      NODE_ENV: test
+      REQUIRE_TEST_DB: '1'
+      TEST_DB_EPHEMERAL: '1'
+    steps:
+      - name: Checkout candidate SHA
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: Verify candidate SHA and clean checkout
+        env:
+          CANDIDATE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${CANDIDATE_SHA}"
+          test -z "$(git status --porcelain)"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d # v4.1.0
+        with:
+          run_install: false
+
+      - name: Get pnpm store path
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Provision private coverage runner binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          deb_dir="${RUNNER_TEMP}/critical-coverage-debs"
+          runtime_root="${RUNNER_TEMP}/critical-coverage-runtime"
+          mkdir -p "${deb_dir}" "${runtime_root}"
+          (
+            cd "${deb_dir}"
+            apt-get download postgresql-14 libpq5 redis-server redis-tools liblzf1 libjemalloc2
+          )
+          for package in postgresql-14 libpq5 redis-server redis-tools liblzf1 libjemalloc2; do
+            deb="$(find "${deb_dir}" -maxdepth 1 -type f -name "${package}_*.deb" -print -quit)"
+            test -n "${deb}"
+            dpkg-deb -x "${deb}" "${runtime_root}"
+          done
+          pg_bin="${runtime_root}/usr/lib/postgresql/14/bin"
+          pg_share="${runtime_root}/usr/share/postgresql/14"
+          runtime_lib="${runtime_root}/usr/lib/x86_64-linux-gnu"
+          redis_server="${runtime_root}/usr/bin/redis-server"
+          redis_cli="${runtime_root}/usr/bin/redis-cli"
+          test -x "${pg_bin}/initdb"
+          test -x "${pg_bin}/postgres"
+          test -x "${pg_bin}/pg_isready"
+          test -d "${pg_share}"
+          test -x "${redis_server}"
+          test -x "${redis_cli}"
+          {
+            echo "NATIVE_POSTGRES_BIN=${pg_bin}"
+            echo "NATIVE_POSTGRES_SHARE=${pg_share}"
+            echo "NATIVE_POSTGRES_LIB=${runtime_lib}"
+            echo "REDIS_SERVER_BIN=${redis_server}"
+            echo "REDIS_CLI_BIN=${redis_cli}"
+            echo "REDIS_SERVER_LIBRARY_PATH=${runtime_lib}"
+            echo "LD_LIBRARY_PATH=${runtime_lib}"
+            echo "PATH=${pg_bin}:${runtime_root}/usr/bin:${PATH}"
+          } >> "${GITHUB_ENV}"
+          "${pg_bin}/postgres" --version
+          "${redis_server}" --version
+
+      - name: Start private PostgreSQL for critical Vitest integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          pg_root="$(mktemp -d "${RUNNER_TEMP}/critical-coverage-pg.XXXXXX")"
+          "${NATIVE_POSTGRES_BIN}/initdb" \
+            -D "${pg_root}/data" \
+            -U postgres \
+            --auth-local=trust \
+            --auth-host=reject \
+            --no-locale \
+            --encoding=UTF8
+          "${NATIVE_POSTGRES_BIN}/postgres" \
+            -D "${pg_root}/data" \
+            -k "${pg_root}" \
+            -c listen_addresses= \
+            -c unix_socket_permissions=0700 \
+            >"${pg_root}/server.log" 2>&1 &
+          pg_pid=$!
+          echo "CRITICAL_COVERAGE_PG_PID=${pg_pid}" >> "${GITHUB_ENV}"
+          echo "CRITICAL_COVERAGE_PG_ROOT=${pg_root}" >> "${GITHUB_ENV}"
+          ready=0
+          for _ in $(seq 1 60); do
+            if "${NATIVE_POSTGRES_BIN}/pg_isready" -h "${pg_root}" -U postgres -d postgres; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "${ready}" -ne 1 ]; then
+            cat "${pg_root}/server.log"
+            exit 1
+          fi
+          echo "DATABASE_URL_TEST=postgresql://postgres@localhost/cvg_his_v2_test?host=${pg_root}" >> "${GITHUB_ENV}"
+          echo "DATABASE_URL=postgresql://postgres@localhost/cvg_his_v2_test?host=${pg_root}" >> "${GITHUB_ENV}"
+          echo "TEST_DB_SUFFIX=critical_coverage_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}" >> "${GITHUB_ENV}"
+
+      - name: Build workspace dependencies
+        run: pnpm build
+
+      - name: TypeScript semantic gate for type-only critical sources
+        run: pnpm typecheck
+
+      - name: Collect, promote and run the real critical coverage checker
+        shell: bash
+        run: |
+          set -uo pipefail
+          coverage_root="artifacts/consolidacao-2026-09-05/coverage-scope"
+          mkdir -p "${coverage_root}"
+          exec > >(tee "${coverage_root}/ci-critical-coverage.log") 2>&1
+          overall_status=0
+
+          run_vitest_shard() {
+            local shard="$1"
+            echo "=== collecting ${shard} ==="
+            if node scripts/run-critical-coverage-shard.mjs "${shard}"; then
+              echo "=== promoting verified ${shard} candidate ==="
+              if node scripts/promote-critical-shard.mjs --shard "${shard}"; then
+                echo "=== ${shard} candidate promoted ==="
+              else
+                local status=$?
+                echo "=== ${shard} promotion failed (${status}) ==="
+                overall_status=1
+              fi
+            else
+              local status=$?
+              echo "=== ${shard} runner failed (${status}) ==="
+              overall_status=1
+            fi
+          }
+
+          run_native_shard() {
+            local shard="$1"
+            echo "=== collecting ${shard} ==="
+            if node scripts/run-native-critical-coverage.mjs "${shard}"; then
+              echo "=== promoting verified ${shard} candidate ==="
+              if node scripts/promote-critical-shard.mjs --shard "${shard}"; then
+                echo "=== ${shard} candidate promoted ==="
+              else
+                local status=$?
+                echo "=== ${shard} promotion failed (${status}) ==="
+                overall_status=1
+              fi
+            else
+              local status=$?
+              echo "=== ${shard} runner failed (${status}) ==="
+              overall_status=1
+            fi
+          }
+
+          run_process_shard() {
+            echo "=== collecting critical-process ==="
+            if node scripts/run-process-critical-coverage.mjs; then
+              echo "=== promoting verified critical-process candidate ==="
+              if node scripts/promote-critical-shard.mjs --shard critical-process; then
+                echo "=== critical-process candidate promoted ==="
+              else
+                local status=$?
+                echo "=== critical-process promotion failed (${status}) ==="
+                overall_status=1
+              fi
+            else
+              local status=$?
+              echo "=== critical-process runner failed (${status}) ==="
+              overall_status=1
+            fi
+          }
+
+          run_vitest_shard vitest-unit
+          run_vitest_shard vitest-integration
+          run_native_shard native-api
+          run_native_shard native-worker
+          run_process_shard
+
+          echo "=== running node scripts/check-critical-coverage.mjs ==="
+          node scripts/check-critical-coverage.mjs
+          checker_status=$?
+          if [ "${checker_status}" -ne 0 ]; then
+            echo "=== critical coverage checker failed (${checker_status}) ==="
+            overall_status=1
+          fi
+          exit "${overall_status}"
+
+      - name: Stop owned critical coverage PostgreSQL
+        if: always()
+        shell: bash
+        run: |
+          set -u
+          if [ -n "${CRITICAL_COVERAGE_PG_ROOT:-}" ] && [ -f "${CRITICAL_COVERAGE_PG_ROOT}/data/postmaster.pid" ]; then
+            "${NATIVE_POSTGRES_BIN}/pg_ctl" \
+              -D "${CRITICAL_COVERAGE_PG_ROOT}/data" \
+              -m fast \
+              -w stop
+          fi
+
+      - name: Upload critical coverage evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: critical-coverage-${{ github.sha }}
+          path: artifacts/consolidacao-2026-09-05/coverage-scope/
+          if-no-files-found: error
           retention-days: 30
 
   performance-k6:

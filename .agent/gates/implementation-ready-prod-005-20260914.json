@@ -1,0 +1,67 @@
+{
+  "authority": {
+    "actor": "lead executor do programa state-of-art (nao autoridade de release)",
+    "decision": "Entrada em PROD-005-R2: revalidar primeiro (guard atual + UoW + rotas; negativas historicas de replay em HTTP real sobre PG efemero); implementar somente ante contraprova.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar ao concluir 005-R2 e a cada mudanca de bytes.",
+    "required": false,
+    "scope": "Entrada em PROD-005 (reautorizacao de replay): dependencias satisfeitas",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "004-R2 revalidado sem contraprova; harness 003-R2 + PG 5433 ativos; dependencia 003->005 relaxada explicitamente.",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-PROD-004-R2-REVIEW-20260914"
+      ],
+      "id": "IR-001",
+      "limitations": "Gate de entrada, nao de saida.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Alvo fixado: idempotency-authorization (body/path/envelope + permissao dinamica), tenant UoW, rotas protegidas; prova HTTP+DB com revogacao/tenant-estranho/key-conflitante.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "id": "IR-002",
+      "limitations": "Revalidacao primeiro; implementar so ante contraprova.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Riscos mapeados: sem credenciais reais; release BLOCKED.",
+      "evidence_refs": [
+        ".agent/state.json"
+      ],
+      "id": "IR-003",
+      "limitations": "Nao aprova seguranca ou release.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json",
+    ".agent/state.json"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Executar PROD-005-R2 revalidacao-first.",
+  "record_id": "GATE-IR-PROD-005-20260914",
+  "residual_risk": "MEDIUM",
+  "revalidation_triggers": [
+    "Inicio e conclusao de 005-R2.",
+    "Qualquer alteracao em bytes."
+  ],
+  "scope": "Entrada em PROD-005 (reautorizacao de replay): dependencias satisfeitas",
+  "scope_ref": "PROD-005",
+  "supersedes": null,
+  "timestamp": "2026-09-15T01:08:16Z",
+  "version": 1,
+  "conditions": []
+}

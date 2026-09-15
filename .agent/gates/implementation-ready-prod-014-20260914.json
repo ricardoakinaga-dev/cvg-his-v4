@@ -1,0 +1,65 @@
+{
+  "authority": {
+    "actor": "lead executor do programa state-of-art (nao autoridade de release)",
+    "decision": "Entrada em PROD-014-R2: elevar metricas de auth/roles-rls >=85 com testes de dominio reais; 020/024 (SSO/DB full) em waiver explicito pois a elevacao local nao depende de IdP/DB de homologacao; sem exclusoes nem thresholds reduzidos.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar a cada coleta.",
+    "required": false,
+    "scope": "Entrada em PROD-014 (coverage auth/roles-rls): dependencias locais satisfeitas, 020/024 em waiver local",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "013-R2 aceito (classificacao type-only correta) e 005-R2/011-R2 aceitos no escopo; dependencias locais satisfeitas; 020/024 em waiver declarado (cartoes de homologacao integral seguem BLOCKED).",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-PROD-013-R2-REVIEW-20260914"
+      ],
+      "id": "IR-001",
+      "limitations": "Gate de entrada, nao de saida.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Alvo fixado: auth (functions 70.53/branches 84.31) e roles-rls (branches 73.28) >=85 com cenarios negativos reais; shards instrumentados; nenhum threshold alterado.",
+      "evidence_refs": [
+        "artifacts/state-of-art/PROD-013/attempt-20260915T014500Z-R2/logs/checker-current.json"
+      ],
+      "id": "IR-002",
+      "limitations": "Coleta pesada; usar shard unit critico.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Riscos mapeados: sem tocar fontes de produto fora de testes; release BLOCKED.",
+      "evidence_refs": [
+        ".agent/state.json"
+      ],
+      "id": "IR-003",
+      "limitations": "Nao aprova release.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Executar PROD-014-R2 (auth/roles-rls >=85).",
+  "record_id": "GATE-IR-PROD-014-20260914",
+  "residual_risk": "MEDIUM",
+  "revalidation_triggers": [
+    "Qualquer alteracao em fontes/testes coletados."
+  ],
+  "scope": "Entrada em PROD-014 (coverage auth/roles-rls): dependencias locais satisfeitas, 020/024 em waiver local",
+  "scope_ref": "PROD-014",
+  "supersedes": null,
+  "timestamp": "2026-09-15T02:39:00Z",
+  "version": 1,
+  "conditions": []
+}

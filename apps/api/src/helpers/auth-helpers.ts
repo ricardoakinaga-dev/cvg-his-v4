@@ -2,13 +2,14 @@
  * Auth helpers for API key and principal validation.
  * Extracted from server.ts to support route extraction.
  */
-import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { IncomingMessage } from 'node:http';
 import { AppError, AuthenticationError, ForbiddenError } from '@cvg-his-v2/shared-errors';
 import type {
   ApiKeyAuthenticationPrincipal,
   ApiKeySummary
 } from '@cvg-his-v2/shared-types';
 import type { ApiKeysService } from '@cvg-his-v2/module-api-keys';
+import { claimApiKeyRateLimitConsumption } from './api-key-rate-limit-guard.js';
 
 function readHeader(request: IncomingMessage, name: string): string | undefined {
   const value = request.headers[name.toLowerCase()] ?? request.headers[name];
@@ -43,27 +44,30 @@ export async function requireApiKey(
     throw new ForbiddenError(`API key lacks required permission: ${permissionCode}`);
   }
 
-  let rateLimit: Awaited<ReturnType<ApiKeysService['checkRateLimit']>>;
-  try {
-    rateLimit = await apiKeys.checkRateLimit(
-      apiKey.id,
-      apiKey.rateLimit,
-      apiKey.rateLimitWindow
-    );
-  } catch {
-    throw new AppError(
-      'RATE_LIMIT_UNAVAILABLE',
-      'Rate limit service unavailable',
-      503
-    );
-  }
-  if (!rateLimit.allowed) {
-    throw new AppError('RATE_LIMIT_EXCEEDED', 'API key rate limit exceeded', 429, {
-      resetAt: rateLimit.resetAt.toISOString()
-    });
+  if (claimApiKeyRateLimitConsumption(request)) {
+    let rateLimit: Awaited<ReturnType<ApiKeysService['checkRateLimit']>>;
+    try {
+      rateLimit = await apiKeys.checkRateLimit(
+        apiKey.id,
+        apiKey.rateLimit,
+        apiKey.rateLimitWindow
+      );
+    } catch {
+      throw new AppError(
+        'RATE_LIMIT_UNAVAILABLE',
+        'Rate limit service unavailable',
+        503
+      );
+    }
+    if (!rateLimit.allowed) {
+      throw new AppError('RATE_LIMIT_EXCEEDED', 'API key rate limit exceeded', 429, {
+        resetAt: rateLimit.resetAt.toISOString()
+      });
+    }
+
+    await apiKeys.updateLastUsed(apiKey.id);
   }
 
-  await apiKeys.updateLastUsed(apiKey.id);
   return { apiKey };
 }
 
@@ -71,6 +75,7 @@ export async function requireApiKey(
  * Sanitize an API key by removing the keyHash field.
  */
 export function sanitizeApiKey(apiKey: ApiKeySummary): Omit<ApiKeySummary, 'keyHash'> {
-  const { keyHash: _keyHash, ...safe } = apiKey;
+  const { keyHash, ...safe } = apiKey;
+  void keyHash;
   return safe;
 }

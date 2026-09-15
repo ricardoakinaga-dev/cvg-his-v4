@@ -45,6 +45,20 @@ export type SectorId = Brand<string, 'SectorId'>;
 export type BedId = Brand<string, 'BedId'>;
 export type WebhookId = Brand<string, 'WebhookId'>;
 export type WebhookDeliveryId = Brand<string, 'WebhookDeliveryId'>;
+
+export {
+  assertEventEnvelopeMatches,
+  buildEventEnvelopeMetadata,
+  CURRENT_EVENT_SCHEMA_VERSION,
+  mergeEventEnvelopeMetadata,
+  readEventEnvelopeMetadata
+} from './event-envelope.js';
+export type {
+  BuildEventEnvelopeInput,
+  EventActor,
+  EventActorType,
+  EventEnvelopeMetadata
+} from './event-envelope.js';
 export type ApiKeyId = Brand<string, 'ApiKeyId'>;
 
 export interface ApiKeySummary {

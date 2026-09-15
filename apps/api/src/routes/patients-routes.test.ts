@@ -297,6 +297,14 @@ test('handlePatientsRoutes GET /patients applies pageSize and legacy limit alias
     pageResponse.bodyJson<{ items: Array<{ id: string }> }>().items.map((item) => item.id),
     ['patient_mogeb6qv_5b0gq64z']
   );
+  const pagePayload = pageResponse.bodyJson<{
+    page: number;
+    pageSize: number;
+    total: number;
+  }>();
+  assert.equal(pagePayload.page, 2);
+  assert.equal(pagePayload.pageSize, 1);
+  assert.equal(pagePayload.total, 2);
 
   const legacyResponse = new MockResponse();
   await handlePatientsRoutes(

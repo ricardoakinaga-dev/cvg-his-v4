@@ -1,0 +1,72 @@
+{
+  "authority": {
+    "actor": "lead executor da reconciliacao PROD-001-R2 (nao autoridade de release)",
+    "decision": "Entrada na reconciliacao 14/09: HEAD = candidato auditado; narrativa rev27/FAIL21; 65 contratos rastreados; PROD-004 nao retomado automaticamente; nenhuma decisao de negocio, operacao ou certificacao tomada por este registro.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar ao concluir PROD-001-R2 e a cada mudanca de bytes, manifesto, shards ou documentos correntes.",
+    "required": false,
+    "scope": "Retomada pos-reauditoria checkpoint PROD-001-005 (CP-04): reconciliacao de controle com 47 PROD no modelo canonico; produto, UAT, operacao e autoridade permanecem fora deste gate",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "Baseline 14/09 disponivel e HEAD 324099e5 confere com candidato auditado; manifesto critico rev27/src 23e97d88 com FAIL21 (551 fontes, 2150 inputs) confirma narrativa atual; R1-13/09 preservado como historico.",
+      "evidence_refs": [
+        "docs/2026-09-14-relatorio-completo-estado-construcao.md",
+        "docs/engineering/critical-coverage-scope.json"
+      ],
+      "id": "IR-001",
+      "limitations": "Gate de entrada, nao de saida. HEAD confere com candidato, mas o SHA de HEAD sozinho nao identifica os bytes auditados (worktree com edicoes preexistentes preservadas, sem commit/revert); sentinela 24326c6a da auditoria nao foi recomputada em R2; manifesto rev27/551/2150 vive no worktree, nao no HEAD commitado.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "65 contratos PROD-001-065 rastreados no modelo canonico (001 IN_PROGRESS R2; 002-005 BLOCKED c/ R1; 006-065 TODO) + 5 macro; deps alinhadas ao backlog 14/09; PROD-004-R1 nao retomado automaticamente; acao unica PROD-001-R2 em estado, backlog, marcador e primeiro passo.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        ".agent/backlog.json"
+      ],
+      "id": "IR-002",
+      "limitations": "Gate de entrada, nao de saida. String de escopo governado preservada verbatim de R1 por identidade de cadeia de supersede; escopo de trabalho R2 (65 PROD) definido em authority.decision, IR-002 e next_action.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Riscos mapeados: worktree com edicoes preservadas (sem commit/revert); release BLOCKED; decisoes humanas externas pendentes.",
+      "evidence_refs": [
+        ".agent/state.json",
+        "docs/2026-09-14-plano-executivo-state-of-art-triplo-aaa.md"
+      ],
+      "id": "IR-003",
+      "limitations": "Nao aprova produto, operacao ou release. Thresholds 85/82 inalterados; checker critico segue FAIL21; nenhum verde fabricado.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json",
+    ".agent/state.json",
+    "docs/2026-09-14-relatorio-completo-estado-construcao.md",
+    "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Concluir PROD-001-R2 (65 PROD rastreados, narrativa rev27/21) e despachar PROD-002 (002-L); manter o release bloqueado.",
+  "record_id": "GATE-IR-PROD-001-20260914-R2",
+  "residual_risk": "MEDIUM",
+  "revalidation_triggers": [
+    "Conclusao de 001-R2.",
+    "Qualquer alteracao em bytes, manifesto ou documentos."
+  ],
+  "scope": "Retomada pos-reauditoria checkpoint PROD-001-005 (CP-04): reconciliacao de controle com 47 PROD no modelo canonico; produto, UAT, operacao e autoridade permanecem fora deste gate",
+  "scope_ref": "PROD-001",
+  "supersedes": "GATE-IR-PROD-001-20260913-R1",
+  "timestamp": "2026-09-14T00:00:00Z",
+  "version": 1,
+  "conditions": []
+}

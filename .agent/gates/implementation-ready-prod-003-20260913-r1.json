@@ -1,0 +1,75 @@
+{
+  "authority": {
+    "actor": "lead executor da retomada (nao autoridade de release)",
+    "decision": "Prontidao de entrada para PROD-003-R1: dependencias, plano, binarios conferidos e artefatos STALE preservados; nenhuma decisao de produto, operacao ou certificacao e tomada por este registro.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar ao iniciar 003-R1, a cada mudanca de fontes/inputs e ao promover shards; expira na conclusao de 003-R1.",
+    "required": false,
+    "scope": "Entrada em PROD-003-R1 (harness reproduzivel): dependencias satisfeitas e plano e allowlist fixados",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "Dependencias de PROD-003-R1 satisfeitas: PROD-001-R1 DONE e aceito; binarios privados PG 16.15/Redis 7.0.15 conferidos e reproduziveis por receita; candidatos rev12 preservados como STALE sem edicao.",
+      "evidence_refs": [
+        ".agent/backlog.json",
+        "artifacts/remediation/PROD-003/attempt-20260913T140500Z/TRANSCRIPT.md",
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "id": "IR-001",
+      "limitations": "Binarios em /tmp sao efemeros; a execucao reconfere versoes antes de usar.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Plano e allowlist de PROD-003-R1 fixados: scripts parametrizaveis, recursos exclusivos por tentativa, builds a partir de fontes congeladas com hashes, duas execucoes integradas e teardown restrito; sem fuser global ou recursos compartilhados.",
+      "evidence_refs": [
+        ".agent/plans/repository-state-of-art-remediation-execplan.md",
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "id": "IR-002",
+      "limitations": "Execucao ainda nao realizada; este gate libera a entrada, nao o aceite de 003-R1.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Riscos residuais e autoridades mapeados: credenciais/recursos compartilhados e destino duravel dependem de autoridade; UAT/providers fora do escopo; release permanece BLOCKED.",
+      "evidence_refs": [
+        ".agent/state.json",
+        "docs/2026-09-13-reauditoria-checkpoint-prod-001-005.md"
+      ],
+      "id": "IR-003",
+      "limitations": "Gate de entrada, nao de saida; nao aprova harness, produto ou release.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json",
+    ".agent/state.json",
+    ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "artifacts/remediation/PROD-003/attempt-20260913T140500Z/TRANSCRIPT.md",
+    "docs/2026-09-13-backlog-prontidao-producao.md",
+    "docs/2026-09-13-reauditoria-checkpoint-prod-001-005.md"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Executar PROD-003-R1 em recursos exclusivos; na sequencia 004-R1/005-R1.",
+  "record_id": "GATE-IR-PROD-003-20260913-R1",
+  "residual_risk": "MEDIUM",
+  "revalidation_triggers": [
+    "Inicio e conclusao de 003-R1.",
+    "Qualquer alteracao em fontes, inputs, manifesto, shards ou documentos correntes."
+  ],
+  "scope": "Entrada em PROD-003-R1 (harness reproduzivel): dependencias satisfeitas e plano e allowlist fixados",
+  "scope_ref": "PROD-003",
+  "supersedes": null,
+  "timestamp": "2026-09-13T15:50:45Z",
+  "version": 1,
+  "conditions": []
+}

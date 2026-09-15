@@ -1,0 +1,74 @@
+{
+  "record_id": "GATE-IR-PROD-027-20260915",
+  "authority": {
+    "actor": "lead executor do programa state-of-art (nao autoridade de Produto, QA ou responsavel de dominio)",
+    "decision": "Entrada somente na preparação contratual local da matriz de 11 áreas e do inventário de 45 módulos; não autoriza homologação funcional, fixtures comportamentais, UAT ou aceitação de paridade.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar ao iniciar/concluir PROD-027 e antes de qualquer jornada, fixture comportamental, mudança de escopo ou promoção.",
+    "required": false,
+    "scope": "Entrada em PROD-027 para CONTRACT_ONLY_PREPARATION (dependência PROD-003 preservada)",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "PROD-001 está DONE; PROD-003 continua BLOCKED e a preparação não executará o harness nem alegará aceite funcional.",
+      "evidence_refs": [
+        ".agent/backlog.json",
+        ".agent/state.json"
+      ],
+      "id": "IR-001",
+      "limitations": "A dependência PROD-003 não é dispensada; este gate não libera o cartão integral.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Escopo limitado a taxonomia, mapeamento, critérios WHAT/HOW, invariantes, riscos, cenários e validador documental; nenhum comportamento, dado, fixture ou resultado Vetus será fabricado.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        "docs/2026-09-14-relatorio-completo-estado-construcao.md",
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "id": "IR-002",
+      "limitations": "Aceite exige Produto/QA e responsáveis de domínio, além de provas posteriores nas fronteiras públicas.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Replanejamento explícito permite somente CONTRACT_ONLY_PREPARATION enquanto preserva a dependência integral e o status BLOCKED; não há bypass de PROD-003.",
+      "evidence_refs": [
+        ".agent/backlog.json",
+        ".agent/plans/repository-state-of-art-remediation-execplan.md"
+      ],
+      "id": "IR-003",
+      "limitations": "Jornadas, fixtures reais, concorrência, persistência, restart, reconciliação e equivalência Vetus permanecem sem prova.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json",
+    "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+    "docs/2026-09-14-relatorio-completo-estado-construcao.md",
+    "docs/2026-09-13-backlog-prontidao-producao.md",
+    ".agent/plans/repository-state-of-art-remediation-execplan.md"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Executar PROD-027-R1: preparar contrato documental da matriz de 11 áreas e inventário dos 45 módulos sem alegar paridade.",
+  "revalidation_triggers": [
+    "Início e conclusão de PROD-027-R1.",
+    "Qualquer alteração em jornadas, fixtures, escopo de áreas, mapeamento de módulos ou aceitação funcional."
+  ],
+  "scope": "Entrada em PROD-027 para CONTRACT_ONLY_PREPARATION (dependência PROD-003 preservada)",
+  "scope_ref": "PROD-027",
+  "supersedes": null,
+  "timestamp": "2026-09-15T15:30:00Z",
+  "version": 1,
+  "conditions": [],
+  "residual_risk": "MEDIUM"
+}

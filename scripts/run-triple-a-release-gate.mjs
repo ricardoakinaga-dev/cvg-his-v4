@@ -7,6 +7,220 @@ const DEFAULT_OUTPUT_DIR = 'artifacts/release';
 const DEFAULT_FINAL_ARTIFACT_DIR = 'artifacts/triple-a';
 const DEFAULT_EVIDENCE_MAX_AGE_HOURS = 7 * 24;
 const EVIDENCE_CLOCK_SKEW_MS = 5 * 60 * 1000;
+const OPERATIONAL_EVIDENCE_TYPE = 'cvg-his-operational-evidence';
+const OPERATIONAL_EVIDENCE_SCHEMA_VERSION = 3;
+const OPERATIONAL_EVIDENCE_VERIFIER_METHOD = 'github-artifact-attestation';
+const OPERATIONAL_EVIDENCE_VERIFIER_ID = 'gh-attestation-verify';
+const ATTESTATION_PREDICATE_TYPE = 'https://slsa.dev/provenance/v1';
+
+/**
+ * Root of trust for operational evidence. Only workflows listed here may attest
+ * an operational envelope. This list is owned by this code and is never read
+ * from the candidate envelope or from candidate-provided configuration;
+ * extending it is an authorized CI-CONFIG decision, not a runtime option.
+ */
+export const TRUSTED_OPERATIONAL_SIGNER_WORKFLOWS = [
+  '.github/workflows/release-artifacts.yml',
+];
+
+/**
+ * Gate-owned sufficiency policy for operational evidence, one entry per
+ * criterion. This is the single source of truth for the contract version, the
+ * approved target set, the required measurements/units and the comparison
+ * rules. It is code, never read from an envelope or from candidate-provided
+ * configuration.
+ *
+ * `approval.status` starts as PENDING_AUTHORITY: the intake schema below is
+ * frozen so MA-23/25/28 can produce evidence, but the thresholds (`min`/`max`)
+ * and the approved targets are operational decisions that still need an
+ * authorized sign-off. While a criterion is PENDING_AUTHORITY the gate can
+ * validate integrity, authenticity and structure, but it must not emit PASS
+ * for that criterion. When authority approves the policy, the same fields are
+ * filled in the same table.
+ */
+export const OPERATIONAL_EVIDENCE_POLICY = {
+  'OBSERVABILITY-EVIDENCE': {
+    approval: { status: 'PENDING_AUTHORITY', decided_by: null, decided_at: null, reference: null },
+    expected_targets: null,
+    dimensions: {
+      slo: { measurements: { slo_compliance_ratio: { unit: 'ratio', min: null } } },
+      alerts: { measurements: { alert_delivery_seconds: { unit: 'seconds', max: null } } },
+      tracing: { measurements: { trace_coverage_ratio: { unit: 'ratio', min: null } } },
+      retention: { measurements: { retention_days: { unit: 'days', min: null } } },
+      oncall: { measurements: { oncall_ack_seconds: { unit: 'seconds', max: null } } },
+    },
+  },
+  PERFORMANCE: {
+    approval: { status: 'PENDING_AUTHORITY', decided_by: null, decided_at: null, reference: null },
+    expected_targets: null,
+    dimensions: {
+      targets: { measurements: { p95_latency_ms: { unit: 'ms', max: null } } },
+      percentiles: { measurements: { p99_latency_ms: { unit: 'ms', max: null } } },
+      saturation: { measurements: { cpu_saturation_ratio: { unit: 'ratio', max: null } } },
+    },
+  },
+  SOAK: {
+    approval: { status: 'PENDING_AUTHORITY', decided_by: null, decided_at: null, reference: null },
+    expected_targets: null,
+    dimensions: {
+      duration: { measurements: { duration_hours: { unit: 'hours', min: null } } },
+      stability: { measurements: { error_budget_burn_ratio: { unit: 'ratio', max: null } } },
+      thresholds: { measurements: { p95_latency_ms: { unit: 'ms', max: null } } },
+    },
+  },
+  ROLLBACK: {
+    approval: { status: 'PENDING_AUTHORITY', decided_by: null, decided_at: null, reference: null },
+    expected_targets: null,
+    dimensions: {
+      application_rollback: { measurements: { rollback_duration_seconds: { unit: 'seconds', max: null } } },
+      data_consistency: { measurements: { consistency_check_failures: { unit: 'count', max: null } } },
+    },
+  },
+};
+
+/**
+ * Criterion-specific result dimensions, derived from the policy so the two
+ * never diverge. Names such as `duration`, `thresholds` or `data_consistency`
+ * alone do not prove the property was measured; the policy also fixes which
+ * measurements, units and comparison rules each dimension must satisfy.
+ */
+export const OPERATIONAL_EVIDENCE_REQUIREMENTS = Object.fromEntries(
+  Object.entries(OPERATIONAL_EVIDENCE_POLICY).map(([id, policy]) => [
+    id,
+    { dimensions: Object.keys(policy.dimensions) },
+  ])
+);
+
+const FAMILY_EVIDENCE_TYPE = 'cvg-his-family-evidence';
+const FAMILY_EVIDENCE_SCHEMA_VERSION = 1;
+const FAMILY_EVIDENCE_VERIFIER_METHOD = OPERATIONAL_EVIDENCE_VERIFIER_METHOD;
+const FAMILY_EVIDENCE_VERIFIER_ID = OPERATIONAL_EVIDENCE_VERIFIER_ID;
+
+/**
+ * Family contracts for criteria that previously accepted the generic
+ * external-envelope path. The dimensions and measurement names are owned by
+ * this gate; producer-supplied limits, targets and status fields never become
+ * policy. Numeric bounds and approved targets remain PENDING_AUTHORITY until
+ * the responsible owners decide them, just like the operational policy above.
+ *
+ * Multiple criteria can share a family because the family verifier checks the
+ * criterion_id as well as the exact contract dimensions. A test envelope
+ * therefore cannot be replayed as RLS, deploy or authority evidence.
+ */
+const familyProfile = (family, issuer, dimensions) => ({
+  family,
+  issuer,
+  producer_kind: issuer,
+  dimensions,
+});
+
+/**
+ * Criterion-specific profiles prevent a valid envelope for one test/deploy
+ * claim from being replayed under another claim in the same family. The
+ * `family` remains the owner of the producer/trust rules; dimensions and
+ * measurement names are intentionally owned by the criterion contract.
+ */
+const FAMILY_EVIDENCE_PROFILES = {
+  'CRITICAL-TESTS': familyProfile('tests', 'github-actions-workflow', {
+    execution: { measurements: { test_pass_ratio: { unit: 'ratio', min: null } } },
+    scope: { measurements: { required_case_ratio: { unit: 'ratio', min: null } } },
+    failures: { measurements: { failed_case_count: { unit: 'count', max: null } } },
+  }),
+  E2E: familyProfile('tests', 'github-actions-workflow', {
+    journeys: { measurements: { journey_pass_ratio: { unit: 'ratio', min: null } } },
+    accessibility: { measurements: { required_accessibility_case_ratio: { unit: 'ratio', min: null } } },
+    visual: { measurements: { visual_regression_failure_count: { unit: 'count', max: null } } },
+  }),
+  'WORKFLOW-POSTGRES': familyProfile('tests', 'github-actions-workflow', {
+    database: { measurements: { integration_pass_ratio: { unit: 'ratio', min: null } } },
+    transactions: { measurements: { rollback_failure_count: { unit: 'count', max: null } } },
+    persistence: { measurements: { restart_failure_count: { unit: 'count', max: null } } },
+  }),
+  'WORKER-CRASH': familyProfile('tests', 'github-actions-workflow', {
+    recovery: { measurements: { takeover_success_ratio: { unit: 'ratio', min: null } } },
+    fencing: { measurements: { fencing_violation_count: { unit: 'count', max: null } } },
+    delivery: { measurements: { unresolved_dlq_count: { unit: 'count', max: null } } },
+  }),
+  'CLINICAL-E2E': familyProfile('tests', 'github-actions-workflow', {
+    safety: { measurements: { invariant_pass_ratio: { unit: 'ratio', min: null } } },
+    negative: { measurements: { critical_violation_count: { unit: 'count', max: null } } },
+    workflow: { measurements: { clinical_task_success_ratio: { unit: 'ratio', min: null } } },
+  }),
+  'AUDIT-INTEGRITY': familyProfile('tests', 'github-actions-workflow', {
+    chain: { measurements: { append_only_pass_ratio: { unit: 'ratio', min: null } } },
+    tamper: { measurements: { tamper_detection_failure_count: { unit: 'count', max: null } } },
+    reconciliation: { measurements: { audit_gap_count: { unit: 'count', max: null } } },
+  }),
+  'RLS-RUNTIME': familyProfile('rls', 'github-actions-workflow', {
+    isolation: { measurements: { cross_tenant_leak_count: { unit: 'count', max: null } } },
+    authorization: { measurements: { unauthorized_access_count: { unit: 'count', max: null } } },
+    force_rls: { measurements: { force_rls_failure_count: { unit: 'count', max: null } } },
+  }),
+  'BACKUP-DRILL': familyProfile('backup', 'github-actions-workflow', {
+    restore: { measurements: { restore_success_ratio: { unit: 'ratio', min: null } } },
+    integrity: { measurements: { integrity_failure_count: { unit: 'count', max: null } } },
+    objectives: { measurements: { rto_seconds: { unit: 'seconds', max: null } } },
+  }),
+  'HOSPITAL-UAT': familyProfile('uat', 'human-uat', {
+    tasks: { measurements: { task_success_ratio: { unit: 'ratio', min: null } } },
+    safety: { measurements: { critical_blocker_count: { unit: 'count', max: null } } },
+    profiles: { measurements: { accepted_profile_ratio: { unit: 'ratio', min: null } } },
+  }),
+  'DEPLOY-TARGET': familyProfile('deploy', 'github-actions-workflow', {
+    readiness: { measurements: { readiness_success_ratio: { unit: 'ratio', min: null } } },
+    identity: { measurements: { digest_mismatch_count: { unit: 'count', max: null } } },
+    recovery: { measurements: { rollback_success_ratio: { unit: 'ratio', min: null } } },
+  }),
+  'HELM-TARGET': familyProfile('deploy', 'github-actions-workflow', {
+    render: { measurements: { template_success_ratio: { unit: 'ratio', min: null } } },
+    identity: { measurements: { digest_mismatch_count: { unit: 'count', max: null } } },
+    target: { measurements: { target_binding_failure_count: { unit: 'count', max: null } } },
+  }),
+  'BRANCH-PROTECTION': familyProfile('protection', 'github-api', {
+    enforcement: { measurements: { required_checks_ratio: { unit: 'ratio', min: null } } },
+    bypass: { measurements: { unauthorized_bypass_count: { unit: 'count', max: null } } },
+    binding: { measurements: { head_sha_mismatch_count: { unit: 'count', max: null } } },
+  }),
+  'RELEASE-AUTHORITY': familyProfile('authority', 'human-authority', {
+    decision: { measurements: { approval_ratio: { unit: 'ratio', min: null } } },
+    scope: { measurements: { candidate_binding_ratio: { unit: 'ratio', min: null } } },
+    exceptions: { measurements: { unresolved_exception_count: { unit: 'count', max: null } } },
+  }),
+};
+
+/**
+ * IDs are deliberately enumerated instead of treating every unknown
+ * criterion as a family. This makes a new release criterion fail closed until
+ * its verifier and evidence contract are explicitly designed.
+ */
+export const FAMILY_EVIDENCE_CONTRACTS = Object.fromEntries(
+  Object.entries(FAMILY_EVIDENCE_PROFILES).map(([id, profile]) => [id, {
+    family: profile.family,
+    profile,
+  }])
+);
+
+export const FAMILY_EVIDENCE_REQUIREMENTS = Object.fromEntries(
+  Object.entries(FAMILY_EVIDENCE_CONTRACTS).map(([id, contract]) => [
+    id,
+    {
+      family: contract.family,
+      dimensions: Object.keys(contract.profile.dimensions),
+    },
+  ])
+);
+
+export const FAMILY_EVIDENCE_POLICY = Object.fromEntries(
+  Object.entries(FAMILY_EVIDENCE_CONTRACTS).map(([id, contract]) => [
+    id,
+    {
+      approval: { status: 'PENDING_AUTHORITY', decided_by: null, decided_at: null, reference: null },
+      expected_targets: null,
+      dimensions: structuredClone(contract.profile.dimensions),
+    },
+  ])
+);
+
 const REQUIRED_POLICY_FILES = [
   'docs/engineering/GREEN_MAIN_POLICY.md',
   'docs/clinical/CLINICAL_CRITICALITY_MATRIX.md',
@@ -39,6 +253,11 @@ const EXECUTABLE_CHECKS = [
   ['OpenAPI', 'pnpm', ['validate:openapi']],
   ['RLS static coverage', 'pnpm', ['validate:rls']],
   ['Deploy surface', 'pnpm', ['validate:deploy-surface']],
+  ['Environment/runtime matrix', 'pnpm', ['validate:environment-runtime']],
+  ['Identity contract PROD-019', 'pnpm', ['validate:identity-contract']],
+  ['Loyalty expiration contract PROD-052', 'pnpm', ['validate:loyalty-expiration-contract']],
+  ['Behavioral parity contract PROD-027', 'pnpm', ['validate:behavioral-parity-contract']],
+  ['Registry contract PROD-063', 'pnpm', ['validate:registry-contract']],
   ['Helm', 'pnpm', ['validate:helm']],
   ['Supply-chain pins', 'pnpm', ['validate:supply-chain']],
   ['Dependency policy', 'pnpm', ['validate:dependencies']],
@@ -68,17 +287,12 @@ function isIsoTimestamp(value) {
     && Number.isFinite(Date.parse(value));
 }
 
-function configuredEvidenceMaxAgeHours() {
-  const configured = Number(process.env.TRIPLE_A_EVIDENCE_MAX_AGE_HOURS);
-  return Number.isFinite(configured) && configured > 0
-    ? configured
-    : DEFAULT_EVIDENCE_MAX_AGE_HOURS;
-}
-
 export function validateEvidenceFreshness({
   observedAt,
   now = new Date(),
-  maxAgeHours = configuredEvidenceMaxAgeHours(),
+  // Runtime environment cannot widen the gate's freshness window. Tests may
+  // pass an explicit bound, but production callers use this gate-owned value.
+  maxAgeHours = DEFAULT_EVIDENCE_MAX_AGE_HOURS,
   clockSkewMs = EVIDENCE_CLOCK_SKEW_MS,
 }) {
   if (!isIsoTimestamp(observedAt)) {
@@ -184,11 +398,12 @@ export function validateExternalEvidenceEnvelope({
   artifact,
   commitSha,
   expectedEvidenceType = 'cvg-his-external-evidence',
+  expectedSchemaVersion = 1,
 }) {
   const producer = artifact?.producer;
   const verification = artifact?.verification;
   const artifactRefs = artifact?.artifacts;
-  const validShape = artifact?.schema_version === 1
+  const validShape = artifact?.schema_version === expectedSchemaVersion
     && artifact?.evidence_type === expectedEvidenceType
     && artifact?.commit_sha === commitSha
     && artifact?.status === 'PASS'
@@ -227,7 +442,28 @@ export function validateExternalEvidenceEnvelope({
       };
     }
     const artifactPath = resolve(rootDir, reference.path);
-    if (!existsSync(artifactPath) || sha256(artifactPath) !== reference.sha256.slice('sha256:'.length)) {
+    let bytes;
+    try {
+      // Read each referenced artifact exactly once: the digest below is
+      // computed over the same bytes this call consumed, so a later rewrite of
+      // the path cannot change what was validated here.
+      bytes = readFileSync(artifactPath);
+    } catch {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: `Artefato referenciado ausente ou ilegível: ${reference.path}.`
+      };
+    }
+    if (bytes.length === 0) {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: `Artefato referenciado está vazio: ${reference.path}.`
+      };
+    }
+    const digest = createHash('sha256').update(bytes).digest('hex');
+    if (digest !== reference.sha256.slice('sha256:'.length).toLowerCase()) {
       return {
         status: 'FAIL',
         path: value,
@@ -391,9 +627,56 @@ function readReleaseManifest(outputDir) {
   }
 }
 
-function isAttestationJson(value) {
-  return (Array.isArray(value) && value.length > 0)
-    || (value !== null && typeof value === 'object' && Object.keys(value).length > 0);
+/**
+ * Parse the documented `gh attestation verify --format json` output.
+ *
+ * Contract (GitHub CLI manual, `gh attestation verify`): on success stdout is
+ * a JSON array with one entry per verified attestation; each entry has
+ * `attestation` and `verificationResult`, and `verificationResult.statement`
+ * carries the `subject` array. The subject digest identifies what gh verified,
+ * so the caller compares it with the exact bytes it consumed. Empty, malformed,
+ * missing-subject or ambiguous output is rejected instead of being accepted as
+ * "some non-empty JSON".
+ */
+export function parseAttestationVerificationOutput(stdout) {
+  let parsed;
+  try {
+    parsed = JSON.parse(stdout ?? '');
+  } catch {
+    return { valid: false, reason: 'gh attestation verify retornou saída que não é JSON.' };
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    return { valid: false, reason: 'gh attestation verify retornou array JSON vazio.' };
+  }
+  const digests = new Set();
+  for (const entry of parsed) {
+    const subjects = entry?.verificationResult?.statement?.subject;
+    if (!Array.isArray(subjects) || subjects.length === 0) {
+      return { valid: false, reason: 'gh attestation verify não declarou subjects verificados.' };
+    }
+    for (const subject of subjects) {
+      const digest = subject?.digest?.sha256;
+      if (typeof digest !== 'string' || !/^[0-9a-f]{64}$/i.test(digest)) {
+        return {
+          valid: false,
+          reason: 'gh attestation verify declarou subject sem digest sha256 válido.',
+        };
+      }
+      digests.add(digest.toLowerCase());
+    }
+  }
+  if (digests.size !== 1) {
+    return {
+      valid: false,
+      reason: `gh attestation verify retornou subjects ambíguos (${digests.size} digests distintos).`,
+    };
+  }
+  return {
+    valid: true,
+    subject_sha256: [...digests][0],
+    verified_attestations: parsed.length,
+    reason: 'Saída do gh attestation verify válida, com um único digest de subject.',
+  };
 }
 
 /**
@@ -458,6 +741,8 @@ export function verifyPublishedImageAttestations({ rootDir, outputDir, commitSha
       'main',
       '--source-digest',
       commitSha,
+      '--predicate-type',
+      ATTESTATION_PREDICATE_TYPE,
       '--format',
       'json'
     ];
@@ -476,14 +761,19 @@ export function verifyPublishedImageAttestations({ rootDir, outputDir, commitSha
         reason: `gh attestation verify falhou para ${component}: ${compactOutput(`${result.stdout ?? ''}\n${result.stderr ?? ''}\n${result.error?.message ?? ''}`)}`
       };
     }
-    try {
-      const verification = JSON.parse(result.stdout ?? '');
-      if (!isAttestationJson(verification)) throw new Error('resposta JSON vazia');
-    } catch (error) {
+    const verification = parseAttestationVerificationOutput(result.stdout);
+    if (!verification.valid) {
       return {
         status: 'FAIL',
         path: `oci://${image.immutable_reference}`,
-        reason: `gh attestation verify retornou JSON inválido para ${component}: ${error.message}`
+        reason: `gh attestation verify retornou JSON inválido para ${component}: ${verification.reason}`
+      };
+    }
+    if (verification.subject_sha256 !== image.digest.slice('sha256:'.length).toLowerCase()) {
+      return {
+        status: 'FAIL',
+        path: `oci://${image.immutable_reference}`,
+        reason: `gh attestation verify autenticou um subject diferente do digest do manifest para ${component}.`
       };
     }
   }
@@ -540,13 +830,1029 @@ function validateImageAttestationEnvelope({ rootDir, outputDir, value, artifact,
   };
 }
 
-function envEvidence(rootDir, name, commitSha, outputDir) {
+/**
+ * Re-runs the trust-bearing attestation verifier for an operational envelope.
+ * `gh attestation verify` checks the GitHub OIDC-backed provenance against the
+ * repository, the code-pinned signer workflow, `main` and the candidate SHA.
+ * The trusted workflow list is never taken from the envelope.
+ *
+ * `envelopeSha256` is the digest of the exact bytes the gate parsed. The
+ * documented JSON output of the verifier is parsed and its subject digest must
+ * equal that value, so a file swapped between read and verification cannot be
+ * consumed under a different attestation. When the verifier cannot run the
+ * result is PARTIAL (blocking), never PASS.
+ */
+export function verifyOperationalEvidenceAttestation({
+  rootDir,
+  envelopePath,
+  envelopeSha256,
+  evidenceId,
+  commitSha,
+  declaredWorkflow,
+}) {
+  const repository = process.env.GITHUB_REPOSITORY;
+  const ghToken = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
+  if (!/^[0-9a-f]{64}$/i.test(envelopeSha256 ?? '')) {
+    return {
+      status: 'FAIL',
+      reason: `Verificação de ${evidenceId} sem digest dos bytes consumidos; vínculo byte a byte ausente.`,
+    };
+  }
+  if (!repository || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || !ghToken) {
+    return {
+      status: 'PARTIAL',
+      reason: `GITHUB_REPOSITORY e GH_TOKEN são obrigatórios para verificar a attestation operacional de ${evidenceId}; PASS permanece bloqueado sem verificador confiável.`,
+    };
+  }
+  if (!TRUSTED_OPERATIONAL_SIGNER_WORKFLOWS.includes(declaredWorkflow)) {
+    return {
+      status: 'FAIL',
+      reason: `Workflow ${declaredWorkflow ?? 'ausente'} não pertence à raiz de confiança do projeto.`,
+    };
+  }
+  const absolute = resolve(rootDir, envelopePath);
+  if (!existsSync(absolute)) {
+    return { status: 'FAIL', reason: `Envelope operacional ausente para verificação: ${envelopePath}.` };
+  }
+
+  const signerWorkflow = `${repository}/${declaredWorkflow}`;
+  const result = spawnSync('gh', [
+    'attestation',
+    'verify',
+    envelopePath,
+    '--repo',
+    repository,
+    '--signer-workflow',
+    signerWorkflow,
+    '--source-ref',
+    'main',
+    '--source-digest',
+    commitSha,
+    '--predicate-type',
+    ATTESTATION_PREDICATE_TYPE,
+    '--format',
+    'json',
+  ], {
+    cwd: rootDir,
+    encoding: 'utf8',
+    shell: false,
+    env: { ...process.env, GH_TOKEN: ghToken },
+    maxBuffer: 16 * 1024 * 1024,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  if (result.error?.code === 'ENOENT') {
+    return {
+      status: 'PARTIAL',
+      reason: `Verificador gh indisponível neste ambiente; a attestation de ${evidenceId} não pôde ser confirmada e PASS permanece bloqueado.`,
+    };
+  }
+  if (result.status !== 0) {
+    return {
+      status: 'FAIL',
+      reason: `gh attestation verify falhou para ${evidenceId}: ${compactOutput(`${result.stdout ?? ''}\n${result.stderr ?? ''}\n${result.error?.message ?? ''}`)}`
+    };
+  }
+  const verification = parseAttestationVerificationOutput(result.stdout);
+  if (!verification.valid) {
+    return {
+      status: 'FAIL',
+      reason: `gh attestation verify retornou JSON inválido para ${evidenceId}: ${verification.reason}`
+    };
+  }
+  if (verification.subject_sha256 !== envelopeSha256.toLowerCase()) {
+    return {
+      status: 'FAIL',
+      reason: `gh attestation verify autenticou um subject diferente dos bytes consumidos de ${evidenceId}.`
+    };
+  }
+  return {
+    status: 'PASS',
+    workflow: declaredWorkflow,
+    provenance: OPERATIONAL_EVIDENCE_VERIFIER_ID,
+    subject_sha256: verification.subject_sha256,
+    reason: `Attestation confirmada por gh para ${evidenceId} no workflow ${declaredWorkflow}, branch main, SHA do candidato e digest dos bytes consumidos.`,
+  };
+}
+
+/**
+ * Bound semantics for an approved policy rule: `null` and `undefined` mean the
+ * side is absent; any present value must be a finite number (no strings,
+ * booleans, objects, NaN or ±Infinity); at least one side must be present; and
+ * an interval with both sides must not be inverted. Boundaries stay inclusive
+ * in the comparison that follows.
+ */
+function approvedPolicyBoundState(value) {
+  if (value === null || value === undefined) return { present: false, valid: true, value: null };
+  if (typeof value === 'number' && Number.isFinite(value)) return { present: true, valid: true, value };
+  return { present: true, valid: false, value: null };
+}
+
+function validateApprovedOperationalPolicy({ policy, evidenceId }) {
+  const dimensions = policy?.dimensions;
+  if (!dimensions || typeof dimensions !== 'object') {
+    return { valid: false, reason: `Política aprovada de ${evidenceId} não define dimensões; configuração inválida.` };
+  }
+  for (const [dimensionId, dimension] of Object.entries(dimensions)) {
+    const measurements = dimension?.measurements;
+    if (!measurements || typeof measurements !== 'object' || Object.keys(measurements).length === 0) {
+      return { valid: false, reason: `Política aprovada de ${evidenceId} sem medições para ${dimensionId}; configuração inválida.` };
+    }
+    for (const [name, spec] of Object.entries(measurements)) {
+      const minBound = approvedPolicyBoundState(spec?.min);
+      const maxBound = approvedPolicyBoundState(spec?.max);
+      if (!minBound.valid || !maxBound.valid) {
+        return {
+          valid: false,
+          reason: `Política aprovada de ${evidenceId} com limite não numérico ou não finito em ${dimensionId}.${name}; null/undefined significam lado ausente.`,
+        };
+      }
+      if (!minBound.present && !maxBound.present) {
+        return {
+          valid: false,
+          reason: `Política aprovada de ${evidenceId} sem limite numérico finito em ${dimensionId}.${name}; ao menos um lado (min/max) é obrigatório.`,
+        };
+      }
+      if (minBound.present && maxBound.present && minBound.value > maxBound.value) {
+        return {
+          valid: false,
+          reason: `Política aprovada de ${evidenceId} com intervalo invertido em ${dimensionId}.${name} (min ${minBound.value} > max ${maxBound.value}).`,
+        };
+      }
+    }
+  }
+  return { valid: true };
+}
+
+/**
+ * Operational envelope contract (v3).
+ *
+ * Layers kept separate and reported individually in `layers`:
+ *  1. integrity    -> bytes, artifacts, digests, candidate SHA and freshness;
+ *  2. authenticity -> externally re-run gh attestation verifier, byte-bound by
+ *                     `envelopeSha256` and the subject digest of its output;
+ *  3. sufficiency  -> measurements, units, approved target and comparison
+ *                     rules owned by OPERATIONAL_EVIDENCE_POLICY;
+ *  4. human acceptance -> release authority, outside this function.
+ *
+ * A signature only authenticates a declaration. PASS also requires measurements
+ * that satisfy a gate-owned policy; while that policy is PENDING_AUTHORITY the
+ * best result is PARTIAL.
+ */
+export function validateOperationalEvidenceEnvelope({
+  rootDir,
+  value,
+  artifact,
+  commitSha,
+  evidenceId,
+  envelopeSha256,
+  verifyOperationalEvidence = verifyOperationalEvidenceAttestation,
+  operationalPolicy = OPERATIONAL_EVIDENCE_POLICY,
+}) {
+  const layers = { integrity: 'PASS', authenticity: 'NOT_EVALUATED', sufficiency: 'NOT_EVALUATED' };
+  const requirements = OPERATIONAL_EVIDENCE_REQUIREMENTS[evidenceId];
+  const policy = operationalPolicy?.[evidenceId];
+  if (!requirements || !policy) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Critério operacional sem contrato de confiança definido: ${evidenceId}.`,
+      layers: { ...layers, integrity: 'FAIL' },
+    };
+  }
+  if (typeof envelopeSha256 !== 'string' || !/^[0-9a-f]{64}$/i.test(envelopeSha256)) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Envelope operacional de ${evidenceId} sem digest dos bytes consumidos; vínculo byte a byte obrigatório.`,
+      layers: { ...layers, integrity: 'FAIL' },
+    };
+  }
+  const base = validateExternalEvidenceEnvelope({
+    rootDir,
+    value,
+    artifact,
+    commitSha,
+    expectedEvidenceType: OPERATIONAL_EVIDENCE_TYPE,
+    expectedSchemaVersion: OPERATIONAL_EVIDENCE_SCHEMA_VERSION,
+  });
+  if (base.status !== 'PASS') {
+    return { ...base, layers: { ...layers, integrity: 'FAIL' } };
+  }
+
+  const verification = artifact?.verification;
+  if (verification?.method !== OPERATIONAL_EVIDENCE_VERIFIER_METHOD
+    || verification?.verifier_id !== OPERATIONAL_EVIDENCE_VERIFIER_ID) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: 'Envelope operacional não declara o verificador de attestation obrigatório (github-artifact-attestation/gh-attestation-verify).',
+      layers: { ...layers, authenticity: 'FAIL' },
+    };
+  }
+  const declaredWorkflow = typeof artifact?.producer?.workflow === 'string'
+    ? artifact.producer.workflow
+    : null;
+  if (!declaredWorkflow || !TRUSTED_OPERATIONAL_SIGNER_WORKFLOWS.includes(declaredWorkflow)) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Workflow produtor fora da raiz de confiança do projeto: ${declaredWorkflow ?? 'ausente'}.`,
+      layers: { ...layers, authenticity: 'FAIL' },
+    };
+  }
+
+  const observedMs = Date.parse(artifact.observed_at);
+  const verifiedFreshness = validateEvidenceFreshness({ observedAt: verification.verified_at });
+  if (!verifiedFreshness.valid) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Envelope operacional com verified_at inválido ou no futuro: ${verifiedFreshness.reason}`,
+      layers: { ...layers, integrity: 'FAIL' },
+    };
+  }
+  if (Date.parse(verification.verified_at) < observedMs - EVIDENCE_CLOCK_SKEW_MS) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: 'Envelope operacional com verified_at anterior à observação declarada.',
+      layers: { ...layers, integrity: 'FAIL' },
+    };
+  }
+
+  const target = artifact?.target;
+  if (!target
+    || typeof target.environment !== 'string' || target.environment.length === 0
+    || typeof target.reference !== 'string' || target.reference.length === 0) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: 'Envelope operacional sem vínculo de alvo (target.environment e target.reference obrigatórios).',
+      layers: { ...layers, sufficiency: 'FAIL' },
+    };
+  }
+
+  const results = artifact?.results;
+  if (!results || results.outcome !== 'PASS' || !Array.isArray(results.dimensions)) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: 'Envelope operacional sem results.outcome=PASS e results.dimensions.',
+      layers: { ...layers, sufficiency: 'FAIL' },
+    };
+  }
+  const declaredArtifacts = new Set((artifact.artifacts ?? []).map((reference) => reference?.path));
+  const dimensions = results.dimensions;
+  // Duplicate dimension IDs are rejected before any map is built: otherwise a
+  // second, favorable entry would overwrite a failed measurement. No
+  // first-wins, last-wins or silent deduplication is allowed.
+  const seenDimensionIds = new Set();
+  const duplicateDimensionIds = new Set();
+  for (const dimension of dimensions) {
+    const id = dimension?.id;
+    if (seenDimensionIds.has(id)) duplicateDimensionIds.add(id);
+    else seenDimensionIds.add(id);
+  }
+  if (duplicateDimensionIds.size > 0) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Envelope operacional de ${evidenceId} contém dimensões duplicadas: ${[...duplicateDimensionIds].map((id) => String(id)).join(', ')}.`,
+      layers: { ...layers, sufficiency: 'FAIL' },
+    };
+  }
+  const dimensionIds = new Set(dimensions.map((dimension) => dimension?.id));
+  const missingDimensions = requirements.dimensions.filter((id) => !dimensionIds.has(id));
+  if (missingDimensions.length > 0) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Envelope operacional incompleto para ${evidenceId}: dimensões ausentes ${missingDimensions.join(', ')}.`,
+      layers: { ...layers, sufficiency: 'FAIL' },
+    };
+  }
+  const measurementsById = new Map();
+  for (const dimension of dimensions) {
+    const dimensionPolicy = policy.dimensions[dimension?.id];
+    if (!dimensionPolicy) {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: `Dimensão não prevista no critério ${evidenceId}: ${dimension?.id}.`,
+        layers: { ...layers, sufficiency: 'FAIL' },
+      };
+    }
+    if (dimension?.status !== 'PASS') {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: `Dimensão ${dimension?.id} não está PASS em ${evidenceId}.`,
+        layers: { ...layers, sufficiency: 'FAIL' },
+      };
+    }
+    if (typeof dimension?.artifact !== 'string' || !declaredArtifacts.has(dimension.artifact)) {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: `Dimensão ${dimension?.id} não referencia um artefato declarado em ${evidenceId}.`,
+        layers: { ...layers, sufficiency: 'FAIL' },
+      };
+    }
+    if (!Array.isArray(dimension.measurements) || dimension.measurements.length === 0) {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: `Dimensão ${dimension.id} de ${evidenceId} não declara medições; status=PASS não substitui medição.`,
+        layers: { ...layers, sufficiency: 'FAIL' },
+      };
+    }
+    const measurements = new Map();
+    for (const measurement of dimension.measurements) {
+      const name = measurement?.name;
+      if (typeof name !== 'string' || name.length === 0 || measurements.has(name)
+        || typeof measurement?.value !== 'number' || !Number.isFinite(measurement.value)
+        || typeof measurement?.unit !== 'string' || measurement.unit.length === 0) {
+        return {
+          status: 'FAIL',
+          path: value,
+          reason: `Dimensão ${dimension.id} de ${evidenceId} contém medição malformada.`,
+          layers: { ...layers, sufficiency: 'FAIL' },
+        };
+      }
+      measurements.set(name, measurement);
+    }
+    for (const [name, spec] of Object.entries(dimensionPolicy.measurements)) {
+      const measurement = measurements.get(name);
+      if (!measurement) {
+        return {
+          status: 'FAIL',
+          path: value,
+          reason: `Dimensão ${dimension.id} de ${evidenceId} sem a medição obrigatória ${name}.`,
+          layers: { ...layers, sufficiency: 'FAIL' },
+        };
+      }
+      if (measurement.unit !== spec.unit) {
+        return {
+          status: 'FAIL',
+          path: value,
+          reason: `Medição ${name} de ${evidenceId} usa unidade ${measurement.unit}; esperada ${spec.unit}.`,
+          layers: { ...layers, sufficiency: 'FAIL' },
+        };
+      }
+    }
+    measurementsById.set(dimension.id, measurements);
+  }
+
+  let sufficiency = 'PENDING';
+  if (policy.approval?.status !== 'APPROVED') {
+    layers.sufficiency = 'PENDING';
+  } else {
+    const policyValidation = validateApprovedOperationalPolicy({ policy, evidenceId });
+    if (!policyValidation.valid) {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: policyValidation.reason,
+        layers: { ...layers, sufficiency: 'FAIL' },
+      };
+    }
+    if (!Array.isArray(policy.expected_targets) || policy.expected_targets.length === 0) {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: `Política aprovada de ${evidenceId} não define alvos aprovados; configuração inválida.`,
+        layers: { ...layers, sufficiency: 'FAIL' },
+      };
+    }
+    if (!policy.expected_targets.includes(target.environment)) {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: `Alvo ${target.environment} de ${evidenceId} não pertence aos alvos aprovados.`,
+        layers: { ...layers, sufficiency: 'FAIL' },
+      };
+    }
+    for (const dimension of dimensions) {
+      for (const [name, spec] of Object.entries(policy.dimensions[dimension.id].measurements)) {
+        const hasMin = !(spec.min === null || spec.min === undefined);
+        const hasMax = !(spec.max === null || spec.max === undefined);
+        const measured = measurementsById.get(dimension.id).get(name).value;
+        if (hasMin && measured < spec.min) {
+          return {
+            status: 'FAIL',
+            path: value,
+            reason: `Medição ${name}=${measured} de ${evidenceId} abaixo do mínimo aprovado ${spec.min}.`,
+            layers: { ...layers, sufficiency: 'FAIL' },
+          };
+        }
+        if (hasMax && measured > spec.max) {
+          return {
+            status: 'FAIL',
+            path: value,
+            reason: `Medição ${name}=${measured} de ${evidenceId} acima do máximo aprovado ${spec.max}.`,
+            layers: { ...layers, sufficiency: 'FAIL' },
+          };
+        }
+      }
+    }
+    sufficiency = 'PASS';
+    layers.sufficiency = 'PASS';
+  }
+
+  const verificationResult = verifyOperationalEvidence({
+    rootDir,
+    envelopePath: value,
+    envelopeSha256,
+    evidenceId,
+    commitSha,
+    declaredWorkflow,
+  });
+  if (!verificationResult) {
+    layers.authenticity = 'PARTIAL';
+    return {
+      status: 'PARTIAL',
+      path: value,
+      reason: `Verificador confiável não retornou resultado para ${evidenceId}; PASS permanece bloqueado.`,
+      layers,
+    };
+  }
+  if (verificationResult.status === 'FAIL') {
+    layers.authenticity = 'FAIL';
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: verificationResult.reason ?? `Verificador rejeitou a attestation de ${evidenceId}.`,
+      layers,
+    };
+  }
+  if (verificationResult.status === 'PARTIAL') {
+    layers.authenticity = 'PARTIAL';
+    return {
+      status: 'PARTIAL',
+      path: value,
+      reason: verificationResult.reason
+        ?? `Verificador indisponível para ${evidenceId}; PASS permanece bloqueado.`,
+      layers,
+    };
+  }
+  if (verificationResult.status !== 'PASS') {
+    layers.authenticity = 'FAIL';
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Saída inválida do verificador de ${evidenceId}: um status reconhecível (PASS/FAIL/PARTIAL) é obrigatório.`,
+      layers,
+    };
+  }
+  if (verificationResult.workflow && verificationResult.workflow !== declaredWorkflow) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Attestation verificada por workflow divergente do declarado em ${evidenceId}: ${verificationResult.workflow}.`,
+      layers: { ...layers, authenticity: 'FAIL' },
+    };
+  }
+  if (verificationResult.subject_sha256 !== envelopeSha256.toLowerCase()) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Verificador autenticou subject diferente dos bytes consumidos de ${evidenceId}.`,
+      layers: { ...layers, authenticity: 'FAIL' },
+    };
+  }
+  layers.authenticity = 'PASS';
+  if (sufficiency !== 'PASS') {
+    return {
+      status: 'PARTIAL',
+      path: value,
+      reason: `Integridade e autenticidade de ${evidenceId} confirmadas, mas a suficiência operacional está pendente de decisão de autoridade (approval=${policy.approval?.status ?? 'ausente'}); PASS permanece bloqueado.`,
+      layers,
+    };
+  }
+  return {
+    status: 'PASS',
+    path: value,
+    reason: `Attestation (${verificationResult.provenance ?? OPERATIONAL_EVIDENCE_VERIFIER_ID}) confirmada no workflow ${declaredWorkflow}; medições, alvo e dimensões de ${evidenceId} satisfazem a política aprovada.`,
+    verification_provenance: verificationResult.provenance ?? OPERATIONAL_EVIDENCE_VERIFIER_ID,
+    verified_workflow: verificationResult.workflow ?? declaredWorkflow,
+    layers,
+  };
+}
+
+function exactKeys(value, expected) {
+  const actual = value && typeof value === 'object' ? Object.keys(value) : [];
+  return actual.length === expected.length && expected.every((key) => actual.includes(key));
+}
+
+function hasUntrustedLimitDeclaration(value) {
+  return ['limits', 'thresholds', 'expected_targets', 'policy'].some((key) =>
+    Object.prototype.hasOwnProperty.call(value ?? {}, key)
+  );
+}
+
+function validateFamilyPolicyShape({ evidenceId, contract, policy }) {
+  const dimensions = policy?.dimensions;
+  const expectedDimensionIds = Object.keys(contract.profile.dimensions);
+  if (!dimensions || typeof dimensions !== 'object' || !exactKeys(dimensions, expectedDimensionIds)) {
+    return {
+      valid: false,
+      reason: `Política de ${evidenceId} não corresponde exatamente às dimensões do contrato da família ${contract.family}.`,
+    };
+  }
+  for (const dimensionId of expectedDimensionIds) {
+    const expectedMeasurements = contract.profile.dimensions[dimensionId].measurements;
+    const measurementNames = Object.keys(expectedMeasurements);
+    const actualMeasurements = dimensions[dimensionId]?.measurements;
+    if (!actualMeasurements
+      || typeof actualMeasurements !== 'object'
+      || !exactKeys(actualMeasurements, measurementNames)) {
+      return {
+        valid: false,
+        reason: `Política de ${evidenceId} não corresponde às medições de ${dimensionId}; a régua deve ser gate-owned.`,
+      };
+    }
+    for (const name of measurementNames) {
+      if (actualMeasurements[name]?.unit !== expectedMeasurements[name].unit) {
+        return {
+          valid: false,
+          reason: `Política de ${evidenceId} usa unidade divergente em ${dimensionId}.${name}.`,
+        };
+      }
+    }
+  }
+  return { valid: true };
+}
+
+function validateFamilyAuthorityRecord({ artifact, evidenceId, observedAt, value, layers }) {
+  const authorization = artifact?.authorization;
+  const invalid = !authorization
+    || authorization.decision !== 'APPROVED'
+    || typeof authorization.approver_id !== 'string'
+    || authorization.approver_id.length === 0
+    || typeof authorization.approver_role !== 'string'
+    || authorization.approver_role.length === 0
+    || typeof authorization.reference !== 'string'
+    || authorization.reference.length === 0
+    || !isIsoTimestamp(authorization.approved_at);
+  if (invalid) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Evidência de ${evidenceId} exige registro de autoridade APPROVED com aprovador, papel, referência e approved_at.`,
+      layers: { ...layers, sufficiency: 'FAIL' },
+    };
+  }
+  const freshness = validateEvidenceFreshness({ observedAt: authorization.approved_at });
+  if (!freshness.valid) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Registro de autoridade de ${evidenceId} expirado ou com relógio inválido: ${freshness.reason}`,
+      layers: { ...layers, sufficiency: 'FAIL' },
+    };
+  }
+  if (Date.parse(authorization.approved_at) < Date.parse(observedAt) - EVIDENCE_CLOCK_SKEW_MS) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Registro de autoridade de ${evidenceId} foi aprovado antes da observação declarada.`,
+      layers: { ...layers, sufficiency: 'FAIL' },
+    };
+  }
+  return null;
+}
+
+/**
+ * Family-specific evidence intake (PROD-062).
+ *
+ * This dispatcher is deliberately stricter than the generic v1 envelope. It
+ * binds the exact criterion and family, requires gate-owned measurements and
+ * approved target/bounds, and uses the same independently rerun attestation
+ * verifier as operational evidence. A producer can declare a PASS, a target
+ * or a limit, but none of those declarations are trusted without the family
+ * contract, byte-bound verifier and (where applicable) authority record.
+ */
+export function validateFamilyEvidenceEnvelope({
+  rootDir,
+  value,
+  artifact,
+  commitSha,
+  evidenceId,
+  envelopeSha256,
+  verifyOperationalEvidence = verifyOperationalEvidenceAttestation,
+  familyEvidencePolicy = FAMILY_EVIDENCE_POLICY,
+}) {
+  const layers = { integrity: 'PASS', authenticity: 'NOT_EVALUATED', sufficiency: 'NOT_EVALUATED' };
+  const contract = FAMILY_EVIDENCE_CONTRACTS[evidenceId];
+  const policy = familyEvidencePolicy?.[evidenceId];
+  if (!contract || !policy) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Critério sem contrato de família definido para PROD-062: ${evidenceId}.`,
+      layers: { ...layers, integrity: 'FAIL' },
+    };
+  }
+  if (!isSafeEvidencePath(rootDir, value)) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Envelope de ${evidenceId} precisa ser um arquivo local seguro dentro do repositório.`,
+      layers: { ...layers, integrity: 'FAIL' },
+    };
+  }
+  if (typeof envelopeSha256 !== 'string' || !/^[0-9a-f]{64}$/i.test(envelopeSha256)) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Envelope de ${evidenceId} sem digest dos bytes consumidos; vínculo byte a byte obrigatório.`,
+      layers: { ...layers, integrity: 'FAIL' },
+    };
+  }
+
+  const base = validateExternalEvidenceEnvelope({
+    rootDir,
+    value,
+    artifact,
+    commitSha,
+    expectedEvidenceType: FAMILY_EVIDENCE_TYPE,
+    expectedSchemaVersion: FAMILY_EVIDENCE_SCHEMA_VERSION,
+  });
+  if (base.status !== 'PASS') return { ...base, layers: { ...layers, integrity: 'FAIL' } };
+
+  if (artifact?.criterion_id !== evidenceId
+    || artifact?.family !== contract.family
+    || artifact?.contract_version !== FAMILY_EVIDENCE_SCHEMA_VERSION) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Envelope de ${evidenceId} não corresponde exatamente ao critério, família ou versão contratual.`,
+      layers: { ...layers, sufficiency: 'FAIL' },
+    };
+  }
+  if (hasUntrustedLimitDeclaration(artifact) || hasUntrustedLimitDeclaration(artifact.results)) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Envelope de ${evidenceId} contém alvo/limite/política declarados pelo produtor; somente a política gate-owned pode decidir suficiência.`,
+      layers: { ...layers, sufficiency: 'FAIL' },
+    };
+  }
+
+  const producer = artifact.producer;
+  const expectedProducer = contract.profile.producer_kind;
+  if (producer?.kind !== expectedProducer || producer?.issuer !== contract.profile.issuer) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Issuer/produtor inválido para ${evidenceId}: esperado ${contract.profile.issuer}/${expectedProducer}.`,
+      layers: { ...layers, authenticity: 'FAIL' },
+    };
+  }
+  const verification = artifact.verification;
+  if (verification?.method !== FAMILY_EVIDENCE_VERIFIER_METHOD
+    || verification?.verifier_id !== FAMILY_EVIDENCE_VERIFIER_ID) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Envelope de ${evidenceId} não declara o verificador de attestation obrigatório.`,
+      layers: { ...layers, authenticity: 'FAIL' },
+    };
+  }
+  const declaredWorkflow = producer.workflow;
+  if (!TRUSTED_OPERATIONAL_SIGNER_WORKFLOWS.includes(declaredWorkflow)) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Workflow produtor fora da raiz de confiança para ${evidenceId}: ${declaredWorkflow ?? 'ausente'}.`,
+      layers: { ...layers, authenticity: 'FAIL' },
+    };
+  }
+
+  const observedMs = Date.parse(artifact.observed_at);
+  const verifiedFreshness = validateEvidenceFreshness({ observedAt: verification.verified_at });
+  if (!verifiedFreshness.valid || Date.parse(verification.verified_at) < observedMs - EVIDENCE_CLOCK_SKEW_MS) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Envelope de ${evidenceId} tem verified_at inválido, futuro ou anterior à observação.`,
+      layers: { ...layers, integrity: 'FAIL' },
+    };
+  }
+
+  const target = artifact.target;
+  if (!target
+    || typeof target.environment !== 'string' || target.environment.length === 0
+    || typeof target.reference !== 'string' || target.reference.length === 0) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Envelope de ${evidenceId} sem vínculo de alvo (environment/reference obrigatórios).`,
+      layers: { ...layers, sufficiency: 'FAIL' },
+    };
+  }
+
+  const results = artifact.results;
+  if (!results || results.outcome !== 'PASS' || !Array.isArray(results.dimensions)) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Envelope de ${evidenceId} sem results.outcome=PASS e dimensions.`,
+      layers: { ...layers, sufficiency: 'FAIL' },
+    };
+  }
+  const contractDimensionIds = Object.keys(contract.profile.dimensions);
+  const dimensions = results.dimensions;
+  const seenDimensionIds = new Set();
+  const duplicateDimensionIds = new Set();
+  for (const dimension of dimensions) {
+    if (seenDimensionIds.has(dimension?.id)) duplicateDimensionIds.add(dimension?.id);
+    else seenDimensionIds.add(dimension?.id);
+  }
+  if (duplicateDimensionIds.size > 0) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Envelope de ${evidenceId} contém dimensões duplicadas: ${[...duplicateDimensionIds].map((id) => String(id)).join(', ')}.`,
+      layers: { ...layers, sufficiency: 'FAIL' },
+    };
+  }
+  if (!exactKeys(Object.fromEntries(dimensions.map((dimension) => [dimension?.id, true])), contractDimensionIds)) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Envelope de ${evidenceId} não cobre exatamente as dimensões da família ${contract.family}.`,
+      layers: { ...layers, sufficiency: 'FAIL' },
+    };
+  }
+
+  const declaredArtifacts = new Set((artifact.artifacts ?? []).map((reference) => reference?.path));
+  const measurementsById = new Map();
+  for (const dimension of dimensions) {
+    const dimensionPolicy = contract.profile.dimensions[dimension.id];
+    if (hasUntrustedLimitDeclaration(dimension)) {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: `Dimensão ${dimension.id} de ${evidenceId} contém alvo/limite/política declarados pelo produtor.`,
+        layers: { ...layers, sufficiency: 'FAIL' },
+      };
+    }
+    if (dimension.status !== 'PASS') {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: `Dimensão ${dimension.id} não está PASS em ${evidenceId}.`,
+        layers: { ...layers, sufficiency: 'FAIL' },
+      };
+    }
+    if (typeof dimension.artifact !== 'string' || !declaredArtifacts.has(dimension.artifact)) {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: `Dimensão ${dimension.id} de ${evidenceId} não referencia artefato declarado.`,
+        layers: { ...layers, sufficiency: 'FAIL' },
+      };
+    }
+    if (!Array.isArray(dimension.measurements) || dimension.measurements.length === 0) {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: `Dimensão ${dimension.id} de ${evidenceId} não declara medições.`,
+        layers: { ...layers, sufficiency: 'FAIL' },
+      };
+    }
+    const expectedMeasurementNames = Object.keys(dimensionPolicy.measurements);
+    const measurementNames = dimension.measurements.map((measurement) => measurement?.name);
+    if (new Set(measurementNames).size !== measurementNames.length
+      || !exactKeys(Object.fromEntries(measurementNames.map((name) => [name, true])), expectedMeasurementNames)) {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: `Medições de ${dimension.id} em ${evidenceId} não correspondem exatamente ao contrato gate-owned.`,
+        layers: { ...layers, sufficiency: 'FAIL' },
+      };
+    }
+    const measurements = new Map();
+    for (const measurement of dimension.measurements) {
+      const name = measurement?.name;
+      if (typeof name !== 'string'
+        || typeof measurement?.value !== 'number'
+        || !Number.isFinite(measurement.value)
+        || typeof measurement?.unit !== 'string'
+        || measurement.unit.length === 0
+        || ['min', 'max', 'limit', 'threshold'].some((key) =>
+          Object.prototype.hasOwnProperty.call(measurement, key))) {
+        return {
+          status: 'FAIL',
+          path: value,
+          reason: `Medição ${name ?? 'ausente'} de ${evidenceId} é inválida ou tenta declarar limite.`,
+          layers: { ...layers, sufficiency: 'FAIL' },
+        };
+      }
+      if (measurement.unit !== dimensionPolicy.measurements[name].unit) {
+        return {
+          status: 'FAIL',
+          path: value,
+          reason: `Medição ${name} de ${evidenceId} usa unidade ${measurement.unit}; esperada ${dimensionPolicy.measurements[name].unit}.`,
+          layers: { ...layers, sufficiency: 'FAIL' },
+        };
+      }
+      measurements.set(name, measurement);
+    }
+    measurementsById.set(dimension.id, measurements);
+  }
+
+  const policyShape = validateFamilyPolicyShape({ evidenceId, contract, policy });
+  if (!policyShape.valid) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: policyShape.reason,
+      layers: { ...layers, sufficiency: 'FAIL' },
+    };
+  }
+
+  let sufficiency = 'PENDING';
+  if (policy.approval?.status === 'PENDING_AUTHORITY') {
+    layers.sufficiency = 'PENDING';
+  } else if (policy.approval?.status !== 'APPROVED') {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Política de ${evidenceId} tem estado de autoridade inválido; somente PENDING_AUTHORITY ou APPROVED são aceitos.`,
+      layers: { ...layers, sufficiency: 'FAIL' },
+    };
+  } else {
+    const approval = policy.approval;
+    if (typeof approval.decided_by !== 'string'
+      || approval.decided_by.length === 0
+      || typeof approval.reference !== 'string'
+      || approval.reference.length === 0
+      || !isIsoTimestamp(approval.decided_at)
+      || !validateEvidenceFreshness({ observedAt: approval.decided_at }).valid) {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: `Política aprovada de ${evidenceId} não tem decisão de autoridade válida e fresca.`,
+        layers: { ...layers, sufficiency: 'FAIL' },
+      };
+    }
+    const policyValidation = validateApprovedOperationalPolicy({ policy, evidenceId });
+    if (!policyValidation.valid) {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: policyValidation.reason,
+        layers: { ...layers, sufficiency: 'FAIL' },
+      };
+    }
+    if (!Array.isArray(policy.expected_targets)
+      || policy.expected_targets.length === 0
+      || !policy.expected_targets.every((targetName) => typeof targetName === 'string' && targetName.length > 0)) {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: `Política aprovada de ${evidenceId} não define alvos aprovados válidos.`,
+        layers: { ...layers, sufficiency: 'FAIL' },
+      };
+    }
+    if (!policy.expected_targets.includes(target.environment)) {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: `Alvo ${target.environment} de ${evidenceId} não pertence aos alvos aprovados.`,
+        layers: { ...layers, sufficiency: 'FAIL' },
+      };
+    }
+    for (const dimension of dimensions) {
+      for (const [name, spec] of Object.entries(policy.dimensions[dimension.id].measurements)) {
+        const measured = measurementsById.get(dimension.id).get(name).value;
+        if (spec.min !== null && spec.min !== undefined && measured < spec.min) {
+          return {
+            status: 'FAIL',
+            path: value,
+            reason: `Medição ${name}=${measured} de ${evidenceId} abaixo do mínimo aprovado ${spec.min}.`,
+            layers: { ...layers, sufficiency: 'FAIL' },
+          };
+        }
+        if (spec.max !== null && spec.max !== undefined && measured > spec.max) {
+          return {
+            status: 'FAIL',
+            path: value,
+            reason: `Medição ${name}=${measured} de ${evidenceId} acima do máximo aprovado ${spec.max}.`,
+            layers: { ...layers, sufficiency: 'FAIL' },
+          };
+        }
+      }
+    }
+    sufficiency = 'PASS';
+    layers.sufficiency = 'PASS';
+  }
+
+  if (contract.family === 'authority') {
+    const authorityResult = validateFamilyAuthorityRecord({
+      artifact,
+      evidenceId,
+      observedAt: artifact.observed_at,
+      value,
+      layers,
+    });
+    if (authorityResult) return authorityResult;
+  }
+
+  const verificationResult = verifyOperationalEvidence({
+    rootDir,
+    envelopePath: value,
+    envelopeSha256,
+    evidenceId,
+    commitSha,
+    declaredWorkflow,
+  });
+  if (!verificationResult) {
+    layers.authenticity = 'PARTIAL';
+    return {
+      status: 'PARTIAL',
+      path: value,
+      reason: `Verificador confiável não retornou resultado para ${evidenceId}; PASS permanece bloqueado.`,
+      layers,
+    };
+  }
+  if (verificationResult.status === 'FAIL') {
+    layers.authenticity = 'FAIL';
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: verificationResult.reason ?? `Verificador rejeitou a attestation de ${evidenceId}.`,
+      layers,
+    };
+  }
+  if (verificationResult.status === 'PARTIAL') {
+    layers.authenticity = 'PARTIAL';
+    return {
+      status: 'PARTIAL',
+      path: value,
+      reason: verificationResult.reason ?? `Verificador indisponível para ${evidenceId}; PASS permanece bloqueado.`,
+      layers,
+    };
+  }
+  if (verificationResult.status !== 'PASS') {
+    layers.authenticity = 'FAIL';
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Saída inválida do verificador de ${evidenceId}: status PASS/FAIL/PARTIAL é obrigatório.`,
+      layers,
+    };
+  }
+  if (verificationResult.workflow && verificationResult.workflow !== declaredWorkflow) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Attestation verificada por workflow divergente do declarado em ${evidenceId}.`,
+      layers: { ...layers, authenticity: 'FAIL' },
+    };
+  }
+  if (verificationResult.subject_sha256 !== envelopeSha256.toLowerCase()) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Verificador autenticou subject diferente dos bytes consumidos de ${evidenceId}.`,
+      layers: { ...layers, authenticity: 'FAIL' },
+    };
+  }
+  layers.authenticity = 'PASS';
+  if (sufficiency !== 'PASS') {
+    return {
+      status: 'PARTIAL',
+      path: value,
+      reason: `Integridade e autenticidade de ${evidenceId} confirmadas, mas a suficiência está pendente de autoridade (approval=${policy.approval?.status ?? 'ausente'}); PASS permanece bloqueado.`,
+      layers,
+    };
+  }
+  return {
+    status: 'PASS',
+    path: value,
+    reason: `Attestation (${verificationResult.provenance ?? FAMILY_EVIDENCE_VERIFIER_ID}) confirmada; família ${contract.family}, alvo, medições e política aprovada de ${evidenceId} conferem.`,
+    verification_provenance: verificationResult.provenance ?? FAMILY_EVIDENCE_VERIFIER_ID,
+    verified_workflow: verificationResult.workflow ?? declaredWorkflow,
+    layers,
+  };
+}
+
+function envEvidence(rootDir, name, commitSha, outputDir, {
+  evidenceId = null,
+  verifyOperationalEvidence = verifyOperationalEvidenceAttestation,
+  operationalPolicy = OPERATIONAL_EVIDENCE_POLICY,
+  familyEvidencePolicy = FAMILY_EVIDENCE_POLICY,
+} = {}) {
   const value = process.env[name];
   if (!value) return null;
   const declaredCommit = process.env[`${name}_COMMIT_SHA`] ?? process.env.TRIPLE_A_EVIDENCE_COMMIT_SHA;
+  const operationalId = evidenceId && OPERATIONAL_EVIDENCE_REQUIREMENTS[evidenceId] ? evidenceId : null;
   if (/^https?:\/\//.test(value)) {
     return declaredCommit === commitSha
-      ? { status: 'PARTIAL', path: value, reason: 'Link informado e vinculado ao SHA, mas o conteúdo remoto precisa ser baixado/verificado como artefato.' }
+      ? { status: 'PARTIAL', path: value, reason: 'Link informado e vinculado ao SHA, mas o conteúdo remoto precisa ser baixado/verificado como artefato attestado.' }
       : {
           status: 'FAIL',
           path: value,
@@ -554,24 +1860,34 @@ function envEvidence(rootDir, name, commitSha, outputDir) {
         };
   }
   const path = resolve(rootDir, value);
-  if (!existsSync(path)) return { status: 'FAIL', path: value, reason: 'Caminho informado não existe.' };
+  const familyId = evidenceId && FAMILY_EVIDENCE_REQUIREMENTS[evidenceId] ? evidenceId : null;
+  if (familyId && !isSafeEvidencePath(rootDir, value)) {
+    return {
+      status: 'FAIL',
+      path: value,
+      reason: `Envelope de ${familyId} precisa ser um arquivo local seguro dentro do repositório.`,
+    };
+  }
+  let bytes;
   try {
-    const artifact = readJson(path);
-    if (name === 'TRIPLE_A_CI_EVIDENCE') {
-      return validateCiEvidenceEnvelope({ rootDir, value, artifact, commitSha });
-    }
-    if (name === 'TRIPLE_A_IMAGE_ATTESTATION_EVIDENCE') {
-      return validateImageAttestationEnvelope({ rootDir, outputDir, value, artifact, commitSha });
-    }
-    const envelope = validateExternalEvidenceEnvelope({ rootDir, value, artifact, commitSha });
-    return envelope.status === 'PASS'
-      ? {
-          ...envelope,
-          status: 'PARTIAL',
-          reason: 'Envelope e hashes locais conferem, mas este artefato externo ainda precisa de verificação independente no ambiente alvo.'
-        }
-      : envelope;
+    // Single read: the digest and the parsed artifact below come from the same
+    // bytes, which are the value the verifier must authenticate.
+    bytes = readFileSync(path);
   } catch {
+    return { status: 'FAIL', path: value, reason: 'Caminho informado não existe ou não pôde ser lido.' };
+  }
+  const envelopeSha256 = createHash('sha256').update(bytes).digest('hex');
+  let artifact;
+  try {
+    artifact = JSON.parse(bytes.toString('utf8'));
+  } catch {
+    if (operationalId) {
+      return {
+        status: 'FAIL',
+        path: value,
+        reason: `Evidência operacional ${operationalId} deve ser um envelope JSON attestado; arquivo não interpretável foi rejeitado.`,
+      };
+    }
     return declaredCommit === commitSha
       ? { status: 'PARTIAL', path: value, reason: 'Artefato não-JSON tem vínculo explícito ao SHA, mas seu conteúdo não foi interpretado pelo gate.' }
       : {
@@ -580,6 +1896,43 @@ function envEvidence(rootDir, name, commitSha, outputDir) {
           reason: `Artefato não-JSON sem vínculo verificável; informe ${name}_COMMIT_SHA ou TRIPLE_A_EVIDENCE_COMMIT_SHA.`,
         };
   }
+  if (operationalId) {
+    return validateOperationalEvidenceEnvelope({
+      rootDir,
+      value,
+      artifact,
+      commitSha,
+      evidenceId: operationalId,
+      envelopeSha256,
+      verifyOperationalEvidence,
+      operationalPolicy,
+    });
+  }
+  if (familyId) {
+    return validateFamilyEvidenceEnvelope({
+      rootDir,
+      value,
+      artifact,
+      commitSha,
+      evidenceId: familyId,
+      envelopeSha256,
+      verifyOperationalEvidence,
+      familyEvidencePolicy,
+    });
+  }
+  if (name === 'TRIPLE_A_CI_EVIDENCE') {
+    return validateCiEvidenceEnvelope({ rootDir, value, artifact, commitSha });
+  }
+  if (name === 'TRIPLE_A_IMAGE_ATTESTATION_EVIDENCE') {
+    return validateImageAttestationEnvelope({ rootDir, outputDir, value, artifact, commitSha });
+  }
+  const envelope = validateExternalEvidenceEnvelope({ rootDir, value, artifact, commitSha });
+  if (envelope.status !== 'PASS') return envelope;
+  return {
+    ...envelope,
+    status: 'PARTIAL',
+    reason: 'Envelope genérico íntegro, porém sem raiz de confiança própria; PASS exige verificação externa por critério e nunca é promovido por flag de ambiente.'
+  };
 }
 
 function runGhJson(rootDir, args) {
@@ -845,6 +2198,7 @@ export function verifySecurityEvidence({ rootDir, outputDir, commitSha }) {
   }
   try {
     const report = readJson(evidencePath);
+    const freshness = validateEvidenceFreshness({ observedAt: report.generatedAt });
     const semgrepPass = Array.isArray(report.semgrepCi)
       && report.semgrepCi.length > 0
       && report.semgrepCi.every((check) => check.status === 'PASS');
@@ -852,18 +2206,27 @@ export function verifySecurityEvidence({ rootDir, outputDir, commitSha }) {
     const sbom = typeof sbomPath === 'string'
       ? validateCycloneDxSbom(rootDir, sbomPath)
       : { valid: false, reason: 'Security report does not reference a SBOM.' };
-    const valid = report.status === 'PASS'
+    const sbomDigestMatches = typeof sbomPath === 'string'
+      && /^[0-9a-f]{64}$/i.test(report.sbom?.sha256 ?? '')
+      && isSafeEvidencePath(rootDir, sbomPath)
+      && sha256(resolve(rootDir, sbomPath)) === report.sbom.sha256.toLowerCase();
+    const structurallyValid = report.status === 'PASS'
       && report.securityAudit === 'PASS'
       && semgrepPass
       && report.commit_sha === commitSha
+      && freshness.valid
       && sbom.valid
+      && sbomDigestMatches
       && report.sbom.components === readJson(resolve(rootDir, sbomPath)).components.length;
     return {
       area: 'Security evidence',
-      status: valid ? 'PASS' : 'FAIL',
-      evidence: valid
-        ? 'Security audit, SAST/SBOM CycloneDX íntegro e commit estão vinculados ao candidato.'
-        : `Security evidence existe, mas não prova checks PASS, SBOM CycloneDX íntegro (${sbom.reason}) ou vínculo ao commit atual.`,
+      // The report is repository-generated and self-declared. Static integrity
+      // is necessary but not a trust root; an independently verified security
+      // attestation must be added before this criterion can become PASS.
+      status: structurallyValid ? 'PARTIAL' : 'FAIL',
+      evidence: structurallyValid
+        ? 'Security audit, SAST/SBOM CycloneDX, frescor, digest do SBOM e commit conferem; proveniência independente ainda é obrigatória para PASS.'
+        : `Security evidence existe, mas não prova checks PASS, frescor, digest/SBOM CycloneDX íntegro (${sbom.reason}) ou vínculo ao commit atual.`,
       artifacts: [relative(rootDir, evidencePath)],
     };
   } catch (error) {
@@ -1052,7 +2415,7 @@ export function evaluateQualityBar({ rootDir, qualityBar, criteria, phase = 'pos
     ? recoveryPolicy.status
     : currentStatus(criteria, 'BACKUP-DRILL'), ['BACKUP-DRILL'], recoveryPolicy.refs, recoveryPolicy.limitations);
   add('OPS-001', currentStatus(criteria, 'OBSERVABILITY-EVIDENCE'), ['OBSERVABILITY-EVIDENCE']);
-  add('PERF-001', currentStatus(criteria, 'PERFORMANCE'), ['PERFORMANCE']);
+  add('PERF-001', all(['PERFORMANCE', 'SOAK']), ['PERFORMANCE', 'SOAK']);
   add('UX-001', all(['E2E', 'HOSPITAL-UAT']), ['E2E', 'HOSPITAL-UAT']);
 
   const architectureFiles = fileEvidence(rootDir, [
@@ -1110,6 +2473,9 @@ export function buildReleaseEvidence({
   executeBuild = strict,
   executeTests = process.env.TRIPLE_A_RUN_TESTS === '1',
   commitSha = currentCommit(rootDir),
+  verifyOperationalEvidence = verifyOperationalEvidenceAttestation,
+  operationalPolicy = OPERATIONAL_EVIDENCE_POLICY,
+  familyEvidencePolicy = FAMILY_EVIDENCE_POLICY,
 } = {}) {
   mkdirSync(outputDir, { recursive: true });
   const prepublication = process.env.TRIPLE_A_PREPUBLICATION === '1';
@@ -1159,6 +2525,7 @@ export function buildReleaseEvidence({
   for (const [id, area, priority, name, envName] of [
     ['BACKUP-DRILL', 'Recovery', 'P0', 'Backup/restore drill atual', 'TRIPLE_A_BACKUP_EVIDENCE'],
     ['PERFORMANCE', 'Performance', 'P1', 'Performance/soak certification atual', 'TRIPLE_A_PERFORMANCE_EVIDENCE'],
+    ['SOAK', 'Performance', 'P1', 'Soak de estabilidade prolongada no alvo aprovado', 'TRIPLE_A_SOAK_EVIDENCE'],
     ['CI-REMOTE', 'CI', 'P0', 'CI remoto verde do commit candidato', 'TRIPLE_A_CI_EVIDENCE'],
     ['CRITICAL-TESTS', 'Critical tests', 'P0', 'Testes críticos de banco/processo atuais', 'TRIPLE_A_CRITICAL_EVIDENCE'],
     ['E2E', 'E2E', 'P0', 'E2E/accessibility/visual atuais', 'TRIPLE_A_E2E_EVIDENCE'],
@@ -1168,15 +2535,30 @@ export function buildReleaseEvidence({
     ['CLINICAL-E2E', 'Clinical safety', 'P0', 'E2E clínico crítico ponta a ponta e invariantes negativas', 'TRIPLE_A_CLINICAL_E2E_EVIDENCE'],
     ['AUDIT-INTEGRITY', 'Clinical safety', 'P0', 'Integridade de auditoria e eventos append-only', 'TRIPLE_A_AUDIT_EVIDENCE'],
     ['HOSPITAL-UAT', 'Usability/UAT', 'P0', 'UAT hospitalar humana, sem autoaprovação', 'TRIPLE_A_UAT_EVIDENCE'],
+    ['OBSERVABILITY-EVIDENCE', 'Observability', 'P1', 'SLO, alertas, tracing, retenção e on-call demonstrados no alvo', 'TRIPLE_A_OBSERVABILITY_EVIDENCE'],
     ['DEPLOY-TARGET', 'Deploy', 'P1', 'Deploy/rollback no ambiente alvo', 'TRIPLE_A_DEPLOY_EVIDENCE'],
+    ['ROLLBACK', 'Deploy', 'P1', 'Rollback de aplicação e dados exercitado no alvo', 'TRIPLE_A_ROLLBACK_EVIDENCE'],
     ['IMAGE-ATTESTATIONS', 'Supply chain', 'P0', 'Attestation, assinatura e verificação das imagens publicadas', 'TRIPLE_A_IMAGE_ATTESTATION_EVIDENCE'],
     ['HELM-TARGET', 'Deploy', 'P1', 'Helm lint/template e identidade por digest no alvo', 'TRIPLE_A_HELM_EVIDENCE'],
     ['BRANCH-PROTECTION', 'Governance', 'P0', 'Branch protection e required checks remotos confirmados', 'TRIPLE_A_BRANCH_PROTECTION_EVIDENCE'],
     ['RELEASE-AUTHORITY', 'Governance', 'P0', 'Aprovação humana/authority record do release candidato', 'TRIPLE_A_AUTHORITY_EVIDENCE'],
   ]) {
-    const evidence = envEvidence(rootDir, envName, commitSha, outputDir);
+    const evidence = envEvidence(rootDir, envName, commitSha, outputDir, {
+      evidenceId: id,
+      verifyOperationalEvidence,
+      operationalPolicy,
+      familyEvidencePolicy,
+    });
     const externalCheck = evidence
-      ? { area, command: envName, status: evidence.status, exit_code: null, evidence: evidence.reason, limitation: null }
+      ? {
+          area,
+          command: envName,
+          status: evidence.status,
+          exit_code: null,
+          evidence: evidence.reason,
+          limitation: null,
+          ...(evidence.layers ? { layers: evidence.layers } : {}),
+        }
       : skippedCheck(area, envName, `Evidência externa ausente; informe ${envName}.`);
     checks.push(externalCheck);
     if (prepublication && id !== 'CI-REMOTE') prepublicationExcludedChecks.add(externalCheck);
@@ -1311,10 +2693,10 @@ export function buildReleaseEvidence({
     e2e: finalArtifactSection(criteria, ['E2E']),
     ux: finalArtifactSection(criteria, ['E2E', 'HOSPITAL-UAT']),
     performance: finalArtifactSection(criteria, ['PERFORMANCE']),
-    soak: finalArtifactSection(criteria, []),
+    soak: finalArtifactSection(criteria, ['SOAK']),
     backup_restore: finalArtifactSection(criteria, ['BACKUP-DRILL']),
     deploy: finalArtifactSection(criteria, ['DEPLOY-TARGET', 'HELM-TARGET']),
-    rollback: finalArtifactSection(criteria, []),
+    rollback: finalArtifactSection(criteria, ['ROLLBACK']),
     supply_chain: finalArtifactSection(criteria, ['SECURITY-EVIDENCE', 'IMAGE-ATTESTATIONS']),
     attestations: finalArtifactSection(criteria, ['IMAGE-ATTESTATIONS']),
     authority: finalArtifactSection(criteria, ['RELEASE-AUTHORITY']),

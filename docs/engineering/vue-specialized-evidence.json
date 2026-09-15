@@ -1,0 +1,218 @@
+{
+  "schemaVersion": 1,
+  "kind": "vue-specialized-evidence-scope",
+  "renderer": {
+    "vitest": "@vue/test-utils.mount",
+    "browser": "Playwright browser renderer"
+  },
+  "rules": {
+    "sourceIdentity": "The source sha256 must match critical-coverage-scope.json.",
+    "build": "The source must be transformed and present in an emitted SPA bundle.",
+    "vitest": "The real SFC must be mounted by Vue Test Utils and produce a test result.",
+    "browser": "The real route must render in a browser and exercise its declared safe action.",
+    "dom": "DOM mutation, replacement, or fabricated markup is never evidence."
+  },
+  "sources": [
+    {
+      "path": "apps/spa/src/pages/access-control/AccessControlPage.vue",
+      "route": "/access-control",
+      "behavior": {
+        "states": ["rendered", "loaded", "error"],
+        "action": "refresh-effective-access"
+      },
+      "testFiles": ["apps/spa/src/pages/access-control/__tests__/AccessControlPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/auth/MfaPage.vue",
+      "route": "/auth/mfa",
+      "behavior": {
+        "states": ["rendered", "ready", "invalid-token"],
+        "action": "submit-invalid-token"
+      },
+      "testFiles": ["apps/spa/src/pages/auth/__tests__/MfaPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/billing/BillingDetailPage.vue",
+      "route": "/billing/00000000-0000-4000-8000-000000000001",
+      "behavior": { "states": ["rendered", "loaded", "error"], "action": "open-detail-actions" },
+      "testFiles": ["apps/spa/src/pages/billing/__tests__/BillingDetailPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/billing/BillingListPage.vue",
+      "route": "/billing",
+      "behavior": {
+        "states": ["rendered", "loaded", "empty", "error", "filtered"],
+        "action": "apply-due-filters"
+      },
+      "testFiles": ["apps/spa/src/pages/billing/__tests__/BillingListPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/commercial-reports/CommercialReportsPage.vue",
+      "route": "/administrative-reports",
+      "behavior": { "states": ["rendered", "loaded", "error"], "action": "change-report-tab" },
+      "testFiles": ["apps/spa/src/pages/commercial-reports/__tests__/CommercialReportsPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/encounters/EncounterDetailPage.vue",
+      "route": "/encounters/00000000-0000-4000-8000-000000000002",
+      "behavior": { "states": ["rendered", "loaded", "error"], "action": "change-workflow-tab" },
+      "testFiles": ["apps/spa/src/pages/encounters/__tests__/EncounterDetailPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/encounters/EncounterFormPage.vue",
+      "route": "/encounters/new",
+      "behavior": {
+        "states": ["rendered", "ready", "validation-error"],
+        "action": "validate-empty-form"
+      },
+      "testFiles": ["apps/spa/src/pages/encounters/__tests__/EncounterFormPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/encounters/EncountersListPage.vue",
+      "route": "/encounters",
+      "behavior": {
+        "states": ["rendered", "loaded", "empty", "error"],
+        "action": "refresh-encounters"
+      },
+      "testFiles": ["apps/spa/src/pages/encounters/__tests__/EncountersListPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/inpatient/BedBoardPage.vue",
+      "route": "/inpatient/board",
+      "behavior": {
+        "states": ["rendered", "loaded", "empty", "error"],
+        "action": "refresh-bed-board"
+      },
+      "testFiles": ["apps/spa/src/pages/inpatient/__tests__/BedBoardPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/inpatient/BedDetailPage.vue",
+      "route": "/beds/00000000-0000-4000-8000-000000000003",
+      "behavior": { "states": ["rendered", "loaded", "error"], "action": "reload-bed" },
+      "testFiles": ["apps/spa/src/pages/inpatient/__tests__/BedDetailPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/inpatient/BedFormPage.vue",
+      "route": "/beds/new",
+      "behavior": {
+        "states": ["rendered", "ready", "validation-error"],
+        "action": "validate-bed-form"
+      },
+      "testFiles": ["apps/spa/src/pages/inpatient/__tests__/BedFormPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/inpatient/BedsPage.vue",
+      "route": "/beds",
+      "behavior": { "states": ["rendered", "loaded", "empty", "error"], "action": "filter-beds" },
+      "testFiles": ["apps/spa/src/pages/inpatient/__tests__/BedsPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/inpatient/InpatientAdmissionPage.vue",
+      "route": "/inpatient/admit",
+      "behavior": {
+        "states": ["rendered", "ready", "error"],
+        "action": "reload-admission-context"
+      },
+      "testFiles": ["apps/spa/src/pages/inpatient/__tests__/InpatientAdmissionPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/inpatient/InpatientDailyChargesPage.vue",
+      "route": "/inpatient/daily-charges",
+      "behavior": {
+        "states": ["rendered", "loaded", "empty", "error"],
+        "action": "filter-daily-charges"
+      },
+      "testFiles": ["apps/spa/src/pages/inpatient/__tests__/InpatientDailyChargesPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/inpatient/InpatientDetailPage.vue",
+      "route": "/inpatient/00000000-0000-4000-8000-000000000004",
+      "behavior": { "states": ["rendered", "loaded", "error"], "action": "change-inpatient-tab" },
+      "testFiles": [
+        "apps/spa/src/pages/inpatient/__tests__/InpatientDetailPage.test.ts",
+        "apps/spa/src/pages/inpatient/__tests__/InpatientDetailPage.context.test.ts"
+      ]
+    },
+    {
+      "path": "apps/spa/src/pages/inpatient/InpatientListPage.vue",
+      "route": "/inpatient",
+      "behavior": {
+        "states": ["rendered", "loaded", "empty", "error"],
+        "action": "refresh-inpatient"
+      },
+      "testFiles": ["apps/spa/src/pages/inpatient/__tests__/InpatientListPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/inpatient/SectorsPage.vue",
+      "route": "/sectors",
+      "behavior": {
+        "states": ["rendered", "loaded", "empty", "error"],
+        "action": "filter-sectors"
+      },
+      "testFiles": ["apps/spa/src/pages/inpatient/__tests__/SectorsPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue",
+      "route": "/medical-records/00000000-0000-4000-8000-000000000005",
+      "behavior": { "states": ["rendered", "loaded", "error"], "action": "change-clinical-step" },
+      "testFiles": ["apps/spa/src/pages/medical-records/__tests__/MedicalRecordsDetailPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/medical-records/MedicalRecordsListPage.vue",
+      "route": "/medical-records",
+      "behavior": {
+        "states": ["rendered", "loaded", "empty", "error"],
+        "action": "refresh-medical-records"
+      },
+      "testFiles": ["apps/spa/src/pages/medical-records/__tests__/MedicalRecordsListPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/triage/TriageDetailPage.vue",
+      "route": "/triage/00000000-0000-4000-8000-000000000006",
+      "behavior": { "states": ["rendered", "loaded", "error"], "action": "open-triage-edit" },
+      "testFiles": ["apps/spa/src/pages/triage/__tests__/TriageDetailPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/triage/TriageFormPage.vue",
+      "route": "/triage/new",
+      "behavior": {
+        "states": ["rendered", "ready", "validation-error"],
+        "action": "validate-triage-form"
+      },
+      "testFiles": ["apps/spa/src/pages/triage/__tests__/TriageFormPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/triage/TriageListPage.vue",
+      "route": "/triage",
+      "behavior": {
+        "states": ["rendered", "loaded", "empty", "error"],
+        "action": "refresh-triage"
+      },
+      "testFiles": ["apps/spa/src/pages/triage/__tests__/TriageListPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/webhooks/WebhookDetailPage.vue",
+      "route": "/webhooks/00000000-0000-4000-8000-000000000007",
+      "behavior": { "states": ["rendered", "loaded", "error"], "action": "open-webhook-delivery" },
+      "testFiles": ["apps/spa/src/pages/webhooks/__tests__/WebhookDetailPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/webhooks/WebhookFormPage.vue",
+      "route": "/webhooks/new",
+      "behavior": {
+        "states": ["rendered", "ready", "validation-error"],
+        "action": "validate-webhook-form"
+      },
+      "testFiles": ["apps/spa/src/pages/webhooks/__tests__/WebhookFormPage.test.ts"]
+    },
+    {
+      "path": "apps/spa/src/pages/webhooks/WebhooksListPage.vue",
+      "route": "/webhooks",
+      "behavior": {
+        "states": ["rendered", "loaded", "empty", "error"],
+        "action": "filter-webhooks"
+      },
+      "testFiles": ["apps/spa/src/pages/webhooks/__tests__/WebhooksListPage.test.ts"]
+    }
+  ]
+}

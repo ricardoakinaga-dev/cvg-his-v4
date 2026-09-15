@@ -1,0 +1,70 @@
+{
+  "authority": {
+    "actor": "lead executor da reconciliacao PROD-001-R2 (nao autoridade de release)",
+    "decision": "Entrada em PROD-002 002-L: PROD-001-R2 DONE com controle coerente; 002-L e identidade local + inventario restrito, sem concluir retencao externa; nenhuma decisao de retencao, privacidade ou certificacao tomada por este registro.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar ao iniciar/concluir 002-L e a cada mudanca de bytes, manifesto ou documentos.",
+    "required": false,
+    "scope": "Entrada em PROD-002 002-L (identidade local + inventario restrito): dependencias satisfeitas (PROD-001 DONE)",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "PROD-001-R2 DONE: 65 contratos rastreados, narrativa rev27/21 qualificada, checker 11/11, docs:validate, critica I1 + re-revisao APPROVE.",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-PROD-001-R2-20260914",
+        ".agent/verification.jsonl#VER-PROD-001-R2-REVIEW-20260914"
+      ],
+      "id": "IR-001",
+      "limitations": "Gate de entrada, nao de saida.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Plano e allowlist fixados para 002-L: congelar bytes/fontes/config/lock/schema/harness + run-id; inventario restrito PROD-048 sem expor valores; decisoes de retencao/privacidade abertas com dono.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        ".agent/backlog.json"
+      ],
+      "id": "IR-002",
+      "limitations": "Retencao externa completa fica para o DONE integral de PROD-002.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Riscos mapeados: artifacts/ ignorado pelo Git (retencao duravel pendente); sem PII nos logs publicados; release BLOCKED.",
+      "evidence_refs": [
+        ".agent/state.json"
+      ],
+      "id": "IR-003",
+      "limitations": "Nao aprova retencao, privacidade, produto ou release.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json",
+    ".agent/state.json",
+    ".agent/verification.jsonl"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Executar PROD-002 002-L sobre recursos proprios.",
+  "record_id": "GATE-IR-PROD-002-20260914-L",
+  "residual_risk": "MEDIUM",
+  "revalidation_triggers": [
+    "Inicio e conclusao de 002-L.",
+    "Qualquer alteracao em bytes, manifesto ou documentos."
+  ],
+  "scope": "Entrada em PROD-002 002-L (identidade local + inventario restrito): dependencias satisfeitas (PROD-001 DONE)",
+  "scope_ref": "PROD-002",
+  "supersedes": null,
+  "timestamp": "2026-09-14T00:10:00Z",
+  "version": 1,
+  "conditions": []
+}

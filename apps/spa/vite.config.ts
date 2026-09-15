@@ -1,9 +1,11 @@
 import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { VitePWA } from 'vite-plugin-pwa';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { loadSpaViteConfig } from '../../packages/shared/config/src/index';
+import { createVueSpecializedBuildEvidencePlugin } from '../../scripts/lib/vue-specialized-build-evidence.mjs';
 
 export default defineConfig(({ mode }) => {
   const rawEnv = {
@@ -14,10 +16,33 @@ export default defineConfig(({ mode }) => {
   const proxyAccountId =
     typeof rawEnv.VITE_PROXY_ACCOUNT_ID === 'string' ? rawEnv.VITE_PROXY_ACCOUNT_ID.trim() : '';
   const isE2EVisualRuntime = runtimeConfig.disablePwa;
+  const repoRoot = resolve(__dirname, '../..');
+  const specializedBuildEnabled = process.env.CVG_VUE_SPECIALIZED_BUILD === '1';
+  const specializedManifest = specializedBuildEnabled
+    ? JSON.parse(
+        readFileSync(resolve(repoRoot, 'docs/engineering/critical-coverage-scope.json'), 'utf8')
+      )
+    : null;
+  const specializedContract = specializedBuildEnabled
+    ? JSON.parse(
+        readFileSync(resolve(repoRoot, 'docs/engineering/vue-specialized-evidence.json'), 'utf8')
+      )
+    : null;
 
   return {
     plugins: [
       vue(),
+      ...(specializedBuildEnabled
+        ? [
+            createVueSpecializedBuildEvidencePlugin({
+              root: repoRoot,
+              manifest: specializedManifest,
+              contract: specializedContract,
+              head: process.env.CVG_VUE_SPECIALIZED_HEAD || 'unknown',
+              runId: process.env.CVG_VUE_SPECIALIZED_RUN_ID || 'unknown'
+            })
+          ]
+        : []),
       ...(isE2EVisualRuntime
         ? []
         : [

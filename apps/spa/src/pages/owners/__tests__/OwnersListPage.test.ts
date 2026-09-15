@@ -134,6 +134,29 @@ describe('OwnersListPage', () => {
     expect(wrapper.text()).toContain('Failed to load owners');
   });
 
+  it('shows a retryable unavailable state for a 503 instead of the registration empty state', async () => {
+    mockListFn
+      .mockRejectedValueOnce(Object.assign(new Error('HTTP 503'), { status: 503 }))
+      .mockResolvedValueOnce(mockOwners);
+
+    const OwnersListPage = (await import('../OwnersListPage.vue')).default;
+    const wrapper = mount(OwnersListPage);
+
+    await flushPromises();
+
+    expect(wrapper.find('.owners-error-state').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Serviço de tutores indisponível');
+    expect(wrapper.text()).toContain('Tentar novamente');
+    expect(wrapper.text()).not.toContain('Nenhum tutor encontrado');
+    expect(wrapper.text()).not.toContain('Cadastre o primeiro tutor');
+
+    await wrapper.find('.owners-error-state button').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('.owners-error-state').exists()).toBe(false);
+    expect(wrapper.text()).toContain('João Silva');
+  });
+
   it('shows empty state when no owners exist', async () => {
     mockListFn.mockResolvedValue([]);
 

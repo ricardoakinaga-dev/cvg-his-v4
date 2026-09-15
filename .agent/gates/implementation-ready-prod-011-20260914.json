@@ -1,0 +1,67 @@
+{
+  "authority": {
+    "actor": "lead executor do programa state-of-art (nao autoridade de release)",
+    "decision": "Entrada em PROD-011-R2: revalidar denominador SQL e runner de migracoes no candidato rev27; sem substituir execucao por presenca de arquivo.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar ao concluir 011-R2 e a cada mudanca de bytes.",
+    "required": false,
+    "scope": "Entrada em PROD-011 (evidencia SQL especializada): dependencias satisfeitas",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "Cadeia ate 010-R2 aceita no escopo; dependencias 004/010 relaxadas explicitamente.",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-PROD-010-R2-REVIEW-20260914"
+      ],
+      "id": "IR-001",
+      "limitations": "Gate de entrada, nao de saida.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Alvo fixado: denominador SQL ativos/historicos + runner; missing/schema-mismatch/outro-candidato falham; produtor executado em PG privado.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "id": "IR-002",
+      "limitations": "Promocao fica no fluxo do gate (039/045).",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Riscos mapeados; release BLOCKED.",
+      "evidence_refs": [
+        ".agent/state.json"
+      ],
+      "id": "IR-003",
+      "limitations": "Nao aprova release.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json",
+    ".agent/state.json"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Executar PROD-011-R2.",
+  "record_id": "GATE-IR-PROD-011-20260914",
+  "residual_risk": "MEDIUM",
+  "revalidation_triggers": [
+    "Inicio e conclusao de 011-R2.",
+    "Qualquer alteracao em bytes."
+  ],
+  "scope": "Entrada em PROD-011 (evidencia SQL especializada): dependencias satisfeitas",
+  "scope_ref": "PROD-011",
+  "supersedes": null,
+  "timestamp": "2026-09-15T01:14:55Z",
+  "version": 1,
+  "conditions": []
+}

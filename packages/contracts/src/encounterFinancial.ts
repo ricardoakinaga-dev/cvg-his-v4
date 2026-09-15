@@ -127,6 +127,8 @@ export const listEncounterReceivablesQuerySchema = z.object({
   status: encounterReceivableStatusSchema.optional(),
   search: z.string().trim().min(2).max(120).optional(),
   encounterId: uuidSchema.optional(),
+  dueFrom: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dueTo: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20)
 });
@@ -138,6 +140,7 @@ export const encounterReceivableListResponseSchema = z.object({
   total: z.number().int().min(0),
   openCount: z.number().int().min(0),
   settledCount: z.number().int().min(0),
+  totalOriginal: z.coerce.number(),
   totalOutstanding: z.coerce.number(),
   totalSettled: z.coerce.number()
 });

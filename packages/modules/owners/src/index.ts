@@ -356,6 +356,7 @@ export class OwnersService {
     const documentId = requireOptionalString(payload.documentId);
     const duplicate = this.list().find(
       (owner) =>
+        owner.accountId === accountId &&
         owner.fullName.toLowerCase() === fullName.toLowerCase() &&
         documentId !== undefined &&
         owner.documentId === documentId
@@ -405,16 +406,33 @@ export class OwnersService {
 
   public update(ownerId: OwnerId, payload: UpdateOwnerRequest): OwnerSummary {
     const current = this.getOrThrow(ownerId);
+    const nextFullName =
+      payload.fullName !== undefined
+        ? requireNonEmptyString(payload.fullName, 'fullName')
+        : current.fullName;
+    const nextDocumentId =
+      payload.documentId !== undefined
+        ? requireOptionalString(payload.documentId)
+        : current.documentId;
+    const duplicate = this.list().find(
+      (owner) =>
+        owner.id !== ownerId &&
+        owner.accountId === current.accountId &&
+        owner.fullName.toLowerCase() === nextFullName.toLowerCase() &&
+        nextDocumentId !== undefined &&
+        owner.documentId === nextDocumentId
+    );
+
+    if (duplicate) {
+      throw new ConflictError('Possible duplicate owner detected', {
+        ownerId: duplicate.id
+      });
+    }
+
     const updated: OwnerSummary = {
       ...current,
-      fullName:
-        payload.fullName !== undefined
-          ? requireNonEmptyString(payload.fullName, 'fullName')
-          : current.fullName,
-      documentId:
-        payload.documentId !== undefined
-          ? requireOptionalString(payload.documentId)
-          : current.documentId,
+      fullName: nextFullName,
+      documentId: nextDocumentId,
       contacts:
         payload.contacts !== undefined ? normalizeContacts(payload.contacts) : current.contacts,
       address: payload.address !== undefined ? normalizeAddress(payload.address) : current.address,

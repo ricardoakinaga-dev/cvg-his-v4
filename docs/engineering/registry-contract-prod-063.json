@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "contractId": "PROD-063-REGISTRY-CONTRACT",
+  "id": "PROD-063",
+  "title": "Contrato de tutores, pacientes e cadastros auxiliares",
+  "status": "PROPOSED_PENDING_AUTHORITY",
+  "product": "CVG-HIS-V4",
+  "scope": {
+    "mode": "LOCAL_BOUNDARY_HARDENING_AND_CONTRACT_PREPARATION",
+    "functionalAcceptanceAllowed": false,
+    "behavioralClaimsAllowed": false,
+    "syntheticFixtureExecutionAllowed": true,
+    "realDataAllowed": false,
+    "provider": "NONE",
+    "allowedImplementation": [
+      "runtime request validation for the current OpenAPI/shared-contract wire shape",
+      "tenant-scoped duplicate prevention in the process-local service",
+      "bounded pagination metadata already declared by the OpenAPI surface",
+      "negative tests and evidence packaging"
+    ],
+    "forbidden": [
+      "reconciling the incompatible packages/contracts DTO without API/Product authority",
+      "changing remuneration, clinical, import or relationship policy",
+      "claiming database/RLS, UAT, Vetus parity or production acceptance"
+    ],
+    "dependencyReplan": {
+      "fullDependencies": [
+        "PROD-024",
+        "PROD-027",
+        "PROD-055"
+      ],
+      "doesNotWaive": [
+        "PROD-024",
+        "PROD-027",
+        "PROD-055"
+      ],
+      "note": "A fatia local endurece a fronteira pública e registra o contrato; não satisfaz nenhuma dependência integral."
+    }
+  },
+  "owners": {
+    "preparation": "lead",
+    "requiredAuthorities": [
+      "Product",
+      "QA",
+      "cadastros domain owner",
+      "API owner"
+    ],
+    "status": "PENDING_AUTHORITY"
+  },
+  "sourceRefs": [
+    "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+    "docs/2026-09-13-backlog-prontidao-producao.md",
+    "docs/clinical/CLINICAL_SAFETY_INVARIANTS.md",
+    "apps/api/src/openapi.yaml",
+    "apps/api/src/routes/owners-routes.ts",
+    "apps/api/src/routes/patients-routes.ts",
+    "apps/api/src/registry-request-boundaries.ts",
+    "packages/modules/owners/src/index.ts",
+    "packages/modules/patients/src/index.ts",
+    "packages/db/migrations/0065_tenant_isolation_auth_webhook_clinical_links.sql",
+    "packages/db/migrations/0095_patient_merge_audit.sql"
+  ],
+  "decisionPolicy": {
+    "recommendationsAreBinding": false,
+    "currentUnitTestsAreAcceptance": false,
+    "filePresenceIsBehaviorProof": false,
+    "defaultDecisionStatus": "PENDING_AUTHORITY",
+    "noExternalCallsInThisSlice": true,
+    "noRealDataInThisSlice": true,
+    "productDecisionsPending": [
+      "duplicate identity key and merge policy",
+      "authorized/spouse relationship semantics",
+      "auxiliary catalog ownership and patient linkage",
+      "archive visibility and import reconciliation"
+    ]
+  },
+  "wireContract": {
+    "ownerCreate": {
+      "required": ["fullName", "contacts", "financialResponsible"],
+      "nested": ["address", "profile", "financialProfile"],
+      "status": "active is assigned by the service"
+    },
+    "patientCreate": {
+      "required": ["name", "species", "sex", "primaryOwnerId"],
+      "optional": ["breed", "size", "baseWeightKg", "microchip", "clinical notes", "status"]
+    },
+    "relationshipCreate": {
+      "required": ["ownerId", "patientId", "relationshipType", "financialResponsible"],
+      "relationshipTypes": ["primary", "secondary", "financial", "authorized", "spouse"]
+    },
+    "listResponse": {
+      "withoutPagination": ["items"],
+      "withPagination": ["items", "page", "pageSize", "total"],
+      "pageSizeMaximum": 200
+    },
+    "contractDrift": {
+      "status": "OPEN_PENDING_API_PRODUCT_DECISION",
+      "competingSurface": "packages/contracts uses document/phoneMain/ownerId while the current runtime/OpenAPI uses documentId/contacts/primaryOwnerId",
+      "rule": "The boundary parser follows the current runtime/OpenAPI DTO and does not silently assert that the competing package is equivalent."
+    }
+  },
+  "invariants": [
+    {
+      "id": "REG-INV-001",
+      "rule": "A request body must be a JSON object and required fields must have the declared runtime type.",
+      "evidence": "apps/api/src/registry-request-boundaries.ts"
+    },
+    {
+      "id": "REG-INV-002",
+      "rule": "Nested owner contacts and profile objects are validated before service mutation.",
+      "evidence": "apps/api/src/registry-request-boundaries.test.ts"
+    },
+    {
+      "id": "REG-INV-003",
+      "rule": "Owner duplicate detection is scoped to the same account and applies to create and update.",
+      "evidence": "packages/modules/owners/src/index.ts"
+    },
+    {
+      "id": "REG-INV-004",
+      "rule": "Patient duplicate detection is scoped to the same account and applies to create and update.",
+      "evidence": "packages/modules/patients/src/index.ts"
+    },
+    {
+      "id": "REG-INV-005",
+      "rule": "List pagination is bounded and returns total before slicing; no tenant filter is bypassed.",
+      "evidence": "apps/api/src/routes/owners-routes.ts; apps/api/src/routes/patients-routes.ts"
+    },
+    {
+      "id": "REG-INV-006",
+      "rule": "Cross-account owner, patient and relationship reads remain hidden by the route boundary.",
+      "evidence": "apps/api/src/routes/owners-routes.test.ts; apps/api/src/routes/patients-routes.test.ts"
+    },
+    {
+      "id": "REG-INV-007",
+      "rule": "A primary relationship cannot be deleted or created for a different primary owner.",
+      "evidence": "packages/modules/patients/src/index.ts"
+    },
+    {
+      "id": "REG-INV-008",
+      "rule": "A local green test does not promote database/RLS, import, UAT, parity or domain acceptance.",
+      "evidence": "docs/063-contrato-cadastros.md"
+    }
+  ],
+  "scenarioCatalog": [
+    { "id": "REG-SCN-001", "kind": "positive", "case": "Create and update an owner with nested contact/profile data.", "expected": "Canonical fields are normalized and persisted by the current service path.", "evidence": "boundary + owners unit/route tests" },
+    { "id": "REG-SCN-002", "kind": "positive", "case": "Create and update a patient with a primary owner.", "expected": "The primary relationship is represented and remains tenant-scoped.", "evidence": "patients unit/route tests" },
+    { "id": "REG-SCN-003", "kind": "negative", "case": "Malformed JSON object shape, nested contact, enum or finite numeric value.", "expected": "ValidationError occurs before domain mutation.", "evidence": "registry-request-boundaries.test.ts" },
+    { "id": "REG-SCN-004", "kind": "negative", "case": "Create/update a duplicate identity.", "expected": "ConflictError is returned within the same account; another account is not blocked.", "evidence": "owners.test.ts + patients.test.ts" },
+    { "id": "REG-SCN-005", "kind": "permission", "case": "Read or mutate an owner/patient/link belonging to another tenant.", "expected": "NotFound or filtered response; no cross-tenant data is returned.", "evidence": "route tests" },
+    { "id": "REG-SCN-006", "kind": "persistence", "case": "Request a bounded list page.", "expected": "items are sliced after tenant/status filters and metadata reports the pre-slice total.", "evidence": "owner/patient route tests" },
+    { "id": "REG-SCN-007", "kind": "relationship", "case": "Create, update, archive and merge owner-patient relationships.", "expected": "Primary/link invariants and audit hooks remain enforced.", "evidence": "patients.test.ts + route tests" },
+    { "id": "REG-SCN-008", "kind": "reconciliation", "case": "Compare local implementation with DB migrations and the competing package contract.", "expected": "Differences remain explicit and require API/Product/DB authority before reconciliation.", "evidence": "contractDrift + migration sourceRefs" }
+  ],
+  "failureCases": [
+    { "id": "REG-FAIL-001", "trigger": "null, array or scalar body", "expected": "ValidationError with body field" },
+    { "id": "REG-FAIL-002", "trigger": "missing owner contacts or financialResponsible", "expected": "ValidationError before owner.create" },
+    { "id": "REG-FAIL-003", "trigger": "unsupported contact/relationship/status/sex enum", "expected": "ValidationError with field context" },
+    { "id": "REG-FAIL-004", "trigger": "NaN, Infinity or wrong numeric type", "expected": "ValidationError before patient/financial mutation" },
+    { "id": "REG-FAIL-005", "trigger": "empty update patch", "expected": "ValidationError instead of a silent no-op" },
+    { "id": "REG-FAIL-006", "trigger": "same owner identity duplicated in one account", "expected": "ConflictError" },
+    { "id": "REG-FAIL-007", "trigger": "same patient name and primary owner duplicated in one account", "expected": "ConflictError" },
+    { "id": "REG-FAIL-008", "trigger": "page, pageSize or limit outside safe bounds", "expected": "ValidationError" },
+    { "id": "REG-FAIL-009", "trigger": "foreign tenant owner/patient/link id", "expected": "NotFound or filtered result" },
+    { "id": "REG-FAIL-010", "trigger": "attempt to treat local tests as DB/RLS/UAT/owner acceptance", "expected": "Card remains BLOCKED/PENDING_AUTHORITY" }
+  ],
+  "observations": {
+    "localImplementation": "Boundary parser wired into owner/patient/link/merge routes; duplicate identity checks are account-scoped on create/update; paginated owner/patient responses now expose total/page/pageSize when requested.",
+    "notProven": [
+      "database uniqueness under concurrent writers",
+      "atomic cross-table transaction for patient/link/merge persistence",
+      "RLS and migration rail equivalence",
+      "auxiliary catalog foreign-key semantics",
+      "import/reconciliation and Vetus parity",
+      "Product/QA/domain-owner acceptance"
+    ]
+  },
+  "promotionRule": "PROD-063 may not become DONE from this contract or local unit/route tests. Promotion requires dependencies, approved wire/policy decisions, private DB/RLS proof, UI/API/DB reconciliation, import/archival cases, fresh independent review and owner acceptance."
+}

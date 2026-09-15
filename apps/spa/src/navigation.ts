@@ -112,8 +112,7 @@ export const navGroups: AppNavGroup[] = [
             path: '/loyalty',
             icon: 'target',
             keywords: ['fidelidade', 'pontos', 'resgate']
-          },
-          { label: 'Vendas (beta)', path: '/sales/beta', icon: 'money', keywords: ['vendas beta'] }
+          }
         ]
       },
       {

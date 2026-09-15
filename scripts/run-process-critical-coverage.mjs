@@ -333,7 +333,8 @@ export async function runProcessCriticalCoverage(root, tools = {}) {
       throw new Error('generated artifacts changed during conversion');
     save('collection-verification.json', {
       convertedScripts: collected.convertedScripts,
-      rawHashes: collected.rawHashes
+      rawHashes: collected.rawHashes,
+      uncoveredObservations: collected.uncoveredObservations
     });
     save('coverage-final.json', coverage);
     save('test-result.json', {

@@ -12,6 +12,8 @@
  * 7. All paths have valid HTTP methods
  * 8. Schema references resolve to defined schemas
  * 9. Critical auth runtime routes and OpenAPI operations match bidirectionally
+ *    (guarded by a bounded constant-condition reachability check: booleans,
+ *    parentheses, `!`, `&&`/`||`; runtime-dependent conditions stay unknown)
  *
  * Usage: node scripts/validate-openapi.js [openapi-path] [auth-routes-source-path]
  */
@@ -45,22 +47,61 @@ function extractCriticalRuntimeAuthOperations(source) {
   );
   const revokeMatchers = new Set();
 
-  function flattenConjunction(expression) {
-    if (ts.isBinaryExpression(expression) && expression.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
-      return [...flattenConjunction(expression.left), ...flattenConjunction(expression.right)];
+  function unwrapParentheses(expression) {
+    let current = expression;
+    while (ts.isParenthesizedExpression(current)) current = current.expression;
+    return current;
+  }
+
+  // Deliberately bounded constant analysis for `if` conditions. It only
+  // classifies boolean literals, parenthesized forms, unary `!` and the
+  // short-circuit operators `&&`/`||` over already-proven constants.
+  // Identifiers, calls, comparisons and every other expression stay
+  // UNKNOWN: a runtime-dependent condition is never treated as a constant.
+  function constantBooleanValue(expression) {
+    const current = unwrapParentheses(expression);
+    if (current.kind === ts.SyntaxKind.TrueKeyword) return true;
+    if (current.kind === ts.SyntaxKind.FalseKeyword) return false;
+    if (ts.isPrefixUnaryExpression(current) && current.operator === ts.SyntaxKind.ExclamationToken) {
+      const value = constantBooleanValue(current.operand);
+      return value === undefined ? undefined : !value;
     }
-    return [expression];
+    if (ts.isBinaryExpression(current)) {
+      const operator = current.operatorToken.kind;
+      if (operator === ts.SyntaxKind.AmpersandAmpersandToken) {
+        const left = constantBooleanValue(current.left);
+        const right = constantBooleanValue(current.right);
+        if (left === false || right === false) return false;
+        return left === true && right === true ? true : undefined;
+      }
+      if (operator === ts.SyntaxKind.BarBarToken) {
+        const left = constantBooleanValue(current.left);
+        const right = constantBooleanValue(current.right);
+        if (left === true || right === true) return true;
+        return left === false && right === false ? false : undefined;
+      }
+    }
+    return undefined;
+  }
+
+  function flattenConjunction(expression) {
+    const current = unwrapParentheses(expression);
+    if (ts.isBinaryExpression(current) && current.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
+      return [...flattenConjunction(current.left), ...flattenConjunction(current.right)];
+    }
+    return [current];
   }
 
   function equalityValue(expression, leftText) {
-    if (!ts.isBinaryExpression(expression) || expression.operatorToken.kind !== ts.SyntaxKind.EqualsEqualsEqualsToken) {
+    const current = unwrapParentheses(expression);
+    if (!ts.isBinaryExpression(current) || current.operatorToken.kind !== ts.SyntaxKind.EqualsEqualsEqualsToken) {
       return undefined;
     }
-    const left = expression.left.getText(sourceFile);
-    const right = expression.right;
+    const left = current.left.getText(sourceFile);
+    const right = current.right;
     if (left === leftText && ts.isStringLiteral(right)) return right.text;
-    if (expression.right.getText(sourceFile) === leftText && ts.isStringLiteral(expression.left)) {
-      return expression.left.text;
+    if (current.right.getText(sourceFile) === leftText && ts.isStringLiteral(current.left)) {
+      return current.left.text;
     }
     return undefined;
   }
@@ -74,11 +115,9 @@ function extractCriticalRuntimeAuthOperations(source) {
     }
 
     if (ts.isIfStatement(node)) {
+      const conditionValue = constantBooleanValue(node.expression);
       const operands = flattenConjunction(node.expression);
-      const isTriviallyUnreachable = operands.some(
-        (operand) => operand.kind === ts.SyntaxKind.FalseKeyword
-      );
-      if (!unreachable && !isTriviallyUnreachable) {
+      if (!unreachable && conditionValue !== false) {
         const routePath = operands.map((operand) => equalityValue(operand, 'pathname')).find(Boolean);
         const method = operands
           .map((operand) => equalityValue(operand, 'request.method'))
@@ -97,8 +136,8 @@ function extractCriticalRuntimeAuthOperations(source) {
       }
 
       ts.forEachChild(node.expression, (child) => visit(child, unreachable));
-      visit(node.thenStatement, unreachable || isTriviallyUnreachable);
-      if (node.elseStatement) visit(node.elseStatement, unreachable);
+      visit(node.thenStatement, unreachable || conditionValue === false);
+      if (node.elseStatement) visit(node.elseStatement, unreachable || conditionValue === true);
       return;
     }
 
@@ -185,8 +224,6 @@ try {
 
   // 7. Schema reference validation (basic)
   const definedSchemas = new Set(Object.keys(doc.components?.schemas || {}));
-  const schemaRefRegex = /#\/components\/schemas\/([A-Za-z0-9_]+)/g;
-  const yamlContent = content;
 
   // Extract all $ref from specs (from the structured doc)
   const extractRefs = (obj, refs = []) => {

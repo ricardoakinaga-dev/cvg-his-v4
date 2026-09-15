@@ -36,13 +36,7 @@ export default defineConfig({
     testTimeout: 30_000,
     hookTimeout: 60_000,
     pool: 'threads',
-    poolOptions: {
-      threads: {
-        singleThread: true
-      }
-    },
-    minThreads: 1,
-    maxThreads: 1,
+    maxWorkers: 1,
     setupFiles: ['tests/setup/coverage-setup.ts'],
     globalSetup: ['tests/setup/global-setup.ts'],
     coverage: {

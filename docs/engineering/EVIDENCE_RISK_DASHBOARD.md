@@ -59,6 +59,13 @@ mas ainda não é prova de aplicação/upgrade no target.
 | LGPD e WCAG com aceite independente                    | pendente                                     | DPO/WEB/QA        | 2026-11-13              | bloqueia produção ampla                                                     |
 | cutover + rollback + go/no-go                          | não executado                                | Comitê de release | 2026-11-27              | nenhuma promoção sem ata e aprovadores                                      |
 
+**Nota de reconciliação (2026-09-12):** a linha "cobertura global ≥82%"
+permanece como registro histórico da coleta de 2026-09-02 e não representa o
+candidato atual. A coleta crítica corrente está `FAIL`/pendente em MA-05
+(`node scripts/check-critical-coverage.mjs`), e nenhum percentual de coverage é
+anunciado sem nova coleta real. A próxima revisão mensal deve reancorar ou
+expirar esta linha com evidência do candidato.
+
 ## Exceções ativas
 
 | ID      | Escopo | Responsável | Expira em | Compensação | Aprovador |
@@ -114,3 +121,19 @@ Próxima revisão:
 
 O histórico mensal deve ser acrescentado abaixo ou arquivado com link a partir
 deste painel; não se sobrescreve uma decisão anterior sem rastreabilidade.
+
+## Política de retenção de evidências (PROD-002)
+
+1. Todo pacote de evidência (`artifacts/auditoria-*/`, `artifacts/remediation/PROD-NNN/<runId>/`)
+   publica `SHA256SUMS` (um digest por arquivo, exceto o próprio índice) e um
+   `REPORT.md` com HEAD, ambiente, comandos, exits e limitações.
+2. `artifacts/` é ignorado pelo Git: não constitui, sozinho, evidência durável.
+   Cada pacote com status decisório (auditoria, gate, GO/NO-GO) é copiado para
+   armazenamento controlado externo com seus digests; a restauração é testada
+   por `sha256sum -c SHA256SUMS` em diretório novo (prova em PROD-002).
+3. Mudança material no candidato invalida as provas afetadas, que devem ser
+   recolhidas antes de qualquer certificação; provas invalidadas permanecem
+   arquivadas como histórico, nunca reescritas.
+4. Retenção mínima: pacotes decisórios de release, 5 anos; pacotes de tentativa
+   de entrega, até a certificação do candidato que os consumiu + 1 ano.
+   Revisão mensal pelo Lead/QA; exceções registradas na ata mínima acima.

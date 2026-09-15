@@ -1,0 +1,1441 @@
+{
+  "schemaVersion": 1,
+  "contractId": "PROD-027-BEHAVIORAL-PARITY-CONTRACT",
+  "id": "PROD-027",
+  "title": "Contrato preparatório da matriz comportamental de 11 áreas",
+  "status": "PROPOSED_PENDING_AUTHORITY",
+  "product": "CVG-HIS-V4",
+  "scope": {
+    "mode": "CONTRACT_ONLY_PREPARATION",
+    "functionalAcceptanceAllowed": false,
+    "behavioralClaimsAllowed": false,
+    "fixtureExecutionAllowed": false,
+    "realDataAllowed": false,
+    "provider": "NONE",
+    "dependencyReplan": {
+      "fullDependencies": [
+        "PROD-001",
+        "PROD-003"
+      ],
+      "doesNotWaive": [
+        "PROD-003"
+      ],
+      "note": "Preparação local explicitamente replanejada; PROD-003 continua dependência integral."
+    }
+  },
+  "owners": {
+    "preparation": "lead",
+    "requiredAuthorities": [
+      "Product",
+      "QA",
+      "domain owners"
+    ],
+    "status": "PENDING_AUTHORITY"
+  },
+  "sourceRefs": [
+    "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+    "docs/2026-09-14-relatorio-completo-estado-construcao.md",
+    "docs/2026-09-14-plano-executivo-state-of-art-triplo-aaa.md",
+    "docs/2026-09-13-backlog-prontidao-producao.md",
+    "docs/clinical/CLINICAL_CRITICALITY_MATRIX.md",
+    "docs/clinical/CLINICAL_SAFETY_INVARIANTS.md",
+    "docs/navigation-matrix-current-vs-target.md",
+    "scripts/lib/vetus-parity-contract.mjs",
+    "scripts/check-vetus-parity.mjs",
+    "scripts/check-vetus-clinical-parity.mjs",
+    "packages/modules"
+  ],
+  "decisionPolicy": {
+    "recommendationsAreBinding": false,
+    "currentManifestStatusIsBehavioralPass": false,
+    "filePresenceIsParityProof": false,
+    "defaultDecisionStatus": "PENDING_AUTHORITY",
+    "noFunctionalChangesInThisSlice": true,
+    "noFixturesOrRealDataInThisSlice": true,
+    "implementationDependencies": [
+      "PROD-003",
+      "PROD-026",
+      "PROD-035",
+      "PROD-045"
+    ]
+  },
+  "observedBaseline": {
+    "sourceClaim": "45 módulos de negócio e 4/11 áreas verified; 7/11 blocked.",
+    "expectedAreaCount": 11,
+    "observedAreaCount": 11,
+    "expectedModuleCount": 45,
+    "observedModuleCount": 46,
+    "verifiedManifestOnlyAreaIds": [
+      "atendimento",
+      "cadastros",
+      "estoque",
+      "profissionais-comissoes"
+    ],
+    "blockedBaselineAreaIds": [
+      "laboratorio-diagnosticos",
+      "fiscal",
+      "financeiro",
+      "marketing-comunicacao",
+      "relatorios-entregas",
+      "acesso-lgpd",
+      "integracoes-migracao"
+    ],
+    "observedModuleDelta": {
+      "status": "PENDING_AUTHORITY",
+      "modules": [
+        "workflows"
+      ],
+      "explanation": "O worktree atual contém workflows além da contagem narrativa de 45; não descartar nem promover sem reconciliar a fonte."
+    },
+    "parityStatus": "OBSERVED_NOT_ACCEPTED"
+  },
+  "scenarioCatalog": [
+    {
+      "id": "SCN-001",
+      "kind": "coverage",
+      "case": "As 11 áreas aparecem uma única vez na taxonomia.",
+      "expected": "Nenhuma área omitida, duplicada ou inventada; cada uma tem owner, fonte e status observado.",
+      "evidence": "Contrato versionado + revisão Product/QA."
+    },
+    {
+      "id": "SCN-002",
+      "kind": "inventory",
+      "case": "Todos os diretórios atuais de packages/modules são classificados.",
+      "expected": "O inventário observado bate o filesystem; a diferença 45→46 fica aberta e workflows não é descartado.",
+      "evidence": "Manifesto de diretórios + known-bad de módulo ausente/duplicado."
+    },
+    {
+      "id": "SCN-003",
+      "kind": "positive",
+      "case": "Uma jornada válida da área é executada na fronteira pública com fixture sintética.",
+      "expected": "Resultado, estado persistido e evidência correspondem ao contrato da área.",
+      "evidence": "API/UI/DB/processo aplicável + fixture digest-bound."
+    },
+    {
+      "id": "SCN-004",
+      "kind": "negative",
+      "case": "Entrada inválida, transição impossível ou provider rejeita a operação.",
+      "expected": "Negação segura, erro acionável e ausência de efeito parcial.",
+      "evidence": "Teste negativo e reconciliação."
+    },
+    {
+      "id": "SCN-005",
+      "kind": "permission",
+      "case": "Perfis, tenant, flags e escopos tentam ler ou mutar fora da autorização.",
+      "expected": "Acesso indevido é negado e nenhum dado/efeito cruza tenant.",
+      "evidence": "Matriz de permissão + prova multi-tenant."
+    },
+    {
+      "id": "SCN-006",
+      "kind": "persistence",
+      "case": "A jornada é recarregada ou o processo reiniciado após efeito parcial.",
+      "expected": "Estado durável, autoria, versão e retomada são coerentes.",
+      "evidence": "API/DB/processo e timeline de restart."
+    },
+    {
+      "id": "SCN-007",
+      "kind": "reconciliation",
+      "case": "A saída é comparada ao ledger, fonte, subledger ou documento de referência.",
+      "expected": "Contagens, valores, relações e status reconciliam; divergência abre finding.",
+      "evidence": "Dataset oracle aprovado + relatório de reconciliação."
+    },
+    {
+      "id": "SCN-008",
+      "kind": "concurrency",
+      "case": "Duas solicitações concorrentes/replay/timeout incidem sobre o mesmo recurso quando aplicável.",
+      "expected": "Locks/idempotência/ordem preservam invariantes sem duplicação.",
+      "evidence": "Teste concorrente em stack privada, sem reduzir casos."
+    },
+    {
+      "id": "SCN-009",
+      "kind": "vetus-unknown",
+      "case": "Manifesto, implementação atual e referência Vetus divergem ou não cobrem a regra.",
+      "expected": "Estado fica UNKNOWN/BLOCKED e exige decisão; não se infere equivalência por nome de menu.",
+      "evidence": "Crosswalk com lacuna e owner de domínio."
+    },
+    {
+      "id": "SCN-010",
+      "kind": "commercial",
+      "case": "Pacotes, cotações e vendas/comanda são percorridos como jornadas próprias.",
+      "expected": "Tracks comerciais têm owner, fonte, permissão, persistência, reconciliação e aceite explícitos; não ficam escondidos em fidelidade.",
+      "evidence": "COM-001..COM-004 + provas de financeiro/estoque/atendimento."
+    }
+  ],
+  "areas": [
+    {
+      "id": "cadastros",
+      "name": "Tutores, pacientes e cadastros",
+      "sourceGrouping": "Tutores, pacientes e cadastros",
+      "observedStatus": "VERIFIED_MANIFEST_ONLY",
+      "acceptanceStatus": "PENDING_AUTHORITY",
+      "owner": "PENDING_AUTHORITY: Produto/QA + dono de cadastros",
+      "risk": "clinical_identity_and_tenant",
+      "surfaceRefs": [
+        "packages/modules/owners/src/index.ts",
+        "packages/modules/patients/src/index.ts",
+        "packages/modules/users/src/index.ts"
+      ],
+      "limitation": "O manifesto de paridade não prova campos, estados, duplicatas, permissões ou importação no uso real.",
+      "requiredScenarioKinds": [
+        "positive",
+        "negative",
+        "permission",
+        "persistence",
+        "reconciliation"
+      ],
+      "commercialSubtracks": [
+        "COM-004"
+      ]
+    },
+    {
+      "id": "atendimento",
+      "name": "Agenda, atendimento, comanda e clínica",
+      "sourceGrouping": "Agenda, atendimento e comanda; prontuário/prescrições; internação e alta",
+      "observedStatus": "VERIFIED_MANIFEST_ONLY",
+      "acceptanceStatus": "PENDING_AUTHORITY",
+      "owner": "PENDING_AUTHORITY: Produto/QA + responsável clínico",
+      "risk": "clinical_workflow_and_persistence",
+      "surfaceRefs": [
+        "packages/modules/scheduling/src/index.ts",
+        "packages/modules/encounters/src/index.ts",
+        "packages/modules/medical-records/src/index.ts",
+        "packages/modules/inpatient/src/index.ts"
+      ],
+      "limitation": "Ciclos presentes não provam concorrência integral, UAT clínico, cobertura de ramos ou alta reconciliada com faturamento.",
+      "requiredScenarioKinds": [
+        "positive",
+        "negative",
+        "permission",
+        "persistence",
+        "reconciliation"
+      ],
+      "commercialSubtracks": [
+        "COM-003"
+      ]
+    },
+    {
+      "id": "estoque",
+      "name": "Estoque, compras e farmácia",
+      "sourceGrouping": "Estoque, compras e farmácia",
+      "observedStatus": "VERIFIED_MANIFEST_ONLY",
+      "acceptanceStatus": "PENDING_AUTHORITY",
+      "owner": "PENDING_AUTHORITY: Produto/QA + dono de estoque",
+      "risk": "stock_and_reconciliation",
+      "surfaceRefs": [
+        "packages/modules/inventory/src/index.ts",
+        "packages/modules/products/src/index.ts",
+        "packages/modules/quotes/src/index.ts"
+      ],
+      "limitation": "A existência de movimentações não prova reserva, transferência, custo, vencimento, concorrência ou reconciliação.",
+      "requiredScenarioKinds": [
+        "positive",
+        "negative",
+        "permission",
+        "persistence",
+        "reconciliation"
+      ],
+      "commercialSubtracks": [
+        "COM-002"
+      ]
+    },
+    {
+      "id": "profissionais-comissoes",
+      "name": "Profissionais e comissões",
+      "sourceGrouping": "Profissionais e comissões",
+      "observedStatus": "VERIFIED_MANIFEST_ONLY",
+      "acceptanceStatus": "PENDING_AUTHORITY",
+      "owner": "PENDING_AUTHORITY: Produto/QA + dono de workforce",
+      "risk": "remuneration_policy",
+      "surfaceRefs": [
+        "packages/modules/staff/src/index.ts",
+        "packages/modules/commissions/src/index.ts"
+      ],
+      "limitation": "Inspeção focal limitada não certifica competência, rateio, cancelamento, estorno ou cálculo de repasse.",
+      "requiredScenarioKinds": [
+        "positive",
+        "negative",
+        "permission",
+        "persistence",
+        "reconciliation"
+      ],
+      "commercialSubtracks": []
+    },
+    {
+      "id": "laboratorio-diagnosticos",
+      "name": "Laboratório e diagnósticos",
+      "sourceGrouping": "Laboratório e diagnósticos",
+      "observedStatus": "BLOCKED_IN_BASELINE",
+      "acceptanceStatus": "PENDING_AUTHORITY",
+      "owner": "PENDING_AUTHORITY: Produto/QA + dono de laboratório",
+      "risk": "result_provenance_and_equipment",
+      "surfaceRefs": [
+        "packages/modules/diagnostics/src/index.ts"
+      ],
+      "limitation": "Homologação Live Lab/equipamentos, unidades, referências, rejeições e mensagens reais sanitizadas continuam ausentes.",
+      "requiredScenarioKinds": [
+        "positive",
+        "negative",
+        "permission",
+        "persistence",
+        "reconciliation"
+      ],
+      "commercialSubtracks": []
+    },
+    {
+      "id": "fiscal",
+      "name": "Fiscal",
+      "sourceGrouping": "Fiscal",
+      "observedStatus": "BLOCKED_IN_BASELINE",
+      "acceptanceStatus": "PENDING_AUTHORITY",
+      "owner": "PENDING_AUTHORITY: Produto/QA + dono fiscal",
+      "risk": "external_provider_and_certificate",
+      "surfaceRefs": [
+        "packages/modules/fiscal/src/index.ts"
+      ],
+      "limitation": "Certificado, município, provider, rejeições, XML/PDF e sandbox autorizado não foram homologados.",
+      "requiredScenarioKinds": [
+        "positive",
+        "negative",
+        "permission",
+        "persistence",
+        "reconciliation"
+      ],
+      "commercialSubtracks": []
+    },
+    {
+      "id": "financeiro",
+      "name": "Financeiro, caixa, pagamentos, PIX e comercial",
+      "sourceGrouping": "Financeiro, caixa, pagamentos e PIX; comercial, pacotes, cotações e vendas",
+      "observedStatus": "BLOCKED_IN_BASELINE",
+      "acceptanceStatus": "PENDING_AUTHORITY",
+      "owner": "PENDING_AUTHORITY: Produto/QA + Financeiro",
+      "risk": "ledger_and_external_payment",
+      "surfaceRefs": [
+        "packages/modules/financial/src/index.ts",
+        "packages/modules/billing/src/index.ts",
+        "packages/modules/payments/src/index.ts",
+        "packages/modules/pix/src/index.ts",
+        "packages/modules/commercial/src/index.ts"
+      ],
+      "limitation": "Gate financeiro depende de sandbox, subledger, estorno, callbacks, conciliação e regras de comercial; nenhum arquivo equivale a aceitação.",
+      "requiredScenarioKinds": [
+        "positive",
+        "negative",
+        "permission",
+        "persistence",
+        "reconciliation"
+      ],
+      "commercialSubtracks": [
+        "COM-001",
+        "COM-002",
+        "COM-003",
+        "COM-004"
+      ]
+    },
+    {
+      "id": "marketing-comunicacao",
+      "name": "Marketing e comunicação",
+      "sourceGrouping": "Marketing e comunicação",
+      "observedStatus": "BLOCKED_IN_BASELINE",
+      "acceptanceStatus": "PENDING_AUTHORITY",
+      "owner": "PENDING_AUTHORITY: Produto/QA + dono de marketing",
+      "risk": "consent_and_delivery",
+      "surfaceRefs": [
+        "packages/modules/marketing/src/index.ts",
+        "packages/modules/notifications/src/index.ts",
+        "packages/modules/notifications-whatsapp/src/index.ts"
+      ],
+      "limitation": "Entrega, bounce, opt-out em fila/retry, provider e aceite operacional não foram provados.",
+      "requiredScenarioKinds": [
+        "positive",
+        "negative",
+        "permission",
+        "persistence",
+        "reconciliation"
+      ],
+      "commercialSubtracks": []
+    },
+    {
+      "id": "relatorios-entregas",
+      "name": "Relatórios e entregas agendadas",
+      "sourceGrouping": "Relatórios e entregas agendadas",
+      "observedStatus": "BLOCKED_IN_BASELINE",
+      "acceptanceStatus": "PENDING_AUTHORITY",
+      "owner": "PENDING_AUTHORITY: Produto/QA + dono de relatórios",
+      "risk": "source_reconciliation_and_delivery",
+      "surfaceRefs": [
+        "packages/modules/reports/src/index.ts"
+      ],
+      "limitation": "Famílias numéricas, exportações, timezone, permissionamento, worker e equivalência Vetus não foram reconciliados integralmente.",
+      "requiredScenarioKinds": [
+        "positive",
+        "negative",
+        "permission",
+        "persistence",
+        "reconciliation"
+      ],
+      "commercialSubtracks": []
+    },
+    {
+      "id": "acesso-lgpd",
+      "name": "Acesso, segurança, auditoria e LGPD",
+      "sourceGrouping": "Acesso/LGPD",
+      "observedStatus": "BLOCKED_IN_BASELINE",
+      "acceptanceStatus": "PENDING_AUTHORITY",
+      "owner": "PENDING_AUTHORITY: Produto/QA + Segurança/DPO",
+      "risk": "identity_privacy_and_audit",
+      "surfaceRefs": [
+        "packages/modules/access-control/src/index.ts",
+        "packages/modules/auth/src/index.ts",
+        "packages/modules/lgpd/src/index.ts",
+        "packages/modules/audit/src/index.ts"
+      ],
+      "limitation": "A matriz de paridade não substitui SSO, MFA, tenant/RLS, DSR, retenção, ACL ou revisão Security/DPO.",
+      "requiredScenarioKinds": [
+        "positive",
+        "negative",
+        "permission",
+        "persistence",
+        "reconciliation"
+      ],
+      "commercialSubtracks": []
+    },
+    {
+      "id": "integracoes-migracao",
+      "name": "Integrações e migração",
+      "sourceGrouping": "Integrações/migração",
+      "observedStatus": "BLOCKED_IN_BASELINE",
+      "acceptanceStatus": "PENDING_AUTHORITY",
+      "owner": "PENDING_AUTHORITY: Produto/QA + dono de dados/plataforma",
+      "risk": "boundary_and_cutover",
+      "surfaceRefs": [
+        "packages/modules/event-bus/src/index.ts",
+        "packages/modules/event-consumers/src/index.ts",
+        "packages/modules/webhooks/src/index.ts"
+      ],
+      "limitation": "Idempotência, retomada, rollback/roll-forward, conectores e dataset Vetus autorizado continuam sem prova.",
+      "requiredScenarioKinds": [
+        "positive",
+        "negative",
+        "permission",
+        "persistence",
+        "reconciliation"
+      ],
+      "commercialSubtracks": []
+    }
+  ],
+  "moduleInventory": [
+    {
+      "id": "MOD-ACCESS-CONTROL",
+      "name": "access-control",
+      "path": "packages/modules/access-control",
+      "primaryArea": "acesso-lgpd",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-API-KEYS",
+      "name": "api-keys",
+      "path": "packages/modules/api-keys",
+      "primaryArea": "acesso-lgpd",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-ATTACHMENTS",
+      "name": "attachments",
+      "path": "packages/modules/attachments",
+      "primaryArea": "acesso-lgpd",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-AUDIT",
+      "name": "audit",
+      "path": "packages/modules/audit",
+      "primaryArea": "acesso-lgpd",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-AUTH",
+      "name": "auth",
+      "path": "packages/modules/auth",
+      "primaryArea": "acesso-lgpd",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-BILLING",
+      "name": "billing",
+      "path": "packages/modules/billing",
+      "primaryArea": "financeiro",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-CASH",
+      "name": "cash",
+      "path": "packages/modules/cash",
+      "primaryArea": "financeiro",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-COMMERCIAL",
+      "name": "commercial",
+      "path": "packages/modules/commercial",
+      "primaryArea": "financeiro",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [
+        "commercial-journeys"
+      ],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-COMMISSIONS",
+      "name": "commissions",
+      "path": "packages/modules/commissions",
+      "primaryArea": "profissionais-comissoes",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-COUNTER-SALES",
+      "name": "counter-sales",
+      "path": "packages/modules/counter-sales",
+      "primaryArea": "financeiro",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [
+        "commercial-journeys"
+      ],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-DIAGNOSTICS",
+      "name": "diagnostics",
+      "path": "packages/modules/diagnostics",
+      "primaryArea": "laboratorio-diagnosticos",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-DISCHARGES",
+      "name": "discharges",
+      "path": "packages/modules/discharges",
+      "primaryArea": "atendimento",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-ENCOUNTERS",
+      "name": "encounters",
+      "path": "packages/modules/encounters",
+      "primaryArea": "atendimento",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-EVENT-BUS",
+      "name": "event-bus",
+      "path": "packages/modules/event-bus",
+      "primaryArea": "integracoes-migracao",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-EVENT-CONSUMERS",
+      "name": "event-consumers",
+      "path": "packages/modules/event-consumers",
+      "primaryArea": "integracoes-migracao",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-FEATURE-FLAGS",
+      "name": "feature-flags",
+      "path": "packages/modules/feature-flags",
+      "primaryArea": "acesso-lgpd",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-FINANCIAL",
+      "name": "financial",
+      "path": "packages/modules/financial",
+      "primaryArea": "financeiro",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-FISCAL",
+      "name": "fiscal",
+      "path": "packages/modules/fiscal",
+      "primaryArea": "fiscal",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-INPATIENT",
+      "name": "inpatient",
+      "path": "packages/modules/inpatient",
+      "primaryArea": "atendimento",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-INVENTORY",
+      "name": "inventory",
+      "path": "packages/modules/inventory",
+      "primaryArea": "estoque",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-LGPD",
+      "name": "lgpd",
+      "path": "packages/modules/lgpd",
+      "primaryArea": "acesso-lgpd",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-MARKETING",
+      "name": "marketing",
+      "path": "packages/modules/marketing",
+      "primaryArea": "marketing-comunicacao",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-MEDICAL-RECORDS",
+      "name": "medical-records",
+      "path": "packages/modules/medical-records",
+      "primaryArea": "atendimento",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-MFA",
+      "name": "mfa",
+      "path": "packages/modules/mfa",
+      "primaryArea": "acesso-lgpd",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-ML",
+      "name": "ml",
+      "path": "packages/modules/ml",
+      "primaryArea": "integracoes-migracao",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-NOTIFICATIONS",
+      "name": "notifications",
+      "path": "packages/modules/notifications",
+      "primaryArea": "marketing-comunicacao",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-NOTIFICATIONS-WHATSAPP",
+      "name": "notifications-whatsapp",
+      "path": "packages/modules/notifications-whatsapp",
+      "primaryArea": "marketing-comunicacao",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-OWNERS",
+      "name": "owners",
+      "path": "packages/modules/owners",
+      "primaryArea": "cadastros",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-PACKAGES",
+      "name": "packages",
+      "path": "packages/modules/packages",
+      "primaryArea": "financeiro",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [
+        "commercial-journeys"
+      ],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-PATIENTS",
+      "name": "patients",
+      "path": "packages/modules/patients",
+      "primaryArea": "cadastros",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-PAYMENTS",
+      "name": "payments",
+      "path": "packages/modules/payments",
+      "primaryArea": "financeiro",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-PIX",
+      "name": "pix",
+      "path": "packages/modules/pix",
+      "primaryArea": "financeiro",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-PRESCRIPTION-EXECUTIONS",
+      "name": "prescription-executions",
+      "path": "packages/modules/prescription-executions",
+      "primaryArea": "atendimento",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-PRESCRIPTIONS",
+      "name": "prescriptions",
+      "path": "packages/modules/prescriptions",
+      "primaryArea": "atendimento",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-PRODUCTS",
+      "name": "products",
+      "path": "packages/modules/products",
+      "primaryArea": "estoque",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-QUOTES",
+      "name": "quotes",
+      "path": "packages/modules/quotes",
+      "primaryArea": "estoque",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [
+        "commercial-journeys"
+      ],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-REPORTS",
+      "name": "reports",
+      "path": "packages/modules/reports",
+      "primaryArea": "relatorios-entregas",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-SCHEDULING",
+      "name": "scheduling",
+      "path": "packages/modules/scheduling",
+      "primaryArea": "atendimento",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-SERVICES",
+      "name": "services",
+      "path": "packages/modules/services",
+      "primaryArea": "cadastros",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [
+        "commercial-journeys"
+      ],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-SOC2",
+      "name": "soc2",
+      "path": "packages/modules/soc2",
+      "primaryArea": "acesso-lgpd",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-STAFF",
+      "name": "staff",
+      "path": "packages/modules/staff",
+      "primaryArea": "profissionais-comissoes",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-SURGERY",
+      "name": "surgery",
+      "path": "packages/modules/surgery",
+      "primaryArea": "atendimento",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-TRIAGE",
+      "name": "triage",
+      "path": "packages/modules/triage",
+      "primaryArea": "atendimento",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-USERS",
+      "name": "users",
+      "path": "packages/modules/users",
+      "primaryArea": "cadastros",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-WEBHOOKS",
+      "name": "webhooks",
+      "path": "packages/modules/webhooks",
+      "primaryArea": "integracoes-migracao",
+      "classificationStatus": "PROVISIONAL_PENDING_AUTHORITY",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    },
+    {
+      "id": "MOD-WORKFLOWS",
+      "name": "workflows",
+      "path": "packages/modules/workflows",
+      "primaryArea": "integracoes-migracao",
+      "classificationStatus": "BASELINE_COUNT_DRIFT_PENDING",
+      "crossAreaTracks": [],
+      "evidenceStatus": "OBSERVED_DIRECTORY_NOT_BEHAVIORAL_PROOF"
+    }
+  ],
+  "commercialJourneyTracks": [
+    {
+      "id": "COM-001",
+      "name": "Pacotes e fidelidade",
+      "primaryArea": "financeiro",
+      "modules": [
+        "commercial",
+        "packages"
+      ],
+      "requiredScenarioKinds": [
+        "positive",
+        "negative",
+        "permission",
+        "persistence",
+        "reconciliation"
+      ],
+      "status": "PENDING_AUTHORITY"
+    },
+    {
+      "id": "COM-002",
+      "name": "Cotações e compra",
+      "primaryArea": "estoque",
+      "modules": [
+        "quotes"
+      ],
+      "requiredScenarioKinds": [
+        "positive",
+        "negative",
+        "permission",
+        "persistence",
+        "reconciliation",
+        "concurrency"
+      ],
+      "status": "PENDING_AUTHORITY"
+    },
+    {
+      "id": "COM-003",
+      "name": "Vendas/comanda e resgate",
+      "primaryArea": "financeiro",
+      "modules": [
+        "counter-sales",
+        "commercial"
+      ],
+      "requiredScenarioKinds": [
+        "positive",
+        "negative",
+        "permission",
+        "persistence",
+        "reconciliation",
+        "retry/replay"
+      ],
+      "status": "PENDING_AUTHORITY"
+    },
+    {
+      "id": "COM-004",
+      "name": "Catálogo de serviços",
+      "primaryArea": "cadastros",
+      "modules": [
+        "services"
+      ],
+      "requiredScenarioKinds": [
+        "positive",
+        "negative",
+        "permission",
+        "persistence",
+        "reconciliation"
+      ],
+      "status": "PENDING_AUTHORITY"
+    }
+  ],
+  "choices": [
+    {
+      "id": "C1",
+      "title": "Taxonomia canônica das 11 áreas",
+      "question": "A matriz deve conservar a divisão de paridade observada ou adotar outro agrupamento?",
+      "owner": "Product + QA + domain owners (PENDING_AUTHORITY)",
+      "status": "PENDING_AUTHORITY",
+      "validity": {
+        "reviewBy": "2026-10-15",
+        "expiresOn": "2026-12-31"
+      },
+      "recommendation": {
+        "optionId": "C1-O1",
+        "nonBinding": true,
+        "rationale": "Preserva o crosswalk 4/11 + 7/11 e torna mudanças explícitas."
+      },
+      "options": [
+        {
+          "id": "C1-O1",
+          "label": "Preservar os 11 grupos da auditoria",
+          "implications": "Mantém comparabilidade; exige subtracks comerciais e clínicos explícitos.",
+          "evidenceRequired": [
+            "decisão Product/QA",
+            "crosswalk para fontes Vetus",
+            "owner por área"
+          ]
+        },
+        {
+          "id": "C1-O2",
+          "label": "Reagrupar por jornada de produto",
+          "implications": "Pode refletir melhor o uso; invalida comparações se o crosswalk não for versionado.",
+          "evidenceRequired": [
+            "taxonomia aprovada",
+            "crosswalk bidirecional",
+            "revisão de impacto"
+          ]
+        },
+        {
+          "id": "C1-O3",
+          "label": "Uma área por pacote de módulo",
+          "implications": "Reduz ambiguidade de código, mas não representa jornadas transversais.",
+          "evidenceRequired": [
+            "inventário completo",
+            "mapa de jornada",
+            "aceite de domínio"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C2",
+      "title": "Semântica do estado de evidência",
+      "question": "O que significa verified quando a fonte atual só demonstra presença de arquivos?",
+      "owner": "Product + QA (PENDING_AUTHORITY)",
+      "status": "PENDING_AUTHORITY",
+      "validity": {
+        "reviewBy": "2026-10-15",
+        "expiresOn": "2026-12-31"
+      },
+      "recommendation": {
+        "optionId": "C2-O1",
+        "nonBinding": true,
+        "rationale": "Separa manifesto, contrato, runtime e aceite humano; evita falso PASS."
+      },
+      "options": [
+        {
+          "id": "C2-O1",
+          "label": "Separar manifesto de comportamento",
+          "implications": "Verified de arquivo vira observação; PASS exige comportamento, persistência e revisão.",
+          "evidenceRequired": [
+            "vocabulário aprovado",
+            "known-good/known-bad",
+            "evidência pública"
+          ]
+        },
+        {
+          "id": "C2-O2",
+          "label": "Verified só para comportamento",
+          "implications": "Simplifica o selo, mas requer reclassificar toda a baseline imediatamente.",
+          "evidenceRequired": [
+            "reclassificação 11 áreas",
+            "provas atuais",
+            "revisão independente"
+          ]
+        },
+        {
+          "id": "C2-O3",
+          "label": "Manter verified documental",
+          "implications": "Permite continuidade editorial, mas mantém risco de falsa equivalência.",
+          "evidenceRequired": [
+            "limite publicado",
+            "owner de risco",
+            "não promoção automática"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C3",
+      "title": "Mínimo de cenários por área",
+      "question": "Quais dimensões devem existir em cada contrato e quais são aplicáveis por risco?",
+      "owner": "QA + domain owners (PENDING_AUTHORITY)",
+      "status": "PENDING_AUTHORITY",
+      "validity": {
+        "reviewBy": "2026-10-15",
+        "expiresOn": "2026-12-31"
+      },
+      "recommendation": {
+        "optionId": "C3-O1",
+        "nonBinding": true,
+        "rationale": "Exige cinco dimensões universais e concorrência/restart/replay quando o risco exigir."
+      },
+      "options": [
+        {
+          "id": "C3-O1",
+          "label": "Cinco dimensões + aplicáveis",
+          "implications": "Cobre positivo, negativo, permissão, persistência e reconciliação; explicita exceções.",
+          "evidenceRequired": [
+            "matriz de aplicabilidade",
+            "testes negativos",
+            "owner que aceita exceção"
+          ]
+        },
+        {
+          "id": "C3-O2",
+          "label": "Somente positivo e negativo",
+          "implications": "Menor custo, mas não prova tenant, persistência, concorrência ou ledger.",
+          "evidenceRequired": [
+            "aceite de risco",
+            "limitações por área",
+            "compensações"
+          ]
+        },
+        {
+          "id": "C3-O3",
+          "label": "Tudo em todas as áreas",
+          "implications": "Maior cobertura, mas pode criar testes artificiais e custo sem ganho proporcional.",
+          "evidenceRequired": [
+            "perfil de carga",
+            "matriz de risco",
+            "orçamento aprovado"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C4",
+      "title": "Classificação dos módulos",
+      "question": "Cada módulo deve ter uma área primária ou pode ser primário em várias áreas?",
+      "owner": "QA + arquitetura + domain owners (PENDING_AUTHORITY)",
+      "status": "PENDING_AUTHORITY",
+      "validity": {
+        "reviewBy": "2026-10-15",
+        "expiresOn": "2026-12-31"
+      },
+      "recommendation": {
+        "optionId": "C4-O1",
+        "nonBinding": true,
+        "rationale": "Um primaryArea mantém 45/46 contável; cross-area tracks preservam jornadas transversais."
+      },
+      "options": [
+        {
+          "id": "C4-O1",
+          "label": "Uma área primária + crosslinks",
+          "implications": "Evita contagem duplicada e mantém comercial, notificações e integrações visíveis.",
+          "evidenceRequired": [
+            "mapa de módulos",
+            "crosslinks",
+            "revisão de arquitetura"
+          ]
+        },
+        {
+          "id": "C4-O2",
+          "label": "Múltiplas áreas primárias",
+          "implications": "Representa acoplamento real, mas torna denominador e aceites ambíguos.",
+          "evidenceRequired": [
+            "regra de ponderação",
+            "denominador aprovado",
+            "reconciliação sem dupla contagem"
+          ]
+        },
+        {
+          "id": "C4-O3",
+          "label": "Classificar só por jornada",
+          "implications": "Foca produto, mas deixa pacote sem owner técnico claro.",
+          "evidenceRequired": [
+            "mapa pacote→jornada",
+            "owner técnico",
+            "detector de órfãos"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C5",
+      "title": "Diferença Vetus e desconhecidos",
+      "question": "Como tratar lacunas, diferenças e áreas sem oracle suficiente?",
+      "owner": "Product + domain owners (PENDING_AUTHORITY)",
+      "status": "PENDING_AUTHORITY",
+      "validity": {
+        "reviewBy": "2026-10-15",
+        "expiresOn": "2026-12-31"
+      },
+      "recommendation": {
+        "optionId": "C5-O1",
+        "nonBinding": true,
+        "rationale": "UNKNOWN/BLOCKED é informação; equivalência só nasce de regra e evidência aceitas."
+      },
+      "options": [
+        {
+          "id": "C5-O1",
+          "label": "Preservar UNKNOWN/BLOCKED",
+          "implications": "Evita inventar regra e reabre o escopo quando A02/A03–A05 mudarem.",
+          "evidenceRequired": [
+            "crosswalk lacunas",
+            "owner de decisão",
+            "registro de reabertura"
+          ]
+        },
+        {
+          "id": "C5-O2",
+          "label": "Inferir pela implementação atual",
+          "implications": "Acelera inventário, mas transforma comportamento existente em requisito.",
+          "evidenceRequired": [
+            "decisão explícita",
+            "análise de risco",
+            "testes de divergência"
+          ]
+        },
+        {
+          "id": "C5-O3",
+          "label": "Bloquear tudo sem oracle",
+          "implications": "Máxima cautela, mas impede preparação e não distingue risco por área.",
+          "evidenceRequired": [
+            "oracle completo",
+            "plano de dados",
+            "janela autorizada"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C6",
+      "title": "Aprovação, versão e reabertura",
+      "question": "Quem aprova a matriz e quando uma mudança reabre uma área?",
+      "owner": "Product + QA + domain owners (PENDING_AUTHORITY)",
+      "status": "PENDING_AUTHORITY",
+      "validity": {
+        "reviewBy": "2026-10-15",
+        "expiresOn": "2026-12-31"
+      },
+      "recommendation": {
+        "optionId": "C6-O1",
+        "nonBinding": true,
+        "rationale": "Aprovação versionada e reabertura por impacto mantêm o histórico e impedem aceites órfãos."
+      },
+      "options": [
+        {
+          "id": "C6-O1",
+          "label": "Versão + owner + reabre afetados",
+          "implications": "Rastreia decisões e invalida provas afetadas por A02/A03–A05 ou código.",
+          "evidenceRequired": [
+            "assinatura Product/QA",
+            "owner por área",
+            "evento de reabertura"
+          ]
+        },
+        {
+          "id": "C6-O2",
+          "label": "Aprovação por data",
+          "implications": "Baixo custo, mas não identifica escopo, versão nem impacto.",
+          "evidenceRequired": [
+            "registro de escopo",
+            "hash do candidato",
+            "revisão manual"
+          ]
+        },
+        {
+          "id": "C6-O3",
+          "label": "Matriz única mutável",
+          "implications": "Facilita edição, mas apaga história e permite prova stale.",
+          "evidenceRequired": [
+            "log append-only",
+            "controle de acesso",
+            "revalidação total"
+          ]
+        }
+      ]
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "title": "Taxonomia completa",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "must": [
+        "Listar exatamente 11 grupos conforme a decisão vigente.",
+        "Registrar crosswalk de nomes/fonte e estado observado sem promoção automática."
+      ],
+      "acceptanceEvidence": [
+        "contrato aprovado",
+        "matriz versionada",
+        "revisão Product/QA"
+      ]
+    },
+    {
+      "id": "R2",
+      "title": "Inventário de módulos",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "must": [
+        "Classificar cada diretório observado de packages/modules com uma área primária.",
+        "Reconciliar 45 na baseline contra 46 observados, mantendo workflows como delta até decisão."
+      ],
+      "acceptanceEvidence": [
+        "manifesto digest-bound",
+        "known-bad de módulo ausente/duplicado",
+        "decisão do delta"
+      ]
+    },
+    {
+      "id": "R3",
+      "title": "Cenários comportamentais",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "must": [
+        "Definir positivo, negativo, permissão, persistência e reconciliação por área.",
+        "Adicionar concorrência, restart, retry/replay ou cutover quando aplicável ao risco."
+      ],
+      "acceptanceEvidence": [
+        "fixtures sintéticas",
+        "testes de fronteira pública",
+        "matriz de aplicabilidade"
+      ]
+    },
+    {
+      "id": "R4",
+      "title": "Separação de evidência",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "must": [
+        "Distinguir presença de arquivo, contrato, execução runtime, reconciliação e aceite humano.",
+        "Impedir que status verified do manifesto vire PASS funcional."
+      ],
+      "acceptanceEvidence": [
+        "vocabulário aprovado",
+        "known-good/known-bad",
+        "crítica independente"
+      ]
+    },
+    {
+      "id": "R5",
+      "title": "Jornadas comerciais explícitas",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "must": [
+        "Mapear pacotes, cotações, vendas/comanda e serviços como tracks próprios.",
+        "Preservar vínculo entre atendimento, estoque, financeiro, ledger e permissões."
+      ],
+      "acceptanceEvidence": [
+        "COM-001..COM-004",
+        "oracle financeiro/estoque",
+        "owner de produto"
+      ]
+    },
+    {
+      "id": "R6",
+      "title": "Governança e reabertura",
+      "status": "REQUIRED_PENDING_AUTHORITY",
+      "must": [
+        "Versionar mudanças de escopo, owners, fontes, fixtures e regras.",
+        "Reabrir somente áreas afetadas por novos achados A02/A03–A05 ou mudança material."
+      ],
+      "acceptanceEvidence": [
+        "registro de autoridade",
+        "evento de reabertura",
+        "SHA/config/schema do candidato"
+      ]
+    }
+  ],
+  "invariants": [
+    {
+      "id": "exactly_eleven_areas",
+      "rule": "A taxonomia vigente deve conter exatamente 11 áreas, sem omissão ou duplicação."
+    },
+    {
+      "id": "all_observed_modules_classified",
+      "rule": "Todo diretório observado recebe uma área primária ou fica explicitamente em delta pendente; nenhum módulo é descartado."
+    },
+    {
+      "id": "one_primary_area",
+      "rule": "Cada módulo tem uma área primária contável; jornadas transversais usam cross-area tracks, sem dupla contagem silenciosa."
+    },
+    {
+      "id": "five_scenario_dimensions",
+      "rule": "Cada área declara positivo, negativo, permissão, persistência e reconciliação; risco pode exigir concorrência/restart/replay/cutover."
+    },
+    {
+      "id": "manifest_not_behavior",
+      "rule": "Presença de arquivo, manifesto ou nome de módulo não é PASS funcional, equivalência Vetus ou aceite de domínio."
+    },
+    {
+      "id": "unknown_preserved",
+      "rule": "Lacuna, divergência ou desconhecido permanece UNKNOWN/BLOCKED até fonte, regra e autoridade; não inventar equivalência retroativa."
+    },
+    {
+      "id": "commercial_tracks_explicit",
+      "rule": "Pacotes, cotações, vendas/comanda e serviços são tracks próprios e não ficam cobertos apenas por fidelidade."
+    },
+    {
+      "id": "synthetic_evidence_only",
+      "rule": "Fixtures e datasets desta preparação são sintéticos; PHI e dados reais são proibidos."
+    },
+    {
+      "id": "versioned_reopen",
+      "rule": "Mudança de escopo, fonte, código, fixture, owner ou regra versiona a matriz e reabre áreas afetadas."
+    },
+    {
+      "id": "clinical_authority",
+      "rule": "Regra clínica, fiscal, financeira e de remuneração exige responsável de domínio; o agente não decide."
+    },
+    {
+      "id": "no_functional_change",
+      "rule": "Esta preparação não altera runtime, banco, migrations, providers, saldos ou rotas."
+    }
+  ],
+  "failureCases": [
+    {
+      "id": "FAIL-001",
+      "trigger": "Área ausente ou duplicada.",
+      "expected": "Validador falha e nenhuma matriz é promovida.",
+      "evidence": "known-bad do contrato."
+    },
+    {
+      "id": "FAIL-002",
+      "trigger": "Diretório de módulo observado sem classificação ou com primaryArea inválida.",
+      "expected": "Falha antes de aceitar inventário.",
+      "evidence": "manifesto atual + teste de drift."
+    },
+    {
+      "id": "FAIL-003",
+      "trigger": "45 esperado é tratado como 46 sem registrar delta, ou workflows é removido.",
+      "expected": "Falha; a divergência permanece PENDING_AUTHORITY.",
+      "evidence": "observedBaseline + known-bad."
+    },
+    {
+      "id": "FAIL-004",
+      "trigger": "verified do manifesto é promovido a PASS comportamental.",
+      "expected": "Falha semântica; exige execução pública e reconciliação.",
+      "evidence": "invariant manifest_not_behavior."
+    },
+    {
+      "id": "FAIL-005",
+      "trigger": "Cenário negativo, permissão, persistência ou reconciliação ausente.",
+      "expected": "Área fica incompleta/BLOCKED.",
+      "evidence": "scenarioCatalog + checklist."
+    },
+    {
+      "id": "FAIL-006",
+      "trigger": "Acesso cross-tenant ou exposição de PHI em fixture.",
+      "expected": "Falha de segurança e bloqueio; não publicar conteúdo.",
+      "evidence": "matriz de permissão + auditoria restrita."
+    },
+    {
+      "id": "FAIL-007",
+      "trigger": "Pacotes/cotações/vendas são classificados apenas como fidelidade.",
+      "expected": "Falha de cobertura comercial; exigir COM-001..COM-004.",
+      "evidence": "commercialJourneyTracks."
+    },
+    {
+      "id": "FAIL-008",
+      "trigger": "Fonte Vetus, código ou regra diverge depois da matriz.",
+      "expected": "Versão afetada reabre e prova stale não é reutilizada.",
+      "evidence": "versioned_reopen + SHA."
+    },
+    {
+      "id": "FAIL-009",
+      "trigger": "Owner de Produto/QA/domínio ausente ou autoaceite.",
+      "expected": "Status permanece PENDING_AUTHORITY.",
+      "evidence": "authority record."
+    },
+    {
+      "id": "FAIL-010",
+      "trigger": "Preparação altera runtime, migration, banco ou comportamento.",
+      "expected": "Escopo inválido e gate reaberto.",
+      "evidence": "diff e gate scope."
+    }
+  ],
+  "acceptanceGate": {
+    "status": "PENDING_AUTHORITY",
+    "requiredBefore": [
+      "PROD-026",
+      "PROD-028",
+      "PROD-035",
+      "PROD-045"
+    ],
+    "requiredAuthorities": [
+      {
+        "role": "Product",
+        "status": "PENDING_AUTHORITY"
+      },
+      {
+        "role": "QA/release",
+        "status": "PENDING_AUTHORITY"
+      },
+      {
+        "role": "domain owners",
+        "status": "PENDING_AUTHORITY"
+      }
+    ],
+    "requiredEvidence": [
+      "taxonomia 11 áreas assinada e crosswalk bidirecional",
+      "inventário 45→46 reconciliado, com workflows decidido",
+      "fixtures sintéticas e matriz de aplicabilidade",
+      "execução pública por área com negativos/permissão/persistência/reconciliação",
+      "concorrência/restart/replay/cutover quando aplicáveis",
+      "dataset Vetus autorizado e lacunas explícitas",
+      "crítica independente fresh dos bytes finais",
+      "reaberturas e hashes vinculados ao candidato"
+    ],
+    "promotionRule": "Não promover PROD-027/DONE/paridade por contrato ou manifesto; PROD-003 e provas posteriores permanecem obrigatórios."
+  }
+}

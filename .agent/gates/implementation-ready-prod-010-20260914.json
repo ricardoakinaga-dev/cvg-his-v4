@@ -1,0 +1,67 @@
+{
+  "authority": {
+    "actor": "lead executor do programa state-of-art (nao autoridade de release)",
+    "decision": "Entrada em PROD-010-R2: revalidar scripts de identidade/coleta/promocao no candidato rev27 (known-good/bad); sem alterar thresholds.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar ao concluir 010-R2 e a cada mudanca de bytes.",
+    "required": false,
+    "scope": "Entrada em PROD-010 (promocao e identidade de evidencia): dependencias satisfeitas",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "Cadeia 002-L/003-R2/004-R2/005-R2/061 aceita no escopo; dependencia 002 integral relaxada explicitamente.",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-PROD-005-R2-REVIEW-20260914"
+      ],
+      "id": "IR-001",
+      "limitations": "Gate de entrada, nao de saida.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Alvo fixado: promote-critical-shard + identidade/coleta; known-good passa, bytes adulterados/shard errado/ausente bloqueiam.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "id": "IR-002",
+      "limitations": "Revalidacao primeiro.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Riscos mapeados: sem tocar shards promovidos; release BLOCKED.",
+      "evidence_refs": [
+        ".agent/state.json"
+      ],
+      "id": "IR-003",
+      "limitations": "Nao aprova release.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json",
+    ".agent/state.json"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Executar PROD-010-R2.",
+  "record_id": "GATE-IR-PROD-010-20260914",
+  "residual_risk": "MEDIUM",
+  "revalidation_triggers": [
+    "Inicio e conclusao de 010-R2.",
+    "Qualquer alteracao em bytes."
+  ],
+  "scope": "Entrada em PROD-010 (promocao e identidade de evidencia): dependencias satisfeitas",
+  "scope_ref": "PROD-010",
+  "supersedes": null,
+  "timestamp": "2026-09-15T01:11:34Z",
+  "version": 1,
+  "conditions": []
+}

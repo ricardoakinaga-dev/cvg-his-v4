@@ -1,6 +1,6 @@
 # CVG-HIS V4 - Documentacao ativa
 
-**Atualizado em:** 2026-09-12 (programa executivo State of Art / Triplo AAA)
+**Atualizado em:** 2026-09-15 (auditoria do checkpoint State of Art / Triplo AAA)
 
 Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afirmacao de funcionalidade so e considerada valida quando estiver sustentada por codigo executavel e teste comportamental.
 
@@ -12,16 +12,20 @@ Esta é a fonte ativa para decisão, execução e acompanhamento do programa. O
 objetivo é elevar o ERP de uma base extensa em construção para um candidato
 reproduzível, integrado, seguro, acessível e operável com régua Triplo AAA.
 
-**Snapshot corrente de 12/09/2026:** [auditoria do repositório](2026-09-12-auditoria-repositorio-cvg-his-v4.md), [roadmap de remediação](2026-09-12-roadmap-erp-state-of-art-triplo-aaa.md) e [backlog de correção dos GAPs](2026-09-12-backlog-correcao-gaps-triplo-aaa.md). O candidato `31fde3c4` está em **69/100, FAIL / não elegível a Triplo AAA**; os documentos de 06/09 permanecem como programa-base e histórico de decomposição.
+**Checkpoint auditado em 15/09/2026:** a nota editorial 73/100 não foi recalculada; checker crítico segue FAIL21; produção/Triplo AAA NOT PROVEN. Entre os 65 cartões PROD há 1 DONE de controle, 15 BLOCKED, 0 IN_PROGRESS e 49 TODO. PROD-014 continua bloqueado por D1/S3; PROD-019, PROD-027, PROD-048, PROD-049 e PROD-052 estão bloqueados por seus gates externos ou dependências integrais; não há frente integral independente em execução até que as autoridades respondam pelos contratos pendentes.
 
-1. [Relatório de estado atual](2026-09-06-relatorio-estado-atual-erp-cvg-his-v4.md) — 67 itens pontuados, baseline **75/100, NO-GO**, com revalidação técnica de 07/09 no adendo.
-2. [Plano executivo State of Art / Triplo AAA](2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md) — objetivos, investimento, gates, governança e decisões necessárias.
-3. [Roadmap State of Art / Triplo AAA](2026-09-06-roadmap-erp-state-of-art-triplo-aaa.md) — fases relativas a T0, caminho crítico, marcos e trajetória de maturidade.
-4. [Backlog State of Art / Triplo AAA](2026-09-06-backlog-erp-state-of-art-triplo-aaa.md) — 50 entregas `AAA-*`, status, dependências, owners e critérios de aceite.
+1. [Auditoria do checkpoint](2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md) — veredito, correções, provas e limites; a [baseline integral de 14/09](2026-09-14-relatorio-completo-estado-construcao.md) permanece histórica.
+2. [Plano executivo State of Art / Triplo AAA](2026-09-14-plano-executivo-state-of-art-triplo-aaa.md) — objetivos, responsabilidades, decisões e gates.
+3. [Roadmap pós-checkpoint](2026-09-15-roadmap-pos-checkpoint-state-of-art-triplo-aaa.md) — caminho crítico do FAIL21 à recertificação e operação.
+4. [Backlog executável pós-checkpoint](2026-09-15-backlog-pos-checkpoint-state-of-art-triplo-aaa.md) — fila P0, estado dos 65 contratos e gates; os [contratos detalhados de 14/09](2026-09-14-backlog-state-of-art-triplo-aaa.md) permanecem referência normativa.
+- [Matriz de ambiente e runtime](049-matriz-ambiente-runtime.md) — precedência Compose/Helm por ambiente, alvos e owners pendentes.
+- [Contrato de identidade corporativa PROD-019](019-contrato-identidade-corporativa.md) — opções C1-C6, requisitos R1-R6 e gate de autoridade; provider e integração permanecem pendentes.
+- [Contrato de expiração de pontos PROD-052](052-contrato-expiracao-pontos.md) — opções C1-C6, requisitos R1-R6 e gate Product/Financeiro; nenhum saldo é alterado.
+- [Matriz comportamental PROD-027](027-matriz-comportamental-11-areas.md) — preparação da taxonomia de 11 áreas e inventário 45→46, sem aceitar paridade.
 5. [Quality Bar](engineering/QUALITY_BAR.md) e [matriz de evidências](engineering/REQUIREMENT_EVIDENCE_MATRIX.md) — gates que impedem que uma nota ou um arquivo substitua prova.
 6. [Evidência do critical gate de 07/09](engineering/CRITICAL_GATE_2026-09-07.md) — `PASS_BOUNDED` local: 65/65 arquivos, 594/594 testes e 10/10 processos; limites de target e recertificação preservados.
 7. [Evidência E2E SPA de 07/09](engineering/E2E_SPA_2026-09-07.md) — `PASS_BOUNDED` scoped: 9/9 jornadas contra PostgreSQL/Redis reais, com cleanup sem erro.
-8. [Baseline corrente](triple-a/15-current-baseline.md) e [evidência corrente](triple-a/17-current-execution-evidence.md) — candidato `e605597c`, envelope de eventos, crosswalk e pins de supply chain validados, com limitações explícitas.
+8. [Baseline técnica histórica](triple-a/15-current-baseline.md) e [evidência histórica](triple-a/17-current-execution-evidence.md) — candidato `e605597c`, envelope de eventos, crosswalk e pins de supply chain validados, com limitações explícitas.
 9. [Crosswalk do prompt congelado](triple-a/18-master-prompt-crosswalk.md) — 61 fases do prompt, 76 linhas da matriz, hashes e aceitação executável.
 10. [Relatório final de assurance](triple-a/FINAL_REPORT.md), [scorecard](triple-a/13-final-scorecard.md) e [execution log](triple-a/EXECUTION_LOG.md).
 
@@ -30,8 +34,9 @@ preservado; o [crosswalk](triple-a/18-master-prompt-crosswalk.md) é a referênc
 normativa da correspondência com a matriz expandida. Cada documento separa implementação local de verificação remota e
 target; `BLOCKED`/`NOT PROVEN` não é convertido em aprovação.
 
-O selo “Triplo AAA” é aspiracional e só poderá ser usado após nota global ≥95,
-dimensões ≥90, nenhum item crítico abaixo de 85, gates obrigatórios aprovados,
+O selo “Triplo AAA” é aspiracional e só poderá ser usado após nota total ≥97,
+dimensões críticas ≥95, zero P0 abertos, gates obrigatórios aprovados, conforme
+a [régua congelada](triple-a/QUALITY_BAR_V1.json),
 evidência fresca no mesmo SHA, revisão independente e aceites de Produto,
 Operação, Segurança/DPO e liberação.
 
@@ -112,10 +117,17 @@ Em divergencias, use esta ordem:
 
 1. comportamento reproduzido na aplicacao e testes sobre runtime real;
 2. codigo e contratos da API;
-3. baseline/relatório e plano ativos de 7 de setembro de 2026, incluindo a Quality Bar e procedimentos posteriores explicitamente vigentes;
+3. auditoria, plano, roadmap e backlog vigentes conforme `document-governance.json`, mantendo a Quality Bar congelada e os procedimentos explicitamente vigentes;
 4. baseline executiva de 2 de setembro de 2026 e arquitetura/ADRs vigentes quando não contraditos pelo programa atual;
 5. auditorias de julho de 2026, como baseline anterior;
 6. acervo Vetus como referencia de produto;
 7. historico em `legado/docs/docs2/`, apenas para contexto.
+
+Essa ordem identifica evidência do comportamento atual, não autoriza um bug a
+substituir requisito aprovado. Para decidir o comportamento esperado, consultar
+contratos, ADRs e autoridades vigentes; divergências devem ser registradas e
+resolvidas explicitamente. O estado operacional em `.agent` requer
+reconciliação antes de cada retomada; o checkpoint de 15/09 agora aponta
+`PROD-019`, mantendo PROD-014, PROD-048 e PROD-049 bloqueados por seus gates próprios.
 
 Relatorios antigos com notas de 85-96/100 foram arquivados porque mediam presenca de arquivos, planos ou implementacoes parciais e nao comprovavam a jornada completa.

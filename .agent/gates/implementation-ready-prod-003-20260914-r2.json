@@ -1,0 +1,69 @@
+{
+  "authority": {
+    "actor": "lead executor da reconciliacao PROD-001-R2 (nao autoridade de release)",
+    "decision": "Entrada em PROD-003-R2: 002-L aceito (identidade local) com relaxamento explicito da dependencia integral de PROD-002; runner + receita retomavel inspecionados; binarios privados a provisionar por run-id; nenhuma decisao de ambiente compartilhado tomada.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar ao iniciar/concluir 003-R2 e a cada mudanca de bytes.",
+    "required": false,
+    "scope": "Entrada em PROD-003-R1 (harness reproduzivel): dependencias satisfeitas e plano e allowlist fixados",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "002-L aceito (IDENTITY 17/17, tamper-negative, inventario restrito); dependencia integral PROD-002->003 relaxada explicitamente p/ 002-L conf. backlog 14/09 s4; restante integral segue BLOCKED.",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-PROD-002-L-R1-20260914"
+      ],
+      "id": "IR-001",
+      "limitations": "Gate de entrada, nao de saida. R1-13/09 aceito mas com encerramento bottom-up pendente; R2 reexecuta sobre bytes rev27 com relaxamento explicito 002-L.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Runner run-exclusive-stack.mjs inspecionado (657 linhas; 6/6 units); receita TRANSCRIPT retomavel; recursos exclusivos por run-id; sem fuser/down-v.",
+      "evidence_refs": [
+        "scripts/run-exclusive-stack.mjs",
+        "artifacts/remediation/PROD-003/attempt-20260913T160500Z-R1/TRANSCRIPT.md"
+      ],
+      "id": "IR-002",
+      "limitations": "Binarios privados a provisionar (apt-get download + dpkg-deb -x, sem root).",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Riscos mapeados: builds vinculados exigidos; teardown owned-only; release BLOCKED.",
+      "evidence_refs": [
+        ".agent/state.json"
+      ],
+      "id": "IR-003",
+      "limitations": "Nao aprova produto ou release.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json",
+    ".agent/state.json",
+    "scripts/run-exclusive-stack.mjs"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Executar PROD-003-R2 (2x stack + tamper-negative).",
+  "record_id": "GATE-IR-PROD-003-20260914-R2",
+  "residual_risk": "MEDIUM",
+  "revalidation_triggers": [
+    "Inicio e conclusao de 003-R2.",
+    "Qualquer alteracao em bytes."
+  ],
+  "scope": "Entrada em PROD-003-R1 (harness reproduzivel): dependencias satisfeitas e plano e allowlist fixados",
+  "scope_ref": "PROD-003",
+  "supersedes": "GATE-IR-PROD-003-20260913-R1",
+  "timestamp": "2026-09-14T00:43:00Z",
+  "version": 1,
+  "conditions": []
+}

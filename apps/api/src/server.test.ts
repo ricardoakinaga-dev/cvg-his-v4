@@ -1268,6 +1268,109 @@ test('tenant command envelope replays the complete HTTP response without repeati
   assert.equal(commandCalls, 1);
 });
 
+test('report replays resolve the definition from the tenant-command envelope', async () => {
+  const executions = new Map<string, unknown>();
+  let commandCalls = 0;
+  const server = createServerUnderTest({
+    unitOfWork: {
+      async execute(
+        context: { idempotencyKey?: string },
+        _payload: unknown,
+        command: () => Promise<unknown>
+      ) {
+        const key = context.idempotencyKey ?? 'missing';
+        const previous = executions.get(key);
+        if (previous !== undefined) return { value: previous, replayed: true };
+        commandCalls += 1;
+        const value = await command();
+        executions.set(key, value);
+        return { value, replayed: false };
+      }
+    } as never
+  });
+  const accessToken = await login(server, 'admin', 'seed_admin');
+  const request = {
+    method: 'POST',
+    url: '/reports/executions',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      'idempotency-key': 'report-definition-replay-1',
+      host: 'localhost'
+    },
+    body: { reportId: 'registration-owners' }
+  } as const;
+
+  const first = await performRequest(server, request);
+  const replay = await performRequest(server, request);
+
+  assert.equal(first.statusCode, 201);
+  assert.equal(replay.statusCode, 201);
+  assert.deepEqual(replay.bodyJson(), first.bodyJson());
+  assert.equal(commandCalls, 1);
+});
+
+test('report schedule replays resolve the definition from the schedule route', async () => {
+  const executions = new Map<string, unknown>();
+  let commandCalls = 0;
+  const server = createServerUnderTest({
+    unitOfWork: {
+      async execute(
+        context: { idempotencyKey?: string },
+        _payload: unknown,
+        command: () => Promise<unknown>
+      ) {
+        const key = context.idempotencyKey ?? 'missing';
+        const previous = executions.get(key);
+        if (previous !== undefined) return { value: previous, replayed: true };
+        commandCalls += 1;
+        const value = await command();
+        executions.set(key, value);
+        return { value, replayed: false };
+      }
+    } as never
+  });
+  const accessToken = await login(server, 'admin', 'seed_admin');
+  const createSchedule = await performRequest(server, {
+    method: 'POST',
+    url: '/reports/schedules',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      'idempotency-key': 'report-schedule-create-replay-1',
+      host: 'localhost'
+    },
+    body: {
+      reportId: 'registration-owners',
+      name: 'Owners replay schedule',
+      frequency: 'daily',
+      format: 'csv',
+      recipients: ['finance@example.test']
+    }
+  } as const);
+  assert.equal(createSchedule.statusCode, 201);
+  const schedule = createSchedule.bodyJson<{ id: string }>();
+
+  const request = {
+    method: 'PATCH',
+    url: `/reports/schedules/${schedule.id}`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      'idempotency-key': 'report-schedule-patch-replay-1',
+      host: 'localhost'
+    },
+    body: { isActive: false }
+  } as const;
+  const first = await performRequest(server, request);
+  const replay = await performRequest(server, request);
+
+  assert.equal(first.statusCode, 200);
+  assert.equal(replay.statusCode, 200);
+  assert.deepEqual(replay.bodyJson(), first.bodyJson());
+  assert.equal(commandCalls, 2);
+});
+
 test('cash drawer mutations receive the server tenant-command runner envelope', async () => {
   const calls: Array<{
     operation: string;

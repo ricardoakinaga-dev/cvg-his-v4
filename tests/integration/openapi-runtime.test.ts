@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import { spawnSync } from 'child_process';
+import ts from 'typescript';
 import { parse, stringify } from 'yaml';
 
 /**
@@ -22,6 +23,59 @@ const OPENAPI_SPEC_PATH = 'apps/api/src/openapi.yaml';
 function loadSpec() {
   const content = readFileSync(OPENAPI_SPEC_PATH, 'utf-8');
   return parse(content, { prettyErrors: true });
+}
+
+const CRITICAL_CALLBACK_CONDITION =
+  "if (pathname === '/auth/oidc/callback' && request.method === 'GET') {";
+const OTHER_CRITICAL_DISPATCH_SENTINELS = [
+  "if (pathname === '/auth/session' && request.method === 'GET') {",
+  "if (pathname === '/auth/sessions' && request.method === 'GET') {",
+  "if (pathname === '/auth/logout-all-others' && request.method === 'POST') {",
+  "if (revokeSessionMatch && request.method === 'POST') {",
+  "if (pathname === '/auth/mfa/webauthn/setup' && request.method === 'GET') {",
+  "if (pathname === '/auth/mfa/webauthn/setup' && request.method === 'POST') {",
+  "if (pathname === '/auth/mfa/webauthn/authenticate' && request.method === 'POST') {",
+  "if (pathname === '/auth/mfa/webauthn/assert' && request.method === 'POST') {",
+  "if (pathname === '/auth/oidc/login' && request.method === 'GET') {",
+  "if (pathname === '/auth/oidc/logout' && request.method === 'POST') {"
+];
+
+// A fixture that does not parse cannot say anything about route reachability.
+function parseDiagnostics(source: string, fileName: string): string[] {
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  return (sourceFile.parseDiagnostics ?? []).map((diagnostic) => {
+    const position = sourceFile.getLineAndCharacterOfPosition(diagnostic.start ?? 0);
+    return `TS${diagnostic.code} ${ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ')} @${position.line + 1}:${position.character + 1}`;
+  });
+}
+
+function buildCriticalCallbackFixture(
+  source: string,
+  replacement: (condition: string) => string,
+  suffix: string
+): string {
+  expect(
+    source.split(CRITICAL_CALLBACK_CONDITION).length - 1,
+    'the real callback condition must exist exactly once'
+  ).toBe(1);
+  const transformed = `${source.replace(
+    CRITICAL_CALLBACK_CONDITION,
+    replacement(CRITICAL_CALLBACK_CONDITION)
+  )}${suffix}`;
+  expect(transformed, 'the fixture transformation must change the source').not.toBe(source);
+  for (const sentinel of OTHER_CRITICAL_DISPATCH_SENTINELS) {
+    expect(
+      transformed.split(sentinel).length - 1,
+      `other critical handler must stay untouched: ${sentinel}`
+    ).toBe(1);
+  }
+  return transformed;
 }
 
 describe('OpenAPI Contract Tests', () => {
@@ -220,15 +274,70 @@ describe('OpenAPI Contract Tests', () => {
         name: 'a false ancestor guard',
         replacement: (condition: string) => `// ${condition}\n  if (false) {\n  ${condition}`,
         suffix: '\n}'
+      },
+      {
+        name: 'a parenthesized trailing false guard',
+        replacement: (condition: string) => `// ${condition}\n  if (pathname === '/auth/oidc/callback' && request.method === 'GET' && (false)) {`,
+        suffix: ''
+      },
+      {
+        name: 'a negated trailing true guard',
+        replacement: (condition: string) => `// ${condition}\n  if (pathname === '/auth/oidc/callback' && request.method === 'GET' && !true) {`,
+        suffix: ''
+      },
+      {
+        name: 'a nested parenthesized trailing false guard',
+        replacement: (condition: string) => `// ${condition}\n  if (pathname === '/auth/oidc/callback' && request.method === 'GET' && ((false))) {`,
+        suffix: ''
+      },
+      {
+        name: 'a negated parenthesized trailing true guard',
+        replacement: (condition: string) => `// ${condition}\n  if (pathname === '/auth/oidc/callback' && request.method === 'GET' && !(true)) {`,
+        suffix: ''
+      },
+      {
+        name: 'a parenthesized leading false guard',
+        replacement: (condition: string) => `// ${condition}\n  if ((false) && pathname === '/auth/oidc/callback' && request.method === 'GET') {`,
+        suffix: ''
+      },
+      {
+        name: 'a negated leading true guard',
+        replacement: (condition: string) => `// ${condition}\n  if (!true && pathname === '/auth/oidc/callback' && request.method === 'GET') {`,
+        suffix: ''
+      },
+      {
+        name: 'a negated true ancestor guard',
+        replacement: (condition: string) => `// ${condition}\n  if (!true) {\n  ${condition}`,
+        suffix: '\n}'
+      },
+      {
+        name: 'a route under the else branch of a proven-true guard',
+        replacement: (condition: string) =>
+          `if (true) { /* empty */ } else {\n  ${condition}`,
+        suffix: '\n}'
+      },
+      {
+        name: 'a route mentioned only in a comment',
+        replacement: (condition: string) =>
+          `// does not dispatch: ${condition}\n  if (false) {`,
+        suffix: ''
+      },
+      {
+        name: 'a route mentioned only in a string literal',
+        replacement: (condition: string) =>
+          `// ${condition}\n  if ('/auth/oidc/callback' && request.method === 'GET') {`,
+        suffix: ''
       }
-    ])('does not count commented routes or $name as runtime operations', ({ replacement, suffix }) => {
+    ])('does not count commented routes or $name as runtime operations', ({ name, replacement, suffix }) => {
       const fixtureDirectory = mkdtempSync(join(tmpdir(), 'cvg-auth-routes-known-bad-'));
       const fixturePath = join(fixtureDirectory, 'auth-routes.ts');
-      const realCondition = "if (pathname === '/auth/oidc/callback' && request.method === 'GET') {";
       const source = readFileSync('apps/api/src/routes/auth-routes.ts', 'utf8');
-      const falseGuardedSource = `${source.replace(realCondition, replacement(realCondition))}${suffix}`;
+      const falseGuardedSource = buildCriticalCallbackFixture(source, replacement, suffix);
+      expect(
+        parseDiagnostics(falseGuardedSource, `${name}.ts`),
+        'reachability fixtures must be syntactically valid'
+      ).toEqual([]);
 
-      expect(falseGuardedSource).not.toBe(source);
       try {
         writeFileSync(fixturePath, falseGuardedSource);
         const result = spawnSync(
@@ -244,6 +353,80 @@ describe('OpenAPI Contract Tests', () => {
       } finally {
         rmSync(fixtureDirectory, { recursive: true, force: true });
       }
+    });
+
+    it.each([
+      {
+        name: 'a parenthesized true guard',
+        replacement: (condition: string) => `// ${condition}\n  if (pathname === '/auth/oidc/callback' && request.method === 'GET' && (true)) {`,
+        suffix: ''
+      },
+      {
+        name: 'a negated false guard',
+        replacement: (condition: string) => `// ${condition}\n  if (pathname === '/auth/oidc/callback' && request.method === 'GET' && !false) {`,
+        suffix: ''
+      },
+      {
+        name: 'a nested negated false guard',
+        replacement: (condition: string) => `// ${condition}\n  if (pathname === '/auth/oidc/callback' && request.method === 'GET' && ((!false))) {`,
+        suffix: ''
+      },
+      {
+        name: 'an unknown runtime guard',
+        replacement: (condition: string) => `// ${condition}\n  if (pathname === '/auth/oidc/callback' && request.method === 'GET' && runtimeFlag) {`,
+        suffix: ''
+      },
+      {
+        name: 'an unknown guard combined with false through ||',
+        replacement: (condition: string) => `// ${condition}\n  if (pathname === '/auth/oidc/callback' && request.method === 'GET' && (runtimeFlag || false)) {`,
+        suffix: ''
+      },
+      {
+        name: 'a route under the else branch of a proven-false guard',
+        replacement: (condition: string) =>
+          `if (false) { /* empty */ } else {\n  ${condition}`,
+        suffix: '\n}'
+      }
+    ])('keeps runtime operations reachable with $name', ({ name, replacement, suffix }) => {
+      const fixtureDirectory = mkdtempSync(join(tmpdir(), 'cvg-auth-routes-known-good-'));
+      const fixturePath = join(fixtureDirectory, 'auth-routes.ts');
+      const source = readFileSync('apps/api/src/routes/auth-routes.ts', 'utf8');
+      const reachableSource = buildCriticalCallbackFixture(source, replacement, suffix);
+      expect(
+        parseDiagnostics(reachableSource, `${name}.ts`),
+        'reachability fixtures must be syntactically valid'
+      ).toEqual([]);
+
+      try {
+        writeFileSync(fixturePath, reachableSource);
+        const result = spawnSync(
+          process.execPath,
+          [resolve('scripts/validate-openapi.js'), resolve(OPENAPI_SPEC_PATH), fixturePath],
+          { cwd: process.cwd(), encoding: 'utf8' }
+        );
+
+        expect(`${result.stdout}${result.stderr}`).not.toContain(
+          'Critical OpenAPI auth operation has no runtime route: GET /auth/oidc/callback'
+        );
+        expect(result.status).toBe(0);
+      } finally {
+        rmSync(fixtureDirectory, { recursive: true, force: true });
+      }
+    });
+
+    it('blocks a syntactically malformed fixture before judging route reachability', () => {
+      const source = readFileSync('apps/api/src/routes/auth-routes.ts', 'utf8');
+      const malformed = source.replace(
+        CRITICAL_CALLBACK_CONDITION,
+        `if (!true) {\n  ${CRITICAL_CALLBACK_CONDITION}`
+      );
+      const diagnostics = parseDiagnostics(malformed, 'malformed-auth-routes.ts');
+
+      expect(diagnostics.length).toBeGreaterThan(0);
+      expect(diagnostics.join(' ')).toMatch(/TS1005/);
+      expect(diagnostics.join(' ')).not.toContain(
+        'Critical OpenAPI auth operation has no runtime route'
+      );
     });
 
     it('documents the durable webhook delivery lifecycle and retry metadata', () => {

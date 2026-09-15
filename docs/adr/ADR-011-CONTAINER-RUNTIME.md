@@ -89,6 +89,14 @@ Para esta iteração: usar Vault via GAP-04 com `VAULT_ENABLED=1`.
 
 ---
 
+## Precedência operacional registrada em PROD-049
+
+O Compose v2 é preservado como superfície host-based production-like e de
+cutover descrita nos runbooks 130/131. A matriz PROD-049 atribui o chart Helm
+como runtime primário dos alvos staging e production, sem remover o Compose,
+renomear aliases ou inventar um cluster. Os nomes de alvo e owners externos
+continuam pendentes de confirmação formal.
+
 ## Consequências
 
 ### Positivas

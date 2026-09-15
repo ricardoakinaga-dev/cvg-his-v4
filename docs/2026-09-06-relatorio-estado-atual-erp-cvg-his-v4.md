@@ -1,9 +1,10 @@
 ---
-document_status: current
+document_status: historical
 document_kind: baseline
 effective_date: 2026-09-07
 owner: PMO, Engenharia, Produto e QA CVG-HIS
 review_cycle: weekly
+superseded_by: docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md
 ---
 
 # Relatório de estado atual — ERP CVG-HIS V4

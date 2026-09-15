@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "migration_id": "CTRL-MIGRATION-20260912",
+  "observed_at": "2026-09-12T19:33:34Z",
+  "reason": "Os ledgers legados .agent/state.json, .agent/backlog.json, .agent/execution-log.jsonl e .agent/verification.jsonl antecedem o contrato canonico de runtime (transicoes invalidas declaradas, resultados PASS_BOUNDED/PRECOMMIT, referencias de artefato nao resolvidas e ausencia do gate T4 IMPLEMENTATION_READY). A historia foi preservada byte a byte neste arquivo; o controlador canonico reinicia com registros RECOVERY que citam este manifesto e seu digest, sem reescrever resultados antigos.",
+  "archived": [
+    {
+      "source": ".agent/state.json",
+      "archive": ".agent/archive/20260912-controller-migration/state.before.json",
+      "sha256": "b315e327cfb240c73708dcb0a16fc9649b0fa91ea5dfdb1904f75e3cbabca2c8"
+    },
+    {
+      "source": ".agent/backlog.json",
+      "archive": ".agent/archive/20260912-controller-migration/backlog.before.json",
+      "sha256": "5597a3b199e3b52d611d21133bb1a2319a3ee33a9113a27e95e2eeffc7bfe427"
+    },
+    {
+      "source": ".agent/execution-log.jsonl",
+      "archive": ".agent/archive/20260912-controller-migration/execution-log.before.jsonl",
+      "sha256": "b7312282cb152b557fec568d9d6893e2cae47897a8ad5b1f359c47a915e7e817"
+    },
+    {
+      "source": ".agent/verification.jsonl",
+      "archive": ".agent/archive/20260912-controller-migration/verification.before.jsonl",
+      "sha256": "f2fdd1263807500b146d45f8774ea18f52302c5bc47a47ad9deae37ed7fc6398"
+    }
+  ],
+  "preserved_claims": "Nenhum resultado historico foi convertido em sucesso. Os artefatos de coverage anteriores permanecem STALE; os valores das notas editoriais 60/100 e 69/100 continuam sendo registros historicos, nao certificacao.",
+  "canonical_records": [
+    ".agent/gates/implementation-ready-triple-a-release-control-20260912.json",
+    ".agent/verification.jsonl#VER-MA01-CONTROL-MIGRATION-20260912"
+  ]
+}

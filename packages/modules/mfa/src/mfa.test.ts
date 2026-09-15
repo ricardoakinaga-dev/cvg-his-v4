@@ -698,6 +698,21 @@ describe('MfaService', () => {
 });
 
 describe('InMemoryMfaRepository audit fields', () => {
+  const credentialId = '00000000-0000-4000-8000-000000000020';
+
+  function activeRecord(overrides: Partial<MfaRecord> = {}): MfaRecord {
+    return {
+      credentialId,
+      accountId: ACCOUNT_ID,
+      userId: 'user_repository',
+      secret: 'encrypted-secret',
+      isActive: true,
+      recoveryCodes: ['recovery-hash'],
+      createdAt: '2026-08-22T10:00:00.000Z',
+      ...overrides
+    };
+  }
+
   it('does not regress lastUsedAt when a stale generic update is persisted', async () => {
     const repository = new ProductionInMemoryMfaRepository();
     const currentLastUsedAt = '2026-08-22T12:00:00.000Z';
@@ -719,6 +734,94 @@ describe('InMemoryMfaRepository audit fields', () => {
       recoveryCodes: ['new-code'],
       lastUsedAt: currentLastUsedAt
     });
+  });
+
+  it('atomically consumes a newer TOTP counter and rejects replay or wrong ownership', async () => {
+    const repository = new ProductionInMemoryMfaRepository();
+    await repository.create(activeRecord());
+
+    await expect(
+      repository.consumeTotpCounter(
+        ACCOUNT_ID,
+        'user_repository',
+        credentialId,
+        42,
+        '2026-08-22T12:00:00.000Z'
+      )
+    ).resolves.toBe(true);
+    await expect(
+      repository.consumeTotpCounter(
+        ACCOUNT_ID,
+        'user_repository',
+        credentialId,
+        42,
+        '2026-08-22T12:00:01.000Z'
+      )
+    ).resolves.toBe(false);
+    await expect(
+      repository.consumeTotpCounter(
+        '00000000-0000-4000-8000-000000000002',
+        'user_repository',
+        credentialId,
+        43,
+        '2026-08-22T12:00:02.000Z'
+      )
+    ).resolves.toBe(false);
+
+    await expect(repository.findByUserId(ACCOUNT_ID, 'user_repository')).resolves.toMatchObject({
+      lastTotpCounter: 42,
+      lastUsedAt: '2026-08-22T12:00:00.000Z'
+    });
+  });
+
+  it('consumes a recovery code once and does not cross account or credential boundaries', async () => {
+    const repository = new ProductionInMemoryMfaRepository();
+    await repository.create(activeRecord());
+
+    await expect(
+      repository.consumeRecoveryCode(
+        ACCOUNT_ID,
+        'user_repository',
+        credentialId,
+        'recovery-hash',
+        '2026-08-22T12:01:00.000Z'
+      )
+    ).resolves.toBe(true);
+    await expect(
+      repository.consumeRecoveryCode(
+        ACCOUNT_ID,
+        'user_repository',
+        credentialId,
+        'recovery-hash',
+        '2026-08-22T12:01:01.000Z'
+      )
+    ).resolves.toBe(false);
+    await expect(
+      repository.consumeRecoveryCode(
+        ACCOUNT_ID,
+        'user_repository',
+        '00000000-0000-4000-8000-000000000021',
+        'missing-hash',
+        '2026-08-22T12:01:02.000Z'
+      )
+    ).resolves.toBe(false);
+
+    await expect(repository.findByUserId(ACCOUNT_ID, 'user_repository')).resolves.toMatchObject({
+      recoveryCodes: [],
+      lastUsedAt: '2026-08-22T12:01:00.000Z'
+    });
+  });
+
+  it('deletes only the matching credential and reports absent records safely', async () => {
+    const repository = new ProductionInMemoryMfaRepository();
+    await repository.create(activeRecord());
+
+    await expect(
+      repository.delete(ACCOUNT_ID, 'user_repository', '00000000-0000-4000-8000-000000000021')
+    ).resolves.toBe(false);
+    await expect(repository.delete(ACCOUNT_ID, 'user_repository', credentialId)).resolves.toBe(true);
+    await expect(repository.delete(ACCOUNT_ID, 'user_repository', credentialId)).resolves.toBe(false);
+    await expect(repository.findByUserId(ACCOUNT_ID, 'user_repository')).resolves.toBeUndefined();
   });
 });
 

@@ -10,24 +10,24 @@
       "origin": "MASTER_PROMPT_FASE_0",
       "dependencies": [],
       "owner": "lead",
-      "acceptance_summary": "Baseline atual, quality bar, evidência e classificação P0/P1/P2 publicados sem alegações não comprovadas.",
+      "acceptance_summary": "Baseline atual, quality bar, evidencia e classificacao P0/P1/P2 publicados sem alegacoes nao comprovadas.",
       "evidence_refs": [
         "docs/triple-a/00-baseline.md",
         "docs/engineering/TRIPLE_A_BASELINE.md",
         "docs/triple-a/15-current-baseline.md",
-        ".agent/verification.jsonl#VER-STATE-OF-ART-CURRENT-20260911"
+        ".agent/verification.jsonl#VER-MA01-BASELINE-DOCS-20260912"
       ],
       "next_action": {
         "id": "TRIPLE-A-BASELINE:REOPEN",
         "kind": "REOPEN",
-        "summary": "Reabrir o baseline se o próximo candidato alterar a fotografia, a qualidade ou as limitações registradas.",
+        "summary": "Reabrir o baseline se o proximo candidato alterar a fotografia, a qualidade ou as limitacoes registradas.",
         "target": "docs/engineering/TRIPLE_A_BASELINE.md; .agent/verification.jsonl",
-        "completion_signal": "Uma nova fotografia vinculada ao SHA candidato substitui explicitamente a evidência corrente sem apagar o histórico."
+        "completion_signal": "Uma nova fotografia vinculada ao SHA candidato substitui explicitamente a evidencia corrente sem apagar o historico."
       }
     },
     {
       "id": "TRIPLE-A-RELEASE-CONTROL",
-      "title": "Construir gate agregador de release e manifest imutável",
+      "title": "Construir gate agregador de release e manifest imutavel",
       "stage": "BUILD",
       "priority": "P0",
       "status": "BLOCKED",
@@ -36,30 +36,68 @@
         "TRIPLE-A-BASELINE"
       ],
       "owner": "lead",
-      "acceptance_summary": "release:triple-a e rc:evidence:triple-a agregam checks atuais, vinculam commit/digests e falham sem evidência obrigatória.",
+      "acceptance_summary": "release:triple-a e rc:evidence:triple-a agregam checks atuais, vinculam commit/digests e falham sem evidencia obrigatoria.",
       "evidence_refs": [
+        "scripts/critical-source-manifest.test.mjs",
+        "docs/engineering/critical-coverage-scope.json",
+        "scripts/refresh-critical-source-manifest.mjs",
         "scripts/run-triple-a-release-gate.mjs",
-        "scripts/generate-image-attestation-evidence.mjs",
-        ".github/workflows/release-artifacts.yml",
-        "scripts/validate-supply-chain.mjs",
-        "tests/unit/infra/release-workflow-contract.test.ts",
-        "docs/2026-09-12-auditoria-repositorio-cvg-his-v4.md",
-        "docs/2026-09-12-roadmap-erp-state-of-art-triplo-aaa.md",
-        "docs/2026-09-12-backlog-correcao-gaps-triplo-aaa.md",
         "tests/unit/infra/triple-a-release-gate.test.ts",
         "docs/triple-a/12-release-gate.md",
-        "docs/triple-a/15-current-baseline.md",
-        "docs/triple-a/17-current-execution-evidence.md",
-        ".agent/verification.jsonl#VER-TRIPLE-A-LOCAL-CRITICAL-20260911",
-        ".agent/verification.jsonl#VER-TRIPLE-A-PERFORMANCE-LOCAL-20260911",
-        "docs/triple-a/16-requirement-traceability.md"
+        ".agent/verification.jsonl#VER-MA02-SOURCE-IDENTITY-20260912",
+        ".agent/verification.jsonl#VER-MA03-RELEASE-GATE-20260912",
+        "scripts/refresh-critical-source-manifest.test.mjs",
+        ".agent/verification.jsonl#VER-MA03-TARGET-VERIFY-PATH-20260912",
+        ".agent/verification.jsonl#VER-MA02-REFRESH-UNIT-20260912",
+        ".agent/verification.jsonl#VER-MA01-CONTROL-MIGRATION-20260912",
+        ".agent/verification.jsonl#VER-MA01-INDEPENDENT-REVIEW-20260912",
+        ".agent/verification.jsonl#VER-MA02-INDEPENDENT-REVIEW-20260912",
+        ".agent/verification.jsonl#VER-MA03-INDEPENDENT-REVIEW-REJECT-20260912",
+        ".agent/verification.jsonl#VER-MA03-R1-IMPLEMENTATION-20260912",
+        ".agent/verification.jsonl#VER-MA03-R2-IMPLEMENTATION-20260912",
+        ".agent/verification.jsonl#VER-MA03-R2-HARDENING-20260912",
+        ".agent/verification.jsonl#VER-MA03-R2-RECONCILIATION-20260912",
+        "artifacts/remediation/MA-03-R1/attempt-1/known-bad-before.log",
+        "artifacts/remediation/MA-03-R1/attempt-1/known-bad-after.log",
+        "artifacts/remediation/MA-03-R1/attempt-1/gate-tests-r1.log",
+        "artifacts/remediation/MA-03-R1/attempt-1/known-good-simulated.log",
+        "artifacts/remediation/MA-03-R2/attempt-1/EVIDENCE_NOTES.md",
+        "artifacts/remediation/MA-03-R2/attempt-1/r1-critic-evidence/SHA256SUMS",
+        "artifacts/remediation/MA-03-R2/attempt-2/EVIDENCE_NOTES.md",
+        "artifacts/remediation/MA-03-R2/attempt-3-reconciliation/RECONCILIATION.md",
+        "artifacts/remediation/MA-03-R2/attempt-3-reconciliation/REVIEW_PACKET.md",
+        "artifacts/remediation/MA-03-R2/attempt-3-reconciliation/SHA256SUMS",
+        ".agent/verification.jsonl#VER-MA03-R2-INDEPENDENT-REVIEW-REJECT-20260912",
+        ".agent/verification.jsonl#VER-MA03-R3-ACTIVATION-20260912",
+        ".agent/verification.jsonl#VER-MA03-R3-IMPLEMENTATION-20260912",
+        "docs/2026-09-12-ma03-r2-parecer-independente.md",
+        "artifacts/remediation/MA-03-R3/attempt-1-20260912T2144Z/REPORT.md",
+        "artifacts/remediation/MA-03-R3/attempt-1-20260912T2144Z/REVIEW_PACKET.md",
+        "artifacts/remediation/MA-03-R3/attempt-1-20260912T2144Z/ACCEPTANCE_MATRIX.md",
+        ".agent/verification.jsonl#VER-MA02-F-DISPATCH-20260913",
+        ".agent/verification.jsonl#VER-MA05-ZEROHIT-FIX-20260913",
+        ".agent/verification.jsonl#VER-MA05-SHARDS-20260913",
+        ".agent/verification.jsonl#VER-MA33-SHARD-HYGIENE-20260913",
+        "artifacts/remediation/MA-02-F-DISPATCH/attempt-20260913T0120Z/REPORT.md",
+        "artifacts/remediation/MA-05-NATIVE-ZEROHIT-FIX/attempt-20260913T0120Z/REPORT.md",
+        "artifacts/remediation/MA-33-CRITICAL-SHARD-HYGIENE/attempt-20260913T0120Z/REPORT.md",
+        ".agent/verification.jsonl#VER-MA02-DISPATCH-ROUND2-20260913",
+        ".agent/verification.jsonl#VER-MA05-ROUND2-FINAL-20260913",
+        ".agent/verification.jsonl#VER-FINAL-ADJUDICATION-ROUND1-20260913",
+        ".agent/verification.jsonl#VER-MA11-MA05-RUNTIME-D7-20260913",
+        "artifacts/remediation/MA-11-MA05-RUNTIME/attempt-20260913T0411Z/REPORT.md",
+        "scripts/promote-critical-shard.mjs",
+        ".agent/verification.jsonl#VER-MA11-ROUND2-ADJUDICATION-20260913",
+        ".agent/verification.jsonl#VER-MA05-INTEGRATION-FIXES-20260913",
+        "artifacts/remediation/MA-05-INTEGRATION-FIXES/attempt-20260913T0539Z/REPORT.md",
+        ".agent/verification.jsonl#VER-ROUND3-ADJUDICATION-20260913"
       ],
       "next_action": {
-        "id": "TRIPLE-A-RELEASE-CONTROL:INTEGRATE-REMEDIATION-20260912",
-        "kind": "VERIFY",
-        "summary": "Integrar e verificar a primeira onda local de remediação em OpenAPI/auth, supply chain, pacote visual e higiene do typecheck, preservando o bloqueio das provas externas.",
-        "target": ".agent/plans/repository-state-of-art-remediation-execplan.md; docs/2026-09-12-auditoria-repositorio-cvg-his-v4.md; .github/workflows/release-artifacts.yml; apps/api/src/openapi.yaml",
-        "completion_signal": "Checks focais e crítica independente aprovam os slices locais; release permanece BLOCKED até existir candidato commitado com CI exato e as provas target, UAT, performance, recuperação e autoridade."
+        "id": "TRIPLE-A-RELEASE-CONTROL:MA05-D5-AND-COVERAGE",
+        "kind": "IMPLEMENT",
+        "summary": "Implementar o evidence model especializado (D5) para 168 migrations SQL + 25 Vue e elevar as 29 metricas criticas abaixo de 85 com testes de dominio, sem reduzir thresholds",
+        "target": "artifacts/remediation/MA-05-SPECIALIZED-PREP/attempt-1-20260913T0012Z/SLICE_CONTRACTS.md; scripts/check-critical-coverage.mjs; docs/engineering/critical-coverage-scope.json",
+        "completion_signal": "Fontes especializadas com evidencia aceita e 5/5 shards com todas as metricas >=85; entao agregar e submeter a MA-35"
       }
     },
     {
@@ -73,7 +111,7 @@
         "TRIPLE-A-RELEASE-CONTROL"
       ],
       "owner": "lead",
-      "acceptance_summary": "Ações e imagens são verificáveis por digest, workflows têm permissões mínimas e scanners alimentam a evidência do release.",
+      "acceptance_summary": "Acoes e imagens sao verificaveis por digest, workflows tem permissoes minimas e scanners alimentam a evidencia do release.",
       "evidence_refs": [
         "scripts/validate-supply-chain.mjs",
         ".github/workflows",
@@ -83,14 +121,14 @@
       "next_action": {
         "id": "TRIPLE-A-SUPPLY-CHAIN:INSPECT",
         "kind": "INSPECT",
-        "summary": "Mapear ações, bases, tags, permissões e scanners existentes por workflow e imagem.",
+        "summary": "Mapear acoes, bases, tags, permissoes e scanners existentes por workflow e imagem.",
         "target": ".github/workflows; Dockerfiles; Helm; Compose",
-        "completion_signal": "Inventário completo com cada exceção vinculada a uma correção ou decisão de risco."
+        "completion_signal": "Inventario completo com cada excecao vinculada a uma correcao ou decisao de risco."
       }
     },
     {
       "id": "TRIPLE-A-CLINICAL-DATA",
-      "title": "Formalizar criticidade clínica, invariantes e proteção de dados",
+      "title": "Formalizar criticidade clinica, invariantes e protecao de dados",
       "stage": "BUILD",
       "priority": "P0",
       "status": "READY",
@@ -99,7 +137,7 @@
         "TRIPLE-A-BASELINE"
       ],
       "owner": "lead",
-      "acceptance_summary": "Fluxos P0 possuem matriz de criticidade, invariantes, testes de não regressão, tenant/RLS/auditoria e evidência atual.",
+      "acceptance_summary": "Fluxos P0 possuem matriz de criticidade, invariantes, testes de nao regressao, tenant/RLS/auditoria e evidencia atual.",
       "evidence_refs": [
         "docs/clinical/CLINICAL_CRITICALITY_MATRIX.md",
         "docs/clinical/CLINICAL_SAFETY_INVARIANTS.md",
@@ -109,14 +147,14 @@
       "next_action": {
         "id": "TRIPLE-A-CLINICAL-DATA:CRITICALITY",
         "kind": "DESIGN",
-        "summary": "Derivar a matriz de criticidade a partir dos módulos e fluxos reais.",
+        "summary": "Derivar a matriz de criticidade a partir dos modulos e fluxos reais.",
         "target": "docs/clinical/CLINICAL_CRITICALITY_MATRIX.md",
         "completion_signal": "Matriz cobre fluxo, risco, invariantes, teste e owner sem lacunas P0 desconhecidas."
       }
     },
     {
       "id": "TRIPLE-A-OPERATIONS",
-      "title": "Certificar worker, recuperação, observabilidade e performance",
+      "title": "Certificar worker, recuperacao, observabilidade e performance",
       "stage": "BUILD",
       "priority": "P1",
       "status": "READY",
@@ -125,14 +163,1800 @@
         "TRIPLE-A-RELEASE-CONTROL"
       ],
       "owner": "lead",
-      "acceptance_summary": "Retry/DLQ, RPO/RTO, restore, game-day, SLO/error budget e performance possuem execução e evidência acopladas ao candidato.",
+      "acceptance_summary": "Retry/DLQ, RPO/RTO, restore, game-day, SLO/error budget e performance possuem execucao e evidencia acopladas ao candidato.",
       "evidence_refs": [],
       "next_action": {
         "id": "TRIPLE-A-OPERATIONS:POLICY",
         "kind": "DESIGN",
-        "summary": "Definir políticas executáveis de retry/DLQ, SLO, DR e RPO/RTO antes dos drills.",
+        "summary": "Definir politicas executaveis de retry/DLQ, SLO, DR e RPO/RTO antes dos drills.",
         "target": "docs/operations; apps/worker; infra/scripts",
-        "completion_signal": "Políticas têm owner, thresholds, comandos, evidência esperada e critérios de bloqueio."
+        "completion_signal": "Politicas tem owner, thresholds, comandos, evidencia esperada e criterios de bloqueio."
+      }
+    },
+    {
+      "id": "PROD-001",
+      "title": "Reconciliar controle e próxima ação",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "DONE",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [],
+      "owner": "lead",
+      "acceptance_summary": "RECONCILIADO 14/09 (R2): 65 contratos rastreados; narrativa rev27/FAIL21 qualificada worktree-vs-HEAD; acao unica coerente; checker 11/11 + docs:validate + critica I1 REJECT tratada + re-revisao APPROVE. R1-13/09 preservado.",
+      "evidence_refs": [
+        "artifacts/remediation/PROD-001/attempt-20260913T154133Z-R1/REPORT.md",
+        ".agent/verification.jsonl#VER-PROD-001-R1-20260913",
+        ".agent/verification.jsonl#VER-PROD-001-R1-CONFIRM-20260913",
+        "docs/2026-09-14-relatorio-completo-estado-construcao.md",
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        ".agent/verification.jsonl#VER-PROD-001-R2-20260914"
+      ],
+      "next_action": {
+        "id": "PROD-001:REOPEN-IF-DRIFT-20260914",
+        "kind": "REOPEN",
+        "summary": "R2 aceito e encerrado (checker 11/11, I1 + re-revisao APPROVE); reabrir somente ante drift contrariado por evidencia.",
+        "target": ".agent/verification.jsonl",
+        "completion_signal": "Drift caracterizado com prova e novo reparo despachado."
+      }
+    },
+    {
+      "id": "PROD-002",
+      "title": "Congelar identidade de trabalho e reter evidências",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-001"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "002-L ACEITO 14/09 (identidade local 17/17 worktree-only + inventario restrito PROD-048, I1 + re-revisao APPROVE); cartao segue BLOCKED: falta DONE integral (destino duravel aprovado c/ ACL/retention/restauração) + 002-R1 (5 inputs stale, historico 13/09).",
+      "evidence_refs": [
+        "artifacts/remediation/PROD-002/attempt-20260913T134500Z/REPORT.md",
+        ".agent/verification.jsonl#VER-PROD-002-L-20260914",
+        ".agent/verification.jsonl#VER-PROD-002-L-R1-20260914"
+      ],
+      "next_action": {
+        "id": "PROD-002:FULL-REMAINING-20260914",
+        "kind": "WAIT",
+        "summary": "002-L concluido; DONE integral aguarda destino duravel aprovado e 002-R1. PROD-003 liberado por replanejamento explicito sobre 002-L.",
+        "target": ".agent/backlog.json",
+        "completion_signal": "Destino duravel aprovado e verificado + 002-R1 aceito."
+      }
+    },
+    {
+      "id": "PROD-003",
+      "title": "Disponibilizar harness exclusivo de verificação",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-002"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "R2 ACEITO 14/09 no escopo (2x stack rev27 PASS + tamper + teardown exclusivo, I1 APPROVE); cartao segue BLOCKED: falta 003-R1-pendente? NAO — falta fechamento bottom-up (PROD-002 DONE) + builds vinculados ja provados. R1-13/09 preservado.",
+      "evidence_refs": [
+        "artifacts/remediation/PROD-003/attempt-20260913T160500Z-R1/REPORT.md",
+        ".agent/verification.jsonl#VER-PROD-003-20260913",
+        ".agent/verification.jsonl#VER-PROD-003-R1-20260913",
+        ".agent/verification.jsonl#VER-PROD-003-R2-20260914",
+        ".agent/verification.jsonl#VER-PROD-003-R2-REVIEW-20260914"
+      ],
+      "next_action": {
+        "id": "PROD-003:WAIT-PROD-002-20260914",
+        "kind": "WAIT",
+        "summary": "R2 aceito; encerramento bottom-up aguarda PROD-002 DONE. Liberar PROD-061 e revalidacao 004/005 sobre o harness.",
+        "target": ".agent/backlog.json",
+        "completion_signal": "PROD-002 DONE e cadeia de encerramento reexecutada."
+      }
+    },
+    {
+      "id": "PROD-004",
+      "title": "Corrigir backfill de envelopes legados",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-003"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "R2 REVALIDADO 14/09 sem contraprova (0172 + parser + worker 19/19 sustentam aceite rev27; I1 APPROVE estreito); sem reimplementacao; cartao segue BLOCKED (bottom-up: 003 DONE + 002 DONE).",
+      "evidence_refs": [
+        "artifacts/remediation/PROD-004/attempt-20260913T141500Z/REPORT.md",
+        ".agent/verification.jsonl#VER-PROD-004-R2-20260914",
+        ".agent/verification.jsonl#VER-PROD-004-R2-REVIEW-20260914"
+      ],
+      "next_action": {
+        "id": "PROD-004:WAIT-003-20260914",
+        "kind": "WAIT",
+        "summary": "Escopo R2 aceito; encerramento aguarda 003 DONE + 002 DONE.",
+        "target": ".agent/backlog.json",
+        "completion_signal": "Cadeia bottom-up reexecutada."
+      }
+    },
+    {
+      "id": "PROD-005",
+      "title": "Reautorizar toda resposta de replay protegido",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-003"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "R2 REVALIDADO 14/09 sem contraprova (guard + UoW + matriz HTTP rev27; I1 APPROVE); sem reimplementacao; cartao segue BLOCKED (bottom-up).",
+      "evidence_refs": [
+        "artifacts/remediation/PROD-005/attempt-20260913T150000Z/REPORT.md",
+        ".agent/verification.jsonl#VER-PROD-005-R2-20260914",
+        ".agent/verification.jsonl#VER-PROD-005-R2-REVIEW-20260914"
+      ],
+      "next_action": {
+        "id": "PROD-005:WAIT-003-20260914",
+        "kind": "WAIT",
+        "summary": "Escopo R2 aceito; encerramento aguarda cadeia bottom-up.",
+        "target": ".agent/backlog.json",
+        "completion_signal": "Cadeia bottom-up reexecutada."
+      }
+    },
+    {
+      "id": "PROD-006",
+      "title": "Corrigir paginação e filtros de vencimento",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-003"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: 21 e mais de 40 títulos acessíveis; filtros e paginação reconciliados no banco; mudança de filtro reinicia página; resposta atrasada não sobrepõe estado novo; sem salto de tenant.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-006:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-006 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-007",
+      "title": "Resolver filtro de títulos cancelados",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-006"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Selecionar Cancelada produz consulta coerente e apenas resultados esperados, ou opção removida conforme decisão registrada; aberto/recebido preservados; sem conversão silenciosa em Todos.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-007:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-007 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-008",
+      "title": "Preservar saldo e reconciliar cartões financeiros",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-006",
+        "PROD-007"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: R$2.100 permanece visível com saldo aberto; zero, parcial, estornado e filtros reconciliam com o subledger; nenhuma dupla contabilização ou soma de universos diferentes.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-008:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-008 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-009",
+      "title": "Corrigir erro/vazio e definir ação avulsa",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-008"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: 503 não sugere cadastrar primeiro tutor; retry recupera; empty/loading/permission distintos. Conta avulsa, se ofertada, exige autorização, persistência, idempotência e auditoria, não apenas habilitar botão.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-009:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-009 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-010",
+      "title": "Vincular promoção aos bytes realmente consumidos",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-002"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "R2 ACEITO (matriz 10/10 rev27 + units/checks, I1 APPROVE); cartao segue BLOCKED (bottom-up).",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md",
+        ".agent/verification.jsonl#VER-PROD-010-R2-20260914",
+        ".agent/verification.jsonl#VER-PROD-010-R2-REVIEW-20260914"
+      ],
+      "next_action": {
+        "id": "PROD-010:WAIT-20260914",
+        "kind": "WAIT",
+        "summary": "Escopo aceito; encerramento bottom-up.",
+        "target": ".agent/backlog.json",
+        "completion_signal": "Cadeia bottom-up reexecutada."
+      }
+    },
+    {
+      "id": "PROD-011",
+      "title": "Implementar evidência especializada de SQL",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-004",
+        "PROD-010"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "R2 ACEITO (SQL passed rev27, I1 APPROVE; promocao deferida ao gate); cartao BLOCKED.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md",
+        ".agent/verification.jsonl#VER-PROD-011-R2-20260914",
+        ".agent/verification.jsonl#VER-PROD-011-R2-REVIEW-20260914"
+      ],
+      "next_action": {
+        "id": "PROD-011:WAIT-GATE-20260914",
+        "kind": "WAIT",
+        "summary": "Aguardar promocao no fluxo do gate.",
+        "target": ".agent/backlog.json",
+        "completion_signal": "Promocao 039/045."
+      }
+    },
+    {
+      "id": "PROD-012",
+      "title": "Implementar evidência especializada de Vue",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-003",
+        "PROD-010"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "R2 ACEITO (Vue PASS efa62a6f, I1 + re-revisao APPROVE; narrativa corrigida); cartao BLOCKED.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md",
+        ".agent/verification.jsonl#VER-PROD-012-R2-REVIEW-20260914"
+      ],
+      "next_action": {
+        "id": "PROD-012:WAIT-GATE-20260914",
+        "kind": "WAIT",
+        "summary": "Aguardar promocao no fluxo do gate.",
+        "target": ".agent/backlog.json",
+        "completion_signal": "Promocao 039/045."
+      }
+    },
+    {
+      "id": "PROD-013",
+      "title": "Resolver instrumentação vazia de type-only",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-010"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "R2 ACEITO (matriz 23/23 + contratos; FAIL21 metric-only e dos 014-016; I1 APPROVE; F2 hardening deferido); cartao BLOCKED.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md",
+        ".agent/verification.jsonl#VER-PROD-013-R2-20260914",
+        ".agent/verification.jsonl#VER-PROD-013-R2-REVIEW-20260914"
+      ],
+      "next_action": {
+        "id": "PROD-013:WAIT-GATE-20260914",
+        "kind": "WAIT",
+        "summary": "Aguardar endurecimento F2 em 017/018 e promocao.",
+        "target": ".agent/backlog.json",
+        "completion_signal": "F2 coberto e promocao 039/045."
+      }
+    },
+    {
+      "id": "PROD-014",
+      "title": "Elevar coverage auth e roles/RLS",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-005",
+        "PROD-011",
+        "PROD-013",
+        "PROD-020",
+        "PROD-024"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "S1 PASS LOCAL CONDICIONAL: testes unitarios substantivos de auth-routes/AuthService/OIDC/WebAuthn/MFA/TOTP/crypto, repositorios in-memory, setup-token, auth-helpers e feature flags verdes; shard vitest-unit current 241 arquivos sem missingTests e known-bad da checagem de permissao rejeitado. Cartao segue BLOCKED: critica fresh indisponivel, S2 PG/Redis/processo, D1 de identidade e S3/recoleta unica ainda pendentes; instrumento/thresholds intocados.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md",
+        ".agent/verification.jsonl#VER-PROD-014-R2-20260914",
+        ".agent/verification.jsonl#VER-PROD-014-S1-20260915",
+        ".agent/verification.jsonl#VER-PROD-014-S1-FRESH-CRITIC-20260915",
+        ".agent/verification.jsonl#VER-PROD-014-S2-20260915",
+        ".agent/verification.jsonl#VER-PROD-014-S2-FRESH-CRITIC-20260915",
+        ".agent/verification.jsonl#VER-PROD-014-D1-REQUEST-20260915",
+        ".agent/verification.jsonl#VER-PROD-014-S2-POSTCHECKER-20260915",
+        "artifacts/state-of-art/PROD-014/attempt-20260915T124300Z-S2/REPORT.md",
+        "artifacts/state-of-art/PROD-014/attempt-20260915T125600Z-D1/DECISION-REQUEST.md",
+        "artifacts/state-of-art/PROD-014/attempt-20260915T122300Z-S1/REPORT.md"
+      ],
+      "next_action": {
+        "id": "PROD-014:PROD-014-D1-20260915",
+        "kind": "WAIT",
+        "summary": "S1 e S2 locais condicionados aprovados por criticos fresh independentes; D1 agora aguarda autoridade QA/release para escolher merge normativo multiambiente ou unificacao versionada, sem alterar thresholds/denominador/inventario. Somente depois S3 coleta unica dos 5 shards.",
+        "target": "tests/unit/api/; tests/integration/",
+        "completion_signal": "Criticas fresh S1/S2 validas; S2 executado em fronteiras reais; autoridade QA/release registra D1; depois auth f>=85 e b>=85 e roles-rls b>=85 no checker pos-coleta, com revisao."
+      }
+    },
+    {
+      "id": "PROD-015",
+      "title": "Elevar coverage clínica e faturamento",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-004",
+        "PROD-005",
+        "PROD-011",
+        "PROD-013",
+        "PROD-024",
+        "PROD-026"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: As quatro métricas de cada componente ≥85; negativa de autorização e falha parcial deixam estado persistente consistente; regra clínica não inventada pelo agente.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-015:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-015 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-016",
+      "title": "Elevar coverage HTTP, repositórios, PIX e webhooks",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-010",
+        "PROD-011",
+        "PROD-013",
+        "PROD-024",
+        "PROD-025"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Cada componente ≥85 nas quatro métricas; nenhum handler crítico fora da matriz; fronteiras persistentes e de processo exercitadas.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-016:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-016 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-017",
+      "title": "Fechar gate global 82, dependências e higiene",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-012",
+        "PROD-013",
+        "PROD-060",
+        "PROD-061"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: 82 em lines/functions/branches/statements no denominador contratado; zero skip crítico; findings de segurança tratados; build prévio explícito e check não altera fontes/caches rastreados.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-017:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-017 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-018",
+      "title": "Tornar coverage crítica e contratos checks obrigatórios",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-014",
+        "PROD-015",
+        "PROD-016",
+        "PROD-017"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Run remoto do candidato correto executa checker real; skip/hash errado/métrica baixa/missing shard causam required check vermelho; zero dependência de artifacts locais ignorados.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-018:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-018 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-019",
+      "title": "Fechar contrato SSO e decisões de produto",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-001"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "R1 IMPLEMENTADA / REVIEW_REQUIRED: contrato revisavel cobre R1-R6, C1-C6, criterios temporais, threat model e falhas; recomendações não são escolhas vinculantes, associação por email é proibida e decisões de Produto/Segurança permanecem PENDING_AUTHORITY. Checks locais e pacote hash-bound PASS; crítica fresh indisponível e provider/integração/autoridade continuam pendentes.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md",
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        "docs/2026-09-12-ma04-status-e-proxima-tarefa.md",
+        ".agent/gates/implementation-ready-prod-019-20260915.json",
+        "docs/engineering/identity-contract-prod-019.json",
+        "docs/019-contrato-identidade-corporativa.md",
+        "artifacts/state-of-art/PROD-019/attempt-20260915T145727Z-R1/REPORT.md",
+        "artifacts/state-of-art/PROD-019/attempt-20260915T145727Z-R1/SHA256SUMS",
+        "artifacts/state-of-art/PROD-019/attempt-20260915T145727Z-R1/CRITIC-FRESH-UNAVAILABLE-20260915.md",
+        ".agent/verification.jsonl#VER-PROD-019-R1-20260915",
+        ".agent/verification.jsonl#VER-PROD-019-R1-FRESH-CRITIC-UNAVAILABLE-20260915"
+      ],
+      "next_action": {
+        "id": "PROD-019:PROD-019-PRODUCT-SECURITY-OWNER-20260915",
+        "kind": "WAIT",
+        "summary": "Obter crítica independente fresh current ou substituto autorizado e decisão formal Product/Security sobre C1-C6, R1-R6, threat model, provider, tenant, MFA, sessão e logout; não alterar fluxo funcional nem inferir autoridade.",
+        "target": "artifacts/state-of-art/PROD-019/attempt-20260915T145727Z-R1/REPORT.md; artifacts/state-of-art/PROD-019/attempt-20260915T145727Z-R1/CRITIC-FRESH-UNAVAILABLE-20260915.md; .agent/authority.jsonl",
+        "completion_signal": "Parecer independente current e autoridade Product/Security registrados; repetir contrato, integração provider/API/DB/SPA, falhas e evidência no mesmo candidato antes de PROD-020/021, sem promover DONE/AAA por documentação."
+      }
+    },
+    {
+      "id": "PROD-020",
+      "title": "Implementar SSO backend e deadline ponta a ponta",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-003",
+        "PROD-005",
+        "PROD-019"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Token inválido/expirado/replay/redirect indevido/inativo/ambíguo/timeout não cria sessão; mesma flag fecha login/callback/logout; cancelamento interrompe trabalho sem efeito duplicado.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-020:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-020 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-021",
+      "title": "Entregar jornada SSO SPA e homologar provider",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-020"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Browser volta autenticado à sessão ERP correta; tenant/conta errados/replay/logout negados; não expor tokens em URL/log; provider real assina identidade válida.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-021:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-021 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-022",
+      "title": "Minimizar logs e estabelecer retenção",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-003"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Canários sintéticos não aparecem brutos nos sinks; erro de auth mantém diagnóstico útil; retenção e acesso aprovados e exercitados no target posteriormente.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-022:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-022 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-023",
+      "title": "Aplicar política de edge e diagnóstico",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-022",
+        "PROD-049"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Matriz origem/identidade/path nega diagnóstico indevido e permite probes legítimas; sem exposição de dependências/segredos. Aceite inclui ingresso real em 44.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-023:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-023 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-024",
+      "title": "Certificar DB/RLS, upgrade e auditoria durável",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-004",
+        "PROD-005",
+        "PROD-011",
+        "PROD-003"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Acesso cruzado e mutação de auditoria negados; falha transacional não deixa efeito parcial; upgrade/retomada preservam relações/saldos/outbox; não usar superuser como role julgada.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-024:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-024 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-025",
+      "title": "Certificar worker, outbox/inbox e recovery",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-004",
+        "PROD-005",
+        "PROD-024",
+        "PROD-050",
+        "PROD-051"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Processos reais retomam sem dupla cobrança/efeito durável; eventos não somem silenciosamente; falhas permanentes visíveis e reparáveis; recuperação de legado incluída.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-025:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-025 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-026",
+      "title": "Homologar jornadas clínicas com regras explícitas",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-005",
+        "PROD-024",
+        "PROD-025",
+        "PROD-027"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Estados inválidos negados; dados e saldo sobrevivem reload/restart; zero skip crítico; aceite de regra por humano designado, independente do executor.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-026:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-026 atendidos com prova e revisao."
+      }
+    },
+  {
+    "id": "PROD-027",
+    "title": "Congelar matriz comportamental das 11 áreas",
+    "stage": "BUILD",
+    "priority": "P0",
+    "status": "BLOCKED",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-001",
+        "PROD-003"
+      ],
+      "owner": "lead",
+    "acceptance_summary": "R1 CONTRACT_ONLY_PREPARATION: taxonomia das 11 áreas e inventário dos 45 módulos foram especificados com cenários, invariantes e evidência requerida; o cartão integral permanece BLOCKED pela dependência PROD-003, autoridade Product/QA/domínio e crítica fresh indisponível. Nenhuma fixture comportamental, paridade, UAT ou aceitação de domínio é inferida; novos A02/A03–A05 reabrem o escopo afetado.",
+    "evidence_refs": [
+      "docs/2026-09-13-backlog-prontidao-producao.md",
+      "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+      ".agent/gates/implementation-ready-prod-027-20260915.json",
+      "docs/engineering/behavioral-parity-contract-prod-027.json",
+      "docs/027-matriz-comportamental-11-areas.md",
+      "scripts/validate-prod-027-behavioral-parity-contract.mjs",
+      "scripts/validate-prod-027-behavioral-parity-contract.test.mjs",
+      "artifacts/state-of-art/PROD-027/attempt-20260915T154928Z-R1/REPORT.md",
+      "artifacts/state-of-art/PROD-027/attempt-20260915T154928Z-R1/CRITIC-FRESH-UNAVAILABLE-20260915.md",
+      "artifacts/state-of-art/PROD-027/attempt-20260915T154928Z-R1/SHA256SUMS",
+      ".agent/verification.jsonl#VER-PROD-027-R1-20260915",
+      ".agent/verification.jsonl#VER-PROD-027-R1-FRESH-CRITIC-UNAVAILABLE-20260915"
+    ],
+    "execution_scope": "CONTRACT_ONLY_PREPARATION",
+    "dependency_replan": {
+      "decision": "ALLOW_LOCAL_PREPARATION_ONLY",
+      "full_acceptance_dependencies_preserved": [
+        "PROD-001",
+        "PROD-003"
+      ],
+      "does_not_satisfy_dependency": "PROD-003",
+      "does_not_promote_card": true,
+      "basis": "A prova LOCAL pode avançar por replanejamento explícito, mas não satisfaz a dependência integral nem o DONE de ALVO."
+    },
+    "next_action": {
+      "id": "PROD-027:PROD-027-PRODUCT-QA-DOMAIN-OWNER-20260915",
+      "kind": "WAIT",
+      "summary": "Obter crítica independente fresh atual ou substituto autorizado e decisão formal de Product/QA/donos de domínio; preservar PROD-003 e não alegar paridade.",
+      "target": "artifacts/state-of-art/PROD-027/attempt-20260915T154928Z-R1/REPORT.md; artifacts/state-of-art/PROD-027/attempt-20260915T154928Z-R1/CRITIC-FRESH-UNAVAILABLE-20260915.md; .agent/authority.jsonl",
+      "completion_signal": "Revisor fresh atual ou substituto autorizado e decisão de Product/QA/domínio registrados; depois reexecutar contrato, reconciliação 45→46 e evidência comportamental antes de qualquer DONE."
+    }
+  },
+    {
+      "id": "PROD-028",
+      "title": "Homologar laboratório e equipamentos",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-024",
+        "PROD-025",
+        "PROD-026",
+        "PROD-027"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Resultado duplicado, inválido, fora de ordem e replay tratados; identidade/amostra/tenant preservados; laudo e auditoria reconciliados; owner homologa.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-028:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-028 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-029",
+      "title": "Homologar ciclo fiscal",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-024",
+        "PROD-027"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Certificado via secret manager; timeout/replay não duplica emissão; artefato e estado consistentes, rejeitos acionáveis, dono fiscal aprova.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-029:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-029 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-030",
+      "title": "Homologar pagamentos, estorno e conciliação",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-005",
+        "PROD-009",
+        "PROD-024",
+        "PROD-025",
+        "PROD-027"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Callbacks duplicados/fora de ordem, timeout e crash sem cobrança/estorno duplo; ledger e provider reconciliam por operação/dia/tenant; permissões preservadas.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-030:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-030 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-031",
+      "title": "Homologar marketing e consentimento",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-022",
+        "PROD-025",
+        "PROD-027"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Opt-out impede envio futuro inclusive fila/retry; isolamento tenant, bounce/rejeito e auditoria observáveis; nenhuma mensagem para clientes reais.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-031:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-031 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-032",
+      "title": "Certificar relatórios e entregas agendadas",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-024",
+        "PROD-025",
+        "PROD-027"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Totais/CSV/JSON/XLSX/PDF aplicáveis batem na fonte; truncamento declarado/paginado; tenant/permissão/retry e status de entrega corretos.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-032:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-032 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-033",
+      "title": "Homologar acesso, DSR e ciclo de dados",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-005",
+        "PROD-022",
+        "PROD-023",
+        "PROD-024",
+        "PROD-027",
+        "PROD-048"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Permissões, DSR e retenção exercitados em todos destinos contratados; restauração não reintroduz dado indevido; auditabilidade e dever de preservação compatibilizados pelo responsável.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-033:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-033 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-034",
+      "title": "Homologar importação Vetus e conectores transversais",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-024",
+        "PROD-025",
+        "PROD-027",
+        "PROD-028",
+        "PROD-029",
+        "PROD-030",
+        "PROD-031",
+        "PROD-032",
+        "PROD-033"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Checksums/relações/totais reconciliados; interrupção/concorrrência/replay não duplicam; tenant isolado; reversão ou roll-forward ensaiado com dono.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-034:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-034 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-035",
+      "title": "Certificar UX/a11y e executar UAT integral",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-021",
+        "PROD-026",
+        "PROD-028",
+        "PROD-029",
+        "PROD-030",
+        "PROD-031",
+        "PROD-032",
+        "PROD-033",
+        "PROD-034",
+        "PROD-042",
+        "PROD-057",
+        "PROD-059",
+        "PROD-063",
+        "PROD-064",
+        "PROD-065"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Zero Critical/High aberto aplicável; Axe e manual aprovados; jornadas persistidas concluídas por usuários responsáveis; sem innerHTML para provar estado funcional; 11 áreas com aceite atual.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-035:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-035 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-036",
+      "title": "Certificar performance e soak representativos",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-024",
+        "PROD-025",
+        "PROD-038",
+        "PROD-041",
+        "PROD-042",
+        "PROD-043",
+        "PROD-049"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Metas aprovadas atendidas; margem/saturação documentadas; duração de soak vigente preservada (artefato soak-72h quando exigido); sem reduzir carga/tempo para obter verde.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-036:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-036 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-037",
+      "title": "Certificar backup, restore e game day",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-004",
+        "PROD-024",
+        "PROD-025",
+        "PROD-033",
+        "PROD-049"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Recuperação cronometrada dentro das metas aprovadas; checksums/relações/saldos reconciliados; restore inclui chaves/objetos/config necessários; failures detectados e runbook executável.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-037:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-037 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-038",
+      "title": "Provar traces, alertas e resposta operacional",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-022",
+        "PROD-024",
+        "PROD-025",
+        "PROD-049"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Falha sintética detectada e alerta recebido/acionado; trace útil sem PII; perda de telemetria observável; produtor byte-bound aceito pelo gate sob política aprovada.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-038:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-038 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-039",
+      "title": "Completar supply chain e intake de provas reais",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-002",
+        "PROD-010",
+        "PROD-017",
+        "PROD-062"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Imagem/digest/SBOM/provenance/assinatura verificados; quarantine ACL/retention/cleanup testados; same-byte e suficiência obrigatórias; autoridade não autodeclarada; replay/revogação de evidência tratados.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-039:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-039 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-040",
+      "title": "Provar required checks e autoridade de promoção",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-018",
+        "PROD-039"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Candidato não contorna gates; workflow/actions do SHA certo; bypasses/roles explícitos e aceitos; run terminal verde e autoridade identificável.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-040:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-040 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-041",
+      "title": "Decompor composição da API com caracterização",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-020",
+        "PROD-023",
+        "PROD-024"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Arquivo e acoplamento reduzidos com responsabilidade clara; nenhum novo god module; testes de auth/replay/tenant/transação passam; budget não aumentado para ocultar crescimento.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-041:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-041 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-042",
+      "title": "Decompor SPA e manter continuidade de navegação",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-009",
+        "PROD-021",
+        "PROD-032"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Concentração/custo de mudança reduzidos; retorno à tarefa, foco e estado clínico preservados; novo render e regressão de navegação sem reutilizar aprovação visual antiga.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-042:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-042 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-043",
+      "title": "Decompor worker sem duplicar política",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-025",
+        "PROD-038"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Responsabilidades menores; crash/recovery/fencing e idempotência preservados; observabilidade permanece correlacionada; sem simples deslocamento do monólito.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-043:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-043 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-044",
+      "title": "Ensaiar instalação, upgrade, deploy e rollback",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-023",
+        "PROD-024",
+        "PROD-035",
+        "PROD-036",
+        "PROD-037",
+        "PROD-038",
+        "PROD-039",
+        "PROD-040",
+        "PROD-049"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Readiness/smoke clínico-financeiro, isolamento edge e digest executado corretos; reversão/roll-forward preservam dados; abort/timeouts/on-call exercitados.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-044:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-044 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-045",
+      "title": "Congelar candidato e emitir Go/No-Go verificável",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-001",
+        "PROD-002",
+        "PROD-003",
+        "PROD-004",
+        "PROD-005",
+        "PROD-006",
+        "PROD-007",
+        "PROD-008",
+        "PROD-009",
+        "PROD-010",
+        "PROD-011",
+        "PROD-012",
+        "PROD-013",
+        "PROD-014",
+        "PROD-015",
+        "PROD-016",
+        "PROD-017",
+        "PROD-018",
+        "PROD-019",
+        "PROD-020",
+        "PROD-021",
+        "PROD-022",
+        "PROD-023",
+        "PROD-024",
+        "PROD-025",
+        "PROD-026",
+        "PROD-027",
+        "PROD-028",
+        "PROD-029",
+        "PROD-030",
+        "PROD-031",
+        "PROD-032",
+        "PROD-033",
+        "PROD-034",
+        "PROD-035",
+        "PROD-036",
+        "PROD-037",
+        "PROD-038",
+        "PROD-039",
+        "PROD-040",
+        "PROD-041",
+        "PROD-042",
+        "PROD-043",
+        "PROD-044",
+        "PROD-047",
+        "PROD-048",
+        "PROD-049",
+        "PROD-050",
+        "PROD-051",
+        "PROD-052",
+        "PROD-053",
+        "PROD-054",
+        "PROD-055",
+        "PROD-056",
+        "PROD-057",
+        "PROD-058",
+        "PROD-059",
+        "PROD-060",
+        "PROD-061",
+        "PROD-062",
+        "PROD-063",
+        "PROD-064",
+        "PROD-065"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Zero P0 e nenhum gate obrigatório falho; cobertura 82/85; 11/11 comportamento atual; CI terminal verde; 97/95/0; provas operacionais/UAT/autoridade do mesmo candidato/alvo. Mudança material reabre afetados.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-045:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-045 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-046",
+      "title": "Executar entrada controlada em produção",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-045"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Rollout progressivo conforme topologia suportada; negócio/telemetria/dados corretos; nenhum incidente crítico aberto; janela de observação encerrada pelo responsável com evidências.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-046:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-046 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-047",
+      "title": "Configurar freshness e sustentação contínua",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260913-R1",
+      "dependencies": [
+        "PROD-001",
+        "PROD-018"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA: Fonte/threshold/provider/alvo alterado invalida prova; expiração e revogação conhecidas barram promoção; backup/restore/rotações/revisões recorrentes têm dono e agenda.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "next_action": {
+        "id": "PROD-047:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-13-backlog-prontidao-producao.md",
+        "completion_signal": "Criterios do cartao PROD-047 atendidos com prova e revisao."
+      }
+    },
+  {
+    "id": "PROD-048",
+    "title": "PII em docs/vetus/guides e copias relacionadas",
+    "stage": "BUILD",
+    "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "BACKLOG-PROD-20260914",
+      "dependencies": [
+        "PROD-001"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "R1 EXECUTADA / REVIEW_REQUIRED: inventario redacting-first de 67 arquivos com 28/28 candidatos em revisao obrigatoria, sem valores publicados; exemplos, historico, acesso e retencao aguardam owner Segurança/DPO. Sem reescrever Git ou apagar copias indiscriminadamente.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        ".agent/verification.jsonl#VER-PROD-048-R1-20260915",
+        ".agent/verification.jsonl#VER-PROD-048-R1-LOCKE-20260915",
+        ".agent/verification.jsonl#VER-PROD-048-R1-FRESH-CRITIC-UNAVAILABLE-20260915",
+        "artifacts/state-of-art/PROD-048/attempt-20260915T131500Z-R1/REPORT.md",
+        "artifacts/state-of-art/PROD-048/attempt-20260915T131500Z-R1/SHA256SUMS"
+      ],
+    "next_action": {
+        "id": "PROD-048:PROD-048-DPO-OWNER-20260915",
+        "kind": "WAIT",
+        "summary": "Obter revisao restrita de Segurança/DPO para os 28 digests/localizacoes, decidir exemplos sinteticos autorizados e definir ACL, retencao, restauracao e destino duravel; nao expor valores.",
+        "target": "artifacts/state-of-art/PROD-048/attempt-20260915T131500Z-R1/REPORT.md; artifacts/state-of-art/PROD-048/attempt-20260915T131500Z-R1/logs/document-pii-audit.json; .agent/authority.jsonl",
+        "completion_signal": "Owner Segurança/DPO identificado e decisao registrada no ledger de autoridade, com tratamento permitido/rejeitado para os candidatos e politica de acesso/retencao/restauracao; depois repetir critica fresh ou registrar aceite autorizado."
+    }
+  },
+    {
+      "id": "PROD-049",
+      "title": "Docs 132, ADR-011, RELEASE_IDENTITY e runbooks: matriz ambiente->runtime",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "BACKLOG-PROD-20260914",
+      "dependencies": [
+        "PROD-001"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "R1 IMPLEMENTADA / REVIEW_REQUIRED: matriz declarativa cobre local, CI/E2E, staging Helm, producao Helm e single-host Compose alternativo; precedencia e conflitos estao explicitados. O slice local tem checks e hashes, mas a critica fresh ficou indisponivel e target, owner, digest, provider e decisoes de runtime seguem pendentes de autoridade.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        "docs/engineering/environment-runtime-matrix.json",
+        "docs/049-matriz-ambiente-runtime.md",
+        ".agent/gates/implementation-ready-prod-049-20260915.json",
+        ".agent/verification.jsonl#VER-PROD-049-R1-20260915",
+        ".agent/verification.jsonl#VER-PROD-049-R1-FRESH-CRITIC-UNAVAILABLE-20260915",
+        "artifacts/state-of-art/PROD-049/attempt-20260915T140750Z-R1/REPORT.md",
+        "artifacts/state-of-art/PROD-049/attempt-20260915T140750Z-R1/SHA256SUMS",
+        "artifacts/state-of-art/PROD-049/attempt-20260915T140750Z-R1/CRITIC-FRESH-UNAVAILABLE-20260915.md"
+      ],
+      "next_action": {
+        "id": "PROD-049:PROD-049-PLATFORM-RELEASE-OWNER-20260915",
+        "kind": "WAIT",
+        "summary": "Obter critica independente fresh current ou registrar substituto autorizado; depois Platform/Release deve confirmar precedencia, origins, target/owner, image digests, secrets provider, migration, worker health e systemd.",
+        "target": "artifacts/state-of-art/PROD-049/attempt-20260915T140750Z-R1/REPORT.md; artifacts/state-of-art/PROD-049/attempt-20260915T140750Z-R1/CRITIC-FRESH-UNAVAILABLE-20260915.md; .agent/authority.jsonl",
+        "completion_signal": "Parecer independente current e decisao de Platform/Release registrados; repetir checks no mesmo candidato e atualizar a matriz sem inventar target ou promover DONE/AAA."
+      }
+    },
+    {
+      "id": "PROD-050",
+      "title": "account-job-runner.ts: timeout e isolamento de job pendurado",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260914",
+      "dependencies": [
+        "PROD-003",
+        "PROD-024"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA (14/09): Reproduzir job que nunca resolve; prazo cancelavel/fencing impede efeitos tardios e libera proximo tenant; abort, lease e recursos limpos. Teste de processo/DB; Promise.race sozinho nao prova cancelamento.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "next_action": {
+        "id": "PROD-050:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        "completion_signal": "Criterios do cartao PROD-050 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-051",
+      "title": "notifications/src/index.ts: conclusao duravel de job e entrega",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260914",
+      "dependencies": [
+        "PROD-003",
+        "PROD-024"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA (14/09): Reproduzir falha entre processed/update/hook; conclusao duravel, retry/DLQ/redrive e idempotencia compativeis. Crash/restart e webhook duplicado sem perda nem entrega indevida; estado SQL reconciliado.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "next_action": {
+        "id": "PROD-051:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        "completion_signal": "Criterios do cartao PROD-051 atendidos com prova e revisao."
+      }
+    },
+  {
+    "id": "PROD-052",
+    "title": "Contrato de pontos e expiresAt (decisao, sem alterar saldos)",
+    "stage": "BUILD",
+    "priority": "P1",
+    "status": "BLOCKED",
+      "origin": "BACKLOG-PROD-20260914",
+      "dependencies": [
+        "PROD-001"
+      ],
+      "owner": "lead",
+    "acceptance_summary": "R1 IMPLEMENTADA / REVIEW_REQUIRED: contrato comparativo cobre vencimento, timezone, corte temporal, ordem de consumo, saldo legado e restituição; alternativas/impacto permanecem não vinculantes até Product/Financeiro. Probe atual é observação, não violação presumida; nenhum saldo foi alterado. Crítica fresh indisponível.",
+    "evidence_refs": [
+      "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+      ".agent/gates/implementation-ready-prod-052-20260915.json",
+      "docs/engineering/loyalty-expiration-contract-prod-052.json",
+      "docs/052-contrato-expiracao-pontos.md",
+      "artifacts/state-of-art/PROD-052/attempt-20260915T152016Z-R1/REPORT.md",
+      "artifacts/state-of-art/PROD-052/attempt-20260915T152016Z-R1/CRITIC-FRESH-UNAVAILABLE-20260915.md",
+      "artifacts/state-of-art/PROD-052/attempt-20260915T152016Z-R1/SHA256SUMS",
+      ".agent/verification.jsonl#VER-PROD-052-R1-20260915",
+      ".agent/verification.jsonl#VER-PROD-052-R1-FRESH-CRITIC-UNAVAILABLE-20260915"
+    ],
+    "next_action": {
+      "id": "PROD-052:PROD-052-PRODUCT-FINANCE-OWNER-20260915",
+      "kind": "WAIT",
+      "summary": "Obter crítica independente fresh current ou substituto autorizado e decisão formal Product/Financeiro sobre C1-C6/R1-R6, relógio, corte, ordem, legado e restituição; não alterar saldos nem inferir autoridade.",
+      "target": "artifacts/state-of-art/PROD-052/attempt-20260915T152016Z-R1/REPORT.md; artifacts/state-of-art/PROD-052/attempt-20260915T152016Z-R1/CRITIC-FRESH-UNAVAILABLE-20260915.md; .agent/authority.jsonl",
+      "completion_signal": "Parecer independente current e autoridade Product/Financeiro registrados; repetir contrato, PROD-053, provas concorrentes e reconciliação antes de promover DONE/AAA."
+    }
+  },
+    {
+      "id": "PROD-053",
+      "title": "Saldo/resgate de fidelidade conforme contrato aprovado",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260914",
+      "dependencies": [
+        "PROD-024",
+        "PROD-052"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA (14/09): Implementar decisao aprovada em memoria/DB/API; fronteiras temporais, resgates concorrentes, expiracao e estorno. Relogio controlado, SQL e API multi-instancia; migracao/legado somente se contrato exigir.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "next_action": {
+        "id": "PROD-053:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        "completion_signal": "Criterios do cartao PROD-053 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-054",
+      "title": "AppPageHeader e Agenda tablet: primeira informacao util na dobra",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260914",
+      "dependencies": [
+        "PROD-003",
+        "PROD-012"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA (14/09): Primeira consulta util visivel em viewport nominal 768x900 e matriz intermediaria com dataset fixado; filtros/KPIs/CTA acessiveis, sem clipping/overflow. Teste geometrico falha no layout antigo e vale tambem >390; temas/teclado e screenshots antes/depois.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "next_action": {
+        "id": "PROD-054:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        "completion_signal": "Criterios do cartao PROD-054 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-055",
+      "title": "OwnerFormPage e essenciais mobile",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260914",
+      "dependencies": [
+        "PROD-003",
+        "PROD-012"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA (14/09): Nome+contato obrigatorio antes dos opcionais; salvar alcancavel sem perder entrada; erro/foco/dialogo/retorno preservados. Teste da ordem semantica, viewport 375, teclado e browser->API->DB.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "next_action": {
+        "id": "PROD-055:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        "completion_signal": "Criterios do cartao PROD-055 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-056",
+      "title": "Copy operacional e papeis tipograficos",
+      "stage": "BUILD",
+      "priority": "P2",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260914",
+      "dependencies": [
+        "PROD-003",
+        "PROD-012"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA (14/09): Substituir jargao quando prejudica operacao; papeis serif/sans segundo contrato CVG; breadcrumbs/aria consistentes, sem renomear conceitos de negocio. Inventario, revisao com operadores, render claro/escuro e regressao.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "next_action": {
+        "id": "PROD-056:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        "completion_signal": "Criterios do cartao PROD-056 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-057",
+      "title": "Matriz completa de rotas/estados responsivos",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260914",
+      "dependencies": [
+        "PROD-054",
+        "PROD-055",
+        "PROD-056",
+        "PROD-058"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA (14/09): Rotas criticas das 11 areas, 375/721/768/1024/1440 e limites reais; loading/empty/error/retry/success/conflict/403/long copy. Console/network/geometry/teclado; fixtures declaradas; sem autoaprovar golden.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "next_action": {
+        "id": "PROD-057:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        "completion_signal": "Criterios do cartao PROD-057 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-058",
+      "title": "Tokens, marca, icones, assets e performance visual",
+      "stage": "BUILD",
+      "priority": "P2",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260914",
+      "dependencies": [
+        "PROD-003",
+        "PROD-012"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA (14/09): Papeis semanticos, contraste e identidade preservados; asset com origem/licenca/recorte/resolucao/peso; fonts/fallback/numeros/motion/reduced-motion. Manifesto e scans + render; sem raster de texto/UI ou troca de marca.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "next_action": {
+        "id": "PROD-058:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        "completion_signal": "Criterios do cartao PROD-058 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-059",
+      "title": "A11y manual/automatica e cross-browser (AA contratada)",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260914",
+      "dependencies": [
+        "PROD-057"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA (14/09): Matriz AA: keyboard/focus/labels/erros/contraste/non-color/touch/zoom/reflow/AT nos navegadores suportados; zero blocker essencial. Axe em todas rotas criticas + evidencia manual/AT real; seis runs da Agenda nao bastam.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "next_action": {
+        "id": "PROD-059:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        "completion_signal": "Criterios do cartao PROD-059 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-060",
+      "title": "Scripts de lint e regras semanticas",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260914",
+      "dependencies": [
+        "PROD-003"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA (14/09): Diferenciar types de lint; regras de promises/async, imports/fronteiras e seguranca detectam fixtures ruins e aprovam boas; baseline de divida explicita sem blanket disable. Log lint/known-bads/build/tipos e rollout incremental.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "next_action": {
+        "id": "PROD-060:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        "completion_signal": "Criterios do cartao PROD-060 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-061",
+      "title": "Suite ML PostgreSQL e dependencias da suite raiz",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "BACKLOG-PROD-20260914",
+      "dependencies": [
+        "PROD-003"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "ESCOPO ACEITO 14/09 (ML 14/14 + raiz isolada exit 0 + lab 1/1, efemero dropado, incidente .env divulgado, I1 + re-revisao APPROVE); cartao segue BLOCKED: fechamento bottom-up requer PROD-003 DONE.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        ".agent/verification.jsonl#VER-PROD-061-20260914",
+        ".agent/verification.jsonl#VER-PROD-061-R1-20260914"
+      ],
+      "next_action": {
+        "id": "PROD-061:WAIT-003-20260914",
+        "kind": "WAIT",
+        "summary": "Escopo aceito; encerramento aguarda PROD-003 DONE. Recomendacao sobre incidente .env registrada internamente; notificacao, ACK e encerramento pelo dono do banco de dev pendentes.",
+        "target": ".agent/backlog.json",
+        "completion_signal": "PROD-003 DONE e cadeia de encerramento reexecutada."
+      }
+    },
+    {
+      "id": "PROD-062",
+      "title": "Verificadores especificos do release gate",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "BACKLOG-PROD-20260914",
+      "dependencies": [
+        "PROD-001",
+        "PROD-010"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "R1 CONTRACT_ONLY_PREPARATION: inventário dos critérios genericamente PARTIAL e contratos criterion-specific por família para testes, RLS, backup, UAT, deploy, proteção e autoridade; pacote inclui observability e security evidence não pode auto-promover PASS. Known-good sintético passa somente com verificador injetado e política aprovada de teste, enquanto hash/issuer/criterion/family/target/status/limite/duplicidade/frescor/autoridade falsos falham. O cartão integral permanece BLOCKED por PROD-010, attestation/target reais, limites e autoridades externas.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        ".agent/gates/implementation-ready-prod-062-20260915.json",
+        "docs/triple-a/19-prod-062-family-verifier-inventory.md",
+        "scripts/run-triple-a-release-gate.mjs",
+        "tests/unit/infra/prod-062-family-evidence.test.ts",
+        "scripts/generate-triple-a-evidence-package.mjs",
+        "scripts/generate-triple-a-evidence-package.test.mjs",
+        "scripts/generate-security-evidence.mjs",
+        "scripts/run-security-audit.test.mjs",
+        "artifacts/state-of-art/PROD-062/attempt-20260915T161317Z-R1/REPORT.md",
+        "artifacts/state-of-art/PROD-062/attempt-20260915T161317Z-R1/CRITIC-FRESH-UNAVAILABLE-20260915.md",
+        "artifacts/state-of-art/PROD-062/attempt-20260915T161317Z-R1/SCOUT-OHM-20260915.md"
+      ],
+      "execution_scope": "CONTRACT_ONLY_PREPARATION",
+      "dependency_replan": {
+        "decision": "ALLOW_LOCAL_PREPARATION_ONLY",
+        "full_acceptance_dependencies_preserved": [
+          "PROD-001",
+          "PROD-010"
+        ],
+        "does_not_satisfy_dependency": "PROD-010",
+        "does_not_promote_card": true,
+        "basis": "A prova LOCAL pode avançar por replanejamento explícito, mas não satisfaz a dependência de coverage nem os gates externos do cartão integral."
+      },
+      "next_action": {
+        "id": "PROD-062:PROD-062-FRESH-CRITIC-AUTHORITY-20260915",
+        "kind": "WAIT",
+        "summary": "Obter crítica fresh independente e decisão Platform/Security/QA sobre trust root, target, limites e autoridade; preservar PROD-010 e não alegar release.",
+        "target": "artifacts/state-of-art/PROD-062/attempt-20260915T161317Z-R1/REPORT.md; artifacts/state-of-art/PROD-062/attempt-20260915T161317Z-R1/CRITIC-FRESH-UNAVAILABLE-20260915.md; .agent/authority.jsonl",
+        "completion_signal": "Crítica fresh e decisões Platform/Security/QA registradas; depois reexecutar known-good/known-bad no candidato e somente então avaliar promoção integral."
+      }
+    },
+    {
+      "id": "PROD-063",
+      "title": "Tutores/pacientes e cadastros auxiliares",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260914",
+      "dependencies": [
+        "PROD-024",
+        "PROD-027",
+        "PROD-055"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA (14/09): Campos/duplicatas/vinculos/autorizados, permissoes, busca/edicao/arquivamento e importacao contratados; contexto preservado. UI/API/DB multi-tenant com negativos, sinteticos e aceite do dono.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "next_action": {
+        "id": "PROD-063:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        "completion_signal": "Criterios do cartao PROD-063 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-064",
+      "title": "Produtos/servicos, reservas, compras, lotes e movimentos",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260914",
+      "dependencies": [
+        "PROD-024",
+        "PROD-025",
+        "PROD-027"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA (14/09): Entrada/reserva/transferencia/consumo/cancelamento reconciliam quantidade/custo/financeiro; concorrencia e vencimento quando contratado. Jornada UI/API/DB, oracle de estoque e autorizacao de ajustes.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "next_action": {
+        "id": "PROD-064:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        "completion_signal": "Criterios do cartao PROD-064 atendidos com prova e revisao."
+      }
+    },
+    {
+      "id": "PROD-065",
+      "title": "Profissionais/folgas/comissoes",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "BACKLOG-PROD-20260914",
+      "dependencies": [
+        "PROD-024",
+        "PROD-027"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "PLANEJADA (14/09): Regras aprovadas de competencia, base, rateio, cancelamento/estorno/repasse e folga; calculo/reprocessamento idempotentes, permissoes e rastreabilidade. Dataset oracle e reconciliacao UI/API/DB; nao inventar politica de remuneracao.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "next_action": {
+        "id": "PROD-065:PLANNED",
+        "kind": "NONE",
+        "summary": "Aguarda dependencias e janela; aceite integral no backlog antes de DONE.",
+        "target": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        "completion_signal": "Criterios do cartao PROD-065 atendidos com prova e revisao."
       }
     }
   ]

@@ -47,6 +47,7 @@ export interface FinancialReceivableListResponse {
   total: number;
   openCount: number;
   settledCount: number;
+  totalOriginal: number;
   totalOutstanding: number;
   totalSettled: number;
 }

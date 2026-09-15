@@ -178,6 +178,33 @@ test('handleOwnersRoutes GET /owners lists filtered owners', async () => {
   assert.equal(payload.items.some((item) => item.id === 'owner_maria_silva'), true);
 });
 
+test('handleOwnersRoutes GET /owners returns bounded pagination metadata', async () => {
+  const response = new MockResponse();
+
+  await handleOwnersRoutes(
+    '/owners',
+    new MockRequest({ method: 'GET', url: '/owners?page=2&pageSize=1' }) as never,
+    response as never,
+    'corr-owners-pagination',
+    {
+      owners: new OwnersService(),
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  const payload = response.bodyJson<{
+    items: Array<{ id: string }>;
+    page: number;
+    pageSize: number;
+    total: number;
+  }>();
+  assert.deepEqual(payload.items.map((item) => item.id), ['owner_joao_souza']);
+  assert.equal(payload.page, 2);
+  assert.equal(payload.pageSize, 1);
+  assert.equal(payload.total, 3);
+});
+
 test('handleOwnersRoutes GET /owners searches masked fields with unmasked query', async () => {
   const documentResponse = new MockResponse();
 

@@ -93,7 +93,10 @@ function shiftFirstLine(mappings, columns) {
 }
 
 function wrapperColumns(code, ast) {
-  if (!code.startsWith("'use strict';async (__vite_ssr_import__,")) return 0;
+  // Vitest/Vite SSR wrappers keep the same shape across runtime versions but
+  // the parameter list changed (for example, `__vite_ssr_import__` moved from
+  // first to third). Detect the structure, never a fixed argument order.
+  if (!code.startsWith("'use strict';async (")) return 0;
   const fn = ast.body[1]?.expression;
   const inner = fn?.body?.body?.[0];
   if (

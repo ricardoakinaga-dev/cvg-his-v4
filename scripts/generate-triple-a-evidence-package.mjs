@@ -19,6 +19,13 @@ import {
 import { relative, resolve, sep } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
+import {
+  FAMILY_EVIDENCE_REQUIREMENTS,
+  validateCiEvidenceEnvelope,
+  validateFamilyEvidenceEnvelope,
+  validateOperationalEvidenceEnvelope
+} from './run-triple-a-release-gate.mjs';
+
 export const PACKAGE_FILES = [
   'release-manifest.json',
   'quality-scorecard.json',
@@ -29,6 +36,7 @@ export const PACKAGE_FILES = [
   'clinical-e2e.json',
   'workflow-reliability.json',
   'uat.json',
+  'observability.json',
   'performance.json',
   'soak.json',
   'backup-restore.json',
@@ -40,8 +48,22 @@ export const PACKAGE_FILES = [
 
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
 const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/i;
-const VALID_STATUSES = new Set(['PASS', 'FAIL', 'BLOCKED', 'NOT_EVALUATED', 'NOT_PROVEN']);
+const VALID_STATUSES = new Set(['PASS', 'PARTIAL', 'FAIL', 'BLOCKED', 'NOT_EVALUATED', 'NOT_PROVEN']);
 const DEFAULT_MAX_AGE_HOURS = 7 * 24;
+
+/**
+ * Package members whose source is an operational envelope. These are evaluated
+ * with the canonical gate contract (including byte binding, attestation and the
+ * gate-owned sufficiency policy) instead of a second, weaker approval engine.
+ * Without the trusted verifier and an approved policy the canonical result is
+ * PARTIAL, so the package member is not labelled verified PASS.
+ */
+const OPERATIONAL_PACKAGE_EVIDENCE = {
+  'observability.json': 'OBSERVABILITY-EVIDENCE',
+  'performance.json': 'PERFORMANCE',
+  'soak.json': 'SOAK',
+  'rollback.json': 'ROLLBACK'
+};
 
 /**
  * Every package input is explicit about its environment override and its
@@ -61,43 +83,79 @@ const SOURCE_INPUTS_BY_PACKAGE = {
   'branch-governance.json': [
     {
       environment: 'TRIPLE_A_BRANCH_PROTECTION_EVIDENCE',
-      files: ['branch-governance-evidence.json', 'branch-governance.json']
+      files: ['branch-governance-evidence.json', 'branch-governance.json'],
+      evidenceId: 'BRANCH-PROTECTION'
     }
   ],
   'security-evidence.json': [
     { environment: 'TRIPLE_A_SECURITY_EVIDENCE', files: ['security-evidence.json'] }
   ],
   'rls-runtime.json': [
-    { environment: 'TRIPLE_A_RLS_RUNTIME_EVIDENCE', files: ['rls-runtime-evidence.json'] }
+    {
+      environment: 'TRIPLE_A_RLS_RUNTIME_EVIDENCE',
+      files: ['rls-runtime-evidence.json'],
+      evidenceId: 'RLS-RUNTIME'
+    }
   ],
   'clinical-e2e.json': [
     {
       environment: 'TRIPLE_A_CLINICAL_E2E_EVIDENCE',
-      files: ['clinical-e2e-evidence.json']
+      files: ['clinical-e2e-evidence.json'],
+      evidenceId: 'CLINICAL-E2E'
     },
-    { environment: 'TRIPLE_A_AUDIT_EVIDENCE', files: ['audit-evidence.json'] }
+    {
+      environment: 'TRIPLE_A_AUDIT_EVIDENCE',
+      files: ['audit-evidence.json'],
+      evidenceId: 'AUDIT-INTEGRITY'
+    }
   ],
   'workflow-reliability.json': [
     {
       environment: 'TRIPLE_A_WORKFLOW_POSTGRES_EVIDENCE',
-      files: ['workflow-postgres-evidence.json']
+      files: ['workflow-postgres-evidence.json'],
+      evidenceId: 'WORKFLOW-POSTGRES'
     },
     {
       environment: 'TRIPLE_A_WORKER_CRASH_EVIDENCE',
-      files: ['worker-crash-evidence.json']
+      files: ['worker-crash-evidence.json'],
+      evidenceId: 'WORKER-CRASH'
     }
   ],
-  'uat.json': [{ environment: 'TRIPLE_A_UAT_EVIDENCE', files: ['uat-evidence.json'] }],
+  'uat.json': [
+    {
+      environment: 'TRIPLE_A_UAT_EVIDENCE',
+      files: ['uat-evidence.json'],
+      evidenceId: 'HOSPITAL-UAT'
+    }
+  ],
+  'observability.json': [
+    {
+      environment: 'TRIPLE_A_OBSERVABILITY_EVIDENCE',
+      files: ['observability-evidence.json']
+    }
+  ],
   'performance.json': [
     { environment: 'TRIPLE_A_PERFORMANCE_EVIDENCE', files: ['performance-evidence.json'] }
   ],
   'soak.json': [{ environment: 'TRIPLE_A_SOAK_EVIDENCE', files: ['soak-evidence.json'] }],
   'backup-restore.json': [
-    { environment: 'TRIPLE_A_BACKUP_EVIDENCE', files: ['backup-restore-evidence.json'] }
+    {
+      environment: 'TRIPLE_A_BACKUP_EVIDENCE',
+      files: ['backup-restore-evidence.json'],
+      evidenceId: 'BACKUP-DRILL'
+    }
   ],
   'deployment.json': [
-    { environment: 'TRIPLE_A_DEPLOY_EVIDENCE', files: ['deployment-evidence.json'] },
-    { environment: 'TRIPLE_A_HELM_EVIDENCE', files: ['helm-evidence.json'] }
+    {
+      environment: 'TRIPLE_A_DEPLOY_EVIDENCE',
+      files: ['deployment-evidence.json'],
+      evidenceId: 'DEPLOY-TARGET'
+    },
+    {
+      environment: 'TRIPLE_A_HELM_EVIDENCE',
+      files: ['helm-evidence.json'],
+      evidenceId: 'HELM-TARGET'
+    }
   ],
   'rollback.json': [
     { environment: 'TRIPLE_A_ROLLBACK_EVIDENCE', files: ['rollback-evidence.json'] }
@@ -123,14 +181,6 @@ function git(rootDir, args) {
 
 function sha256(path) {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
-}
-
-function readJson(path) {
-  try {
-    return JSON.parse(readFileSync(path, 'utf8'));
-  } catch {
-    return null;
-  }
 }
 
 function writeAtomic(path, value) {
@@ -212,7 +262,10 @@ function validateExternalEnvelope({ rootDir, value, commitSha, expectedEvidenceT
     isoTimestamp(value.verification.verified_at) &&
     validArtifactReferences(rootDir, value.artifacts);
   return validShape
-    ? { status: 'PASS', reason: 'Fonte PASS validada por SHA, verificador, frescor e digests.' }
+    ? {
+        status: 'PARTIAL',
+        reason: 'Fonte declarada PASS e íntegra, porém sem raiz de confiança própria; requer avaliação canônica do gate.'
+      }
     : {
         status: 'NOT_PROVEN',
         reason: 'Fonte declarou PASS sem envelope verificável e artefatos íntegros.'
@@ -281,20 +334,75 @@ function validateFinalVerdict({ value, commitSha }) {
         };
 }
 
-function assessSource({ rootDir, packageName, value, commitSha }) {
+function assessSource({ rootDir, packageName, value, commitSha, sourcePath, envelopeSha256, evidenceId }) {
   if (!value) return { status: 'NOT_PROVEN', reason: 'Fonte JSON inválida.' };
-  if (packageName === 'release-manifest.json')
-    return validateReleaseManifest({ rootDir, value, commitSha });
-  if (packageName === 'final-verdict.json' || packageName === 'quality-scorecard.json') {
-    return validateFinalVerdict({ value, commitSha });
+  const relativeSource = relative(rootDir, sourcePath).split('\\').join('/');
+  const operationalId = OPERATIONAL_PACKAGE_EVIDENCE[packageName];
+  if (operationalId) {
+    const canonical = validateOperationalEvidenceEnvelope({
+      rootDir,
+      value: relativeSource,
+      artifact: value,
+      commitSha,
+      evidenceId: operationalId,
+      envelopeSha256
+    });
+    return {
+      status: canonical.status,
+      reason: `Avaliação canônica do gate (${operationalId}): ${canonical.reason}`,
+      declared_status: typeof value?.status === 'string' ? value.status : null,
+      layers: canonical.layers ?? null
+    };
   }
-  return validateExternalEnvelope({
-    rootDir,
-    value,
-    commitSha,
-    expectedEvidenceType:
-      packageName === 'ci-evidence.json' ? 'cvg-his-ci-evidence' : 'cvg-his-external-evidence'
-  });
+  if (evidenceId && FAMILY_EVIDENCE_REQUIREMENTS[evidenceId]) {
+    const canonical = validateFamilyEvidenceEnvelope({
+      rootDir,
+      value: relativeSource,
+      artifact: value,
+      commitSha,
+      evidenceId,
+      envelopeSha256
+    });
+    return {
+      status: canonical.status,
+      reason: `Avaliação canônica do gate (${evidenceId}): ${canonical.reason}`,
+      declared_status: typeof value?.status === 'string' ? value.status : null,
+      layers: canonical.layers ?? null
+    };
+  }
+  if (packageName === 'ci-evidence.json') {
+    const canonical = validateCiEvidenceEnvelope({
+      rootDir,
+      value: relativeSource,
+      artifact: value,
+      commitSha
+    });
+    return {
+      status: canonical.status,
+      reason: `Avaliação canônica do gate (CI): ${canonical.reason}`,
+      declared_status: typeof value?.status === 'string' ? value.status : null
+    };
+  }
+  if (packageName === 'release-manifest.json')
+    return {
+      ...validateReleaseManifest({ rootDir, value, commitSha }),
+      declared_status: typeof value?.status === 'string' ? value.status : null
+    };
+  if (packageName === 'final-verdict.json' || packageName === 'quality-scorecard.json') {
+    return {
+      ...validateFinalVerdict({ value, commitSha }),
+      declared_status: typeof value?.status === 'string' ? value.status : null
+    };
+  }
+  return {
+    ...validateExternalEnvelope({
+      rootDir,
+      value,
+      commitSha,
+      expectedEvidenceType: 'cvg-his-external-evidence'
+    }),
+    declared_status: typeof value?.status === 'string' ? value.status : null
+  };
 }
 
 function sourceFor({
@@ -314,17 +422,22 @@ function sourceFor({
       environment[input.environment] !== undefined &&
       environment[input.environment] !== null;
     if (hasConfiguredValue) {
-      return { name: input.environment, path: environment[input.environment] };
+      return {
+        name: input.environment,
+        path: environment[input.environment],
+        evidenceId: input.evidenceId
+      };
     }
 
     const fallback = (input.files ?? [])
-      .map((name) => ({ name, path: resolve(rootDir, releaseOutputDir, name) }))
+      .map((name) => ({ name, path: resolve(rootDir, releaseOutputDir, name), evidenceId: input.evidenceId }))
       .find((entry) => existsSync(entry.path));
     return (
       fallback ?? {
         name: input.environment ?? input.files?.[0] ?? packageName,
         path: null,
-        missing: true
+        missing: true,
+        evidenceId: input.evidenceId
       }
     );
   });
@@ -332,7 +445,7 @@ function sourceFor({
   const hasAnySource = candidates.some((candidate) => candidate.path !== null);
   if (!hasAnySource) return null;
 
-  const sources = candidates.map(({ name, path, missing }) => {
+  const sources = candidates.map(({ name, path, missing, evidenceId }) => {
     if (missing || path === null) {
       return {
         name,
@@ -351,22 +464,56 @@ function sourceFor({
         reason: 'Fonte precisa ser um arquivo local seguro dentro do repositório.'
       };
     }
-    const value = readJson(sourcePath);
-    const assessment = assessSource({ rootDir, packageName, value, commitSha });
+    let bytes;
+    try {
+      bytes = readFileSync(sourcePath);
+    } catch {
+      return { name, path: sourcePath, status: 'NOT_PROVEN', reason: 'Fonte não pôde ser lida.' };
+    }
+    const envelopeSha256 = createHash('sha256').update(bytes).digest('hex');
+    let value = null;
+    try {
+      value = JSON.parse(bytes.toString('utf8'));
+    } catch {
+      value = null;
+    }
+    const assessment = assessSource({
+      rootDir,
+      packageName,
+      value,
+      commitSha,
+      sourcePath,
+      envelopeSha256,
+      evidenceId
+    });
     return { name, path: sourcePath, ...assessment };
   });
   const status = sources.some((source) => source.status === 'FAIL')
     ? 'FAIL'
-    : sources.every((source) => source.status === 'PASS')
-      ? 'PASS'
-      : (sources.find((source) => source.status === 'BLOCKED')?.status ?? 'NOT_PROVEN');
+    : sources.some((source) => source.status === 'NOT_PROVEN')
+      ? 'NOT_PROVEN'
+      : sources.some((source) => source.status === 'BLOCKED')
+        ? 'BLOCKED'
+        : sources.some((source) => source.status === 'PARTIAL')
+          ? 'PARTIAL'
+          : 'PASS';
   const sourcePaths = sources
     .map((source) => source.path)
     .filter((path) => typeof path === 'string');
+  const declaredStatuses = sources
+    .map((source) => source.declared_status)
+    .filter((declared) => typeof declared === 'string');
+  const declaredStatus =
+    declaredStatuses.length > 0 && declaredStatuses.every((value) => value === declaredStatuses[0])
+      ? declaredStatuses[0]
+      : null;
+  const layers = sources.length === 1 && sources[0].layers ? sources[0].layers : undefined;
   return {
     path: sourcePaths,
     status,
-    reason: sources.map((source) => `${source.name}: ${source.reason}`).join(' ')
+    reason: sources.map((source) => `${source.name}: ${source.reason}`).join(' '),
+    ...(declaredStatus === null ? {} : { declared_status: declaredStatus }),
+    ...(layers ? { layers } : {})
   };
 }
 
@@ -403,6 +550,12 @@ export function generateTripleAEvidencePackage({
       schema_version: 1,
       evidence_type: 'cvg-his-triple-a-evidence',
       artifact_name: packageName,
+      // `declared_status` is what the producer wrote in the source envelope;
+      // `verified_status` is the canonical gate evaluation of the same bytes.
+      // They are kept separate so a self-declared PASS can never be read as an
+      // operationally verified PASS.
+      declared_status: source?.declared_status ?? null,
+      verified_status: status,
       status,
       commit_sha: commitSha,
       observed_at: observedAt,
@@ -412,7 +565,8 @@ export function generateTripleAEvidencePackage({
       },
       source: sourceReferences.length === 1 ? sourceReferences[0] : sourceReferences,
       evidence_refs: sourceReferences,
-      limitations
+      limitations,
+      ...(source?.layers ? { verification_layers: source.layers } : {})
     };
     const outputPath = resolve(resolvedOutputDir, packageName);
     writeAtomic(outputPath, artifact);

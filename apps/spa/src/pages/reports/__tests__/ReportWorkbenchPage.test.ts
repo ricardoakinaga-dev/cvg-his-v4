@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -1006,6 +1007,7 @@ describe('ReportWorkbenchPage', () => {
         total: data.length,
         openCount: data.filter((item) => item.status === 'open').length,
         settledCount: data.filter((item) => item.status === 'settled').length,
+        totalOriginal: data.reduce((total, item) => total + item.amountOriginal, 0),
         totalOutstanding: data.reduce((total, item) => total + item.amountOutstanding, 0),
         totalSettled: data.reduce((total, item) => total + item.amountPaid, 0)
       };

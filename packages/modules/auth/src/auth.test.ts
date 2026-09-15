@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'vitest';
+import { expect, test } from 'vitest';
 
 import { AccessControlService } from '@cvg-his-v2/module-access-control';
 import { AuditService } from '@cvg-his-v2/module-audit';
@@ -11,7 +11,12 @@ import { AuthenticationError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 import { getTenantContext } from '@cvg-his-v2/tenant-context';
 
-import { AuthService, BruteForceProtection, InMemoryMfaLoginChallengeRepository } from './index.js';
+import {
+  AuthService,
+  BruteForceProtection,
+  InMemoryMfaLoginChallengeRepository,
+  type MfaLoginChallengeRepository
+} from './index.js';
 import { InMemorySessionRepository } from './repositories/in-memory-session.repository.js';
 import type {
   PersistedSessionRecord,
@@ -28,10 +33,12 @@ function createAuthService(
     readonly mfa?: MfaService;
     readonly sessionRepository?: SessionRepository;
     readonly secret?: string;
+    readonly accessTokenTtlSeconds?: number;
+    readonly refreshTokenTtlSeconds?: number;
     readonly verifierSecrets?: readonly string[];
     readonly users?: UsersService;
     readonly bruteForce?: BruteForceProtection;
-    readonly mfaChallengeRepository?: InMemoryMfaLoginChallengeRepository;
+    readonly mfaChallengeRepository?: MfaLoginChallengeRepository;
   } = {}
 ) {
   const users = options.users ?? new UsersService();
@@ -42,8 +49,8 @@ function createAuthService(
   return new AuthService({
     secret: options.secret ?? 'test-secret-key',
     verifierSecrets: options.verifierSecrets,
-    accessTokenTtlSeconds: 900,
-    refreshTokenTtlSeconds: 604800,
+    accessTokenTtlSeconds: options.accessTokenTtlSeconds ?? 900,
+    refreshTokenTtlSeconds: options.refreshTokenTtlSeconds ?? 604800,
     users,
     staff,
     accessControl,
@@ -103,6 +110,18 @@ function createMutableRoleUsersRepository(): {
       currentRoleCodes = [...roleCodes];
     }
   };
+}
+
+function createUsersDouble(
+  loginUser: ReturnType<typeof createSeedUsers>[number],
+  currentUser = loginUser
+): UsersService {
+  return {
+    resolveByUsername: async () => loginUser,
+    verifyPassword: async () => true,
+    getOrThrow: () => currentUser,
+    list: () => [currentUser]
+  } as unknown as UsersService;
 }
 
 test('AuthService: login with valid credentials returns session (no MFA)', async () => {
@@ -376,10 +395,7 @@ test('AuthService: rejects a tampered signed MFA challenge locator', async () =>
     isMfaActive: async () => true,
     verifyLogin: async () => true
   } as unknown as MfaService;
-  const auth = createAuthService({
-    mfa,
-    mfaChallengeRepository: new InMemoryMfaLoginChallengeRepository()
-  });
+  const auth = createAuthService({ mfa });
   const login = await auth.login(
     { username: 'admin', password: SEED_PASSWORD },
     'corr-mfa-tamper-login'
@@ -470,7 +486,10 @@ test('AuthService: active MFA still requires the second factor after password lo
     isMfaActive: async () => true,
     verifyLogin: async () => true
   } as unknown as MfaService;
-  const auth = createAuthService({ mfa });
+  const auth = createAuthService({
+    mfa,
+    mfaChallengeRepository: new InMemoryMfaLoginChallengeRepository()
+  });
 
   const result = await auth.login(
     { username: 'admin', password: SEED_PASSWORD },
@@ -731,6 +750,31 @@ test('InMemorySessionRepository: refresh nonce compare-and-swap is atomic', asyn
   assert.equal(attempts.filter(Boolean).length, 1);
   const persisted = await repository.findById(sessionId);
   assert.ok(persisted?.refreshNonce === 'nonce-a' || persisted?.refreshNonce === 'nonce-b');
+});
+
+test('InMemorySessionRepository: deletes and clears persisted sessions', async () => {
+  const repository = new InMemorySessionRepository();
+  const session = {
+    sessionId: 'sess_cleanup' as never,
+    userId: 'user_admin' as never,
+    accountId: ACCOUNT_ID as never,
+    createdAt: '2026-08-22T10:00:00.000Z',
+    authTime: '2026-08-22T10:00:00.000Z',
+    expiresAt: '2026-08-22T10:15:00.000Z',
+    refreshExpiresAt: '2026-08-29T10:00:00.000Z',
+    active: true,
+    roleCodes: ['admin'],
+    refreshNonce: 'nonce-cleanup'
+  } satisfies PersistedSessionRecord;
+
+  await repository.create(session);
+  expect(repository.getAll()).toHaveLength(1);
+  await repository.delete(session.sessionId);
+  expect(await repository.findById(session.sessionId)).toBeNull();
+
+  await repository.create(session);
+  repository.clear();
+  expect(repository.getAll()).toEqual([]);
 });
 
 test('AuthService: revoked session cannot be refreshed', async () => {
@@ -1061,5 +1105,425 @@ test('AuthService: authenticateAccessToken throws for invalid token', () => {
       assert.ok(err instanceof AuthenticationError);
       return true;
     }
+  );
+});
+
+test('AuthService: exposes MFA configuration and rejects MFA completion when unavailable', async () => {
+  const withoutMfa = createAuthService();
+  assert.equal(withoutMfa.mfaService, undefined);
+  await assert.rejects(
+    () =>
+      withoutMfa.completeMfaLogin(
+        { userId: 'user_admin', token: '123456', challengeId: 'challenge' },
+        'corr-mfa-not-configured'
+      ),
+    /MFA is not configured/
+  );
+
+  const mfa = new MfaService();
+  const withMfa = createAuthService({ mfa });
+  assert.equal(withMfa.mfaService, mfa);
+});
+
+test('AuthService: blocks locked passwords and rejects non-interactive principals', async () => {
+  const bruteForce = new BruteForceProtection({
+    maxAttempts: 1,
+    lockoutDurationSeconds: 60,
+    trackingWindowSeconds: 60
+  });
+  bruteForce.recordPasswordFailure(' ADMIN ');
+  const lockedAuth = createAuthService({ bruteForce });
+  await assert.rejects(
+    () => lockedAuth.login({ username: 'admin', password: SEED_PASSWORD }, 'corr-password-locked'),
+    /Invalid username or password/
+  );
+
+  const seed = createSeedUsers()[0];
+  const inactiveAuth = createAuthService({
+    users: createUsersDouble({ ...seed, status: 'inactive' })
+  });
+  await assert.rejects(
+    () => inactiveAuth.login({ username: 'admin', password: SEED_PASSWORD }, 'corr-inactive-user'),
+    /Inactive users cannot sign in/
+  );
+
+  for (const [label, user] of [
+    ['service-principal', { ...seed, principalKind: 'service' as const }],
+    ['login-disabled', { ...seed, interactiveLoginEnabled: false }]
+  ] as const) {
+    const auth = createAuthService({ users: createUsersDouble(user) });
+    await assert.rejects(
+      () => auth.login({ username: 'admin', password: SEED_PASSWORD }, `corr-${label}`),
+      /Session is not active/
+    );
+  }
+});
+
+test('AuthService: rejects MFA challenge identity mismatches and repository reservation races', async () => {
+  const mfa = {
+    isMfaRequired: () => true,
+    isMfaActive: async () => true,
+    verifyLogin: async () => true
+  } as unknown as MfaService;
+  const auth = createAuthService({
+    mfa,
+    mfaChallengeRepository: new InMemoryMfaLoginChallengeRepository()
+  });
+  const login = await auth.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-mfa-identity-mismatch'
+  );
+  assert.ok('requiresMfa' in login);
+
+  await assert.rejects(
+    () =>
+      auth.completeMfaLogin(
+        { userId: 'user_other', token: '123456', challengeId: login.challengeId! },
+        'corr-mfa-user-mismatch'
+      ),
+    /missing or expired/
+  );
+
+  const seed = createSeedUsers()[0];
+  const accountMismatchUser = { ...seed, accountId: 'acc_other' as never };
+  const accountMismatchAuth = createAuthService({
+    mfa,
+    users: {
+      resolveByUsername: async () => seed,
+      verifyPassword: async () => true,
+      getOrThrow: () => seed,
+      resolveInteractiveById: async () => accountMismatchUser,
+      list: () => [seed]
+    } as unknown as UsersService
+  });
+  const accountMismatchLogin = await accountMismatchAuth.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-mfa-account-mismatch'
+  );
+  assert.ok('requiresMfa' in accountMismatchLogin);
+  await assert.rejects(
+    () =>
+      accountMismatchAuth.completeMfaLogin(
+        {
+          userId: accountMismatchLogin.userId,
+          token: '123456',
+          challengeId: accountMismatchLogin.challengeId!
+        },
+        'corr-mfa-account-mismatch-complete'
+      ),
+    /missing or expired/
+  );
+
+  for (const [label, attemptCount] of [
+    ['not-at-limit', 1],
+    ['at-limit', 5]
+  ] as const) {
+    const delegate = new InMemoryMfaLoginChallengeRepository();
+    const repository: MfaLoginChallengeRepository = {
+      issue: (input) => delegate.issue(input),
+      inspect: async (key, now) => {
+        const record = await delegate.inspect(key, now);
+        return record ? { ...record, attemptCount } : null;
+      },
+      reserveAttempt: async () => null,
+      consume: (key, now) => delegate.consume(key, now)
+    };
+    const reservationAuth = createAuthService({
+      mfa,
+      mfaChallengeRepository: repository
+    });
+    const reservationLogin = await reservationAuth.login(
+      { username: 'admin', password: SEED_PASSWORD },
+      `corr-mfa-reservation-${label}`
+    );
+    assert.ok('requiresMfa' in reservationLogin);
+    await assert.rejects(
+      () =>
+        reservationAuth.completeMfaLogin(
+          {
+            userId: reservationLogin.userId,
+            token: '123456',
+            challengeId: reservationLogin.challengeId!
+          },
+          `corr-mfa-reservation-${label}-complete`
+        ),
+      /MFA login challenge is missing or expired|Account temporarily locked/
+    );
+  }
+});
+
+test('AuthService: applies MFA lockout and clears it after a successful verification', async () => {
+  const bruteForce = new BruteForceProtection({
+    maxAttempts: 1,
+    lockoutDurationSeconds: 60,
+    trackingWindowSeconds: 60
+  });
+  const mfa = {
+    isMfaRequired: () => true,
+    isMfaActive: async () => true,
+    verifyLogin: async () => false
+  } as unknown as MfaService;
+  const auth = createAuthService({ mfa, bruteForce });
+
+  const first = await auth.login({ username: 'admin', password: SEED_PASSWORD }, 'corr-mfa-lock-1');
+  assert.ok('requiresMfa' in first);
+  await assert.rejects(
+    () =>
+      auth.completeMfaLogin(
+        { userId: first.userId, token: '000000', challengeId: first.challengeId! },
+        'corr-mfa-lock-failure'
+      ),
+    /Invalid MFA code/
+  );
+
+  const second = await auth.login({ username: 'admin', password: SEED_PASSWORD }, 'corr-mfa-lock-2');
+  assert.ok('requiresMfa' in second);
+  await assert.rejects(
+    () =>
+      auth.completeMfaLogin(
+        { userId: second.userId, token: '000001', challengeId: second.challengeId! },
+        'corr-mfa-lock-blocked'
+      ),
+    /Account temporarily locked/
+  );
+
+  const successfulAuth = createAuthService({
+    mfa: {
+      isMfaRequired: () => true,
+      isMfaActive: async () => true,
+      verifyLogin: async () => true
+    } as unknown as MfaService,
+    bruteForce: new BruteForceProtection({ maxAttempts: 2 }),
+    mfaChallengeRepository: new InMemoryMfaLoginChallengeRepository()
+  });
+  const successfulLogin = await successfulAuth.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-mfa-success-with-brute-force'
+  );
+  assert.ok('requiresMfa' in successfulLogin);
+  const completed = await successfulAuth.completeMfaLogin(
+    {
+      userId: successfulLogin.userId,
+      token: '123456',
+      challengeId: successfulLogin.challengeId!
+    },
+    'corr-mfa-success-with-brute-force-complete'
+  );
+  assert.equal(completed.principal.user.id, 'user_admin');
+});
+
+test('AuthService: MFA enrollment and confirmation fail closed on stale or raced challenges', async () => {
+  const withoutMfa = createAuthService();
+  await assert.rejects(
+    () => withoutMfa.beginMfaEnrollment('challenge', 'CVG-HIS-V2', 'corr-mfa-begin-missing'),
+    /MFA is not configured/
+  );
+  await assert.rejects(
+    () => withoutMfa.confirmMfaEnrollment('challenge', '123456', 'corr-mfa-confirm-missing'),
+    /MFA is not configured/
+  );
+
+  const createRequiredMfa = (active: boolean): MfaService =>
+    ({
+      isMfaRequired: () => true,
+      isMfaActive: async () => active,
+      initiateSetup: async () => ({ secret: 'secret', provisioningUri: 'uri', recoveryCodes: [] }),
+      confirmSetup: async () => undefined,
+      verifyLogin: async () => true
+    }) as unknown as MfaService;
+
+  const missingDelegate = new InMemoryMfaLoginChallengeRepository();
+  const missingRepository: MfaLoginChallengeRepository = {
+    issue: (input) => missingDelegate.issue(input),
+    inspect: async () => null,
+    reserveAttempt: (key, now) => missingDelegate.reserveAttempt(key, now),
+    consume: (key, now) => missingDelegate.consume(key, now)
+  };
+  const missingAuth = createAuthService({
+    mfa: createRequiredMfa(false),
+    mfaChallengeRepository: missingRepository
+  });
+  const missingLogin = await missingAuth.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-mfa-begin-stale-login'
+  );
+  assert.ok('requiresMfa' in missingLogin);
+  await assert.rejects(
+    () =>
+      missingAuth.beginMfaEnrollment(
+        missingLogin.challengeId!,
+        'CVG-HIS-V2',
+        'corr-mfa-begin-stale'
+      ),
+    /missing or expired/
+  );
+
+  const activeAuth = createAuthService({
+    mfa: createRequiredMfa(true),
+    mfaChallengeRepository: new InMemoryMfaLoginChallengeRepository()
+  });
+  const activeLogin = await activeAuth.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-mfa-begin-active-login'
+  );
+  assert.ok('requiresMfa' in activeLogin);
+  await assert.rejects(
+    () =>
+      activeAuth.beginMfaEnrollment(
+        activeLogin.challengeId!,
+        'CVG-HIS-V2',
+        'corr-mfa-begin-active'
+      ),
+    /MFA is already active/
+  );
+
+  const reservationDelegate = new InMemoryMfaLoginChallengeRepository();
+  const reservationRepository: MfaLoginChallengeRepository = {
+    issue: (input) => reservationDelegate.issue(input),
+    inspect: (key, now) => reservationDelegate.inspect(key, now),
+    reserveAttempt: async () => null,
+    consume: (key, now) => reservationDelegate.consume(key, now)
+  };
+  const reservationAuth = createAuthService({
+    mfa: createRequiredMfa(false),
+    mfaChallengeRepository: reservationRepository
+  });
+  const reservationLogin = await reservationAuth.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-mfa-confirm-race-login'
+  );
+  assert.ok('requiresMfa' in reservationLogin);
+  await assert.rejects(
+    () =>
+      reservationAuth.confirmMfaEnrollment(
+        reservationLogin.challengeId!,
+        '123456',
+        'corr-mfa-confirm-race'
+      ),
+    /missing or expired/
+  );
+
+  const consumeDelegate = new InMemoryMfaLoginChallengeRepository();
+  const consumeRepository: MfaLoginChallengeRepository = {
+    issue: (input) => consumeDelegate.issue(input),
+    inspect: (key, now) => consumeDelegate.inspect(key, now),
+    reserveAttempt: (key, now) => consumeDelegate.reserveAttempt(key, now),
+    consume: async () => false
+  };
+  const consumeAuth = createAuthService({
+    mfa: createRequiredMfa(false),
+    mfaChallengeRepository: consumeRepository
+  });
+  const consumeLogin = await consumeAuth.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-mfa-confirm-consume-login'
+  );
+  assert.ok('requiresMfa' in consumeLogin);
+  await assert.rejects(
+    () =>
+      consumeAuth.confirmMfaEnrollment(
+        consumeLogin.challengeId!,
+        '123456',
+        'corr-mfa-confirm-consume'
+      ),
+    /missing or expired/
+  );
+});
+
+test('AuthService: exposes authoritative session readers and access-token logout behavior', async () => {
+  const auth = createAuthService();
+  const login = await auth.login({ username: 'admin', password: SEED_PASSWORD }, 'corr-session-readers');
+  assert.ok('accessToken' in login);
+
+  const session = await auth.getSession(login.accessToken);
+  const context = await auth.getAuthoritativeSessionContext(login.accessToken);
+  assert.equal(session.sessionId, login.principal.session.sessionId);
+  assert.deepEqual(context, session);
+  assert.equal(auth.listSessions().length, 1);
+  await auth.hydrateFromRepository();
+
+  await assert.rejects(() => auth.logout({}, 'corr-logout-without-token'), /token is required/);
+
+  const bruteForce = new BruteForceProtection({ maxAttempts: 2 });
+  const accessLogoutAuth = createAuthService({ bruteForce });
+  const accessLogin = await accessLogoutAuth.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-access-logout-login'
+  );
+  assert.ok('accessToken' in accessLogin);
+  await accessLogoutAuth.logout({ accessToken: accessLogin.accessToken }, 'corr-access-logout');
+  await assert.rejects(
+    () => accessLogoutAuth.synchronizeAccessToken(accessLogin.accessToken, 'corr-access-logout-check'),
+    /Session is not active/
+  );
+});
+
+test('AuthService: rejects invalid session-revocation targets and returns false for inactive targets', async () => {
+  const auth = createAuthService();
+  const first = await auth.login({ username: 'admin', password: SEED_PASSWORD }, 'corr-revoke-boundary-first');
+  const second = await auth.login({ username: 'admin', password: SEED_PASSWORD }, 'corr-revoke-boundary-second');
+  assert.ok('accessToken' in first);
+  assert.ok('accessToken' in second);
+
+  await assert.rejects(
+    () =>
+      auth.revokeSessionForUser(
+        second.principal.session.sessionId,
+        'missing-session' as never,
+        'corr-revoke-missing'
+      ),
+    /Session not found/
+  );
+  await assert.rejects(
+    () =>
+      auth.revokeSessionForUser(
+        second.principal.session.sessionId,
+        second.principal.session.sessionId,
+        'corr-revoke-self'
+      ),
+    /cannot revoke itself/
+  );
+
+  await auth.logout({ refreshToken: first.refreshToken }, 'corr-revoke-inactive-logout');
+  assert.equal(
+    await auth.revokeSessionForUser(
+      second.principal.session.sessionId,
+      first.principal.session.sessionId,
+      'corr-revoke-inactive'
+    ),
+    false
+  );
+});
+
+test('AuthService: rejects malformed, signed-but-wrong, expired, and unknown access tokens', async () => {
+  const auth = createAuthService();
+  assert.throws(() => auth.authenticateAccessToken('malformed-token'), /Malformed token/);
+
+  const login = await auth.login({ username: 'admin', password: SEED_PASSWORD }, 'corr-token-errors');
+  assert.ok('accessToken' in login);
+  assert.throws(
+    () => auth.authenticateAccessToken(`${login.accessToken}tampered`),
+    /Invalid token signature/
+  );
+  await assert.rejects(
+    () => auth.refresh({ refreshToken: login.accessToken }, 'corr-token-wrong-type'),
+    /Unexpected token type/
+  );
+
+  const otherAuth = createAuthService();
+  assert.throws(
+    () => otherAuth.authenticateAccessToken(login.accessToken),
+    /Session not found/
+  );
+
+  const expiredAuth = createAuthService({ accessTokenTtlSeconds: -1 });
+  const expiredLogin = await expiredAuth.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-token-expired-login'
+  );
+  assert.ok('accessToken' in expiredLogin);
+  assert.throws(
+    () => expiredAuth.authenticateAccessToken(expiredLogin.accessToken),
+    /Token expired/
   );
 });

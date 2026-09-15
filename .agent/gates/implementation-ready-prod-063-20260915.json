@@ -1,0 +1,83 @@
+{
+  "record_id": "GATE-IR-PROD-063-20260915",
+  "authority": {
+    "actor": "lead executor do programa state-of-art (nao autoridade de Produto, QA, API ou dominio)",
+    "decision": "Entrada somente na preparação local da fronteira de owners/patients, contrato e testes sintéticos; não autoriza decisão de wire shape, política de duplicidade/relacionamento, DB/RLS, importação, UAT ou release.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar antes de reconciliar packages/contracts, alterar schema/migrations, executar DB/UAT/importação ou promover PROD-063.",
+    "required": false,
+    "scope": "Entrada em PROD-063 para LOCAL_BOUNDARY_HARDENING_AND_CONTRACT_PREPARATION (PROD-024/027/055 preservados)",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "PROD-001 está DONE; PROD-024, PROD-027 e PROD-055 continuam sem aceite integral e não são dispensados por esta preparação.",
+      "evidence_refs": [
+        ".agent/backlog.json",
+        ".agent/state.json"
+      ],
+      "id": "IR-001",
+      "limitations": "O gate libera somente trabalho local de fronteira/contrato; não libera o cartão integral.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "O slice pode validar o DTO atualmente usado pelo runtime/OpenAPI, endurecer duplicidade por conta e aplicar paginação já declarada, usando dados sintéticos.",
+      "evidence_refs": [
+        "docs/engineering/registry-contract-prod-063.json",
+        "apps/api/src/registry-request-boundaries.ts",
+        "apps/api/src/routes/owners-routes.ts",
+        "apps/api/src/routes/patients-routes.ts"
+      ],
+      "id": "IR-002",
+      "limitations": "A divergência de packages/contracts, unicidade concorrente, RLS, importação, UAT e owner acceptance permanece aberta.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "A preparação proíbe dados reais, provider, credenciais, serviços novos, alteração de política de produto e alegação de paridade/aceite.",
+      "evidence_refs": [
+        "docs/engineering/registry-contract-prod-063.json",
+        "docs/063-contrato-cadastros.md"
+      ],
+      "id": "IR-003",
+      "limitations": "Crítica fresh e decisões Product/QA/API/domínio são necessárias antes de promoção.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json",
+    "docs/engineering/registry-contract-prod-063.json",
+    "apps/api/src/registry-request-boundaries.ts",
+    "apps/api/src/routes/owners-routes.ts",
+    "apps/api/src/routes/patients-routes.ts",
+    ".agent/plans/repository-state-of-art-remediation-execplan.md"
+  ],
+  "gaps": [
+    "PROD-024 integral",
+    "PROD-027 integral",
+    "PROD-055 integral",
+    "Product/QA/API/domain-owner decision",
+    "PostgreSQL/RLS/concurrency/import/UAT evidence",
+    "fresh independent critic"
+  ],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Executar PROD-063-R1: validar a fronteira atual, testar duplicidade account-scoped e paginação, registrar divergência de contratos e submeter pacote a crítica fresh.",
+  "revalidation_triggers": [
+    "Início e conclusão de PROD-063-R1.",
+    "Qualquer alteração no wire shape, schema/migration, relacionamento autorizado, importação, UAT ou promoção."
+  ],
+  "scope": "Entrada em PROD-063 para LOCAL_BOUNDARY_HARDENING_AND_CONTRACT_PREPARATION (PROD-024/027/055 preservados)",
+  "scope_ref": "PROD-063",
+  "supersedes": null,
+  "timestamp": "2026-09-15T17:15:19Z",
+  "version": 1,
+  "conditions": [],
+  "residual_risk": "MEDIUM"
+}

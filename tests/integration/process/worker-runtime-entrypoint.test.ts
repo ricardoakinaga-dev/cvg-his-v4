@@ -7,6 +7,13 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { reconcileRuntimeRoles } from '../../../packages/db/src/reconcile-runtime-roles.js';
+import {
+  assertEventEnvelopeMatches,
+  buildEventEnvelopeMetadata,
+  mergeEventEnvelopeMetadata,
+  readEventEnvelopeMetadata
+} from '@cvg-his-v2/shared-types';
+import type { AccountId, CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
 import { ADMIN_DB_URL, TEST_DB_URL } from '../../setup/env.js';
 import { requestProcessCoverageCheckpoint } from '../../helpers/process-coverage-control.mjs';
 
@@ -284,6 +291,32 @@ describe('real worker entrypoint under restricted runtime role', () => {
     await clusterAdmin.query(`DROP ROLE IF EXISTS ${quoteIdentifier(workerRole)}`);
     await clusterAdmin.end();
   }, 30_000);
+
+  it('executes the canonical event envelope contract in the production process', () => {
+    const account = accountId as AccountId;
+    const correlation = 'worker-envelope-process-correlation' as CorrelationId;
+    const sourceModule = 'worker-runtime-entrypoint' as ModuleName;
+    const envelope = buildEventEnvelopeMetadata({
+      eventId: 'worker-envelope-process-event',
+      eventType: 'worker.runtime.ready',
+      accountId: account,
+      sourceModule,
+      correlationId: correlation,
+      occurredAt: '2026-09-14T00:00:00.000Z'
+    });
+    const payload = { accountId: account, _meta: mergeEventEnvelopeMetadata({}, envelope) };
+
+    expect(readEventEnvelopeMetadata(payload)).toEqual(envelope);
+    expect(
+      assertEventEnvelopeMatches(payload, {
+        eventId: envelope.eventId,
+        eventType: envelope.eventType,
+        accountId: account,
+        sourceModule,
+        correlationId: correlation
+      })
+    ).toEqual(envelope);
+  });
 
   it('opens live health, advances a real loop, survives SIGKILL, and restarts on the same port', async () => {
     const port = await reservePort();

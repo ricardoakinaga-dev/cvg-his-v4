@@ -1,0 +1,67 @@
+{
+  "authority": {
+    "actor": "lead executor do programa state-of-art (nao autoridade de release)",
+    "decision": "Entrada em PROD-061: harness 003-R2 aceito; 061 executa suite ML/PostgreSQL + raiz sobre o mesmo harness com relaxamento explicito da dependencia integral de PROD-003; sem tocar servicos/dados do usuario.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar ao iniciar/concluir 061 e a cada mudanca de bytes.",
+    "required": false,
+    "scope": "Entrada em PROD-061 (suite ML/DB + raiz): harness 003-R2 aceito, relaxamento explicito de 003 integral",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "003-R2 aceito (2x PASS + tamper + teardown); binarios privados PG 16.15/Redis 7.0.15 disponiveis em /tmp/opencode/prod003r2-*; receita retomavel.",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-PROD-003-R2-REVIEW-20260914"
+      ],
+      "id": "IR-001",
+      "limitations": "Gate de entrada, nao de saida.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Alvo 061 fixado: contrato ML PostgreSQL (REQUIRES_DB fail-closed) + suite raiz completa com falhas separadas por causa; teardown exclusivo.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "id": "IR-002",
+      "limitations": "Duracao longa; isolar saidas em pacote proprio.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Riscos mapeados: sem matar processos por porta; sem volumes compartilhados; release BLOCKED.",
+      "evidence_refs": [
+        ".agent/state.json"
+      ],
+      "id": "IR-003",
+      "limitations": "Nao aprova produto ou release.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json",
+    ".agent/state.json"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Executar PROD-061 (ML PG + suite raiz).",
+  "record_id": "GATE-IR-PROD-061-20260914",
+  "residual_risk": "MEDIUM",
+  "revalidation_triggers": [
+    "Inicio e conclusao de 061.",
+    "Qualquer alteracao em bytes."
+  ],
+  "scope": "Entrada em PROD-061 (suite ML/DB + raiz): harness 003-R2 aceito, relaxamento explicito de 003 integral",
+  "scope_ref": "PROD-061",
+  "supersedes": null,
+  "timestamp": "2026-09-14T02:13:00Z",
+  "version": 1,
+  "conditions": []
+}

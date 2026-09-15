@@ -1,0 +1,67 @@
+{
+  "authority": {
+    "actor": "lead executor do programa state-of-art (nao autoridade de release)",
+    "decision": "Entrada em PROD-013-R2: semantica AST/emit de exclusao type-only + rejeicao de runtime vazio + inventario; sem excluir codigo executavel.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar a cada mudanca de bytes.",
+    "required": false,
+    "scope": "Entrada em PROD-013 (classificacao type-only e instrumentacao): dependencias satisfeitas",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "Cadeia ate 012 aceita no escopo; dependencia 010 relaxada explicitamente.",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-PROD-012-R2-REVIEW-20260914"
+      ],
+      "id": "IR-001",
+      "limitations": "Gate de entrada, nao de saida.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Alvo fixado: 18 modulos type-only com prova AST/emit; runtime vazio rejeitado; known-good/bad de descoberta.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md"
+      ],
+      "id": "IR-002",
+      "limitations": "Sem excluir executavel.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Riscos mapeados; release BLOCKED.",
+      "evidence_refs": [
+        ".agent/state.json"
+      ],
+      "id": "IR-003",
+      "limitations": "Nao aprova release.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json",
+    ".agent/state.json"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Executar PROD-013-R2.",
+  "record_id": "GATE-IR-PROD-013-20260914",
+  "residual_risk": "MEDIUM",
+  "revalidation_triggers": [
+    "Inicio e conclusao de 013-R2.",
+    "Qualquer alteracao em bytes."
+  ],
+  "scope": "Entrada em PROD-013 (classificacao type-only e instrumentacao): dependencias satisfeitas",
+  "scope_ref": "PROD-013",
+  "supersedes": null,
+  "timestamp": "2026-09-15T01:43:05Z",
+  "version": 1,
+  "conditions": []
+}

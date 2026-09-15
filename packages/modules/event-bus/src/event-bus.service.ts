@@ -637,7 +637,7 @@ export class EventBusService {
     const name = named ? nameOrHandler : `anonymous-${this.#handlers.size + 1}`;
     const handler = named ? maybeHandler : nameOrHandler;
     if (!handler) throw new Error('Event consumer handler is required');
-    if (!name || name.length > 100) {
+    if (!name || Array.from(name).length > 100) {
       throw new Error('Event consumer name must contain 1 to 100 characters');
     }
     if (this.#handlers.has(name)) throw new Error(`Event consumer '${name}' is already registered`);

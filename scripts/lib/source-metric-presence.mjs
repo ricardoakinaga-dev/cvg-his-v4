@@ -128,6 +128,56 @@ export function isRuntimeReexportOnly(source) {
   }
 }
 
+function isTypeOnlyImport(node) {
+  const clause = node.importClause;
+  if (!clause) return false;
+  if (clause.isTypeOnly) return true;
+  if (clause.name || !clause.namedBindings || !ts.isNamedImports(clause.namedBindings)) {
+    return false;
+  }
+  return (
+    clause.namedBindings.elements.length > 0 &&
+    clause.namedBindings.elements.every((specifier) => specifier.isTypeOnly)
+  );
+}
+
+function isTypeOnlyExport(node) {
+  if (node.isTypeOnly) return true;
+  const clause = node.exportClause;
+  return (
+    !!clause &&
+    ts.isNamedExports(clause) &&
+    clause.elements.length > 0 &&
+    clause.elements.every((specifier) => specifier.isTypeOnly)
+  );
+}
+
+/**
+ * Returns true only when TypeScript's original source contains declarations
+ * that are erased from the runtime. This is a structural classification, not
+ * a coverage exemption: a runtime import/export, value declaration, enum or
+ * function makes the source ineligible.
+ */
+export function isTypeOnlySource(source) {
+  if (typeof source !== 'string') return false;
+  const ast = ts.createSourceFile(
+    'type-only.ts',
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  if (ast.parseDiagnostics.length || !ast.statements.length) return false;
+  return ast.statements.every((node) => {
+    if (ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)) return true;
+    if (ts.isImportDeclaration(node)) return isTypeOnlyImport(node);
+    if (ts.isExportDeclaration(node)) return isTypeOnlyExport(node);
+    return (
+      node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.DeclareKeyword) ?? false
+    );
+  });
+}
+
 export function assertSourceMetricPresence(entry, authenticatedSources) {
   if ([entry.s, entry.f, entry.b].some((metric) => Object.keys(metric).length)) return;
   const url = pathToFileURL(entry.path).href;

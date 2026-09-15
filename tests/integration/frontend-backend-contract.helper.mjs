@@ -95,6 +95,44 @@ export function collectDeclaredRequests(source, file = 'service.ts', resolveImpo
     return [];
   }
   const argumentsByParameter = new Map();
+  // Options spreads must stay statically resolvable: follow identifiers,
+  // conditionals and helper calls that return object literals. Anything that
+  // cannot be enumerated returns no objects and stays unresolved.
+  function spreadObjects(node, seen = new Set()) {
+    if (!node || seen.has(node)) return [];
+    const next = new Set(seen).add(node);
+    if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node))
+      return spreadObjects(node.expression, next);
+    if (ts.isConditionalExpression(node))
+      return [...spreadObjects(node.whenTrue, next), ...spreadObjects(node.whenFalse, next)];
+    if (ts.isObjectLiteralExpression(node)) return [node];
+    if (ts.isIdentifier(node)) {
+      const decl = declaration(node);
+      if (decl && ts.isVariableDeclaration(decl)) return spreadObjects(decl.initializer, next);
+      if (decl && ts.isParameter(decl) && decl.initializer)
+        return spreadObjects(decl.initializer, next);
+    }
+    if (ts.isCallExpression(node)) {
+      const decl = declaration(node.expression);
+      if (
+        decl &&
+        (ts.isFunctionDeclaration(decl) ||
+          ts.isArrowFunction(decl) ||
+          ts.isFunctionExpression(decl)) &&
+        decl.body
+      ) {
+        const returned = [];
+        const collect = (part) => {
+          if (ts.isReturnStatement(part)) returned.push(...spreadObjects(part.expression, next));
+          else if (part === decl.body || !ts.isFunctionLike(part)) ts.forEachChild(part, collect);
+        };
+        if (!ts.isBlock(decl.body)) returned.push(...spreadObjects(decl.body, next));
+        else collect(decl.body);
+        return returned;
+      }
+    }
+    return [];
+  }
   function values(node, seen = new Set()) {
     if (!node || seen.has(node)) return [UNKNOWN];
     const next = new Set(seen).add(node);
@@ -154,11 +192,11 @@ export function collectDeclaredRequests(source, file = 'service.ts', resolveImpo
         );
         try {
           const returns = [];
-          function findReturns(part) {
+          const findReturns = (part) => {
             if (ts.isReturnStatement(part)) returns.push(...values(part.expression, next));
             else if (part === callable.body || !ts.isFunctionLike(part))
               ts.forEachChild(part, findReturns);
-          }
+          };
           if (callable.body && !ts.isBlock(callable.body))
             returns.push(...values(callable.body, next));
           else if (callable.body) findReturns(callable.body);
@@ -181,8 +219,6 @@ export function collectDeclaredRequests(source, file = 'service.ts', resolveImpo
         expression: node.arguments[0]?.getText(sourceFile) ?? '<missing>'
       };
       if (requestKind(node.expression) === 'fetch') {
-        let enclosing = node.parent;
-        while (enclosing && !ts.isFunctionLike(enclosing)) enclosing = enclosing.parent;
         const arg = node.arguments[0];
         const argDecl = arg && ts.isIdentifier(arg) ? declaration(arg) : null;
         const parameter = argDecl && ts.isBindingElement(argDecl) ? argDecl.parent.parent : argDecl;
@@ -197,16 +233,25 @@ export function collectDeclaredRequests(source, file = 'service.ts', resolveImpo
                   member.name?.getText(sourceFile) === arg.getText(sourceFile) &&
                   member.type?.getText(sourceFile) === 'Request'
               )));
+        // The apiRequest transport may issue its fetch from a nested retry
+        // helper, so walk every enclosing function and find the owner.
+        let apiOwner = null;
+        for (let parent = node.parent; parent; parent = parent.parent) {
+          if (!ts.isFunctionLike(parent)) continue;
+          const name = parent.name?.getText(sourceFile);
+          if (name === 'apiRequest') {
+            apiOwner = parent;
+            break;
+          }
+        }
         const forwardsApi =
-          enclosing &&
-          ts.isFunctionDeclaration(enclosing) &&
-          enclosing.name?.text === 'apiRequest' &&
+          apiOwner &&
           argDecl &&
           ts.isVariableDeclaration(argDecl) &&
           argDecl.initializer &&
           ts.isConditionalExpression(argDecl.initializer) &&
           values(argDecl.initializer).some((value) => value.includes('/api')) &&
-          enclosing.parameters[0]?.name.getText(sourceFile) === 'path';
+          apiOwner.parameters[0]?.name.getText(sourceFile) === 'path';
         if (forwardsApi || forwardsRequest) {
           forwarding.push({
             ...identity,
@@ -220,27 +265,54 @@ export function collectDeclaredRequests(source, file = 'service.ts', resolveImpo
       let method = 'GET';
       const options = node.arguments[1];
       if (options) {
-        if (
-          !ts.isObjectLiteralExpression(options) ||
-          options.properties.some(ts.isSpreadAssignment)
-        )
+        const optionObjects = ts.isObjectLiteralExpression(options)
+          ? [options]
+          : spreadObjects(options);
+        if (!optionObjects.length) {
           unresolved.push({ ...identity, reason: 'request options are not a static object' });
-        else {
-          const propertyNames = options.properties.map((p) => ({
-            property: p,
-            names:
-              p.name && ts.isComputedPropertyName(p.name)
-                ? values(p.name.expression)
-                : [p.name?.getText(sourceFile).replaceAll(/["']/g, '')]
-          }));
-          if (propertyNames.some((p) => p.names.some((name) => [UNKNOWN, SEGMENT].includes(name))))
-            unresolved.push({ ...identity, reason: 'computed option key cannot be resolved' });
-          const property = propertyNames.find((p) => p.names.includes('method'))?.property;
-          if (property) {
-            const methods = values(property.initializer);
-            if (methods.length !== 1 || [UNKNOWN, SEGMENT].includes(methods[0]))
+        } else {
+          let unresolvedSpread = false;
+          const properties = [];
+          for (const object of optionObjects) {
+            for (const entry of object.properties) {
+              if (ts.isSpreadAssignment(entry)) {
+                const spread = spreadObjects(entry.expression);
+                if (!spread.length) {
+                  unresolvedSpread = true;
+                  continue;
+                }
+                for (const nested of spread) {
+                  for (const property of nested.properties) {
+                    if (ts.isSpreadAssignment(property)) unresolvedSpread = true;
+                    else properties.push(property);
+                  }
+                }
+              } else {
+                properties.push(entry);
+              }
+            }
+          }
+          if (unresolvedSpread)
+            unresolved.push({ ...identity, reason: 'request options are not a static object' });
+          else {
+            const propertyNames = properties.map((p) => ({
+              property: p,
+              names:
+                p.name && ts.isComputedPropertyName(p.name)
+                  ? values(p.name.expression)
+                  : [p.name?.getText(sourceFile).replaceAll(/["']/g, '')]
+            }));
+            if (propertyNames.some((p) => p.names.some((name) => [UNKNOWN, SEGMENT].includes(name))))
+              unresolved.push({ ...identity, reason: 'computed option key cannot be resolved' });
+            const methodProperties = propertyNames.filter((p) => p.names.includes('method'));
+            if (methodProperties.length > 1)
               unresolved.push({ ...identity, reason: 'HTTP method cannot be resolved' });
-            else method = methods[0].toUpperCase();
+            else if (methodProperties.length === 1) {
+              const methods = values(methodProperties[0].property.initializer);
+              if (methods.length !== 1 || [UNKNOWN, SEGMENT].includes(methods[0]))
+                unresolved.push({ ...identity, reason: 'HTTP method cannot be resolved' });
+              else method = methods[0].toUpperCase();
+            }
           }
         }
       }

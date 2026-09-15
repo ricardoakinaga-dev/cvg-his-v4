@@ -546,6 +546,67 @@ test('EncounterFinancialService lists receivables with pagination and search', a
   assert.match(firstPage.data[0]!.ownerName, /Maria/);
 });
 
+test('EncounterFinancialService applies inclusive due-date filters before pagination and totals', async () => {
+  const { service, encounter } = createFinancialService();
+
+  await service.closeEncounterFinancial(
+    encounter.accountId,
+    encounter.id,
+    'user_finance' as never,
+    {
+      installments: [
+        { label: 'Antes', amount: 60, dueAt: '2026-04-10T12:00:00.000Z' },
+        { label: 'No limite', amount: 70, dueAt: '2026-04-20T12:00:00.000Z' },
+        { label: 'Depois', amount: 60, dueAt: '2026-04-30T12:00:00.000Z' }
+      ]
+    }
+  );
+
+  const firstPage = await service.listReceivables({
+    accountId: encounter.accountId,
+    dueFrom: '2026-04-20',
+    dueTo: '2026-04-30',
+    page: 1,
+    pageSize: 1
+  });
+  const secondPage = await service.listReceivables({
+    accountId: encounter.accountId,
+    dueFrom: '2026-04-20',
+    dueTo: '2026-04-30',
+    page: 2,
+    pageSize: 1
+  });
+
+  assert.equal(firstPage.total, 2);
+  assert.equal(firstPage.data.length, 1);
+  assert.equal(secondPage.data.length, 1);
+  assert.deepEqual(
+    [firstPage.data[0]!.installmentLabel, secondPage.data[0]!.installmentLabel].sort(),
+    ['Depois', 'No limite']
+  );
+  assert.equal(firstPage.totalOriginal, 130);
+  assert.equal(firstPage.totalOutstanding, 130);
+  assert.equal(firstPage.openCount, 2);
+});
+
+test('EncounterFinancialService rejects invalid or inverted due-date filters', async () => {
+  const { service, encounter } = createFinancialService();
+
+  await assert.rejects(
+    () => service.listReceivables({ accountId: encounter.accountId, dueFrom: '2026-02-30' }),
+    /dueFrom must be an ISO calendar date/
+  );
+  await assert.rejects(
+    () =>
+      service.listReceivables({
+        accountId: encounter.accountId,
+        dueFrom: '2026-04-30',
+        dueTo: '2026-04-20'
+      }),
+    /dueFrom must be before or equal to dueTo/
+  );
+});
+
 test('EncounterFinancialService omits orphaned receivables instead of failing the worklist', async () => {
   const repository = new InMemoryEncounterFinancialRepository();
   await repository.upsertFinancialAccount({

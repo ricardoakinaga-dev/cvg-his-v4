@@ -15,6 +15,7 @@ test('API preparation uses only its private context and is repeatable', { timeou
       assert.deepEqual(second.evidence.migrations, first.evidence.migrations);
       assert.ok(first.evidence.migrations.some((entry) => entry.migration_name === '0161_card_creation_attempts'));
       assert.equal(second.evidence.adminCount, 1);
+      assert.equal(first.evidence.rlsTestRole, 'cvg_test_rls');
       assert.equal(first.environment.DATABASE_URL, context.databaseUrl);
       assert.equal(first.environment.CVG_CRITICAL_PROCESS_RUNNER, '1');
       assert.equal(first.environment.MIGRATION_TARGET, undefined);

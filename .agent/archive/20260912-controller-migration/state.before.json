@@ -1,0 +1,57 @@
+{
+  "schema_version": 2,
+  "project": "cvg-his-v4",
+  "goal": "Implementar integralmente MASTER_PROMPT_STATE_OF_ART.md preservando a arquitetura e provar qualidade Triple-A 97/95/zero P0; não fabricar evidência.",
+  "project_profile": "BROWNFIELD",
+  "work_mode": "NORMAL",
+  "work_mode_overlays": [
+    "FEATURE",
+    "REFACTOR",
+    "MIGRATION"
+  ],
+  "lifecycle_stage": "BUILD",
+  "active_activity": "VERIFY",
+  "engineering_tier": "T4_CRITICAL",
+  "risk_level": "CRITICAL",
+  "blast_radius": "CROSS_SYSTEM",
+  "status": "BLOCKED",
+  "active_execplan": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+  "active_task": "TRIPLE-A-RELEASE-CONTROL",
+  "verification_state": "PARTIAL",
+  "repository_state": "the 2026-09-12 remediation wave is committed in the candidate containing this state; focused OpenAPI/auth, supply-chain, usability-package, design-system and workspace checks pass locally, while exact-candidate remote CI and target evidence remain pending and non-transferable",
+  "instruction_scope_refs": [
+    ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "docs/2026-09-12-auditoria-repositorio-cvg-his-v4.md",
+    "docs/2026-09-12-roadmap-erp-state-of-art-triplo-aaa.md",
+    "docs/2026-09-12-backlog-correcao-gaps-triplo-aaa.md",
+    "docs/triple-a/MASTER_PROMPT_EXTERNAL_CLOSURE.md",
+    "docs/triple-a/MASTER_PROMPT.md",
+    "docs/triple-a/14-external-evidence-baseline.md",
+    "docs/engineering/BRANCH_GOVERNANCE.md",
+    "docs/engineering/GREEN_MAIN_POLICY.md",
+    "docs/clinical/CLINICAL_CRITICALITY_MATRIX.md",
+    "docs/clinical/CLINICAL_SAFETY_INVARIANTS.md",
+    "docs/triple-a/MASTER_PROMPT_STATE_OF_ART.md",
+    "docs/triple-a/15-current-baseline.md",
+    "docs/triple-a/17-current-execution-evidence.md",
+    "docs/triple-a/16-requirement-traceability.md"
+  ],
+  "last_gate_record": null,
+  "last_event_id": "EVT-TRIPLE-A-REMEDIATION-RECOVERY-20260912",
+  "state_revision": 24,
+  "next_gate": "VERIFIED",
+  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:INTEGRATE-REMEDIATION-20260912",
+  "blocked_by": [
+    "The remediation wave is uncommitted and has no exact-candidate CI, registry, image-attestation or deployment evidence",
+    "PostgreSQL-backed visual execution is unavailable locally at 127.0.0.1:5433, so browser screenshots and Axe evidence were not produced",
+    "Current target evidence, UAT, k6, restore/game-day, soak24/72h, branch governance, release authority and the strict 97/95/zero-P0 quality bar remain unproven"
+  ],
+  "human_approval_required": [
+    "production deployment or rollback",
+    "branch protection and organization-level required checks",
+    "real external credentials, PIX, webhooks or patient/PHI data",
+    "destructive backup/restore/chaos drills on shared infrastructure",
+    "final release authority and Triple-A certification"
+  ],
+  "updated_at": "2026-09-12T18:31:11Z"
+}

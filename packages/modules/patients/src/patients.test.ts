@@ -325,6 +325,24 @@ describe('PatientsService', () => {
       ).toThrow(ConflictError);
     });
 
+    it('rejects an update that creates a duplicate patient for the same owner', () => {
+      const owner = createOwner(owners);
+      const first = service.create(ACCOUNT_ID, {
+        name: 'Luna',
+        species: 'canine',
+        sex: 'female',
+        primaryOwnerId: owner.id
+      });
+      const second = service.create(ACCOUNT_ID, {
+        name: 'Max',
+        species: 'canine',
+        sex: 'male',
+        primaryOwnerId: owner.id
+      });
+
+      expect(() => service.update(second.id, { name: first.name })).toThrow(ConflictError);
+    });
+
     it('allows same name with different owner', () => {
       const owner1 = createOwner(owners, 'Maria');
       const owner2 = createOwner(owners, 'João');
@@ -503,7 +521,7 @@ describe('PatientsService', () => {
     });
 
     it('updates primaryOwnerId and re-links', () => {
-      const owner1 = createOwner(owners, 'Maria');
+      createOwner(owners, 'Maria');
       const patient = createPatient(service, owners, { name: 'Luna' });
       const owner2 = createOwner(owners, 'João');
 
@@ -554,8 +572,8 @@ describe('PatientsService', () => {
     });
 
     it('returns all links without filter', () => {
-      const p1 = createPatient(service, owners, { name: 'Luna' });
-      const p2 = createPatient(service, owners, { name: 'Max' });
+      createPatient(service, owners, { name: 'Luna' });
+      createPatient(service, owners, { name: 'Max' });
 
       const links = service.listLinks();
       expect(links.length).toBeGreaterThanOrEqual(2);
@@ -647,7 +665,7 @@ describe('PatientsService', () => {
     });
 
     it('throws ValidationError when primary link does not match patient primaryOwner', () => {
-      const owner1 = createOwner(owners, 'Maria');
+      createOwner(owners, 'Maria');
       const owner2 = createOwner(owners, 'João');
       const patient = createPatient(service, owners);
 
@@ -754,7 +772,7 @@ describe('PatientsService', () => {
 
   describe('searchMaster()', () => {
     it('returns all entities matching query', () => {
-      const owner = createOwner(owners, 'Maria Silva');
+      createOwner(owners, 'Maria Silva');
       createPatient(service, owners, { name: 'Luna' });
 
       const result = service.searchMaster('luna');
@@ -765,7 +783,7 @@ describe('PatientsService', () => {
 
     it('returns owners matching query', () => {
       const owner = createOwner(owners, 'Ana Paula');
-      const patient = service.create(ACCOUNT_ID, {
+      service.create(ACCOUNT_ID, {
         name: 'Luna',
         species: 'canine',
         sex: 'female',

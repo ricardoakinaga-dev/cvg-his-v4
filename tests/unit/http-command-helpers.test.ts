@@ -215,8 +215,37 @@ describe('HTTP command helper boundaries', () => {
     ]);
   });
 
-  it('requires idempotency keys in production and allows non-UoW development commands', async () => {
-    const productionRunner = createTenantCommandRunner({
+  it('PROD-005/A02: threads replay re-authorization through to the unit of work', async () => {
+    const seen: string[] = [];
+    const runner = createTenantCommandRunner({
+      environment: 'production',
+      unitOfWork: {
+        async execute(_context, _payload, command, beforeIdempotency, beforeReplay) {
+          expect(typeof beforeReplay).toBe('function');
+          await beforeReplay?.({} as never);
+          const value = await command({} as never);
+          return { value, replayed: true };
+        }
+      }
+    });
+
+    await runner({
+      request: request({ 'idempotency-key': 'request-replay-guard' }),
+      accountId: '00000000-0000-0000-0000-000000000001',
+      actorUserId: '00000000-0000-0000-0000-000000000002',
+      correlationId: 'corr-replay-guard',
+      operation: 'test.replay-guard',
+      payload: {},
+      beforeReplay: async () => {
+        seen.push('replay-guard');
+      },
+      command: async () => 'replayed'
+    });
+
+    expect(seen).toEqual(['replay-guard']);
+  });
+
+  it('requires idempotency keys in production and allows non-UoW development commands', async () => {    const productionRunner = createTenantCommandRunner({
       environment: 'production',
       unitOfWork: { execute: vi.fn() } as never
     });

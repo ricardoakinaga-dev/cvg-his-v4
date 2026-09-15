@@ -12,6 +12,7 @@ import {
 } from './process-original-source.mjs';
 import { validateRawCoverageEntry } from './raw-coverage-validation.mjs';
 import { validateNativeCoverage, soleFullSpanFunction } from './native-v8-conversion.mjs';
+import { assertSourceMetricPresence } from './source-metric-presence.mjs';
 
 const require = createRequire(import.meta.url);
 const coverageRequire = createRequire(require.resolve('@vitest/coverage-v8/package.json'));
@@ -171,7 +172,8 @@ export async function collectProcessCoverage(
   }
   const merged = createCoverageMap({});
   const snapshotIds = new Set(),
-    matchedObservations = new Set();
+    matchedObservations = new Set(),
+    pidsWithCoverage = new Set();
   let convertedScripts = 0;
   const groups = new Map();
   let aggregateBytes = 0;
@@ -195,6 +197,7 @@ export async function collectProcessCoverage(
     const snapshotId = `${pid}:${threadId}:${report.timestamp}`;
     if (snapshotIds.has(snapshotId)) throw new Error('duplicate V8 snapshot');
     snapshotIds.add(snapshotId);
+    pidsWithCoverage.add(pid);
     const cache = report['source-map-cache'];
     if (
       Object.hasOwn(report, 'source-map-cache') &&
@@ -295,7 +298,33 @@ export async function collectProcessCoverage(
         });
     merged.merge(converted);
   }
-  if (matchedObservations.size !== observed.size) throw new Error('unmatched executed observation');
+  // Observations are written at script parse time, while V8 coverage only
+  // reaches disk on a normal process exit. A suite that intentionally SIGKILLs
+  // a child therefore leaves fully observed processes with zero coverage; that
+  // loss is inherent and is recorded, never silently converted. A process that
+  // did flush coverage must still match every observation exactly.
+  const uncoveredByPid = new Map();
+  for (const [key, observation] of observed) {
+    if (matchedObservations.has(key)) continue;
+    const entry = uncoveredByPid.get(observation.pid) ?? {
+      pid: observation.pid,
+      count: 0,
+      urls: new Set()
+    };
+    entry.count += 1;
+    entry.urls.add(observation.url);
+    uncoveredByPid.set(observation.pid, entry);
+  }
+  const uncoveredObservations = [];
+  for (const entry of [...uncoveredByPid.values()].sort((a, b) => a.pid - b.pid)) {
+    if (pidsWithCoverage.has(entry.pid)) throw new Error('unmatched executed observation');
+    if (entry.count > 4096) throw new Error('uncovered observation budget exceeded');
+    uncoveredObservations.push({
+      pid: entry.pid,
+      count: entry.count,
+      urls: [...entry.urls].sort()
+    });
+  }
   if (!convertedScripts || !merged.files().length)
     throw new Error('empty process coverage collection');
   // Check again after merges, which can overflow otherwise valid raw counters.
@@ -307,8 +336,9 @@ export async function collectProcessCoverage(
       hash(files[url]) !== terminalHashes[url]
     )
       throw new Error('merged source is not a frozen terminal original');
+    assertSourceMetricPresence(merged.fileCoverageFor(path).data, files);
     const errors = validateRawCoverageEntry(merged.fileCoverageFor(path).data, files[url]);
     if (errors.length) throw new Error(`invalid merged process coverage: ${errors.join('; ')}`);
   }
-  return { coverage: merged.toJSON(), convertedScripts, rawHashes };
+  return { coverage: merged.toJSON(), convertedScripts, rawHashes, uncoveredObservations };
 }

@@ -6,7 +6,6 @@ import {
   prepareFrozenProcessArtifact
 } from './process-v8-conversion.mjs';
 import { validateNativeSourceMap, convertNativeScript } from './native-v8-conversion.mjs';
-import { assertSourceMetricPresence } from './source-metric-presence.mjs';
 
 const require = createRequire(import.meta.url);
 const coverageRequire = createRequire(require.resolve('@vitest/coverage-v8/package.json'));
@@ -169,7 +168,7 @@ export function prepareProcessSourceMapChain(
 
 export async function convertProcessSourceMapChain(input, options) {
   const prepared = prepareProcessSourceMapChain(input, options);
-  const result = await convertNativeScript(prepared);
-  for (const entry of Object.values(result)) assertSourceMetricPresence(entry, prepared.sources);
-  return result;
+  // Per-process snapshots may legitimately contain only module-load counters;
+  // source metric presence is authenticated after all snapshots are merged.
+  return convertNativeScript(prepared);
 }

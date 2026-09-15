@@ -1,0 +1,457 @@
+{
+  "schemaVersion": 1,
+  "status": "PROPOSED_PENDING_AUTHORITY",
+  "product": "CVG-HIS-V4",
+  "identityRef": "docs/engineering/RELEASE_IDENTITY.md",
+  "sourceRefs": [
+    "docs/132-superficie-canonica-deploy-e-migracao.md",
+    "docs/adr/ADR-011-CONTAINER-RUNTIME.md",
+    "docs/engineering/RELEASE_IDENTITY.md",
+    "docs/130-instalacao-publicacao-cvg-his-v2-real.md",
+    "docs/131-checklist-cutover-servidor.md",
+    "docs/049-matriz-ambiente-runtime.md",
+    ".env.v2.example",
+    "infra/docker/Caddyfile.v2",
+    "infra/helm/cvg-his-v2/values.staging.yaml",
+    "infra/helm/cvg-his-v2/values.prod.yaml"
+  ],
+  "openDecisions": [
+    {
+      "id": "ORIGIN_AUTHORITY_RECONCILIATION",
+      "status": "PENDING_AUTHORITY",
+      "scope": "staging and production public SPA/API origins",
+      "sourceRefs": [
+        ".env.v2.example",
+        "infra/docker/Caddyfile.v2",
+        "infra/helm/cvg-his-v2/values.prod.yaml",
+        "docs/130-instalacao-publicacao-cvg-his-v2-real.md"
+      ],
+      "owner": "Platform + Release owner (unassigned)"
+    },
+    {
+      "id": "STAGING_PROCESS_ENVIRONMENT",
+      "status": "PENDING_AUTHORITY",
+      "scope": "logical staging versus API/worker NODE_ENV values",
+      "sourceRefs": [
+        "infra/helm/cvg-his-v2/values.staging.yaml",
+        "docs/130-instalacao-publicacao-cvg-his-v2-real.md"
+      ],
+      "owner": "Platform + application owner (unassigned)"
+    },
+    {
+      "id": "IMAGE_DIGEST_BINDING",
+      "status": "PENDING_AUTHORITY",
+      "scope": "release candidate Git SHA to API/worker/SPA image digests",
+      "sourceRefs": [
+        "infra/helm/cvg-his-v2/values.staging.yaml",
+        "infra/helm/cvg-his-v2/values.prod.yaml",
+        "docs/engineering/RELEASE_IDENTITY.md"
+      ],
+      "owner": "Release owner + supply chain (unassigned)"
+    },
+    {
+      "id": "TARGET_NAMESPACE_AND_OWNER",
+      "status": "PENDING_AUTHORITY",
+      "scope": "Kubernetes cluster, namespace, credentials, window and rollback owner",
+      "sourceRefs": [
+        "docs/adr/ADR-011-CONTAINER-RUNTIME.md",
+        "docs/049-matriz-ambiente-runtime.md"
+      ],
+      "owner": "Platform + Release owner (unassigned)"
+    },
+    {
+      "id": "SECRETS_PROVIDER_EFFECTIVE",
+      "status": "PENDING_AUTHORITY",
+      "scope": "Vault versus existingSecret/env provider for production-like runtimes",
+      "sourceRefs": [
+        "infra/helm/cvg-his-v2/values.prod.yaml",
+        "infra/helm/cvg-his-v2/templates/secrets.yaml",
+        "docs/adr/ADR-011-CONTAINER-RUNTIME.md"
+      ],
+      "owner": "Security + Platform (unassigned)"
+    },
+    {
+      "id": "MIGRATION_FLOW_UNIFICATION",
+      "status": "PENDING_AUTHORITY",
+      "scope": "host runner versus compiled Compose/Helm migration hook and role reconciliation",
+      "sourceRefs": [
+        "docs/130-instalacao-publicacao-cvg-his-v2-real.md",
+        "docker-compose.v2.yml",
+        "infra/helm/cvg-his-v2/templates/database-maintenance-jobs.yaml",
+        "packages/db/src/migrate.ts"
+      ],
+      "owner": "Platform + DBA (unassigned)"
+    },
+    {
+      "id": "WORKER_HEALTH_CONTRACT",
+      "status": "PENDING_AUTHORITY",
+      "scope": "ADR worker process-health statement versus HTTP probes in Compose and Helm",
+      "sourceRefs": [
+        "docs/adr/ADR-011-CONTAINER-RUNTIME.md",
+        "infra/helm/cvg-his-v2/templates/worker-deployment.yaml",
+        "docker-compose.v2.yml"
+      ],
+      "owner": "Platform + application owner (unassigned)"
+    },
+    {
+      "id": "SYSTEMD_SURFACE_STATUS",
+      "status": "PENDING_AUTHORITY",
+      "scope": "systemd units listed by document 130 versus container-only canonical runtime",
+      "sourceRefs": [
+        "docs/130-instalacao-publicacao-cvg-his-v2-real.md",
+        "infra/systemd/cvg-his-v2-spa.service",
+        "infra/systemd/cvg-his-v2-spa.nginx.conf"
+      ],
+      "owner": "Platform + SRE (unassigned)"
+    }
+  ],
+  "environments": [
+    {
+      "id": "local-development",
+      "purpose": "Desenvolvimento local e paridade rápida",
+      "primaryRuntime": "COMPOSE",
+      "compose": {
+        "file": "docker-compose.dev.yml",
+        "role": "DEVELOPMENT_ONLY",
+        "requiredServices": [
+          "postgres",
+          "redis"
+        ]
+      },
+      "helm": {
+        "chart": "infra/helm/cvg-his-v2",
+        "values": "infra/helm/cvg-his-v2/values.dev.yaml",
+        "role": "OPTIONAL_PARITY_DRY_RUN"
+      },
+      "runbook": "docs/049-matriz-ambiente-runtime.md#local-development",
+      "originPolicy": {
+        "status": "LOCAL_ONLY",
+        "spa": "http://127.0.0.1:3002",
+        "api": "http://127.0.0.1:3003",
+        "sourceRefs": [
+          "docker-compose.dev.yml"
+        ]
+      },
+      "runtimeEnvironment": {
+        "status": "ALIGNED",
+        "mode": "process-environment",
+        "logical": "development",
+        "apiNodeEnv": "development",
+        "workerNodeEnv": "development"
+      },
+      "imageIdentity": {
+        "status": "LOCAL_ONLY",
+        "mode": "development-config"
+      },
+      "persistence": {
+        "status": "LOCAL_ONLY",
+        "mode": "embedded-postgresql-and-redis"
+      },
+      "migration": {
+        "status": "NOT_APPLICABLE",
+        "mode": "development-fixture"
+      },
+      "secretProvider": {
+        "status": "LOCAL_ONLY",
+        "mode": "development-environment"
+      },
+      "target": {
+        "class": "developer-workstation-or-ephemeral-kind-k3s",
+        "name": "LOCAL_ONLY",
+        "owner": "Developer + Platform",
+        "authority": "LOCAL_ONLY"
+      },
+      "smoke": {
+        "localCommands": [
+          "docker compose -f docker-compose.dev.yml config --quiet",
+          "pnpm validate:environment-runtime"
+        ],
+        "targetRequired": false
+      }
+    },
+    {
+      "id": "ci-e2e",
+      "purpose": "Integração/E2E efêmera em runner isolado",
+      "primaryRuntime": "COMPOSE",
+      "compose": {
+        "file": "docker-compose.e2e.yml",
+        "role": "CI_EPHEMERAL",
+        "requiredServices": [
+          "postgres-e2e",
+          "redis-e2e",
+          "api-e2e",
+          "spa-e2e"
+        ]
+      },
+      "helm": null,
+      "runbook": "docs/049-matriz-ambiente-runtime.md#ci-e2e",
+      "originPolicy": {
+        "status": "LOCAL_ONLY",
+        "spa": "http://127.0.0.1:3112",
+        "api": "http://127.0.0.1:3111",
+        "sourceRefs": [
+          "docker-compose.e2e.yml"
+        ]
+      },
+      "runtimeEnvironment": {
+        "status": "ALIGNED",
+        "mode": "test-process",
+        "logical": "test",
+        "apiNodeEnv": "test",
+        "workerNodeEnv": "not-applicable"
+      },
+      "imageIdentity": {
+        "status": "LOCAL_ONLY",
+        "mode": "test-build"
+      },
+      "persistence": {
+        "status": "LOCAL_ONLY",
+        "mode": "embedded-test-fixtures"
+      },
+      "migration": {
+        "status": "NOT_APPLICABLE",
+        "mode": "e2e-fixture"
+      },
+      "secretProvider": {
+        "status": "LOCAL_ONLY",
+        "mode": "test-environment"
+      },
+      "target": {
+        "class": "ephemeral-ci-runner",
+        "name": "GITHUB_ACTIONS_EPHEMERAL",
+        "owner": "QA + CI",
+        "authority": "LOCAL_ONLY"
+      },
+      "smoke": {
+        "localCommands": [
+          "docker compose -f docker-compose.e2e.yml config --quiet",
+          "pnpm validate:environment-runtime"
+        ],
+        "targetRequired": false
+      }
+    },
+    {
+      "id": "staging",
+      "purpose": "Homologação e ensaio de release",
+      "primaryRuntime": "HELM",
+      "compose": {
+        "file": "docker-compose.v2.yml",
+        "role": "PRODUCTION_LIKE_REHEARSAL_ONLY",
+        "requiredServices": [
+          "cvg-his-v2-api",
+          "cvg-his-v2-worker",
+          "cvg-his-v2-spa"
+        ]
+      },
+      "helm": {
+        "chart": "infra/helm/cvg-his-v2",
+        "values": "infra/helm/cvg-his-v2/values.staging.yaml",
+        "role": "PRIMARY_TARGET"
+      },
+      "runbook": "docs/049-matriz-ambiente-runtime.md#staging",
+      "originPolicy": {
+        "status": "PENDING_AUTHORITY",
+        "spa": "UNASSIGNED_STAGING_SPA_ORIGIN",
+        "api": "UNASSIGNED_STAGING_API_ORIGIN",
+        "sourceRefs": [
+          ".env.v2.example",
+          "infra/docker/Caddyfile.v2",
+          "infra/helm/cvg-his-v2/values.staging.yaml",
+          "docs/130-instalacao-publicacao-cvg-his-v2-real.md"
+        ]
+      },
+      "runtimeEnvironment": {
+        "status": "PENDING_AUTHORITY",
+        "mode": "production-like-policy-pending",
+        "logical": "staging",
+        "apiNodeEnv": "production",
+        "workerNodeEnv": "staging"
+      },
+      "imageIdentity": {
+        "status": "PENDING_AUTHORITY",
+        "mode": "release-authority-must-bind-digests-to-candidate",
+        "sourceRef": "infra/helm/cvg-his-v2/values.staging.yaml"
+      },
+      "persistence": {
+        "status": "PENDING_AUTHORITY",
+        "mode": "external-postgresql-and-redis"
+      },
+      "migration": {
+        "status": "PENDING_AUTHORITY",
+        "mode": "compiled-hook",
+        "runner": "packages/db/dist/migrate.js",
+        "roleReconciliation": "packages/db/dist/reconcile-runtime-roles.js",
+        "sourceRefs": [
+          "infra/helm/cvg-his-v2/templates/database-maintenance-jobs.yaml",
+          "docs/130-instalacao-publicacao-cvg-his-v2-real.md"
+        ]
+      },
+      "secretProvider": {
+        "status": "PENDING_AUTHORITY",
+        "mode": "existingSecret-or-vault"
+      },
+      "target": {
+        "class": "approved-kubernetes-cluster",
+        "name": "UNASSIGNED_STAGING_CLUSTER",
+        "owner": "Platform + Release owner (unassigned)",
+        "authority": "PENDING_AUTHORITY"
+      },
+      "smoke": {
+        "localCommands": [
+          "pnpm validate:deploy-surface",
+          "pnpm validate:helm",
+          "pnpm deploy:check",
+          "pnpm validate:environment-runtime"
+        ],
+        "targetRequired": true
+      }
+    },
+    {
+      "id": "production",
+      "purpose": "Produção aprovada e controlada",
+      "primaryRuntime": "HELM",
+      "compose": {
+        "file": "docker-compose.v2.yml",
+        "role": "PRODUCTION_LIKE_REHEARSAL_ONLY",
+        "requiredServices": [
+          "cvg-his-v2-api",
+          "cvg-his-v2-worker",
+          "cvg-his-v2-spa"
+        ]
+      },
+      "helm": {
+        "chart": "infra/helm/cvg-his-v2",
+        "values": "infra/helm/cvg-his-v2/values.prod.yaml",
+        "role": "PRIMARY_TARGET"
+      },
+      "runbook": "docs/049-matriz-ambiente-runtime.md#production",
+      "originPolicy": {
+        "status": "PENDING_AUTHORITY",
+        "spa": "UNASSIGNED_PRODUCTION_SPA_ORIGIN",
+        "api": "UNASSIGNED_PRODUCTION_API_ORIGIN",
+        "sourceRefs": [
+          ".env.v2.example",
+          "infra/docker/Caddyfile.v2",
+          "infra/helm/cvg-his-v2/values.prod.yaml",
+          "docs/130-instalacao-publicacao-cvg-his-v2-real.md"
+        ]
+      },
+      "runtimeEnvironment": {
+        "status": "ALIGNED",
+        "mode": "process-environment",
+        "logical": "production",
+        "apiNodeEnv": "production",
+        "workerNodeEnv": "production"
+      },
+      "imageIdentity": {
+        "status": "PENDING_AUTHORITY",
+        "mode": "release-authority-must-bind-digests-to-candidate",
+        "sourceRef": "infra/helm/cvg-his-v2/values.prod.yaml"
+      },
+      "persistence": {
+        "status": "PENDING_AUTHORITY",
+        "mode": "external-postgresql-and-redis"
+      },
+      "migration": {
+        "status": "PENDING_AUTHORITY",
+        "mode": "compiled-hook",
+        "runner": "packages/db/dist/migrate.js",
+        "roleReconciliation": "packages/db/dist/reconcile-runtime-roles.js",
+        "sourceRefs": [
+          "infra/helm/cvg-his-v2/templates/database-maintenance-jobs.yaml",
+          "docs/130-instalacao-publicacao-cvg-his-v2-real.md"
+        ]
+      },
+      "secretProvider": {
+        "status": "PENDING_AUTHORITY",
+        "mode": "vault-or-existingSecret"
+      },
+      "target": {
+        "class": "approved-production-kubernetes-cluster",
+        "name": "UNASSIGNED_PRODUCTION_CLUSTER",
+        "owner": "Release owner + Platform (unassigned)",
+        "authority": "PENDING_AUTHORITY"
+      },
+      "smoke": {
+        "localCommands": [
+          "pnpm validate:deploy-surface",
+          "pnpm validate:helm",
+          "pnpm deploy:check",
+          "pnpm validate:environment-runtime"
+        ],
+        "targetRequired": true
+      }
+    },
+    {
+      "id": "production-single-host",
+      "purpose": "Cutover host-based alternativo, somente se formalmente escolhido",
+      "primaryRuntime": "COMPOSE",
+      "compose": {
+        "file": "docker-compose.v2.yml",
+        "role": "CANDIDATE_TARGET_PENDING_AUTHORITY",
+        "requiredServices": [
+          "cvg-his-v2-api",
+          "cvg-his-v2-worker",
+          "cvg-his-v2-spa"
+        ]
+      },
+      "helm": null,
+      "runbook": "docs/049-matriz-ambiente-runtime.md#production-single-host",
+      "originPolicy": {
+        "status": "PENDING_AUTHORITY",
+        "spa": "UNASSIGNED_SINGLE_HOST_SPA_ORIGIN",
+        "api": "UNASSIGNED_SINGLE_HOST_API_ORIGIN",
+        "sourceRefs": [
+          "infra/docker/Caddyfile.v2",
+          ".env.v2.example",
+          "docs/130-instalacao-publicacao-cvg-his-v2-real.md"
+        ]
+      },
+      "runtimeEnvironment": {
+        "status": "ALIGNED",
+        "mode": "process-environment",
+        "logical": "production",
+        "apiNodeEnv": "production",
+        "workerNodeEnv": "production"
+      },
+      "imageIdentity": {
+        "status": "PENDING_AUTHORITY",
+        "mode": "release-authority-must-bind-local-images-to-candidate",
+        "sourceRef": "docker-compose.v2.yml"
+      },
+      "persistence": {
+        "status": "PENDING_AUTHORITY",
+        "mode": "embedded-postgresql-and-redis"
+      },
+      "migration": {
+        "status": "PENDING_AUTHORITY",
+        "mode": "host-vs-compiled-pending",
+        "documentedRunner": "packages/db/src/migrate.ts",
+        "runtimeHook": "packages/db/dist/migrate.js",
+        "sourceRefs": [
+          "docs/130-instalacao-publicacao-cvg-his-v2-real.md",
+          "docker-compose.v2.yml"
+        ]
+      },
+      "secretProvider": {
+        "status": "PENDING_AUTHORITY",
+        "mode": "env.v2-secret-manager"
+      },
+      "target": {
+        "class": "authorized-linux-single-host",
+        "name": "UNASSIGNED_SINGLE_HOST",
+        "owner": "Platform + DBA + Release owner (unassigned)",
+        "authority": "PENDING_AUTHORITY"
+      },
+      "smoke": {
+        "localCommands": [
+          "pnpm validate:deploy-surface",
+          "pnpm validate:helm",
+          "pnpm deploy:check",
+          "pnpm validate:environment-runtime"
+        ],
+        "targetRequired": true
+      }
+    }
+  ]
+}

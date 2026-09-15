@@ -1,9 +1,10 @@
 ---
-document_status: current
+document_status: historical
 document_kind: backlog
 effective_date: 2026-09-07
 owner: PMO, Produto e Liderança técnica CVG-HIS
 review_cycle: weekly
+superseded_by: docs/2026-09-15-backlog-pos-checkpoint-state-of-art-triplo-aaa.md
 ---
 
 # Backlog executivo — ERP State of Art / Triplo AAA

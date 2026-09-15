@@ -1,0 +1,74 @@
+{
+  "authority": {
+    "actor": "lead executor da retomada (nao autoridade de release)",
+    "decision": "Prontidao de entrada para PROD-004-R1: 003-R1 DONE, bytes congelados rev12, worker e parser disponiveis em harness; nenhuma decisao clinica ou certificacao tomada.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar ao iniciar/concluir 004-R1 e a cada mudanca de bytes.",
+    "required": false,
+    "scope": "Entrada em PROD-004-R1 (envelopes parciais + worker): dependencias satisfeitas",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "Dependencias de PROD-004-R1 satisfeitas: PROD-003-R1 DONE com harness reproduzivel; 0171 registrada rev12; parser real do consumidor acessivel; fixtures CP-01 preservadas no pacote da reauditoria.",
+      "evidence_refs": [
+        ".agent/backlog.json",
+        "artifacts/auditoria-checkpoint-prod-001-005-2026-09-13/backend-probe/probe.log",
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "id": "IR-001",
+      "limitations": "Execucao ainda nao realizada; este gate libera a entrada.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Plano e allowlist fixados: migrations aditivas forward-only, checksums historicos intocados, worker sobre as mesmas linhas migradas com efeitos/IDs/duplicacao conferidos.",
+      "evidence_refs": [
+        ".agent/plans/repository-state-of-art-remediation-execplan.md",
+        "docs/2026-09-13-backlog-prontidao-producao.md"
+      ],
+      "id": "IR-002",
+      "limitations": "Gate de entrada, nao de saida.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Riscos e limites mapeados: migrations aplicadas nao sao editadas; release BLOCKED; validade definida pelo consumidor real.",
+      "evidence_refs": [
+        ".agent/state.json",
+        "docs/2026-09-13-reauditoria-checkpoint-prod-001-005.md"
+      ],
+      "id": "IR-003",
+      "limitations": "Nao aprova dados, operacao ou release.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json",
+    ".agent/state.json",
+    ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "artifacts/auditoria-checkpoint-prod-001-005-2026-09-13/backend-probe/probe.log",
+    "docs/2026-09-13-backlog-prontidao-producao.md"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Executar PROD-004-R1 sobre o harness; na sequencia 005-R1.",
+  "record_id": "GATE-IR-PROD-004-20260913-R1",
+  "residual_risk": "MEDIUM",
+  "revalidation_triggers": [
+    "Inicio e conclusao de 004-R1.",
+    "Qualquer alteracao em bytes, manifesto ou documentos."
+  ],
+  "scope": "Entrada em PROD-004-R1 (envelopes parciais + worker): dependencias satisfeitas",
+  "scope_ref": "PROD-004",
+  "supersedes": null,
+  "timestamp": "2026-09-13T17:37:00Z",
+  "version": 1,
+  "conditions": []
+}

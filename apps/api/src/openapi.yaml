@@ -4365,6 +4365,18 @@ paths:
           schema:
             type: string
             description: Match against patient/owner/installment label
+        - name: dueFrom
+          in: query
+          schema:
+            type: string
+            format: date
+            description: Inclusive due-date lower bound (UTC calendar date)
+        - name: dueTo
+          in: query
+          schema:
+            type: string
+            format: date
+            description: Inclusive due-date upper bound (UTC calendar date)
         - name: page
           in: query
           schema:
@@ -20487,6 +20499,8 @@ components:
           type: integer
         settledCount:
           type: integer
+        totalOriginal:
+          type: number
         totalOutstanding:
           type: number
         totalSettled:

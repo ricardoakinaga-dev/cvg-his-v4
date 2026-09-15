@@ -1,0 +1,73 @@
+{
+  "record_id": "GATE-IR-PROD-019-20260915",
+  "authority": {
+    "actor": "lead executor do programa state-of-art (nao autoridade de Produto, Segurança ou IAM)",
+    "decision": "Entrada em PROD-019 para preparar contrato e decisoes de identidade SSO localmente; nenhuma escolha de provider, tenant, MFA ou sessao e vinculante.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar ao iniciar/concluir PROD-019 e a cada alteracao no contrato de identidade ou nas rotas OIDC.",
+    "required": false,
+    "scope": "Entrada em PROD-019 (contrato revisavel de identidade corporativa; sem provider real ou mudanca de login)",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "PROD-001 DONE e dependencia direta satisfeita; PROD-019 e uma fatia P0 independente de especificacao e governanca.",
+      "evidence_refs": [
+        ".agent/backlog.json",
+        ".agent/state.json"
+      ],
+      "id": "IR-001",
+      "limitations": "Gate de entrada, nao aprova identidade, provider, sessao, tenant, MFA ou release.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Escopo fixado em contrato R1-R6, decisoes C1-C6, criterios temporais, threat model e falhas; qualquer recomendacao permanece PROPOSTA_PENDING_AUTHORITY.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        "docs/2026-09-12-ma04-status-e-proxima-tarefa.md",
+        "docs/2026-09-13-plano-executivo-prontidao-producao.md"
+      ],
+      "id": "IR-002",
+      "limitations": "Nao usar coincidencia de email, nao inventar issuer/claims, nao associar tenant automaticamente e nao tratar mocks como homologacao.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Trabalho autorizado e read-only quanto a provider/target: criar contrato, validador, testes good/bad e documentacao; sem credenciais, rede externa, dados reais ou alteracao funcional do fluxo OIDC.",
+      "evidence_refs": [
+        ".agent/plans/repository-state-of-art-remediation-execplan.md",
+        ".agent/state.json"
+      ],
+      "id": "IR-003",
+      "limitations": "Aceite integral exige Produto/Segurança, provider de teste, API/DB/SPA integrados e prova de claims, sessao, revogacao e logout.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json",
+    "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+    "docs/2026-09-12-ma04-status-e-proxima-tarefa.md",
+    ".agent/plans/repository-state-of-art-remediation-execplan.md"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Executar PROD-019-R1: especificar contrato de identidade corporativa e decisões SSO sem inferir autoridade.",
+  "revalidation_triggers": [
+    "Inicio e conclusao de PROD-019-R1.",
+    "Qualquer alteracao em OIDC, claims, associacao de identidade, MFA, sessao, redirect ou logout."
+  ],
+  "scope": "Entrada em PROD-019 (contrato revisavel de identidade corporativa; sem provider real ou mudanca de login)",
+  "scope_ref": "PROD-019",
+  "supersedes": null,
+  "timestamp": "2026-09-15T14:41:30Z",
+  "version": 1,
+  "conditions": [],
+  "residual_risk": "MEDIUM"
+}

@@ -3,6 +3,12 @@
 **Status:** vivo
 **Data de validacao:** 2026-08-22
 
+## Escopo do checklist
+
+Este checklist é específico para cutover host-based via docker-compose.v2.yml.
+Staging e produção Kubernetes seguem a matriz PROD-049 e o chart Helm
+infra/helm/cvg-his-v2; um ensaio local não prova execução em alvo.
+
 ## Pre-cutover
 
 - validar que o repositorio esta na revisao correta

@@ -1,0 +1,77 @@
+{
+  "record_id": "GATE-IR-PROD-049-20260915",
+  "authority": {
+    "actor": "lead executor do programa state-of-art (nao autoridade de Platform, Release ou producao)",
+    "decision": "Entrada em PROD-049 para implementar e inspecionar localmente a matriz ambiente-runtime; alvo, owner, digest, provider, janela e aceite externo permanecem pendentes.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar ao iniciar/concluir PROD-049 e a cada alteracao na matriz, runbooks ou superficies Compose/Helm.",
+    "required": false,
+    "scope": "Entrada em PROD-049 (matriz local declarativa e validacao de precedencia; sem deploy ou aceite externo)",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "PROD-001 DONE e dependencia direta satisfeita; PROD-049 e uma fatia independente de documentacao/runtime, sem promover o release.",
+      "evidence_refs": [
+        ".agent/backlog.json",
+        ".agent/state.json"
+      ],
+      "id": "IR-001",
+      "limitations": "Gate de entrada, nao de saida; nao confirma alvo, owner externo, CI remoto ou producao.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Escopo fixado em cinco contextos: local, CI/E2E, staging Helm, producao Helm e single-host Compose alternativo; divergencias sao modeladas como PENDING_AUTHORITY.",
+      "evidence_refs": [
+        "docs/engineering/environment-runtime-matrix.json",
+        "docs/049-matriz-ambiente-runtime.md",
+        "artifacts/state-of-art/PROD-049/attempt-20260915T140750Z-R1/REPORT.md"
+      ],
+      "id": "IR-002",
+      "limitations": "A matriz nao autoriza trocar runtime, preencher digest, escolher cluster, executar migration ou tratar rehearsal como target.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Validadores good/bad, guards de deploy, configuracao Compose e documentacao foram executados localmente; valores usados no Compose foram sinteticos e somente em processo.",
+      "evidence_refs": [
+        "artifacts/state-of-art/PROD-049/attempt-20260915T140750Z-R1/logs/matrix-validation.log",
+        "artifacts/state-of-art/PROD-049/attempt-20260915T140750Z-R1/logs/known-bad.log",
+        "artifacts/state-of-art/PROD-049/attempt-20260915T140750Z-R1/logs/runtime-config.log",
+        "artifacts/state-of-art/PROD-049/attempt-20260915T140750Z-R1/logs/guards.log",
+        "artifacts/state-of-art/PROD-049/attempt-20260915T140750Z-R1/SHA256SUMS"
+      ],
+      "id": "IR-003",
+      "limitations": "Helm v3.15.4 nao esta instalado; target, provider, readiness, UAT, rollback e autoridade de release nao foram exercitados.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "residual_risk": "MEDIUM",
+  "evidence": [
+    ".agent/backlog.json",
+    "docs/engineering/environment-runtime-matrix.json",
+    "docs/049-matriz-ambiente-runtime.md",
+    "artifacts/state-of-art/PROD-049/attempt-20260915T140750Z-R1/REPORT.md",
+    "artifacts/state-of-art/PROD-049/attempt-20260915T140750Z-R1/SHA256SUMS"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Executar PROD-049-R1: implementar e validar a matriz ambiente-runtime com precedencia e decisoes externas explicitamente pendentes.",
+  "revalidation_triggers": [
+    "Inicio e conclusao de PROD-049-R1.",
+    "Qualquer alteracao em Compose, Helm, runbooks, origins, secrets, migration ou identidade de imagens."
+  ],
+  "scope": "Entrada em PROD-049 (matriz local declarativa e validacao de precedencia; sem deploy ou aceite externo)",
+  "scope_ref": "PROD-049",
+  "supersedes": null,
+  "timestamp": "2026-09-15T14:22:30Z",
+  "version": 1,
+  "conditions": []
+}

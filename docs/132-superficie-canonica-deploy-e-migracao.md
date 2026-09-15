@@ -21,6 +21,25 @@ Este documento existe para remover ambiguidade operacional. Ele define, sem marg
 - `infra/scripts/cutover-v2.sh`
 - `infra/scripts/check-cutover-readiness.mjs`
 
+### Precedência por ambiente — PROD-049
+
+Esta lista define a superfície host-based de Compose para desenvolvimento,
+rehearsal e cutover. Ela não significa que Compose seja o alvo primário de
+staging ou produção. A matriz vinculante por ambiente está em
+docs/engineering/environment-runtime-matrix.json e no documento
+docs/049-matriz-ambiente-runtime.md:
+
+- desenvolvimento local: docker-compose.dev.yml;
+- CI/E2E: docker-compose.e2e.yml em runner efêmero;
+- staging e produção: infra/helm/cvg-his-v2 com values do ambiente;
+- docker-compose.v2.yml: rehearsal/cutover host-based, nunca substituto do
+  alvo Kubernetes de staging/produção.
+
+ADR-011 define Kubernetes/Helm como plataforma dos alvos de staging e
+produção; os documentos 130/131 continuam descrevendo a trilha host-based.
+Até que Platform e Release owner confirmem alvo, janela e autoridade, a
+matriz permanece PROPOSED_PENDING_AUTHORITY.
+
 ### Persistencia e migration oficiais
 
 - `packages/db/migrations/*.sql`

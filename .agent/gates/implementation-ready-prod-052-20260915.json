@@ -1,0 +1,73 @@
+{
+  "record_id": "GATE-IR-PROD-052-20260915",
+  "authority": {
+    "actor": "lead executor do programa state-of-art (nao autoridade de Produto ou Financeiro)",
+    "decision": "Entrada em PROD-052 para preparar contrato comparativo de vencimento de pontos; nenhuma politica de saldo, corte, timezone, consumo ou restituição e vinculante.",
+    "evidence_ref": ".agent/plans/repository-state-of-art-remediation-execplan.md",
+    "expires_or_revalidates": "Revalidar ao iniciar/concluir PROD-052 e antes de qualquer alteração em saldo, expiração, resgate ou migração.",
+    "required": false,
+    "scope": "Entrada em PROD-052 (contrato de pontos e expiresAt; sem alterar saldos)",
+    "state": "NOT_REQUIRED"
+  },
+  "confidence": "HIGH",
+  "criteria": [
+    {
+      "confidence": "HIGH",
+      "description": "PROD-001 DONE e dependencia direta satisfeita; PROD-052 e uma fatia P1 independente de decisão de contrato.",
+      "evidence_refs": [
+        ".agent/backlog.json",
+        ".agent/state.json"
+      ],
+      "id": "IR-001",
+      "limitations": "Gate de entrada, nao aprova politica de expiracao, saldo, timezone, legado ou restituição.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Escopo limitado a alternativas, impactos, invariantes, observações do código, critérios temporais e matriz de falhas; nenhum saldo será escrito ou recalculado.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        "packages/modules/commercial/src/index.ts",
+        "packages/db/migrations/0021_commercial_loyalty_price_pdv.sql"
+      ],
+      "id": "IR-002",
+      "limitations": "Aceite exige Product/Financeiro e depende de PROD-053 para implementação.",
+      "required": true,
+      "status": "PASS"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "Trabalho autorizado e local: contrato, validador, testes good/bad e documentação; sem migração, ajuste de saldos, banco compartilhado ou provider.",
+      "evidence_refs": [
+        ".agent/plans/repository-state-of-art-remediation-execplan.md",
+        ".agent/state.json"
+      ],
+      "id": "IR-003",
+      "limitations": "Aceite integral exige decisão assinada, dataset legado aprovado e prova posterior em PROD-053.",
+      "required": true,
+      "status": "PASS"
+    }
+  ],
+  "decision": "PASS",
+  "evidence": [
+    ".agent/backlog.json",
+    "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+    "packages/modules/commercial/src/index.ts",
+    "packages/db/migrations/0021_commercial_loyalty_price_pdv.sql"
+  ],
+  "gaps": [],
+  "gate_id": "IMPLEMENTATION_READY",
+  "next_action": "Executar PROD-052-R1: especificar contrato de expiração de pontos e expiresAt sem alterar saldos.",
+  "revalidation_triggers": [
+    "Inicio e conclusao de PROD-052-R1.",
+    "Qualquer alteracao em saldo, expiresAt, ordem de consumo, restituição ou migration de pontos."
+  ],
+  "scope": "Entrada em PROD-052 (contrato de pontos e expiresAt; sem alterar saldos)",
+  "scope_ref": "PROD-052",
+  "supersedes": null,
+  "timestamp": "2026-09-15T15:09:39Z",
+  "version": 1,
+  "conditions": [],
+  "residual_risk": "MEDIUM"
+}

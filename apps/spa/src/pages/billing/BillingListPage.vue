@@ -8,20 +8,34 @@
     />
 
     <section class="receivable-summary-grid" aria-label="Resumo de contas a receber">
-      <DsStatCard :label="`${response.total} título(s)`" value="Total" />
-      <DsStatCard :label="formatCurrency(totalOriginal)" value="Total" />
-      <DsStatCard :label="formatCurrency(response.totalSettled)" value="Recebido" />
+      <DsStatCard :value="String(response.total)" label="Títulos no recorte filtrado" />
       <DsStatCard
-        :label="formatCurrency(response.totalOutstanding)"
-        value="A Receber"
-        :error="response.totalOutstanding > 0 ? 'Saldo pendente' : undefined"
+        :value="formatCurrency(Number(response.totalOriginal ?? 0))"
+        label="Total original no recorte filtrado"
+      />
+      <DsStatCard
+        :value="formatCurrency(response.totalSettled)"
+        label="Recebido no recorte filtrado"
+      />
+      <DsStatCard
+        :value="formatCurrency(response.totalOutstanding)"
+        label="Saldo a receber no recorte filtrado"
       />
     </section>
 
+    <p v-if="response.totalOutstanding > 0" class="receivable-balance-status" role="status">
+      <strong>Saldo pendente:</strong>
+      {{ formatCurrency(response.totalOutstanding) }} no recorte atual. Esse é um estado financeiro
+      esperado, não uma falha técnica.
+    </p>
+
     <section class="receivable-actions" aria-label="Ações de contas a receber">
-      <DsButton variant="primary" disabled>Gerar Conta Avulsa</DsButton>
       <DsButton variant="secondary" tag="a" to="/cash">Gaveta</DsButton>
-      <DsButton variant="ghost" :loading="loading" @click="loadReceivables">Atualizar</DsButton>
+      <DsButton variant="ghost" :loading="loading" @click="refreshReceivables">Atualizar</DsButton>
+      <p id="receivable-standalone-account-note" class="receivable-boundary-note" role="note">
+        A geração de conta avulsa permanece indisponível até uma decisão explícita de
+        Produto/Financeiro sobre suas regras.
+      </p>
     </section>
 
     <DsAlert variant="info">
@@ -29,7 +43,11 @@
       Abra o título para continuar pelo fluxo auditável.
     </DsAlert>
 
-    <form class="receivable-filters" aria-label="Filtros de contas a receber" @submit.prevent="loadReceivables">
+    <form
+      class="receivable-filters"
+      aria-label="Filtros de contas a receber"
+      @submit.prevent="applyFilters"
+    >
       <DsInput
         id="receivable-client"
         v-model="filters.search"
@@ -37,13 +55,17 @@
         type="search"
         placeholder="Buscar por cliente, paciente ou parcela"
       />
-      <DsInput id="receivable-due-from" v-model="filters.dueFrom" label="Vencimento entre" type="date" />
+      <DsInput
+        id="receivable-due-from"
+        v-model="filters.dueFrom"
+        label="Vencimento entre"
+        type="date"
+      />
       <DsInput id="receivable-due-to" v-model="filters.dueTo" label="até" type="date" />
       <DsInput id="receivable-status" v-model="filters.status" label="Status" type="select">
         <option value="">Todos</option>
         <option value="open">A Receber</option>
         <option value="settled">Recebida</option>
-        <option value="cancelled">Cancelada</option>
       </DsInput>
       <div class="receivable-filters__actions">
         <DsButton type="submit" :loading="loading">Pesquisar</DsButton>
@@ -51,20 +73,22 @@
       </div>
     </form>
 
-    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
-      {{ error }}
-    </DsAlert>
-
     <DataTable
       :columns="columns"
-      :rows="filteredRows"
+      :rows="rows"
       :loading="loading"
+      :feedback="tableFeedback"
       empty-icon="💵"
       empty-title="Nenhuma conta a receber encontrada"
       empty-description="Os títulos aparecem quando a conta financeira do atendimento é gerada."
       caption="Contas a receber"
       variant="hoverable"
     >
+      <template v-if="error" #feedbackAction>
+        <DsButton type="button" variant="secondary" :loading="loading" @click="retryLoad">
+          Tentar novamente
+        </DsButton>
+      </template>
       <template #cell-origin="{ row }">
         <span class="origin-cell">Atendimento</span>
         <small>{{ receivableRow(row).installmentLabel }}</small>
@@ -96,17 +120,59 @@
       </template>
       <template #cell-open="{ row }">
         <div class="receivable-row-actions">
-          <RouterLink :to="`/billing/${receivableRow(row).encounterId}`" class="open-link">Abrir</RouterLink>
+          <RouterLink :to="`/billing/${receivableRow(row).encounterId}`" class="open-link"
+            >Abrir</RouterLink
+          >
         </div>
       </template>
     </DataTable>
+
+    <nav
+      v-if="!error && totalPages > 1"
+      class="receivable-pagination"
+      aria-label="Paginação de contas a receber"
+    >
+      <DsButton
+        type="button"
+        variant="secondary"
+        :disabled="loading || currentPage <= 1"
+        aria-label="Página anterior"
+        @click="changePage(currentPage - 1)"
+      >
+        Anterior
+      </DsButton>
+      <span class="receivable-pagination__summary" role="status" aria-live="polite">
+        Página {{ currentPage }} de {{ totalPages }} · {{ pageStart }}–{{ pageEnd }} de
+        {{ response.total }} títulos
+      </span>
+      <DsButton
+        type="button"
+        variant="secondary"
+        :disabled="loading || currentPage >= totalPages"
+        aria-label="Próxima página"
+        @click="changePage(currentPage + 1)"
+      >
+        Próxima
+      </DsButton>
+    </nav>
+    <p
+      v-else-if="response.total > 0"
+      class="receivable-pagination__range"
+      role="status"
+      aria-live="polite"
+    >
+      {{ pageStart }}–{{ pageEnd }} de {{ response.total }} títulos
+    </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { RouterLink } from 'vue-router';
-import { financialReceivablesService } from '@/services/financialReceivables';
+import {
+  financialReceivablesService,
+  type FinancialReceivableListRequest
+} from '@/services/financialReceivables';
 import type {
   FinancialReceivableListItem,
   FinancialReceivableListResponse,
@@ -117,11 +183,11 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import DataTable from '@/components/DataTable.vue';
-import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
+import type { DataTableColumn, DataTableFeedback, DataTableRow } from '@/components/DataTable.vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 
-type FilterStatus = '' | FinancialReceivableStatus | 'cancelled';
+type FilterStatus = '' | FinancialReceivableStatus;
 
 const emptyResponse: FinancialReceivableListResponse = {
   data: [],
@@ -130,6 +196,7 @@ const emptyResponse: FinancialReceivableListResponse = {
   total: 0,
   openCount: 0,
   settledCount: 0,
+  totalOriginal: 0,
   totalOutstanding: 0,
   totalSettled: 0
 };
@@ -157,17 +224,37 @@ const loading = ref(false);
 const error = ref('');
 
 const rows = computed(() => response.value.data as unknown as DataTableRow[]);
-const filteredRows = computed(() => rows.value.filter((row) => matchesDueFilters(receivableRow(row))));
-const totalOriginal = computed(() =>
-  filteredRows.value.reduce((sum, row) => sum + receivableRow(row).amountOriginal, 0)
+const currentPage = computed(() => Math.max(1, response.value.page || 1));
+const effectivePageSize = computed(() => Math.max(1, response.value.pageSize || 20));
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(response.value.total / effectivePageSize.value))
 );
+const pageStart = computed(() =>
+  response.value.total === 0 ? 0 : (currentPage.value - 1) * effectivePageSize.value + 1
+);
+const pageEnd = computed(() =>
+  Math.min(currentPage.value * effectivePageSize.value, response.value.total)
+);
+const tableFeedback = computed<DataTableFeedback | null>(() =>
+  error.value
+    ? {
+        kind: 'error',
+        icon: '⚠️',
+        title: 'Não foi possível carregar contas a receber',
+        description: 'A consulta não pôde ser concluída. Tente novamente para atualizar a lista.'
+      }
+    : null
+);
+let requestSequence = 0;
+let disposed = false;
+
 const headerSecondaryActions = computed(() => [
   {
     key: 'refresh-receivables',
     label: 'Atualizar',
     variant: 'secondary' as const,
     loading: loading.value,
-    onClick: () => loadReceivables()
+    onClick: refreshReceivables
   }
 ]);
 
@@ -175,22 +262,61 @@ onMounted(() => {
   void loadReceivables();
 });
 
-async function loadReceivables() {
+onBeforeUnmount(() => {
+  disposed = true;
+  requestSequence += 1;
+});
+
+function buildRequest(page: number): FinancialReceivableListRequest {
+  const request: FinancialReceivableListRequest = {
+    search: filters.search.trim(),
+    status: filters.status,
+    page,
+    pageSize: 20
+  };
+
+  if (filters.dueFrom) request.dueFrom = filters.dueFrom;
+  if (filters.dueTo) request.dueTo = filters.dueTo;
+
+  return request;
+}
+
+async function loadReceivables(requestedPage = 1) {
+  const requestId = ++requestSequence;
+  const request = buildRequest(requestedPage);
+
   loading.value = true;
   error.value = '';
+
   try {
-    response.value = await financialReceivablesService.list({
-      search: filters.search.trim(),
-      status: filters.status === 'open' || filters.status === 'settled' ? filters.status : '',
-      page: 1,
-      pageSize: 20
-    });
+    const nextResponse = await financialReceivablesService.list(request);
+    if (disposed || requestId !== requestSequence) return;
+    response.value = nextResponse;
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Não foi possível carregar contas a receber.';
-    response.value = { ...emptyResponse };
+    if (disposed || requestId !== requestSequence) return;
+
+    error.value =
+      err instanceof Error ? err.message : 'Não foi possível carregar contas a receber.';
   } finally {
-    loading.value = false;
+    if (!disposed && requestId === requestSequence) loading.value = false;
   }
+}
+
+function applyFilters() {
+  void loadReceivables(1);
+}
+
+function refreshReceivables() {
+  void loadReceivables(currentPage.value);
+}
+
+function retryLoad() {
+  void loadReceivables(currentPage.value);
+}
+
+function changePage(nextPage: number) {
+  if (loading.value || nextPage < 1 || nextPage > totalPages.value) return;
+  void loadReceivables(nextPage);
 }
 
 function clearFilters() {
@@ -198,15 +324,7 @@ function clearFilters() {
   filters.dueFrom = '';
   filters.dueTo = '';
   filters.status = '';
-  void loadReceivables();
-}
-
-function matchesDueFilters(row: FinancialReceivableListItem): boolean {
-  if (!row.dueAt) return !filters.dueFrom && !filters.dueTo;
-  const due = row.dueAt.slice(0, 10);
-  if (filters.dueFrom && due < filters.dueFrom) return false;
-  if (filters.dueTo && due > filters.dueTo) return false;
-  return true;
+  void loadReceivables(1);
 }
 
 function formatCurrency(value: number): string {
@@ -247,6 +365,12 @@ function receivableRow(row: unknown): FinancialReceivableListItem {
   gap: 12px;
 }
 
+.receivable-balance-status {
+  margin: -4px 0 0;
+  color: var(--color-text-muted, #64748b);
+  font-size: 13px;
+}
+
 .receivable-actions,
 .receivable-filters {
   display: flex;
@@ -267,6 +391,33 @@ function receivableRow(row: unknown): FinancialReceivableListItem {
 .receivable-filters__actions {
   display: flex;
   gap: 8px;
+}
+
+.receivable-boundary-note {
+  margin: 0;
+  color: var(--color-text-muted, #64748b);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.receivable-boundary-note {
+  flex: 1 1 100%;
+}
+
+.receivable-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.receivable-pagination__summary,
+.receivable-pagination__range {
+  margin: 0;
+  color: var(--color-text-muted, #64748b);
+  font-size: 13px;
+  text-align: center;
 }
 
 .origin-cell,

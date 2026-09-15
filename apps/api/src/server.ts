@@ -10,8 +10,8 @@ import {
   withTenantTransaction
 } from '@cvg-his-v2/shared-database';
 import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
-import type { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 import { isSecureRequest } from './http/security-headers.js';
+import { requireApiKey as requireApiKeyHelper } from './helpers/auth-helpers.js';
 import { createAuthRateLimiter } from './http/auth-rate-limiter.js';
 import {
   assertPixProviderWebhookReadiness,
@@ -72,7 +72,6 @@ import {
   AppError,
   AuthenticationError,
   ConflictError,
-  ForbiddenError,
   NotFoundError,
   ValidationError,
   toErrorResponse
@@ -204,11 +203,15 @@ import { createTenantCommandRunner } from './helpers/tenant-command.js';
 import { acquireAuthorizationTransactionLock } from './helpers/authorization-transaction-lock.js';
 import { getInitializedDatabasePool } from './helpers/initialized-database-pool.js';
 import {
+  createReplayGuard,
+  extractReportCommandReference,
   idempotencyAuthorizationPermissions,
   isDischargeMutationPath,
   isInpatientMutationPath,
   isMedicalRecordsMutationPath,
-  isPrescriptionExecutionMutationPath
+  isPrescriptionExecutionMutationPath,
+  isReplayGuardExempt,
+  resolveReportCommandReportId
 } from './helpers/idempotency-authorization.js';
 import { createVetusCacheRefresher } from './helpers/vetus-cache-recovery.js';
 import { readJsonBody, readJsonBodyOrEmpty } from './helpers/request-body.js';
@@ -4904,6 +4907,12 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                     );
                     await writeAudit(created);
                     return created as unknown as JsonValue;
+                  },
+                  undefined,
+                  // PROD-005/A02: replay of a clinical entry requires the
+                  // current session permission, not just a live session.
+                  async () => {
+                    await requirePrincipal(request, 'medical-records.manage');
                   }
                 );
                 entry = execution.value as unknown as typeof entry;
@@ -8031,6 +8040,31 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             const realResponse = response;
             const buffered = createBufferedResponse(realResponse);
             response = buffered.response;
+            const checkReplayPermissions = createReplayGuard({
+              operation: `${request.method ?? 'UNKNOWN'} ${pathname}`,
+              pathname,
+              replayPermissions,
+              requestPayload,
+              requirePrincipal: (permission: string) => requirePrincipal(request, permission),
+              requireApiKey: (permission: string) => requireApiKey(request, permission),
+              resolveReportPermission: async (body: unknown) => {
+                const reference = extractReportCommandReference(body, pathname);
+                const rawReportId = resolveReportCommandReportId(
+                  reference,
+                  reports,
+                  tenantCtx.accountId as AccountId
+                );
+                if (typeof rawReportId !== 'string' || rawReportId.length === 0) return undefined;
+                return reports.getDefinition(tenantCtx.accountId as AccountId, rawReportId)
+                  .requiredPermission;
+              },
+              onUnmappedReplay: (operation: string) =>
+                logger.warn('replay denied without permission contract', {
+                  operation,
+                  accountId: tenantCtx.accountId,
+                  correlationId
+                })
+            });
             try {
               const execution = await runTenantCommand({
                 request,
@@ -8046,21 +8080,12 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 correlationId,
                 operation: `${request.method ?? 'UNKNOWN'} ${pathname}`,
                 payload,
-                // Authorization must be evaluated inside the owned tenant
-                // transaction before idempotency replay can return a cached
-                // clinical response to a principal whose permission was
-                // revoked after the original command completed.
-                beforeIdempotency: replayPermissions
-                  ? async () => {
-                      for (const permission of replayPermissions) {
-                        if (permission === 'payments.manage') {
-                          await requireApiKey(request, permission);
-                        } else {
-                          await requirePrincipal(request, permission);
-                        }
-                      }
-                    }
-                  : undefined,
+                // Re-authorize inside the tenant transaction before lookup and on
+                // every replay (PROD-005/A02): revoked permissions deny replay.
+                beforeIdempotency: replayPermissions ? checkReplayPermissions : undefined,
+                // Unmapped mutations deny replay explicitly (fail-closed),
+                // except documented provider-secret exemptions.
+                beforeReplay: isReplayGuardExempt(pathname) ? undefined : checkReplayPermissions,
                 onRollback: isPrescriptionExecutionMutationPath(pathname, request.method)
                   ? () => refreshPrescriptionExecutionCaches(tenantCtx.accountId as AccountId)
                   : isDischargeMutationPath(pathname, request.method)
@@ -8159,33 +8184,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   }
 
   async function requireApiKey(request: IncomingMessage, permissionCode: string) {
-    const apiKeyValue = readHeader(request, 'x-api-key') ?? readHeader(request, 'X-API-Key');
-    if (!apiKeyValue) {
-      throw new AuthenticationError('API key required');
-    }
-
-    const apiKey = await apiKeys.validate(apiKeyValue);
-    if (!apiKey) {
-      throw new AuthenticationError('Invalid API key');
-    }
-
-    if (!apiKey.permissions.includes(permissionCode)) {
-      throw new ForbiddenError(`API key lacks required permission: ${permissionCode}`);
-    }
-
-    let rateLimit: Awaited<ReturnType<ApiKeysService['checkRateLimit']>>;
-    try {
-      rateLimit = await apiKeys.checkRateLimit(apiKey.id, apiKey.rateLimit, apiKey.rateLimitWindow);
-    } catch {
-      throw new AppError('RATE_LIMIT_UNAVAILABLE', 'Rate limit service unavailable', 503);
-    }
-    if (!rateLimit.allowed) {
-      throw new AppError('RATE_LIMIT_EXCEEDED', 'API key rate limit exceeded', 429, {
-        resetAt: rateLimit.resetAt.toISOString()
-      });
-    }
-
-    await apiKeys.updateLastUsed(apiKey.id);
+    const { apiKey } = await requireApiKeyHelper(request, permissionCode, apiKeys);
     requestRoles.set(request, ['api-key']);
     return { apiKey };
   }

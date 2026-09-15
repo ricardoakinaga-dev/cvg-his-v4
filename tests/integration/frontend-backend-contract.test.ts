@@ -52,12 +52,11 @@ describe('frontend/backend route contract', () => {
       []
     );
     expect(requests.length).toBeGreaterThan(0);
-    // Explicit transport boundaries forward caller-provided URLs or Request objects.
-    // Their runtime destination is not asserted by this static declaration gate.
-    expect(forwarding.map((entry) => entry.kind).sort()).toEqual([
-      'Request object transport',
-      'apiRequest transport'
-    ]);
+    // Explicit transport boundaries forward caller-provided URLs or Request
+    // objects. Their runtime destination is not asserted by this static
+    // declaration gate. Only the apiRequest transport remains in the SPA; no
+    // service forwards a caller-provided Request object today.
+    expect(forwarding.map((entry) => entry.kind).sort()).toEqual(['apiRequest transport']);
     expect(missingDeclaredRequests(requests, openapi)).toEqual([]);
   });
 
