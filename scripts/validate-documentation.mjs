@@ -108,6 +108,18 @@ function resolveExistingLocalLink(rootDir, sourcePath, destination) {
   return target;
 }
 
+function isOptionalGeneratedEvidenceLink(rootDir, sourcePath, destination) {
+  const target = resolveLocalLink(rootDir, sourcePath, destination);
+  const artifactsRoot = resolve(rootDir, 'artifacts');
+  const relativeTarget = relative(artifactsRoot, target);
+  return (
+    relativeTarget !== '' &&
+    !relativeTarget.startsWith('..') &&
+    !isAbsolute(relativeTarget) &&
+    !existsSync(target)
+  );
+}
+
 function validateMetadata(errors, label, metadata) {
   if (!metadata) {
     errors.push(`${label}: metadata frontmatter ausente`);
@@ -234,6 +246,12 @@ export function validateDocumentation({
     for (const destination of extractLocalLinks(readFileSync(absolutePath, 'utf8'))) {
       const target = resolveExistingLocalLink(rootDir, absolutePath, destination);
       if (!existsSync(target)) {
+        // `artifacts/` is intentionally ignored by Git. Historical reports may
+        // point to evidence retained in the local/external evidence store, so
+        // a clean checkout must not fail its documentation gate merely because
+        // that optional evidence bundle was not materialized. Other missing
+        // local links remain hard failures.
+        if (isOptionalGeneratedEvidenceLink(rootDir, absolutePath, destination)) continue;
         errors.push(`${governedPath}: link local quebrado: ${destination}`);
       } else if (statSync(target).isDirectory() && !existsSync(resolve(target, 'README.md'))) {
         errors.push(`${governedPath}: diretório vinculado não possui README.md: ${destination}`);

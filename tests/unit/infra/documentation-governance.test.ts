@@ -70,6 +70,15 @@ describe('documentation governance', () => {
     );
   });
 
+  it('allows absent ignored evidence bundles while keeping ordinary links strict', () => {
+    const rootDir = createFixture();
+    writeFileSync(
+      resolve(rootDir, 'docs/source.md'),
+      '[retained evidence](../artifacts/audit/run.json)\n'
+    );
+    expect(validateDocumentation({ rootDir })).toEqual([]);
+  });
+
   it('detects missing required metadata', () => {
     const rootDir = createFixture();
     writeFileSync(
