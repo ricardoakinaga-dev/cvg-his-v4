@@ -1,10 +1,10 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato de código observado em 2026-09-16T05:24:28Z
+## Candidato de código observado em 2026-09-16T08:04:23Z
 
-- SHA de código e documentação: `f09e79fd275b942b3d9dcd087105faf54403a058` (candidato funcional; `HEAD/main@6b7c1cec` é descendente documental); identidade em
+- SHA de código e documentação: `b0e536e27155036782105ddd00a8329940476b16` (candidato funcional/documental corrente; código funcional em `2949fedf`); identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O código do candidato está em `f09e79fd`; `HEAD`/`main` local e `origin/main` coincidem em `6b7c1cec`; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- O código funcional do candidato está em `2949fedf`; `HEAD`/`main` local estão em `b0e536e2`, enquanto `origin/main` permanece em `92908d53`; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
 
 ## Validações locais
@@ -103,6 +103,7 @@ por um CI verde de outro SHA.
 - O commit funcional observado é `2949fedf010febbe4bc71acd2071a2211b4688f3`.
   Ele alinha o contrato de criação de paciente entre o OpenAPI, o parser de
   runtime e a fixture de integração (`sex` obrigatório e enums `sex`/`size`).
+- A identidade documental corrente foi gerada para `b0e536e27155036782105ddd00a8329940476b16`, commit que contém esta reconciliação; commits posteriores só podem ser documentais e exigem nova validação da identidade.
 - A inspeção de branches confirmou que
   `origin/fix/state-of-art-ci-assurance` é ancestral de `main`, sem commits
   exclusivos (`main...branch = 138 0`). Portanto, a unificação com `main` não

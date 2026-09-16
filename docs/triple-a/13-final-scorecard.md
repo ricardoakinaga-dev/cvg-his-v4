@@ -2,14 +2,14 @@
 
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT SNAPSHOT   | candidato funcional/controlador `f09e79fd275b942b3d9dcd087105faf54403a058`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
-| MAIN / ORIGIN      | `HEAD/main@6b7c1cec`; `origin/main@6b7c1cec`; descendente documental do candidato funcional, rollback preservado, sem force-push |
-| CURRENT CI         | [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) `failure` no `main@6b7c1cec`; coverage crítico/geral, unidade, k6, visual e SPA E2E falharam |
+| CURRENT SNAPSHOT   | candidato funcional/documental `b0e536e27155036782105ddd00a8329940476b16`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; código funcional `2949fedf`; históricos não são transferidos |
+| MAIN / ORIGIN      | `HEAD/main@b0e536e2`; `origin/main@92908d53`; `origin/fix/state-of-art-ci-assurance` ancestral sem commits exclusivos, rollback preservado, sem force-push |
+| CURRENT CI         | `NOT_FOUND` para `b0e536e2`; [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) é histórico de outro SHA e terminou `failure` |
 | LOCAL STRICT GATE  | último artefato estrito `BLOCKED`, score `51`, critical `49`, open P0 `18`, `claim=NOT PROVEN`, `publication_allowed=false`, executado no candidato anterior `358e546e`; não promovido para `f09e79fd` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
-| LOCAL VALIDATION   | Typecheck/lint PASS; contratos focados `46/46`; identity/graph `3/3`; E2E SPA Docker `424/424` PASS no `HEAD`, zero skipped, evidência SHA-bound válida; cobertura anterior `2.661` testes abaixo do limiar; target externo ausente |
+| LOCAL VALIDATION   | Unit `241/241` arquivos e `2732/2732` testes; integração `105/105` e `933/933`; native-worker/API/process, Vue especializado e SQL PASS current; R05-010 ainda falha em 19 métricas; target externo ausente |
 | VERIFIED TARGET    | `NOT PROVEN`                                                                                                                                                                                                                                              |
-| CURRENT VERDICT    | **BLOCKED / NOT PROVEN**                                                                                                                                                                                                                                  |
+| CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; R05-010 `FAIL` por 19 métricas                                                                                                                                                                                                    |
 
 O score não é uma média permissiva: os gates externos ausentes e as falhas do CI
 remoto vinculadas ao reancoramento continuam bloqueando a certificação. Os thresholds não foram relaxados

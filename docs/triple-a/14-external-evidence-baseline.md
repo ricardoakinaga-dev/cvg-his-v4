@@ -5,14 +5,14 @@
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA de código atual é
-> `f09e79fd275b942b3d9dcd087105faf54403a058`, com evidência anterior preservada apenas como histórico e identidade canônica em
-> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O `HEAD/main@6b7c1cec` é seu descendente documental. O [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106), executado no `main@6b7c1cec`, terminou `failure`: guards, segurança, typecheck, lint, OpenAPI, build, contratos de API, integração e Windows passaram; critical/general coverage, unit, k6, visual e SPA E2E falharam.
+> `b0e536e27155036782105ddd00a8329940476b16`, com código funcional `2949fedf010febbe4bc71acd2071a2211b4688f3`, evidência anterior preservada apenas como histórico e identidade canônica em
+> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106), executado em outro SHA (`main@6b7c1cec`), terminou `failure`: guards, segurança, typecheck, lint, OpenAPI, build, contratos de API, integração e Windows passaram; critical/general coverage, unit, k6, visual e SPA E2E falharam.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `f09e79fd275b942b3d9dcd087105faf54403a058` (identity/evidence graph reancorados; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current snapshot:** `b0e536e27155036782105ddd00a8329940476b16` (identity/evidence graph reancorados; provas externas e autoridade de release continuam `NOT PROVEN`).
 **Current CI:** [#178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) terminou `failure` no `main@6b7c1cec`; não existe CI verde qualificável.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-16T05:24:28Z
+**Observation:** 2026-09-16T08:04:23Z
 
 **Current local execution:** typecheck/lint e contratos focados passaram; o E2E SPA Docker passou `424/424` no `HEAD`, sem skipped, com `150` rotas e `300` navegações, e a validação de evidência SHA-bound passou. A cobertura isolada anterior executou `2.661` testes, mas ficou em `77,97%` statements, `71,27%` branches, `79,17%` functions e `79,60%` lines, abaixo de 82%. A validação local não substitui CI pinned, target ou UAT.
 
