@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "dae7bae9626b34a068d7a13b9f34ea59fa262654",
+  "head": "e4d3a2b37bc28fef96ee9b151d986e0f6cdd85f3",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -11009,6 +11009,19 @@
       "added": [],
       "removed": [],
       "changed": []
+    },
+    {
+      "manifestRevision": 50,
+      "observedAt": "2026-09-16T19:02:55.664Z",
+      "collectionCommit": "e4d3a2b37bc28fef96ee9b151d986e0f6cdd85f3",
+      "previousManifestSha256": "b99c38e4876d0fccc3f3b379b906d9676307178cf08cc048c934786381ec7ce5",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-b99c38e4876d0fccc3f3b379b906d9676307178cf08cc048c934786381ec7ce5.json",
+      "previousSourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "reason": "Reanchor frozen critical coverage collection after PostgreSQL 16 runner alignment",
+      "added": [],
+      "removed": [],
+      "changed": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -11942,7 +11955,7 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 49,
+  "manifestRevision": 50,
   "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
   "executionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99",
   "specializedEvidence": {
