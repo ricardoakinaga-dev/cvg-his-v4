@@ -1,5 +1,28 @@
 # Triple-A — Execution Log
 
+## 2026-09-16T20:35:31Z — candidato documental `f31cc532` / CI #191 terminal
+
+- **Candidato:** `main@f31cc5329e36efff91c10e9b9b3f4c6e93316046`, descendente
+  documental do candidato funcional `b3b9d38d`; `HEAD` e `origin/main`
+  coincidem, a branch `origin/fix/state-of-art-ci-assurance` é ancestral sem
+  commits exclusivos e nenhum force-push foi usado.
+- **CI:** [#191](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35144297381)
+  terminou `failure` com `13/17` jobs verdes. O Critical Coverage Gate passou,
+  incluindo o checker R05-010, o processo crítico, Vue especializado e a
+  evidência SQL (`171` migrações ativas, `7` históricos, TCP privado
+  desabilitado). Segurança, typecheck, lint, OpenAPI, Guards, Build, API
+  Contract, Unit, Integration e Windows também passaram.
+- **Falhas observáveis:** Coverage falhou porque o contrato PostgreSQL de ML
+  não conectou em `::1/127.0.0.1:5433`, deixando `79,25%` statements,
+  `72,49%` branches, `80,17%` functions e `80,66%` lines contra o mínimo
+  congelado de `82%`; k6 passou `6/9` SLOs e perdeu API p95 `208,54ms`
+  (200), query p95 `239ms` (150) e inventory p95 `222,05ms` (200); E2E
+  registrou `395` cenários funcionais e `29` snapshots visuais divergentes;
+  Visual Regression também terminou com `29` snapshots divergentes.
+- **Decisão:** manter `BLOCKED / NOT PROVEN`; nenhum threshold ou baseline
+  visual foi relaxado/sobrescrito. Target, recovery, attestation, governança,
+  UAT e autoridade de release continuam sem evidência externa autenticada.
+
 ## 2026-09-12T07:04:29Z — candidato `82ff6eec` / CI #143 terminal
 
 - **Candidato:** `main@82ff6eecb79a511b68a0d20b2a919a04d003442c`; `HEAD` e

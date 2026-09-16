@@ -1,8 +1,9 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato de código observado em 2026-09-16T20:00:00Z
+## Candidato de código observado em 2026-09-16T20:35:31Z
 
-- SHA de código e documentação: `b3b9d38d3b3d0267c1dedcc2e7f9a963a98f3334`; identidade em
+- SHA de código e documentação: `b3b9d38d3b3d0267c1dedcc2e7f9a963a98f3334`;
+  snapshot documental `f31cc5329e36efff91c10e9b9b3f4c6e93316046`; identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
 - O manifesto crítico está na revisão 51, ancorado em `0812cb49`; o candidato instala Chromium, provisiona PostgreSQL 16 via PGDG fingerprint-pinned, aceita o par V8 de inicializadores do Node 22 e publica o artefato SQL verificado. Rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
@@ -11,11 +12,11 @@
 
 | Escopo                 | Resultado                                                                                                                                                                                                                                                                                                                                                                     |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate crítico R05-010   | `NOT_PROVEN` enquanto a recoleta da revisão 51 não terminar; thresholds e escopo inalterados |
-| Workspace              | Contratos CI `20/20`, cobertura/processo e SQL `34/34`, lint e produtor SQL PostgreSQL 16.15 passaram; recoleta vinculada à revisão 51 ainda é necessária |
+| Gate crítico R05-010   | `PASS` no CI #191, com thresholds e escopo inalterados; gate global ainda bloqueado por outros jobs |
+| Workspace              | Contratos CI `20/20`, cobertura/processo e SQL `34/34`, lint e produtor SQL PostgreSQL 16.15 passaram; recoleta remota vinculada à revisão 51 passou no CI #191 |
 | Identidade/evidence graph | Identidade canônica do candidato `b3b9d38d`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` até evidência terminal e autoridade externa |
-| Coverage crítico current | O manifesto foi reancorado na revisão 51; os shards publicados contra revisões anteriores não são transferidos e a recoleta current aguarda o novo CI |
-| Vue especializado current | O workflow agora instala Chromium; evidência current só será aceita após o produtor e o checker concluírem no mesmo candidato |
+| Coverage crítico current | Recoleta da revisão 51 passou no CI #191; shards publicados contra revisões anteriores continuam não transferidos |
+| Vue especializado current | O produtor e o checker passaram no CI #191; 29 snapshots visuais divergentes permanecem no renderer geral |
 | SQL/migrações current  | PostgreSQL 16.15 privado socket-only; produtor independente PASS com `171` migrações executáveis + `7` históricos; cadeia completa e seed repetível |
 | Performance/target     | Sem certificação do candidato; k6/target/soak/restore/UAT/attestation permanecem `NOT_PROVEN` |
 | Supply/artefatos       | O graph e o pacote local são gerados fail-closed; nenhum PASS externo ou histórico foi inventado |
@@ -26,7 +27,7 @@ protection ou autoridade de release.
 
 ## CI remoto e reancoragem
 
-O [CI #190](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35138781369), no pai documental `ef8e7a79`, terminou `failure`: o PostgreSQL 16 e a proveniência passaram, mas o checker encontrou o par de inicializadores V8 do Node 22 rejeitado e o artefato SQL ausente; coverage geral, k6, visual e E2E SPA também falharam. O candidato `b3b9d38d` corrige os dois pontos em `0812cb49`; o novo run ainda precisa terminar e nenhum resultado anterior é promovido.
+O [CI #191](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35144297381), no snapshot documental `f31cc532`, terminou `failure` com `13/17` jobs verdes. O Critical Coverage Gate passou, incluindo processo crítico, Vue especializado, SQL (`171` migrações ativas e `7` históricos) e R05-010. Coverage geral falhou no contrato PostgreSQL de ML em `:5433`; k6 perdeu 3/9 SLOs; E2E e Visual Regression registraram 29 divergências de snapshot. Nenhum threshold, baseline ou resultado histórico é promovido.
 
 O [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106), executado no `main@6b7c1cec`, terminou `failure`. Repository Guards, API Contract, Integration e Windows passaram junto com os checks de segurança, typecheck, lint, OpenAPI e build; Critical Coverage, Coverage, Unit Tests, Performance/k6, Visual Regression e E2E SPA falharam. O E2E remoto falhou na etapa principal e na validação de usabilidade, embora a API clínica canônica tenha passado; o gate local explícito do candidato retornou `51/49/18` e bloqueou publicação; nenhum resultado histórico ou parcial é promovido.
 

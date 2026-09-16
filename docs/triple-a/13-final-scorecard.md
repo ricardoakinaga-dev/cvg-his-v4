@@ -4,7 +4,7 @@
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | CURRENT SNAPSHOT   | candidato `b3b9d38d3b3d0267c1dedcc2e7f9a963a98f3334`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
 | MAIN / ORIGIN      | `main@b3b9d38d`; `origin/fix/state-of-art-ci-assurance@fe5406c2` ancestral sem commits exclusivos, rollback preservado, sem force-push |
-| CURRENT CI         | O [CI #190](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35138781369) pertence ao pai documental e falhou; o novo run do candidato corrigido aguarda execução terminal |
+| CURRENT CI         | O [CI #191](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35144297381) terminou `failure` com Critical Coverage Gate `PASS`; Coverage geral, k6, E2E e Visual Regression falharam |
 | LOCAL STRICT GATE  | `NOT_PROVEN` até a recoleta do manifesto revision 51; nenhum shard das revisões anteriores é transferido; `claim=NOT PROVEN`, `publication_allowed=false` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
 | LOCAL VALIDATION   | contratos CI `20/20`, cobertura/processo e SQL `34/34`, lint, produtor SQL `171` migrações e conversão V8 real passaram; manifesto revision 51 válido; target externo ausente |
@@ -13,8 +13,9 @@
 
 O snapshot corrente preserva a régua congelada e reancora o manifesto crítico
 na revisão 51. O CI #190 detectou a rejeição de inicializadores V8 legítimos do
-Node 22 e a ausência do produtor SQL; esta atualização corrige ambos, mantém a
-prova de ancestralidade e não promove resultado parcial.
+Node 22 e a ausência do produtor SQL; o CI #191 confirmou a correção no
+Critical Coverage Gate, mantém a prova de ancestralidade e não promove resultado
+parcial das falhas gerais.
 
 O score não é uma média permissiva: os gates externos ausentes e as falhas do CI
 remoto vinculadas ao reancoramento continuam bloqueando a certificação. Os thresholds não foram relaxados

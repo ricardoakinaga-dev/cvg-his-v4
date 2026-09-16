@@ -1,6 +1,6 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-16T20:00:00Z
+## Snapshot vigente — 2026-09-16T20:35:31Z
 
 O baseline autoritativo do snapshot atual está em: `b3b9d38d3b3d0267c1dedcc2e7f9a963a98f3334` (manifesto crítico revision 51, ancorado em `0812cb49`).
 Ele também está indexado em
@@ -11,7 +11,7 @@ documentação corrente sucede os candidatos históricos sem transferir evidênc
 o candidato `b3b9d38d` alinha o runner privado à política PostgreSQL 16, preserva checksums de migração, autentica o par de inicializadores V8 do Node 22 e publica evidência SQL; a branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
 `BLOCKED / NOT PROVEN`.
 
-O [CI #190](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35138781369) pertence ao pai documental e não é transferido: PostgreSQL 16 e proveniência passaram, mas o par de inicializadores V8 do Node 22 foi rejeitado e o artefato SQL não foi produzido. Esta atualização corrige ambos os pontos e aguarda novo run terminal. A validação local passou os contratos `20/20`, o produtor SQL PostgreSQL 16.15 com `171` migrações e a conversão V8 real; o manifesto revision 51 é válido. Evidência crítica, Vue, target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
+O [CI #191](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35144297381), no snapshot documental `f31cc532`, terminou `failure` com `13/17` jobs verdes, mas o Critical Coverage Gate passou com processo crítico, Vue especializado, SQL e R05-010 aceitos. Coverage geral falhou no contrato PostgreSQL de ML em `:5433`, k6 perdeu 3/9 SLOs e E2E/Visual falharam em 29 snapshots. A validação local passou os contratos `20/20`, o produtor SQL PostgreSQL 16.15 com `171` migrações e a conversão V8 real; o manifesto revision 51 é válido. Target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
 parcial ou histórico é promovido. Target, recovery, UAT, attestation,
 governança e autoridade de release continuam `NOT PROVEN`.
 
