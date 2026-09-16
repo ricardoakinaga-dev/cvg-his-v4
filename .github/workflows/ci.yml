@@ -830,7 +830,9 @@ jobs:
       - name: Checkout candidate SHA
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          fetch-depth: 1
+          # Candidate binding must be able to prove that the frozen collection
+          # head is an ancestor of the checked-out candidate.
+          fetch-depth: 0
 
       - name: Verify candidate SHA and clean checkout
         env:
@@ -883,31 +885,37 @@ jobs:
           mkdir -p "${coverage_root}"
           exec > >(tee "${coverage_root}/ci-critical-coverage-provision.log") 2>&1
           mkdir -p "${deb_dir}" "${runtime_root}"
-          # Resolve from an immutable official Ubuntu base instead of the
-          # mutable hosted-runner APT configuration. Package metadata and
-          # downloaded .debs are therefore independent of third-party runner
-          # sources and remain bound to this image digest.
+          # Resolve from an immutable official Ubuntu base and an explicit,
+          # fingerprint-pinned PostgreSQL PGDG feed instead of the mutable
+          # hosted-runner APT configuration. Package metadata and downloaded
+          # .debs therefore do not depend on runner-local sources.
           docker run --rm --interactive \
             --volume "${deb_dir}:/out" \
             ubuntu:22.04@sha256:829f6df217bcbae2b371026e81711d1a787c61b2967ad09d015063663ebafbf7 \
             bash -se <<'CONTAINER_SCRIPT'
           set -euo pipefail
           test "$(dpkg --print-architecture)" = amd64
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -y -o Acquire::Retries=3
+          apt-get install -y --no-install-recommends ca-certificates curl gnupg
+          install -d -m 0755 /usr/share/keyrings
+          curl --fail --silent --show-error --location \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | gpg --dearmor --output /usr/share/keyrings/postgresql.gpg
+          pgdg_key_fingerprint="$(gpg --show-keys --with-colons /usr/share/keyrings/postgresql.gpg \
+            | awk -F: '$1 == "fpr" { print $10; exit }')"
+          test "${pgdg_key_fingerprint}" = B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
+          printf '%s\n' \
+            'deb [signed-by=/usr/share/keyrings/postgresql.gpg] https://apt.postgresql.org/pub/repos/apt jammy-pgdg main' \
+            > /etc/apt/sources.list.d/postgresql.list
           apt-get update -y -o Acquire::Retries=3
           package_version() {
             apt-cache policy "$1" | awk '$1 == "Candidate:" { print $2; exit }'
           }
-          pg_package=""
-          pg_version=""
-          for candidate in postgresql-14 postgresql-16 postgresql-15; do
-            candidate_version="$(package_version "${candidate}")"
-            if [[ -n "${candidate_version}" && "${candidate_version}" != "(none)" ]]; then
-              pg_package="${candidate}"
-              pg_version="${candidate_version}"
-              break
-            fi
-          done
-          test -n "${pg_package}" && test -n "${pg_version}"
+          pg_package=postgresql-16
+          pg_version="$(package_version "${pg_package}")"
+          test -n "${pg_version}" && test "${pg_version}" != "(none)"
+          [[ "${pg_version}" == *.pgdg22.04* ]]
           pg_client_package="${pg_package/postgresql-/postgresql-client-}"
           pg_client_version="$(package_version "${pg_client_package}")"
           test -n "${pg_client_version}" && test "${pg_client_version}" != "(none)"

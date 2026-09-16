@@ -259,7 +259,10 @@ describe('CI repository guardrails', () => {
 
     expect(job).toContain('name: Provision private coverage runner binaries');
     expect(job).toContain('ci-critical-coverage-provision.log');
-    expect(job).toContain('for candidate in postgresql-14 postgresql-16 postgresql-15');
+    expect(job).toContain('pg_package=postgresql-16');
+    expect(job).toContain('apt.postgresql.org/pub/repos/apt jammy-pgdg main');
+    expect(job).toContain('B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8');
+    expect(job).toContain('[[ "${pg_version}" == *.pgdg22.04* ]]');
     expect(job).toContain('pg_client_package="${pg_package/postgresql-/postgresql-client-}"');
     expect(job).toContain('packages=("${pg_package}" "${pg_client_package}" libpq5 libxml2 libldap-2.5-0 libicu70 redis-server redis-tools liblzf1 libjemalloc2 lua-cjson lua-bitop liblua5.1-0)');
     expect(job).toContain('test "${#packages[@]}" -eq 13');
