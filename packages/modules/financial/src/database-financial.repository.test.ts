@@ -118,7 +118,7 @@ const receivable = {
   amountPaid: 20,
   amountOutstanding: 75,
   issuedAt: timestamp.toISOString(),
-  settledAt: undefined,
+  settledAt: null,
   notes: null,
   createdAt: timestamp.toISOString(),
   updatedAt: timestamp.toISOString()
@@ -159,7 +159,9 @@ beforeEach(() => {
   query.mockReset();
   vi.mocked(getPool).mockReturnValue(pool as never);
   vi.mocked(withTenantQuery).mockImplementation(async (client, fn) => fn(client as never));
-  vi.mocked(withTenantTransaction).mockImplementation(async (_accountId, operation) => operation());
+  vi.mocked(withTenantTransaction).mockImplementation(async (_accountId, operation) =>
+    operation({} as never)
+  );
   query.mockResolvedValue({ rows: [], rowCount: 1 });
 });
 
@@ -198,7 +200,10 @@ test('DatabaseEncounterFinancialRepository covers account, receivable and paymen
 
   query.mockResolvedValueOnce({ rows: [receivableRow] });
   expect(await repository.listReceivablesByFinancialAccount('financial-account-1')).toMatchObject([{ amountOutstanding: 75, dueAt: timestamp.toISOString() }]);
-  await repository.replaceReceivables('financial-account-1', [receivable, { ...receivable, id: 'receivable-2', dueAt: undefined, settledAt: timestamp.toISOString() }]);
+  await repository.replaceReceivables('financial-account-1', [
+    receivable,
+    { ...receivable, id: 'receivable-2', dueAt: null, settledAt: timestamp.toISOString() }
+  ]);
   await repository.replaceReceivables('financial-account-1', []);
   await repository.updateReceivable({ ...receivable, dueAt: timestamp.toISOString(), settledAt: timestamp.toISOString() });
   query.mockResolvedValueOnce({ rows: [] });
