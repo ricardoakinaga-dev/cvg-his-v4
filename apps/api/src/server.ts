@@ -698,6 +698,7 @@ function applyCorsPolicy(
   }
 
   response.setHeader('access-control-allow-origin', normalizedOrigin);
+  response.setHeader('access-control-allow-credentials', 'true');
   return { allowed: true };
 }
 

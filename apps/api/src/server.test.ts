@@ -966,6 +966,7 @@ test('CORS preflight reflects an allowed origin', async () => {
 
   assert.equal(response.statusCode, 204);
   assert.equal(response.getHeader('access-control-allow-origin'), 'https://app.example.com');
+  assert.equal(response.getHeader('access-control-allow-credentials'), 'true');
   assert.match(response.getHeader('access-control-allow-methods') ?? '', /OPTIONS/);
   assert.match(response.getHeader('access-control-allow-headers') ?? '', /idempotency-key/i);
 });
