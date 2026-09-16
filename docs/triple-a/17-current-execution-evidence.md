@@ -2,9 +2,9 @@
 
 ## Candidato de código observado em 2026-09-16T09:46:22Z
 
-- SHA de código e documentação: `01e5a168204ccb0f157ac96e7183391e1a1fc609` (HEAD documental `4d7b6f569414fb254d98d164b5897a8602dfb3fc`); identidade em
+- SHA de código e documentação: `6618df12ac2fc672ccae2d50b391af8c287042f7` (snapshot documental; código funcional `01e5a168204ccb0f157ac96e7183391e1a1fc609`); identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O código funcional está em `01e5a168`; `HEAD`/`main` local estão em `4d7b6f56`, `origin/main` em `6217654a`; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- O código funcional está em `01e5a168`; o snapshot documental está em `6618df12`, `origin/main` em `6217654a`; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
 
 ## Validações locais
@@ -13,7 +13,7 @@
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Gate crítico R05-010   | `FAIL/BLOCKED` por 19 métricas abaixo dos thresholds; erros de proveniência, Vue e SQL zerados após recoleta current; thresholds e escopo inalterados |
 | Workspace              | Typecheck e lint completos PASS; contrato CI `19/19`; testes focados `46/46`; checker de estado `11/11` |
-| Identidade/evidence graph | Identidade canônica funcional `01e5a168`, compatível com descendente documental `4d7b6f56`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` até evidência externa terminal |
+| Identidade/evidence graph | Identidade canônica do snapshot `6618df12`, com código funcional `01e5a168`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` até evidência externa terminal |
 | Coverage crítico current | Cinco shards promovidos no manifest revision 35; 19 métricas agregadas ainda abaixo de 85% (auth, billing-cash, inpatient, records, prescriptions, pix, webhooks, http-routes e repositories) |
 | Vue especializado current | Stack privada; build PASS, Vitest `60` suítes/`399` testes, Playwright/consumer PASS; 25 rotas selecionadas; run `79c02a1b-1858-4f2b-9e06-9403c3f2a2b5` |
 | SQL/migrações current  | PostgreSQL privado socket-only; `171` migrações executáveis + `7` históricos; clean/upgrade/reexecução/failure recovery/invariants PASS; run `b92d78a5-aaa0-4db1-9b5b-cceb37658b98` |

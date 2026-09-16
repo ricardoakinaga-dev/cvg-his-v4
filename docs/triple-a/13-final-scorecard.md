@@ -2,9 +2,9 @@
 
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT SNAPSHOT   | candidato funcional `01e5a168204ccb0f157ac96e7183391e1a1fc609`; documentação current em `4d7b6f569414fb254d98d164b5897a8602dfb3fc`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
-| MAIN / ORIGIN      | `HEAD/main@4d7b6f56`; `origin/main@6217654a`; `origin/fix/state-of-art-ci-assurance` ancestral sem commits exclusivos, rollback preservado, sem force-push |
-| CURRENT CI         | `NOT_FOUND` para `01e5a168`; [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) é histórico de outro SHA e terminou `failure` |
+| CURRENT SNAPSHOT   | snapshot documental `6618df12ac2fc672ccae2d50b391af8c287042f7` (código funcional `01e5a168204ccb0f157ac96e7183391e1a1fc609`); identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
+| MAIN / ORIGIN      | snapshot `6618df12`; `origin/main@6217654a`; `origin/fix/state-of-art-ci-assurance` ancestral sem commits exclusivos, rollback preservado, sem force-push |
+| CURRENT CI         | `NOT_FOUND` para `6618df12`; [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) é histórico de outro SHA e terminou `failure` |
 | LOCAL STRICT GATE  | R05-010 `FAIL/BLOCKED` por 19 métricas críticas abaixo dos limiares; shards, Vue e SQL current sem erro de proveniência; `claim=NOT PROVEN`, `publication_allowed=false` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
 | LOCAL VALIDATION   | API server `68/68`; unit `241/241` arquivos e `2732/2732` testes; integração `105/105` e `933/933`; native-worker/API/process, Vue especializado 25 rotas e SQL 171 migrações PASS current; target externo ausente |

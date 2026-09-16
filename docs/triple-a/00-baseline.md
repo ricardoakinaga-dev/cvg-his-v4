@@ -2,13 +2,13 @@
 
 ## Snapshot vigente — 2026-09-16T09:46:22Z
 
-O baseline autoritativo do candidato funcional atual está em: `01e5a168204ccb0f157ac96e7183391e1a1fc609` (documentação current em `4d7b6f569414fb254d98d164b5897a8602dfb3fc`).
+O baseline autoritativo do snapshot documental atual está em: `6618df12ac2fc672ccae2d50b391af8c287042f7` (código funcional em `01e5a168204ccb0f157ac96e7183391e1a1fc609`).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
 documentação corrente sucede os candidatos históricos sem transferir evidência;
-`HEAD/main@4d7b6f56` é um descendente documental de `origin/main@6217654a`; a branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
+o snapshot `6618df12` é um descendente documental de `origin/main@6217654a`; a branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
 `BLOCKED / NOT PROVEN`.
 
 O [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106), disparado em outro SHA no

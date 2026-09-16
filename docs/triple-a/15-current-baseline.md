@@ -1,8 +1,8 @@
 # Baseline corrente — State of Art
 
-Observado em `2026-09-16T09:46:22Z`, no candidato funcional
-`01e5a168204ccb0f157ac96e7183391e1a1fc609`, documentado no HEAD
-`4d7b6f569414fb254d98d164b5897a8602dfb3fc`. A identidade canônica está em
+Observado em `2026-09-16T09:46:22Z`, no snapshot documental
+`6618df12ac2fc672ccae2d50b391af8c287042f7`, cujo código funcional é
+`01e5a168204ccb0f157ac96e7183391e1a1fc609`. A identidade canônica está em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json) e o
 evidence graph corrente é gerado por `pnpm evidence:triple-a:graph`.
 O candidato preserva a reconciliação append-only do controlador e a paridade
@@ -11,11 +11,11 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| current_sha     | `01e5a168204ccb0f157ac96e7183391e1a1fc609` (candidato funcional; documentação current em `4d7b6f56`) |
-| main_sha        | `main@4d7b6f56`; `origin/main@6217654a`; a branch de assurance é ancestral, sem commits exclusivos; rollback preservado |
+| current_sha     | `6618df12ac2fc672ccae2d50b391af8c287042f7` (snapshot documental; código funcional em `01e5a168`) |
+| main_sha        | `snapshot@6618df12`; `origin/main@6217654a`; a branch de assurance é ancestral, sem commits exclusivos; rollback preservado |
 | worktree        | Limpo após o commit documental de reancoragem; artefatos em `artifacts/` permanecem ignorados |
 | rollback        | `origin/fix/state-of-art-ci-assurance@fe5406c2`; sem force-push |
-| ci_run          | `NOT_FOUND` para o candidato `01e5a168`; o último run remoto verificável é o [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) em outro SHA, terminado em `failure`. |
+| ci_run          | `NOT_FOUND` para o snapshot `6618df12`; o último run remoto verificável é o [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) em outro SHA, terminado em `failure`. |
 | ci_failure      | Coverage crítico/geral, Unit Tests, Performance/k6, Visual Regression e E2E SPA falharam; nenhum threshold foi relaxado. |
 | overall_score   | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `51`, abaixo do mínimo 97 |
 | critical_score  | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `49`, abaixo do mínimo 95 |

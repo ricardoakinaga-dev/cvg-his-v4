@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `01e5a168204ccb0f157ac96e7183391e1a1fc609`
-(documentação current em `4d7b6f569414fb254d98d164b5897a8602dfb3fc`; `main` é o ramo corrente, `origin/main` está em `6217654a`, a branch de assurance é ancestral sem commits exclusivos; o [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) é de outro SHA e terminou `failure`)
+**Candidate funcional avaliado:** `6618df12ac2fc672ccae2d50b391af8c287042f7`
+(snapshot documental; código funcional em `01e5a168204ccb0f157ac96e7183391e1a1fc609`; `origin/main` está em `6217654a`, a branch de assurance é ancestral sem commits exclusivos; o [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) é de outro SHA e terminou `failure`)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -47,7 +47,7 @@ remota e pelos gates externos de target e release.
 | Testing              | LOCAL PASS                   | suíte workspace, critical e E2E clínico                                                                                                 |
 | Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas                                                                                                |
 | Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                                                                                                           |
-| CI/CD                | BLOQUEADO no SHA atual       | Não há CI remoto terminal para `01e5a168`; o CI #178 de outro SHA falhou em coverage crítico/geral, unit, k6, visual e E2E SPA |
+| CI/CD                | BLOQUEADO no SHA atual       | Não há CI remoto terminal para `6618df12`; o CI #178 de outro SHA falhou em coverage crítico/geral, unit, k6, visual e E2E SPA |
 | Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                                                                                                         |
 | Recovery             | BLOCKED                      | Docker impediu restore drill real                                                                                                       |
 | Frontend             | PARTIAL / local PASS         | Vue especializado current passou build, consumer, 60/60 suítes, browser evidence e 25 rotas; o CI #178 de outro SHA falhou em SPA/visual |

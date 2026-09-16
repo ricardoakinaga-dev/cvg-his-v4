@@ -5,11 +5,11 @@
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA de código atual é
-> `01e5a168204ccb0f157ac96e7183391e1a1fc609`, com documentação current em `4d7b6f569414fb254d98d164b5897a8602dfb3fc`, evidência anterior preservada apenas como histórico e identidade canônica em
+> `6618df12ac2fc672ccae2d50b391af8c287042f7`, com código funcional em `01e5a168204ccb0f157ac96e7183391e1a1fc609`, evidência anterior preservada apenas como histórico e identidade canônica em
 > [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106), executado em outro SHA (`main@6b7c1cec`), terminou `failure`: guards, segurança, typecheck, lint, OpenAPI, build, contratos de API, integração e Windows passaram; critical/general coverage, unit, k6, visual e SPA E2E falharam.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `01e5a168204ccb0f157ac96e7183391e1a1fc609` (identity/evidence graph reancorados; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current snapshot:** `6618df12ac2fc672ccae2d50b391af8c287042f7` (código funcional `01e5a168`; identity/evidence graph reancorados; provas externas e autoridade de release continuam `NOT PROVEN`).
 **Current CI:** [#178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) terminou `failure` no `main@6b7c1cec`; não existe CI verde qualificável.
 **Current status:** **BLOCKED / NOT PROVEN**
 **Observation:** 2026-09-16T09:46:22Z
