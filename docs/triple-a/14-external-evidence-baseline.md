@@ -16,7 +16,7 @@
 
 **Current local execution:** typecheck/lint e contratos focados passaram; o E2E clínico real passou `4/4`. A cobertura isolada executou `2.661` testes, mas ficou em `77,97%` statements, `71,27%` branches, `79,17%` functions e `79,60%` lines, abaixo de 82%. A validação local não substitui CI pinned, target ou UAT.
 
-**Current strict gate:** ainda não avaliado no candidato exato; a identidade e o graph permanecem fail-closed e o status é `BLOCKED / NOT PROVEN`.
+**Current strict gate:** `BLOCKED / NOT PROVEN`, score `50`, critical `46`, open P0 `19`, `claim=NOT PROVEN` e `publication_allowed=false`, executado explicitamente no candidato `9a69e9e2`. A identidade e o graph permanecem fail-closed.
 
 The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. Historical runs #137 and #140 belong to earlier SHAs; #140 failed in `Run k6 benchmark`/`Check SLO results`, while #137 passed all published jobs. The performance evidence and its access limitation are reconciled in [critic-performance-assurance-20260911.md](./critic-performance-assurance-20260911.md). Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
 

@@ -16,10 +16,10 @@ fotografia não promove evidência histórica nem altera thresholds.
 | rollback        | `origin/fix/state-of-art-ci-assurance@fe5406c2`; sem force-push |
 | ci_run          | `NOT_FOUND` para o SHA exato antes da publicação; o run remoto mais recente observado é [CI #35030045158](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35030045158) no SHA anterior `afb5eef8` e não é transferido. |
 | ci_failure      | O run anterior falhou em coverage, repository guards, k6, SPA E2E e visual; causas e limitações estão registradas no parecer fresh. Nenhum threshold foi relaxado. |
-| overall_score   | `NOT_EVALUATED` para o candidato exato; o gate só pode ser calculado após os bytes correntes e não substitui CI/target. |
-| critical_score  | `NOT_EVALUATED` para o candidato exato |
-| open_p0         | `NOT_EVALUATED` para o candidato exato; release permanece bloqueado |
-| local_gate      | Ainda sem envelope externo do SHA exato; `pnpm release:triple-a` deve permanecer fail-closed enquanto CI, target, UAT e autoridade forem ausentes |
+| overall_score   | `50` no gate estrito executado com `commitSha=9a69e9e2`; abaixo do mínimo 97 |
+| critical_score  | `46` no gate estrito executado com `commitSha=9a69e9e2`; abaixo do mínimo 95 |
+| open_p0         | `19` no gate estrito; acima do máximo 0 |
+| local_gate      | `BLOCKED`, `score=50`, `critical=46`, `open_p0=19`, `claim=NOT PROVEN`, `publication_allowed=false`; checks externos/target continuam ausentes |
 | implemented     | Provisionamento PostgreSQL do coverage escolhe pacote disponível sem alterar thresholds; identidade/evidence graph são validados por ancestralidade; contraste overdue e semântica ARIA corrigidos; teste de bootstrap isola `REQUIRE_TEST_DB` |
 | verified_local  | Typecheck e lint workspace PASS; contrato CI `19/19`; testes focados `46/46`; identidade/graph `3/3`; E2E clínico browser real `4/4`; coverage isolado `2.661` testes, porém `77,97%` statements, `71,27%` branches, `79,17%` functions e `79,60%` lines, abaixo de `82%` |
 | verified_remote | `NOT_PROVEN`: não há CI terminal do SHA exato; target, recovery, UAT, attestation, governança de branch e autoridade de release seguem ausentes |

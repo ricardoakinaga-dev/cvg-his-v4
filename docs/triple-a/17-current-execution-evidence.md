@@ -11,7 +11,7 @@
 
 | Escopo                 | Resultado                                                                                                                                                                                                                                                                                                                                                                     |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate estrito           | `NOT_EVALUATED` para `9a69e9e2` até a coleta final; release permanece `BLOCKED / NOT PROVEN` |
+| Gate estrito           | `BLOCKED`, score `50`, critical `46`, open P0 `19`, `claim=NOT PROVEN`, `publication_allowed=false`, executado explicitamente com `commitSha=9a69e9e2` |
 | Workspace              | Typecheck e lint completos PASS; contrato CI `19/19`; testes focados `46/46`; checker de estado `11/11` |
 | Identidade/evidence graph | `validate:candidate-identity` PASS; graph gerado com status `BLOCKED`, candidate `PASS`, CI/authority `NOT_PROVEN` |
 | Coverage isolado       | `2.661` testes; 2.658 passados e 3 skipped, mas cobertura global `77,97/71,27/79,17/79,60%` (statements/branches/functions/lines), abaixo de 82% |
@@ -25,7 +25,7 @@ protection ou autoridade de release.
 
 ## CI remoto e reancoragem
 
-Não existe ainda run remoto vinculado ao SHA exato `9a69e9e2`; [CI #35030045158](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35030045158) é do SHA anterior `afb5eef8` e permanece somente diagnóstico histórico. A publicação do candidato deve disparar nova execução com os guards vinculados à identidade corrente.
+Não existe ainda run remoto vinculado ao SHA exato `9a69e9e2`; [CI #35030045158](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35030045158) é do SHA anterior `afb5eef8` e permanece somente diagnóstico histórico. O gate local explícito do candidato retornou `50/46/19` e bloqueou publicação. A publicação do candidato deve disparar nova execução com os guards vinculados à identidade corrente.
 
 
 O [CI #143](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34678150409)

@@ -9,8 +9,9 @@
 
 O candidato preserva o modular monolith e adiciona guardrails de proveniência,
 provisionamento resiliente de coverage, correções de acessibilidade clínica e
-bootstrap de teste hermético. Typecheck/lint e o fluxo browser clínico P0
-passaram; a cobertura global isolada ficou abaixo de 82%, e não há CI exato,
+bootstrap de teste hermético. O gate local explícito fechou em `50/46/19`
+(score/critical/open P0); typecheck/lint e o fluxo browser clínico P0 passaram,
+mas a cobertura global isolada ficou abaixo de 82%, e não há CI exato,
 target, recovery, attestation, UAT, governança, performance certificada ou
 autoridade de release. Nenhum threshold foi relaxado e não há autorização para
 declarar `main green`, release produtivo ou `TRIPLE-A VERIFIED`.

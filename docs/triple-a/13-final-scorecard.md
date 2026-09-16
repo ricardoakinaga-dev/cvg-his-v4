@@ -5,7 +5,7 @@
 | CURRENT SNAPSHOT   | candidato funcional/controlador `9a69e9e2967226d73281bdddc36a5735104dd52f`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
 | MAIN / ORIGIN      | `HEAD/main@9a69e9e2`; `origin/main@afb5eef8` até publicação; rollback preservado, sem force-push |
 | CURRENT CI         | `NOT_FOUND` para o SHA exato; [CI #35030045158](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35030045158) é o run anterior e não é promovido |
-| LOCAL STRICT GATE  | `NOT_EVALUATED` para o SHA exato; coverage isolado abaixo de 82% e gates externos ausentes mantêm `BLOCKED` |
+| LOCAL STRICT GATE  | `BLOCKED`, score `50`, critical `46`, open P0 `19`, `claim=NOT PROVEN`, `publication_allowed=false`, com `commitSha=9a69e9e2` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
 | LOCAL VALIDATION   | Typecheck/lint PASS; contratos focados `46/46`; identity/graph `3/3`; E2E clínico browser `4/4`; coverage `2.661` testes abaixo do limiar; target externo ausente |
 | VERIFIED TARGET    | `NOT PROVEN`                                                                                                                                                                                                                                              |
