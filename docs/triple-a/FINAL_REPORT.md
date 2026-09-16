@@ -1,21 +1,19 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `main@49569934f9c4c25df98cc0d18203b57db1433440`
-(onda local de remediação OpenAPI/OIDC, supply chain, pacote visual, outbox e controles; evidência remota e target ainda não comprovadas)
+**Candidate funcional avaliado:** `main@9a69e9e2967226d73281bdddc36a5735104dd52f`
+(identidade/evidence graph correntes; CI exato, target e autoridade ainda não comprovados)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
 ## Executive Summary
 
-O candidato preserva o modular monolith, adiciona redaction recursiva de chaves
-sensíveis, mensagens, erros estruturados, objetos aninhados e referências
-circulares, protege transições de worker e verifica o contexto de tenant no banco. O pacote compartilhado passou `16/16` testes locais. O gate estrito
-histórico ficou `BLOCKED` (`55/57/15`) e as provas externas de target, recovery,
-attestation, UAT, governança, performance e autoridade de release continuam
-abertas. O [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) pertence ao commit documental anterior e não é
-promovido como prova; esta reconciliação deve gerar uma nova execução vinculada
-ao SHA `49569934`. Nenhum threshold foi relaxado e não há autorização para declarar
-`main green`, release produtivo ou `TRIPLE-A VERIFIED`.
+O candidato preserva o modular monolith e adiciona guardrails de proveniência,
+provisionamento resiliente de coverage, correções de acessibilidade clínica e
+bootstrap de teste hermético. Typecheck/lint e o fluxo browser clínico P0
+passaram; a cobertura global isolada ficou abaixo de 82%, e não há CI exato,
+target, recovery, attestation, UAT, governança, performance certificada ou
+autoridade de release. Nenhum threshold foi relaxado e não há autorização para
+declarar `main green`, release produtivo ou `TRIPLE-A VERIFIED`.
 
 ## Atualização terminal — isolamento da prova clínica
 

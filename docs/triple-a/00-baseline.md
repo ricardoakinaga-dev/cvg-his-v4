@@ -1,19 +1,17 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-12T13:02:52Z
+## Snapshot vigente — 2026-09-16T00:59:19Z
 
-O baseline autoritativo do candidato atual está em
+O baseline autoritativo do candidato atual está em: `9a69e9e2967226d73281bdddc36a5735104dd52f`.
+Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
-[`17-current-execution-evidence.md`](./17-current-execution-evidence.md):
-`49569934f9c4c25df98cc0d18203b57db1433440`, candidato da onda local de remediação OpenAPI/OIDC, supply chain, pacote visual, outbox e controles. A documentação corrente sucede o candidato de assurance
-`0d475dee358eab9621e5497db9929b7010ed09eb`; `HEAD == main == origin/main`,
-com rollback preservado. O gate local estrito histórico permanece `BLOCKED`
-com `55/57/15` (score/critical/open P0) e claim `NOT PROVEN`.
+[`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
+[`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
+documentação corrente sucede os candidatos históricos sem transferir evidência;
+`HEAD/main@9a69e9e2` está localmente à frente de `origin/main@afb5eef8`, com
+rollback preservado. O graph e o gate corrente permanecem `BLOCKED / NOT PROVEN`.
 
-O [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) pertence ao commit documental anterior e não tem resultado terminal aceito para `e605597c`. A reconciliação desta fotografia deve gerar uma nova execução CI com os
-guards vinculados ao SHA correto. Nenhum resultado parcial ou histórico é
-promovido; target, recovery, UAT, attestation, governança e autoridade de
-release continuam `NOT PROVEN`.
+Não há CI terminal do SHA exato. O [CI #35030045158](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35030045158) é do SHA anterior `afb5eef8` e permanece diagnóstico histórico. Nenhum resultado parcial ou histórico é promovido; target, recovery, UAT, attestation, governança e autoridade de release continuam `NOT PROVEN`.
 
 ## Registro obrigatório do prompt
 

@@ -1,22 +1,22 @@
 # Triple-A External Assurance — Current Reconciliation
 
-> **Current candidate supersession (2026-09-12):** este arquivo preserva
+> **Current candidate supersession (2026-09-16):** este arquivo preserva
 > snapshots históricos. Para o candidato vigente, use
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA de código atual é
-> `49569934f9c4c25df98cc0d18203b57db1433440`, com evidência anterior preservada apenas como histórico e o snapshot documental anterior
-> `0d475dee358eab9621e5497db9929b7010ed09eb`. O [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) pertence ao commit documental anterior e não é promovido como prova.
+> `9a69e9e2967226d73281bdddc36a5735104dd52f`, com evidência anterior preservada apenas como histórico e identidade canônica em
+> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O [CI #35030045158](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35030045158) pertence ao SHA anterior `afb5eef8` e não é promovido como prova.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `49569934f9c4c25df98cc0d18203b57db1433440` (onda local de remediação; provas externas e autoridade de release continuam `NOT PROVEN`).
-**Current CI:** [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) — commit documental anterior, sem resultado promovido; nova execução será vinculada a este snapshot.
+**Current snapshot:** `9a69e9e2967226d73281bdddc36a5735104dd52f` (identity/evidence graph reancorados; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current CI:** `NOT_FOUND` para o SHA exato; nova execução deve ser vinculada a este snapshot após publicação.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-12T13:26:00Z
+**Observation:** 2026-09-16T00:59:19Z
 
-**Current local execution:** o gate estrito completo do HEAD documental `c1059e6c` executou checks, typecheck, lint, build e suíte workspace; retornou `55/57/15`, `BLOCKED`, `NOT PROVEN`. A suíte crítica local passou `615` testes PostgreSQL e `11` suítes de processo. A reprodução da API clínica canônica passou `2/2` em PostgreSQL real; a validação local não substitui o CI pinned nem o ambiente alvo. O k6 descartável local passou 9/9 SLOs.
+**Current local execution:** typecheck/lint e contratos focados passaram; o E2E clínico real passou `4/4`. A cobertura isolada executou `2.661` testes, mas ficou em `77,97%` statements, `71,27%` branches, `79,17%` functions e `79,60%` lines, abaixo de 82%. A validação local não substitui CI pinned, target ou UAT.
 
-**Current strict gate:** `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` no HEAD `c1059e6c` retornou `BLOCKED / NOT PROVEN`, score `55`, critical `57`, `15` P0 abertos, `claim=NOT PROVEN` e `publication_allowed=false`.
+**Current strict gate:** ainda não avaliado no candidato exato; a identidade e o graph permanecem fail-closed e o status é `BLOCKED / NOT PROVEN`.
 
 The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. Historical runs #137 and #140 belong to earlier SHAs; #140 failed in `Run k6 benchmark`/`Check SLO results`, while #137 passed all published jobs. The performance evidence and its access limitation are reconciled in [critic-performance-assurance-20260911.md](./critic-performance-assurance-20260911.md). Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
 

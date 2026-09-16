@@ -1,31 +1,31 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato de código observado em 2026-09-12T14:40:32Z
+## Candidato de código observado em 2026-09-16T00:59:19Z
 
-- SHA de código e documentação: `49569934f9c4c25df98cc0d18203b57db1433440` (onda local de remediação OpenAPI/OIDC, supply chain, pacote visual, outbox e controles). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- `HEAD`, `main` e `origin/main` coincidem; rollback preservado em
-  `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- SHA de código e documentação: `9a69e9e2967226d73281bdddc36a5735104dd52f`; identidade em
+  [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
+- `HEAD`/`main` local está em `9a69e9e2`; `origin/main` ainda está em `afb5eef8`; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
 
 ## Validações locais
 
 | Escopo                 | Resultado                                                                                                                                                                                                                                                                                                                                                                     |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate estrito           | `BLOCKED`, score `55`, critical `57`, open P0 `15`, claim `NOT PROVEN`, `publication_allowed=false`, no HEAD documental `c1059e6c`                                                                                                                                                                                                                                            |
-| Workspace              | `TRIPLE_A_RUN_TESTS=1 pnpm release:triple-a` executou checks, build e suíte workspace no HEAD `c1059e6c`; decisão permaneceu bloqueada                                                                                                                                                                                                                                        |
-| Contratos direcionados | CI contract `18/18`; Vitest `38/38`; Node `8/8`; typecheck, lint, Prettier e `git diff --check`: PASS                                                                                                                                                                                                                                                                         |
-| Fixtures k6            | `pnpm benchmark:k6:seed` repetido `2/2` no PostgreSQL descartável, sem reassignment entre tenants                                                                                                                                                                                                                                                                             |
-| Performance local      | k6 `operational-minimum-v1`, 60 VUs, `3.001` iterações, `9/9` SLOs; API p95 `124,84 ms`, p99 `166,49 ms`, query p95 `143 ms`, erros `0%`, disponibilidade `100%`, API/PostgreSQL/Redis em 2 CPUs e k6 `GOMAXPROCS=1`; reprodução equivalente ao watcher de 5 s passou `3.371` iterações e `9/9` (`p95 94,29 ms`, `p99 136,61 ms`, query `107 ms`, 44 amostras de diagnóstico) |
-| Suíte crítica local    | `615/615` testes PostgreSQL e `11/11` suítes de processo com relatórios completos; Redis local descartável configurado explicitamente                                                                                                                                                                                                                                         |
-| Supply/artefatos       | Diretório de resultados versionado com `.gitkeep`; relatório gerado localmente foi descartado; nenhum PASS externo foi inventado                                                                                                                                                                                                                                              |
+| Gate estrito           | `NOT_EVALUATED` para `9a69e9e2` até a coleta final; release permanece `BLOCKED / NOT PROVEN` |
+| Workspace              | Typecheck e lint completos PASS; contrato CI `19/19`; testes focados `46/46`; checker de estado `11/11` |
+| Identidade/evidence graph | `validate:candidate-identity` PASS; graph gerado com status `BLOCKED`, candidate `PASS`, CI/authority `NOT_PROVEN` |
+| Coverage isolado       | `2.661` testes; 2.658 passados e 3 skipped, mas cobertura global `77,97/71,27/79,17/79,60%` (statements/branches/functions/lines), abaixo de 82% |
+| E2E clínico browser    | Stack Docker descartável; Chromium desktop/mobile; `4/4` testes PASS, incluindo Axe e recuperação |
+| Performance/target     | Sem certificação do candidato; k6/target/soak/restore/UAT/attestation permanecem `NOT_PROVEN` |
+| Supply/artefatos       | O graph e o pacote local são gerados fail-closed; nenhum PASS externo ou histórico foi inventado |
 
-Esses resultados são bounded ao ambiente local. A execução k6 usou um banco
-descartável local e não é promovida para target, UAT, branch protection ou
-autoridade de release.
+Esses resultados são limitados ao ambiente local. O banco usado na cobertura e
+no E2E é descartável; nenhum resultado é promovido para target, UAT, branch
+protection ou autoridade de release.
 
 ## CI remoto e reancoragem
 
-O [CI #155](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34695557227) pertence ao commit documental anterior `e6edb6f8` e não é usado como prova do SHA `e605597c`. Esta atualização deve disparar uma nova execução com os guards vinculados ao candidato correto.
+Não existe ainda run remoto vinculado ao SHA exato `9a69e9e2`; [CI #35030045158](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35030045158) é do SHA anterior `afb5eef8` e permanece somente diagnóstico histórico. A publicação do candidato deve disparar nova execução com os guards vinculados à identidade corrente.
 
 
 O [CI #143](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34678150409)
