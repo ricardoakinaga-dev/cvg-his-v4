@@ -1,6 +1,7 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 
 import { getPool } from '@cvg-his-v2/shared-database';
+import type { AccountId } from '@cvg-his-v2/shared-types';
 import { withTenantQueryExplicit } from '@cvg-his-v2/tenant-context';
 
 import { DatabaseFiscalRepository } from './database-fiscal.repository.js';
@@ -14,7 +15,7 @@ vi.mock('@cvg-his-v2/tenant-context', () => ({
     fn(pool))
 }));
 
-const accountId = 'account-1';
+const accountId = 'account-1' as AccountId;
 const timestamp = new Date('2026-09-16T12:00:00.000Z');
 const query = vi.fn();
 const pool = { query };
