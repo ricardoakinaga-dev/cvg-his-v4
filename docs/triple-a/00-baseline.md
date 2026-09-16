@@ -1,17 +1,17 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-16T18:04:21Z
+## Snapshot vigente — 2026-09-16T19:03:48Z
 
-O baseline autoritativo do snapshot atual está em: `d13c5a44a91cedde687a9f5acedce80a5b56a047` (manifesto crítico revision 49, ancorado em `dae7bae9`).
+O baseline autoritativo do snapshot atual está em: `c36320d87d70019f7d0e922e023c8379e679a8c0` (manifesto crítico revision 50, ancorado em `e4d3a2b3`).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
 documentação corrente sucede os candidatos históricos sem transferir evidência;
-o candidato `d13c5a44` registra o workflow e a reancoragem do manifesto; a branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
+o candidato `c36320d8` alinha o runner privado à política PostgreSQL 16, preserva checksums de migração e mantém o histórico completo no guard crítico; a branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
 `BLOCKED / NOT PROVEN`.
 
-O [CI #188](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35130610217) rejeitou `Repository Guards` porque os documentos ainda apontavam para o snapshot anterior; esta reconciliação corrige o drift e aguarda novo run terminal. A validação local current passou unit `260/260` arquivos e `2824/2824` testes; o manifesto revision 49 é válido. Evidência crítica, Vue, target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
+O [CI #189](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35132608526) pertence ao candidato anterior e não é transferido: o runner crítico selecionou PostgreSQL 14, incompatível com o SQL histórico, e o checkout raso não conseguiu provar a ancestralidade do manifesto. Esta atualização corrige ambos os pontos e aguarda novo run terminal. A validação local current passou unit `260/260` arquivos e `2824/2824` testes, integração afetada `48/48`, cadeia de migrações `171/171` e provisionamento privado PostgreSQL 16; o manifesto revision 50 é válido. Evidência crítica, Vue, target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
 parcial ou histórico é promovido. Target, recovery, UAT, attestation,
 governança e autoridade de release continuam `NOT PROVEN`.
 

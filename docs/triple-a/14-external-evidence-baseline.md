@@ -6,17 +6,17 @@
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O snapshot atual é
 > `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e`, com código funcional em `578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`, evidência anterior preservada apenas como histórico e identidade canônica em
-> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `d13c5a44a91cedde687a9f5acedce80a5b56a047`; o [CI #188](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35130610217) rejeitou `Repository Guards` porque o snapshot ainda apontava para `53bbee80`. A correção documental e a reancoragem do manifesto foram publicadas; nenhum resultado parcial é transferido.
+> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `c36320d87d70019f7d0e922e023c8379e679a8c0`; o [CI #189](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35132608526) pertence ao candidato anterior e não é transferido. O runner crítico agora usa PostgreSQL 16 e checkout completo; nenhum resultado parcial é transferido.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `d13c5a44a91cedde687a9f5acedce80a5b56a047` (manifesto crítico revision 49, workflow com Chromium para evidência especializada; provas externas e autoridade de release continuam `NOT PROVEN`).
-**Current CI:** [#188](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35130610217) rejeitou o guard documental; o novo run após esta reconciliação ainda não é terminal.
+**Current snapshot:** `c36320d87d70019f7d0e922e023c8379e679a8c0` (manifesto crítico revision 50, workflow com Chromium e runner privado PostgreSQL 16; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current CI:** [#189](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35132608526) falhou no candidato anterior; o novo run do candidato corrente ainda não é terminal.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-16T18:04:21Z
+**Observation:** 2026-09-16T19:03:48Z
 
-**Current local execution:** unit `260/260` arquivos e `2824/2824` testes; integração `105/105` e `933/933`; native-worker, native-api e critical-process passaram; SQL passou com `171` migrações ativas e `7` artefatos históricos no manifest revision 48. A evidência Vue especializada permanece bloqueada pelo renderer Chromium em controles nativos de data e 25 fontes continuam sem evidência aceita. O gate R05-010 permanece `FAIL/BLOCKED`; a validação local não substitui CI pinned, target ou UAT.
+**Current local execution:** unit `260/260` arquivos e `2824/2824` testes; integração fresca completa `105/105` e `933/933` e suíte afetada `48/48`; o runner privado PostgreSQL 16.15 repetiu as `171` migrações e o seed em duas rodadas. A evidência Vue especializada, target, recovery, UAT e autoridade continuam sem prova aceita. O gate R05-010 permanece `FAIL/BLOCKED`; a validação local não substitui CI pinned, target ou UAT.
 
-**Current critical gate:** `NOT_PROVEN` até a recoleta dos cinco shards, SQL e Vue contra o manifesto revision 49; evidência da revision 48 não é transferida, `claim=NOT PROVEN` e `publication_allowed=false`. A identidade e o graph permanecem fail-closed.
+**Current critical gate:** `NOT_PROVEN` até a recoleta dos cinco shards, SQL e Vue contra o manifesto revision 50; evidência das revisões anteriores não é transferida, `claim=NOT PROVEN` e `publication_allowed=false`. A identidade e o graph permanecem fail-closed.
 
 **Current candidate implementation delta:** o workflow de coverage usa
 um índice APT isolado dos archives oficiais assinados do Ubuntu 22.04, pois o
@@ -28,6 +28,8 @@ mas o CI #178 falhou nos gates de coverage, unit, k6, visual e E2E SPA e não au
 The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. Historical runs #137 and #140 belong to earlier SHAs; #140 failed in `Run k6 benchmark`/`Check SLO results`, while #137 passed all published jobs. The performance evidence and its access limitation are reconciled in [critic-performance-assurance-20260911.md](./critic-performance-assurance-20260911.md). Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
 
 ## Current candidate implementation delta
+
+- O job crítico agora provisiona PostgreSQL 16.15 via PGDG assinado com fingerprint verificada, preservando o SQL histórico e os checksums das migrações; o checkout usa `fetch-depth: 0` para provar a ancestralidade do manifesto.
 
 - O logger compartilhado agora redige recursivamente chaves sensíveis, mensagens, erros estruturados, objetos aninhados e referências circulares; `@cvg-his-v2/shared-logging` passou 16/16 testes locais.
 - The prepublication gate now evaluates an explicit phase and marks criteria that require a published target as `NOT_APPLICABLE`; they are excluded from the phase denominator and critical/P0 counts without weakening the postpublication quality bar.

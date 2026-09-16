@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `d13c5a44a91cedde687a9f5acedce80a5b56a047`
-(candidato corrente; manifesto crítico revision 49 ancorado em `dae7bae9`; a branch de assurance é ancestral sem commits exclusivos; o [CI #188](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35130610217) rejeitou o guard documental por snapshot stale e não é promovido)
+**Candidate funcional avaliado:** `c36320d87d70019f7d0e922e023c8379e679a8c0`
+(candidato corrente; manifesto crítico revision 50 ancorado em `e4d3a2b3`; a branch de assurance é ancestral sem commits exclusivos; o [CI #189](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35132608526) pertence ao candidato anterior e não é promovido)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -10,20 +10,21 @@
 O candidato preserva o modular monolith e a reconciliação fail-closed de
 proveniência. A paridade de Patient e o CORS credentialado restrito foram
 validados. No candidato corrente, unit passou `260/260` arquivos e `2824/2824`
-testes, o manifesto crítico está na revisão 49 e o workflow instala Chromium
-para a coleta especializada. A evidência crítica/Vue e o CI terminal ainda são
+testes, a integração afetada passou `48/48`, o manifesto crítico está na revisão 50
+e o workflow instala Chromium e provisiona PostgreSQL 16 para a coleta especializada. A evidência crítica/Vue e o CI terminal ainda são
 `NOT PROVEN`; não há target, recovery,
 attestation, UAT, governança, performance certificada ou autoridade de release.
 Nenhum threshold foi relaxado e não há autorização para declarar `main green`,
 release produtivo ou `TRIPLE-A VERIFIED`.
 
-## Atualização corrente — revisão 49
+## Atualização corrente — revisão 50
 
-O manifest crítico revision 49 foi reancorado em `dae7bae9`, sem mudança de
+O manifest crítico revision 50 foi reancorado em `e4d3a2b3`, sem mudança de
 thresholds, fontes ou aplicabilidade funcional; o snapshot corrente é
-`d13c5a44a91cedde687a9f5acedce80a5b56a047`. Os produtores atuais são identificados na
+`c36320d87d70019f7d0e922e023c8379e679a8c0`. O runner crítico preserva o SQL histórico e
+usa PostgreSQL 16. Os produtores atuais são identificados na
 [`evidência corrente`](./17-current-execution-evidence.md). O gate consolidado
-aguarda a recoleta dos cinco shards e SQL contra o manifesto atual; a evidência
+aguarda a recoleta dos cinco shards, SQL e Vue contra o manifesto atual; a evidência
 Vue especializada e a cobertura crítica do candidato ainda não têm prova
 terminal aceita. O candidato permanece
 **BLOCKED / NOT PROVEN**.

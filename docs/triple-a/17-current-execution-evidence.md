@@ -1,22 +1,22 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato de código observado em 2026-09-16T18:04:21Z
+## Candidato de código observado em 2026-09-16T19:03:48Z
 
-- SHA de código e documentação: `d13c5a44a91cedde687a9f5acedce80a5b56a047`; identidade em
+- SHA de código e documentação: `c36320d87d70019f7d0e922e023c8379e679a8c0`; identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O manifesto crítico está na revisão 49, ancorado em `dae7bae9`; o candidato também instala Chromium no job de cobertura especializada. Rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- O manifesto crítico está na revisão 50, ancorado em `e4d3a2b3`; o candidato instala Chromium, provisiona PostgreSQL 16 via PGDG fingerprint-pinned e preserva o histórico no job crítico. Rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
 
 ## Validações locais
 
 | Escopo                 | Resultado                                                                                                                                                                                                                                                                                                                                                                     |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate crítico R05-010   | `NOT_PROVEN` enquanto a recoleta da revisão 49 não terminar; thresholds e escopo inalterados |
-| Workspace              | Unit no candidato `260/260` arquivos e `2824/2824` testes; checker de estado `11/11`; demais produtores aguardam recoleta vinculada à revisão 49 |
-| Identidade/evidence graph | Identidade canônica do candidato `d13c5a44`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` até evidência terminal e autoridade externa |
-| Coverage crítico current | O manifesto foi reancorado na revisão 49; os shards publicados contra a revisão 48 não são transferidos e a recoleta current está em execução no CI |
+| Gate crítico R05-010   | `NOT_PROVEN` enquanto a recoleta da revisão 50 não terminar; thresholds e escopo inalterados |
+| Workspace              | Unit no candidato `260/260` arquivos e `2824/2824` testes; integração afetada `48/48`; checker de estado `11/11`; demais produtores aguardam recoleta vinculada à revisão 50 |
+| Identidade/evidence graph | Identidade canônica do candidato `c36320d8`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` até evidência terminal e autoridade externa |
+| Coverage crítico current | O manifesto foi reancorado na revisão 50; os shards publicados contra revisões anteriores não são transferidos e a recoleta current aguarda o CI do candidato |
 | Vue especializado current | O workflow agora instala Chromium; evidência current só será aceita após o produtor e o checker concluírem no mesmo candidato |
-| SQL/migrações current  | PostgreSQL privado socket-only; `171` migrações executáveis + `7` históricos; clean/upgrade/reexecução/failure recovery/invariants PASS; run `61cd86fc-48d0-4fc3-9785-4635ab0a8558` |
+| SQL/migrações current  | PostgreSQL 16.15 privado socket-only; `171` migrações executáveis + `7` históricos; cadeia completa e seed repetível em duas rodadas PASS localmente |
 | Performance/target     | Sem certificação do candidato; k6/target/soak/restore/UAT/attestation permanecem `NOT_PROVEN` |
 | Supply/artefatos       | O graph e o pacote local são gerados fail-closed; nenhum PASS externo ou histórico foi inventado |
 
@@ -26,7 +26,7 @@ protection ou autoridade de release.
 
 ## CI remoto e reancoragem
 
-O [CI #188](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35130610217), no candidato `d13c5a44`, teve `Repository Guards` rejeitado porque estes documentos ainda apontavam para `53bbee80` enquanto o workflow e o manifesto já tinham mudado. A presente reconciliação corrige o snapshot; o run não é promovido como prova verde.
+O [CI #189](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35132608526), no candidato anterior `23a57240`, falhou no `Critical Coverage Gate` porque o provisionamento selecionou PostgreSQL 14, incompatível com o SQL histórico, e o checkout raso impediu provar a ancestralidade do manifesto. O candidato corrente usa PostgreSQL 16 via PGDG fingerprint-pinned e `fetch-depth: 0`; o novo run ainda precisa terminar e o resultado anterior não é promovido como prova verde.
 
 O [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106), executado no `main@6b7c1cec`, terminou `failure`. Repository Guards, API Contract, Integration e Windows passaram junto com os checks de segurança, typecheck, lint, OpenAPI e build; Critical Coverage, Coverage, Unit Tests, Performance/k6, Visual Regression e E2E SPA falharam. O E2E remoto falhou na etapa principal e na validação de usabilidade, embora a API clínica canônica tenha passado; o gate local explícito do candidato retornou `51/49/18` e bloqueou publicação; nenhum resultado histórico ou parcial é promovido.
 
