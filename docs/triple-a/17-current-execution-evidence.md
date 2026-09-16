@@ -1,22 +1,22 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato de código observado em 2026-09-16T08:04:23Z
+## Candidato de código observado em 2026-09-16T09:46:22Z
 
-- SHA de código e documentação: `b0e536e27155036782105ddd00a8329940476b16` (candidato funcional/documental corrente; código funcional em `2949fedf`); identidade em
+- SHA de código e documentação: `01e5a168204ccb0f157ac96e7183391e1a1fc609` (HEAD documental `4d7b6f569414fb254d98d164b5897a8602dfb3fc`); identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O código funcional do candidato está em `2949fedf`; `HEAD`/`main` local estão em `b0e536e2`, enquanto `origin/main` permanece em `92908d53`; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- O código funcional está em `01e5a168`; `HEAD`/`main` local estão em `4d7b6f56`, `origin/main` em `6217654a`; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
 
 ## Validações locais
 
 | Escopo                 | Resultado                                                                                                                                                                                                                                                                                                                                                                     |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate estrito           | `BLOCKED`, score `51`, critical `49`, open P0 `18`, `claim=NOT PROVEN`, `publication_allowed=false`, executado explicitamente com `commitSha=358e546e` |
+| Gate crítico R05-010   | `FAIL/BLOCKED` por 19 métricas abaixo dos thresholds; erros de proveniência, Vue e SQL zerados após recoleta current; thresholds e escopo inalterados |
 | Workspace              | Typecheck e lint completos PASS; contrato CI `19/19`; testes focados `46/46`; checker de estado `11/11` |
-| Identidade/evidence graph | Identidade reancorada no candidato `f09e79fd`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` até evidência externa terminal |
-| Coverage isolado       | `2.661` testes; 2.658 passados e 3 skipped, mas cobertura global `77,97/71,27/79,17/79,60%` (statements/branches/functions/lines), abaixo de 82% |
-| E2E SPA completo       | Stack Docker descartável; Chromium; `424/424` testes PASS no SHA `6b7c1cec`, zero skipped; evidência SHA-bound válida com `150` rotas e `300` navegações |
-| Regressão visual       | Incluída na suíte completa; casos visuais locais PASS; o produtor Vue especializado permanece separado e opt-in |
+| Identidade/evidence graph | Identidade canônica funcional `01e5a168`, compatível com descendente documental `4d7b6f56`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` até evidência externa terminal |
+| Coverage crítico current | Cinco shards promovidos no manifest revision 35; 19 métricas agregadas ainda abaixo de 85% (auth, billing-cash, inpatient, records, prescriptions, pix, webhooks, http-routes e repositories) |
+| Vue especializado current | Stack privada; build PASS, Vitest `60` suítes/`399` testes, Playwright/consumer PASS; 25 rotas selecionadas; run `79c02a1b-1858-4f2b-9e06-9403c3f2a2b5` |
+| SQL/migrações current  | PostgreSQL privado socket-only; `171` migrações executáveis + `7` históricos; clean/upgrade/reexecução/failure recovery/invariants PASS; run `b92d78a5-aaa0-4db1-9b5b-cceb37658b98` |
 | Performance/target     | Sem certificação do candidato; k6/target/soak/restore/UAT/attestation permanecem `NOT_PROVEN` |
 | Supply/artefatos       | O graph e o pacote local são gerados fail-closed; nenhum PASS externo ou histórico foi inventado |
 

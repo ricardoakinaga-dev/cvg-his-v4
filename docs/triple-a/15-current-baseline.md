@@ -1,8 +1,8 @@
 # Baseline corrente — State of Art
 
-Observado em `2026-09-16T08:04:23Z`, no candidato documental
-`b0e536e27155036782105ddd00a8329940476b16`, cujo commit funcional é
-`2949fedf010febbe4bc71acd2071a2211b4688f3`. A identidade canônica está em
+Observado em `2026-09-16T09:46:22Z`, no candidato funcional
+`01e5a168204ccb0f157ac96e7183391e1a1fc609`, documentado no HEAD
+`4d7b6f569414fb254d98d164b5897a8602dfb3fc`. A identidade canônica está em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json) e o
 evidence graph corrente é gerado por `pnpm evidence:triple-a:graph`.
 O candidato preserva a reconciliação append-only do controlador e a paridade
@@ -11,18 +11,18 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| current_sha     | `b0e536e27155036782105ddd00a8329940476b16` (identidade documental corrente; código funcional em `2949fedf`) |
-| main_sha        | `main@b0e536e2`; `origin/main@92908d53`; a branch de assurance é ancestral, sem commits exclusivos; rollback preservado |
+| current_sha     | `01e5a168204ccb0f157ac96e7183391e1a1fc609` (candidato funcional; documentação current em `4d7b6f56`) |
+| main_sha        | `main@4d7b6f56`; `origin/main@6217654a`; a branch de assurance é ancestral, sem commits exclusivos; rollback preservado |
 | worktree        | Limpo após o commit documental de reancoragem; artefatos em `artifacts/` permanecem ignorados |
 | rollback        | `origin/fix/state-of-art-ci-assurance@fe5406c2`; sem force-push |
-| ci_run          | `NOT_FOUND` para o candidato `b0e536e2`; o último run remoto verificável é o [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) no `main@6b7c1cec`, terminado em `failure`. |
+| ci_run          | `NOT_FOUND` para o candidato `01e5a168`; o último run remoto verificável é o [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) em outro SHA, terminado em `failure`. |
 | ci_failure      | Coverage crítico/geral, Unit Tests, Performance/k6, Visual Regression e E2E SPA falharam; nenhum threshold foi relaxado. |
 | overall_score   | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `51`, abaixo do mínimo 97 |
 | critical_score  | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `49`, abaixo do mínimo 95 |
 | open_p0         | `NOT_EVALUATED` no gate R05-010; o último gate estrito histórico registrou `18`, acima do máximo 0 |
 | local_gate      | `FAIL/BLOCKED` no R05-010: 19 métricas críticas abaixo dos limiares; `claim=NOT PROVEN`, `publication_allowed=false` |
-| implemented     | Paridade do contrato Patient entre OpenAPI, parser/runtime e fixture; manifest crítico revision 33; evidência e estado reconciliados append-only; nenhum threshold foi alterado |
-| verified_local  | Unit `241/241` arquivos e `2732/2732` testes; integração `105/105` e `933/933`; native-worker/API/process, Vue especializado e SQL PASS current; gate agregado permanece bloqueado por 19 métricas |
+| implemented     | Paridade do contrato Patient; CORS credentialado restrito a origens permitidas; manifest crítico revision 35; evidência e estado reconciliados append-only; nenhum threshold foi alterado |
+| verified_local  | API build/server `68/68`; unit `241/241` arquivos e `2732/2732` testes; integração `105/105` e `933/933`; native-worker/API/process, Vue especializado (25 rotas) e SQL (171 migrações) PASS current; gate agregado permanece bloqueado por 19 métricas |
 | verified_remote | `NOT_PROVEN`: o CI #178 terminou com falhas em coverage crítico/geral, unidade, k6, visual e SPA E2E; target, recovery, UAT, attestation, governança de branch e autoridade de release seguem ausentes |
 | verified_target | `NOT_PROVEN` |
 | blocked         | 19 métricas do R05-010 abaixo do limiar; CI remoto terminal do candidato, target, restore/DR, performance certificada, UAT e autoridade humana continuam abertos |

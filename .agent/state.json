@@ -18,7 +18,7 @@
   "active_execplan": ".agent/plans/repository-state-of-art-remediation-execplan.md",
   "active_task": "TRIPLE-A-RELEASE-CONTROL",
   "verification_state": "PARTIAL",
-  "repository_state": "Recuperação em 2026-09-16: HEAD/main/origin/main permanecem alinhados em 6217654ab33b0c8c8d720dd8ac2d7c6f97629257; a branch origin/fix/state-of-art-ci-assurance é ancestral e não há merge funcional pendente. A árvore estava limpa antes desta frente. A evidência crítica foi coletada no commit funcional 2949fedf010febbe4bc71acd2071a2211b4688f3 e os commits posteriores alteraram somente controle/documentação; o checker exigia igualdade literal com HEAD e foi endurecido para aceitar apenas descendência documental comprovada, mantendo drift de runtime/configuração stale. O próximo slice é TRIPLE-A-RELEASE-CONTROL:MA05-D5-AND-COVERAGE: registrar o helper no manifesto, revalidar a coleta e elevar cobertura por domínio sem reduzir thresholds. O gate R05-010 permanece FAIL/BLOCKED por 19 métricas abaixo dos limiares; CI remoto, target, UAT, recovery, attestation, autoridade e Triplo AAA continuam NOT PROVEN.",
+  "repository_state": "Reconciliado em 2026-09-16: HEAD/main está em 4d7b6f569414fb254d98d164b5897a8602dfb3fc, origin/main em 6217654ab33b0c8c8d720dd8ac2d7c6f97629257 e origin/fix/state-of-art-ci-assurance em fe5406c23c515585629060e0dc01b91f2d113d65; a branch de assurance é ancestral e não há merge funcional pendente. O candidato funcional é 01e5a168204ccb0f157ac96e7183391e1a1fc609 e o manifest crítico está na revisão 35. Após a correção CORS, a API/server, cinco shards críticos, Vue especializado e SQL foram reexecutados com PASS e proveniência válida; o checker R05-010 permanece FAIL/BLOCKED somente por 19 métricas abaixo dos limiares. Thresholds, denominador, escopo e aplicabilidade permanecem intactos; CI remoto, target, UAT, recovery, attestation, autoridade e Triplo AAA continuam NOT PROVEN.",
   "instruction_scope_refs": [
     ".agent/plans/repository-state-of-art-remediation-execplan.md",
     "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
@@ -33,8 +33,8 @@
     "docs/2026-09-13-backlog-prontidao-producao.md"
   ],
   "last_gate_record": ".agent/gates/implementation-ready-triple-a-release-control-20260912-r3.json",
-  "last_event_id": "EVT-TRIPLE-A-RECOVERY-CANDIDATE-BINDING-20260916",
-  "state_revision": 108,
+  "last_event_id": "EVT-TRIPLE-A-REV35-REBLOCK-20260916",
+  "state_revision": 111,
   "next_gate": "VERIFIED",
   "active_action_id": "TRIPLE-A-RELEASE-CONTROL:MA05-D5-AND-COVERAGE",
   "blocked_by": [
@@ -64,5 +64,5 @@
     "PROD-027 behavioral parity taxonomy, 45-module classification, fixtures and acceptance — Product/QA/domain authority",
     "PROD-062 family verifier trust root, targets, limits, issuer policy and acceptance — Platform/Security/QA authority"
   ],
-  "updated_at": "2026-09-16T08:31:58Z"
+  "updated_at": "2026-09-16T09:57:03Z"
 }

@@ -1,20 +1,20 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-16T08:04:23Z
+## Snapshot vigente — 2026-09-16T09:46:22Z
 
-O baseline autoritativo do candidato funcional/documental atual está em: `b0e536e27155036782105ddd00a8329940476b16` (código funcional `2949fedf010febbe4bc71acd2071a2211b4688f3`).
+O baseline autoritativo do candidato funcional atual está em: `01e5a168204ccb0f157ac96e7183391e1a1fc609` (documentação current em `4d7b6f569414fb254d98d164b5897a8602dfb3fc`).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
 documentação corrente sucede os candidatos históricos sem transferir evidência;
-`HEAD/main@b0e536e2` é dois commits documentalmente à frente de `origin/main@92908d53`; a branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
+`HEAD/main@4d7b6f56` é um descendente documental de `origin/main@6217654a`; a branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
 `BLOCKED / NOT PROVEN`.
 
-O [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106), disparado no
+O [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106), disparado em outro SHA no
 `main@6b7c1cec`, terminou `failure`: guards, segurança, typecheck, lint,
 OpenAPI, build, contratos de API, integração e Windows passaram; coverage
-crítico/geral, unidade, k6, visual e SPA E2E falharam. Nenhum resultado
+crítico/geral, unidade, k6, visual e SPA E2E falharam. A recoleta local current do candidato passou API server `68/68`, cinco shards críticos, Vue (25 rotas) e SQL (171 migrações), mas o gate mantém 19 métricas abaixo dos thresholds. Nenhum resultado
 parcial ou histórico é promovido. Target, recovery, UAT, attestation,
 governança e autoridade de release continuam `NOT PROVEN`.
 

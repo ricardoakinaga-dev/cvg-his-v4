@@ -5,18 +5,18 @@
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA de código atual é
-> `b0e536e27155036782105ddd00a8329940476b16`, com código funcional `2949fedf010febbe4bc71acd2071a2211b4688f3`, evidência anterior preservada apenas como histórico e identidade canônica em
+> `01e5a168204ccb0f157ac96e7183391e1a1fc609`, com documentação current em `4d7b6f569414fb254d98d164b5897a8602dfb3fc`, evidência anterior preservada apenas como histórico e identidade canônica em
 > [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106), executado em outro SHA (`main@6b7c1cec`), terminou `failure`: guards, segurança, typecheck, lint, OpenAPI, build, contratos de API, integração e Windows passaram; critical/general coverage, unit, k6, visual e SPA E2E falharam.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `b0e536e27155036782105ddd00a8329940476b16` (identity/evidence graph reancorados; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current snapshot:** `01e5a168204ccb0f157ac96e7183391e1a1fc609` (identity/evidence graph reancorados; provas externas e autoridade de release continuam `NOT PROVEN`).
 **Current CI:** [#178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) terminou `failure` no `main@6b7c1cec`; não existe CI verde qualificável.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-16T08:04:23Z
+**Observation:** 2026-09-16T09:46:22Z
 
-**Current local execution:** typecheck/lint e contratos focados passaram; o E2E SPA Docker passou `424/424` no `HEAD`, sem skipped, com `150` rotas e `300` navegações, e a validação de evidência SHA-bound passou. A cobertura isolada anterior executou `2.661` testes, mas ficou em `77,97%` statements, `71,27%` branches, `79,17%` functions e `79,60%` lines, abaixo de 82%. A validação local não substitui CI pinned, target ou UAT.
+**Current local execution:** API build/server `68/68`; unit `241/241` arquivos e `2732/2732` testes; integração `105/105` e `933/933`; native-worker/API/process, Vue especializado (25 rotas) e SQL (171 migrações) passaram current no manifest revision 35. O gate R05-010 permanece `FAIL/BLOCKED` por 19 métricas abaixo de 85%; a validação local não substitui CI pinned, target ou UAT.
 
-**Current strict gate:** último resultado estrito conhecido `BLOCKED / NOT PROVEN`, score `51`, critical `49`, open P0 `18`, `claim=NOT PROVEN` e `publication_allowed=false`, executado explicitamente no candidato anterior `358e546e` e não promovido. A identidade e o graph permanecem fail-closed.
+**Current critical gate:** `FAIL/BLOCKED` por 19 métricas abaixo dos thresholds, com erros de proveniência, Vue e SQL zerados; `claim=NOT PROVEN` e `publication_allowed=false`. A identidade e o graph permanecem fail-closed.
 
 **Current candidate implementation delta:** o workflow de coverage usa
 um índice APT isolado dos archives oficiais assinados do Ubuntu 22.04, pois o
