@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "2949fedf010febbe4bc71acd2071a2211b4688f3",
+  "head": "a67ec61781994c250bf6ee13d7c3c3fa41f4c059",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -8286,7 +8286,9 @@
     "apps/spa/src/services/__tests__/critical-service-contracts.test.ts",
     "tests/unit/db/canonical-schema-catalog.test.ts",
     "apps/api/src/registry-request-boundaries.test.ts",
-    "apps/api/src/registry-request-boundaries.ts"
+    "apps/api/src/registry-request-boundaries.ts",
+    "scripts/lib/candidate-binding.mjs",
+    "scripts/promote-critical-shard.mjs"
   ],
   "scopeHistory": [
     {
@@ -10447,6 +10449,27 @@
       "added": [],
       "removed": [],
       "changed": []
+    },
+    {
+      "manifestRevision": 34,
+      "observedAt": "2026-09-16T08:35:45.645Z",
+      "collectionCommit": "a67ec61781994c250bf6ee13d7c3c3fa41f4c059",
+      "previousManifestSha256": "035fc93421038e46b8be7582322c89e901e53a21330c0c5ed2c427d4651ca1ec",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-035fc93421038e46b8be7582322c89e901e53a21330c0c5ed2c427d4651ca1ec.json",
+      "previousSourceSetSha256": "c02011a9e76ec80a6243e5ce15a2c53e07fd3bbb945251eb4d0bcfe99289f84a",
+      "sourceSetSha256": "c02011a9e76ec80a6243e5ce15a2c53e07fd3bbb945251eb4d0bcfe99289f84a",
+      "reason": "Reancorar o modelo de cobertura após endurecer o binding de candidato e promoção",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "scripts/lib/candidate-binding.mjs",
+        "scripts/promote-critical-shard.mjs"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "6b090e95795e93b5a31ee583f68ad12a80155da5c267106ac8fa35701c6e73ff",
+      "executionInputsSha256": "26facf5233b2a9d222baa604dd1f890385b8d205666913c7408d5a8b277b9163"
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -11380,9 +11403,9 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 33,
+  "manifestRevision": 34,
   "sourceSetSha256": "c02011a9e76ec80a6243e5ce15a2c53e07fd3bbb945251eb4d0bcfe99289f84a",
-  "executionInputsSha256": "6b090e95795e93b5a31ee583f68ad12a80155da5c267106ac8fa35701c6e73ff",
+  "executionInputsSha256": "26facf5233b2a9d222baa604dd1f890385b8d205666913c7408d5a8b277b9163",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,
