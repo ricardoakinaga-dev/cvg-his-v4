@@ -64,7 +64,7 @@ const lotRow = {
   supplier: null,
   manufacture_date: null,
   expiry_date: timestamp,
-  status: 'available',
+  status: 'active',
   created_at: timestamp,
   updated_at: timestamp
 };
@@ -73,7 +73,7 @@ const movementRow = {
   id: 'movement-1',
   account_id: accountId,
   inventory_item_id: 'item-1',
-  movement_type: 'in',
+  movement_type: 'inbound',
   quantity_delta: '10',
   balance_before: '0',
   balance_after: '10',
@@ -123,7 +123,7 @@ const movement = {
   id: 'movement-1' as never,
   accountId: accountId as never,
   inventoryItemId: item.id,
-  movementType: 'in' as const,
+  movementType: 'inbound' as const,
   quantityDelta: 2,
   balanceBefore: 10,
   balanceAfter: 12,
@@ -163,7 +163,7 @@ const lot = {
   supplier: undefined,
   manufactureDate: undefined,
   expiryDate: timestamp.toISOString(),
-  status: 'available' as const,
+  status: 'active' as const,
   createdAt: timestamp.toISOString(),
   updatedAt: timestamp.toISOString()
 };
