@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "324099e5a54537ca1349f3310639c3a12afbae36",
+  "head": "4da2e56d4bf814b46109b49a29d47f477382aa45",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -60,6 +60,7 @@
       "apps/api/src/laboratory-provider-keyring.test.ts",
       "apps/api/src/laboratory-result-import-repository.test.ts",
       "apps/api/src/payment-gateway.test.ts",
+      "apps/api/src/registry-request-boundaries.test.ts",
       "apps/api/src/routes/access-control-audit-events.test.ts",
       "apps/api/src/routes/administrative-reports-routes.test.ts",
       "apps/api/src/routes/advance-payments-routes.test.ts",
@@ -868,7 +869,7 @@
     },
     {
       "path": "apps/api/src/routes/owners-routes.ts",
-      "sha256": "e9f5ad41396117884c7970f6c92647021774f74850355a00e7a846c154746390",
+      "sha256": "f44939d041abd6aef0f070b3f598e1db3a711a47e93446ed559d85e262b09254",
       "components": [
         "http-routes"
       ],
@@ -878,7 +879,7 @@
     },
     {
       "path": "apps/api/src/routes/patients-routes.ts",
-      "sha256": "bf9253c39cee083620581ae2bbab28fd0d5a85adfd95f7a74c5c7ca88a5225c5",
+      "sha256": "9c58085152b1f75b6a31c2a4abdc8db1f0e273a73d93ada028468d84d70ccbc3",
       "components": [
         "http-routes"
       ],
@@ -8283,7 +8284,8 @@
     "scripts/lib/sql-migration-evidence.mjs",
     "scripts/reconcile-sql-migration-scope.mjs",
     "apps/spa/src/services/__tests__/critical-service-contracts.test.ts",
-    "tests/unit/db/canonical-schema-catalog.test.ts"
+    "tests/unit/db/canonical-schema-catalog.test.ts",
+    "apps/api/src/registry-request-boundaries.test.ts"
   ],
   "scopeHistory": [
     {
@@ -10345,6 +10347,46 @@
           "after": "bc051d602c7e3af57a894b53f16244710e16207a2c9f6758904a41716d9ae078"
         }
       ]
+    },
+    {
+      "manifestRevision": 29,
+      "observedAt": "2026-09-16T02:57:43.382Z",
+      "collectionCommit": "4da2e56d4bf814b46109b49a29d47f477382aa45",
+      "previousManifestSha256": "61a03e85f268ff4477fdc8b16e24eb3b73ac2f0efde852ee1d34a24dda2d2126",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-61a03e85f268ff4477fdc8b16e24eb3b73ac2f0efde852ee1d34a24dda2d2126.json",
+      "previousSourceSetSha256": "5029a4d1421d57b17440a59d2a9529724542fc505f3785ec8e4ee5afabda44b4",
+      "sourceSetSha256": "c02011a9e76ec80a6243e5ce15a2c53e07fd3bbb945251eb4d0bcfe99289f84a",
+      "reason": "refresh current candidate source identities and native API inventory",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/routes/owners-routes.ts",
+          "before": "e9f5ad41396117884c7970f6c92647021774f74850355a00e7a846c154746390",
+          "after": "f44939d041abd6aef0f070b3f598e1db3a711a47e93446ed559d85e262b09254"
+        },
+        {
+          "path": "apps/api/src/routes/patients-routes.ts",
+          "before": "bf9253c39cee083620581ae2bbab28fd0d5a85adfd95f7a74c5c7ca88a5225c5",
+          "after": "9c58085152b1f75b6a31c2a4abdc8db1f0e273a73d93ada028468d84d70ccbc3"
+        }
+      ],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "apps/api/src/registry-request-boundaries.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "0aa90f2f46999d0eb69616aabfffdc8d4d31d254ce79a6fdaf2aa57cd8e138cc",
+      "executionInputsSha256": "c24d9627707a5b053c0186b7ec1b9fbb9e23959b647536e10b50801f1a12b292",
+      "nativeChanged": [
+        {
+          "shard": "native-api",
+          "added": [
+            "apps/api/src/registry-request-boundaries.test.ts"
+          ],
+          "removed": []
+        }
+      ]
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -11278,9 +11320,9 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 28,
-  "sourceSetSha256": "5029a4d1421d57b17440a59d2a9529724542fc505f3785ec8e4ee5afabda44b4",
-  "executionInputsSha256": "0aa90f2f46999d0eb69616aabfffdc8d4d31d254ce79a6fdaf2aa57cd8e138cc",
+  "manifestRevision": 29,
+  "sourceSetSha256": "c02011a9e76ec80a6243e5ce15a2c53e07fd3bbb945251eb4d0bcfe99289f84a",
+  "executionInputsSha256": "c24d9627707a5b053c0186b7ec1b9fbb9e23959b647536e10b50801f1a12b292",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,
