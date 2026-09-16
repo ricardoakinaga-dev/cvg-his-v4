@@ -259,7 +259,10 @@ describe('CI repository guardrails', () => {
 
     expect(job).toContain('name: Provision private coverage runner binaries');
     expect(job).toContain('for candidate in postgresql-14 postgresql-16 postgresql-15');
-    expect(job).toContain('apt-get download "${packages[@]}"');
+    expect(job).toContain('sudo apt-get update -y -o Acquire::Retries=3');
+    expect(job).toContain('apt-cache policy "$1"');
+    expect(job).toContain('package_specs+=("${package}=${version}")');
+    expect(job).toContain('apt-get download "${package_specs[@]}"');
     expect(job).toContain('find "${runtime_root}/usr/lib/postgresql" -type f -name initdb');
     expect(job).toContain('find "${runtime_root}/usr/share/postgresql" -type f -name postgres.bki');
   });

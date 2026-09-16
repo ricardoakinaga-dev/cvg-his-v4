@@ -871,23 +871,41 @@ jobs:
           deb_dir="${RUNNER_TEMP}/critical-coverage-debs"
           runtime_root="${RUNNER_TEMP}/critical-coverage-runtime"
           mkdir -p "${deb_dir}" "${runtime_root}"
-          # The hosted image can move between Ubuntu generations while the
-          # workflow label remains stable. Do not fail closed merely because
-          # the old distro package name disappeared; choose an installed
-          # PostgreSQL server package deterministically from the runner's
-          # package index and bind the discovered bin/share directories below.
+          # Refresh the hosted runner index before resolving packages. The
+          # runner image can move between Ubuntu generations while the
+          # workflow label remains stable, so package availability must be
+          # checked from the current candidate version rather than from a
+          # stale package description.
+          sudo apt-get update -y -o Acquire::Retries=3
+          package_version() {
+            apt-cache policy "$1" | awk '$1 == "Candidate:" { print $2; exit }'
+          }
           pg_package=""
+          pg_version=""
           for candidate in postgresql-14 postgresql-16 postgresql-15; do
-            if apt-cache show "${candidate}" >/dev/null 2>&1; then
+            candidate_version="$(package_version "${candidate}")"
+            if [[ -n "${candidate_version}" && "${candidate_version}" != "(none)" ]]; then
               pg_package="${candidate}"
+              pg_version="${candidate_version}"
               break
             fi
           done
-          test -n "${pg_package}"
+          test -n "${pg_package}" && test -n "${pg_version}"
           packages=("${pg_package}" libpq5 redis-server redis-tools liblzf1 libjemalloc2)
+          package_specs=()
+          for package in "${packages[@]}"; do
+            version="$(package_version "${package}")"
+            if [[ -z "${version}" || "${version}" == "(none)" ]]; then
+              echo "No APT candidate found for ${package}" >&2
+              apt-cache policy "${package}" >&2 || true
+              exit 1
+            fi
+            package_specs+=("${package}=${version}")
+          done
+          echo "Selected private coverage PostgreSQL package: ${pg_package}=${pg_version}"
           (
             cd "${deb_dir}"
-            apt-get download "${packages[@]}"
+            apt-get download "${package_specs[@]}"
           )
           for package in "${packages[@]}"; do
             deb="$(find "${deb_dir}" -maxdepth 1 -type f -name "${package}_*.deb" -print -quit)"
