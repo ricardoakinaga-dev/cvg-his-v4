@@ -273,144 +273,145 @@ test.describe('Visual Regression — List Pages', () => {
     });
   });
 
-  test('specialized Vue evidence — every selected manifest route uses the real renderer and action', async ({
-    page
-  }) => {
-    test.skip(
-      !SPECIALIZED_BROWSER_OUTPUT,
-      'opt-in evidence producer run required for specialized Vue evidence'
-    );
-
-    const selectedCases = SPECIALIZED_VUE_CASES.filter(
-      (source) =>
-        SPECIALIZED_SELECTED_SOURCES.size === 0 || SPECIALIZED_SELECTED_SOURCES.has(source.path)
-    );
-    expect(selectedCases, 'specialized Vue selection cannot be empty').not.toHaveLength(0);
-
-    const knownSources = new Set(SPECIALIZED_VUE_CASES.map((source) => source.path));
-    const requestedSources = new Map<string, number>();
-    const emittedBundleSources = new Map(
-      Object.entries(SPECIALIZED_BUILD_SOURCES ?? {}).map(([sourcePath, record]) => [
-        sourcePath,
-        new Set(
-          (record.outputFiles ?? [])
-            .map((output) => output.file)
-            .filter((file): file is string => Boolean(file))
-        )
-      ])
-    );
-    const emittedBundleResponses = new Map<string, number>();
-
-    page.on('request', (request) => {
-      const sourcePath = specializedSourcePathFromUrl(request.url(), knownSources);
-      if (sourcePath) requestedSources.set(sourcePath, 0);
-    });
-    page.on('response', (response) => {
-      const sourcePath = specializedSourcePathFromUrl(response.url(), knownSources);
-      if (sourcePath) requestedSources.set(sourcePath, response.status());
-
-      let assetName = '';
-      try {
-        const pathname = new URL(response.url()).pathname;
-        if (pathname.startsWith('/assets/'))
-          assetName = decodeURIComponent(pathname.replace(/^\/+/, ''));
-      } catch {
-        assetName = '';
-      }
-      if (assetName) {
-        for (const [source, files] of emittedBundleSources) {
-          if (files.has(assetName)) emittedBundleResponses.set(source, response.status());
-        }
-      }
-    });
-    await installSpecializedBrowserRenderObserver(page);
-    // The Playwright global setup already obtained a real access token. Reuse
-    // it here so a single evidence run does not consume a second auth bucket
-    // before the browser exercises the real login flow.
-    const token = process.env.E2E_AUTH_TOKEN || (await getE2EAccessToken());
-    await loginViaToken(page, { accessToken: token });
-    await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
-    const events: Array<Record<string, unknown>> = [];
-
-    for (const source of selectedCases) {
-      await navigateTo(page, source.route);
-      await expect(page.locator('body')).toBeVisible();
-      await exerciseSpecializedBrowserAction(page, source.behavior.action);
-
-      const runtimeEvents = await page.evaluate(() => {
-        const tracker = (
-          globalThis as typeof globalThis & {
-            __CVG_VUE_SPECIALIZED_EVENTS__?: unknown[];
-          }
-        ).__CVG_VUE_SPECIALIZED_EVENTS__;
-        return Array.isArray(tracker) ? tracker : [];
-      });
-      const runtimeEvent = [...runtimeEvents]
-        .reverse()
-        .find(
-          (event) =>
-            (event as { sourcePath?: string; route?: string })?.sourcePath === source.path &&
-            (event as { route?: string })?.route === new URL(`${SPA_URL}${source.route}`).pathname
-        ) as { sourcePath: string; rendered?: boolean } | undefined;
-      const sourceRequest = requestedSources.has(source.path)
-        ? {
-            sourcePath: source.path,
-            status: requestedSources.get(source.path) || 200,
-            observation: 'vite-source-request' as const
-          }
-        : null;
-      const emittedBundleRequest = emittedBundleResponses.has(source.path)
-        ? {
-            sourcePath: source.path,
-            status: emittedBundleResponses.get(source.path) || 200,
-            observation: 'emitted-bundle-request' as const
-          }
-        : null;
-      await expect(
-        runtimeEvent || sourceRequest || emittedBundleRequest,
-        `browser did not load ${source.path} through a real module/render path at ${source.route}`
-      ).toBeTruthy();
-
-      const renderedHtml = await page.locator('body').innerHTML();
-      const sourceBytes = readFileSync(
-        resolve(process.env.CVG_REPO_ROOT || process.cwd(), source.path),
-        'utf8'
+  // This producer-only case must not enter the frozen standard usability
+  // inventory as a skipped test. The specialized evidence command sets the
+  // output path before loading this module, so conditional registration keeps
+  // both contracts honest: standard E2E is complete, while the opt-in run
+  // still executes the real renderer/action proof.
+  if (SPECIALIZED_BROWSER_OUTPUT)
+    test('specialized Vue evidence — every selected manifest route uses the real renderer and action', async ({
+      page
+    }) => {
+      const selectedCases = SPECIALIZED_VUE_CASES.filter(
+        (source) =>
+          SPECIALIZED_SELECTED_SOURCES.size === 0 || SPECIALIZED_SELECTED_SOURCES.has(source.path)
       );
-      events.push({
-        sourcePath: source.path,
-        sourceSha256: sha256(sourceBytes),
-        renderer: 'Playwright browser renderer',
-        rendered: true,
-        responseStatus: runtimeEvent
-          ? 200
-          : sourceRequest?.status ?? emittedBundleRequest?.status,
-        observation: runtimeEvent
-          ? 'runtime-component-hook'
-          : sourceRequest
-            ? 'vite-source-request'
-            : 'emitted-bundle-request',
-        route: source.route,
-        action: source.behavior.action,
-        domFabricated: false,
-        domMutations: 0,
-        renderedHtmlSha256: sha256(renderedHtml)
-      });
-    }
+      expect(selectedCases, 'specialized Vue selection cannot be empty').not.toHaveLength(0);
 
-    writeFileSync(
-      SPECIALIZED_BROWSER_OUTPUT!,
-      `${JSON.stringify(
-        {
-          schemaVersion: 1,
-          kind: 'vue-specialized-browser-evidence',
-          runId: process.env.CVG_VUE_SPECIALIZED_RUN_ID || 'unknown',
-          events
-        },
-        null,
-        2
-      )}\n`
-    );
-  });
+      const knownSources = new Set(SPECIALIZED_VUE_CASES.map((source) => source.path));
+      const requestedSources = new Map<string, number>();
+      const emittedBundleSources = new Map(
+        Object.entries(SPECIALIZED_BUILD_SOURCES ?? {}).map(([sourcePath, record]) => [
+          sourcePath,
+          new Set(
+            (record.outputFiles ?? [])
+              .map((output) => output.file)
+              .filter((file): file is string => Boolean(file))
+          )
+        ])
+      );
+      const emittedBundleResponses = new Map<string, number>();
+
+      page.on('request', (request) => {
+        const sourcePath = specializedSourcePathFromUrl(request.url(), knownSources);
+        if (sourcePath) requestedSources.set(sourcePath, 0);
+      });
+      page.on('response', (response) => {
+        const sourcePath = specializedSourcePathFromUrl(response.url(), knownSources);
+        if (sourcePath) requestedSources.set(sourcePath, response.status());
+
+        let assetName = '';
+        try {
+          const pathname = new URL(response.url()).pathname;
+          if (pathname.startsWith('/assets/'))
+            assetName = decodeURIComponent(pathname.replace(/^\/+/, ''));
+        } catch {
+          assetName = '';
+        }
+        if (assetName) {
+          for (const [source, files] of emittedBundleSources) {
+            if (files.has(assetName)) emittedBundleResponses.set(source, response.status());
+          }
+        }
+      });
+      await installSpecializedBrowserRenderObserver(page);
+      // The Playwright global setup already obtained a real access token. Reuse
+      // it here so a single evidence run does not consume a second auth bucket
+      // before the browser exercises the real login flow.
+      const token = process.env.E2E_AUTH_TOKEN || (await getE2EAccessToken());
+      await loginViaToken(page, { accessToken: token });
+      await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
+      const events: Array<Record<string, unknown>> = [];
+
+      for (const source of selectedCases) {
+        await navigateTo(page, source.route);
+        await expect(page.locator('body')).toBeVisible();
+        await exerciseSpecializedBrowserAction(page, source.behavior.action);
+
+        const runtimeEvents = await page.evaluate(() => {
+          const tracker = (
+            globalThis as typeof globalThis & {
+              __CVG_VUE_SPECIALIZED_EVENTS__?: unknown[];
+            }
+          ).__CVG_VUE_SPECIALIZED_EVENTS__;
+          return Array.isArray(tracker) ? tracker : [];
+        });
+        const runtimeEvent = [...runtimeEvents]
+          .reverse()
+          .find(
+            (event) =>
+              (event as { sourcePath?: string; route?: string })?.sourcePath === source.path &&
+              (event as { route?: string })?.route === new URL(`${SPA_URL}${source.route}`).pathname
+          ) as { sourcePath: string; rendered?: boolean } | undefined;
+        const sourceRequest = requestedSources.has(source.path)
+          ? {
+              sourcePath: source.path,
+              status: requestedSources.get(source.path) || 200,
+              observation: 'vite-source-request' as const
+            }
+          : null;
+        const emittedBundleRequest = emittedBundleResponses.has(source.path)
+          ? {
+              sourcePath: source.path,
+              status: emittedBundleResponses.get(source.path) || 200,
+              observation: 'emitted-bundle-request' as const
+            }
+          : null;
+        await expect(
+          runtimeEvent || sourceRequest || emittedBundleRequest,
+          `browser did not load ${source.path} through a real module/render path at ${source.route}`
+        ).toBeTruthy();
+
+        const renderedHtml = await page.locator('body').innerHTML();
+        const sourceBytes = readFileSync(
+          resolve(process.env.CVG_REPO_ROOT || process.cwd(), source.path),
+          'utf8'
+        );
+        events.push({
+          sourcePath: source.path,
+          sourceSha256: sha256(sourceBytes),
+          renderer: 'Playwright browser renderer',
+          rendered: true,
+          responseStatus: runtimeEvent
+            ? 200
+            : (sourceRequest?.status ?? emittedBundleRequest?.status),
+          observation: runtimeEvent
+            ? 'runtime-component-hook'
+            : sourceRequest
+              ? 'vite-source-request'
+              : 'emitted-bundle-request',
+          route: source.route,
+          action: source.behavior.action,
+          domFabricated: false,
+          domMutations: 0,
+          renderedHtmlSha256: sha256(renderedHtml)
+        });
+      }
+
+      writeFileSync(
+        SPECIALIZED_BROWSER_OUTPUT!,
+        `${JSON.stringify(
+          {
+            schemaVersion: 1,
+            kind: 'vue-specialized-browser-evidence',
+            runId: process.env.CVG_VUE_SPECIALIZED_RUN_ID || 'unknown',
+            events
+          },
+          null,
+          2
+        )}\n`
+      );
+    });
 });
 
 test.describe('Visual Regression — Detail Pages', () => {
@@ -1412,7 +1413,11 @@ async function exerciseSpecializedBrowserAction(page: Page, action: string): Pro
 
   if (action === 'validate-webhook-form') {
     const submit = page.locator('form button[type="submit"]');
-    if ((await submit.count()) > 0 && (await submit.first().isVisible()) && !(await submit.first().isDisabled())) {
+    if (
+      (await submit.count()) > 0 &&
+      (await submit.first().isVisible()) &&
+      !(await submit.first().isDisabled())
+    ) {
       await submit.first().click();
       return;
     }
@@ -1420,7 +1425,11 @@ async function exerciseSpecializedBrowserAction(page: Page, action: string): Pro
 
   if (action === 'validate-empty-form') {
     const submit = page.locator('form button[type="submit"]');
-    if ((await submit.count()) > 0 && (await submit.first().isVisible()) && !(await submit.first().isDisabled())) {
+    if (
+      (await submit.count()) > 0 &&
+      (await submit.first().isVisible()) &&
+      !(await submit.first().isDisabled())
+    ) {
       await submit.first().click();
       return;
     }
@@ -1428,7 +1437,8 @@ async function exerciseSpecializedBrowserAction(page: Page, action: string): Pro
   }
 
   if (action === 'validate-bed-form') {
-    if (await clickFirstSpecializedButton(page, ['Salvar', 'Recarregar setores', 'Atualizar'])) return;
+    if (await clickFirstSpecializedButton(page, ['Salvar', 'Recarregar setores', 'Atualizar']))
+      return;
   }
 
   if (action === 'validate-triage-form') {
@@ -1439,7 +1449,8 @@ async function exerciseSpecializedBrowserAction(page: Page, action: string): Pro
     const form = page.locator('form').first();
     if (await form.isVisible()) {
       const textInput = form.locator('input').first();
-      if ((await textInput.count()) > 0 && await textInput.isVisible()) await textInput.fill('evidence');
+      if ((await textInput.count()) > 0 && (await textInput.isVisible()))
+        await textInput.fill('evidence');
       const submit = form.locator('button[type="submit"]');
       if ((await submit.count()) > 0 && !(await submit.first().isDisabled())) {
         await submit.first().click();
@@ -1450,29 +1461,39 @@ async function exerciseSpecializedBrowserAction(page: Page, action: string): Pro
 
   if (action.includes('tab')) {
     const tabs = page.getByRole('tab');
-    if ((await tabs.count()) > 1 && await tabs.nth(1).isVisible()) {
+    if ((await tabs.count()) > 1 && (await tabs.nth(1).isVisible())) {
       await tabs.nth(1).click();
       return;
     }
   }
 
-  if (action === 'open-triage-edit' || action === 'open-webhook-delivery' || action === 'open-detail-actions') {
-    if (await clickFirstSpecializedButton(page, ['Editar', 'Voltar', 'Recarregar', 'Atualizar'])) return;
-    const links = page.getByRole('link', { name: /Editar|Voltar|Atendimentos|Webhooks|Contas a Receber/i });
-    if ((await links.count()) > 0 && await links.first().isVisible()) {
+  if (
+    action === 'open-triage-edit' ||
+    action === 'open-webhook-delivery' ||
+    action === 'open-detail-actions'
+  ) {
+    if (await clickFirstSpecializedButton(page, ['Editar', 'Voltar', 'Recarregar', 'Atualizar']))
+      return;
+    const links = page.getByRole('link', {
+      name: /Editar|Voltar|Atendimentos|Webhooks|Contas a Receber/i
+    });
+    if ((await links.count()) > 0 && (await links.first().isVisible())) {
       await links.first().click();
       return;
     }
   }
 
-  if (await clickFirstSpecializedButton(page, [
-    'Atualizar',
-    'Recarregar',
-    'Tentar novamente',
-    'Fechar alerta'
-  ])) return;
+  if (
+    await clickFirstSpecializedButton(page, [
+      'Atualizar',
+      'Recarregar',
+      'Tentar novamente',
+      'Fechar alerta'
+    ])
+  )
+    return;
   const recoveryLink = page.getByRole('link', { name: /Voltar|Cancelar/i });
-  if ((await recoveryLink.count()) > 0 && await recoveryLink.first().isVisible()) {
+  if ((await recoveryLink.count()) > 0 && (await recoveryLink.first().isVisible())) {
     await recoveryLink.first().click();
     return;
   }
