@@ -228,7 +228,8 @@ beforeAll(async () => {
   const patient = await postJson<PatientResponse>('/patients', {
     primaryOwnerId: ownerId,
     name: 'Billing API Patient',
-    species: 'canine'
+    species: 'canine',
+    sex: 'unknown'
   });
   expect(patient.status).toBe(201);
   patientId = patient.body.id;

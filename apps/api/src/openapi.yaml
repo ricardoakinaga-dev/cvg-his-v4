@@ -18767,7 +18767,7 @@ components:
 
     CreatePatientRequest:
       type: object
-      required: [name, species, primaryOwnerId]
+      required: [name, species, sex, primaryOwnerId]
       properties:
         name:
           type: string
@@ -18777,6 +18777,10 @@ components:
           type: string
         sex:
           type: string
+          enum: [male, female, unknown]
+        size:
+          type: string
+          enum: [small, medium, large]
         birthDateApproximate:
           type: string
         baseWeightKg:
