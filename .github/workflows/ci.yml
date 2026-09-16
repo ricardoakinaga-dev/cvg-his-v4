@@ -870,31 +870,23 @@ jobs:
           set -euo pipefail
           deb_dir="${RUNNER_TEMP}/critical-coverage-debs"
           runtime_root="${RUNNER_TEMP}/critical-coverage-runtime"
-          apt_root="${RUNNER_TEMP}/critical-coverage-apt"
-          apt_lists="${apt_root}/lists"
           coverage_root="artifacts/consolidacao-2026-09-05/coverage-scope"
           mkdir -p "${coverage_root}"
           exec > >(tee "${coverage_root}/ci-critical-coverage-provision.log") 2>&1
           mkdir -p "${deb_dir}" "${runtime_root}"
-          sudo install -d -m 0755 "${apt_root}" "${apt_lists}" "${apt_lists}/partial"
-          apt_sources="${apt_root}/sources.list"
-          sudo tee "${apt_sources}" >/dev/null <<'APT_SOURCES'
-          deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://archive.ubuntu.com/ubuntu jammy main universe
-          deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://archive.ubuntu.com/ubuntu jammy-updates main universe
-          deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://security.ubuntu.com/ubuntu jammy-security main universe
-          APT_SOURCES
-          apt_options=(
-            -o "Dir::Etc::sourcelist=${apt_sources}"
-            -o "Dir::Etc::sourceparts=-"
-            -o "Dir::State::lists=${apt_lists}/"
-            -o "Dir::State::status=/var/lib/dpkg/status"
-          )
-          # The hosted image may contain third-party APT sources which can
-          # leave apt-get update with a misleading zero exit status after a
-          # partial failure. Resolve only from signed Ubuntu 22.04 archives.
-          sudo apt-get "${apt_options[@]}" update -y -o Acquire::Retries=3
+          # Resolve from an immutable official Ubuntu base instead of the
+          # mutable hosted-runner APT configuration. Package metadata and
+          # downloaded .debs are therefore independent of third-party runner
+          # sources and remain bound to this image digest.
+          docker run --rm --interactive \
+            --volume "${deb_dir}:/out" \
+            ubuntu:22.04@sha256:829f6df217bcbae2b371026e81711d1a787c61b2967ad09d015063663ebafbf7 \
+            bash -se <<'CONTAINER_SCRIPT'
+          set -euo pipefail
+          test "$(dpkg --print-architecture)" = amd64
+          apt-get update -y -o Acquire::Retries=3
           package_version() {
-            apt-cache "${apt_options[@]}" policy "$1" | awk '$1 == "Candidate:" { print $2; exit }'
+            apt-cache policy "$1" | awk '$1 == "Candidate:" { print $2; exit }'
           }
           pg_package=""
           pg_version=""
@@ -907,7 +899,10 @@ jobs:
             fi
           done
           test -n "${pg_package}" && test -n "${pg_version}"
-          packages=("${pg_package}" libpq5 redis-server redis-tools liblzf1 libjemalloc2)
+          pg_client_package="${pg_package/postgresql-/postgresql-client-}"
+          pg_client_version="$(package_version "${pg_client_package}")"
+          test -n "${pg_client_version}" && test "${pg_client_version}" != "(none)"
+          packages=("${pg_package}" "${pg_client_package}" libpq5 libxml2 libldap-2.5-0 libicu70 redis-server redis-tools liblzf1 libjemalloc2 lua-cjson lua-bitop liblua5.1-0)
           package_specs=()
           for package in "${packages[@]}"; do
             version="$(package_version "${package}")"
@@ -919,10 +914,13 @@ jobs:
             package_specs+=("${package}=${version}")
           done
           echo "Selected private coverage PostgreSQL package: ${pg_package}=${pg_version}"
-          (
-            cd "${deb_dir}"
-            apt-get "${apt_options[@]}" download "${package_specs[@]}"
-          )
+          echo "Selected private coverage PostgreSQL client package: ${pg_client_package}=${pg_client_version}"
+          printf '%s\n' "${packages[@]}" > /out/package-manifest
+          cd /out
+          apt-get download "${package_specs[@]}"
+          CONTAINER_SCRIPT
+          mapfile -t packages < "${deb_dir}/package-manifest"
+          test "${#packages[@]}" -eq 13
           for package in "${packages[@]}"; do
             deb="$(find "${deb_dir}" -maxdepth 1 -type f -name "${package}_*.deb" -print -quit)"
             test -n "${deb}"
@@ -951,8 +949,8 @@ jobs:
             echo "LD_LIBRARY_PATH=${runtime_lib}"
             echo "PATH=${pg_bin}:${runtime_root}/usr/bin:${PATH}"
           } >> "${GITHUB_ENV}"
-          "${pg_bin}/postgres" --version
-          "${redis_server}" --version
+          LD_LIBRARY_PATH="${runtime_lib}" "${pg_bin}/postgres" --version
+          LD_LIBRARY_PATH="${runtime_lib}" "${redis_server}" --version
 
       - name: Start private PostgreSQL for critical Vitest integration
         shell: bash
