@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "e4d3a2b37bc28fef96ee9b151d986e0f6cdd85f3",
+  "head": "0812cb49d56a1a2c01775abe9b01a6cb80ec40c4",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -11022,6 +11022,19 @@
       "added": [],
       "removed": [],
       "changed": []
+    },
+    {
+      "manifestRevision": 51,
+      "observedAt": "2026-09-16T19:58:48.471Z",
+      "collectionCommit": "0812cb49d56a1a2c01775abe9b01a6cb80ec40c4",
+      "previousManifestSha256": "ce045c8930c5c5599ee4ba3e409d04817b1be2a29e23a0bc02b485888d75bfdc",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-ce045c8930c5c5599ee4ba3e409d04817b1be2a29e23a0bc02b485888d75bfdc.json",
+      "previousSourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "reason": "Accept Node 22 synthetic class initializer pairs and publish SQL evidence",
+      "added": [],
+      "removed": [],
+      "changed": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -11955,7 +11968,7 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 50,
+  "manifestRevision": 51,
   "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
   "executionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99",
   "specializedEvidence": {
