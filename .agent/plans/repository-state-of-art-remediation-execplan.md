@@ -364,3 +364,9 @@ intencional e a execução subsequente sem `--update-snapshots` passou 29/29 cas
 Chromium, com o caso especializado mantido como opt-in/skipped. O candidato
 funcional `0ca1526a` permanece `BLOCKED / NOT PROVEN` no gate estrito `49/43/20`;
 nenhuma prova local foi promovida para CI, target, UAT ou autoridade.
+
+Plan revision note, 2026-09-16 (strict candidate gate): o controlador foi
+reconciliado no candidato `0b19430e`; documentação, identidade e evidence graph
+foram validados, o gate estrito exato retornou `BLOCKED / NOT PROVEN` `49/43/20`
+e o checker canônico permaneceu `11/11` PASS. Nenhuma evidência externa,
+autoridade humana ou claim de release foi inferida.
