@@ -868,20 +868,36 @@ jobs:
           deb_dir="${RUNNER_TEMP}/critical-coverage-debs"
           runtime_root="${RUNNER_TEMP}/critical-coverage-runtime"
           mkdir -p "${deb_dir}" "${runtime_root}"
+          # The hosted image can move between Ubuntu generations while the
+          # workflow label remains stable. Do not fail closed merely because
+          # the old distro package name disappeared; choose an installed
+          # PostgreSQL server package deterministically from the runner's
+          # package index and bind the discovered bin/share directories below.
+          pg_package=""
+          for candidate in postgresql-14 postgresql-16 postgresql-15; do
+            if apt-cache show "${candidate}" >/dev/null 2>&1; then
+              pg_package="${candidate}"
+              break
+            fi
+          done
+          test -n "${pg_package}"
+          packages=("${pg_package}" libpq5 redis-server redis-tools liblzf1 libjemalloc2)
           (
             cd "${deb_dir}"
-            apt-get download postgresql-14 libpq5 redis-server redis-tools liblzf1 libjemalloc2
+            apt-get download "${packages[@]}"
           )
-          for package in postgresql-14 libpq5 redis-server redis-tools liblzf1 libjemalloc2; do
+          for package in "${packages[@]}"; do
             deb="$(find "${deb_dir}" -maxdepth 1 -type f -name "${package}_*.deb" -print -quit)"
             test -n "${deb}"
             dpkg-deb -x "${deb}" "${runtime_root}"
           done
-          pg_bin="${runtime_root}/usr/lib/postgresql/14/bin"
-          pg_share="${runtime_root}/usr/share/postgresql/14"
+          pg_bin="$(find "${runtime_root}/usr/lib/postgresql" -type f -name initdb -printf '%h\n' -quit)"
+          pg_share="$(find "${runtime_root}/usr/share/postgresql" -type f -name postgres.bki -printf '%h\n' -quit)"
           runtime_lib="${runtime_root}/usr/lib/x86_64-linux-gnu"
           redis_server="${runtime_root}/usr/bin/redis-server"
           redis_cli="${runtime_root}/usr/bin/redis-cli"
+          test -n "${pg_bin}"
+          test -n "${pg_share}"
           test -x "${pg_bin}/initdb"
           test -x "${pg_bin}/postgres"
           test -x "${pg_bin}/pg_isready"

@@ -502,7 +502,7 @@ onMounted(() => {
 }
 
 .workflow-task-due--overdue {
-  color: var(--color-danger, #a52727);
+  color: var(--color-danger-text, #823037);
   font-weight: 700;
 }
 

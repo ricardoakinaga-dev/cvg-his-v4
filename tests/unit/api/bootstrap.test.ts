@@ -23,13 +23,21 @@ describe('bootstrap', () => {
   });
 
   it('keeps in-memory repositories when DATABASE_URL is absent', async () => {
-    const { bootstrapServices } = await import('../../../apps/api/src/bootstrap.ts');
+    const previousRequireTestDb = process.env.REQUIRE_TEST_DB;
+    delete process.env.REQUIRE_TEST_DB;
 
-    const result = await bootstrapServices({});
+    try {
+      const { bootstrapServices } = await import('../../../apps/api/src/bootstrap.ts');
 
-    expect(result.repositoriesUseDatabase).toBe(false);
-    expect(result.databaseDetail).toContain('in-memory');
-    expect(result.fileStorage).toBeDefined();
+      const result = await bootstrapServices({});
+
+      expect(result.repositoriesUseDatabase).toBe(false);
+      expect(result.databaseDetail).toContain('in-memory');
+      expect(result.fileStorage).toBeDefined();
+    } finally {
+      if (previousRequireTestDb === undefined) delete process.env.REQUIRE_TEST_DB;
+      else process.env.REQUIRE_TEST_DB = previousRequireTestDb;
+    }
   });
 
   it.each(['production', 'prod', 'staging', 'stage'])(

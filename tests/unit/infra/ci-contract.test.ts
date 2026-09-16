@@ -244,6 +244,23 @@ describe('CI repository guardrails', () => {
     expect(job).toContain('run: pnpm test:db:stop');
   });
 
+  it('selects an available PostgreSQL package for the private coverage runtime', () => {
+    const jobStart = workflow.indexOf('  critical-coverage-gate:');
+    expect(jobStart).toBeGreaterThan(-1);
+
+    const nextJobOffset = workflow.slice(jobStart + 3).search(/\n {2}[a-z0-9-]+:\n/);
+    const job = workflow.slice(
+      jobStart,
+      nextJobOffset === -1 ? undefined : jobStart + 3 + nextJobOffset
+    );
+
+    expect(job).toContain('name: Provision private coverage runner binaries');
+    expect(job).toContain('for candidate in postgresql-14 postgresql-16 postgresql-15');
+    expect(job).toContain('apt-get download "${packages[@]}"');
+    expect(job).toContain('find "${runtime_root}/usr/lib/postgresql" -type f -name initdb');
+    expect(job).toContain('find "${runtime_root}/usr/share/postgresql" -type f -name postgres.bki');
+  });
+
   it('runs the full workspace suite against the required isolated PostgreSQL', () => {
     const jobStart = workflow.indexOf('  unit-tests:');
     expect(jobStart).toBeGreaterThan(-1);

@@ -90,7 +90,7 @@
           <IconSymbol :name="themeStore.theme === 'dark' ? 'sun' : 'moon'" :size="18" />
         </button>
 
-        <div class="topbar__profile" aria-label="Sessão atual">
+        <div class="topbar__profile" role="group" aria-label="Sessão atual">
           <strong>{{ authStore.userName }}</strong>
           <span>{{ userBadgeId }}</span>
         </div>
