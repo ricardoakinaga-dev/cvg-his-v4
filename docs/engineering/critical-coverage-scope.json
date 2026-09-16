@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "3fca62b740e35b3c66b2cb9c6a05251c9a08b3b9",
+  "head": "578d7271f26f4e41f0d60475c92b9f5da5f0aaf1",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -10674,6 +10674,328 @@
         "packages/modules/staff/src/database-staff.repository.test.ts"
       ],
       "vitestRemoved": []
+    },
+    {
+      "manifestRevision": 41,
+      "observedAt": "2026-09-16T13:06:19.627Z",
+      "collectionCommit": "0836838bd000a980c5e7e6e93fee20ff5e384c3d",
+      "previousManifestSha256": "67dba4543e2a57b913c37a2133d024f103cac66c8059e0bed9b63f6b1d137954",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-67dba4543e2a57b913c37a2133d024f103cac66c8059e0bed9b63f6b1d137954.json",
+      "previousSourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "reason": "Atualizar identidade do candidato após contratos determinísticos, cobertura crítica e correção do cancelamento Pagar.me",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [
+        {
+          "from": "apps/api/src/routes/company-sectors-routes.test.ts",
+          "to": "apps/api/src/routes/company-sectors-routes.test.ts"
+        },
+        {
+          "from": "apps/api/src/routes/inventory-manufacturers-routes.test.ts",
+          "to": "apps/api/src/routes/inventory-manufacturers-routes.test.ts"
+        },
+        {
+          "from": "apps/api/src/routes/inventory-product-groups-routes.test.ts",
+          "to": "apps/api/src/routes/inventory-product-groups-routes.test.ts"
+        },
+        {
+          "from": "apps/api/src/routes/inventory-warehouses-routes.test.ts",
+          "to": "apps/api/src/routes/inventory-warehouses-routes.test.ts"
+        },
+        {
+          "from": "apps/api/src/routes/measurement-units-routes.test.ts",
+          "to": "apps/api/src/routes/measurement-units-routes.test.ts"
+        },
+        {
+          "from": "apps/api/src/server.test.ts",
+          "to": "apps/api/src/server.test.ts"
+        },
+        {
+          "from": "packages/modules/api-keys/src/repositories/database-api-key.repository.test.ts",
+          "to": "packages/modules/api-keys/src/repositories/database-api-key.repository.test.ts"
+        },
+        {
+          "from": "packages/modules/cash/src/database-cash.repository.test.ts",
+          "to": "packages/modules/cash/src/database-cash.repository.test.ts"
+        },
+        {
+          "from": "packages/modules/diagnostics/src/database-diagnostics.repository.test.ts",
+          "to": "packages/modules/diagnostics/src/database-diagnostics.repository.test.ts"
+        },
+        {
+          "from": "packages/modules/diagnostics/src/database-laboratory-catalog.repository.test.ts",
+          "to": "packages/modules/diagnostics/src/database-laboratory-catalog.repository.test.ts"
+        },
+        {
+          "from": "packages/modules/encounters/src/database-clinical-handoff.repository.test.ts",
+          "to": "packages/modules/encounters/src/database-clinical-handoff.repository.test.ts"
+        },
+        {
+          "from": "packages/modules/encounters/src/database-encounter.repository.contract.test.ts",
+          "to": "packages/modules/encounters/src/database-encounter.repository.contract.test.ts"
+        },
+        {
+          "from": "packages/modules/financial/src/database-financial.repository.test.ts",
+          "to": "packages/modules/financial/src/database-financial.repository.test.ts"
+        },
+        {
+          "from": "packages/modules/fiscal/src/database-fiscal.repository.test.ts",
+          "to": "packages/modules/fiscal/src/database-fiscal.repository.test.ts"
+        },
+        {
+          "from": "packages/modules/inventory/src/database-inventory.repository.test.ts",
+          "to": "packages/modules/inventory/src/database-inventory.repository.test.ts"
+        },
+        {
+          "from": "packages/modules/medical-records/src/database-medical-records.repository.test.ts",
+          "to": "packages/modules/medical-records/src/database-medical-records.repository.test.ts"
+        },
+        {
+          "from": "packages/modules/ml/src/database-feature.repository.test.ts",
+          "to": "packages/modules/ml/src/database-feature.repository.test.ts"
+        },
+        {
+          "from": "packages/modules/notifications/src/database-notifications.repository.test.ts",
+          "to": "packages/modules/notifications/src/database-notifications.repository.test.ts"
+        },
+        {
+          "from": "packages/modules/owners/src/database-owner.repository.test.ts",
+          "to": "packages/modules/owners/src/database-owner.repository.test.ts"
+        },
+        {
+          "from": "packages/modules/pix/src/adapters/pagarme.adapter.ts",
+          "to": "packages/modules/pix/src/adapters/pagarme.adapter.ts"
+        },
+        {
+          "from": "packages/modules/pix/src/pix.test.ts",
+          "to": "packages/modules/pix/src/pix.test.ts"
+        },
+        {
+          "from": "packages/modules/prescription-executions/src/database-prescription-execution.repository.test.ts",
+          "to": "packages/modules/prescription-executions/src/database-prescription-execution.repository.test.ts"
+        },
+        {
+          "from": "packages/modules/scheduling/src/database-scheduling.repository.test.ts",
+          "to": "packages/modules/scheduling/src/database-scheduling.repository.test.ts"
+        },
+        {
+          "from": "packages/modules/staff/src/database-staff.repository.test.ts",
+          "to": "packages/modules/staff/src/database-staff.repository.test.ts"
+        },
+        {
+          "from": "packages/modules/triage/src/database-triage.repository.test.ts",
+          "to": "packages/modules/triage/src/database-triage.repository.test.ts"
+        },
+        {
+          "from": "packages/modules/webhooks/src/database-webhook.repository.test.ts",
+          "to": "packages/modules/webhooks/src/database-webhook.repository.test.ts"
+        },
+        {
+          "from": "packages/modules/webhooks/src/webhooks.test.ts",
+          "to": "packages/modules/webhooks/src/webhooks.test.ts"
+        },
+        {
+          "from": "scripts/check-critical-coverage.mjs",
+          "to": "scripts/check-critical-coverage.mjs"
+        },
+        {
+          "from": "scripts/check-critical-coverage.test.mjs",
+          "to": "scripts/check-critical-coverage.test.mjs"
+        },
+        {
+          "from": "scripts/lib/critical-coverage-merge.mjs",
+          "to": "scripts/lib/critical-coverage-merge.mjs"
+        },
+        {
+          "from": "tests/unit/api/card-transaction-repository-database.test.ts",
+          "to": "tests/unit/api/card-transaction-repository-database.test.ts"
+        },
+        {
+          "from": "tests/unit/api/database-agenda-config.repository.test.ts",
+          "to": "tests/unit/api/database-agenda-config.repository.test.ts"
+        },
+        {
+          "from": "tests/unit/api/database-prescription.repository.test.ts",
+          "to": "tests/unit/api/database-prescription.repository.test.ts"
+        },
+        {
+          "from": "tests/unit/api/runtime-repositories-inmemory.test.ts",
+          "to": "tests/unit/api/runtime-repositories-inmemory.test.ts"
+        },
+        {
+          "from": "tests/unit/modules/counter-sales-repository.test.ts",
+          "to": "tests/unit/modules/counter-sales-repository.test.ts"
+        },
+        {
+          "from": "tests/unit/modules/feature-flags-repository.test.ts",
+          "to": "tests/unit/modules/feature-flags-repository.test.ts"
+        },
+        {
+          "from": "tests/unit/modules/webauthn-durable-state.test.ts",
+          "to": "tests/unit/modules/webauthn-durable-state.test.ts"
+        }
+      ],
+      "inputsAdded": [],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99",
+      "executionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99"
+    },
+    {
+      "manifestRevision": 42,
+      "observedAt": "2026-09-16T13:22:07.928Z",
+      "collectionCommit": "728459d2d878e6d5df3f95523974e307aa0f3b1e",
+      "previousManifestSha256": "78175ea00e90e50b1d94fe201efabad44ced5ab887d1c7955f57614ae6ce8647",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-78175ea00e90e50b1d94fe201efabad44ced5ab887d1c7955f57614ae6ce8647.json",
+      "previousSourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "reason": "Reancorar evidencias após correção tipada do fixture fiscal",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [
+        {
+          "from": "packages/modules/fiscal/src/database-fiscal.repository.test.ts",
+          "to": "packages/modules/fiscal/src/database-fiscal.repository.test.ts"
+        }
+      ],
+      "inputsAdded": [],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99",
+      "executionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99"
+    },
+    {
+      "manifestRevision": 43,
+      "observedAt": "2026-09-16T13:25:11.544Z",
+      "collectionCommit": "728459d28d663b4a62256a2e50b18bf97965d93b",
+      "previousManifestSha256": "df29fe74d2b51c6877ad5900ae340027119d275198da5c4e525316de1f598822",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-df29fe74d2b51c6877ad5900ae340027119d275198da5c4e525316de1f598822.json",
+      "previousSourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "reason": "Corrigir a identidade exata do candidato fiscal",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [
+        {
+          "from": "packages/modules/fiscal/src/database-fiscal.repository.test.ts",
+          "to": "packages/modules/fiscal/src/database-fiscal.repository.test.ts"
+        }
+      ],
+      "inputsAdded": [],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99",
+      "executionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99"
+    },
+    {
+      "manifestRevision": 44,
+      "observedAt": "2026-09-16T13:34:37.076Z",
+      "collectionCommit": "96c7ed5adbce869a10d4c33d72a0768283ed0604",
+      "previousManifestSha256": "897bb1f2ec631543ca35cbbc0b73db0335d00c6d25ea9d58ba880f9fe18b0e5d",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-897bb1f2ec631543ca35cbbc0b73db0335d00c6d25ea9d58ba880f9fe18b0e5d.json",
+      "previousSourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "reason": "Reancorar evidências após correção tipada do fixture de timeline",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [
+        {
+          "from": "packages/modules/encounters/src/database-encounter.repository.contract.test.ts",
+          "to": "packages/modules/encounters/src/database-encounter.repository.contract.test.ts"
+        }
+      ],
+      "inputsAdded": [],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99",
+      "executionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99"
+    },
+    {
+      "manifestRevision": 45,
+      "observedAt": "2026-09-16T13:38:00.767Z",
+      "collectionCommit": "260791e8b01d68cb693db7e0997b88e81e144def",
+      "previousManifestSha256": "4261cf600a28c6d1c950c624e482ff60467764ebdcb465e254efb66cfc159f05",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-4261cf600a28c6d1c950c624e482ff60467764ebdcb465e254efb66cfc159f05.json",
+      "previousSourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "reason": "Reancorar evidências após alinhamento dos fixtures financeiro e inventário",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [
+        {
+          "from": "packages/modules/financial/src/database-financial.repository.test.ts",
+          "to": "packages/modules/financial/src/database-financial.repository.test.ts"
+        },
+        {
+          "from": "packages/modules/inventory/src/database-inventory.repository.test.ts",
+          "to": "packages/modules/inventory/src/database-inventory.repository.test.ts"
+        }
+      ],
+      "inputsAdded": [],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99",
+      "executionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99"
+    },
+    {
+      "manifestRevision": 46,
+      "observedAt": "2026-09-16T13:39:28.599Z",
+      "collectionCommit": "93df930e9eb25ae090728008bdca3026404da848",
+      "previousManifestSha256": "06807842445cd68853dd2b03e4de59401118cc912f066c68a846ce37ce05c1b9",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-06807842445cd68853dd2b03e4de59401118cc912f066c68a846ce37ce05c1b9.json",
+      "previousSourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "reason": "Reancorar evidências após correção dos enums de scheduling",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [
+        {
+          "from": "packages/modules/scheduling/src/database-scheduling.repository.test.ts",
+          "to": "packages/modules/scheduling/src/database-scheduling.repository.test.ts"
+        }
+      ],
+      "inputsAdded": [],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99",
+      "executionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99"
+    },
+    {
+      "manifestRevision": 47,
+      "observedAt": "2026-09-16T15:39:58.337Z",
+      "collectionCommit": "578d7271b9c7ddae96bd4f69aca3342ad0acfe95",
+      "previousManifestSha256": "4550b5373d17504e0df58005128984aa0cbe462def1b17ff87fad19ae3ec7bc0",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-4550b5373d17504e0df58005128984aa0cbe462def1b17ff87fad19ae3ec7bc0.json",
+      "previousSourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "reason": "Reancorar evidências após endurecimento do harness visual especializado",
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    {
+      "manifestRevision": 48,
+      "observedAt": "2026-09-16T15:40:22.521Z",
+      "collectionCommit": "578d7271f26f4e41f0d60475c92b9f5da5f0aaf1",
+      "previousManifestSha256": "44eb86996c1aed6b7bdb69f4683f6c1296c2a3f5888f616116c31fc4430d22ee",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-44eb86996c1aed6b7bdb69f4683f6c1296c2a3f5888f616116c31fc4430d22ee.json",
+      "previousSourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "reason": "Corrigir a identidade completa após reancoragem do harness visual",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [
+        {
+          "from": "packages/modules/scheduling/src/database-scheduling.repository.test.ts",
+          "to": "packages/modules/scheduling/src/database-scheduling.repository.test.ts"
+        }
+      ],
+      "inputsAdded": [],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99",
+      "executionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99"
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -11607,7 +11929,7 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 40,
+  "manifestRevision": 48,
   "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
   "executionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99",
   "specializedEvidence": {
