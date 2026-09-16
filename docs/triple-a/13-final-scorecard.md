@@ -2,19 +2,19 @@
 
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT SNAPSHOT   | candidato `c36320d87d70019f7d0e922e023c8379e679a8c0`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
-| MAIN / ORIGIN      | `main@c36320d8`; `origin/fix/state-of-art-ci-assurance@fe5406c2` ancestral sem commits exclusivos, rollback preservado, sem force-push |
-| CURRENT CI         | O [CI #189](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35132608526) pertence ao candidato anterior; o novo run do candidato corrente aguarda execução terminal |
-| LOCAL STRICT GATE  | `NOT_PROVEN` até a recoleta do manifesto revision 50; nenhum shard das revisões anteriores é transferido; `claim=NOT PROVEN`, `publication_allowed=false` |
+| CURRENT SNAPSHOT   | candidato `b3b9d38d3b3d0267c1dedcc2e7f9a963a98f3334`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
+| MAIN / ORIGIN      | `main@b3b9d38d`; `origin/fix/state-of-art-ci-assurance@fe5406c2` ancestral sem commits exclusivos, rollback preservado, sem force-push |
+| CURRENT CI         | O [CI #190](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35138781369) pertence ao pai documental e falhou; o novo run do candidato corrigido aguarda execução terminal |
+| LOCAL STRICT GATE  | `NOT_PROVEN` até a recoleta do manifesto revision 51; nenhum shard das revisões anteriores é transferido; `claim=NOT PROVEN`, `publication_allowed=false` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
-| LOCAL VALIDATION   | unit `260/260` arquivos e `2824/2824` testes, integração afetada `48/48`, cadeia de migrações `171/171`, estado `11/11`; manifesto revision 50 válido; target externo ausente |
+| LOCAL VALIDATION   | contratos CI `20/20`, cobertura/processo e SQL `34/34`, lint, produtor SQL `171` migrações e conversão V8 real passaram; manifesto revision 51 válido; target externo ausente |
 | VERIFIED TARGET    | `NOT PROVEN`                                                                                                                                                                                                                                              |
 | CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; recoleta crítica, CI terminal, target e autoridade externa continuam sem prova                                                                                                                                                        |
 
 O snapshot corrente preserva a régua congelada e reancora o manifesto crítico
-na revisão 50. O CI #189 detectou incompatibilidade do runner PostgreSQL 14 e
-checkout raso no candidato anterior; esta atualização corrige o ambiente para
-PostgreSQL 16 e mantém a prova de ancestralidade; nenhum resultado parcial é promovido.
+na revisão 51. O CI #190 detectou a rejeição de inicializadores V8 legítimos do
+Node 22 e a ausência do produtor SQL; esta atualização corrige ambos, mantém a
+prova de ancestralidade e não promove resultado parcial.
 
 O score não é uma média permissiva: os gates externos ausentes e as falhas do CI
 remoto vinculadas ao reancoramento continuam bloqueando a certificação. Os thresholds não foram relaxados

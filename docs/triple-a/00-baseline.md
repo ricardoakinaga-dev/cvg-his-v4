@@ -1,17 +1,17 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-16T19:03:48Z
+## Snapshot vigente — 2026-09-16T20:00:00Z
 
-O baseline autoritativo do snapshot atual está em: `c36320d87d70019f7d0e922e023c8379e679a8c0` (manifesto crítico revision 50, ancorado em `e4d3a2b3`).
+O baseline autoritativo do snapshot atual está em: `b3b9d38d3b3d0267c1dedcc2e7f9a963a98f3334` (manifesto crítico revision 51, ancorado em `0812cb49`).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
 documentação corrente sucede os candidatos históricos sem transferir evidência;
-o candidato `c36320d8` alinha o runner privado à política PostgreSQL 16, preserva checksums de migração e mantém o histórico completo no guard crítico; a branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
+o candidato `b3b9d38d` alinha o runner privado à política PostgreSQL 16, preserva checksums de migração, autentica o par de inicializadores V8 do Node 22 e publica evidência SQL; a branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
 `BLOCKED / NOT PROVEN`.
 
-O [CI #189](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35132608526) pertence ao candidato anterior e não é transferido: o runner crítico selecionou PostgreSQL 14, incompatível com o SQL histórico, e o checkout raso não conseguiu provar a ancestralidade do manifesto. Esta atualização corrige ambos os pontos e aguarda novo run terminal. A validação local current passou unit `260/260` arquivos e `2824/2824` testes, integração afetada `48/48`, cadeia de migrações `171/171` e provisionamento privado PostgreSQL 16; o manifesto revision 50 é válido. Evidência crítica, Vue, target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
+O [CI #190](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35138781369) pertence ao pai documental e não é transferido: PostgreSQL 16 e proveniência passaram, mas o par de inicializadores V8 do Node 22 foi rejeitado e o artefato SQL não foi produzido. Esta atualização corrige ambos os pontos e aguarda novo run terminal. A validação local passou os contratos `20/20`, o produtor SQL PostgreSQL 16.15 com `171` migrações e a conversão V8 real; o manifesto revision 51 é válido. Evidência crítica, Vue, target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
 parcial ou histórico é promovido. Target, recovery, UAT, attestation,
 governança e autoridade de release continuam `NOT PROVEN`.
 

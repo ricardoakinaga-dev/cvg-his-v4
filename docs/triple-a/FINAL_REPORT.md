@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `c36320d87d70019f7d0e922e023c8379e679a8c0`
-(candidato corrente; manifesto crítico revision 50 ancorado em `e4d3a2b3`; a branch de assurance é ancestral sem commits exclusivos; o [CI #189](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35132608526) pertence ao candidato anterior e não é promovido)
+**Candidate funcional avaliado:** `b3b9d38d3b3d0267c1dedcc2e7f9a963a98f3334`
+(candidato corrente; manifesto crítico revision 51 ancorado em `0812cb49`; a branch de assurance é ancestral sem commits exclusivos; o [CI #190](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35138781369) pertence ao pai documental e não é promovido)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -9,20 +9,22 @@
 
 O candidato preserva o modular monolith e a reconciliação fail-closed de
 proveniência. A paridade de Patient e o CORS credentialado restrito foram
-validados. No candidato corrente, unit passou `260/260` arquivos e `2824/2824`
-testes, a integração afetada passou `48/48`, o manifesto crítico está na revisão 50
-e o workflow instala Chromium e provisiona PostgreSQL 16 para a coleta especializada. A evidência crítica/Vue e o CI terminal ainda são
+validados. No candidato corrente, os contratos alterados passaram, o produtor SQL
+passou com PostgreSQL 16.15 e a conversão V8 do processo aceita somente o par
+autenticado de inicializadores; o manifesto crítico está na revisão 51 e o
+workflow publica evidência SQL antes do checker. A evidência crítica/Vue e o CI terminal ainda são
 `NOT PROVEN`; não há target, recovery,
 attestation, UAT, governança, performance certificada ou autoridade de release.
 Nenhum threshold foi relaxado e não há autorização para declarar `main green`,
 release produtivo ou `TRIPLE-A VERIFIED`.
 
-## Atualização corrente — revisão 50
+## Atualização corrente — revisão 51
 
-O manifest crítico revision 50 foi reancorado em `e4d3a2b3`, sem mudança de
+O manifest crítico revision 51 foi reancorado em `0812cb49`, sem mudança de
 thresholds, fontes ou aplicabilidade funcional; o snapshot corrente é
-`c36320d87d70019f7d0e922e023c8379e679a8c0`. O runner crítico preserva o SQL histórico e
-usa PostgreSQL 16. Os produtores atuais são identificados na
+`b3b9d38d3b3d0267c1dedcc2e7f9a963a98f3334`. O runner crítico preserva o SQL histórico,
+usa PostgreSQL 16 e trata os inicializadores V8 do Node 22 sem fundir identidades.
+O produtor SQL agora é executado e publicado antes do checker. Os produtores atuais são identificados na
 [`evidência corrente`](./17-current-execution-evidence.md). O gate consolidado
 aguarda a recoleta dos cinco shards, SQL e Vue contra o manifesto atual; a evidência
 Vue especializada e a cobertura crítica do candidato ainda não têm prova
@@ -48,14 +50,14 @@ remota e pelos gates externos de target e release.
 | Testing              | LOCAL PASS                   | suíte workspace, critical e E2E clínico                                                                                                 |
 | Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas                                                                                                |
 | Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                                                                                                           |
-| CI/CD                | BLOQUEADO no SHA atual       | Não há CI remoto terminal para `53bbee80`; o CI #178 de outro SHA falhou em coverage crítico/geral, unit, k6, visual e E2E SPA |
+| CI/CD                | BLOQUEADO no SHA atual       | O CI #190 do pai `ef8e7a79` falhou em coverage crítico/geral, k6, visual e E2E SPA; novo run do candidato corrigido pendente |
 | Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                                                                                                         |
 | Recovery             | BLOCKED                      | Docker impediu restore drill real                                                                                                       |
 | Frontend             | PARTIAL / NOT PROVEN         | Vue especializado não tem evidência aceita current; o renderer Chromium falha com controles nativos de data e 25 fontes permanecem abertas |
 | Database             | PARTIAL                      | testes locais; RLS target não provado                                                                                                   |
 | Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas                                                                                                |
 | Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes                                                                                               |
-| Overall              | `FAIL/BLOCKED`               | gate R05-010 current no manifest 48; cobertura abaixo da régua, 25 aplicabilidades Vue abertas e gates externos ausentes |
+| Overall              | `FAIL/BLOCKED`               | gate R05-010 current no manifest 51; recoleta crítica, 25 aplicabilidades Vue e gates externos ainda abertos |
 
 ## P0 Findings
 
