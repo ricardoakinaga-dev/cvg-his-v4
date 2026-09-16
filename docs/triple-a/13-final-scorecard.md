@@ -2,14 +2,18 @@
 
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT SNAPSHOT   | snapshot documental `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e` (código funcional `578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`); identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
-| MAIN / ORIGIN      | `main@53bbee80`; `origin/main@3fca62b7` no momento da coleta; `origin/fix/state-of-art-ci-assurance@fe5406c2` ancestral sem commits exclusivos, rollback preservado, sem force-push |
-| CURRENT CI         | `NOT_FOUND` para `53bbee80`; [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) é histórico de outro SHA e terminou `failure` |
-| LOCAL STRICT GATE  | R05-010 `FAIL/BLOCKED` por cobertura crítica abaixo da régua e 25 aplicabilidades Vue sem evidência aceita; cinco shards e SQL current com proveniência exata; `claim=NOT PROVEN`, `publication_allowed=false` |
+| CURRENT SNAPSHOT   | candidato `d13c5a44a91cedde687a9f5acedce80a5b56a047`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
+| MAIN / ORIGIN      | `main@d13c5a44`; `origin/fix/state-of-art-ci-assurance@fe5406c2` ancestral sem commits exclusivos, rollback preservado, sem force-push |
+| CURRENT CI         | [CI #188](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35130610217) rejeitou `Repository Guards` por snapshot stale; a correção foi publicada e aguarda novo run terminal |
+| LOCAL STRICT GATE  | `NOT_PROVEN` até a recoleta do manifesto revision 49; nenhum shard da revision 48 é transferido; `claim=NOT PROVEN`, `publication_allowed=false` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
-| LOCAL VALIDATION   | unit `260/260` arquivos e `2824/2824` testes; integração `105/105` e `933/933`; native-worker/API/process e SQL `171/171` migrações PASS current; Vue especializado permanece `NOT PROVEN`; target externo ausente |
+| LOCAL VALIDATION   | unit `260/260` arquivos e `2824/2824` testes passou no candidato; estado `11/11`; manifesto revision 49 válido; target externo ausente |
 | VERIFIED TARGET    | `NOT PROVEN`                                                                                                                                                                                                                                              |
-| CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; R05-010 `FAIL` por cobertura abaixo da régua e aplicabilidades Vue sem prova                                                                                                                                                        |
+| CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; recoleta crítica, CI terminal, target e autoridade externa continuam sem prova                                                                                                                                                        |
+
+O snapshot corrente preserva a régua congelada e reancora o manifesto crítico
+na revisão 49. O CI #188 detectou o drift documental que esta atualização
+corrige; nenhum resultado parcial é promovido.
 
 O score não é uma média permissiva: os gates externos ausentes e as falhas do CI
 remoto vinculadas ao reancoramento continuam bloqueando a certificação. Os thresholds não foram relaxados

@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e`
-(snapshot documental; código funcional em `578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`; `origin/main` estava em `3fca62b7` na coleta, a branch de assurance é ancestral sem commits exclusivos; o [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) é de outro SHA e terminou `failure`)
+**Candidate funcional avaliado:** `d13c5a44a91cedde687a9f5acedce80a5b56a047`
+(candidato corrente; manifesto crítico revision 49 ancorado em `dae7bae9`; a branch de assurance é ancestral sem commits exclusivos; o [CI #188](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35130610217) rejeitou o guard documental por snapshot stale e não é promovido)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -9,24 +9,23 @@
 
 O candidato preserva o modular monolith e a reconciliação fail-closed de
 proveniência. A paridade de Patient e o CORS credentialado restrito foram
-validados. A recoleta local current passou unit `260/260` arquivos e `2824/2824`
-testes, integração `105/105` e `933/933`, native-worker, native-api,
-critical-process e SQL (`171` migrações). A evidência Vue especializada permanece
-`NOT PROVEN` devido ao renderer Chromium e o gate R05-010 fechou
-`FAIL/BLOCKED` por cobertura abaixo dos limiares e aplicabilidades Vue não resolvidas. O CI #178 é histórico de outro SHA e falhou; não há target, recovery,
+validados. No candidato corrente, unit passou `260/260` arquivos e `2824/2824`
+testes, o manifesto crítico está na revisão 49 e o workflow instala Chromium
+para a coleta especializada. A evidência crítica/Vue e o CI terminal ainda são
+`NOT PROVEN`; não há target, recovery,
 attestation, UAT, governança, performance certificada ou autoridade de release.
 Nenhum threshold foi relaxado e não há autorização para declarar `main green`,
 release produtivo ou `TRIPLE-A VERIFIED`.
 
-## Atualização corrente — revisão 48
+## Atualização corrente — revisão 49
 
-O manifest crítico revision 48 foi vinculado ao código funcional
-`578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`, sem mudança de thresholds ou
-aplicabilidade funcional; o snapshot documental é `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e`. Os produtores atuais são identificados na
+O manifest crítico revision 49 foi reancorado em `dae7bae9`, sem mudança de
+thresholds, fontes ou aplicabilidade funcional; o snapshot corrente é
+`d13c5a44a91cedde687a9f5acedce80a5b56a047`. Os produtores atuais são identificados na
 [`evidência corrente`](./17-current-execution-evidence.md). O gate consolidado
-tem os cinco shards e SQL vinculados exatamente ao manifesto atual, mas a
-evidência Vue especializada continua sem prova aceita para 25 fontes e a
-cobertura crítica permanece abaixo da régua. O candidato permanece
+aguarda a recoleta dos cinco shards e SQL contra o manifesto atual; a evidência
+Vue especializada e a cobertura crítica do candidato ainda não têm prova
+terminal aceita. O candidato permanece
 **BLOCKED / NOT PROVEN**.
 
 ## Atualização terminal — isolamento da prova clínica

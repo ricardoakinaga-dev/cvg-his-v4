@@ -1,21 +1,21 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato de código observado em 2026-09-16T16:05:22Z
+## Candidato de código observado em 2026-09-16T18:04:21Z
 
-- SHA de código e documentação: `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e` (snapshot documental; código funcional `578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`); identidade em
+- SHA de código e documentação: `d13c5a44a91cedde687a9f5acedce80a5b56a047`; identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O código funcional está em `578d7271`; o snapshot documental está em `53bbee80`, `origin/main` em `3fca62b7` no momento da coleta; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- O manifesto crítico está na revisão 49, ancorado em `dae7bae9`; o candidato também instala Chromium no job de cobertura especializada. Rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
 
 ## Validações locais
 
 | Escopo                 | Resultado                                                                                                                                                                                                                                                                                                                                                                     |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate crítico R05-010   | `FAIL/BLOCKED` por cobertura abaixo dos thresholds e 25 aplicabilidades Vue sem evidência aceita; shards e SQL com proveniência exata; thresholds e escopo inalterados |
-| Workspace              | Typecheck/lint e contratos locais anteriores PASS; unit current `260/260` arquivos e `2824/2824` testes; integração `105/105` e `933/933`; checker de estado `11/11` |
-| Identidade/evidence graph | Identidade canônica do snapshot `53bbee80`, com código funcional `578d7271`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` até evidência externa terminal |
-| Coverage crítico current | Cinco shards promovidos no manifest revision 48: unit `24d92c76`, integração `75e1746d`, native-worker `465437fb`, native-api `73a6a6b5` e critical-process `55d624fc`; cobertura agregada ainda abaixo da régua |
-| Vue especializado current | Build/browser evidence do candidato `NOT PROVEN`; o renderer Chromium falha ao materializar controles nativos de data dentro da SPA; 25 fontes permanecem sem evidência aceita |
+| Gate crítico R05-010   | `NOT_PROVEN` enquanto a recoleta da revisão 49 não terminar; thresholds e escopo inalterados |
+| Workspace              | Unit no candidato `260/260` arquivos e `2824/2824` testes; checker de estado `11/11`; demais produtores aguardam recoleta vinculada à revisão 49 |
+| Identidade/evidence graph | Identidade canônica do candidato `d13c5a44`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` até evidência terminal e autoridade externa |
+| Coverage crítico current | O manifesto foi reancorado na revisão 49; os shards publicados contra a revisão 48 não são transferidos e a recoleta current está em execução no CI |
+| Vue especializado current | O workflow agora instala Chromium; evidência current só será aceita após o produtor e o checker concluírem no mesmo candidato |
 | SQL/migrações current  | PostgreSQL privado socket-only; `171` migrações executáveis + `7` históricos; clean/upgrade/reexecução/failure recovery/invariants PASS; run `61cd86fc-48d0-4fc3-9785-4635ab0a8558` |
 | Performance/target     | Sem certificação do candidato; k6/target/soak/restore/UAT/attestation permanecem `NOT_PROVEN` |
 | Supply/artefatos       | O graph e o pacote local são gerados fail-closed; nenhum PASS externo ou histórico foi inventado |
@@ -25,6 +25,8 @@ no E2E é descartável; nenhum resultado é promovido para target, UAT, branch
 protection ou autoridade de release.
 
 ## CI remoto e reancoragem
+
+O [CI #188](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35130610217), no candidato `d13c5a44`, teve `Repository Guards` rejeitado porque estes documentos ainda apontavam para `53bbee80` enquanto o workflow e o manifesto já tinham mudado. A presente reconciliação corrige o snapshot; o run não é promovido como prova verde.
 
 O [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106), executado no `main@6b7c1cec`, terminou `failure`. Repository Guards, API Contract, Integration e Windows passaram junto com os checks de segurança, typecheck, lint, OpenAPI e build; Critical Coverage, Coverage, Unit Tests, Performance/k6, Visual Regression e E2E SPA falharam. O E2E remoto falhou na etapa principal e na validação de usabilidade, embora a API clínica canônica tenha passado; o gate local explícito do candidato retornou `51/49/18` e bloqueou publicação; nenhum resultado histórico ou parcial é promovido.
 

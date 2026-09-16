@@ -6,17 +6,17 @@
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O snapshot atual é
 > `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e`, com código funcional em `578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`, evidência anterior preservada apenas como histórico e identidade canônica em
-> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106), executado em outro SHA (`main@6b7c1cec`), terminou `failure`: guards, segurança, typecheck, lint, OpenAPI, build, contratos de API, integração e Windows passaram; critical/general coverage, unit, k6, visual e SPA E2E falharam.
+> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `d13c5a44a91cedde687a9f5acedce80a5b56a047`; o [CI #188](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35130610217) rejeitou `Repository Guards` porque o snapshot ainda apontava para `53bbee80`. A correção documental e a reancoragem do manifesto foram publicadas; nenhum resultado parcial é transferido.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e` (código funcional `578d7271`; identity/evidence graph reancorados; provas externas e autoridade de release continuam `NOT PROVEN`).
-**Current CI:** `NOT_FOUND` para o snapshot atual; [#178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) terminou `failure` no `main@6b7c1cec` e não é transferido.
+**Current snapshot:** `d13c5a44a91cedde687a9f5acedce80a5b56a047` (manifesto crítico revision 49, workflow com Chromium para evidência especializada; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current CI:** [#188](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35130610217) rejeitou o guard documental; o novo run após esta reconciliação ainda não é terminal.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-16T16:05:22Z
+**Observation:** 2026-09-16T18:04:21Z
 
 **Current local execution:** unit `260/260` arquivos e `2824/2824` testes; integração `105/105` e `933/933`; native-worker, native-api e critical-process passaram; SQL passou com `171` migrações ativas e `7` artefatos históricos no manifest revision 48. A evidência Vue especializada permanece bloqueada pelo renderer Chromium em controles nativos de data e 25 fontes continuam sem evidência aceita. O gate R05-010 permanece `FAIL/BLOCKED`; a validação local não substitui CI pinned, target ou UAT.
 
-**Current critical gate:** `FAIL/BLOCKED` por cobertura abaixo dos thresholds e aplicabilidades Vue não resolvidas; as cinco evidências de shards e SQL estão vinculadas exatamente ao manifesto atual, mas `claim=NOT PROVEN` e `publication_allowed=false`. A identidade e o graph permanecem fail-closed.
+**Current critical gate:** `NOT_PROVEN` até a recoleta dos cinco shards, SQL e Vue contra o manifesto revision 49; evidência da revision 48 não é transferida, `claim=NOT PROVEN` e `publication_allowed=false`. A identidade e o graph permanecem fail-closed.
 
 **Current candidate implementation delta:** o workflow de coverage usa
 um índice APT isolado dos archives oficiais assinados do Ubuntu 22.04, pois o

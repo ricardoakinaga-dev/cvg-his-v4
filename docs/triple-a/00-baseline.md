@@ -1,17 +1,17 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-16T16:05:22Z
+## Snapshot vigente — 2026-09-16T18:04:21Z
 
-O baseline autoritativo do snapshot documental atual está em: `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e` (código funcional em `578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`).
+O baseline autoritativo do snapshot atual está em: `d13c5a44a91cedde687a9f5acedce80a5b56a047` (manifesto crítico revision 49, ancorado em `dae7bae9`).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
 documentação corrente sucede os candidatos históricos sem transferir evidência;
-o snapshot `53bbee80` registra o manifesto/evidências do código `578d7271`; ele é descendente de `origin/main@3fca62b7`; a branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
+o candidato `d13c5a44` registra o workflow e a reancoragem do manifesto; a branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
 `BLOCKED / NOT PROVEN`.
 
-Não há CI remoto terminal qualificável para o snapshot atual; o [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) é histórico de outro SHA e terminou `failure`. A validação local current passou unit `260/260` arquivos e `2824/2824` testes, integração `105/105` arquivos e `933/933` testes, os cinco shards críticos nativos/coverage e SQL `171/171` migrações. A evidência Vue especializada continua `NOT PROVEN` por falha do renderer Chromium em controles nativos de data, e o gate mantém cobertura crítica abaixo da régua e 25 aplicabilidades Vue sem evidência aceita. Nenhum resultado
+O [CI #188](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35130610217) rejeitou `Repository Guards` porque os documentos ainda apontavam para o snapshot anterior; esta reconciliação corrige o drift e aguarda novo run terminal. A validação local current passou unit `260/260` arquivos e `2824/2824` testes; o manifesto revision 49 é válido. Evidência crítica, Vue, target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
 parcial ou histórico é promovido. Target, recovery, UAT, attestation,
 governança e autoridade de release continuam `NOT PROVEN`.
 
