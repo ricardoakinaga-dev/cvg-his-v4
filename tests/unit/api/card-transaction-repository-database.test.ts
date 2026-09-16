@@ -1,24 +1,63 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { queryMock, withTenantQueryMock } = vi.hoisted(() => {
+const {
+  queryMock,
+  withTenantQueryMock,
+  runInTenantTransactionMock,
+  getDatabaseTransactionScopeMock,
+  runWithDatabaseTransactionScopeMock,
+  getTenantContextMock,
+  poolConnectMock,
+  captureClient
+} = vi.hoisted(() => {
   const queryMock = vi.fn();
   const withTenantQueryMock = vi.fn(
     async (_pool: unknown, fn: (client: { query: typeof queryMock }) => Promise<unknown>) =>
       fn({ query: queryMock })
   );
-  return { queryMock, withTenantQueryMock };
+  const runInTenantTransactionMock = vi.fn(
+    async (_pool: unknown, _accountId: string, fn: (client: { query: typeof queryMock }) => Promise<unknown>) =>
+      fn({ query: queryMock })
+  );
+  const getDatabaseTransactionScopeMock = vi.fn(() => undefined);
+  const runWithDatabaseTransactionScopeMock = vi.fn(
+    async (_scope: unknown, fn: () => Promise<unknown>) => fn()
+  );
+  const getTenantContextMock = vi.fn(() => ({ accountId: 'acc_card' }));
+  const captureClient = {
+    query: queryMock,
+    on: vi.fn(),
+    removeListener: vi.fn(),
+    release: vi.fn()
+  };
+  const poolConnectMock = vi.fn(async () => captureClient);
+  return {
+    queryMock,
+    withTenantQueryMock,
+    runInTenantTransactionMock,
+    getDatabaseTransactionScopeMock,
+    runWithDatabaseTransactionScopeMock,
+    getTenantContextMock,
+    poolConnectMock,
+    captureClient
+  };
 });
 
 vi.mock('@cvg-his-v2/shared-database', () => ({
-  getPool: vi.fn(() => ({ mocked: true }))
+  getPool: vi.fn(() => ({ mocked: true, connect: poolConnectMock })),
+  runInTenantTransaction: runInTenantTransactionMock,
+  getDatabaseTransactionScope: getDatabaseTransactionScopeMock,
+  runWithDatabaseTransactionScope: runWithDatabaseTransactionScopeMock
 }));
 
 vi.mock('@cvg-his-v2/tenant-context', () => ({
-  withTenantQuery: withTenantQueryMock
+  withTenantQuery: withTenantQueryMock,
+  getTenantContext: getTenantContextMock
 }));
 
 import {
   DatabaseCardTransactionRepository,
+  InMemoryCardTransactionRepository,
   type CardTransactionRecord
 } from '../../../apps/api/src/card-transaction-repository.ts';
 
@@ -80,7 +119,23 @@ function createDbRow(overrides: Record<string, unknown> = {}): Record<string, un
 describe('DatabaseCardTransactionRepository', () => {
   beforeEach(() => {
     queryMock.mockReset();
-    withTenantQueryMock.mockClear();
+    withTenantQueryMock.mockReset().mockImplementation(
+      async (_pool: unknown, fn: (client: { query: typeof queryMock }) => Promise<unknown>) =>
+        fn({ query: queryMock })
+    );
+    runInTenantTransactionMock.mockReset().mockImplementation(
+      async (_pool: unknown, _accountId: string, fn: (client: { query: typeof queryMock }) => Promise<unknown>) =>
+        fn({ query: queryMock })
+    );
+    getDatabaseTransactionScopeMock.mockReset().mockReturnValue(undefined);
+    runWithDatabaseTransactionScopeMock.mockReset().mockImplementation(
+      async (_scope: unknown, fn: () => Promise<unknown>) => fn()
+    );
+    getTenantContextMock.mockReset().mockReturnValue({ accountId: 'acc_card' });
+    poolConnectMock.mockReset().mockResolvedValue(captureClient);
+    captureClient.on.mockReset();
+    captureClient.removeListener.mockReset();
+    captureClient.release.mockReset();
   });
 
   it('persists the complete non-sensitive card contract idempotently', async () => {
@@ -151,5 +206,374 @@ describe('DatabaseCardTransactionRepository', () => {
       expect.stringContaining('WHERE account_id = $1 AND status = $2 AND provider = $3'),
       ['acc_card', 'pending', 'pagarme-card']
     );
+  });
+
+  it('covers reservation, journal and tenant guard contracts', async () => {
+    const repository = new DatabaseCardTransactionRepository();
+
+    getDatabaseTransactionScopeMock.mockReturnValueOnce({ accountId: 'acc_card' });
+    await expect(repository.reserveCreation('acc_card', 'key', 'fingerprint')).rejects.toThrow(
+      'must own its reservation transaction'
+    );
+
+    getTenantContextMock.mockReturnValueOnce({ accountId: 'other_account' });
+    await expect(repository.reserveCreation('acc_card', 'key', 'fingerprint')).rejects.toThrow(
+      'tenant mismatch'
+    );
+
+    getTenantContextMock.mockReturnValue({ accountId: 'acc_card' });
+    queryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'attempt_new',
+            fingerprint: 'fingerprint',
+            billing_record_id: null,
+            provider_result: null,
+            response: null
+          }
+        ]
+      });
+    const fresh = await repository.reserveCreation('acc_card', 'key', 'fingerprint', 'bill_new');
+    expect(fresh).toEqual({
+      fresh: true,
+      attempt: { id: 'attempt_new', fingerprint: 'fingerprint' }
+    });
+
+    queryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'attempt_existing',
+            fingerprint: 'same',
+            billing_record_id: 'bill_existing',
+            provider_result: { status: 'pending' },
+            response: { accepted: true }
+          }
+        ]
+      });
+    const replay = await repository.reserveCreation(
+      'acc_card',
+      'key-replay',
+      'same',
+      'bill_existing'
+    );
+    expect(replay).toEqual({
+      fresh: false,
+      attempt: {
+        id: 'attempt_existing',
+        fingerprint: 'same',
+        billingRecordId: 'bill_existing',
+        providerResult: { status: 'pending' },
+        response: { accepted: true }
+      }
+    });
+
+    queryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 'blocking' }] });
+    await expect(
+      repository.reserveCreation('acc_card', 'key-blocked', 'other', 'bill_existing')
+    ).rejects.toThrow('CARD_CREATION_BILLING_CONFLICT');
+
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    await expect(repository.findCreation('acc_card', 'missing')).rejects.toThrow(
+      'Card creation not found'
+    );
+    queryMock.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 'attempt_found',
+          fingerprint: 'found',
+          billing_record_id: null,
+          provider_result: { status: 'captured' },
+          response: { transactionId: 'card_tx_1' }
+        }
+      ]
+    });
+    await expect(repository.findCreation('acc_card', 'attempt_found')).resolves.toEqual({
+      id: 'attempt_found',
+      fingerprint: 'found',
+      providerResult: { status: 'captured' },
+      response: { transactionId: 'card_tx_1' }
+    });
+
+    getTenantContextMock.mockReturnValue({ accountId: 'other_account' });
+    await expect(repository.findCreation('acc_card', 'attempt_found')).rejects.toThrow(
+      'tenant mismatch'
+    );
+    getTenantContextMock.mockReturnValue({ accountId: 'acc_card' });
+
+    queryMock.mockResolvedValueOnce({ rowCount: 1 });
+    await repository.saveCreationResult('acc_card', 'attempt_found', { status: 'captured' });
+    queryMock.mockResolvedValueOnce({ rowCount: 0 });
+    await expect(
+      repository.saveCreationResult('acc_card', 'attempt_found', { status: 'failed' })
+    ).rejects.toThrow('already saved or unavailable');
+
+    queryMock.mockResolvedValueOnce({ rowCount: 1 });
+    await repository.completeCreation('acc_card', 'attempt_found', { status: 'complete' });
+    queryMock.mockResolvedValueOnce({ rowCount: 0 });
+    await expect(
+      repository.completeCreation('acc_card', 'attempt_found', { status: 'complete' })
+    ).rejects.toThrow('already saved or unavailable');
+
+    getTenantContextMock.mockReturnValue({ accountId: 'other_account' });
+    await expect(repository.saveCreationResult('acc_card', 'attempt_found', {})).rejects.toThrow(
+      'tenant mismatch'
+    );
+    getTenantContextMock.mockReturnValue({ accountId: 'other_account' });
+    await expect(repository.completeCreation('acc_card', 'attempt_found', {})).rejects.toThrow(
+      'tenant mismatch'
+    );
+  });
+
+  it('serializes creation and capture transactions with fencing checkpoints', async () => {
+    const repository = new DatabaseCardTransactionRepository();
+    const operation = vi.fn(async () => 'created');
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    await expect(repository.withCreationTransaction('acc_card', 'card_tx_1', operation)).resolves.toBe(
+      'created'
+    );
+    expect(operation).toHaveBeenCalledOnce();
+
+    getTenantContextMock.mockReturnValue({ accountId: 'other_account' });
+    await expect(repository.withCreationTransaction('acc_card', 'card_tx_1', operation)).rejects.toThrow(
+      'tenant mismatch'
+    );
+    getTenantContextMock.mockReturnValue({ accountId: 'acc_card' });
+
+    getDatabaseTransactionScopeMock.mockReturnValueOnce({ accountId: 'acc_card' });
+    await expect(
+      repository.withCaptureLock('acc_card', 'card_tx_1', async () => 'blocked')
+    ).rejects.toThrow('must own its transaction boundary');
+    getTenantContextMock.mockReturnValue({ accountId: 'other_account' });
+    await expect(
+      repository.withCaptureLock('acc_card', 'card_tx_1', async () => 'blocked')
+    ).rejects.toThrow('tenant mismatch');
+    getTenantContextMock.mockReturnValue({ accountId: 'acc_card' });
+
+    queryMock.mockResolvedValueOnce({ rows: [{ acquired: false }] });
+    await expect(
+      repository.withCaptureLock('acc_card', 'card_tx_1', async () => 'not-run')
+    ).resolves.toEqual({ acquired: false });
+    expect(captureClient.release).toHaveBeenCalledWith(undefined);
+
+    queryMock.mockReset();
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ acquired: true }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: ['card_tx_1'] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ released: true }] });
+    const successful = await repository.withCaptureLock(
+      'acc_card',
+      'card_tx_1',
+      async (claimProviderCapture, beginFinalization) => {
+        await beginFinalization();
+        await beginFinalization();
+        await expect(claimProviderCapture()).resolves.toBe(true);
+        await expect(claimProviderCapture()).rejects.toThrow('checkpoint unavailable');
+        return 'captured';
+      }
+    );
+    expect(successful).toEqual({ acquired: true, value: 'captured' });
+
+    queryMock.mockReset();
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ acquired: true }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ released: false }] });
+    await expect(
+      repository.withCaptureLock('acc_card', 'card_tx_1', async () => 'release-warning')
+    ).resolves.toEqual({ acquired: true, value: 'release-warning' });
+    expect(captureClient.release.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({ message: 'Card capture lock release failed' })
+    );
+
+    queryMock.mockReset();
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ acquired: true }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ released: true }] });
+    await expect(
+      repository.withCaptureLock('acc_card', 'card_tx_1', async () => {
+        throw 'capture failed';
+      })
+    ).rejects.toBe('capture failed');
+  });
+
+  it('exercises in-memory tenant, idempotency, rollback and filter semantics', async () => {
+    const repository = new InMemoryCardTransactionRepository();
+    getTenantContextMock.mockReturnValue(null);
+
+    const first = await repository.reserveCreation('acc_card', 'key-memory', 'fingerprint', 'bill_memory');
+    expect(first.fresh).toBe(true);
+    await expect(repository.findCreation('acc_card', first.attempt.id)).resolves.toEqual(first.attempt);
+    await repository.saveCreationResult('acc_card', first.attempt.id, { status: 'captured' });
+    await expect(
+      repository.saveCreationResult('acc_card', first.attempt.id, { status: 'failed' })
+    ).rejects.toThrow('already saved');
+    await repository.completeCreation('acc_card', first.attempt.id, { status: 'complete' });
+    await expect(repository.findCreation('acc_card', 'missing')).rejects.toThrow('not found');
+
+    getTenantContextMock.mockReturnValue({ accountId: 'other_account' });
+    await expect(repository.reserveCreation('acc_card', 'other', 'fingerprint')).rejects.toThrow(
+      'tenant mismatch'
+    );
+    await expect(repository.findCreation('acc_card', first.attempt.id)).rejects.toThrow('tenant mismatch');
+    await expect(repository.saveCreationResult('acc_card', first.attempt.id, {})).rejects.toThrow(
+      'tenant mismatch'
+    );
+    await expect(repository.completeCreation('acc_card', first.attempt.id, {})).rejects.toThrow(
+      'tenant mismatch'
+    );
+
+    getTenantContextMock.mockReturnValue({ accountId: 'acc_card' });
+    await expect(
+      repository.reserveCreation('acc_card', 'another-key', 'different', 'bill_memory')
+    ).rejects.toThrow('CARD_CREATION_BILLING_CONFLICT');
+
+    const record = createRecord({ transactionId: 'memory_tx', captureRequestedAt: '2026-08-23T10:30:00.000Z' });
+    await repository.create(record);
+    await repository.create({ ...record, status: 'captured' });
+    expect(await repository.findByTransactionId('memory_tx')).toEqual(
+      expect.objectContaining({ status: 'pending', captureRequestedAt: record.captureRequestedAt })
+    );
+    await expect(
+      repository.updateStatus({
+        transactionId: 'memory_tx',
+        status: 'captured',
+        updatedAt: '2026-08-23T11:00:00.000Z',
+        capturedAt: '2026-08-23T11:00:00.000Z',
+        lastProviderSyncAt: '2026-08-23T11:01:00.000Z',
+        providerOrderId: 'order_2',
+        providerChargeId: 'charge_2',
+        providerAuthorizationCode: 'auth_2',
+        providerReferenceId: 'ref_2',
+        failureReason: 'none',
+        billingSettlementStatus: 'applied'
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({ status: 'captured', providerChargeId: 'charge_2' })
+    );
+    await expect(repository.updateStatus({ transactionId: 'missing', status: 'failed' })).resolves.toBeNull();
+    await expect(
+      repository.updateBillingSettlement({
+        transactionId: 'memory_tx',
+        billingSettlementStatus: 'failed',
+        updatedAt: '2026-08-23T11:02:00.000Z',
+        billingSettledAt: '2026-08-23T11:02:00.000Z',
+        billingSettlementError: 'gateway'
+      })
+    ).resolves.toEqual(expect.objectContaining({ billingSettlementStatus: 'failed' }));
+    await expect(
+      repository.updateBillingSettlement({ transactionId: 'missing', billingSettlementStatus: 'applied' })
+    ).resolves.toBeNull();
+    await expect(repository.list({ accountId: 'acc_card', status: 'captured', provider: 'pagarme-card' })).resolves.toHaveLength(1);
+
+    const hold = new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    const capture = repository.withCaptureLock('acc_card', 'memory_tx', async () => {
+      await hold;
+      return 'ok';
+    });
+    await expect(repository.withCaptureLock('acc_card', 'memory_tx', async () => 'duplicate')).resolves.toEqual({
+      acquired: false
+    });
+    await expect(repository.withCreationTransaction('acc_card', 'memory_tx', async () => 'blocked')).rejects.toThrow(
+      'capture is in progress'
+    );
+    await expect(capture).resolves.toEqual({ acquired: true, value: 'ok' });
+
+    await expect(
+      repository.withCaptureLock('acc_card', 'memory_tx', async (claimProviderCapture) => {
+        await expect(claimProviderCapture()).resolves.toBe(false);
+        return 'retry';
+      })
+    ).resolves.toEqual({ acquired: true, value: 'retry' });
+    await expect(
+      repository.withCreationTransaction('acc_card', 'memory_tx', async () => {
+        await repository.updateStatus({ transactionId: 'memory_tx', status: 'failed' });
+        throw new Error('rollback');
+      })
+    ).rejects.toThrow('rollback');
+    await expect(repository.findByTransactionId('memory_tx')).resolves.toEqual(
+      expect.objectContaining({ status: 'captured' })
+    );
+  });
+
+  it('maps optional PostgreSQL fields and empty query results', async () => {
+    const repository = new DatabaseCardTransactionRepository();
+    const complete = createDbRow({
+      captured_at: new Date('2026-08-23T11:00:00.000Z'),
+      billing_settled_at: new Date('2026-08-23T11:05:00.000Z'),
+      capture_requested_at: new Date('2026-08-23T10:30:00.000Z'),
+      last_provider_sync_at: new Date('2026-08-23T11:01:00.000Z')
+    });
+    queryMock
+      .mockResolvedValueOnce({ rows: [complete] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
+    await expect(repository.findByTransactionId('card_tx_1')).resolves.toEqual(
+      expect.objectContaining({ captureRequestedAt: '2026-08-23T10:30:00.000Z' })
+    );
+    await expect(repository.updateStatus({ transactionId: 'missing', status: 'failed' })).resolves.toBeNull();
+    await expect(
+      repository.updateBillingSettlement({ transactionId: 'missing', billingSettlementStatus: 'failed' })
+    ).resolves.toBeNull();
+    await expect(repository.list()).resolves.toEqual([]);
+
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    await repository.create(
+      createRecord({
+        capturedAt: '2026-08-23T11:00:00.000Z',
+        billingSettledAt: '2026-08-23T11:05:00.000Z'
+      })
+    );
+    queryMock.mockResolvedValueOnce({ rows: [complete] });
+    await repository.updateStatus({
+      transactionId: 'card_tx_1',
+      status: 'captured',
+      capturedAt: '2026-08-23T11:00:00.000Z',
+      lastProviderSyncAt: '2026-08-23T11:01:00.000Z',
+      providerOrderId: 'order_2',
+      providerChargeId: 'charge_2',
+      providerAuthorizationCode: 'auth_2',
+      providerReferenceId: 'ref_2',
+      failureReason: 'none',
+      billingSettlementStatus: 'applied'
+    });
+    queryMock.mockResolvedValueOnce({ rows: [complete] });
+    await repository.updateBillingSettlement({
+      transactionId: 'card_tx_1',
+      billingSettlementStatus: 'applied',
+      billingSettledAt: '2026-08-23T11:05:00.000Z',
+      billingSettlementError: 'none',
+      updatedAt: '2026-08-23T11:06:00.000Z'
+    });
+    queryMock.mockResolvedValueOnce({ rows: [complete] });
+    await repository.list();
   });
 });

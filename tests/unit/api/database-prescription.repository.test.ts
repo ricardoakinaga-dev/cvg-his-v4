@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PgDialect } from 'drizzle-orm/pg-core';
 
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
@@ -7,7 +7,7 @@ import {
   entryRevisions,
   prescriptionSignatures
 } from '@cvg-his-v2/shared-database';
-import { NotFoundError } from '@cvg-his-v2/shared-errors';
+import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type {
   PrescriptionRevisionSummary,
   PrescriptionSignatureSummary,
@@ -17,6 +17,22 @@ import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 import { runWithTenantContext } from '@cvg-his-v2/tenant-context';
 
 import { DatabasePrescriptionRepository } from '../../../apps/api/src/repositories/database-prescription.repository.js';
+
+let activeDatabase: FakeDatabase | undefined;
+
+vi.mock('@cvg-his-v2/shared-database', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@cvg-his-v2/shared-database')>();
+  return {
+    ...actual,
+    withTenantTransaction: async (
+      _accountId: string,
+      operation: (database: unknown) => Promise<unknown>
+    ) => {
+      if (!activeDatabase) throw new Error('test transaction database is not configured');
+      return operation(activeDatabase);
+    }
+  };
+});
 
 type ClinicalEntryRow = typeof clinicalEntries.$inferSelect;
 type EntryRevisionRow = typeof entryRevisions.$inferSelect;
@@ -188,17 +204,37 @@ class FakeDatabase {
   }
 
   public update(table: unknown): {
-    set: (values: RowRecord) => { where: (condition: unknown) => Promise<void> };
+    set: (values: RowRecord) => {
+      where: (condition: unknown) => {
+        returning: (projection?: unknown) => Promise<readonly { id: string }[]>;
+        then: (
+          onfulfilled: (value: undefined) => unknown,
+          onrejected: (reason: unknown) => unknown
+        ) => Promise<unknown>;
+      };
+    };
   } {
     return {
       set: (values) => ({
-        where: async (condition) => {
+        where: (condition) => {
           const rows = tableRows(table, this);
+          const matched: AnyRow[] = [];
           for (const row of rows) {
-            if (matches(row, condition)) Object.assign(row, values);
+            if (matches(row, condition)) {
+              Object.assign(row, values);
+              matched.push(row);
+            }
+          }
+          return {
+            returning: async () => matched.map((row) => ({ id: String(row.id) })),
+            then: (
+              onfulfilled: (value: undefined) => unknown,
+              onrejected: (reason: unknown) => unknown
+            ) => Promise.resolve(undefined).then(onfulfilled, onrejected)
+          };
           }
         }
-      })
+      )
     };
   }
 }
@@ -208,6 +244,7 @@ function repositoryFixture(): {
   readonly repository: DatabasePrescriptionRepository;
 } {
   const database = new FakeDatabase();
+  activeDatabase = database;
   return {
     database,
     repository: new DatabasePrescriptionRepository(database as unknown as DatabaseClient)
@@ -374,5 +411,161 @@ describe('DatabasePrescriptionRepository tenant boundary', () => {
     await expect(repository.findById(PRESCRIPTION_A as never, ACCOUNT_A)).rejects.toThrow(
       /tenant context|Account ID/i
     );
+  });
+
+  it('persists revisions, signatures, paginated reads and compare-and-set updates atomically', async () => {
+    const { database, repository } = repositoryFixture();
+    const prescription = {
+      id: PRESCRIPTION_A as never,
+      accountId: ACCOUNT_A,
+      medicalRecordId: 'mr-a' as never,
+      encounterId: SHARED_ENCOUNTER as never,
+      patientId: SHARED_PATIENT as never,
+      entryType: 'prescription' as const,
+      title: 'Amoxicilina',
+      content: 'Posologia: Amoxicilina',
+      authoredByUserId: USER_A,
+      version: 1,
+      createdAt: CREATED_AT.toISOString(),
+      updatedAt: CREATED_AT.toISOString()
+    } as PrescriptionSummary;
+    const revision = {
+      id: 'revision-a',
+      prescriptionId: PRESCRIPTION_A as never,
+      version: 1,
+      title: prescription.title,
+      content: prescription.content,
+      authorUserId: USER_A,
+      reason: 'Prescription created',
+      createdAt: CREATED_AT.toISOString()
+    } as PrescriptionRevisionSummary;
+
+    const transactionalPrescription = {
+      ...prescription,
+      id: 'rx-prescription-c',
+      medicalRecordId: 'mr-c' as never
+    } as PrescriptionSummary;
+    const transactionalRevision = {
+      ...revision,
+      id: 'revision-c',
+      prescriptionId: transactionalPrescription.id
+    } as PrescriptionRevisionSummary;
+
+    await tenant(ACCOUNT_B, async () => {
+      await repository.create(
+        { ...prescription, id: 'rx-prescription-created-direct', accountId: ACCOUNT_B },
+        ACCOUNT_B
+      );
+    });
+
+    await tenant(ACCOUNT_A, async () => {
+      await repository.createWithRevision(
+        transactionalPrescription,
+        transactionalRevision,
+        ACCOUNT_A
+      );
+
+      const updated = {
+        ...transactionalPrescription,
+        version: 2,
+        title: 'Amoxicilina atualizada'
+      };
+      await repository.updateWithRevision(
+        updated,
+        {
+          ...transactionalRevision,
+          id: 'revision-c-2',
+          version: 1,
+          title: updated.title
+        } as never,
+        ACCOUNT_A
+      );
+
+      const signed = {
+        accountId: ACCOUNT_A,
+        prescriptionId: transactionalPrescription.id as never,
+        version: 2,
+        signedByUserId: USER_A,
+        signatureHash: 'b'.repeat(64),
+        signedAt: CREATED_AT.toISOString()
+      } as PrescriptionSignatureSummary & { readonly accountId: AccountId };
+      await repository.sign(signed);
+
+      expect(await repository.findRevisions(transactionalPrescription.id as never, ACCOUNT_A)).toHaveLength(2);
+      expect(
+        await repository.findSignature(ACCOUNT_A, transactionalPrescription.id as never, 2)
+      ).toMatchObject({
+        version: 2,
+        signedByUserId: USER_A,
+        signatureHash: 'b'.repeat(64)
+      });
+      expect(await repository.findByAccountId(ACCOUNT_A)).toEqual([
+        expect.objectContaining({ id: PRESCRIPTION_A }),
+        expect.objectContaining({ id: transactionalPrescription.id })
+      ]);
+      expect(
+        await repository.findByAccountIdPaginated(ACCOUNT_A, { offset: 0, limit: 1 })
+      ).toMatchObject({ total: 2, items: [expect.objectContaining({ id: PRESCRIPTION_A })] });
+    });
+
+    expect(database.entries.find((row) => row.id === transactionalPrescription.id)?.version).toBe(2);
+    expect(database.revisions.some((row) => row.id === 'revision-c-2')).toBe(true);
+  });
+
+  it('rejects revision mismatches and distinguishes missing rows from stale versions', async () => {
+    const { repository } = repositoryFixture();
+    const prescription = {
+      id: PRESCRIPTION_A as never,
+      accountId: ACCOUNT_A,
+      medicalRecordId: 'mr-a' as never,
+      encounterId: SHARED_ENCOUNTER as never,
+      patientId: SHARED_PATIENT as never,
+      entryType: 'prescription' as const,
+      title: 'Amoxicilina',
+      content: 'Posologia: Amoxicilina',
+      authoredByUserId: USER_A,
+      version: 2,
+      createdAt: CREATED_AT.toISOString(),
+      updatedAt: CREATED_AT.toISOString()
+    } as PrescriptionSummary;
+    const revision = {
+      id: 'revision-invalid',
+      prescriptionId: PRESCRIPTION_B as never,
+      version: 1,
+      title: 'Prednisona',
+      content: 'Posologia: Prednisona',
+      authorUserId: USER_A,
+      reason: 'invalid relation',
+      createdAt: CREATED_AT.toISOString()
+    } as PrescriptionRevisionSummary;
+
+    await tenant(ACCOUNT_A, async () => {
+      await expect(repository.createWithRevision(prescription, revision, ACCOUNT_A)).rejects.toThrow(
+        'revision does not match'
+      );
+      await expect(repository.updateWithRevision(prescription, revision, ACCOUNT_A)).rejects.toThrow(
+        'revision does not match'
+      );
+      await expect(
+        repository.updateWithRevision(
+          { ...prescription, version: 0 },
+          { ...revision, prescriptionId: PRESCRIPTION_A, version: 0 } as never,
+          ACCOUNT_A
+        )
+      ).rejects.toBeInstanceOf(ConflictError);
+
+      await expect(
+        repository.updateWithRevision(
+          { ...prescription, id: 'missing-prescription', version: 2 },
+          {
+            ...revision,
+            id: 'revision-missing-prescription',
+            prescriptionId: 'missing-prescription',
+            version: 1
+          } as never,
+          ACCOUNT_A
+        )
+      ).rejects.toBeInstanceOf(NotFoundError);
+    });
   });
 });

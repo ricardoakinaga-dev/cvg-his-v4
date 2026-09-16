@@ -295,4 +295,83 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
     });
     expect(missing).toBeNull();
   });
+
+  it('covers UUID resolution, optional payloads and repository no-op branches', async () => {
+    const repository = new DatabaseFeatureFlagRepository();
+    const accountId = '00000000-0000-4000-8000-0000000000aa';
+    const definition = {
+      key: 'runtime.optional.flag',
+      owner: 'platform',
+      description: 'Optional branch contract',
+      defaultValue: false,
+      scopes: ['account'] as const
+    };
+
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    await expect(repository.findByKey(definition.key, accountId as never)).resolves.toBeNull();
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    await expect(repository.listByAccount(accountId as never)).resolves.toEqual([]);
+
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    await repository.create(definition, accountId as never);
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    await repository.update(definition);
+
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    await repository.upsertOverride('missing.flag', accountId as never, { enabled: true });
+
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ id: 'flag_optional' }] })
+      .mockResolvedValueOnce({ rows: [{ id: 'override_optional' }] });
+    await repository.upsertOverride('runtime.optional.flag', accountId as never, {
+      enabled: false,
+      accountIdOverride: accountId as never,
+      userId: accountId,
+      percentage: undefined,
+      allowedUsers: undefined,
+      environment: undefined
+    });
+
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ id: 'flag_optional' }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
+    await repository.upsertOverride('runtime.optional.flag', accountId as never, {
+      enabled: true,
+      percentage: null,
+      allowedUsers: []
+    });
+
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    await expect(
+      repository.findOverride('runtime.optional.flag', 'production', accountId as never)
+    ).resolves.toBeNull();
+    queryMock.mockResolvedValueOnce({
+      rows: [
+        {
+          environment: null,
+          account_id_override: null,
+          user_id: null,
+          percentage: null,
+          allowed_users: null,
+          enabled: true
+        }
+      ]
+    });
+    await expect(repository.listOverrides('runtime.optional.flag', accountId as never)).resolves.toEqual([
+      {
+        environment: null,
+        accountIdOverride: null,
+        userId: undefined,
+        percentage: null,
+        allowedUsers: [],
+        enabled: true
+      }
+    ]);
+
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    await expect(repository.findByKey('legacy.flag', 'legacy-account' as never)).rejects.toThrow(
+      'Unable to resolve database account id'
+    );
+  });
 });

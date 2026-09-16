@@ -8,6 +8,11 @@ import { execFileSync } from 'node:child_process';
 import { validateRawCoverageEntry } from './lib/raw-coverage-validation.mjs';
 import { resolveContainedPath } from './lib/root-contained-path.mjs';
 import { isRuntimeReexportOnly, isTypeOnlySource } from './lib/source-metric-presence.mjs';
+import {
+  addCoverageMergeDiagnostics,
+  emptyCoverageMergeDiagnostics,
+  stripSecondaryZeroHitMetrics
+} from './lib/critical-coverage-merge.mjs';
 import { verifySqlMigrationEvidence } from './lib/sql-migration-evidence.mjs';
 import { checkVueSpecializedEvidence } from './lib/vue-specialized-evidence.mjs';
 import {
@@ -41,6 +46,7 @@ export function checkCriticalCoverage({ root, manifestPath, artifactsPath, head 
   const expectedCoveragePaths = new Set();
   const sourceIdentities = new Map();
   const merged = createCoverageMap({});
+  const coverageMergeDiagnostics = emptyCoverageMergeDiagnostics();
   const candidateBinding = resolveCandidateBinding({
     root,
     collectionHead: manifest.head,
@@ -255,8 +261,21 @@ export function checkCriticalCoverage({ root, manifestPath, artifactsPath, head 
         }
         normalized[key] = { ...entry, path: key };
       }
-      // Reject the entire malformed shard before Istanbul can normalize or drop bad data.
-      if (!malformed) merged.merge(normalized);
+      // Reject the entire malformed shard before Istanbul can normalize or
+      // merge any data.  The first report for a source is canonical.  Later
+      // reports are allowed to add positive hits, but their zero-hit copies
+      // must not create a second denominator for the same source code.
+      if (!malformed) {
+        const secondary = Object.fromEntries(
+          Object.entries(normalized).map(([key, entry]) => {
+            if (!merged.files().includes(key)) return [key, entry];
+            const stripped = stripSecondaryZeroHitMetrics(entry);
+            addCoverageMergeDiagnostics(coverageMergeDiagnostics, key, stripped.removed);
+            return [key, stripped.entry];
+          })
+        );
+        merged.merge(secondary);
+      }
     } catch (error) {
       errors.push(`invalid coverage shard ${shard}: ${error.message}`);
     }
@@ -353,6 +372,7 @@ export function checkCriticalCoverage({ root, manifestPath, artifactsPath, head 
     components,
     metriclessReexports,
     typeOnlySources,
+    coverageMergeDiagnostics,
     sqlEvidence,
     specializedVue,
     candidateBinding

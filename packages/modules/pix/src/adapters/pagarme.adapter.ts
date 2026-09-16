@@ -126,6 +126,10 @@ export class PagarMePixAdapter implements PixProvider {
       throw new Error(`PagarMePixAdapter request failed: ${message}`);
     }
 
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
     return response.json() as Promise<T>;
   }
 

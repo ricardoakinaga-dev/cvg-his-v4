@@ -225,3 +225,55 @@ test('inventory manufacturer routes create, update and archive records', async (
     ['create_manufacturer', 'update_manufacturer', 'archive_manufacturer']
   );
 });
+
+test('inventory manufacturer routes reject invalid payloads and missing records', async () => {
+  const handlers = {
+    audit: createAuditCollector().audit as never,
+    requirePrincipal: () => createPrincipal(),
+    store: new InMemoryManufacturerStore()
+  };
+
+  assert.equal(
+    await handleInventoryManufacturersRoutes(
+      '/not-manufacturers',
+      createMockRequest('GET', '/not-manufacturers') as never,
+      new MockResponse() as never,
+      'corr-mf-unsupported',
+      handlers
+    ),
+    false
+  );
+
+  for (const body of [{}, { name: 'x'.repeat(161) }]) {
+    const response = new MockResponse();
+    await handleInventoryManufacturersRoutes(
+      '/fabricantes',
+      createMockRequest('POST', '/fabricantes', body) as never,
+      response as never,
+      'corr-mf-invalid',
+      handlers
+    );
+    assert.equal(response.statusCode, 400);
+    assert.equal(response.bodyJson<{ code: string }>().code, 'VALIDATION_ERROR');
+  }
+
+  const missingUpdate = new MockResponse();
+  await handleInventoryManufacturersRoutes(
+    '/fabricantes/missing',
+    createMockRequest('PATCH', '/fabricantes/missing', { name: 'Missing' }) as never,
+    missingUpdate as never,
+    'corr-mf-missing-update',
+    handlers
+  );
+  assert.equal(missingUpdate.statusCode, 404);
+
+  const missingDelete = new MockResponse();
+  await handleInventoryManufacturersRoutes(
+    '/manufacturers/missing',
+    createMockRequest('DELETE', '/manufacturers/missing') as never,
+    missingDelete as never,
+    'corr-mf-missing-delete',
+    handlers
+  );
+  assert.equal(missingDelete.statusCode, 404);
+});

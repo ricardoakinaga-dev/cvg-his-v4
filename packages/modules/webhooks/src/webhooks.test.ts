@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
-import { test } from 'vitest';
+import { createServer } from 'node:http';
+import { expect, test } from 'vitest';
 
-import { WebhooksService } from './index.js';
+import { deliverPinnedWebhookRequest, WebhooksService } from './index.js';
 import type {
   RetryWebhookDeliveryInput,
   WebhookDeliveryClaim,
@@ -49,6 +50,28 @@ function createMockRepository(): WebhookRepository {
     async findPendingDeliveries(): Promise<readonly never[]> {
       return [];
     }
+  };
+}
+
+function createClaim(overrides: Partial<WebhookDeliverySummary> = {}): WebhookDeliveryClaim {
+  const delivery: WebhookDeliverySummary = {
+    id: 'del_fixture' as WebhookDeliveryId,
+    accountId: ACCOUNT_ID,
+    webhookId: 'wh_fixture' as WebhookId,
+    event: 'billing.record.created',
+    payload: { id: 'fixture' },
+    status: 'processing',
+    attempts: 1,
+    maxAttempts: 4,
+    createdAt: new Date().toISOString(),
+    ...overrides
+  };
+  return {
+    delivery,
+    leaseOwner: 'worker-fixture',
+    leaseToken: '00000000-0000-0000-0000-000000000001',
+    leaseVersion: 1,
+    leaseExpiresAt: new Date(Date.now() + 60_000).toISOString()
   };
 }
 
@@ -140,6 +163,94 @@ test('WebhooksService register normalizes URL and rejects non-HTTP protocols', a
       }),
     /private network/
   );
+  await assert.rejects(
+    () =>
+      service.register('user_1' as never, 'acc_test' as never, {
+        url: '',
+        events: ['billing.record.created']
+      }),
+    /non-empty string/
+  );
+  await assert.rejects(
+    () =>
+      service.register('user_1' as never, 'acc_test' as never, {
+        url: 'https://user:password@example.com/webhook',
+        events: ['billing.record.created']
+      }),
+    /credentials/
+  );
+  await assert.rejects(
+    () =>
+      service.register('user_1' as never, 'acc_test' as never, {
+        url: 'https://example.com/webhook',
+        events: []
+      }),
+    /At least one webhook event/
+  );
+  await assert.rejects(
+    () =>
+      service.register('user_1' as never, 'acc_test' as never, {
+        url: 'https://example.com/webhook',
+        events: ['billing record created']
+      }),
+    /invalid format/
+  );
+  await assert.rejects(
+    () =>
+      service.register('user_1' as never, 'acc_test' as never, {
+        url: 'https://example.com/webhook',
+        events: ['x'.repeat(121)]
+      }),
+    /invalid format/
+  );
+  await assert.rejects(
+    () =>
+      service.register('user_1' as never, 'acc_test' as never, {
+        url: 'https://example.com/webhook',
+        events: Array.from({ length: 51 }, (_, index) => `event.${index}`)
+      }),
+    /more than 50 events/
+  );
+});
+
+test('deliverPinnedWebhookRequest preserves response semantics for HTTP success and failure', async () => {
+  const server = createServer((request, response) => {
+    if (request.url === '/failure') {
+      response.statusCode = 502;
+      response.end('upstream failure');
+      return;
+    }
+    response.statusCode = 204;
+    response.end('accepted');
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    const baseUrl = `http://localhost:${address.port}`;
+    const input = {
+      url: `${baseUrl}/success`,
+      address: '127.0.0.1',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{"event":"test"}',
+      timeoutMs: 1_000
+    } as const;
+
+    await expect(deliverPinnedWebhookRequest(input)).resolves.toMatchObject({
+      success: true,
+      statusCode: 204,
+      body: ''
+    });
+    await expect(
+      deliverPinnedWebhookRequest({ ...input, url: `${baseUrl}/failure` })
+    ).resolves.toMatchObject({
+      success: false,
+      statusCode: 502,
+      body: 'upstream failure'
+    });
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+  }
 });
 
 test('WebhooksService signs outbound payloads with the configured secret', async () => {
@@ -306,6 +417,31 @@ test('WebhooksService update modifies webhook fields', async () => {
   assert.deepEqual(updated!.events, ['billing.status_changed']);
 });
 
+test('WebhooksService updates only supplied fields and rejects unsafe update payloads', async () => {
+  const repo = createMockRepository();
+  const service = new WebhooksService({ repository: repo });
+  const created = await service.register('user_1' as never, ACCOUNT_ID, {
+    url: 'https://example.com/original',
+    events: ['billing.record.created'],
+    secret: 'secret'
+  });
+
+  const disabled = await service.update(ACCOUNT_ID, created.id, { isActive: false });
+  assert.equal(disabled?.url, 'https://example.com/original');
+  assert.deepEqual(disabled?.events, ['billing.record.created']);
+  assert.equal(disabled?.isActive, false);
+  assert.equal(await service.update(ACCOUNT_ID, 'missing' as never, { isActive: true }), null);
+
+  await assert.rejects(
+    () => service.update(ACCOUNT_ID, created.id, { url: 'http://localhost/internal' }),
+    /private network/
+  );
+  await assert.rejects(
+    () => service.update(ACCOUNT_ID, created.id, { events: [] }),
+    /At least one webhook event/
+  );
+});
+
 test('WebhooksService delete deactivates webhook', async () => {
   const repo = createMockRepository();
   const service = new WebhooksService({ repository: repo });
@@ -349,11 +485,59 @@ test('WebhooksService retestDelivery returns null for non-existent webhook', asy
   assert.equal(result, null);
 });
 
+test('WebhooksService retests deliveries through both durable requeue paths', async () => {
+  const repository = createMockRepository();
+  const service = new WebhooksService({ repository });
+  const webhook = await service.register('user_1' as never, ACCOUNT_ID, {
+    url: 'https://example.com/webhook',
+    events: ['billing.record.created']
+  });
+  const delivery = {
+    ...createClaim({ webhookId: webhook.id }).delivery,
+    status: 'failed' as const,
+    attempts: 4,
+    responseStatus: 500,
+    responseBody: 'failure',
+    responseError: 'failed'
+  };
+  repository.findDeliveriesByWebhook = async () => [delivery];
+  let reset: WebhookDeliverySummary | undefined;
+  repository.updateDelivery = async (value) => {
+    reset = value;
+  };
+
+  await expect(service.retestDelivery(webhook.id, delivery.id, ACCOUNT_ID)).resolves.toEqual({
+    success: true,
+    message: 'Delivery re-queued for retry'
+  });
+  expect(reset).toMatchObject({ status: 'pending', attempts: 0 });
+  expect(reset?.responseStatus).toBeUndefined();
+
+  repository.requeueDelivery = async () => false;
+  await expect(service.retestDelivery(webhook.id, delivery.id, ACCOUNT_ID)).resolves.toBeNull();
+  repository.requeueDelivery = async () => true;
+  await expect(service.retestDelivery(webhook.id, delivery.id, ACCOUNT_ID)).resolves.toMatchObject({
+    success: true
+  });
+  await expect(service.retestDelivery(webhook.id, 'missing' as never, ACCOUNT_ID)).resolves.toBeNull();
+});
+
 test('WebhooksService getDeliveryStats returns null when repository is undefined', async () => {
   const service = new WebhooksService({ repository: undefined });
 
   const result = await service.getDeliveryStats(ACCOUNT_ID, 'wh_123' as never);
   assert.equal(result, null);
+});
+
+test('WebhooksService exposes delivery collections and handles missing repository operations', async () => {
+  const withoutRepository = new WebhooksService({ repository: undefined });
+  await expect(withoutRepository.listDeliveries(ACCOUNT_ID, 'missing' as never)).resolves.toEqual([]);
+  await expect(withoutRepository.delete(ACCOUNT_ID, 'missing' as never)).resolves.toBe(false);
+
+  const repository = createMockRepository();
+  const service = new WebhooksService({ repository });
+  await expect(service.listDeliveries(ACCOUNT_ID, 'missing' as never)).resolves.toEqual([]);
+  await expect(service.delete(ACCOUNT_ID, 'missing' as never)).resolves.toBe(false);
 });
 
 test('WebhooksService delivery stats count processing and retrying as pending work', async () => {
@@ -536,4 +720,119 @@ test('WebhooksService schedules retry instead of looping network attempts in one
   assert.equal(delivery.status, 'retrying');
   assert.ok(delivery.nextRetryAt);
   assert.equal(delivery.responseError, 'upstream unavailable');
+});
+
+test('WebhooksService validates worker options before claiming work', async () => {
+  const repository = createMockRepository();
+  repository.claimPending = async () => [];
+  const service = new WebhooksService({ repository });
+
+  await expect(
+    service.processPendingDeliveries(ACCOUNT_ID, { workerId: '', leaseMs: 1_000, limit: 1 })
+  ).rejects.toThrow('worker id is invalid');
+  await expect(
+    service.processPendingDeliveries(ACCOUNT_ID, { workerId: 'worker', leaseMs: 999, limit: 1 })
+  ).rejects.toThrow('lease duration');
+  await expect(
+    service.processPendingDeliveries(ACCOUNT_ID, { workerId: 'worker', leaseMs: 1_000, limit: 0 })
+  ).rejects.toThrow('claim limit');
+  await expect(
+    service.processPendingDeliveries(ACCOUNT_ID, { workerId: 'worker', leaseMs: 1_000, limit: 101 })
+  ).rejects.toThrow('claim limit');
+});
+
+test('WebhooksService fails inactive claims and notifies durable terminal transitions', async () => {
+  const repository = createMockRepository();
+  const claim = createClaim();
+  repository.claimPending = async () => [claim];
+  repository.findById = async () => null;
+  repository.completeClaim = async () => false;
+  repository.retryClaim = async () => false;
+  let failedDelivery: WebhookDeliverySummary | undefined;
+  repository.failClaim = async (_claim, delivery) => {
+    failedDelivery = delivery;
+    return true;
+  };
+  const notified: WebhookDeliverySummary[] = [];
+  const service = new WebhooksService({
+    repository,
+    onDeliver: async (delivery) => {
+      notified.push(delivery);
+    }
+  });
+
+  await expect(
+    service.processPendingDeliveries(ACCOUNT_ID, { workerId: 'worker-a', leaseMs: 1_000, limit: 1 })
+  ).resolves.toMatchObject({ claimed: 1, failed: 1, leaseLost: 0 });
+  expect(failedDelivery).toMatchObject({ status: 'failed', responseError: 'webhook is inactive or missing' });
+  expect(notified).toHaveLength(1);
+});
+
+test('WebhooksService reports lease loss when terminal writes are fenced or unavailable', async () => {
+  const repository = createMockRepository();
+  const webhook: WebhookSummary = {
+    id: 'wh_lease' as WebhookId,
+    accountId: ACCOUNT_ID,
+    url: 'https://example.com/webhook',
+    events: ['billing.record.created'],
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  const claim = createClaim({ webhookId: webhook.id });
+  repository.claimPending = async () => [claim];
+  repository.findById = async () => webhook;
+  repository.completeClaim = async () => false;
+  repository.retryClaim = async () => false;
+  repository.failClaim = async () => false;
+  repository.renewClaim = async () => false;
+
+  const service = new WebhooksService({
+    repository,
+    resolveHostname: async () => ['8.8.8.8'],
+    deliverRequest: async () => ({ success: true, statusCode: 200 })
+  });
+  await expect(
+    service.processPendingDeliveries(ACCOUNT_ID, { workerId: 'worker-a', leaseMs: 1_000, limit: 1 })
+  ).resolves.toMatchObject({ claimed: 1, delivered: 0, leaseLost: 1 });
+
+  const incompleteRepository = createMockRepository();
+  incompleteRepository.claimPending = async () => [claim];
+  const incompleteService = new WebhooksService({ repository: incompleteRepository });
+  await expect(
+    incompleteService.processPendingDeliveries(ACCOUNT_ID, { workerId: 'worker-a', leaseMs: 1_000, limit: 1 })
+  ).resolves.toMatchObject({ claimed: 1, leaseLost: 1 });
+});
+
+test('WebhooksService dead-letters an exhausted delivery and preserves the provider error', async () => {
+  const repository = createMockRepository();
+  const webhook: WebhookSummary = {
+    id: 'wh_dead_letter' as WebhookId,
+    accountId: ACCOUNT_ID,
+    url: 'https://example.com/webhook',
+    events: ['billing.record.created'],
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  const claim = createClaim({ webhookId: webhook.id, attempts: 4, maxAttempts: 4 });
+  repository.claimPending = async () => [claim];
+  repository.findById = async () => webhook;
+  repository.completeClaim = async () => false;
+  repository.retryClaim = async () => false;
+  let failed = false;
+  repository.failClaim = async (_claim, delivery) => {
+    failed = delivery.status === 'failed' && delivery.responseError === 'provider unavailable';
+    return true;
+  };
+  const service = new WebhooksService({
+    repository,
+    resolveHostname: async () => ['8.8.8.8'],
+    deliverRequest: async () => ({ success: false, statusCode: 503, error: 'provider unavailable' })
+  });
+
+  await expect(
+    service.processPendingDeliveries(ACCOUNT_ID, { workerId: 'worker-a', leaseMs: 1_000, limit: 1 })
+  ).resolves.toMatchObject({ claimed: 1, failed: 1, retried: 0 });
+  expect(failed).toBe(true);
 });

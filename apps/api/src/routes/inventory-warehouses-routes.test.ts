@@ -225,3 +225,55 @@ test('inventory warehouse routes create, update and archive records', async () =
     ['create_warehouse', 'update_warehouse', 'archive_warehouse']
   );
 });
+
+test('inventory warehouse routes reject unsupported and invalid requests', async () => {
+  const handlers = {
+    audit: createAuditCollector().audit as never,
+    requirePrincipal: () => createPrincipal(),
+    store: new InMemoryWarehouseStore()
+  };
+
+  assert.equal(
+    await handleInventoryWarehousesRoutes(
+      '/not-warehouses',
+      createMockRequest('GET', '/not-warehouses') as never,
+      new MockResponse() as never,
+      'corr-wh-unsupported',
+      handlers
+    ),
+    false
+  );
+
+  for (const body of [{}, { description: 'x'.repeat(161) }]) {
+    const response = new MockResponse();
+    await handleInventoryWarehousesRoutes(
+      '/warehouses',
+      createMockRequest('POST', '/warehouses', body) as never,
+      response as never,
+      'corr-wh-invalid',
+      handlers
+    );
+    assert.equal(response.statusCode, 400);
+    assert.equal(response.bodyJson<{ code: string }>().code, 'VALIDATION_ERROR');
+  }
+
+  const missingUpdate = new MockResponse();
+  await handleInventoryWarehousesRoutes(
+    '/estoques/missing',
+    createMockRequest('PATCH', '/estoques/missing', { description: 'Missing' }) as never,
+    missingUpdate as never,
+    'corr-wh-missing-update',
+    handlers
+  );
+  assert.equal(missingUpdate.statusCode, 404);
+
+  const missingDelete = new MockResponse();
+  await handleInventoryWarehousesRoutes(
+    '/warehouses/missing',
+    createMockRequest('DELETE', '/warehouses/missing') as never,
+    missingDelete as never,
+    'corr-wh-missing-delete',
+    handlers
+  );
+  assert.equal(missingDelete.statusCode, 404);
+});

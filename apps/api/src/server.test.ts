@@ -35,6 +35,7 @@ import {
   buildAuthenticatedActorAttributes,
   createApiServer
 } from './server.js';
+import { applySecurityHeaders, isSecureRequest } from './http/security-headers.js';
 import { bootstrapServices } from './bootstrap.js';
 import { createInMemoryRuntimeRepositories } from './runtime-repositories.js';
 import { InMemoryLaboratoryResultImportRepository } from './laboratory-result-import-repository.js';
@@ -5357,4 +5358,41 @@ test('POST /webhooks/whatsapp/inbound CONFIRM returns CONFIRMADO (alias)', async
 
   assert.equal(inboundResponse.statusCode, 200);
   assert.equal(inboundResponse.bodyText(), 'CONFIRMADO');
+});
+
+test('security headers fail closed and add HSTS only for secure production-like requests', () => {
+  const encryptedRequest = {
+    socket: { encrypted: true },
+    headers: {}
+  } as never;
+  const forwardedRequest = {
+    socket: { encrypted: false },
+    headers: { 'x-forwarded-proto': ['https, http'] }
+  } as never;
+  const insecureRequest = {
+    socket: { encrypted: false },
+    headers: { 'x-forwarded-proto': 'http, https' }
+  } as never;
+
+  assert.equal(isSecureRequest(encryptedRequest), true);
+  assert.equal(isSecureRequest(forwardedRequest), true);
+  assert.equal(isSecureRequest(insecureRequest), false);
+  assert.equal(isSecureRequest({ socket: {}, headers: {} } as never), false);
+
+  const secureResponse = new MockResponse();
+  applySecurityHeaders(insecureRequest, secureResponse as never, 'production');
+  assert.equal(secureResponse.getHeader('x-content-type-options'), 'nosniff');
+  assert.equal(secureResponse.getHeader('x-frame-options'), 'DENY');
+  assert.equal(secureResponse.getHeader('content-security-policy'), "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+  assert.equal(secureResponse.getHeader('strict-transport-security'), undefined);
+
+  for (const environment of ['production', 'staging', 'prod', 'stage']) {
+    const response = new MockResponse();
+    applySecurityHeaders(encryptedRequest, response as never, environment);
+    assert.equal(response.getHeader('strict-transport-security'), 'max-age=31536000; includeSubDomains; preload');
+  }
+
+  const nonProductionResponse = new MockResponse();
+  applySecurityHeaders(encryptedRequest, nonProductionResponse as never, 'development');
+  assert.equal(nonProductionResponse.getHeader('strict-transport-security'), undefined);
 });

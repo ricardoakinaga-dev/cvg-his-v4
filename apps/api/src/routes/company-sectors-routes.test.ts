@@ -233,3 +233,74 @@ test('company sector routes create, update and archive records', async () => {
     ['create_company_sector', 'update_company_sector', 'archive_company_sector']
   );
 });
+
+test('company sector routes reject unsupported methods, invalid payloads and missing records', async () => {
+  const handlers = {
+    audit: createAuditCollector().audit as never,
+    requirePrincipal: () => createPrincipal(),
+    store: new InMemoryCompanySectorStore()
+  };
+
+  const unsupportedResponse = new MockResponse();
+  assert.equal(
+    await handleCompanySectorsRoutes(
+      '/unknown',
+      createMockRequest('GET', '/unknown') as never,
+      unsupportedResponse as never,
+      'corr-sector-unsupported',
+      handlers
+    ),
+    false
+  );
+  assert.equal(
+    await handleCompanySectorsRoutes(
+      '/setores',
+      createMockRequest('PUT', '/setores') as never,
+      new MockResponse() as never,
+      'corr-sector-method',
+      handlers
+    ),
+    false
+  );
+
+  for (const [correlationId, body] of [
+    ['corr-sector-code', { name: 'Sem código' }],
+    ['corr-sector-name', { code: 'SEM-NOME' }],
+    ['corr-sector-code-length', { code: 'x'.repeat(51), name: 'Longo' }],
+    ['corr-sector-name-length', { code: 'LONGO', name: 'x'.repeat(161) }],
+    ['corr-sector-kind-length', { code: 'KIND', name: 'Kind', kind: 'x'.repeat(51) }]
+  ] as const) {
+    const response = new MockResponse();
+    await handleCompanySectorsRoutes(
+      '/company-sectors',
+      createMockRequest('POST', '/company-sectors', body) as never,
+      response as never,
+      correlationId,
+      handlers
+    );
+    assert.equal(response.statusCode, 400);
+    assert.equal(response.bodyJson<{ code: string }>().code, 'VALIDATION_ERROR');
+  }
+
+  const missingUpdate = new MockResponse();
+  await handleCompanySectorsRoutes(
+    '/setores/missing',
+    createMockRequest('PATCH', '/setores/missing', { code: 'MISS', name: 'Missing' }) as never,
+    missingUpdate as never,
+    'corr-sector-missing-update',
+    handlers
+  );
+  assert.equal(missingUpdate.statusCode, 404);
+  assert.equal(missingUpdate.bodyJson<{ code: string }>().code, 'NOT_FOUND');
+
+  const missingDelete = new MockResponse();
+  await handleCompanySectorsRoutes(
+    '/company-sectors/missing',
+    createMockRequest('DELETE', '/company-sectors/missing') as never,
+    missingDelete as never,
+    'corr-sector-missing-delete',
+    handlers
+  );
+  assert.equal(missingDelete.statusCode, 404);
+  assert.equal(missingDelete.bodyJson<{ code: string }>().code, 'NOT_FOUND');
+});

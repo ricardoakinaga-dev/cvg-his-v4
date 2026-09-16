@@ -225,3 +225,55 @@ test('inventory product group routes create, update and archive records', async 
     ['create_product_group', 'update_product_group', 'archive_product_group']
   );
 });
+
+test('inventory product group routes reject unsupported and invalid requests', async () => {
+  const handlers = {
+    audit: createAuditCollector().audit as never,
+    requirePrincipal: () => createPrincipal(),
+    store: new InMemoryProductGroupStore()
+  };
+
+  assert.equal(
+    await handleInventoryProductGroupsRoutes(
+      '/not-product-groups',
+      createMockRequest('GET', '/not-product-groups') as never,
+      new MockResponse() as never,
+      'corr-pg-unsupported',
+      handlers
+    ),
+    false
+  );
+
+  for (const body of [{}, { description: 'x'.repeat(161) }]) {
+    const response = new MockResponse();
+    await handleInventoryProductGroupsRoutes(
+      '/product-groups',
+      createMockRequest('POST', '/product-groups', body) as never,
+      response as never,
+      'corr-pg-invalid',
+      handlers
+    );
+    assert.equal(response.statusCode, 400);
+    assert.equal(response.bodyJson<{ code: string }>().code, 'VALIDATION_ERROR');
+  }
+
+  const missingUpdate = new MockResponse();
+  await handleInventoryProductGroupsRoutes(
+    '/grupos-de-produto/missing',
+    createMockRequest('PATCH', '/grupos-de-produto/missing', { description: 'Missing' }) as never,
+    missingUpdate as never,
+    'corr-pg-missing-update',
+    handlers
+  );
+  assert.equal(missingUpdate.statusCode, 404);
+
+  const missingDelete = new MockResponse();
+  await handleInventoryProductGroupsRoutes(
+    '/product-groups/missing',
+    createMockRequest('DELETE', '/product-groups/missing') as never,
+    missingDelete as never,
+    'corr-pg-missing-delete',
+    handlers
+  );
+  assert.equal(missingDelete.statusCode, 404);
+});

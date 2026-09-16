@@ -703,3 +703,69 @@ test('accepts captured real V8 source-map conventions', () => {
   };
   assert.deepEqual(validateRawCoverageEntry(entry, source), []);
 });
+
+test('secondary zero-hit source maps do not duplicate the canonical denominator', () => {
+  const x = fixture();
+  try {
+    const manifestPath = join(x.root, 'manifest.json');
+    const manifest = JSON.parse(readFileSync(manifestPath));
+    manifest.requiredShards.push('second');
+    const manifestBytes = JSON.stringify(manifest);
+    writeFileSync(manifestPath, manifestBytes);
+    x.metadata.manifestSha256 = hash(manifestBytes);
+    x.save();
+
+    const zero = structuredClone(x.coverage);
+    const entry = zero['example.ts'];
+    entry.statementMap[0] = {
+      start: { line: 1, column: 1 },
+      end: { line: 1, column: 42 }
+    };
+    entry.fnMap[0].decl = entry.statementMap[0];
+    entry.fnMap[0].loc = entry.statementMap[0];
+    entry.fnMap[0].line = 1;
+    entry.branchMap[0].loc = entry.statementMap[0];
+    entry.branchMap[0].locations = [entry.statementMap[0], entry.statementMap[0]];
+    entry.s[0] = 0;
+    entry.f[0] = 0;
+    entry.b[0] = [0, 0];
+    const coverageBytes = JSON.stringify(zero);
+    const resultBytes = JSON.stringify({
+      runId: 'second-run',
+      shard: 'second',
+      status: 'passed'
+    });
+    mkdirSync(join(x.root, 'second'));
+    writeFileSync(join(x.root, 'second/result.json'), resultBytes);
+    writeFileSync(join(x.root, 'second/coverage.json'), coverageBytes);
+    writeFileSync(
+      join(x.root, 'second/shard.json'),
+      JSON.stringify({
+        ...x.metadata,
+        shard: 'second',
+        runId: 'second-run',
+        testResultSha256: hash(resultBytes),
+        coverageSha256: hash(coverageBytes)
+      })
+    );
+
+    const result = x.check();
+    assert.equal(result.status, 'PASS', result.errors.join('\n'));
+    assert.deepEqual(result.coverageMergeDiagnostics, {
+      sources: 1,
+      statements: 1,
+      functions: 1,
+      branches: 1,
+      samples: [
+        {
+          source: 'example.ts',
+          statements: 1,
+          functions: 1,
+          branches: 1
+        }
+      ]
+    });
+  } finally {
+    x.cleanup();
+  }
+});

@@ -255,3 +255,77 @@ test('measurement unit routes create, update and archive records', async () => {
     ['create_measurement_unit', 'update_measurement_unit', 'archive_measurement_unit']
   );
 });
+
+test('measurement unit routes cover precision normalization and validation failures', async () => {
+  const handlers = {
+    audit: createAuditCollector().audit as never,
+    requirePrincipal: () => createPrincipal(),
+    store: new InMemoryMeasurementUnitStore()
+  };
+
+  const decimalResponse = new MockResponse();
+  await handleMeasurementUnitsRoutes(
+    '/unidades-medida',
+    createMockRequest('GET', '/unidades-medida?q=quilograma&precision=decimal&active=false') as never,
+    decimalResponse as never,
+    'corr-mu-decimal',
+    handlers
+  );
+  assert.equal(decimalResponse.statusCode, 200);
+  assert.equal(decimalResponse.bodyJson<{ totalItems: number }>().totalItems, 1);
+
+  const invalidPrecisionResponse = new MockResponse();
+  await handleMeasurementUnitsRoutes(
+    '/measurement-units',
+    createMockRequest('GET', '/measurement-units?precision=unknown') as never,
+    invalidPrecisionResponse as never,
+    'corr-mu-unknown-precision',
+    handlers
+  );
+  assert.equal(invalidPrecisionResponse.statusCode, 200);
+
+  for (const body of [
+    {},
+    { code: 'x'.repeat(31), description: 'Código longo' },
+    { code: 'SEM-DESCRICAO' },
+    { code: 'NEG', description: 'Negativo', decimalPlaces: -1 },
+    { code: 'ALTO', description: 'Alto', decimalPlaces: 7 },
+    { code: 'INVALID', description: 'Normalizado', decimalPlaces: 'not-a-number' }
+  ] as const) {
+    const response = new MockResponse();
+    await handleMeasurementUnitsRoutes(
+      '/measurement-units',
+      createMockRequest('POST', '/measurement-units', body) as never,
+      response as never,
+      'corr-mu-invalid',
+      handlers
+    );
+    if (body.code === 'INVALID') {
+      assert.equal(response.statusCode, 201);
+      assert.equal(response.bodyJson<MeasurementUnitItem>().decimalPlaces, 0);
+    } else {
+      assert.equal(response.statusCode, 400);
+      assert.equal(response.bodyJson<{ code: string }>().code, 'VALIDATION_ERROR');
+    }
+  }
+
+  const missingUpdate = new MockResponse();
+  await handleMeasurementUnitsRoutes(
+    '/measurement-units/missing',
+    createMockRequest('PATCH', '/measurement-units/missing', { code: 'MISS', description: 'Missing' }) as never,
+    missingUpdate as never,
+    'corr-mu-missing-update',
+    handlers
+  );
+  assert.equal(missingUpdate.statusCode, 404);
+
+  const missingDelete = new MockResponse();
+  await handleMeasurementUnitsRoutes(
+    '/unidades-de-medida/missing',
+    createMockRequest('DELETE', '/unidades-de-medida/missing') as never,
+    missingDelete as never,
+    'corr-mu-missing-delete',
+    handlers
+  );
+  assert.equal(missingDelete.statusCode, 404);
+});

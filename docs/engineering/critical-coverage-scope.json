@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "01e5a168204ccb0f157ac96e7183391e1a1fc609",
+  "head": "3fca62b740e35b3c66b2cb9c6a05251c9a08b3b9",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -5370,7 +5370,7 @@
     },
     {
       "path": "packages/modules/pix/src/adapters/pagarme.adapter.ts",
-      "sha256": "1f38b4cfb0976690b57b8c24f6765c37053d9b4aa4a8e031c07efade86ad75ef",
+      "sha256": "c0320508990ab84003c81bfe2b0c4db4c87e190dfa2d9ed627984fc04367afa9",
       "components": [
         "pix"
       ],
@@ -6132,7 +6132,26 @@
     "apps/spa/src/services/__tests__/prescriptions.test.ts",
     "tests/integration/database/outbox-legacy-envelope-worker.test.ts",
     "apps/spa/src/services/__tests__/critical-service-contracts.test.ts",
-    "tests/unit/db/canonical-schema-catalog.test.ts"
+    "tests/unit/db/canonical-schema-catalog.test.ts",
+    "packages/modules/medical-records/src/database-medical-records.repository.test.ts",
+    "packages/modules/ml/src/database-feature.repository.test.ts",
+    "packages/modules/prescription-executions/src/database-prescription-execution.repository.test.ts",
+    "packages/modules/triage/src/database-triage.repository.test.ts",
+    "packages/modules/cash/src/database-cash.repository.test.ts",
+    "packages/modules/diagnostics/src/database-diagnostics.repository.test.ts",
+    "packages/modules/diagnostics/src/database-laboratory-catalog.repository.test.ts",
+    "packages/modules/encounters/src/database-clinical-handoff.repository.test.ts",
+    "packages/modules/encounters/src/database-encounter.repository.contract.test.ts",
+    "packages/modules/financial/src/database-financial.repository.test.ts",
+    "packages/modules/fiscal/src/database-fiscal.repository.test.ts",
+    "packages/modules/inventory/src/database-inventory.repository.test.ts",
+    "packages/modules/scheduling/src/database-scheduling.repository.test.ts",
+    "packages/modules/webhooks/src/database-webhook.repository.test.ts",
+    "tests/unit/api/database-agenda-config.repository.test.ts",
+    "tests/unit/api/runtime-repositories-inmemory.test.ts",
+    "packages/modules/notifications/src/database-notifications.repository.test.ts",
+    "packages/modules/owners/src/database-owner.repository.test.ts",
+    "packages/modules/staff/src/database-staff.repository.test.ts"
   ],
   "executionInputs": [
     ".eslintrc.cjs",
@@ -8288,7 +8307,27 @@
     "apps/api/src/registry-request-boundaries.test.ts",
     "apps/api/src/registry-request-boundaries.ts",
     "scripts/lib/candidate-binding.mjs",
-    "scripts/promote-critical-shard.mjs"
+    "scripts/promote-critical-shard.mjs",
+    "scripts/lib/critical-coverage-merge.mjs",
+    "packages/modules/medical-records/src/database-medical-records.repository.test.ts",
+    "packages/modules/ml/src/database-feature.repository.test.ts",
+    "packages/modules/prescription-executions/src/database-prescription-execution.repository.test.ts",
+    "packages/modules/triage/src/database-triage.repository.test.ts",
+    "packages/modules/cash/src/database-cash.repository.test.ts",
+    "packages/modules/diagnostics/src/database-diagnostics.repository.test.ts",
+    "packages/modules/diagnostics/src/database-laboratory-catalog.repository.test.ts",
+    "packages/modules/encounters/src/database-clinical-handoff.repository.test.ts",
+    "packages/modules/encounters/src/database-encounter.repository.contract.test.ts",
+    "packages/modules/financial/src/database-financial.repository.test.ts",
+    "packages/modules/fiscal/src/database-fiscal.repository.test.ts",
+    "packages/modules/inventory/src/database-inventory.repository.test.ts",
+    "packages/modules/scheduling/src/database-scheduling.repository.test.ts",
+    "packages/modules/webhooks/src/database-webhook.repository.test.ts",
+    "tests/unit/api/database-agenda-config.repository.test.ts",
+    "tests/unit/api/runtime-repositories-inmemory.test.ts",
+    "packages/modules/notifications/src/database-notifications.repository.test.ts",
+    "packages/modules/owners/src/database-owner.repository.test.ts",
+    "packages/modules/staff/src/database-staff.repository.test.ts"
   ],
   "scopeHistory": [
     {
@@ -10489,6 +10528,152 @@
           "after": "5b2082424c3384ee0436f65da61640c1de9e6cb1105863f9b3f86ff33471d583"
         }
       ]
+    },
+    {
+      "manifestRevision": 36,
+      "observedAt": "2026-09-16T10:26:06.868Z",
+      "collectionCommit": "3fca62b740e35b3c66b2cb9c6a05251c9a08b3b9",
+      "previousManifestSha256": "f12c8054a4facc7faf3f4d91c7ac2049c58d83bfa985c4832012b6b22e981014",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-f12c8054a4facc7faf3f4d91c7ac2049c58d83bfa985c4832012b6b22e981014.json",
+      "previousSourceSetSha256": "c53f9daa73ef9a9fff857e6320f636be68b2f4ff5fb5d0f23ec903ac6f36117e",
+      "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "reason": "Cobrir WebAuthn, MFA, headers, cadastros, webhooks e corrigir cancelamento PIX 204",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "packages/modules/pix/src/adapters/pagarme.adapter.ts",
+          "before": "1f38b4cfb0976690b57b8c24f6765c37053d9b4aa4a8e031c07efade86ad75ef",
+          "after": "c0320508990ab84003c81bfe2b0c4db4c87e190dfa2d9ed627984fc04367afa9"
+        }
+      ]
+    },
+    {
+      "manifestRevision": 37,
+      "observedAt": "2026-09-16T11:29:38.076Z",
+      "collectionCommit": "3fca62b740e35b3c66b2cb9c6a05251c9a08b3b9",
+      "previousManifestSha256": "1a4e3c1401cf955844316613de93f1c934a2d920b619771c74e8ec205454e8b8",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-1a4e3c1401cf955844316613de93f1c934a2d920b619771c74e8ec205454e8b8.json",
+      "previousSourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "reason": "Adicionar contratos determinísticos de ML, triagem, prontuário e execução de prescrição",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "scripts/lib/critical-coverage-merge.mjs",
+        "packages/modules/medical-records/src/database-medical-records.repository.test.ts",
+        "packages/modules/ml/src/database-feature.repository.test.ts",
+        "packages/modules/prescription-executions/src/database-prescription-execution.repository.test.ts",
+        "packages/modules/triage/src/database-triage.repository.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "26facf5233b2a9d222baa604dd1f890385b8d205666913c7408d5a8b277b9163",
+      "executionInputsSha256": "ec04efb85501074debc8968d84c022c01e5e0fec93155affa1bf2d87db36672d",
+      "vitestAdded": [
+        "packages/modules/medical-records/src/database-medical-records.repository.test.ts",
+        "packages/modules/ml/src/database-feature.repository.test.ts",
+        "packages/modules/prescription-executions/src/database-prescription-execution.repository.test.ts",
+        "packages/modules/triage/src/database-triage.repository.test.ts"
+      ],
+      "vitestRemoved": []
+    },
+    {
+      "manifestRevision": 38,
+      "observedAt": "2026-09-16T12:04:40.843Z",
+      "collectionCommit": "3fca62b740e35b3c66b2cb9c6a05251c9a08b3b9",
+      "previousManifestSha256": "e475fe1789a2118314113162ae112e18c97f5cc97c4dc260a59375f38fc8b0d5",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-e475fe1789a2118314113162ae112e18c97f5cc97c4dc260a59375f38fc8b0d5.json",
+      "previousSourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "reason": "Adicionar contratos determinísticos para repositórios de inventário, fiscal, agenda, agendamento, caixa, financeiro, webhooks, encontros e diagnóstico",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "packages/modules/cash/src/database-cash.repository.test.ts",
+        "packages/modules/diagnostics/src/database-diagnostics.repository.test.ts",
+        "packages/modules/diagnostics/src/database-laboratory-catalog.repository.test.ts",
+        "packages/modules/encounters/src/database-clinical-handoff.repository.test.ts",
+        "packages/modules/encounters/src/database-encounter.repository.contract.test.ts",
+        "packages/modules/financial/src/database-financial.repository.test.ts",
+        "packages/modules/fiscal/src/database-fiscal.repository.test.ts",
+        "packages/modules/inventory/src/database-inventory.repository.test.ts",
+        "packages/modules/scheduling/src/database-scheduling.repository.test.ts",
+        "packages/modules/webhooks/src/database-webhook.repository.test.ts",
+        "tests/unit/api/database-agenda-config.repository.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "ec04efb85501074debc8968d84c022c01e5e0fec93155affa1bf2d87db36672d",
+      "executionInputsSha256": "f873a41395b49e0e7f28ac7cc7bc2be9ea1156819e102ea94f0ddd73fdf143de",
+      "vitestAdded": [
+        "packages/modules/cash/src/database-cash.repository.test.ts",
+        "packages/modules/diagnostics/src/database-diagnostics.repository.test.ts",
+        "packages/modules/diagnostics/src/database-laboratory-catalog.repository.test.ts",
+        "packages/modules/encounters/src/database-clinical-handoff.repository.test.ts",
+        "packages/modules/encounters/src/database-encounter.repository.contract.test.ts",
+        "packages/modules/financial/src/database-financial.repository.test.ts",
+        "packages/modules/fiscal/src/database-fiscal.repository.test.ts",
+        "packages/modules/inventory/src/database-inventory.repository.test.ts",
+        "packages/modules/scheduling/src/database-scheduling.repository.test.ts",
+        "packages/modules/webhooks/src/database-webhook.repository.test.ts",
+        "tests/unit/api/database-agenda-config.repository.test.ts"
+      ],
+      "vitestRemoved": []
+    },
+    {
+      "manifestRevision": 39,
+      "observedAt": "2026-09-16T12:11:34.358Z",
+      "collectionCommit": "3fca62b740e35b3c66b2cb9c6a05251c9a08b3b9",
+      "previousManifestSha256": "d9874baa9f2059aaa281cdc7f26d5858e416033996232c9c30aca04e56fb3b06",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-d9874baa9f2059aaa281cdc7f26d5858e416033996232c9c30aca04e56fb3b06.json",
+      "previousSourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "reason": "Adicionar contrato de runtime in-memory para API keys, outbox, webhooks e ML",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "tests/unit/api/runtime-repositories-inmemory.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "f873a41395b49e0e7f28ac7cc7bc2be9ea1156819e102ea94f0ddd73fdf143de",
+      "executionInputsSha256": "1f51d62a1645b37b4be55d5a0d05e6f70c8b6c7c222a35560f53ccef2ef753a7",
+      "vitestAdded": [
+        "tests/unit/api/runtime-repositories-inmemory.test.ts"
+      ],
+      "vitestRemoved": []
+    },
+    {
+      "manifestRevision": 40,
+      "observedAt": "2026-09-16T12:23:26.262Z",
+      "collectionCommit": "3fca62b740e35b3c66b2cb9c6a05251c9a08b3b9",
+      "previousManifestSha256": "4b87abb58e30ce2edaecd61811e86ce6d8e642b2f874531a25f5f9ceafd7f7c5",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-4b87abb58e30ce2edaecd61811e86ce6d8e642b2f874531a25f5f9ceafd7f7c5.json",
+      "previousSourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "reason": "Adicionar contratos determinísticos para cash, diagnósticos, encontros, fiscal, financeiro, inventário, notificações, owners, scheduling e staff",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "packages/modules/notifications/src/database-notifications.repository.test.ts",
+        "packages/modules/owners/src/database-owner.repository.test.ts",
+        "packages/modules/staff/src/database-staff.repository.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "1f51d62a1645b37b4be55d5a0d05e6f70c8b6c7c222a35560f53ccef2ef753a7",
+      "executionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99",
+      "vitestAdded": [
+        "packages/modules/notifications/src/database-notifications.repository.test.ts",
+        "packages/modules/owners/src/database-owner.repository.test.ts",
+        "packages/modules/staff/src/database-staff.repository.test.ts"
+      ],
+      "vitestRemoved": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -11422,9 +11607,9 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 35,
-  "sourceSetSha256": "c53f9daa73ef9a9fff857e6320f636be68b2f4ff5fb5d0f23ec903ac6f36117e",
-  "executionInputsSha256": "26facf5233b2a9d222baa604dd1f890385b8d205666913c7408d5a8b277b9163",
+  "manifestRevision": 40,
+  "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+  "executionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,

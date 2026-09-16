@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
-import { test } from 'vitest';
+import { expect, test } from 'vitest';
 import { ValidationError } from '@cvg-his-v2/shared-errors';
 import { ConfirmedPixSettlementCommand } from './confirmed-settlement/confirmed-pix-settlement-command.js';
 import { PixService } from './pix.service.js';
 import { MockPixAdapter } from './adapters/mock.adapter.js';
+import { PagarMePixAdapter } from './adapters/pagarme.adapter.js';
 import type { PixTransactionId } from './types.js';
 
 test('PixService createIntent returns PixIntentResult with QR code', async () => {
@@ -194,4 +195,131 @@ test('ConfirmedPixSettlementCommand rejects malformed claims fingerprints before
     (error: unknown) =>
       error instanceof ValidationError && error.message.includes('claimsFingerprint')
   );
+});
+
+test('PagarMePixAdapter validates configuration and maps provider lifecycle states', async () => {
+  assert.throws(
+    () => new PagarMePixAdapter({ apiKey: '', pixKey: 'pix@example.test' }),
+    /apiKey is required/
+  );
+  assert.throws(
+    () => new PagarMePixAdapter({ apiKey: 'api-key', pixKey: ' ' }),
+    /pixKey is required/
+  );
+
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ url: string; method: string; headers: Headers; body?: string }> = [];
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    requests.push({
+      url,
+      method: init?.method ?? 'GET',
+      headers: new Headers(init?.headers),
+      body: typeof init?.body === 'string' ? init.body : undefined
+    });
+    if (init?.method === 'POST') {
+      return Response.json({
+        id: 'qr-001',
+        qr_code: '000201payload',
+        qr_code_base64: 'base64-qr',
+        expires_at: '2026-09-16T12:00:00.000Z'
+      });
+    }
+    if (init?.method === 'DELETE') return new Response(null, { status: 204 });
+    const providerId = url.split('/').at(-1);
+    const status = providerId === 'paid' ? 'paid' : providerId === 'cancelled' ? 'canceled' : providerId === 'expired' ? 'expired' : 'pending';
+    return Response.json({
+      id: providerId,
+      status,
+      paid_at: status === 'paid' ? '2026-09-16T11:00:00.000Z' : undefined
+    });
+  };
+
+  try {
+    const adapter = new PagarMePixAdapter({
+      apiKey: 'api-key',
+      pixKey: 'pix@example.test',
+      baseUrl: 'https://pagarme.example.test'
+    });
+    const created = await adapter.createIntent({
+      billingRecordId: 'bill-pagarme',
+      accountId: 'acc-pagarme' as never,
+      amount: 1234,
+      description: 'Consulta',
+      expirationMinutes: 15
+    });
+    assert.equal(created.transaction.provider, 'pagarme');
+    assert.equal(created.transaction.providerTransactionId, 'qr-001');
+    assert.equal(created.qrCodePayload, '000201payload');
+    assert.equal(requests[0]?.method, 'POST');
+    assert.equal(requests[0]?.headers.get('authorization'), `Basic ${Buffer.from('api-key:').toString('base64')}`);
+    const createBody = JSON.parse(requests[0]?.body ?? '{}') as Record<string, unknown>;
+    assert.equal(createBody.pix_key, 'pix@example.test');
+    assert.equal(createBody.amount, 1234);
+    assert.equal(createBody.description, 'Consulta');
+    assert.equal(typeof createBody.expires_at, 'string');
+
+    await expect(adapter.getStatus('paid' as PixTransactionId)).resolves.toMatchObject({
+      status: 'completed',
+      providerTransactionId: 'paid',
+      completedAt: '2026-09-16T11:00:00.000Z'
+    });
+    await expect(adapter.getStatus('cancelled' as PixTransactionId)).resolves.toMatchObject({
+      status: 'cancelled'
+    });
+    await expect(adapter.getStatus('expired' as PixTransactionId)).resolves.toMatchObject({
+      status: 'expired'
+    });
+    await expect(adapter.getStatus('pending' as PixTransactionId)).resolves.toMatchObject({
+      status: 'pending'
+    });
+    await expect(adapter.confirmPayment('local-id' as PixTransactionId, 'paid')).resolves.toMatchObject({
+      status: 'completed',
+      providerTransactionId: 'paid'
+    });
+    await expect(adapter.cancelIntent('qr-001' as PixTransactionId)).resolves.toEqual({
+      transactionId: 'qr-001',
+      cancelled: true
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('PagarMePixAdapter returns actionable provider errors and safe cancellation failures', async () => {
+  const originalFetch = globalThis.fetch;
+  let mode: 'errors' | 'message' | 'invalid' = 'errors';
+  globalThis.fetch = async () => {
+    if (mode === 'errors') {
+      return Response.json({ errors: [{ code: 'invalid', message: 'invalid amount' }] }, { status: 422 });
+    }
+    if (mode === 'message') return Response.json({ message: 'provider unavailable' }, { status: 503 });
+    return new Response('not-json', { status: 502, statusText: 'Bad Gateway' });
+  };
+
+  try {
+    const adapter = new PagarMePixAdapter({ apiKey: 'api-key', pixKey: 'pix@example.test' });
+    await expect(
+      adapter.createIntent({
+        billingRecordId: 'bill-error',
+        accountId: 'acc-error' as never,
+        amount: 1,
+        description: 'Erro'
+      })
+    ).rejects.toThrow('invalid amount');
+    mode = 'message';
+    await expect(adapter.getStatus('status-error' as PixTransactionId)).rejects.toThrow(
+      'provider unavailable'
+    );
+    mode = 'invalid';
+    await expect(adapter.getStatus('status-invalid' as PixTransactionId)).rejects.toThrow(
+      'HTTP 502 Bad Gateway'
+    );
+    await expect(adapter.cancelIntent('cancel-error' as PixTransactionId)).resolves.toMatchObject({
+      cancelled: false,
+      reason: expect.stringContaining('HTTP 502 Bad Gateway')
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
