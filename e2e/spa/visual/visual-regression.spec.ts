@@ -336,7 +336,12 @@ test.describe('Visual Regression — List Pages', () => {
       for (const source of selectedCases) {
         await navigateTo(page, source.route);
         await expect(page.locator('body')).toBeVisible();
+        await waitForSpecializedAppMount(page);
         await exerciseSpecializedBrowserAction(page, source.behavior.action);
+        // Some safe actions intentionally use an internal router link (for
+        // example, returning from a detail state). Do not start the next
+        // navigation while Vue is still replacing the route component.
+        await waitForSpecializedAppMount(page);
 
         const runtimeEvents = await page.evaluate(() => {
           const tracker = (
@@ -1372,7 +1377,14 @@ async function clickFirstSpecializedButton(
     const candidates = page.getByRole('button', { name });
     for (let index = 0; index < (await candidates.count()); index += 1) {
       const candidate = candidates.nth(index);
-      if ((await candidate.isVisible()) && !(await candidate.isDisabled())) {
+      const isShellHistoryControl = await candidate.evaluate((element) =>
+        element.classList.contains('workspace__history-btn')
+      );
+      if (
+        (await candidate.isVisible()) &&
+        !(await candidate.isDisabled()) &&
+        !isShellHistoryControl
+      ) {
         await candidate.click();
         return true;
       }
@@ -1474,11 +1486,20 @@ async function exerciseSpecializedBrowserAction(page: Page, action: string): Pro
   ) {
     if (await clickFirstSpecializedButton(page, ['Editar', 'Voltar', 'Recarregar', 'Atualizar']))
       return;
-    const links = page.getByRole('link', {
+    const links = page.locator('main').getByRole('link', {
       name: /Editar|Voltar|Atendimentos|Webhooks|Contas a Receber/i
     });
     if ((await links.count()) > 0 && (await links.first().isVisible())) {
       await links.first().click();
+      return;
+    }
+
+    // The manifest deliberately uses stable non-existent detail identifiers
+    // to exercise the renderer's error state without creating mutable data.
+    // In that state the page has no local action, so a reload is the only
+    // deterministic browser action that stays inside the route contract.
+    if (action === 'open-detail-actions') {
+      await page.reload({ waitUntil: 'networkidle' });
       return;
     }
   }
@@ -1492,7 +1513,7 @@ async function exerciseSpecializedBrowserAction(page: Page, action: string): Pro
     ])
   )
     return;
-  const recoveryLink = page.getByRole('link', { name: /Voltar|Cancelar/i });
+  const recoveryLink = page.locator('main').getByRole('link', { name: /Voltar|Cancelar/i });
   if ((await recoveryLink.count()) > 0 && (await recoveryLink.first().isVisible())) {
     await recoveryLink.first().click();
     return;
@@ -1602,6 +1623,14 @@ async function deleteVisualResource(token: string, path: string): Promise<void> 
 async function navigateTo(page: Page, route: string): Promise<void> {
   await page.goto(`${SPA_URL}${route}`);
   await page.waitForLoadState('networkidle');
+}
+
+async function waitForSpecializedAppMount(page: Page): Promise<void> {
+  await page.waitForFunction(
+    () => Boolean(document.querySelector('#app')?.firstElementChild),
+    undefined,
+    { timeout: 15000 }
+  );
 }
 
 async function normalizeVisualText(

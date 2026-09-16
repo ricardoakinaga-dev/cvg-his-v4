@@ -260,6 +260,10 @@ function main() {
     ...commonEnvironment,
     SPA_URL: process.env.SPA_URL || 'http://127.0.0.1:3112',
     API_URL: process.env.API_URL || 'http://127.0.0.1:3111',
+    // Keep partial producer runs genuinely partial. Without this propagation
+    // the browser suite silently exercised the whole manifest even when
+    // `--source` narrowed Vitest, making isolated diagnosis impossible.
+    CVG_VUE_SPECIALIZED_SOURCES: selectedPaths,
     CVG_VUE_SPECIALIZED_BROWSER_OUTPUT: join(candidate, 'browser-evidence.json'),
     CVG_VUE_SPECIALIZED_PLAYWRIGHT_RESULT: join(candidate, 'playwright-result.json')
   };
