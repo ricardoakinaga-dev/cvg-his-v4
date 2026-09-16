@@ -1,19 +1,22 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-16T04:43:06Z
+## Snapshot vigente — 2026-09-16T05:24:28Z
 
-O baseline autoritativo do candidato atual está em: `f09e79fd275b942b3d9dcd087105faf54403a058`.
+O baseline autoritativo do candidato funcional atual está em: `f09e79fd275b942b3d9dcd087105faf54403a058`.
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
 documentação corrente sucede os candidatos históricos sem transferir evidência;
-`HEAD/main@f09e79fd` e `origin/main@f09e79fd` estão sincronizados; o SHA de
-código do candidato é `f09e79fd`, com rollback preservado. O graph e o gate corrente permanecem
+`HEAD/main@6b7c1cec` e `origin/main@6b7c1cec` estão sincronizados; o SHA de
+código do candidato é `f09e79fd` e o descendente `6b7c1cec` contém apenas a
+reancoragem documental, com rollback preservado. O graph e o gate corrente permanecem
 `BLOCKED / NOT PROVEN`.
 
-O [CI #177](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056707527), disparado no
-`main@f09e79fd`, ainda estava pendente nesta observação. Nenhum resultado
+O [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106), disparado no
+`main@6b7c1cec`, terminou `failure`: guards, segurança, typecheck, lint,
+OpenAPI, build, contratos de API, integração e Windows passaram; coverage
+crítico/geral, unidade, k6, visual e SPA E2E falharam. Nenhum resultado
 parcial ou histórico é promovido. Target, recovery, UAT, attestation,
 governança e autoridade de release continuam `NOT PROVEN`.
 

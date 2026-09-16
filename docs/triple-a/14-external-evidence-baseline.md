@@ -6,15 +6,15 @@
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA de código atual é
 > `f09e79fd275b942b3d9dcd087105faf54403a058`, com evidência anterior preservada apenas como histórico e identidade canônica em
-> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O [CI #175](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35050349312), executado no reancoramento publicado `161df773`, terminou `failure`: guards, API contracts, unit, integration e Windows passaram; critical/general coverage, k6, visual e SPA E2E falharam.
+> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O `HEAD/main@6b7c1cec` é seu descendente documental. O [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106), executado no `main@6b7c1cec`, terminou `failure`: guards, segurança, typecheck, lint, OpenAPI, build, contratos de API, integração e Windows passaram; critical/general coverage, unit, k6, visual e SPA E2E falharam.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
 **Current snapshot:** `f09e79fd275b942b3d9dcd087105faf54403a058` (identity/evidence graph reancorados; provas externas e autoridade de release continuam `NOT PROVEN`).
-**Current CI:** [#177](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056707527) pendente no `main@f09e79fd`; não existe CI verde qualificável.
+**Current CI:** [#178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) terminou `failure` no `main@6b7c1cec`; não existe CI verde qualificável.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-16T04:43:06Z
+**Observation:** 2026-09-16T05:24:28Z
 
-**Current local execution:** typecheck/lint e contratos focados passaram; o E2E SPA Docker passou `424/424`, sem skipped, e a validação de evidência SHA-bound passou. A cobertura isolada anterior executou `2.661` testes, mas ficou em `77,97%` statements, `71,27%` branches, `79,17%` functions e `79,60%` lines, abaixo de 82%. A validação local não substitui CI pinned, target ou UAT.
+**Current local execution:** typecheck/lint e contratos focados passaram; o E2E SPA Docker passou `424/424` no `HEAD`, sem skipped, com `150` rotas e `300` navegações, e a validação de evidência SHA-bound passou. A cobertura isolada anterior executou `2.661` testes, mas ficou em `77,97%` statements, `71,27%` branches, `79,17%` functions e `79,60%` lines, abaixo de 82%. A validação local não substitui CI pinned, target ou UAT.
 
 **Current strict gate:** último resultado estrito conhecido `BLOCKED / NOT PROVEN`, score `51`, critical `49`, open P0 `18`, `claim=NOT PROVEN` e `publication_allowed=false`, executado explicitamente no candidato anterior `358e546e` e não promovido. A identidade e o graph permanecem fail-closed.
 
@@ -23,7 +23,7 @@ um índice APT isolado dos archives oficiais assinados do Ubuntu 22.04, pois o
 runner pode conter fontes de terceiros com atualização parcial. A mudança foi
 verificada localmente. O guard de backup/restore também reconhece o formato
 vigente `R6`/`PROD-037`; o CI #175 vinculou os guards ao reancoramento atual,
-mas falhou nos gates de coverage, k6, visual e E2E SPA e não autoriza promoção.
+mas o CI #178 falhou nos gates de coverage, unit, k6, visual e E2E SPA e não autoriza promoção.
 
 The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. Historical runs #137 and #140 belong to earlier SHAs; #140 failed in `Run k6 benchmark`/`Check SLO results`, while #137 passed all published jobs. The performance evidence and its access limitation are reconciled in [critic-performance-assurance-20260911.md](./critic-performance-assurance-20260911.md). Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
 

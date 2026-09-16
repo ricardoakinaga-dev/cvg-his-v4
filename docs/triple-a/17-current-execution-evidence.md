@@ -1,10 +1,10 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato de código observado em 2026-09-16T04:43:06Z
+## Candidato de código observado em 2026-09-16T05:24:28Z
 
-- SHA de código e documentação: `f09e79fd275b942b3d9dcd087105faf54403a058`; identidade em
+- SHA de código e documentação: `f09e79fd275b942b3d9dcd087105faf54403a058` (candidato funcional; `HEAD/main@6b7c1cec` é descendente documental); identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O código do candidato está em `f09e79fd`; `HEAD`/`main` local e `origin/main` coincidem; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- O código do candidato está em `f09e79fd`; `HEAD`/`main` local e `origin/main` coincidem em `6b7c1cec`; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
 
 ## Validações locais
@@ -15,7 +15,7 @@
 | Workspace              | Typecheck e lint completos PASS; contrato CI `19/19`; testes focados `46/46`; checker de estado `11/11` |
 | Identidade/evidence graph | Identidade reancorada no candidato `f09e79fd`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` até evidência externa terminal |
 | Coverage isolado       | `2.661` testes; 2.658 passados e 3 skipped, mas cobertura global `77,97/71,27/79,17/79,60%` (statements/branches/functions/lines), abaixo de 82% |
-| E2E SPA completo       | Stack Docker descartável; Chromium; `424/424` testes PASS, zero skipped; evidência SHA-bound válida com `150` rotas e `300` navegações |
+| E2E SPA completo       | Stack Docker descartável; Chromium; `424/424` testes PASS no SHA `6b7c1cec`, zero skipped; evidência SHA-bound válida com `150` rotas e `300` navegações |
 | Regressão visual       | Incluída na suíte completa; casos visuais locais PASS; o produtor Vue especializado permanece separado e opt-in |
 | Performance/target     | Sem certificação do candidato; k6/target/soak/restore/UAT/attestation permanecem `NOT_PROVEN` |
 | Supply/artefatos       | O graph e o pacote local são gerados fail-closed; nenhum PASS externo ou histórico foi inventado |
@@ -26,7 +26,7 @@ protection ou autoridade de release.
 
 ## CI remoto e reancoragem
 
-O [CI #175](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35050349312), executado no `main@161df773` e vinculado ao candidato de código `358e546e`, terminou `failure`. Repository Guards, API Contract, Unit, Integration e Windows passaram; Critical Coverage, Coverage, Performance/k6, Visual Regression e E2E SPA falharam. O gate local explícito do candidato retornou `51/49/18` e bloqueou publicação; nenhum resultado histórico ou parcial é promovido.
+O [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106), executado no `main@6b7c1cec`, terminou `failure`. Repository Guards, API Contract, Integration e Windows passaram junto com os checks de segurança, typecheck, lint, OpenAPI e build; Critical Coverage, Coverage, Unit Tests, Performance/k6, Visual Regression e E2E SPA falharam. O E2E remoto falhou na etapa principal e na validação de usabilidade, embora a API clínica canônica tenha passado; o gate local explícito do candidato retornou `51/49/18` e bloqueou publicação; nenhum resultado histórico ou parcial é promovido.
 
 
 O [CI #143](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34678150409)

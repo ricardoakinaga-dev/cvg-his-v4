@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `main@f09e79fd275b942b3d9dcd087105faf54403a058`
-(código do candidato; identidade/evidence graph reancorados; o [CI #177](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056707527) estava pendente na observação e target/autoridade ainda não foram comprovados)
+**Candidate funcional avaliado:** `f09e79fd275b942b3d9dcd087105faf54403a058`
+(código do candidato; `main@6b7c1cec` é descendente documental; identidade/evidence graph reancorados; o [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) terminou `failure` e target/autoridade ainda não foram comprovados)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -12,8 +12,8 @@ provisionamento isolado e resiliente de coverage, correções de acessibilidade 
 bootstrap de teste hermético. O gate local explícito fechou em `51/49/18`
 (score/critical/open P0); typecheck/lint, o fluxo browser clínico P0 e a
 regressão visual `29/29` passaram,
-mas a cobertura global isolada ficou abaixo de 82%; o CI #175 falhou em
-coverage crítico/geral, k6, visual e E2E SPA; não há target, recovery,
+mas a cobertura global isolada ficou abaixo de 82%; o CI #178 falhou em
+coverage crítico/geral, unit, k6, visual e E2E SPA; não há target, recovery,
 attestation, UAT, governança, performance certificada ou
 autoridade de release. Nenhum threshold foi relaxado e não há autorização para
 declarar `main green`, release produtivo ou `TRIPLE-A VERIFIED`.
@@ -37,10 +37,10 @@ remota e pelos gates externos de target e release.
 | Testing              | LOCAL PASS                   | suíte workspace, critical e E2E clínico                                                                                                 |
 | Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas                                                                                                |
 | Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                                                                                                           |
-| CI/CD                | BLOQUEADO no SHA atual       | O CI #175 passou nos guards/contratos funcionais, mas falhou em coverage crítico/geral, k6, visual e E2E SPA; o SHA atual reconcilia o manifesto crítico e alinha o guard de backup/restore ao roadmap/backlog vigentes |
+| CI/CD                | BLOQUEADO no SHA atual       | O CI #178 passou nos guards/contratos funcionais de segurança, build e integração, mas falhou em coverage crítico/geral, unit, k6, visual e E2E SPA; o SHA atual reconcilia o manifesto crítico e alinha o guard de backup/restore ao roadmap/backlog vigentes |
 | Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                                                                                                         |
 | Recovery             | BLOCKED                      | Docker impediu restore drill real                                                                                                       |
-| Frontend             | PARTIAL / CI FAIL            | E2E SPA e visual falharam no CI #175; a fatia clínica local e as baselines locais passaram                                              |
+| Frontend             | PARTIAL / CI FAIL            | E2E SPA e visual falharam no CI #178; a suíte local limpa passou 424/424 e a fatia clínica local/baselines locais passaram                                              |
 | Database             | PARTIAL                      | testes locais; RLS target não provado                                                                                                   |
 | Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas                                                                                                |
 | Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes                                                                                               |
