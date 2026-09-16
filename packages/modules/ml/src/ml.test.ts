@@ -9,6 +9,8 @@ import type { Feature, FeatureGroup, FeatureVector, CreateFeatureVector } from '
 import type { Model, ModelVersion, ModelStage } from './model-registry.service.js';
 import { DatabaseModelRepository } from './repositories/database-model.repository.js';
 
+const runPostgresContract = process.env.REQUIRE_TEST_DB === '1';
+
 // Mock implementations for testing without database
 class InMemoryFeatureRepository {
   private features: Map<string, Feature> = new Map();
@@ -260,7 +262,7 @@ describe('Model Stage Lifecycle', () => {
   });
 });
 
-describe('DatabaseModelRepository PostgreSQL contract', () => {
+describe.skipIf(!runPostgresContract)('DatabaseModelRepository PostgreSQL contract', () => {
   let fixtureTablesCreated = false;
 
   beforeAll(async () => {
