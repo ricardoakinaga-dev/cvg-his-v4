@@ -872,6 +872,9 @@ jobs:
           runtime_root="${RUNNER_TEMP}/critical-coverage-runtime"
           apt_root="${RUNNER_TEMP}/critical-coverage-apt"
           apt_lists="${apt_root}/lists"
+          coverage_root="artifacts/consolidacao-2026-09-05/coverage-scope"
+          mkdir -p "${coverage_root}"
+          exec > >(tee "${coverage_root}/ci-critical-coverage-provision.log") 2>&1
           mkdir -p "${deb_dir}" "${runtime_root}"
           sudo install -d -m 0755 "${apt_root}" "${apt_lists}" "${apt_lists}/partial"
           apt_sources="${apt_root}/sources.list"

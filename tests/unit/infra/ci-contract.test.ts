@@ -258,6 +258,7 @@ describe('CI repository guardrails', () => {
     );
 
     expect(job).toContain('name: Provision private coverage runner binaries');
+    expect(job).toContain('ci-critical-coverage-provision.log');
     expect(job).toContain('for candidate in postgresql-14 postgresql-16 postgresql-15');
     expect(job).toContain('sudo apt-get "${apt_options[@]}" update -y -o Acquire::Retries=3');
     expect(job).toContain('Dir::Etc::sourceparts=-');
