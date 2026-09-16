@@ -185,8 +185,8 @@ test('DatabaseEncounterRepository maps lifecycle conflicts and timeline persiste
       accountId: otherAccountId as never,
       encounterId: encounterId as never,
       eventType: 'encounter_opened',
-      summary: null,
-      actorUserId: null,
+      summary: 'ignored',
+      actorUserId: userId as never,
       occurredAt: timestamp.toISOString()
     })).rejects.toThrow(/timeline account/);
     selectQueue.push([{
