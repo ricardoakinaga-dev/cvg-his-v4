@@ -208,6 +208,8 @@ describe('CI repository guardrails', () => {
     expect(job).toContain('pnpm validate:rls');
     expect(job).toContain('pnpm validate:deploy-surface');
     expect(job).toContain('pnpm docs:validate');
+    expect(job).toContain('pnpm validate:candidate-identity');
+    expect(job).toContain('pnpm evidence:triple-a:graph');
     expect(job).toContain('pnpm complexity:check');
     expect(job).toContain('CVG_HELM_VERSION: v3.15.4');
     expect(job).toContain('sha256sum --check');
@@ -221,6 +223,7 @@ describe('CI repository guardrails', () => {
       'REQUIRE_TEST_DB=1 pnpm vitest run tests/unit/infra/requirement-evidence-matrix.test.ts --config vitest.config.ts'
     );
     expect(job).toContain('node --test tests/unit/infra/gauntlet-subcriteria-evidence.test.mjs');
+    expect(job).toContain('node --test scripts/current-candidate-identity.test.mjs');
     expect(job).toContain('node --test scripts/run-security-audit.test.mjs');
     expect(job).toContain('pnpm vetus:parity:test');
     expect(job).toContain(

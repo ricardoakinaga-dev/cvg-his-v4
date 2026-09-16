@@ -291,10 +291,12 @@ jobs:
           pnpm validate:deploy-surface
           pnpm validate:environment-runtime
           pnpm validate:identity-contract
+          pnpm validate:candidate-identity
           pnpm validate:loyalty-expiration-contract
           pnpm validate:behavioral-parity-contract
           pnpm validate:dependencies
           pnpm docs:validate
+          pnpm evidence:triple-a:graph
           pnpm complexity:check
 
       - name: Validate Helm chart
@@ -328,6 +330,7 @@ jobs:
           node --test scripts/build-source-map-contract.test.mjs
           node --test scripts/capture-performance-diagnostics.test.mjs
           node --test scripts/generate-triple-a-evidence-package.test.mjs
+          node --test scripts/current-candidate-identity.test.mjs
           node --test scripts/run-security-audit.test.mjs
           node --test scripts/validate-supply-chain.test.mjs
           node --test scripts/process-reexport-coverage.test.mjs scripts/source-metric-presence.test.mjs scripts/check-critical-coverage.test.mjs
