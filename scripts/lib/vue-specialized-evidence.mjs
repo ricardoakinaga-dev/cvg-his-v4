@@ -353,7 +353,8 @@ export function checkVueSpecializedEvidence({
   evidencePath,
   buildRoot,
   artifactRoot,
-  head
+  head,
+  acceptedHeads = [head]
 }) {
   const scope = loadVueSpecializedScope({ root, manifest, contract });
   const errors = [...scope.errors];
@@ -378,7 +379,7 @@ export function checkVueSpecializedEvidence({
   if (evidence.kind !== VUE_SPECIALIZED_KIND) errors.push('invalid specialized Vue evidence kind');
   if (evidence.status !== 'passed')
     errors.push('specialized Vue evidence is not complete and passing');
-  if (evidence.head !== head) errors.push('specialized Vue evidence HEAD mismatch');
+  if (!acceptedHeads.includes(evidence.head)) errors.push('specialized Vue evidence HEAD mismatch');
   if (!validSha(evidence.manifestSha256) || evidence.manifestSha256 !== sha256(manifestBytes))
     errors.push('specialized Vue evidence manifest digest mismatch');
   if (!validSha(evidence.contractSha256) || evidence.contractSha256 !== sha256(contractBytes))
@@ -441,7 +442,7 @@ export function checkVueSpecializedEvidence({
     : null;
 
   if (buildEvidence && typeof buildEvidence === 'object') {
-    if (buildEvidence.head !== head) errors.push('specialized Vue build HEAD mismatch');
+    if (!acceptedHeads.includes(buildEvidence.head)) errors.push('specialized Vue build HEAD mismatch');
     if (buildEvidence.sourceSetSha256 !== sourceSetDigest(scope.sources))
       errors.push('specialized Vue build source-set digest mismatch');
   }

@@ -5,6 +5,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { checkCriticalCoverage, validateRawCoverageEntry } from './check-critical-coverage.mjs';
+import {
+  classifyCandidateBinding,
+  resolveEvidenceHeadCompatibility,
+} from './lib/candidate-binding.mjs';
 const hash = (x) => createHash('sha256').update(x).digest('hex');
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'critical-gate-'));
@@ -75,6 +79,48 @@ function fixture() {
     cleanup: () => rmSync(root, { recursive: true, force: true })
   };
 }
+
+test('candidate binding accepts exact or documented descendants only', () => {
+  const collectionHead = 'a'.repeat(40);
+  const candidateHead = 'b'.repeat(40);
+  assert.equal(
+    classifyCandidateBinding({ collectionHead, candidateHead: collectionHead }).status,
+    'EXACT'
+  );
+  assert.equal(
+    classifyCandidateBinding({
+      collectionHead,
+      candidateHead,
+      changedPaths: ['.agent/state.json', 'docs/triple-a/FINAL_REPORT.md'],
+    }).status,
+    'DOCUMENTATION_ONLY_DESCENDANT'
+  );
+  const runtimeDrift = classifyCandidateBinding({
+    collectionHead,
+    candidateHead,
+    changedPaths: ['docs/triple-a/FINAL_REPORT.md', 'apps/api/src/server.ts'],
+  });
+  assert.equal(runtimeDrift.status, 'INVALID');
+  assert.deepEqual(runtimeDrift.disallowedPaths, ['apps/api/src/server.ts']);
+  assert.equal(
+    classifyCandidateBinding({
+      collectionHead,
+      candidateHead,
+      changedPaths: [],
+      isAncestor: false,
+    }).status,
+    'INVALID'
+  );
+  assert.equal(
+    resolveEvidenceHeadCompatibility({
+      root: process.cwd(),
+      collectionHead,
+      evidenceHead: collectionHead,
+      candidateHead,
+    }).status,
+    'INVALID'
+  );
+});
 for (const [name, mutate, expected] of [
   ['complete fixture validates harness only', () => {}, null],
   ['missing shard fails', (x) => rmSync(join(x.root, 'unit/shard.json')), 'missing shard'],

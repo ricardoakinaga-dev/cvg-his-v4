@@ -16,9 +16,9 @@
   "blast_radius": "CROSS_SYSTEM",
   "status": "BLOCKED",
   "active_execplan": ".agent/plans/repository-state-of-art-remediation-execplan.md",
-  "active_task": "PROD-062",
+  "active_task": "TRIPLE-A-RELEASE-CONTROL",
   "verification_state": "PARTIAL",
-  "repository_state": "Controlador reconciliado em 2026-09-16: o candidato funcional corrente é 2949fedf010febbe4bc71acd2071a2211b4688f3, com manifest crítico revision 33 e sourceSetSha256 c02011a9e76ec80a6243e5ce15a2c53e07fd3bbb945251eb4d0bcfe99289f84a; a identidade documental será reancorada após o commit desta fotografia. A branch origin/fix/state-of-art-ci-assurance não possui commits exclusivos e está 138 commits atrás de main, portanto não há merge funcional pendente. Recoleta atual: unit 241/241 arquivos e 2732/2732 testes; integração 105/105 e 933/933; native-worker, native-api e critical-process PASS; Vue especializado PASS; SQL PASS com 171 migrações ativas e escopo 171+7. O gate R05-010 foi executado sem erro de proveniência, mas permanece FAIL/BLOCKED por 19 métricas abaixo dos limiares, sem redução de thresholds ou escopo. CI remoto terminal, target, UAT, recovery, attestation, autoridade e Triplo AAA continuam NOT PROVEN. Backlog operacional: 70 itens (5 macro históricos + 65 PROD). Pacotes locais em artifacts/ seguem sem retenção externa comprovada. Release BLOCKED / Triplo AAA NOT PROVEN.",
+  "repository_state": "Recuperação em 2026-09-16: HEAD/main/origin/main permanecem alinhados em 6217654ab33b0c8c8d720dd8ac2d7c6f97629257; a branch origin/fix/state-of-art-ci-assurance é ancestral e não há merge funcional pendente. A árvore estava limpa antes desta frente. A evidência crítica foi coletada no commit funcional 2949fedf010febbe4bc71acd2071a2211b4688f3 e os commits posteriores alteraram somente controle/documentação; o checker exigia igualdade literal com HEAD e foi endurecido para aceitar apenas descendência documental comprovada, mantendo drift de runtime/configuração stale. O próximo slice é TRIPLE-A-RELEASE-CONTROL:MA05-D5-AND-COVERAGE: registrar o helper no manifesto, revalidar a coleta e elevar cobertura por domínio sem reduzir thresholds. O gate R05-010 permanece FAIL/BLOCKED por 19 métricas abaixo dos limiares; CI remoto, target, UAT, recovery, attestation, autoridade e Triplo AAA continuam NOT PROVEN.",
   "instruction_scope_refs": [
     ".agent/plans/repository-state-of-art-remediation-execplan.md",
     "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
@@ -32,11 +32,11 @@
     "docs/2026-09-13-reauditoria-checkpoint-prod-001-005.md",
     "docs/2026-09-13-backlog-prontidao-producao.md"
   ],
-  "last_gate_record": ".agent/gates/implementation-ready-prod-062-20260915.json",
-  "last_event_id": "EVT-TRIPLE-A-REV33-CURRENT-EVIDENCE-20260916",
-  "state_revision": 107,
+  "last_gate_record": ".agent/gates/implementation-ready-triple-a-release-control-20260912-r3.json",
+  "last_event_id": "EVT-TRIPLE-A-RECOVERY-CANDIDATE-BINDING-20260916",
+  "state_revision": 108,
   "next_gate": "VERIFIED",
-  "active_action_id": "PROD-062:PROD-062-FRESH-CRITIC-AUTHORITY-20260915",
+  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:MA05-D5-AND-COVERAGE",
   "blocked_by": [
     "R05-010/PROD-014: 19 metricas criticas abaixo dos limiares apos recoleta current; elevar cobertura por dominio e repetir o gate sem reduzir thresholds",
     "Decisao de autoridade sobre a unificacao da identidade dual do process shard e aceite QA/release do instrumento",
@@ -64,5 +64,5 @@
     "PROD-027 behavioral parity taxonomy, 45-module classification, fixtures and acceptance — Product/QA/domain authority",
     "PROD-062 family verifier trust root, targets, limits, issuer policy and acceptance — Platform/Security/QA authority"
   ],
-  "updated_at": "2026-09-16T07:57:55Z"
+  "updated_at": "2026-09-16T08:31:58Z"
 }

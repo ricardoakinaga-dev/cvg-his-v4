@@ -16,6 +16,7 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, writeFileS
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolveContainedPath } from './lib/root-contained-path.mjs';
+import { resolveEvidenceHeadCompatibility } from './lib/candidate-binding.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -76,6 +77,18 @@ export function verifyCandidate({
   }
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata))
     return ['invalid candidate shard.json: metadata must be an object'];
+  let manifest;
+  try {
+    manifest = JSON.parse(manifestBytes.toString('utf8'));
+  } catch (error) {
+    return [`invalid manifest JSON: ${error.message}`];
+  }
+  const candidateBinding = resolveEvidenceHeadCompatibility({
+    root,
+    collectionHead: manifest.head,
+    evidenceHead: metadata.head,
+    candidateHead: head,
+  });
   if (
     metadata.schemaVersion !== 2 ||
     metadata.finalizedAfterExit !== true ||
@@ -87,15 +100,10 @@ export function verifyCandidate({
     metadata.shard !== shard
   )
     errors.push('candidate is not a finalized passing shard');
-  if (metadata.head !== head) errors.push('candidate HEAD differs from the current candidate');
+  if (candidateBinding.status === 'INVALID')
+    errors.push(`candidate HEAD differs from the current candidate: ${candidateBinding.reason}`);
   if (metadata.manifestSha256 !== sha256(manifestBytes))
     errors.push('candidate was bound to a different manifest revision');
-  let manifest;
-  try {
-    manifest = JSON.parse(manifestBytes.toString('utf8'));
-  } catch (error) {
-    return [`invalid manifest JSON: ${error.message}`];
-  }
   let inputs;
   try {
     inputs = metadata.executionInputHashes ?? {};

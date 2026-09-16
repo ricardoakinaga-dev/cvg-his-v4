@@ -10,6 +10,10 @@ import { resolveContainedPath } from './lib/root-contained-path.mjs';
 import { isRuntimeReexportOnly, isTypeOnlySource } from './lib/source-metric-presence.mjs';
 import { verifySqlMigrationEvidence } from './lib/sql-migration-evidence.mjs';
 import { checkVueSpecializedEvidence } from './lib/vue-specialized-evidence.mjs';
+import {
+  resolveCandidateBinding,
+  resolveEvidenceHeadCompatibility,
+} from './lib/candidate-binding.mjs';
 export { validateRawCoverageEntry } from './lib/raw-coverage-validation.mjs';
 const require = createRequire(import.meta.url);
 const coverageRequire = createRequire(require.resolve('@vitest/coverage-v8/package.json'));
@@ -37,7 +41,14 @@ export function checkCriticalCoverage({ root, manifestPath, artifactsPath, head 
   const expectedCoveragePaths = new Set();
   const sourceIdentities = new Map();
   const merged = createCoverageMap({});
-  if (manifest.head !== head) errors.push('manifest HEAD mismatch');
+  const candidateBinding = resolveCandidateBinding({
+    root,
+    collectionHead: manifest.head,
+    candidateHead: head,
+  });
+  if (candidateBinding.status === 'INVALID')
+    errors.push(`manifest HEAD mismatch: ${candidateBinding.reason}`);
+  const evidenceHead = manifest.head;
   const artifactsRoot = resolveContainedPath(root, artifactsPath, { allowRoot: true });
   if (!artifactsRoot.ok) errors.push(`artifacts root invalid: ${artifactsRoot.reason}`);
   const pendingVue = manifest.files.filter(
@@ -85,7 +96,8 @@ export function checkCriticalCoverage({ root, manifestPath, artifactsPath, head 
           artifactRoot: artifactsRoot.ok
             ? resolve(artifactsRoot.absolute, 'vue-specialized')
             : undefined,
-          head
+          head,
+          acceptedHeads: [...new Set([evidenceHead, head])]
         });
       }
     }
@@ -136,10 +148,16 @@ export function checkCriticalCoverage({ root, manifestPath, artifactsPath, head 
     }
     try {
       const metadata = JSON.parse(readFileSync(metadataPath.realpath));
+      const evidenceBinding = resolveEvidenceHeadCompatibility({
+        root,
+        collectionHead: evidenceHead,
+        evidenceHead: metadata.head,
+        candidateHead: head,
+      });
       if (
         metadata.shard !== shard ||
         metadata.status !== 'passed' ||
-        metadata.head !== head ||
+        evidenceBinding.status === 'INVALID' ||
         metadata.manifestSha256 !== hash(bytes)
       )
         errors.push(`invalid shard provenance/status: ${shard}`);
@@ -336,7 +354,8 @@ export function checkCriticalCoverage({ root, manifestPath, artifactsPath, head 
     metriclessReexports,
     typeOnlySources,
     sqlEvidence,
-    specializedVue
+    specializedVue,
+    candidateBinding
   };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

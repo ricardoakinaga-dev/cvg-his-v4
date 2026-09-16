@@ -1,6 +1,6 @@
 # Remediação do repositório para ERP State of Art — ExecPlan
 
-<!-- engineering-framework: active_action_id=PROD-062:PROD-062-FRESH-CRITIC-AUTHORITY-20260915 -->
+<!-- engineering-framework: active_action_id=TRIPLE-A-RELEASE-CONTROL:MA05-D5-AND-COVERAGE -->
 
 ## Purpose / Big Picture
 
@@ -202,13 +202,13 @@ Preservar o monólito modular API/SPA/worker, isolamento tenant/RLS, transaçõe
 
 ## Plan of Work
 
-A frente corrente é `PROD-062:PROD-062-FRESH-CRITIC-AUTHORITY-20260915`, aguardando revisão fresh e autoridade após preparação contratual local enquanto PROD-010 permanece BLOCKED. O slice inventariou os critérios genericamente PARTIAL e implementou perfis criterion-specific por família para testes, RLS, backup, UAT, deploy, proteção e autoridade, com observability no pacote, freshness gate-owned e security evidence sem auto-PASS, sem coletar evidência externa, alterar thresholds/trust root ou alegar release. PROD-027 continua em espera por crítica fresh e Product/QA/domínio; PROD-019, PROD-048, PROD-049 e PROD-052 aguardam suas autoridades; D1/S3 de PROD-014 aguardam QA/release. Cada slice segue `BUILD → focused test → critic → fix → regression → integrate`, e o release continua bloqueado.
+A frente executável corrente é `TRIPLE-A-RELEASE-CONTROL:MA05-D5-AND-COVERAGE`; `PROD-062:PROD-062-FRESH-CRITIC-AUTHORITY-20260915` permanece aguardando revisão fresh e autoridade após preparação local enquanto PROD-010 permanece BLOCKED. O slice atual corrige o binding de evidência para descendentes exclusivamente documentais e revalida as métricas críticas; nenhum threshold, escopo, trust root ou claim de release será alterado. PROD-027 continua em espera por crítica fresh e Product/QA/domínio; PROD-019, PROD-048, PROD-049 e PROD-052 aguardam suas autoridades; D1/S3 de PROD-014 aguardam QA/release. Cada slice segue `BUILD → focused test → critic → fix → regression → integrate`, e o release continua bloqueado.
 
 ## Concrete Steps
 
 From `/home/ricardo/cvg-his-v4`:
 
-1. [PROD-062:PROD-062-FRESH-CRITIC-AUTHORITY-20260915] Obter crítica independente fresh atual ou substituto autorizado e decisões Platform/Security/QA sobre issuer, target, limites, trust root e autoridade; sem isso não promover o cartão.
+1. [TRIPLE-A-RELEASE-CONTROL:MA05-D5-AND-COVERAGE] Integrar o binding documental fail-closed no manifesto, revalidar os produtores no candidato atual e elevar as métricas críticas abaixo dos limiares com testes de domínio; sem reduzir thresholds, escopo ou aplicabilidade.
 2. [PROD-062:PROD-062-FAMILY-VERIFIERS-20260915] [CONCLUÍDO LOCALMENTE] Implementar e testar os contratos criterion-specific por família, atualizar o gerador para usar o mesmo validador e produzir pacote local digest-bound; preservar PROD-010, thresholds, trust root e bloqueio externo.
 3. [PROD-027:PROD-027-PRODUCT-QA-DOMAIN-OWNER-20260915] Obter crítica independente fresh atual ou substituto autorizado e decisão formal de Product/QA/donos de domínio; preservar PROD-003 como dependência integral e não alegar paridade.
 4. [PROD-048:PROD-048-DPO-OWNER-20260915] Obter owner Segurança/DPO e decisão restrita sobre os 28 digests/localizações, exemplos sintéticos, ACL, retenção, restauração e destino durável; não expor valores.
@@ -383,3 +383,11 @@ native-api, critical-process, Vue especializado e SQL; o gate R05-010 continua
 `FAIL/BLOCKED` por 19 métricas abaixo do limiar. A identidade documental será
 gerada somente após o commit desta reconciliação; release e Triplo AAA seguem
 `NOT PROVEN`.
+
+Plan revision note, 2026-09-16 (session recovery and candidate binding): a
+reconciliação determinística confirmou que o HEAD atual só acrescentou
+controle/documentação após a coleta funcional. O próximo passo executável é
+`TRIPLE-A-RELEASE-CONTROL:MA05-D5-AND-COVERAGE`: registrar o binding documental
+fail-closed no manifesto, revalidar a coleta e atacar as 19 métricas críticas
+sem reduzir thresholds, escopo ou aplicabilidade. PROD-062 permanece em espera
+por crítica/autoridade externa; release continua `BLOCKED / NOT PROVEN`.
