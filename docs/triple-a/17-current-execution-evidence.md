@@ -1,17 +1,17 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato de código observado em 2026-09-16T02:21:57Z
+## Candidato de código observado em 2026-09-16T02:41:01Z
 
-- SHA de código e documentação: `baddd890d865de25a03ea29d66041ef5f0a02e1a`; identidade em
+- SHA de código e documentação: `4da2e56d4bf814b46109b49a29d47f477382aa45`; identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- `HEAD`/`main` local está em `baddd890`; `origin/main` está em `8078fc41`; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- `HEAD`/`main` local está em `4da2e56d`; `origin/main` está em `a2d2285e`; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
 
 ## Validações locais
 
 | Escopo                 | Resultado                                                                                                                                                                                                                                                                                                                                                                     |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate estrito           | `BLOCKED`, score `52`, critical `51`, open P0 `17`, `claim=NOT PROVEN`, `publication_allowed=false`, executado explicitamente com `commitSha=baddd890` |
+| Gate estrito           | `BLOCKED`, score `51`, critical `49`, open P0 `18`, `claim=NOT PROVEN`, `publication_allowed=false`, executado explicitamente com `commitSha=4da2e56d` |
 | Workspace              | Typecheck e lint completos PASS; contrato CI `19/19`; testes focados `46/46`; checker de estado `11/11` |
 | Identidade/evidence graph | `validate:candidate-identity` PASS; graph gerado com status `BLOCKED`, candidate `PASS`, CI/authority `NOT_PROVEN` |
 | Coverage isolado       | `2.661` testes; 2.658 passados e 3 skipped, mas cobertura global `77,97/71,27/79,17/79,60%` (statements/branches/functions/lines), abaixo de 82% |
@@ -26,7 +26,7 @@ protection ou autoridade de release.
 
 ## CI remoto e reancoragem
 
-Não existe ainda run remoto vinculado ao SHA exato `baddd890`; [CI #35046697535](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35046697535) é do candidato anterior `8078fc41` e falhou na provisão do runtime; permanece somente diagnóstico histórico. O gate local explícito do candidato retornou `52/51/17` e bloqueou publicação. A publicação do candidato deve disparar nova execução com os guards vinculados à identidade corrente.
+Não existe ainda run remoto vinculado ao SHA exato `4da2e56d`; [CI #35047806266](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35047806266) é do candidato publicado anterior `a2d2285e` e não é transferido. O gate local explícito do candidato retornou `51/49/18` e bloqueou publicação. A publicação do candidato deve disparar nova execução com os guards vinculados à identidade corrente.
 
 
 O [CI #143](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34678150409)
@@ -92,7 +92,7 @@ não substitui a execução remota nem uma certificação de target.
 ## Decisão
 
 O envelope ignorado `artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json` do candidato
-`baddd890` é `BLOCKED / NOT PROVEN` (`52/51/17`); a execução completa passou
+`4da2e56d` é `BLOCKED / NOT PROVEN` (`51/49/18`); a execução completa passou
 checks e suíte workspace, mas não substitui as provas externas ausentes. O pacote local
 `artifacts/triple-a/index.json` também permanece `BLOCKED`. A ausência de uma
 prova externa permanece ausência; não é convertida em PASS pelo k6 local ou

@@ -1,6 +1,6 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `main@baddd890d865de25a03ea29d66041ef5f0a02e1a`
+**Candidate funcional avaliado:** `main@4da2e56d4bf814b46109b49a29d47f477382aa45`
 (identidade/evidence graph correntes; CI exato, target e autoridade ainda não comprovados)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
@@ -9,7 +9,7 @@
 
 O candidato preserva o modular monolith e adiciona guardrails de proveniência,
 provisionamento isolado e resiliente de coverage, correções de acessibilidade clínica e
-bootstrap de teste hermético. O gate local explícito fechou em `49/43/20`
+bootstrap de teste hermético. O gate local explícito fechou em `51/49/18`
 (score/critical/open P0); typecheck/lint, o fluxo browser clínico P0 e a
 regressão visual `29/29` passaram,
 mas a cobertura global isolada ficou abaixo de 82%, e não há CI exato,
@@ -36,14 +36,14 @@ remota e pelos gates externos de target e release.
 | Testing              | LOCAL PASS                   | suíte workspace, critical e E2E clínico                                                                                                 |
 | Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas                                                                                                |
 | Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                                                                                                           |
-| CI/CD                | BLOQUEADO no SHA atual       | O CI #35045015515 do candidato anterior falhou na provisão APT; a correção por índice Ubuntu isolado aguarda execução no SHA atual |
+| CI/CD                | BLOQUEADO no SHA atual       | O CI #35047806266 pertence ao candidato publicado anterior; o SHA atual também alinha o guard de backup/restore ao roadmap/backlog vigentes |
 | Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                                                                                                         |
 | Recovery             | BLOCKED                      | Docker impediu restore drill real                                                                                                       |
 | Frontend             | BOUNDED PASS                 | E2E/visual/a11y no CI                                                                                                                   |
 | Database             | PARTIAL                      | testes locais; RLS target não provado                                                                                                   |
 | Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas                                                                                                |
 | Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes                                                                                               |
-| Overall              | `52`, critical `51`, `17 P0` | gate estrito local no candidato `baddd890` com checks documentais e contratos; gates externos continuam ausentes                         |
+| Overall              | `51`, critical `49`, `18 P0` | gate estrito local no candidato `4da2e56d` com checks documentais e contratos; gates externos continuam ausentes                         |
 
 ## P0 Findings
 

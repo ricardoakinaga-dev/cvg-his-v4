@@ -2,10 +2,10 @@
 
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT SNAPSHOT   | candidato funcional/controlador `baddd890d865de25a03ea29d66041ef5f0a02e1a`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
-| MAIN / ORIGIN      | `HEAD/main@baddd890`; `origin/main@8078fc41` até publicação; rollback preservado, sem force-push |
-| CURRENT CI         | `NOT_FOUND` para o SHA exato; [CI #35046697535](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35046697535) pertence ao candidato anterior e falhou na provisão do runtime; não é promovido |
-| LOCAL STRICT GATE  | `BLOCKED`, score `52`, critical `51`, open P0 `17`, `claim=NOT PROVEN`, `publication_allowed=false`, com `commitSha=baddd890` |
+| CURRENT SNAPSHOT   | candidato funcional/controlador `4da2e56d4bf814b46109b49a29d47f477382aa45`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
+| MAIN / ORIGIN      | `HEAD/main@4da2e56d`; `origin/main@a2d2285e` até publicação; rollback preservado, sem force-push |
+| CURRENT CI         | `NOT_FOUND` para o SHA exato; [CI #35047806266](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35047806266) pertence ao candidato publicado anterior e não é promovido |
+| LOCAL STRICT GATE  | `BLOCKED`, score `51`, critical `49`, open P0 `18`, `claim=NOT PROVEN`, `publication_allowed=false`, com `commitSha=4da2e56d` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
 | LOCAL VALIDATION   | Typecheck/lint PASS; contratos focados `46/46`; identity/graph `3/3`; E2E clínico browser `4/4`; visual `29/29` PASS e 1 especializado skipped; coverage `2.661` testes abaixo do limiar; target externo ausente |
 | VERIFIED TARGET    | `NOT PROVEN`                                                                                                                                                                                                                                              |
@@ -32,11 +32,10 @@ em [`17-current-execution-evidence.md`](./17-current-execution-evidence.md).
 | Evidências         | `55/57/15`, `artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json` local bloqueado, critical local `615 + 11` e k6 descartável vinculado ao banco local.                 |
 | Riscos residuais   | Nenhum score autoriza release enquanto houver P0, SLO falho ou target sem prova.                                                                                     |
 
-## Atualização do candidato funcional — 2026-09-16T02:21:57Z
+## Atualização do candidato funcional — 2026-09-16T02:41:01Z
 
-O candidato `baddd890` endurece a provisão do runtime crítico de coverage: a
-resolução APT usa somente os archives oficiais e assinados do Ubuntu 22.04,
-sem depender de índices de terceiros do runner. O upload de diagnóstico deixa
-de falhar secundariamente quando a provisão aborta. A alteração passou o
-contrato CI `19/19`, parse YAML, sintaxe shell e lint local. A nova execução
-remota ainda não foi publicada; o veredicto permanece `BLOCKED / NOT PROVEN`.
+O candidato `4da2e56d` mantém a provisão isolada do runtime crítico de coverage
+e alinha o guard de backup/restore ao formato atual do roadmap (`R6`) e backlog
+(`PROD-037`), preservando compatibilidade com o formato histórico (`M4`/`AAA-037`).
+O contrato CI `19/19`, o check de backup/restore `4/4` e os checks locais de
+documentação passaram; o gate estrito permanece `BLOCKED / NOT PROVEN`.
