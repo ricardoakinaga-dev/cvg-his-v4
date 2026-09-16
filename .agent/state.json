@@ -18,7 +18,7 @@
   "active_execplan": ".agent/plans/repository-state-of-art-remediation-execplan.md",
   "active_task": "PROD-062",
   "verification_state": "PARTIAL",
-  "repository_state": "Controlador reconciliado em 2026-09-16: o candidato funcional é 0b19430e, com baselines visuais atuais revisados e identidade/documentação vinculadas; HEAD 0b19430e é o checkpoint de controle antes da documentação final permitida. A regressão visual Chromium passou 29/29 screenshots após inspeção e execução sem atualização; 1 caso especializado permanece skipped por opt-in. O gate estrito do candidato fechou BLOCKED 49/43/20 (score/critical/open P0), com coverage isolado abaixo de 82% e CI/target/UAT/autoridade ausentes. PROD-014-S1/S2 locais permanecem condicionais, checker crítico e D1 QA/release seguem pendentes; PROD-048/049/019/052/027/062 permanecem BLOCKED por dependências, crítica fresh, autoridade, target ou evidência externa ausentes. Backlog operacional: 70 itens (5 macro históricos + 65 PROD). Pacotes locais em artifacts/ seguem sem retenção externa comprovada. Release BLOCKED / Triplo AAA NOT PROVEN.",
+  "repository_state": "Controlador reconciliado em 2026-09-16: o candidato corrente é definido exclusivamente por CURRENT_CANDIDATE_IDENTITY.json, com baselines visuais atuais revisados e documentação vinculada; commits documentais posteriores são permitidos pela identidade. A regressão visual Chromium passou 29/29 screenshots após inspeção e execução sem atualização; 1 caso especializado permanece skipped por opt-in. O último gate estrito exato registrado fechou BLOCKED 49/43/20 (score/critical/open P0), com coverage isolado abaixo de 82% e CI/target/UAT/autoridade ausentes. PROD-014-S1/S2 locais permanecem condicionais, checker crítico e D1 QA/release seguem pendentes; PROD-048/049/019/052/027/062 permanecem BLOCKED por dependências, crítica fresh, autoridade, target ou evidência externa ausentes. Backlog operacional: 70 itens (5 macro históricos + 65 PROD). Pacotes locais em artifacts/ seguem sem retenção externa comprovada. Release BLOCKED / Triplo AAA NOT PROVEN.",
   "instruction_scope_refs": [
     ".agent/plans/repository-state-of-art-remediation-execplan.md",
     "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
@@ -34,7 +34,7 @@
   ],
   "last_gate_record": ".agent/gates/implementation-ready-prod-062-20260915.json",
   "last_event_id": "EVT-TRIPLE-A-STRICT-GATE-20260916",
-  "state_revision": 105,
+  "state_revision": 106,
   "next_gate": "VERIFIED",
   "active_action_id": "PROD-062:PROD-062-FRESH-CRITIC-AUTHORITY-20260915",
   "blocked_by": [
@@ -64,5 +64,5 @@
     "PROD-027 behavioral parity taxonomy, 45-module classification, fixtures and acceptance — Product/QA/domain authority",
     "PROD-062 family verifier trust root, targets, limits, issuer policy and acceptance — Platform/Security/QA authority"
   ],
-  "updated_at": "2026-09-16T01:27:43Z"
+  "updated_at": "2026-09-16T01:30:00Z"
 }
