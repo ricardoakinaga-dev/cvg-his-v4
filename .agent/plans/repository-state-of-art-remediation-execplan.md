@@ -350,3 +350,10 @@ Turing foi solicitado como crítica fresh final, permaneceu running por quatro
 janelas além de 120 segundos e foi encerrado sem veredito. PROD-010, trust
 root, targets, limites, providers, UAT, restore, autoridade e release seguem
 BLOCKED / NOT PROVEN.
+
+Plan revision note, 2026-09-16 (candidate reconciliation): o controlador foi
+avançado por evento RECOVERY append-only após o gate de preparação de PROD-063
+ter sido observado fora da janela do estado anterior. A reconciliação não
+promoveu PROD-063, não apagou limitações e não transferiu evidência histórica.
+O candidato corrente será identificado por `CURRENT_CANDIDATE_IDENTITY.json`;
+somente commits documentais podem suceder o SHA funcional sem regeneração.

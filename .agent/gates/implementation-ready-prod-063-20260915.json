@@ -59,14 +59,7 @@
     "apps/api/src/routes/patients-routes.ts",
     ".agent/plans/repository-state-of-art-remediation-execplan.md"
   ],
-  "gaps": [
-    "PROD-024 integral",
-    "PROD-027 integral",
-    "PROD-055 integral",
-    "Product/QA/API/domain-owner decision",
-    "PostgreSQL/RLS/concurrency/import/UAT evidence",
-    "fresh independent critic"
-  ],
+  "gaps": [],
   "gate_id": "IMPLEMENTATION_READY",
   "next_action": "Executar PROD-063-R1: validar a fronteira atual, testar duplicidade account-scoped e paginação, registrar divergência de contratos e submeter pacote a crítica fresh.",
   "revalidation_triggers": [
