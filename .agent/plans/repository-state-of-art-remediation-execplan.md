@@ -370,3 +370,16 @@ reconciliado no candidato `0b19430e`; documentação, identidade e evidence grap
 foram validados, o gate estrito exato retornou `BLOCKED / NOT PROVEN` `49/43/20`
 e o checker canônico permaneceu `11/11` PASS. Nenhuma evidência externa,
 autoridade humana ou claim de release foi inferida.
+
+Plan revision note, 2026-09-16 (revision 33 fresh evidence): a inspeção de
+branches confirmou que `origin/fix/state-of-art-ci-assurance` não possui
+commits exclusivos e é ancestral de `main` (138 atrás, 0 à frente); nenhuma
+resolução de conflito ou merge commit é necessária. O commit funcional
+`2949fedf010febbe4bc71acd2071a2211b4688f3` corrigiu a paridade do contrato de
+pacientes entre OpenAPI, parser/runtime e fixture de integração. O manifest
+crítico foi reancorado em revision 33 sem alteração de fonte, threshold ou
+aplicabilidade. A recoleta current passou unit, integração, native-worker,
+native-api, critical-process, Vue especializado e SQL; o gate R05-010 continua
+`FAIL/BLOCKED` por 19 métricas abaixo do limiar. A identidade documental será
+gerada somente após o commit desta reconciliação; release e Triplo AAA seguem
+`NOT PROVEN`.

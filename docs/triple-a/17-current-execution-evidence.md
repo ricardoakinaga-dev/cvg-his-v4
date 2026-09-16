@@ -97,3 +97,46 @@ checks e suíte workspace, mas não substitui as provas externas ausentes. O pac
 `artifacts/triple-a/index.json` também permanece `BLOCKED`. A ausência de uma
 prova externa permanece ausência; não é convertida em PASS pelo k6 local ou
 por um CI verde de outro SHA.
+
+## Recoleta corrente — revisão 33 — 2026-09-16T07:57:55Z
+
+- O commit funcional observado é `2949fedf010febbe4bc71acd2071a2211b4688f3`.
+  Ele alinha o contrato de criação de paciente entre o OpenAPI, o parser de
+  runtime e a fixture de integração (`sex` obrigatório e enums `sex`/`size`).
+- A inspeção de branches confirmou que
+  `origin/fix/state-of-art-ci-assurance` é ancestral de `main`, sem commits
+  exclusivos (`main...branch = 138 0`). Portanto, a unificação com `main` não
+  exige merge commit nem descarte seletivo; o conteúdo da branch já está em
+  `main` e a branch remota foi preservada.
+- O manifest crítico é a revision `33`, com
+  `sourceSetSha256=c02011a9e76ec80a6243e5ce15a2c53e07fd3bbb945251eb4d0bcfe99289f84a`
+  e digest `035fc93421038e46b8e7582322c89e901e53a21330c0c5ed2c427d4651ca1ec`.
+  A recoleta não alterou thresholds, fontes ou aplicabilidade.
+
+| Produtor | Resultado corrente e identidade |
+| --- | --- |
+| Vitest unit | PASS; 241/241 arquivos, 2.732/2.732 testes; run `4bdee84a-585c-41c3-bb28-8ebecd603a34` |
+| Vitest integração | PASS; 105/105 arquivos, 933/933 testes, sem skips; run `1fcf0fd4-7896-4a68-be25-85399dcffd0e` |
+| Native worker | PASS; run `23939cb3-5e36-4bc2-8922-c236cd2b75c0` |
+| Native API | PASS; run `eb64f8b1-f85c-41e9-a845-cde9a16ea48d` |
+| Critical process | PASS; 11/11 reports de suítes críticas verificados; run `b6c80b7c-5946-46b9-9ce3-4fb2ee5cb236` |
+| Vue especializado | PASS; build, consumer e 60/60 suítes (399/399 testes), com browser evidence; run `73e2a5b4-73dd-40e2-b52b-91d71d1ec46a` |
+| SQL/migrações | PASS; 171 migrações ativas, escopo reconciliado 171+7=178, TCP privado desabilitado; run `3ab57b1c-7d29-4c6f-b6cb-5919925f4eeb` |
+
+O gate `node scripts/check-critical-coverage.mjs` foi executado após a
+promoção de todos os produtores e não encontrou mais erro de identidade,
+proveniência, Vue ou SQL. O resultado agregado permanece `FAIL`/`BLOCKED` por
+19 métricas: `auth:functions=72.28`; `billing-cash:functions=83.05,
+branches=82.7`; `inpatient:branches=81.53`; `records:functions=78.6,
+branches=78.63`; `prescriptions:functions=73.61, branches=81.05`;
+`pix:functions=73.93, branches=84.36`; `webhooks:lines=82,
+statements=82.23, functions=65.73, branches=77.39`;
+`http-routes:branches=79.32`; `repositories:lines=74.86,
+statements=73.88, functions=62.11, branches=68.1`. Nenhum threshold foi
+reduzido e nenhuma fonte foi reclassificada para encobrir a insuficiência.
+
+Esta recoleta é local e current; não prova CI remoto do novo SHA, target,
+UAT, restore/recovery, attestation, authority ou certificação Triplo AAA.
+Consequentemente, o claim de release continua `NOT PROVEN` e
+`publication_allowed=false`; a próxima ação é elevar a cobertura das fontes
+afetadas e repetir o gate.

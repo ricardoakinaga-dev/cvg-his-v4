@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "4da2e56d4bf814b46109b49a29d47f477382aa45",
+  "head": "2949fedf010febbe4bc71acd2071a2211b4688f3",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -8285,7 +8285,8 @@
     "scripts/reconcile-sql-migration-scope.mjs",
     "apps/spa/src/services/__tests__/critical-service-contracts.test.ts",
     "tests/unit/db/canonical-schema-catalog.test.ts",
-    "apps/api/src/registry-request-boundaries.test.ts"
+    "apps/api/src/registry-request-boundaries.test.ts",
+    "apps/api/src/registry-request-boundaries.ts"
   ],
   "scopeHistory": [
     {
@@ -10387,6 +10388,65 @@
           "removed": []
         }
       ]
+    },
+    {
+      "manifestRevision": 30,
+      "observedAt": "2026-09-16T05:35:33.801Z",
+      "collectionCommit": "92908d538f5ebef62ea8606f71829f28627a7a60",
+      "previousManifestSha256": "ffb58b1ea99db2e4d216d462002a88a7221dcd71c6821f80d4f6f52631f701c9",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh-20260916/critical-scope-before-ffb58b1ea99db2e4d216d462002a88a7221dcd71c6821f80d4f6f52631f701c9.json",
+      "previousSourceSetSha256": "c02011a9e76ec80a6243e5ce15a2c53e07fd3bbb945251eb4d0bcfe99289f84a",
+      "sourceSetSha256": "c02011a9e76ec80a6243e5ce15a2c53e07fd3bbb945251eb4d0bcfe99289f84a",
+      "reason": "Reancorar identidade de coverage critica para o candidato documental atual antes de nova coleta local; preservar evidencias historicas e manter o candidato funcional f09e79fd",
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    {
+      "manifestRevision": 31,
+      "observedAt": "2026-09-16T06:20:07.221Z",
+      "collectionCommit": "92908d538f5ebef62ea8606f71829f28627a7a60",
+      "previousManifestSha256": "a233c0f0cf69be45b322c8969c2fed855b249db79f01a968c34792079589fc12",
+      "preservedManifest": "artifacts/remediation/MA-05-SPECIALIZED-PREP/refresh-20260916/critical-scope-before-a233c0f0cf69be45b322c8969c2fed855b249db79f01a968c34792079589fc12.json",
+      "previousSourceSetSha256": "c02011a9e76ec80a6243e5ce15a2c53e07fd3bbb945251eb4d0bcfe99289f84a",
+      "sourceSetSha256": "c02011a9e76ec80a6243e5ce15a2c53e07fd3bbb945251eb4d0bcfe99289f84a",
+      "reason": "Adicionar a fonte original transitiva observada nas source maps do critical-process para autenticar a cadeia completa sem ampliar silenciosamente o escopo de metricas",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "apps/api/src/registry-request-boundaries.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "c24d9627707a5b053c0186b7ec1b9fbb9e23959b647536e10b50801f1a12b292",
+      "executionInputsSha256": "6b090e95795e93b5a31ee583f68ad12a80155da5c267106ac8fa35701c6e73ff"
+    },
+    {
+      "manifestRevision": 32,
+      "observedAt": "2026-09-16T06:58:42.342Z",
+      "collectionCommit": "2949fedf8617bdf94f50aafcb78c7025403ce533",
+      "previousManifestSha256": "cdb39b7ceb660b2664898d753b2b9225cd23d3f641520f35712475870237b784",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-cdb39b7ceb660b2664898d753b2b9225cd23d3f641520f35712475870237b784.json",
+      "previousSourceSetSha256": "c02011a9e76ec80a6243e5ce15a2c53e07fd3bbb945251eb4d0bcfe99289f84a",
+      "sourceSetSha256": "c02011a9e76ec80a6243e5ce15a2c53e07fd3bbb945251eb4d0bcfe99289f84a",
+      "reason": "Reancorar o inventario crítico no commit funcional do contrato de pacientes antes da recoleta determinística",
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    {
+      "manifestRevision": 33,
+      "observedAt": "2026-09-16T07:32:29.952Z",
+      "collectionCommit": "2949fedf010febbe4bc71acd2071a2211b4688f3",
+      "previousManifestSha256": "2954a296665e93c0dcf5c6601352b93bd6f17e102c04a70d7d83c56dfd61917c",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-2954a296665e93c0dcf5c6601352b93bd6f17e102c04a70d7d83c56dfd61917c.json",
+      "previousSourceSetSha256": "c02011a9e76ec80a6243e5ce15a2c53e07fd3bbb945251eb4d0bcfe99289f84a",
+      "sourceSetSha256": "c02011a9e76ec80a6243e5ce15a2c53e07fd3bbb945251eb4d0bcfe99289f84a",
+      "reason": "Corrigir o SHA real do commit funcional apos o gate detectar mismatch de identidade; nenhuma fonte, threshold ou aplicabilidade alterada",
+      "added": [],
+      "removed": [],
+      "changed": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -11320,9 +11380,9 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 29,
+  "manifestRevision": 33,
   "sourceSetSha256": "c02011a9e76ec80a6243e5ce15a2c53e07fd3bbb945251eb4d0bcfe99289f84a",
-  "executionInputsSha256": "c24d9627707a5b053c0186b7ec1b9fbb9e23959b647536e10b50801f1a12b292",
+  "executionInputsSha256": "6b090e95795e93b5a31ee583f68ad12a80155da5c267106ac8fa35701c6e73ff",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,
