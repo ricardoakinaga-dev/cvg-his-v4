@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "0812cb49d56a1a2c01775abe9b01a6cb80ec40c4",
+  "head": "cbab9bc9f0d3d3c7f32efe50cc7f8e6fa7486d08",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -6151,7 +6151,16 @@
     "tests/unit/api/runtime-repositories-inmemory.test.ts",
     "packages/modules/notifications/src/database-notifications.repository.test.ts",
     "packages/modules/owners/src/database-owner.repository.test.ts",
-    "packages/modules/staff/src/database-staff.repository.test.ts"
+    "packages/modules/staff/src/database-staff.repository.test.ts",
+    "packages/modules/event-consumers/src/payments.consumer-card-coverage.test.ts",
+    "packages/modules/financial/src/report-boundary-coverage.test.ts",
+    "tests/unit/api/encounter-cash-receipt-reversal-repository-coverage.test.ts",
+    "tests/unit/api/encounter-pix-payment-attempt-repository-coverage.test.ts",
+    "tests/unit/api/laboratory-and-integration-boundaries-coverage.test.ts",
+    "tests/unit/api/laboratory-result-import-coverage.test.ts",
+    "tests/unit/api/laboratory-result-import-database-coverage.test.ts",
+    "tests/unit/api/pix-repository-boundaries-coverage.test.ts",
+    "tests/unit/api/setup-token-coverage.test.ts"
   ],
   "executionInputs": [
     ".eslintrc.cjs",
@@ -8327,7 +8336,16 @@
     "tests/unit/api/runtime-repositories-inmemory.test.ts",
     "packages/modules/notifications/src/database-notifications.repository.test.ts",
     "packages/modules/owners/src/database-owner.repository.test.ts",
-    "packages/modules/staff/src/database-staff.repository.test.ts"
+    "packages/modules/staff/src/database-staff.repository.test.ts",
+    "packages/modules/event-consumers/src/payments.consumer-card-coverage.test.ts",
+    "packages/modules/financial/src/report-boundary-coverage.test.ts",
+    "tests/unit/api/encounter-cash-receipt-reversal-repository-coverage.test.ts",
+    "tests/unit/api/encounter-pix-payment-attempt-repository-coverage.test.ts",
+    "tests/unit/api/laboratory-and-integration-boundaries-coverage.test.ts",
+    "tests/unit/api/laboratory-result-import-coverage.test.ts",
+    "tests/unit/api/laboratory-result-import-database-coverage.test.ts",
+    "tests/unit/api/pix-repository-boundaries-coverage.test.ts",
+    "tests/unit/api/setup-token-coverage.test.ts"
   ],
   "scopeHistory": [
     {
@@ -11035,6 +11053,46 @@
       "added": [],
       "removed": [],
       "changed": []
+    },
+    {
+      "manifestRevision": 52,
+      "observedAt": "2026-09-16T23:55:30.361Z",
+      "collectionCommit": "cbab9bc9f0d3d3c7f32efe50cc7f8e6fa7486d08",
+      "previousManifestSha256": "050b584f2d41b54f6f85882cd3348ae90d8c5e2785bf88c1190e91ea0c1c732b",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-050b584f2d41b54f6f85882cd3348ae90d8c5e2785bf88c1190e91ea0c1c732b.json",
+      "previousSourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "reason": "Register newly added critical Vitest coverage suites in the frozen execution inventory",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "packages/modules/event-consumers/src/payments.consumer-card-coverage.test.ts",
+        "packages/modules/financial/src/report-boundary-coverage.test.ts",
+        "tests/unit/api/encounter-cash-receipt-reversal-repository-coverage.test.ts",
+        "tests/unit/api/encounter-pix-payment-attempt-repository-coverage.test.ts",
+        "tests/unit/api/laboratory-and-integration-boundaries-coverage.test.ts",
+        "tests/unit/api/laboratory-result-import-coverage.test.ts",
+        "tests/unit/api/laboratory-result-import-database-coverage.test.ts",
+        "tests/unit/api/pix-repository-boundaries-coverage.test.ts",
+        "tests/unit/api/setup-token-coverage.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99",
+      "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
+      "vitestAdded": [
+        "packages/modules/event-consumers/src/payments.consumer-card-coverage.test.ts",
+        "packages/modules/financial/src/report-boundary-coverage.test.ts",
+        "tests/unit/api/encounter-cash-receipt-reversal-repository-coverage.test.ts",
+        "tests/unit/api/encounter-pix-payment-attempt-repository-coverage.test.ts",
+        "tests/unit/api/laboratory-and-integration-boundaries-coverage.test.ts",
+        "tests/unit/api/laboratory-result-import-coverage.test.ts",
+        "tests/unit/api/laboratory-result-import-database-coverage.test.ts",
+        "tests/unit/api/pix-repository-boundaries-coverage.test.ts",
+        "tests/unit/api/setup-token-coverage.test.ts"
+      ],
+      "vitestRemoved": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -11968,9 +12026,9 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 51,
+  "manifestRevision": 52,
   "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
-  "executionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99",
+  "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,
