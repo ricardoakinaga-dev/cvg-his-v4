@@ -60,8 +60,8 @@ test('backup/restore gate fails when the current roadmap loses a required exit c
     const fixtureRoadmap = join(fixtureRoot, roadmapPath);
     const roadmap = readFileSync(fixtureRoadmap, 'utf8');
     const withoutRestoreProof = roadmap.replace(
-      /\| M4 — Operação no target[^\n]*\n/,
-      (line) => line.replace('restore/RTO-RPO', 'restore ainda não comprovado')
+      /\| R6 Operação e target[^\n]*\n/,
+      (line) => line.replace('restore/corrupção', 'restore ainda não comprovado')
     );
     assert.notEqual(withoutRestoreProof, roadmap);
     writeFileSync(fixtureRoadmap, withoutRestoreProof);
@@ -76,7 +76,11 @@ test('backup/restore gate fails when the current roadmap loses a required exit c
 });
 
 for (const [name, path, transform] of [
-  ['backlog restore integrity requirement', backlogPath, (text) => text.replace('verificar hashes/contagens/RLS e medir tempos reais.', 'aguardar verificação.')],
+  [
+    'backlog restore integrity requirement',
+    backlogPath,
+    (text) => text.replace('cumprir RPO/RTO aprovados.', 'aguardar aprovação de RPO/RTO.')
+  ],
   ['documentation manifest', 'docs/document-governance.json', () => '{}']
 ]) {
   test(`backup/restore gate rejects missing ${name}`, () => {

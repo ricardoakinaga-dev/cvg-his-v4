@@ -99,6 +99,16 @@ cumulativos com a DoD acima.
 Nenhum ID está implicitamente concluído pelo agrupamento. Cartões G precisam ser
 decompostos em fatias comportamentais antes de despacho, mantendo o ID-pai.
 
+### 5.1 Contrato P0 de recuperação operacional
+
+O critério de recuperação permanece explícito no backlog vigente e é validado
+junto com a superfície de backup/restore. A execução continua bloqueada até que
+as metas, o alvo descartável e a autoridade de operação estejam definidos.
+
+| ID | Prioridade / owner / esforço | Dependências | Resultado | Critério de aceite |
+|---|---|---|---|---|
+| PROD-037 | P0 / Dados + SRE / G | 004, 024, 025, 033, 049 | Backup, restore, corrupção e mismatch | Restaurar DB/objetos/config/chaves necessárias, checksums/relações/saldos; provar corrupção detectada e recuperação; cumprir RPO/RTO aprovados. Alvo descartável autorizado, cronômetro e relatório; nunca restaurar sobre produção por padrão |
+
 ## 6. Achado → backlog de fechamento
 
 | Achado vigente | Cartões/subtarefas | Fechamento exigido |

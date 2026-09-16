@@ -35,6 +35,17 @@ const files = {
   backlog: currentDocument('backlog')
 };
 
+const roadmapHasRecoveryExitCriterion =
+  /\| M4 — Operação no target[^\n]*restore\/RTO-RPO/.test(files.roadmap ?? '') ||
+  /\| R6 Operação e target[^\n]*restore\/corrupção/.test(files.roadmap ?? '');
+const backlogHasRecoveryContract =
+  /\| AAA-037 \|[^\n]*Aprovar RPO\/RTO antes do drill; restaurar globals, banco, storage e configuração representativos, verificar hashes\/contagens\/RLS e medir tempos reais\./.test(
+    files.backlog ?? ''
+  ) ||
+  /\| PROD-037 \|[^\n]*Backup, restore, corrupção e mismatch[^\n]*cumprir RPO\/RTO aprovados\./.test(
+    files.backlog ?? ''
+  );
+
 const checks = [
   {
     label: 'backup-v2.sh existe e falha em erro de shell',
@@ -136,11 +147,7 @@ const checks = [
   },
   {
     label: 'roadmap e backlog vigentes mantem backup/restore como criterio de saida',
-    ok:
-      /\| M4 — Operação no target[^\n]*restore\/RTO-RPO/.test(files.roadmap ?? '') &&
-      /\| AAA-037 \|[^\n]*Aprovar RPO\/RTO antes do drill; restaurar globals, banco, storage e configuração representativos, verificar hashes\/contagens\/RLS e medir tempos reais\./.test(
-        files.backlog ?? ''
-      )
+    ok: roadmapHasRecoveryExitCriterion && backlogHasRecoveryContract
   }
 ];
 
