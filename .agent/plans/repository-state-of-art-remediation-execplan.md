@@ -357,3 +357,10 @@ ter sido observado fora da janela do estado anterior. A reconciliação não
 promoveu PROD-063, não apagou limitações e não transferiu evidência histórica.
 O candidato corrente será identificado por `CURRENT_CANDIDATE_IDENTITY.json`;
 somente commits documentais podem suceder o SHA funcional sem regeneração.
+
+Plan revision note, 2026-09-16 (visual candidate gate): os actual/expected/diff
+foram inspecionados; os 29 baselines visuais atuais foram atualizados de forma
+intencional e a execução subsequente sem `--update-snapshots` passou 29/29 casos
+Chromium, com o caso especializado mantido como opt-in/skipped. O candidato
+funcional `0ca1526a` permanece `BLOCKED / NOT PROVEN` no gate estrito `49/43/20`;
+nenhuma prova local foi promovida para CI, target, UAT ou autoridade.
