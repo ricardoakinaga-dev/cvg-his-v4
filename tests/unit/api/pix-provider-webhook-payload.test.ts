@@ -165,4 +165,21 @@ describe('PIX provider webhook authenticated payload parser', () => {
       )
     ).toMatchObject({ confirmedAt: newBoundary });
   });
+
+  it('fails closed for invalid clocks, age configuration and non-buffer input', () => {
+    expect(() => parsePixProviderWebhookPayload('not-a-buffer' as never, ACCOUNT_ID, options)).toThrow(
+      PixProviderWebhookPayloadValidationError
+    );
+    expect(() => parsePixProviderWebhookPayload(body(validClaims()), ACCOUNT_ID, {
+      nowSeconds: () => Number.NaN
+    })).toThrow(PixProviderWebhookPayloadValidationError);
+    expect(() => parsePixProviderWebhookPayload(body(validClaims()), ACCOUNT_ID, {
+      nowSeconds: () => NOW_SECONDS,
+      maxAgeSeconds: Number.NaN
+    })).toThrow(PixProviderWebhookPayloadValidationError);
+    expect(() => parsePixProviderWebhookPayload(body(validClaims()), ACCOUNT_ID, {
+      nowSeconds: () => NOW_SECONDS,
+      maxAgeSeconds: -1
+    })).toThrow(PixProviderWebhookPayloadValidationError);
+  });
 });

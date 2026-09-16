@@ -1,16 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { queryMock, withTenantQueryMock } = vi.hoisted(() => {
+const { queryMock, withTenantQueryMock, poolQueryMock } = vi.hoisted(() => {
   const queryMock = vi.fn();
+  const poolQueryMock = vi.fn();
   const withTenantQueryMock = vi.fn(
     async (_pool: unknown, fn: (client: { query: typeof queryMock }) => Promise<unknown>) =>
       fn({ query: queryMock })
   );
-  return { queryMock, withTenantQueryMock };
+  return { queryMock, withTenantQueryMock, poolQueryMock };
 });
 
 vi.mock('@cvg-his-v2/shared-database', () => ({
-  getPool: vi.fn(() => ({ mocked: true }))
+  getPool: vi.fn(() => ({ mocked: true, query: poolQueryMock }))
 }));
 
 vi.mock('@cvg-his-v2/tenant-context', () => ({
@@ -19,6 +20,7 @@ vi.mock('@cvg-his-v2/tenant-context', () => ({
 
 import {
   DatabasePixTransactionRepository,
+  InMemoryPixTransactionRepository,
   type PixTransactionRecord
 } from '../../../apps/api/src/pix-transaction-repository.ts';
 
@@ -90,6 +92,7 @@ function createDbRow(overrides: Record<string, unknown> = {}): Record<string, un
 describe('DatabasePixTransactionRepository coverage guard', () => {
   beforeEach(() => {
     queryMock.mockReset();
+    poolQueryMock.mockReset();
     withTenantQueryMock.mockClear();
   });
 
@@ -298,5 +301,120 @@ describe('DatabasePixTransactionRepository coverage guard', () => {
       ['acc_pix']
     );
     expect(transactionIds).toEqual(['pix_tx_1', 'pix_tx_2']);
+  });
+
+  it('maps a legacy PIX row with nullable provider, settlement and cash fields', async () => {
+    const repository = new DatabasePixTransactionRepository();
+    queryMock.mockResolvedValueOnce({
+      rows: [createDbRow({
+        billing_record_id: null,
+        payment_attempt_id: null,
+        provider_transaction_id: null,
+        provider_confirmation_id: null,
+        provider_webhook_event_id: null,
+        completed_at: null,
+        last_provider_sync_at: null,
+        billing_settled_at: null,
+        billing_settlement_error: null,
+        cash_reconciled_at: null,
+        cash_reconciliation_error: null,
+        cash_register_id: null,
+        cash_movement_id: null
+      })]
+    });
+
+    await expect(repository.findByTransactionId('pix_tx_1')).resolves.toEqual(
+      expect.objectContaining({
+        billingRecordId: undefined,
+        paymentAttemptId: undefined,
+        providerTransactionId: undefined,
+        providerConfirmationId: undefined,
+        providerWebhookEventId: undefined,
+        completedAt: undefined,
+        lastProviderSyncAt: undefined,
+        billingSettledAt: undefined,
+        billingSettlementError: undefined,
+        cashReconciledAt: undefined,
+        cashReconciliationError: undefined,
+        cashRegisterId: undefined,
+        cashMovementId: undefined
+      })
+    );
+  });
+
+  it('covers in-memory ownership, provider lookup, updates and filters', async () => {
+    const repository = new InMemoryPixTransactionRepository();
+    const record = createRecord({
+      transactionId: 'memory_pix',
+      providerTransactionId: 'provider_memory'
+    });
+    await repository.create(record);
+
+    await expect(repository.findByTransactionId('memory_pix')).resolves.toEqual(record);
+    await expect(repository.findByTransactionId('missing')).resolves.toBeNull();
+    await expect(repository.isTransactionOwnedByAccount('memory_pix', 'acc_pix')).resolves.toBe(true);
+    await expect(repository.isTransactionOwnedByAccount('memory_pix', 'other')).resolves.toBe(false);
+    await expect(repository.isTransactionOwnedByAccount('missing', 'acc_pix')).resolves.toBeNull();
+    await expect(repository.findByProviderTransactionId('pagarme', 'provider_memory')).resolves.toEqual(record);
+    await expect(repository.findByProviderTransactionId('pagarme', 'missing')).resolves.toBeNull();
+    await expect(repository.findByProviderTransactionId('local-pix', 'provider_memory')).resolves.toBeNull();
+
+    await expect(repository.updateStatus({ transactionId: 'missing', status: 'failed' })).resolves.toBeNull();
+    const updated = await repository.updateStatus({ transactionId: 'memory_pix', status: 'completed' });
+    expect(updated).toEqual(expect.objectContaining({
+      status: 'completed', providerTransactionId: 'provider_memory', providerConfirmationId: 'provider_conf_1'
+    }));
+    const settled = await repository.updateBillingSettlement({
+      transactionId: 'memory_pix', billingSettlementStatus: 'applied'
+    });
+    expect(settled).toEqual(expect.objectContaining({ billingSettlementStatus: 'applied' }));
+    const reconciled = await repository.updateCashReconciliation({
+      transactionId: 'memory_pix', cashReconciliationStatus: 'applied'
+    });
+    expect(reconciled).toEqual(expect.objectContaining({ cashReconciliationStatus: 'applied', cashRegisterId: 'cash_1' }));
+    await expect(repository.updateBillingSettlement({ transactionId: 'missing', billingSettlementStatus: 'failed' })).resolves.toBeNull();
+    await expect(repository.updateCashReconciliation({ transactionId: 'missing', cashReconciliationStatus: 'failed' })).resolves.toBeNull();
+
+    await expect(repository.list()).resolves.toHaveLength(1);
+    await expect(repository.list({ accountId: 'acc_pix', status: 'completed', provider: 'pagarme' })).resolves.toHaveLength(1);
+    await expect(repository.list({ accountId: 'other' })).resolves.toEqual([]);
+    await expect(repository.listCanonicalSettlementTransactionIds('acc_pix')).resolves.toEqual([]);
+  });
+
+  it('covers database nullability, ownership proof and empty update results', async () => {
+    const repository = new DatabasePixTransactionRepository();
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    await repository.create(createRecord({
+      billingRecordId: undefined,
+      providerTransactionId: undefined,
+      providerConfirmationId: undefined,
+      providerWebhookEventId: undefined,
+      completedAt: undefined,
+      lastProviderSyncAt: undefined,
+      billingSettledAt: undefined,
+      billingSettlementError: undefined,
+      cashReconciledAt: undefined,
+      cashReconciliationError: undefined,
+      cashRegisterId: undefined,
+      cashMovementId: undefined
+    }));
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    await repository.create(createRecord());
+
+    poolQueryMock
+      .mockResolvedValueOnce({ rows: [{ owned: true }] })
+      .mockResolvedValueOnce({ rows: [{ owned: null }] })
+      .mockResolvedValueOnce({ rows: [] });
+    await expect(repository.isTransactionOwnedByAccount('pix_tx_1', 'acc_pix')).resolves.toBe(true);
+    await expect(repository.isTransactionOwnedByAccount('pix_tx_1', 'acc_pix')).resolves.toBeNull();
+    await expect(repository.isTransactionOwnedByAccount('pix_tx_1', 'acc_pix')).resolves.toBeNull();
+
+    queryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
+    await expect(repository.findByProviderTransactionId('pagarme', 'missing')).resolves.toBeNull();
+    await expect(repository.updateStatus({ transactionId: 'missing', status: 'failed' })).resolves.toBeNull();
+    await expect(repository.updateBillingSettlement({ transactionId: 'missing', billingSettlementStatus: 'failed' })).resolves.toBeNull();
   });
 });

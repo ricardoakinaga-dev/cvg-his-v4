@@ -576,4 +576,195 @@ describe('DatabaseCardTransactionRepository', () => {
     queryMock.mockResolvedValueOnce({ rows: [complete] });
     await repository.list();
   });
+
+  it('maps a legacy row with every optional card field absent', async () => {
+    const repository = new DatabaseCardTransactionRepository();
+    queryMock.mockResolvedValueOnce({
+      rows: [createDbRow({
+        billing_record_id: null,
+        captured_at: null,
+        capture_requested_at: null,
+        last_provider_sync_at: null,
+        provider_order_id: null,
+        provider_charge_id: null,
+        provider_authorization_code: null,
+        provider_reference_id: null,
+        failure_reason: null,
+        card_holder_name: null,
+        card_brand: null,
+        card_last4: null,
+        billing_settled_at: null,
+        billing_settlement_error: null
+      })]
+    });
+
+    await expect(repository.findByTransactionId('card_tx_1')).resolves.toEqual(
+      expect.objectContaining({
+        billingRecordId: undefined,
+        capturedAt: undefined,
+        captureRequestedAt: undefined,
+        lastProviderSyncAt: undefined,
+        providerOrderId: undefined,
+        providerChargeId: undefined,
+        providerAuthorizationCode: undefined,
+        providerReferenceId: undefined,
+        failureReason: undefined,
+        cardHolderName: undefined,
+        cardBrand: undefined,
+        cardLast4: undefined,
+        billingSettledAt: undefined,
+        billingSettlementError: undefined
+      })
+    );
+  });
+
+  it('writes card records with nullable fields and returns empty lookups', async () => {
+    const repository = new DatabaseCardTransactionRepository();
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    await repository.create(createRecord({
+      billingRecordId: undefined,
+      lastProviderSyncAt: undefined,
+      providerOrderId: undefined,
+      providerChargeId: undefined,
+      providerAuthorizationCode: undefined,
+      providerReferenceId: undefined,
+      failureReason: undefined,
+      cardHolderName: undefined,
+      cardBrand: undefined,
+      cardLast4: undefined,
+      billingSettledAt: undefined,
+      billingSettlementError: undefined,
+      captureRequestedAt: undefined
+    }));
+    expect(queryMock.mock.calls[0]?.[1]).toEqual(expect.arrayContaining([
+      null, null, null, null, null, null, null, null, null, null, null, null
+    ]));
+
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    await expect(repository.findByTransactionId('missing')).resolves.toBeNull();
+
+    queryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{
+        id: 'attempt_without_bill', fingerprint: 'fingerprint', billing_record_id: null,
+        provider_result: null, response: null
+      }] });
+    await expect(repository.reserveCreation('acc_card', 'key-without-billing', 'fingerprint'))
+      .resolves.toEqual({ fresh: true, attempt: { id: 'attempt_without_bill', fingerprint: 'fingerprint' } });
+
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    await repository.create(createRecord({
+      lastProviderSyncAt: '2026-08-23T11:01:00.000Z',
+      captureRequestedAt: '2026-08-23T10:30:00.000Z'
+    }));
+  });
+
+  it('covers unscoped and absent in-memory creation branches', async () => {
+    const repository = new InMemoryCardTransactionRepository();
+    getTenantContextMock.mockReturnValue(null);
+    const first = await repository.reserveCreation('acc_memory', 'same-key', 'fingerprint');
+    await expect(repository.reserveCreation('acc_memory', 'same-key', 'fingerprint')).resolves.toEqual(
+      expect.objectContaining({ fresh: false })
+    );
+    await expect(repository.saveCreationResult('acc_memory', 'missing', {})).rejects.toThrow('not found');
+    await expect(repository.completeCreation('acc_memory', 'missing', {})).rejects.toThrow('not found');
+
+    await repository.create(createRecord({ accountId: 'acc_single', transactionId: 'unscoped-id' }));
+    await expect(repository.findByTransactionId('unscoped-id')).resolves.toEqual(
+      expect.objectContaining({ transactionId: 'unscoped-id' })
+    );
+    await expect(repository.withCreationTransaction('acc_memory', 'new-anchor', async () => {
+      throw 'rollback-without-anchor';
+    })).rejects.toBe('rollback-without-anchor');
+
+    await expect(repository.withCaptureLock('acc_single', 'unscoped-id', async () => {
+      throw new Error('rollback-with-existing-anchor');
+    })).rejects.toThrow('rollback-with-existing-anchor');
+    await expect(repository.withCaptureLock('acc_memory', 'missing-anchor', async () => {
+      throw new Error('rollback-without-existing-anchor');
+    })).rejects.toThrow('rollback-without-existing-anchor');
+
+    const capture = await repository.withCaptureLock(
+      'acc_memory', 'checkpoint-id',
+      async (claimProviderCapture) => {
+        await claimProviderCapture();
+        await expect(claimProviderCapture()).rejects.toThrow('checkpoint already used');
+        return first.attempt.id;
+      }
+    );
+    expect(capture.acquired).toBe(true);
+
+    await expect(repository.updateBillingSettlement({
+      transactionId: 'unscoped-id', billingSettlementStatus: 'applied'
+    })).resolves.toEqual(expect.objectContaining({ billingSettlementStatus: 'applied' }));
+    await expect(repository.updateBillingSettlement({
+      transactionId: 'unscoped-id', billingSettlementStatus: 'failed', updatedAt: '2026-08-23T12:00:00.000Z'
+    })).resolves.toEqual(expect.objectContaining({ billingSettlementStatus: 'failed' }));
+    await expect(repository.list()).resolves.toHaveLength(1);
+    await expect(repository.list({ status: 'pending' })).resolves.toHaveLength(1);
+    await expect(repository.list({ provider: 'pagarme-card' })).resolves.toHaveLength(1);
+  });
+
+  it('handles inactive database capture finalization and unlock failures', async () => {
+    const repository = new DatabaseCardTransactionRepository();
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ acquired: true }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ rows: [{ released: true }] });
+    await expect(repository.withCaptureLock(
+      'acc_card', 'card_tx_1',
+      async (claimProviderCapture, beginFinalization) => {
+        await expect(claimProviderCapture()).resolves.toBe(false);
+        await beginFinalization();
+        return 'finalized';
+      }
+    )).resolves.toEqual({ acquired: true, value: 'finalized' });
+
+    queryMock.mockReset();
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ acquired: true }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce('unlock transport failure');
+    await expect(repository.withCaptureLock('acc_card', 'card_tx_2', async () => 'ok'))
+      .resolves.toEqual({ acquired: true, value: 'ok' });
+
+    queryMock.mockReset();
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ acquired: true }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('unlock error'));
+    await expect(repository.withCaptureLock('acc_card', 'card_tx_3', async () => {
+      throw new Error('capture operation failed');
+    })).rejects.toThrow('capture operation failed');
+  });
+
+  it('keeps ambiguous unscoped transaction ids isolated in memory', async () => {
+    const repository = new InMemoryCardTransactionRepository();
+    getTenantContextMock.mockReturnValue(null);
+    await repository.create(createRecord({ accountId: 'acc_one', transactionId: 'same-id' }));
+    await repository.create(createRecord({ accountId: 'acc_two', transactionId: 'same-id' }));
+
+    await expect(repository.findByTransactionId('same-id')).resolves.toBeNull();
+    await expect(repository.updateStatus({ transactionId: 'same-id', status: 'failed' })).resolves.toBeNull();
+
+    getTenantContextMock.mockReturnValue({ accountId: 'acc_one' });
+    await expect(repository.findByTransactionId('same-id')).resolves.toEqual(
+      expect.objectContaining({ accountId: 'acc_one' })
+    );
+    await expect(repository.updateStatus({ transactionId: 'unknown', status: 'failed' })).resolves.toBeNull();
+  });
 });
