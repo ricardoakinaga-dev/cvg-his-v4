@@ -1,5 +1,22 @@
 # Triple-A — Execution Log
 
+## 2026-09-16T23:37:42Z — candidato `c11858ed` / fechamento do gate global de branches
+
+- **Código e testes:** a onda de cobertura adicionou contratos determinísticos para
+  pagamentos cartão/Pix, marketing, consumidores de eventos, financeiro,
+  laboratório, ML, métricas operacionais, SMS, provisionamento e limites de
+  runtime. A alteração foi consolidada em `c11858ed523a9a027e60b5fd4788d9332b3516cd`.
+- **Validação local:** `273/273` arquivos e `2907/2907` testes passaram; cobertura
+  `87,46%` statements, `82,00%` branches, `89,32%` functions e `88,91%` lines.
+  Lint, typecheck e `git diff --check` passaram.
+- **Branches:** `origin/fix/state-of-art-ci-assurance` continua ancestral de
+  `main`, sem commits exclusivos; nenhuma operação de merge destrutiva ou
+  force-push foi usada.
+- **Decisão:** o threshold local global está verde, mas o candidato permanece
+  `BLOCKED / NOT PROVEN` até CI próprio terminal, target, recovery, UAT,
+  attestation e autoridade de release. Nenhum claim `main green` ou
+  `TRIPLE-A VERIFIED` é emitido.
+
 ## 2026-09-16T21:28:03Z — candidato funcional `79adc0c6` / isolamento de Coverage
 
 - **Código:** o contrato PostgreSQL de `DatabaseModelRepository` no módulo ML

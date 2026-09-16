@@ -6,17 +6,17 @@
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O snapshot atual é
 > o snapshot anterior `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e`, com código funcional em `578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`, permanece preservado apenas como histórico; a identidade canônica está em
-> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `79adc0c6c825512a9200b5c94a373512f18be4fc`; o [CI #190](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35138781369) pertence ao pai documental e não é transferido. O runner crítico agora usa PostgreSQL 16, checkout completo, trata o par V8 do Node 22 e publica evidência SQL; nenhum resultado parcial é transferido.
+> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `c11858ed523a9a027e60b5fd4788d9332b3516cd`; os CI anteriores não são transferidos. O runner crítico usa PostgreSQL 16, checkout completo, trata o par V8 do Node 22 e publica evidência SQL; nenhum resultado parcial é transferido.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `79adc0c6c825512a9200b5c94a373512f18be4fc` (manifesto crítico revision 51, workflow com Chromium, runner privado PostgreSQL 16, par V8 autenticado e produtor SQL; provas externas e autoridade de release continuam `NOT PROVEN`).
-**Current CI:** o candidato `79adc0c6` aguarda CI próprio; os #191/#192 dos ancestrais terminaram `failure` com Critical Coverage Gate `PASS` e falhas em Coverage geral, k6, E2E e Visual Regression.
+**Current snapshot:** `c11858ed523a9a027e60b5fd4788d9332b3516cd` (manifesto crítico revision 51, workflow com Chromium, runner privado PostgreSQL 16, par V8 autenticado, produtor SQL e cobertura global local acima do threshold; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current CI:** o candidato `c11858ed` aguarda CI próprio; os #191/#192 dos ancestrais terminaram `failure` com Critical Coverage Gate `PASS` e falhas em Coverage geral, k6, E2E e Visual Regression.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-16T20:35:31Z
+**Observation:** 2026-09-16T23:37:42Z
 
-**Current local execution:** unit `260/260` arquivos e `2824/2824` testes; integração fresca completa `105/105` e `933/933` e suíte afetada `48/48`; o runner privado PostgreSQL 16.15 repetiu as `171` migrações e o seed em duas rodadas. A evidência Vue especializada foi aceita no Critical Coverage Gate dos ancestrais #191/#192; target, recovery, UAT e autoridade continuam sem prova aceita. O gate R05-010 local permanece `FAIL/BLOCKED`; a validação local não substitui CI pinned, target ou UAT.
+**Current local execution:** cobertura global `273/273` arquivos e `2907/2907` testes, com `3` skips esperados; statements `87,46%`, branches `82,00%`, functions `89,32%`, lines `88,91%`; lint e typecheck completos passaram. O runner privado PostgreSQL 16.15 repetiu as `171` migrações e o seed em duas rodadas. A evidência Vue especializada foi aceita no Critical Coverage Gate dos ancestrais #191/#192; target, recovery, UAT e autoridade continuam sem prova aceita. A validação local não substitui CI pinned, target ou UAT.
 
-**Current critical gate:** `NOT_PROVEN` para o candidato `79adc0c6` até a recoleta própria dos cinco shards, SQL e Vue contra o manifesto revision 51. Os ancestrais #191/#192 passaram esse gate, mas sua evidência não é transferida. O gate agregado local/Triple-A permanece `BLOCKED / NOT PROVEN` e `publication_allowed=false`.
+**Current critical gate:** `NOT_PROVEN` para o candidato `c11858ed` até CI próprio com os cinco shards, SQL e Vue contra o manifesto revision 51. Os ancestrais #191/#192 passaram esse gate, mas sua evidência não é transferida. O gate agregado local/Triple-A permanece `BLOCKED / NOT PROVEN` e `publication_allowed=false`.
 
 **Current candidate implementation delta:** o workflow de coverage usa
 um índice APT isolado dos archives oficiais assinados do Ubuntu 22.04, pois o

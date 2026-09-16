@@ -1,7 +1,7 @@
 # Baseline corrente — State of Art
 
-Observado em `2026-09-16T20:35:31Z`, sobre o candidato funcional
-`79adc0c6c825512a9200b5c94a373512f18be4fc`, que contém o alinhamento do runner
+Observado em `2026-09-16T23:37:42Z`, sobre o candidato funcional
+`c11858ed523a9a027e60b5fd4788d9332b3516cd`, que contém o alinhamento do runner
 crítico à versão canônica PostgreSQL 16, a aceitação restrita dos inicializadores
 V8 do Node 22, a produção de evidência SQL e a reancoragem do manifesto crítico.
 A identidade canônica está em
@@ -13,26 +13,26 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| current_sha     | `79adc0c6c825512a9200b5c94a373512f18be4fc` (candidato funcional; documentação de reconciliação posterior é somente documental) |
-| main_sha        | `main@79adc0c6`; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral, sem commits exclusivos; rollback preservado |
+| current_sha     | `c11858ed523a9a027e60b5fd4788d9332b3516cd` (candidato funcional; documentação de reconciliação posterior é somente documental) |
+| main_sha        | `main@c11858ed`; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral, sem commits exclusivos; rollback preservado |
 | worktree        | Limpo após os commits de coverage, manifesto e identidade; artefatos em `artifacts/` permanecem ignorados |
 | rollback        | `origin/fix/state-of-art-ci-assurance@fe5406c2`; sem force-push |
-| ci_run          | O CI do candidato `79adc0c6` ainda aguarda execução terminal; os #191/#192 são evidência de ancestrais e não são transferidos após a correção do teste ML. |
+| ci_run          | O CI do candidato `c11858ed` ainda aguarda execução terminal; os #191/#192 são evidência de ancestrais e não são transferidos. |
 | ci_failure      | Nos ancestrais, Coverage falhou por conexão do contrato ML em `:5433`; k6 perdeu 3/9 SLOs; E2E/Visual falharam em 29 snapshots divergentes. Nenhum baseline ou threshold foi alterado. |
 | overall_score   | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `51`, abaixo do mínimo 97 |
 | critical_score  | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `49`, abaixo do mínimo 95 |
 | open_p0         | `NOT_EVALUATED` no gate R05-010; o último gate estrito histórico registrou `18`, acima do máximo 0 |
 | local_gate      | `FAIL/BLOCKED` no R05-010: cobertura crítica abaixo dos limiares e aplicabilidades Vue sem evidência aceita; `claim=NOT PROVEN`, `publication_allowed=false` |
 | implemented     | Paridade do contrato Patient; CORS credentialado restrito a origens permitidas; manifest crítico revision 51, ancorado em `0812cb49`, com source set e thresholds inalterados; workflow provisiona PostgreSQL 16, aceita somente o par V8 autenticado e publica a evidência SQL antes do checker; nenhum threshold foi alterado |
-| verified_local  | lint passou; contratos CI `20/20`; cobertura/processo e evidência SQL `34/34`; produtor SQL PostgreSQL 16.15 passou com `171` migrações e `7` históricos; target externo permanece ausente |
-| verified_remote | `NOT_PROVEN` para o candidato `79adc0c6` até novo CI; #191/#192 provaram o gate crítico apenas nos ancestrais. Target, recovery, UAT, attestation, governança de branch e autoridade de release seguem ausentes |
+| verified_local  | cobertura global `273/273` arquivos e `2907/2907` testes passou o threshold; lint e typecheck passaram; contratos CI `20/20`; cobertura/processo e evidência SQL `34/34`; produtor SQL PostgreSQL 16.15 passou com `171` migrações e `7` históricos; target externo permanece ausente |
+| verified_remote | `NOT_PROVEN` para o candidato `c11858ed` até novo CI; #191/#192 provaram o gate crítico apenas nos ancestrais. Target, recovery, UAT, attestation, governança de branch e autoridade de release seguem ausentes |
 | verified_target | `NOT_PROVEN` |
 | blocked         | Novo CI do candidato, target, restore/DR, performance certificada, UAT e autoridade humana continuam abertos; os thresholds gerais e snapshots permanecem sem promoção |
 | not_proven      | Qualquer claim de release Triple-A, score ≥97, critical ≥95, zero P0, `main_green` ou `TRIPLE-A VERIFIED` |
 
 ## Decisão
 
-O candidato funcional `79adc0c6c825512a9200b5c94a373512f18be4fc` foi reconciliado;
+O candidato funcional `c11858ed523a9a027e60b5fd4788d9332b3516cd` foi reconciliado;
 o manifesto crítico foi reancorado na revisão 51, com o código funcional e os
 thresholds preservados. `origin/fix/state-of-art-ci-assurance` já era ancestral de `main` e
 não possuía mudanças exclusivas, portanto nenhum merge seletivo adicional foi

@@ -2,14 +2,14 @@
 
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT SNAPSHOT   | candidato `79adc0c6c825512a9200b5c94a373512f18be4fc`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
-| MAIN / ORIGIN      | `main@79adc0c6`; `origin/fix/state-of-art-ci-assurance@fe5406c2` ancestral sem commits exclusivos, rollback preservado, sem force-push |
-| CURRENT CI         | O candidato `79adc0c6` aguarda CI próprio; os #191/#192 dos ancestrais terminaram `failure` com Critical Coverage Gate `PASS` e falhas gerais |
-| LOCAL STRICT GATE  | `NOT_PROVEN` até a recoleta do manifesto revision 51; nenhum shard das revisões anteriores é transferido; `claim=NOT PROVEN`, `publication_allowed=false` |
+| CURRENT SNAPSHOT   | candidato `c11858ed523a9a027e60b5fd4788d9332b3516cd`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
+| MAIN / ORIGIN      | `main@c11858ed`; `origin/fix/state-of-art-ci-assurance@fe5406c2` ancestral sem commits exclusivos, rollback preservado, sem force-push |
+| CURRENT CI         | O candidato `c11858ed` aguarda CI próprio; os #191/#192 dos ancestrais terminaram `failure` com Critical Coverage Gate `PASS` e falhas gerais |
+| LOCAL STRICT GATE  | cobertura global local `PASS` no threshold congelado; release/critical externo continuam `NOT_PROVEN`, `claim=NOT PROVEN`, `publication_allowed=false` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
-| LOCAL VALIDATION   | contratos CI `20/20`, cobertura/processo e SQL `34/34`, lint, produtor SQL `171` migrações e conversão V8 real passaram; manifesto revision 51 válido; target externo ausente |
+| LOCAL VALIDATION   | cobertura global `273/273` arquivos e `2.907/2.907` testes, `87,46/82,00/89,32/88,91%` (statements/branches/functions/lines), lint, typecheck, contratos CI `20/20`, SQL `34/34`, produtor SQL `171` migrações e conversão V8 real passaram; manifesto revision 51 válido; target externo ausente |
 | VERIFIED TARGET    | `NOT PROVEN`                                                                                                                                                                                                                                              |
-| CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; recoleta crítica, CI terminal, target e autoridade externa continuam sem prova                                                                                                                                                        |
+| CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; CI terminal, target e autoridade externa continuam sem prova                                                                                                                                                        |
 
 O snapshot corrente preserva a régua congelada e reancora o manifesto crítico
 na revisão 51. O CI #190 detectou a rejeição de inicializadores V8 legítimos do

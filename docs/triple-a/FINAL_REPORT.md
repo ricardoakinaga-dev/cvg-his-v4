@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `79adc0c6c825512a9200b5c94a373512f18be4fc`
-(manifesto crítico revision 51 ancorado em `0812cb49`; a branch de assurance é ancestral sem commits exclusivos; os CI #191/#192 dos ancestrais passaram o Critical Coverage Gate, mas terminaram com falhas gerais; o candidato atual aguarda CI próprio)
+**Candidate funcional avaliado:** `c11858ed523a9a027e60b5fd4788d9332b3516cd`
+(manifesto crítico revision 51 ancorado em `0812cb49`; a branch de assurance é ancestral sem commits exclusivos; a cobertura global local passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; os CI #191/#192 dos ancestrais passaram o Critical Coverage Gate, mas terminaram com falhas gerais; o candidato atual aguarda CI próprio)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -18,11 +18,19 @@ attestation, UAT, governança, performance certificada ou autoridade de release.
 Nenhum threshold ou baseline visual foi relaxado e não há autorização para declarar `main green`,
 release produtivo ou `TRIPLE-A VERIFIED`.
 
+## Validação local do candidato atual
+
+A cobertura global passou `273` arquivos e `2.907` testes: `87,46%` statements,
+`82,00%` branches, `89,32%` functions e `88,91%` lines. Lint, typecheck,
+`git diff --check` e os 17 arquivos de contrato adicionados/alterados também
+passaram. Isso é evidência local; não substitui CI terminal, target, recovery,
+UAT, attestation ou autoridade de release.
+
 ## Atualização corrente — revisão 51 / CI #191
 
 O manifest crítico revision 51 foi reancorado em `0812cb49`, sem mudança de
 thresholds, fontes ou aplicabilidade funcional; o snapshot corrente é
-`79adc0c6c825512a9200b5c94a373512f18be4fc`. O runner crítico preserva o SQL histórico,
+`c11858ed523a9a027e60b5fd4788d9332b3516cd`. O runner crítico preserva o SQL histórico,
 usa PostgreSQL 16 e trata os inicializadores V8 do Node 22 sem fundir identidades.
 O produtor SQL agora é executado e publicado antes do checker. Os produtores atuais são identificados na
 [`evidência corrente`](./17-current-execution-evidence.md). Os CI #191/#192
