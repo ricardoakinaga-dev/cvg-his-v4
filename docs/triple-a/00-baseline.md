@@ -1,17 +1,17 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-16T02:05:04Z
+## Snapshot vigente — 2026-09-16T02:21:57Z
 
-O baseline autoritativo do candidato atual está em: `371e5f844e984b26acb2dc2e1302031ca2a94409`.
+O baseline autoritativo do candidato atual está em: `baddd890d865de25a03ea29d66041ef5f0a02e1a`.
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
 documentação corrente sucede os candidatos históricos sem transferir evidência;
-`HEAD/main@371e5f84` está localmente à frente de `origin/main@e4e18fba`, com
+`HEAD/main@baddd890` está localmente à frente de `origin/main@8078fc41`, com
 rollback preservado. O graph e o gate corrente permanecem `BLOCKED / NOT PROVEN`.
 
-Não há CI terminal do SHA exato. O [CI #35046394357](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35046394357) pertence ao candidato anterior `e4e18fba` e falhou na provisão APT; permanece diagnóstico histórico. Nenhum resultado parcial ou histórico é promovido; target, recovery, UAT, attestation, governança e autoridade de release continuam `NOT PROVEN`.
+Não há CI terminal do SHA exato. O [CI #35046697535](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35046697535) pertence ao candidato anterior `8078fc41` e falhou na provisão do runtime; permanece diagnóstico histórico. Nenhum resultado parcial ou histórico é promovido; target, recovery, UAT, attestation, governança e autoridade de release continuam `NOT PROVEN`.
 
 ## Registro obrigatório do prompt
 
