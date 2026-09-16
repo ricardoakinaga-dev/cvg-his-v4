@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `6618df12ac2fc672ccae2d50b391af8c287042f7`
-(snapshot documental; código funcional em `01e5a168204ccb0f157ac96e7183391e1a1fc609`; `origin/main` está em `6217654a`, a branch de assurance é ancestral sem commits exclusivos; o [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) é de outro SHA e terminou `failure`)
+**Candidate funcional avaliado:** `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e`
+(snapshot documental; código funcional em `578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`; `origin/main` estava em `3fca62b7` na coleta, a branch de assurance é ancestral sem commits exclusivos; o [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) é de outro SHA e terminou `failure`)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -9,24 +9,25 @@
 
 O candidato preserva o modular monolith e a reconciliação fail-closed de
 proveniência. A paridade de Patient e o CORS credentialado restrito foram
-validados. A recoleta local current passou API server `68/68`, unit `241/241`,
-integração `933/933`, native-worker, native-api, critical-process, Vue
-especializado (25 rotas) e SQL (171 migrações); o gate R05-010, porém, fechou
-`FAIL/BLOCKED` por 19 métricas abaixo dos
-limiares. O CI #178 é histórico de outro SHA e falhou; não há target, recovery,
+validados. A recoleta local current passou unit `260/260` arquivos e `2824/2824`
+testes, integração `105/105` e `933/933`, native-worker, native-api,
+critical-process e SQL (`171` migrações). A evidência Vue especializada permanece
+`NOT PROVEN` devido ao renderer Chromium e o gate R05-010 fechou
+`FAIL/BLOCKED` por cobertura abaixo dos limiares e aplicabilidades Vue não resolvidas. O CI #178 é histórico de outro SHA e falhou; não há target, recovery,
 attestation, UAT, governança, performance certificada ou autoridade de release.
 Nenhum threshold foi relaxado e não há autorização para declarar `main green`,
 release produtivo ou `TRIPLE-A VERIFIED`.
 
-## Atualização corrente — revisão 35
+## Atualização corrente — revisão 48
 
-O manifest crítico revision 35 foi vinculado ao commit funcional
-`01e5a168204ccb0f157ac96e7183391e1a1fc609`, sem mudança de fontes, thresholds
-ou aplicabilidade. Os produtores atuais são identificados na
+O manifest crítico revision 48 foi vinculado ao código funcional
+`578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`, sem mudança de thresholds ou
+aplicabilidade funcional; o snapshot documental é `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e`. Os produtores atuais são identificados na
 [`evidência corrente`](./17-current-execution-evidence.md). O gate consolidado
-não possui mais erro de proveniência, Vue ou SQL, mas registra 19 falhas de cobertura em
-auth, billing-cash, inpatient, records, prescriptions, pix, webhooks,
-http-routes e repositories. O candidato permanece **BLOCKED / NOT PROVEN**.
+tem os cinco shards e SQL vinculados exatamente ao manifesto atual, mas a
+evidência Vue especializada continua sem prova aceita para 25 fontes e a
+cobertura crítica permanece abaixo da régua. O candidato permanece
+**BLOCKED / NOT PROVEN**.
 
 ## Atualização terminal — isolamento da prova clínica
 
@@ -47,14 +48,14 @@ remota e pelos gates externos de target e release.
 | Testing              | LOCAL PASS                   | suíte workspace, critical e E2E clínico                                                                                                 |
 | Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas                                                                                                |
 | Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                                                                                                           |
-| CI/CD                | BLOQUEADO no SHA atual       | Não há CI remoto terminal para `6618df12`; o CI #178 de outro SHA falhou em coverage crítico/geral, unit, k6, visual e E2E SPA |
+| CI/CD                | BLOQUEADO no SHA atual       | Não há CI remoto terminal para `53bbee80`; o CI #178 de outro SHA falhou em coverage crítico/geral, unit, k6, visual e E2E SPA |
 | Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                                                                                                         |
 | Recovery             | BLOCKED                      | Docker impediu restore drill real                                                                                                       |
-| Frontend             | PARTIAL / local PASS         | Vue especializado current passou build, consumer, 60/60 suítes, browser evidence e 25 rotas; o CI #178 de outro SHA falhou em SPA/visual |
+| Frontend             | PARTIAL / NOT PROVEN         | Vue especializado não tem evidência aceita current; o renderer Chromium falha com controles nativos de data e 25 fontes permanecem abertas |
 | Database             | PARTIAL                      | testes locais; RLS target não provado                                                                                                   |
 | Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas                                                                                                |
 | Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes                                                                                               |
-| Overall              | `FAIL/BLOCKED`, 19 métricas | gate R05-010 current no manifest 35; gates externos e score estrito de release continuam ausentes                         |
+| Overall              | `FAIL/BLOCKED`               | gate R05-010 current no manifest 48; cobertura abaixo da régua, 25 aplicabilidades Vue abertas e gates externos ausentes |
 
 ## P0 Findings
 

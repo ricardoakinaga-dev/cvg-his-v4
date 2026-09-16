@@ -1,20 +1,17 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-16T09:46:22Z
+## Snapshot vigente — 2026-09-16T16:05:22Z
 
-O baseline autoritativo do snapshot documental atual está em: `6618df12ac2fc672ccae2d50b391af8c287042f7` (código funcional em `01e5a168204ccb0f157ac96e7183391e1a1fc609`).
+O baseline autoritativo do snapshot documental atual está em: `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e` (código funcional em `578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
 documentação corrente sucede os candidatos históricos sem transferir evidência;
-o snapshot `6618df12` é um descendente documental de `origin/main@6217654a`; a branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
+o snapshot `53bbee80` registra o manifesto/evidências do código `578d7271`; ele é descendente de `origin/main@3fca62b7`; a branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
 `BLOCKED / NOT PROVEN`.
 
-O [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106), disparado em outro SHA no
-`main@6b7c1cec`, terminou `failure`: guards, segurança, typecheck, lint,
-OpenAPI, build, contratos de API, integração e Windows passaram; coverage
-crítico/geral, unidade, k6, visual e SPA E2E falharam. A recoleta local current do candidato passou API server `68/68`, cinco shards críticos, Vue (25 rotas) e SQL (171 migrações), mas o gate mantém 19 métricas abaixo dos thresholds. Nenhum resultado
+Não há CI remoto terminal qualificável para o snapshot atual; o [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) é histórico de outro SHA e terminou `failure`. A validação local current passou unit `260/260` arquivos e `2824/2824` testes, integração `105/105` arquivos e `933/933` testes, os cinco shards críticos nativos/coverage e SQL `171/171` migrações. A evidência Vue especializada continua `NOT PROVEN` por falha do renderer Chromium em controles nativos de data, e o gate mantém cobertura crítica abaixo da régua e 25 aplicabilidades Vue sem evidência aceita. Nenhum resultado
 parcial ou histórico é promovido. Target, recovery, UAT, attestation,
 governança e autoridade de release continuam `NOT PROVEN`.
 

@@ -2,14 +2,14 @@
 
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT SNAPSHOT   | snapshot documental `6618df12ac2fc672ccae2d50b391af8c287042f7` (código funcional `01e5a168204ccb0f157ac96e7183391e1a1fc609`); identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
-| MAIN / ORIGIN      | snapshot `6618df12`; `origin/main@6217654a`; `origin/fix/state-of-art-ci-assurance` ancestral sem commits exclusivos, rollback preservado, sem force-push |
-| CURRENT CI         | `NOT_FOUND` para `6618df12`; [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) é histórico de outro SHA e terminou `failure` |
-| LOCAL STRICT GATE  | R05-010 `FAIL/BLOCKED` por 19 métricas críticas abaixo dos limiares; shards, Vue e SQL current sem erro de proveniência; `claim=NOT PROVEN`, `publication_allowed=false` |
+| CURRENT SNAPSHOT   | snapshot documental `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e` (código funcional `578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`); identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
+| MAIN / ORIGIN      | `main@53bbee80`; `origin/main@3fca62b7` no momento da coleta; `origin/fix/state-of-art-ci-assurance@fe5406c2` ancestral sem commits exclusivos, rollback preservado, sem force-push |
+| CURRENT CI         | `NOT_FOUND` para `53bbee80`; [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106) é histórico de outro SHA e terminou `failure` |
+| LOCAL STRICT GATE  | R05-010 `FAIL/BLOCKED` por cobertura crítica abaixo da régua e 25 aplicabilidades Vue sem evidência aceita; cinco shards e SQL current com proveniência exata; `claim=NOT PROVEN`, `publication_allowed=false` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
-| LOCAL VALIDATION   | API server `68/68`; unit `241/241` arquivos e `2732/2732` testes; integração `105/105` e `933/933`; native-worker/API/process, Vue especializado 25 rotas e SQL 171 migrações PASS current; target externo ausente |
+| LOCAL VALIDATION   | unit `260/260` arquivos e `2824/2824` testes; integração `105/105` e `933/933`; native-worker/API/process e SQL `171/171` migrações PASS current; Vue especializado permanece `NOT PROVEN`; target externo ausente |
 | VERIFIED TARGET    | `NOT PROVEN`                                                                                                                                                                                                                                              |
-| CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; R05-010 `FAIL` por 19 métricas                                                                                                                                                                                                    |
+| CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; R05-010 `FAIL` por cobertura abaixo da régua e aplicabilidades Vue sem prova                                                                                                                                                        |
 
 O score não é uma média permissiva: os gates externos ausentes e as falhas do CI
 remoto vinculadas ao reancoramento continuam bloqueando a certificação. Os thresholds não foram relaxados

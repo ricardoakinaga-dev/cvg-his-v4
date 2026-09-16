@@ -1,22 +1,22 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato de código observado em 2026-09-16T09:46:22Z
+## Candidato de código observado em 2026-09-16T16:05:22Z
 
-- SHA de código e documentação: `6618df12ac2fc672ccae2d50b391af8c287042f7` (snapshot documental; código funcional `01e5a168204ccb0f157ac96e7183391e1a1fc609`); identidade em
+- SHA de código e documentação: `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e` (snapshot documental; código funcional `578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`); identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O código funcional está em `01e5a168`; o snapshot documental está em `6618df12`, `origin/main` em `6217654a`; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- O código funcional está em `578d7271`; o snapshot documental está em `53bbee80`, `origin/main` em `3fca62b7` no momento da coleta; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
 
 ## Validações locais
 
 | Escopo                 | Resultado                                                                                                                                                                                                                                                                                                                                                                     |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate crítico R05-010   | `FAIL/BLOCKED` por 19 métricas abaixo dos thresholds; erros de proveniência, Vue e SQL zerados após recoleta current; thresholds e escopo inalterados |
-| Workspace              | Typecheck e lint completos PASS; contrato CI `19/19`; testes focados `46/46`; checker de estado `11/11` |
-| Identidade/evidence graph | Identidade canônica do snapshot `6618df12`, com código funcional `01e5a168`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` até evidência externa terminal |
-| Coverage crítico current | Cinco shards promovidos no manifest revision 35; 19 métricas agregadas ainda abaixo de 85% (auth, billing-cash, inpatient, records, prescriptions, pix, webhooks, http-routes e repositories) |
-| Vue especializado current | Stack privada; build PASS, Vitest `60` suítes/`399` testes, Playwright/consumer PASS; 25 rotas selecionadas; run `79c02a1b-1858-4f2b-9e06-9403c3f2a2b5` |
-| SQL/migrações current  | PostgreSQL privado socket-only; `171` migrações executáveis + `7` históricos; clean/upgrade/reexecução/failure recovery/invariants PASS; run `b92d78a5-aaa0-4db1-9b5b-cceb37658b98` |
+| Gate crítico R05-010   | `FAIL/BLOCKED` por cobertura abaixo dos thresholds e 25 aplicabilidades Vue sem evidência aceita; shards e SQL com proveniência exata; thresholds e escopo inalterados |
+| Workspace              | Typecheck/lint e contratos locais anteriores PASS; unit current `260/260` arquivos e `2824/2824` testes; integração `105/105` e `933/933`; checker de estado `11/11` |
+| Identidade/evidence graph | Identidade canônica do snapshot `53bbee80`, com código funcional `578d7271`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` até evidência externa terminal |
+| Coverage crítico current | Cinco shards promovidos no manifest revision 48: unit `24d92c76`, integração `75e1746d`, native-worker `465437fb`, native-api `73a6a6b5` e critical-process `55d624fc`; cobertura agregada ainda abaixo da régua |
+| Vue especializado current | Build/browser evidence do candidato `NOT PROVEN`; o renderer Chromium falha ao materializar controles nativos de data dentro da SPA; 25 fontes permanecem sem evidência aceita |
+| SQL/migrações current  | PostgreSQL privado socket-only; `171` migrações executáveis + `7` históricos; clean/upgrade/reexecução/failure recovery/invariants PASS; run `61cd86fc-48d0-4fc3-9785-4635ab0a8558` |
 | Performance/target     | Sem certificação do candidato; k6/target/soak/restore/UAT/attestation permanecem `NOT_PROVEN` |
 | Supply/artefatos       | O graph e o pacote local são gerados fail-closed; nenhum PASS externo ou histórico foi inventado |
 
