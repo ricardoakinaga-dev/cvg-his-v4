@@ -3,16 +3,16 @@
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | CURRENT SNAPSHOT   | candidato funcional/controlador `358e546e15fa79f171648a94dfad8cdf0341c68f`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
-| MAIN / ORIGIN      | `HEAD/main@358e546e`; `origin/main@a2d2285e` até publicação; rollback preservado, sem force-push |
-| CURRENT CI         | `NOT_FOUND` para o SHA exato; [CI #35049092910](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35049092910) pertence ao candidato publicado anterior e não é promovido |
+| MAIN / ORIGIN      | `HEAD/main@161df773`; `origin/main@161df773`; candidato de código `358e546e`; rollback preservado, sem force-push |
+| CURRENT CI         | [CI #175](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35050349312) terminou `failure` no reancoramento publicado `161df773`; não há envelope CI verde qualificável para o candidato `358e546e` |
 | LOCAL STRICT GATE  | `BLOCKED`, score `51`, critical `49`, open P0 `18`, `claim=NOT PROVEN`, `publication_allowed=false`, com `commitSha=358e546e` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
 | LOCAL VALIDATION   | Typecheck/lint PASS; contratos focados `46/46`; identity/graph `3/3`; E2E clínico browser `4/4`; visual `29/29` PASS e 1 especializado skipped; coverage `2.661` testes abaixo do limiar; target externo ausente |
 | VERIFIED TARGET    | `NOT PROVEN`                                                                                                                                                                                                                                              |
 | CURRENT VERDICT    | **BLOCKED / NOT PROVEN**                                                                                                                                                                                                                                  |
 
-O score não é uma média permissiva: os gates externos ausentes e o CI remoto do
-novo SHA continuam bloqueando a certificação. Os thresholds não foram relaxados
+O score não é uma média permissiva: os gates externos ausentes e as falhas do CI
+remoto vinculadas ao reancoramento continuam bloqueando a certificação. Os thresholds não foram relaxados
 e o pacote local permanece fail-closed.
 
 Não são emitidos `main green`, release produtivo ou `TRIPLE-A VERIFIED`.
@@ -40,3 +40,8 @@ e alinha o guard de backup/restore ao formato atual do roadmap (`R6`) e backlog
 O contrato CI `19/19`, o check de backup/restore `4/4`, o manifesto crítico
 `16/16` e o refresh `9/9` passaram localmente; o gate estrito permanece
 `BLOCKED / NOT PROVEN`.
+
+O CI #175 confirmou os guards de repositório, contratos de API, unidade,
+integração e contrato Windows, mas terminou com falha em coverage crítico,
+coverage geral, Performance/k6, Visual Regression e E2E SPA. A evidência remota
+é registrada sem transferir aprovação histórica.

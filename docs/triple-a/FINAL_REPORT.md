@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
 **Candidate funcional avaliado:** `main@358e546e15fa79f171648a94dfad8cdf0341c68f`
-(identidade/evidence graph correntes; CI exato, target e autoridade ainda não comprovados)
+(código do candidato; documentação publicada em `main@161df773`; identidade/evidence graph correntes; o [CI #175](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35050349312) falhou e target/autoridade ainda não foram comprovados)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -12,8 +12,9 @@ provisionamento isolado e resiliente de coverage, correções de acessibilidade 
 bootstrap de teste hermético. O gate local explícito fechou em `51/49/18`
 (score/critical/open P0); typecheck/lint, o fluxo browser clínico P0 e a
 regressão visual `29/29` passaram,
-mas a cobertura global isolada ficou abaixo de 82%, e não há CI exato,
-target, recovery, attestation, UAT, governança, performance certificada ou
+mas a cobertura global isolada ficou abaixo de 82%; o CI #175 falhou em
+coverage crítico/geral, k6, visual e E2E SPA; não há target, recovery,
+attestation, UAT, governança, performance certificada ou
 autoridade de release. Nenhum threshold foi relaxado e não há autorização para
 declarar `main green`, release produtivo ou `TRIPLE-A VERIFIED`.
 
@@ -36,10 +37,10 @@ remota e pelos gates externos de target e release.
 | Testing              | LOCAL PASS                   | suíte workspace, critical e E2E clínico                                                                                                 |
 | Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas                                                                                                |
 | Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                                                                                                           |
-| CI/CD                | BLOQUEADO no SHA atual       | O CI #35049092910 pertence ao candidato publicado anterior; o SHA atual também reconcilia o manifesto crítico e alinha o guard de backup/restore ao roadmap/backlog vigentes |
+| CI/CD                | BLOQUEADO no SHA atual       | O CI #175 passou nos guards/contratos funcionais, mas falhou em coverage crítico/geral, k6, visual e E2E SPA; o SHA atual reconcilia o manifesto crítico e alinha o guard de backup/restore ao roadmap/backlog vigentes |
 | Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                                                                                                         |
 | Recovery             | BLOCKED                      | Docker impediu restore drill real                                                                                                       |
-| Frontend             | BOUNDED PASS                 | E2E/visual/a11y no CI                                                                                                                   |
+| Frontend             | PARTIAL / CI FAIL            | E2E SPA e visual falharam no CI #175; a fatia clínica local e as baselines locais passaram                                              |
 | Database             | PARTIAL                      | testes locais; RLS target não provado                                                                                                   |
 | Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas                                                                                                |
 | Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes                                                                                               |

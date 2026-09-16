@@ -1,6 +1,6 @@
 # Baseline corrente — State of Art
 
-Observado em `2026-09-16T03:01:37Z`, no candidato de código
+Observado em `2026-09-16T03:36:39Z`, no candidato de código
 `358e546e15fa79f171648a94dfad8cdf0341c68f`. A identidade canônica está em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json) e o
 evidence graph corrente é gerado por `pnpm evidence:triple-a:graph`.
@@ -11,28 +11,29 @@ fotografia não promove evidência histórica nem altera thresholds.
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | current_sha     | `358e546e15fa79f171648a94dfad8cdf0341c68f` (candidato funcional/controlador atual; históricos permanecem somente comparação) |
-| main_sha        | `main@358e546e`; `origin/main@a2d2285e` até publicação; local está à frente até publicação; rollback preservado |
+| main_sha        | `main@161df773`; `origin/main@161df773`; código do candidato `358e546e`; documentação reancorada em `161df773`; rollback preservado |
 | worktree        | Limpo após a reconciliação documental; artefatos em `artifacts/` permanecem ignorados |
 | rollback        | `origin/fix/state-of-art-ci-assurance@fe5406c2`; sem force-push |
-| ci_run          | `NOT_FOUND` para o SHA exato antes da publicação; o run remoto mais recente observado é [CI #35049092910](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35049092910) no candidato publicado anterior `1226b53d`, que não é transferido. |
-| ci_failure      | O run anterior falhou em coverage, repository guards, k6, SPA E2E e visual; causas e limitações estão registradas no parecer fresh. Nenhum threshold foi relaxado. |
-| overall_score   | `51` no gate estrito executado com `commitSha=4da2e56d`; abaixo do mínimo 97 |
-| critical_score  | `49` no gate estrito executado com `commitSha=4da2e56d`; abaixo do mínimo 95 |
+| ci_run          | [CI #175](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35050349312) no `main@161df773`, vinculado ao código `358e546e`; terminou `failure`. |
+| ci_failure      | O CI #175 passou em Repository Guards, API Contract, Unit, Integration e Windows; falhou em critical/general coverage, k6, SPA E2E e visual. Nenhum threshold foi relaxado. |
+| overall_score   | `51` no gate estrito executado com `commitSha=358e546e`; abaixo do mínimo 97 |
+| critical_score  | `49` no gate estrito executado com `commitSha=358e546e`; abaixo do mínimo 95 |
 | open_p0         | `18` no gate estrito; acima do máximo 0 |
 | local_gate      | `BLOCKED`, `score=51`, `critical=49`, `open_p0=18`, `claim=NOT PROVEN`, `publication_allowed=false`; checks externos/target continuam ausentes |
 | implemented     | Provisionamento PostgreSQL do coverage resolve `.deb` somente nos archives oficiais assinados, sem alterar thresholds; identidade/evidence graph são validados por ancestralidade; contraste overdue e semântica ARIA corrigidos; teste de bootstrap isola `REQUIRE_TEST_DB` |
 | verified_local  | Typecheck e lint workspace PASS; contrato CI `19/19`; testes focados `46/46`; identidade/graph `3/3`; E2E clínico browser real `4/4`; visual `29/29` PASS e 1 especializado skipped; coverage isolado `2.661` testes, porém `77,97%` statements, `71,27%` branches, `79,17%` functions e `79,60%` lines, abaixo de `82%` |
-| verified_remote | `NOT_PROVEN`: não há CI terminal do SHA exato; target, recovery, UAT, attestation, governança de branch e autoridade de release seguem ausentes |
+| verified_remote | `NOT_PROVEN`: o CI #175 terminou com falhas em gates críticos; target, recovery, UAT, attestation, governança de branch e autoridade de release seguem ausentes |
 | verified_target | `NOT_PROVEN` |
-| blocked         | Coverage global abaixo do limiar; CI exato ainda não publicado; evidência de target, restore/DR, performance certificada, UAT e autoridade humana continuam abertas |
+| blocked         | Coverage global abaixo do limiar; CI #175 falhou em coverage, k6, visual e SPA E2E; evidência de target, restore/DR, performance certificada, UAT e autoridade humana continuam abertas |
 | not_proven      | Qualquer claim de release Triple-A, score ≥97, critical ≥95, zero P0, `main_green` ou `TRIPLE-A VERIFIED` |
 
 ## Decisão
 
-O candidato `358e546e` foi reconciliado localmente sem force-push; `origin/main`
-ainda aponta para `a2d2285e` até a publicação autorizada. O CI anterior não é
-transferido. A `main` permanece bloqueada para Green Main sem relaxar thresholds;
-coverage abaixo de 82%, CI exato, target, recovery, attestation, UAT, governança e
+O candidato `358e546e` foi reconciliado e publicado em `main@161df773` sem
+force-push. O CI #175 foi executado no reancoramento documental e terminou com
+falhas nos gates de coverage, k6, visual e SPA E2E; resultados históricos não são
+transferidos. A `main` permanece bloqueada para Green Main sem relaxar thresholds;
+coverage abaixo de 82%, as falhas do CI #175, target, recovery, attestation, UAT, governança e
 autoridade continuam bloqueados. Não há declaração de release ou
 `TRIPLE-A VERIFIED`.
 

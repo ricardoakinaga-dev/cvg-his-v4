@@ -1,6 +1,6 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-16T03:01:37Z
+## Snapshot vigente — 2026-09-16T03:36:39Z
 
 O baseline autoritativo do candidato atual está em: `358e546e15fa79f171648a94dfad8cdf0341c68f`.
 Ele também está indexado em
@@ -8,10 +8,17 @@ Ele também está indexado em
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
 documentação corrente sucede os candidatos históricos sem transferir evidência;
-`HEAD/main@358e546e` está localmente à frente de `origin/main@a2d2285e`, com
-rollback preservado. O graph e o gate corrente permanecem `BLOCKED / NOT PROVEN`.
+`HEAD/main@161df773` e `origin/main@161df773` estão sincronizados; o SHA de
+código do candidato continua `358e546e`, com o reancoramento documental
+`161df773` e rollback preservado. O graph e o gate corrente permanecem
+`BLOCKED / NOT PROVEN`.
 
-Não há CI terminal do SHA exato. O [CI #35049092910](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35049092910) foi iniciado para o candidato publicado anterior `1226b53d` e não é transferido para `358e546e`; nenhum resultado parcial ou histórico é promovido. Target, recovery, UAT, attestation, governança e autoridade de release continuam `NOT PROVEN`.
+O [CI #175](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35050349312), executado no reancoramento publicado `161df773` e vinculado ao
+candidato de código `358e546e`, terminou `failure`: Repository Guards,
+contratos de API, unidade, integração e contrato Windows passaram; coverage
+crítico/geral, k6, visual e E2E SPA falharam. Nenhum resultado parcial ou
+histórico é promovido. Target, recovery, UAT, attestation, governança e
+autoridade de release continuam `NOT PROVEN`.
 
 ## Registro obrigatório do prompt
 

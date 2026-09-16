@@ -1,10 +1,10 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato de código observado em 2026-09-16T03:01:37Z
+## Candidato de código observado em 2026-09-16T03:36:39Z
 
 - SHA de código e documentação: `358e546e15fa79f171648a94dfad8cdf0341c68f`; identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- `HEAD`/`main` local está em `358e546e`; `origin/main` está em `a2d2285e`; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- O código do candidato está em `358e546e`; `HEAD`/`main` local e `origin/main` estão em `161df773` após o reancoramento documental; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
 
 ## Validações locais
@@ -26,7 +26,7 @@ protection ou autoridade de release.
 
 ## CI remoto e reancoragem
 
-Não existe ainda run remoto vinculado ao SHA exato `358e546e`; [CI #35049092910](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35049092910) é do candidato publicado anterior `1226b53d` e não é transferido. O gate local explícito do candidato retornou `51/49/18` e bloqueou publicação. A publicação do candidato deve disparar nova execução com os guards vinculados à identidade corrente.
+O [CI #175](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35050349312), executado no `main@161df773` e vinculado ao candidato de código `358e546e`, terminou `failure`. Repository Guards, API Contract, Unit, Integration e Windows passaram; Critical Coverage, Coverage, Performance/k6, Visual Regression e E2E SPA falharam. O gate local explícito do candidato retornou `51/49/18` e bloqueou publicação; nenhum resultado histórico ou parcial é promovido.
 
 
 O [CI #143](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34678150409)
