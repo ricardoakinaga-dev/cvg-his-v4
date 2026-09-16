@@ -1066,6 +1066,55 @@ jobs:
           run_native_shard native-worker
           run_process_shard
 
+          collect_specialized_vue_evidence() {
+            local specialized_database_url="postgresql://postgres@localhost/cvg_his_v2_test?host=${CRITICAL_COVERAGE_PG_ROOT}"
+            echo "=== preparing disposable database for specialized Vue evidence ==="
+            if ! DATABASE_URL="${specialized_database_url}" node infra/scripts/prepare-test-db.mjs; then
+              echo "=== specialized Vue database preparation failed ==="
+              return 1
+            fi
+
+            echo "=== seeding disposable database for specialized Vue evidence ==="
+            if ! DATABASE_URL="${specialized_database_url}" \
+              ADMIN_EMAIL=admin@cvg-his.local \
+              ADMIN_USERNAME=admin \
+              ADMIN_PASSWORD=seed_admin \
+              RECEPTION_EMAIL=reception@cvg-his.local \
+              RECEPTION_USERNAME=reception \
+              RECEPTION_PASSWORD=seed_reception \
+              VETERINARIAN_EMAIL=vet@cvg-his.local \
+              VETERINARIAN_USERNAME=vet \
+              VETERINARIAN_PASSWORD=seed_vet \
+              SECOND_ADMIN_EMAIL=admin-b@cvg-his.local \
+              SECOND_ADMIN_USERNAME=admin_b \
+              SECOND_ADMIN_PASSWORD=seed_admin_b \
+              SECOND_TENANT_SLUG=critical-coverage-secondary \
+              SECOND_ACCOUNT_SLUG=critical-coverage-secondary \
+              SECOND_UNIT_CODE=hq \
+              pnpm exec tsx packages/db/src/seed.ts; then
+              echo "=== specialized Vue database seed failed ==="
+              return 1
+            fi
+
+            echo "=== collecting complete specialized Vue evidence ==="
+            if ! E2E_DATABASE_MODE=1 \
+              API_DISABLE_INCOMPATIBLE_DB_REPOS=0 \
+              E2E_ADMIN_USERNAME=admin \
+              E2E_ADMIN_EMAIL=admin@cvg-his.local \
+              E2E_ADMIN_PASSWORD=seed_admin \
+              E2E_DATABASE_URL="${specialized_database_url}" \
+              pnpm exec node scripts/run-vue-specialized-evidence.mjs --all; then
+              echo "=== specialized Vue evidence collection failed ==="
+              return 1
+            fi
+
+            echo "=== specialized Vue evidence collected and published ==="
+          }
+
+          if ! collect_specialized_vue_evidence; then
+            overall_status=1
+          fi
+
           echo "=== running node scripts/check-critical-coverage.mjs ==="
           node scripts/check-critical-coverage.mjs
           checker_status=$?
