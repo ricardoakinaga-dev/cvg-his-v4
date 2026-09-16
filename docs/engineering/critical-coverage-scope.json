@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "578d7271f26f4e41f0d60475c92b9f5da5f0aaf1",
+  "head": "dae7bae9626b34a068d7a13b9f34ea59fa262654",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -10996,6 +10996,19 @@
       "inputsRemoved": [],
       "previousExecutionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99",
       "executionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99"
+    },
+    {
+      "manifestRevision": 49,
+      "observedAt": "2026-09-16T17:49:24.828Z",
+      "collectionCommit": "dae7bae9626b34a068d7a13b9f34ea59fa262654",
+      "previousManifestSha256": "9b1b0f90359bc494f967ee95ce19e8bc4f7c23122b96fd6a4d9d35c6ed91e87c",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-9b1b0f90359bc494f967ee95ce19e8bc4f7c23122b96fd6a4d9d35c6ed91e87c.json",
+      "previousSourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "reason": "Reanchor frozen critical coverage collection after workflow producer changes",
+      "added": [],
+      "removed": [],
+      "changed": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -11929,7 +11942,7 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 48,
+  "manifestRevision": 49,
   "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
   "executionInputsSha256": "295710ccabbffaea7713ef202f4c0f69dad09c383c5e4a224835bf4dae7edd99",
   "specializedEvidence": {
