@@ -1,7 +1,7 @@
 # Baseline corrente — State of Art
 
-Observado em `2026-09-16T02:41:01Z`, no candidato de código
-`4da2e56d4bf814b46109b49a29d47f477382aa45`. A identidade canônica está em
+Observado em `2026-09-16T03:01:37Z`, no candidato de código
+`358e546e15fa79f171648a94dfad8cdf0341c68f`. A identidade canônica está em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json) e o
 evidence graph corrente é gerado por `pnpm evidence:triple-a:graph`.
 O candidato preserva as correções de CI/coverage, acessibilidade clínica e
@@ -10,11 +10,11 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| current_sha     | `4da2e56d4bf814b46109b49a29d47f477382aa45` (candidato funcional/controlador atual; históricos permanecem somente comparação) |
-| main_sha        | `main@4da2e56d`; `origin/main@a2d2285e` até publicação; local está à frente até publicação; rollback preservado |
+| current_sha     | `358e546e15fa79f171648a94dfad8cdf0341c68f` (candidato funcional/controlador atual; históricos permanecem somente comparação) |
+| main_sha        | `main@358e546e`; `origin/main@a2d2285e` até publicação; local está à frente até publicação; rollback preservado |
 | worktree        | Limpo após a reconciliação documental; artefatos em `artifacts/` permanecem ignorados |
 | rollback        | `origin/fix/state-of-art-ci-assurance@fe5406c2`; sem force-push |
-| ci_run          | `NOT_FOUND` para o SHA exato antes da publicação; o run remoto mais recente observado é [CI #35047806266](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35047806266) no candidato publicado anterior `a2d2285e`, que não é transferido. |
+| ci_run          | `NOT_FOUND` para o SHA exato antes da publicação; o run remoto mais recente observado é [CI #35049092910](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35049092910) no candidato publicado anterior `1226b53d`, que não é transferido. |
 | ci_failure      | O run anterior falhou em coverage, repository guards, k6, SPA E2E e visual; causas e limitações estão registradas no parecer fresh. Nenhum threshold foi relaxado. |
 | overall_score   | `51` no gate estrito executado com `commitSha=4da2e56d`; abaixo do mínimo 97 |
 | critical_score  | `49` no gate estrito executado com `commitSha=4da2e56d`; abaixo do mínimo 95 |
@@ -29,7 +29,7 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 ## Decisão
 
-O candidato `4da2e56d` foi reconciliado localmente sem force-push; `origin/main`
+O candidato `358e546e` foi reconciliado localmente sem force-push; `origin/main`
 ainda aponta para `a2d2285e` até a publicação autorizada. O CI anterior não é
 transferido. A `main` permanece bloqueada para Green Main sem relaxar thresholds;
 coverage abaixo de 82%, CI exato, target, recovery, attestation, UAT, governança e
