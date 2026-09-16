@@ -1,6 +1,6 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `main@0ca1526aa3b7152563f4a7c14dc1dbdb0086390e`
+**Candidate funcional avaliado:** `main@3123fe6eda4c11662916eb98335cdf64dbee361c`
 (identidade/evidence graph correntes; CI exato, target e autoridade ainda não comprovados)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
@@ -43,7 +43,7 @@ remota e pelos gates externos de target e release.
 | Database             | PARTIAL                      | testes locais; RLS target não provado                                                                                                   |
 | Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas                                                                                                |
 | Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes                                                                                               |
-| Overall              | `49`, critical `43`, `20 P0` | gate estrito local no candidato `0ca1526a` com checks documentais e contratos; gates externos continuam ausentes                         |
+| Overall              | `49`, critical `43`, `20 P0` | gate estrito local no candidato `3123fe6e` com checks documentais e contratos; gates externos continuam ausentes                         |
 
 ## P0 Findings
 

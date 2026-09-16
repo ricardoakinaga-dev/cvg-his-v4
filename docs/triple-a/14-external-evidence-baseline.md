@@ -5,18 +5,18 @@
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA de código atual é
-> `0ca1526aa3b7152563f4a7c14dc1dbdb0086390e`, com evidência anterior preservada apenas como histórico e identidade canônica em
+> `3123fe6eda4c11662916eb98335cdf64dbee361c`, com evidência anterior preservada apenas como histórico e identidade canônica em
 > [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O [CI #35030045158](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35030045158) pertence ao SHA anterior `afb5eef8` e não é promovido como prova.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `0ca1526aa3b7152563f4a7c14dc1dbdb0086390e` (identity/evidence graph reancorados; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current snapshot:** `3123fe6eda4c11662916eb98335cdf64dbee361c` (identity/evidence graph reancorados; provas externas e autoridade de release continuam `NOT PROVEN`).
 **Current CI:** `NOT_FOUND` para o SHA exato; nova execução deve ser vinculada a este snapshot após publicação.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-16T01:13:57Z
+**Observation:** 2026-09-16T01:29:24Z
 
 **Current local execution:** typecheck/lint e contratos focados passaram; o E2E clínico real passou `4/4` e a regressão visual passou `29/29` casos, com 1 caso especializado skipped por ser opt-in. A cobertura isolada executou `2.661` testes, mas ficou em `77,97%` statements, `71,27%` branches, `79,17%` functions e `79,60%` lines, abaixo de 82%. A validação local não substitui CI pinned, target ou UAT.
 
-**Current strict gate:** `BLOCKED / NOT PROVEN`, score `49`, critical `43`, open P0 `20`, `claim=NOT PROVEN` e `publication_allowed=false`, executado explicitamente no candidato `0ca1526a`. A identidade e o graph permanecem fail-closed.
+**Current strict gate:** `BLOCKED / NOT PROVEN`, score `49`, critical `43`, open P0 `20`, `claim=NOT PROVEN` e `publication_allowed=false`, executado explicitamente no candidato `3123fe6e`. A identidade e o graph permanecem fail-closed.
 
 The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. Historical runs #137 and #140 belong to earlier SHAs; #140 failed in `Run k6 benchmark`/`Check SLO results`, while #137 passed all published jobs. The performance evidence and its access limitation are reconciled in [critic-performance-assurance-20260911.md](./critic-performance-assurance-20260911.md). Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
 
