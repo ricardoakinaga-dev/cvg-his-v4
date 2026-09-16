@@ -11,7 +11,11 @@ import {
   prepareObservedOriginalScript
 } from './process-original-source.mjs';
 import { validateRawCoverageEntry } from './raw-coverage-validation.mjs';
-import { validateNativeCoverage, soleFullSpanFunction } from './native-v8-conversion.mjs';
+import {
+  isV8ClassInitializer,
+  validateNativeCoverage,
+  soleFullSpanFunction
+} from './native-v8-conversion.mjs';
 import { assertSourceMetricPresence } from './source-metric-presence.mjs';
 
 const require = createRequire(import.meta.url);
@@ -32,6 +36,9 @@ function combineIntervals(previous, next, length, soleFunction) {
   const identities = (items) =>
     items.map((fn, index) => {
       const span = `${fn.ranges[0].startOffset}:${fn.ranges[0].endOffset}`;
+      // Node 22 can emit coextensive synthetic class-initializer functions.
+      // Their names are the only stable identity V8 provides for the pair.
+      if (isV8ClassInitializer(fn)) return `${span}:${fn.functionName}`;
       if (!soleFunction || span !== `0:${length}`) return span;
       const wrapper =
         soleFunction.name !== ''

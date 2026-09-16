@@ -308,6 +308,28 @@ describe('CI repository guardrails', () => {
     expect(job).toContain('run: pnpm test:db:stop');
   });
 
+  it('publishes verified SQL migration evidence before the critical checker', () => {
+    const jobStart = workflow.indexOf('  critical-coverage-gate:');
+    expect(jobStart).toBeGreaterThan(-1);
+
+    const nextJobOffset = workflow.slice(jobStart + 3).search(/\n {2}[a-z0-9-]+:\n/);
+    const job = workflow.slice(
+      jobStart,
+      nextJobOffset === -1 ? undefined : jobStart + 3 + nextJobOffset
+    );
+
+    expect(job).toContain('run_sql_migration_evidence()');
+    expect(job).toContain('node scripts/run-sql-migration-evidence.mjs');
+    expect(job).toContain(
+      '--output artifacts/remediation/PROD-011/sql-migration-evidence/accepted/evidence.json'
+    );
+    expect(job).toContain(
+      'artifacts/remediation/PROD-011/sql-migration-evidence/accepted/evidence.json'
+    );
+    expect(job.indexOf('run_sql_migration_evidence'))
+      .toBeLessThan(job.indexOf('node scripts/check-critical-coverage.mjs'));
+  });
+
   it('budgets shared memory for every GitHub PostgreSQL service', () => {
     expect((workflow.match(/--shm-size 1g/g) ?? []).length).toBeGreaterThanOrEqual(5);
   });

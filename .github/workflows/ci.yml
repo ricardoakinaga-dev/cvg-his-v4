@@ -1132,6 +1132,20 @@ jobs:
             overall_status=1
           fi
 
+          run_sql_migration_evidence() {
+            echo "=== collecting SQL migration evidence ==="
+            if node scripts/run-sql-migration-evidence.mjs \
+              --output artifacts/remediation/PROD-011/sql-migration-evidence/accepted/evidence.json; then
+              echo "=== SQL migration evidence collected and verified ==="
+            else
+              local status=$?
+              echo "=== SQL migration evidence failed (${status}) ==="
+              overall_status=1
+            fi
+          }
+
+          run_sql_migration_evidence
+
           echo "=== running node scripts/check-critical-coverage.mjs ==="
           node scripts/check-critical-coverage.mjs
           checker_status=$?
@@ -1158,7 +1172,9 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: critical-coverage-${{ github.sha }}
-          path: artifacts/consolidacao-2026-09-05/coverage-scope/
+          path: |
+            artifacts/consolidacao-2026-09-05/coverage-scope/
+            artifacts/remediation/PROD-011/sql-migration-evidence/accepted/evidence.json
           if-no-files-found: warn
           retention-days: 30
 

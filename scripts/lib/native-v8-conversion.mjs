@@ -15,6 +15,27 @@ const { convert } = await import(coverageRequire.resolve('ast-v8-to-istanbul'));
 const { mergeFunctionCovs } = coverageRequire('@bcoe/v8-coverage');
 const { canonicalizeLineEnds } = require('./critical-coverage-json-reporter.cjs');
 
+const V8_CLASS_INITIALIZER_NAMES = new Set([
+  '<instance_members_initializer>',
+  '<static_initializer>'
+]);
+
+export function isV8ClassInitializer(functionCoverage) {
+  return V8_CLASS_INITIALIZER_NAMES.has(functionCoverage?.functionName);
+}
+
+function isAuthenticatedClassInitializerPair(functions) {
+  return (
+    functions.length === 2 &&
+    functions.every(
+      (functionCoverage) =>
+        isV8ClassInitializer(functionCoverage) &&
+        functionCoverage.ranges.length === 1
+    ) &&
+    new Set(functions.map((functionCoverage) => functionCoverage.functionName)).size === 2
+  );
+}
+
 /**
  * ast-v8-to-istanbul 0.3.x fills raw V8 ranges inclusively (it consumes
  * `endOffset - 1` as the last covered offset); 1.x treats `endOffset` as
@@ -264,7 +285,8 @@ export function validateNativeCoverage(coverage, length, soleFunction) {
         peers.length === 2 &&
         peers[0].functionName === '' &&
         peers[1].functionName === soleFunction.name
-      )
+      ) &&
+      !isAuthenticatedClassInitializerPair(peers)
     )
       throw new Error('duplicate V8 function range');
   }

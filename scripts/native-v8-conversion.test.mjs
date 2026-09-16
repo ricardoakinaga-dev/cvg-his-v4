@@ -8,9 +8,48 @@ import { spawnSync } from 'node:child_process';
 import ts from 'typescript';
 import { Session } from 'node:inspector/promises';
 import { runInNewContext } from 'node:vm';
-import { convertNativeScript } from './lib/native-v8-conversion.mjs';
+import { convertNativeScript, validateNativeCoverage } from './lib/native-v8-conversion.mjs';
 import { collectProcessCoverage } from './lib/process-coverage-collection.mjs';
 import { createHash } from 'node:crypto';
+
+test('accepts only the authenticated Node class-initializer V8 pair', () => {
+  const pair = [
+    {
+      functionName: '<instance_members_initializer>',
+      isBlockCoverage: true,
+      ranges: [{ startOffset: 4, endOffset: 12, count: 1 }]
+    },
+    {
+      functionName: '<static_initializer>',
+      isBlockCoverage: true,
+      ranges: [{ startOffset: 4, endOffset: 12, count: 1 }]
+    }
+  ];
+  assert.doesNotThrow(() => validateNativeCoverage({ functions: pair }, 20));
+  assert.doesNotThrow(() =>
+    validateNativeCoverage(
+      { functions: pair.map((functionCoverage) => ({ ...functionCoverage, isBlockCoverage: false })) },
+      20
+    )
+  );
+  assert.throws(
+    () => validateNativeCoverage({ functions: [...pair, { ...pair[0] }] }, 20),
+    /duplicate V8 function range/
+  );
+  assert.throws(
+    () =>
+      validateNativeCoverage(
+        {
+          functions: [
+            pair[0],
+            { ...pair[1], functionName: '<unexpected_initializer>' }
+          ]
+        },
+        20
+      ),
+    /duplicate V8 function range/
+  );
+});
 
 test('real interleaved class initializers retain their independent statement counts', async () => {
   const code = 'class C { a=1; static b=2; c=3; static d=4; } globalThis.C=C;';
