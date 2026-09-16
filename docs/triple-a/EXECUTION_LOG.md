@@ -1,5 +1,23 @@
 # Triple-A — Execution Log
 
+## 2026-09-16T21:28:03Z — candidato funcional `79adc0c6` / isolamento de Coverage
+
+- **Código:** o contrato PostgreSQL de `DatabaseModelRepository` no módulo ML
+  agora roda somente quando `REQUIRE_TEST_DB=1`; os jobs de integração e
+  critical continuam exercitando-o, enquanto a job unitária não depende de um
+  banco que ela não provisiona.
+- **Validação local:** o módulo passou `12` testes com `2` skips esperados; a
+  cobertura completa passou `259` arquivos e `2753` testes, mas permanece abaixo
+  dos thresholds globais congelados (`79,23%` statements, `72,47%` branches,
+  `80,17%` functions e `80,64%` lines contra `82%`).
+- **CI:** o [#192](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35148525458)
+  do snapshot documental anterior terminou `failure` com o mesmo padrão do
+  #191: Critical Coverage passou, Coverage/k6/E2E/Visual falharam. O candidato
+  `79adc0c6` ainda aguarda CI próprio; nenhuma evidência de ancestral é
+  transferida.
+- **Decisão:** manter `BLOCKED / NOT PROVEN`; não reduzir thresholds, não
+  promover snapshots visuais e não declarar release.
+
 ## 2026-09-16T20:35:31Z — candidato documental `f31cc532` / CI #191 terminal
 
 - **Candidato:** `main@f31cc5329e36efff91c10e9b9b3f4c6e93316046`, descendente

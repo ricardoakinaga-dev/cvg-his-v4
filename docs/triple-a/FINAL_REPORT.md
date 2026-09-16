@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `b3b9d38d3b3d0267c1dedcc2e7f9a963a98f3334`
-(snapshot documental corrente `f31cc5329e36efff91c10e9b9b3f4c6e93316046`; manifesto crítico revision 51 ancorado em `0812cb49`; a branch de assurance é ancestral sem commits exclusivos; o [CI #191](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35144297381) passou o Critical Coverage Gate, mas o run global terminou com falhas)
+**Candidate funcional avaliado:** `79adc0c6c825512a9200b5c94a373512f18be4fc`
+(manifesto crítico revision 51 ancorado em `0812cb49`; a branch de assurance é ancestral sem commits exclusivos; os CI #191/#192 dos ancestrais passaram o Critical Coverage Gate, mas terminaram com falhas gerais; o candidato atual aguarda CI próprio)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -13,7 +13,7 @@ validados. No candidato corrente, os contratos alterados passaram, o produtor SQ
 passou com PostgreSQL 16.15 e a conversão V8 do processo aceita somente o par
 autenticado de inicializadores; o manifesto crítico está na revisão 51 e o
 workflow publica evidência SQL antes do checker. A evidência crítica/Vue foi aceita no
-Critical Coverage Gate do CI #191, mas o run global não é verde; não há target, recovery,
+Critical Coverage Gate dos ancestrais #191/#192, mas o candidato atual ainda não tem CI próprio; não há target, recovery,
 attestation, UAT, governança, performance certificada ou autoridade de release.
 Nenhum threshold ou baseline visual foi relaxado e não há autorização para declarar `main green`,
 release produtivo ou `TRIPLE-A VERIFIED`.
@@ -22,13 +22,14 @@ release produtivo ou `TRIPLE-A VERIFIED`.
 
 O manifest crítico revision 51 foi reancorado em `0812cb49`, sem mudança de
 thresholds, fontes ou aplicabilidade funcional; o snapshot corrente é
-`b3b9d38d3b3d0267c1dedcc2e7f9a963a98f3334`. O runner crítico preserva o SQL histórico,
+`79adc0c6c825512a9200b5c94a373512f18be4fc`. O runner crítico preserva o SQL histórico,
 usa PostgreSQL 16 e trata os inicializadores V8 do Node 22 sem fundir identidades.
 O produtor SQL agora é executado e publicado antes do checker. Os produtores atuais são identificados na
-[`evidência corrente`](./17-current-execution-evidence.md). O [CI #191](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35144297381)
-terminou `failure` com `13/17` jobs verdes, mas o Critical Coverage Gate passou
-com R05-010, processo crítico, Vue especializado e evidência SQL aceitos. As
-falhas remanescentes são Coverage, k6, E2E e Visual. O candidato permanece
+[`evidência corrente`](./17-current-execution-evidence.md). Os CI #191/#192
+terminaram `failure` com `13/17` jobs verdes nos ancestrais, mas o Critical
+Coverage Gate passou com R05-010, processo crítico, Vue especializado e
+evidência SQL aceitos. A correção do teste ML inaugura o candidato atual, cujo
+CI próprio ainda está pendente; o candidato permanece
 **BLOCKED / NOT PROVEN**.
 
 ## Atualização terminal — isolamento da prova clínica
@@ -47,17 +48,17 @@ remota e pelos gates externos de target e release.
 | -------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | Architecture         | BOUNDED PASS                 | guards e contratos locais                                                                                                               |
 | Security             | PARTIAL                      | SAST, secrets, dependency audit e testes locais                                                                                         |
-| Testing              | PARTIAL                      | Critical Coverage remoto passou; Unit/Integration passaram; Coverage geral, E2E e Visual falharam                                       |
+| Testing              | PARTIAL                      | Unit/Integration passaram nos ancestrais; o candidato atual aguarda CI próprio após isolar o contrato ML                                       |
 | Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas                                                                                                |
 | Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                                                                                                           |
-| CI/CD                | BLOQUEADO no SHA atual       | O CI #191 terminou com Critical Coverage PASS, mas falhou em Coverage geral, k6, E2E SPA e Visual Regression                         |
+| CI/CD                | BLOQUEADO no SHA atual       | Os CI #191/#192 ancestrais passaram Critical Coverage, mas falharam em Coverage geral, k6, E2E SPA e Visual Regression; CI atual pendente                         |
 | Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                                                                                                         |
 | Recovery             | BLOCKED                      | Docker impediu restore drill real                                                                                                       |
-| Frontend             | PARTIAL / NOT PROVEN         | Vue especializado passou no Critical Coverage; E2E/Visual registraram 29 divergências de snapshot no runner, sem baseline promovido |
+| Frontend             | PARTIAL / NOT PROVEN         | Vue especializado passou nos ancestrais; E2E/Visual registraram 29 divergências de snapshot no runner, sem baseline promovido |
 | Database             | PARTIAL                      | testes locais; RLS target não provado                                                                                                   |
 | Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas                                                                                                |
 | Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes                                                                                               |
-| Overall              | `FAIL/BLOCKED`               | Critical Coverage passou no CI #191, mas o run global falhou; target, recovery, UAT, governança e autoridade continuam abertos |
+| Overall              | `FAIL/BLOCKED`               | CI próprio do candidato pendente; target, recovery, UAT, governança e autoridade continuam abertos |
 
 ## P0 Findings
 
