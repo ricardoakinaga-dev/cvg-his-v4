@@ -1,14 +1,14 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-16T01:29:24Z
+## Snapshot vigente — 2026-09-16T01:38:23Z
 
-O baseline autoritativo do candidato atual está em: `3123fe6eda4c11662916eb98335cdf64dbee361c`.
+O baseline autoritativo do candidato atual está em: `69d0b9bf952fcf230185cf8f94c393733731d021`.
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
 documentação corrente sucede os candidatos históricos sem transferir evidência;
-`HEAD/main@3123fe6e` está localmente à frente de `origin/main@afb5eef8`, com
+`HEAD/main@69d0b9bf` está localmente à frente de `origin/main@0fbf6dfa`, com
 rollback preservado. O graph e o gate corrente permanecem `BLOCKED / NOT PROVEN`.
 
 Não há CI terminal do SHA exato. O [CI #35030045158](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35030045158) é do SHA anterior `afb5eef8` e permanece diagnóstico histórico. Nenhum resultado parcial ou histórico é promovido; target, recovery, UAT, attestation, governança e autoridade de release continuam `NOT PROVEN`.
