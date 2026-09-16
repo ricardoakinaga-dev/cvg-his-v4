@@ -1,6 +1,6 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `main@9a69e9e2967226d73281bdddc36a5735104dd52f`
+**Candidate funcional avaliado:** `main@0ca1526aa3b7152563f4a7c14dc1dbdb0086390e`
 (identidade/evidence graph correntes; CI exato, target e autoridade ainda não comprovados)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
@@ -9,8 +9,9 @@
 
 O candidato preserva o modular monolith e adiciona guardrails de proveniência,
 provisionamento resiliente de coverage, correções de acessibilidade clínica e
-bootstrap de teste hermético. O gate local explícito fechou em `50/46/19`
-(score/critical/open P0); typecheck/lint e o fluxo browser clínico P0 passaram,
+bootstrap de teste hermético. O gate local explícito fechou em `49/43/20`
+(score/critical/open P0); typecheck/lint, o fluxo browser clínico P0 e a
+regressão visual `29/29` passaram,
 mas a cobertura global isolada ficou abaixo de 82%, e não há CI exato,
 target, recovery, attestation, UAT, governança, performance certificada ou
 autoridade de release. Nenhum threshold foi relaxado e não há autorização para
@@ -42,7 +43,7 @@ remota e pelos gates externos de target e release.
 | Database             | PARTIAL                      | testes locais; RLS target não provado                                                                                                   |
 | Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas                                                                                                |
 | Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes                                                                                               |
-| Overall              | `55`, critical `57`, `15 P0` | gate estrito local no HEAD documental `c1059e6c` com checks, build e testes                                                             |
+| Overall              | `49`, critical `43`, `20 P0` | gate estrito local no candidato `0ca1526a` com checks documentais e contratos; gates externos continuam ausentes                         |
 
 ## P0 Findings
 

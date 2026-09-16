@@ -1,7 +1,7 @@
 # Baseline corrente — State of Art
 
-Observado em `2026-09-16T00:59:19Z`, no candidato de código
-`9a69e9e2967226d73281bdddc36a5735104dd52f`. A identidade canônica está em
+Observado em `2026-09-16T01:13:57Z`, no candidato de código
+`0ca1526aa3b7152563f4a7c14dc1dbdb0086390e`. A identidade canônica está em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json) e o
 evidence graph corrente é gerado por `pnpm evidence:triple-a:graph`.
 O candidato preserva as correções de CI/coverage, acessibilidade clínica e
@@ -10,26 +10,26 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| current_sha     | `9a69e9e2967226d73281bdddc36a5735104dd52f` (candidato funcional/controlador atual; históricos permanecem somente comparação) |
-| main_sha        | `main@9a69e9e2`; `origin/main@afb5eef8`; local está 5 commits à frente até publicação; rollback preservado |
+| current_sha     | `0ca1526aa3b7152563f4a7c14dc1dbdb0086390e` (candidato funcional/controlador atual; históricos permanecem somente comparação) |
+| main_sha        | `main@0ca1526a`; `origin/main@afb5eef8`; local está 8 commits à frente até publicação; rollback preservado |
 | worktree        | Limpo após a reconciliação documental; artefatos em `artifacts/` permanecem ignorados |
 | rollback        | `origin/fix/state-of-art-ci-assurance@fe5406c2`; sem force-push |
 | ci_run          | `NOT_FOUND` para o SHA exato antes da publicação; o run remoto mais recente observado é [CI #35030045158](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35030045158) no SHA anterior `afb5eef8` e não é transferido. |
 | ci_failure      | O run anterior falhou em coverage, repository guards, k6, SPA E2E e visual; causas e limitações estão registradas no parecer fresh. Nenhum threshold foi relaxado. |
-| overall_score   | `50` no gate estrito executado com `commitSha=9a69e9e2`; abaixo do mínimo 97 |
-| critical_score  | `46` no gate estrito executado com `commitSha=9a69e9e2`; abaixo do mínimo 95 |
-| open_p0         | `19` no gate estrito; acima do máximo 0 |
-| local_gate      | `BLOCKED`, `score=50`, `critical=46`, `open_p0=19`, `claim=NOT PROVEN`, `publication_allowed=false`; checks externos/target continuam ausentes |
+| overall_score   | `49` no gate estrito executado com `commitSha=0ca1526a`; abaixo do mínimo 97 |
+| critical_score  | `43` no gate estrito executado com `commitSha=0ca1526a`; abaixo do mínimo 95 |
+| open_p0         | `20` no gate estrito; acima do máximo 0 |
+| local_gate      | `BLOCKED`, `score=49`, `critical=43`, `open_p0=20`, `claim=NOT PROVEN`, `publication_allowed=false`; checks externos/target continuam ausentes |
 | implemented     | Provisionamento PostgreSQL do coverage escolhe pacote disponível sem alterar thresholds; identidade/evidence graph são validados por ancestralidade; contraste overdue e semântica ARIA corrigidos; teste de bootstrap isola `REQUIRE_TEST_DB` |
-| verified_local  | Typecheck e lint workspace PASS; contrato CI `19/19`; testes focados `46/46`; identidade/graph `3/3`; E2E clínico browser real `4/4`; coverage isolado `2.661` testes, porém `77,97%` statements, `71,27%` branches, `79,17%` functions e `79,60%` lines, abaixo de `82%` |
+| verified_local  | Typecheck e lint workspace PASS; contrato CI `19/19`; testes focados `46/46`; identidade/graph `3/3`; E2E clínico browser real `4/4`; visual `29/29` PASS e 1 especializado skipped; coverage isolado `2.661` testes, porém `77,97%` statements, `71,27%` branches, `79,17%` functions e `79,60%` lines, abaixo de `82%` |
 | verified_remote | `NOT_PROVEN`: não há CI terminal do SHA exato; target, recovery, UAT, attestation, governança de branch e autoridade de release seguem ausentes |
 | verified_target | `NOT_PROVEN` |
-| blocked         | Coverage global abaixo do limiar; CI exato ainda não publicado; evidência de target, restore/DR, performance certificada, visual completa, UAT e autoridade humana continuam abertas |
+| blocked         | Coverage global abaixo do limiar; CI exato ainda não publicado; evidência de target, restore/DR, performance certificada, UAT e autoridade humana continuam abertas |
 | not_proven      | Qualquer claim de release Triple-A, score ≥97, critical ≥95, zero P0, `main_green` ou `TRIPLE-A VERIFIED` |
 
 ## Decisão
 
-O candidato `9a69e9e2` foi reconciliado localmente sem force-push; `origin/main`
+O candidato `0ca1526a` foi reconciliado localmente sem force-push; `origin/main`
 ainda aponta para `afb5eef8` até a publicação autorizada. O CI anterior não é
 transferido. A `main` permanece bloqueada para Green Main sem relaxar thresholds;
 coverage abaixo de 82%, CI exato, target, recovery, attestation, UAT, governança e
