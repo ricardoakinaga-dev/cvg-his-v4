@@ -5,18 +5,24 @@
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA de código atual é
-> `69d0b9bf952fcf230185cf8f94c393733731d021`, com evidência anterior preservada apenas como histórico e identidade canônica em
-> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O [CI #35030045158](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35030045158) pertence ao SHA anterior `afb5eef8` e não é promovido como prova.
+> `cb540acd2f88b835943caa7dfbdd6d5d24422d47`, com evidência anterior preservada apenas como histórico e identidade canônica em
+> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O [CI #35045015515](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35045015515) pertence ao candidato anterior `502da453`, falhou na provisão APT e não é promovido como prova.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `69d0b9bf952fcf230185cf8f94c393733731d021` (identity/evidence graph reancorados; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current snapshot:** `cb540acd2f88b835943caa7dfbdd6d5d24422d47` (identity/evidence graph reancorados; provas externas e autoridade de release continuam `NOT PROVEN`).
 **Current CI:** `NOT_FOUND` para o SHA exato; nova execução deve ser vinculada a este snapshot após publicação.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-16T01:38:23Z
+**Observation:** 2026-09-16T01:54:02Z
 
 **Current local execution:** typecheck/lint e contratos focados passaram; o E2E clínico real passou `4/4` e a regressão visual passou `29/29` casos, com 1 caso especializado skipped por ser opt-in. A cobertura isolada executou `2.661` testes, mas ficou em `77,97%` statements, `71,27%` branches, `79,17%` functions e `79,60%` lines, abaixo de 82%. A validação local não substitui CI pinned, target ou UAT.
 
-**Current strict gate:** `BLOCKED / NOT PROVEN`, score `49`, critical `43`, open P0 `20`, `claim=NOT PROVEN` e `publication_allowed=false`, executado explicitamente no candidato `69d0b9bf`. A identidade e o graph permanecem fail-closed.
+**Current strict gate:** `BLOCKED / NOT PROVEN`, score `52`, critical `51`, open P0 `17`, `claim=NOT PROVEN` e `publication_allowed=false`, executado explicitamente no candidato `cb540acd`. A identidade e o graph permanecem fail-closed.
+
+**Current candidate implementation delta:** o workflow de coverage agora usa
+um índice APT isolado dos archives oficiais assinados do Ubuntu 22.04, pois o
+runner pode conter fontes de terceiros com atualização parcial. A mudança foi
+verificada localmente; o [CI #35045015515](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35045015515)
+falhou antes dessa correção, na provisão APT, e não é transferido.
 
 The previous external-assurance sections below are historical snapshots. Their SHAs, run numbers, artifact IDs and scores are not transferred to the current candidate. Historical runs #137 and #140 belong to earlier SHAs; #140 failed in `Run k6 benchmark`/`Check SLO results`, while #137 passed all published jobs. The performance evidence and its access limitation are reconciled in [critic-performance-assurance-20260911.md](./critic-performance-assurance-20260911.md). Branch governance, target runtime, recovery, soak, UAT and release authority remain unproven.
 

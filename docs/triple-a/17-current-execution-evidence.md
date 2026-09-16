@@ -1,17 +1,17 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato de código observado em 2026-09-16T01:38:23Z
+## Candidato de código observado em 2026-09-16T01:54:02Z
 
-- SHA de código e documentação: `69d0b9bf952fcf230185cf8f94c393733731d021`; identidade em
+- SHA de código e documentação: `cb540acd2f88b835943caa7dfbdd6d5d24422d47`; identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- `HEAD`/`main` local está em `69d0b9bf`; `origin/main` está em `0fbf6dfa`; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- `HEAD`/`main` local está em `cb540acd`; `origin/main` está em `502da453`; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
 
 ## Validações locais
 
 | Escopo                 | Resultado                                                                                                                                                                                                                                                                                                                                                                     |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate estrito           | `BLOCKED`, score `49`, critical `43`, open P0 `20`, `claim=NOT PROVEN`, `publication_allowed=false`, executado explicitamente com `commitSha=69d0b9bf` |
+| Gate estrito           | `BLOCKED`, score `52`, critical `51`, open P0 `17`, `claim=NOT PROVEN`, `publication_allowed=false`, executado explicitamente com `commitSha=cb540acd` |
 | Workspace              | Typecheck e lint completos PASS; contrato CI `19/19`; testes focados `46/46`; checker de estado `11/11` |
 | Identidade/evidence graph | `validate:candidate-identity` PASS; graph gerado com status `BLOCKED`, candidate `PASS`, CI/authority `NOT_PROVEN` |
 | Coverage isolado       | `2.661` testes; 2.658 passados e 3 skipped, mas cobertura global `77,97/71,27/79,17/79,60%` (statements/branches/functions/lines), abaixo de 82% |
@@ -26,7 +26,7 @@ protection ou autoridade de release.
 
 ## CI remoto e reancoragem
 
-Não existe ainda run remoto vinculado ao SHA exato `69d0b9bf`; [CI #35030045158](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35030045158) é do SHA anterior `afb5eef8` e permanece somente diagnóstico histórico. O gate local explícito do candidato retornou `49/43/20` e bloqueou publicação. A publicação do candidato deve disparar nova execução com os guards vinculados à identidade corrente.
+Não existe ainda run remoto vinculado ao SHA exato `cb540acd`; [CI #35045015515](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35045015515) é do candidato anterior `502da453` e falhou na provisão APT; permanece somente diagnóstico histórico. O gate local explícito do candidato retornou `49/43/20` e bloqueou publicação. A publicação do candidato deve disparar nova execução com os guards vinculados à identidade corrente.
 
 
 O [CI #143](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/34678150409)
@@ -92,7 +92,7 @@ não substitui a execução remota nem uma certificação de target.
 ## Decisão
 
 O envelope ignorado `artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json` do candidato
-`69d0b9bf` é `BLOCKED / NOT PROVEN` (`49/43/20`); a execução completa passou
+`cb540acd` é `BLOCKED / NOT PROVEN` (`52/51/17`); a execução completa passou
 checks e suíte workspace, mas não substitui as provas externas ausentes. O pacote local
 `artifacts/triple-a/index.json` também permanece `BLOCKED`. A ausência de uma
 prova externa permanece ausência; não é convertida em PASS pelo k6 local ou

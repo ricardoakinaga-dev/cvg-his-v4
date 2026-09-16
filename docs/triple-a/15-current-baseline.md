@@ -1,7 +1,7 @@
 # Baseline corrente — State of Art
 
-Observado em `2026-09-16T01:38:23Z`, no candidato de código
-`69d0b9bf952fcf230185cf8f94c393733731d021`. A identidade canônica está em
+Observado em `2026-09-16T01:54:02Z`, no candidato de código
+`cb540acd2f88b835943caa7dfbdd6d5d24422d47`. A identidade canônica está em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json) e o
 evidence graph corrente é gerado por `pnpm evidence:triple-a:graph`.
 O candidato preserva as correções de CI/coverage, acessibilidade clínica e
@@ -10,17 +10,17 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| current_sha     | `69d0b9bf952fcf230185cf8f94c393733731d021` (candidato funcional/controlador atual; históricos permanecem somente comparação) |
-| main_sha        | `main@69d0b9bf`; `origin/main@0fbf6dfa`; local está 1 commit à frente até publicação; rollback preservado |
+| current_sha     | `cb540acd2f88b835943caa7dfbdd6d5d24422d47` (candidato funcional/controlador atual; históricos permanecem somente comparação) |
+| main_sha        | `main@cb540acd`; `origin/main@502da453`; local está 1 commit à frente até publicação; rollback preservado |
 | worktree        | Limpo após a reconciliação documental; artefatos em `artifacts/` permanecem ignorados |
 | rollback        | `origin/fix/state-of-art-ci-assurance@fe5406c2`; sem force-push |
-| ci_run          | `NOT_FOUND` para o SHA exato antes da publicação; o run remoto mais recente observado é [CI #35030045158](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35030045158) no SHA anterior `afb5eef8` e não é transferido. |
+| ci_run          | `NOT_FOUND` para o SHA exato antes da publicação; o run remoto mais recente observado é [CI #35045015515](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35045015515) no candidato anterior `502da453`, que falhou na provisão APT e não é transferido. |
 | ci_failure      | O run anterior falhou em coverage, repository guards, k6, SPA E2E e visual; causas e limitações estão registradas no parecer fresh. Nenhum threshold foi relaxado. |
-| overall_score   | `49` no gate estrito executado com `commitSha=69d0b9bf`; abaixo do mínimo 97 |
-| critical_score  | `43` no gate estrito executado com `commitSha=69d0b9bf`; abaixo do mínimo 95 |
-| open_p0         | `20` no gate estrito; acima do máximo 0 |
-| local_gate      | `BLOCKED`, `score=49`, `critical=43`, `open_p0=20`, `claim=NOT PROVEN`, `publication_allowed=false`; checks externos/target continuam ausentes |
-| implemented     | Provisionamento PostgreSQL do coverage escolhe pacote disponível sem alterar thresholds; identidade/evidence graph são validados por ancestralidade; contraste overdue e semântica ARIA corrigidos; teste de bootstrap isola `REQUIRE_TEST_DB` |
+| overall_score   | `52` no gate estrito executado com `commitSha=cb540acd`; abaixo do mínimo 97 |
+| critical_score  | `51` no gate estrito executado com `commitSha=cb540acd`; abaixo do mínimo 95 |
+| open_p0         | `17` no gate estrito; acima do máximo 0 |
+| local_gate      | `BLOCKED`, `score=52`, `critical=51`, `open_p0=17`, `claim=NOT PROVEN`, `publication_allowed=false`; checks externos/target continuam ausentes |
+| implemented     | Provisionamento PostgreSQL do coverage resolve `.deb` somente nos archives oficiais assinados, sem alterar thresholds; identidade/evidence graph são validados por ancestralidade; contraste overdue e semântica ARIA corrigidos; teste de bootstrap isola `REQUIRE_TEST_DB` |
 | verified_local  | Typecheck e lint workspace PASS; contrato CI `19/19`; testes focados `46/46`; identidade/graph `3/3`; E2E clínico browser real `4/4`; visual `29/29` PASS e 1 especializado skipped; coverage isolado `2.661` testes, porém `77,97%` statements, `71,27%` branches, `79,17%` functions e `79,60%` lines, abaixo de `82%` |
 | verified_remote | `NOT_PROVEN`: não há CI terminal do SHA exato; target, recovery, UAT, attestation, governança de branch e autoridade de release seguem ausentes |
 | verified_target | `NOT_PROVEN` |
@@ -29,8 +29,8 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 ## Decisão
 
-O candidato `69d0b9bf` foi reconciliado localmente sem force-push; `origin/main`
-ainda aponta para `afb5eef8` até a publicação autorizada. O CI anterior não é
+O candidato `cb540acd` foi reconciliado localmente sem force-push; `origin/main`
+ainda aponta para `502da453` até a publicação autorizada. O CI anterior não é
 transferido. A `main` permanece bloqueada para Green Main sem relaxar thresholds;
 coverage abaixo de 82%, CI exato, target, recovery, attestation, UAT, governança e
 autoridade continuam bloqueados. Não há declaração de release ou
