@@ -1,10 +1,10 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato de código observado em 2026-09-16T03:36:39Z
+## Candidato de código observado em 2026-09-16T04:43:06Z
 
-- SHA de código e documentação: `358e546e15fa79f171648a94dfad8cdf0341c68f`; identidade em
+- SHA de código e documentação: `f09e79fd275b942b3d9dcd087105faf54403a058`; identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O código do candidato está em `358e546e`; `HEAD`/`main` local e `origin/main` estão em `161df773` após o reancoramento documental; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- O código do candidato está em `f09e79fd`; `HEAD`/`main` local e `origin/main` coincidem; rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
 
 ## Validações locais
@@ -13,10 +13,10 @@
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Gate estrito           | `BLOCKED`, score `51`, critical `49`, open P0 `18`, `claim=NOT PROVEN`, `publication_allowed=false`, executado explicitamente com `commitSha=358e546e` |
 | Workspace              | Typecheck e lint completos PASS; contrato CI `19/19`; testes focados `46/46`; checker de estado `11/11` |
-| Identidade/evidence graph | `validate:candidate-identity` PASS; graph gerado com status `BLOCKED`, candidate `PASS`, CI/authority `NOT_PROVEN` |
+| Identidade/evidence graph | Identidade reancorada no candidato `f09e79fd`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` até evidência externa terminal |
 | Coverage isolado       | `2.661` testes; 2.658 passados e 3 skipped, mas cobertura global `77,97/71,27/79,17/79,60%` (statements/branches/functions/lines), abaixo de 82% |
-| E2E clínico browser    | Stack Docker descartável; Chromium desktop/mobile; `4/4` testes PASS, incluindo Axe e recuperação |
-| Regressão visual       | Chromium; `29/29` screenshots PASS; 1 caso especializado skipped por exigir execução opt-in |
+| E2E SPA completo       | Stack Docker descartável; Chromium; `424/424` testes PASS, zero skipped; evidência SHA-bound válida com `150` rotas e `300` navegações |
+| Regressão visual       | Incluída na suíte completa; casos visuais locais PASS; o produtor Vue especializado permanece separado e opt-in |
 | Performance/target     | Sem certificação do candidato; k6/target/soak/restore/UAT/attestation permanecem `NOT_PROVEN` |
 | Supply/artefatos       | O graph e o pacote local são gerados fail-closed; nenhum PASS externo ou histórico foi inventado |
 

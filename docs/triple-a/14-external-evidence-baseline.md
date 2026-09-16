@@ -5,18 +5,18 @@
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O SHA de código atual é
-> `358e546e15fa79f171648a94dfad8cdf0341c68f`, com evidência anterior preservada apenas como histórico e identidade canônica em
+> `f09e79fd275b942b3d9dcd087105faf54403a058`, com evidência anterior preservada apenas como histórico e identidade canônica em
 > [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O [CI #175](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35050349312), executado no reancoramento publicado `161df773`, terminou `failure`: guards, API contracts, unit, integration e Windows passaram; critical/general coverage, k6, visual e SPA E2E falharam.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `358e546e15fa79f171648a94dfad8cdf0341c68f` (identity/evidence graph reancorados; provas externas e autoridade de release continuam `NOT PROVEN`).
-**Current CI:** [#175](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35050349312) `FAIL`, no `main@161df773`, vinculado ao candidato de código `358e546e`; não existe CI verde qualificável.
+**Current snapshot:** `f09e79fd275b942b3d9dcd087105faf54403a058` (identity/evidence graph reancorados; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current CI:** [#177](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056707527) pendente no `main@f09e79fd`; não existe CI verde qualificável.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-16T03:36:39Z
+**Observation:** 2026-09-16T04:43:06Z
 
-**Current local execution:** typecheck/lint e contratos focados passaram; o E2E clínico real passou `4/4` e a regressão visual passou `29/29` casos, com 1 caso especializado skipped por ser opt-in. A cobertura isolada executou `2.661` testes, mas ficou em `77,97%` statements, `71,27%` branches, `79,17%` functions e `79,60%` lines, abaixo de 82%. A validação local não substitui CI pinned, target ou UAT.
+**Current local execution:** typecheck/lint e contratos focados passaram; o E2E SPA Docker passou `424/424`, sem skipped, e a validação de evidência SHA-bound passou. A cobertura isolada anterior executou `2.661` testes, mas ficou em `77,97%` statements, `71,27%` branches, `79,17%` functions e `79,60%` lines, abaixo de 82%. A validação local não substitui CI pinned, target ou UAT.
 
-**Current strict gate:** `BLOCKED / NOT PROVEN`, score `51`, critical `49`, open P0 `18`, `claim=NOT PROVEN` e `publication_allowed=false`, executado explicitamente no candidato `358e546e`. A identidade e o graph permanecem fail-closed.
+**Current strict gate:** último resultado estrito conhecido `BLOCKED / NOT PROVEN`, score `51`, critical `49`, open P0 `18`, `claim=NOT PROVEN` e `publication_allowed=false`, executado explicitamente no candidato anterior `358e546e` e não promovido. A identidade e o graph permanecem fail-closed.
 
 **Current candidate implementation delta:** o workflow de coverage usa
 um índice APT isolado dos archives oficiais assinados do Ubuntu 22.04, pois o

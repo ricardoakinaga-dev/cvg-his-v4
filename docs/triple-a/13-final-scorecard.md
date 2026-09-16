@@ -2,12 +2,12 @@
 
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT SNAPSHOT   | candidato funcional/controlador `358e546e15fa79f171648a94dfad8cdf0341c68f`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
-| MAIN / ORIGIN      | `HEAD/main@161df773`; `origin/main@161df773`; candidato de código `358e546e`; rollback preservado, sem force-push |
-| CURRENT CI         | [CI #175](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35050349312) terminou `failure` no reancoramento publicado `161df773`; não há envelope CI verde qualificável para o candidato `358e546e` |
-| LOCAL STRICT GATE  | `BLOCKED`, score `51`, critical `49`, open P0 `18`, `claim=NOT PROVEN`, `publication_allowed=false`, com `commitSha=358e546e` |
+| CURRENT SNAPSHOT   | candidato funcional/controlador `f09e79fd275b942b3d9dcd087105faf54403a058`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
+| MAIN / ORIGIN      | `HEAD/main@f09e79fd`; `origin/main@f09e79fd`; rollback preservado, sem force-push |
+| CURRENT CI         | [CI #177](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056707527) pendente no candidato `f09e79fd`; não há envelope CI verde qualificável |
+| LOCAL STRICT GATE  | último artefato estrito `BLOCKED`, score `51`, critical `49`, open P0 `18`, `claim=NOT PROVEN`, `publication_allowed=false`, executado no candidato anterior `358e546e`; não promovido para `f09e79fd` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
-| LOCAL VALIDATION   | Typecheck/lint PASS; contratos focados `46/46`; identity/graph `3/3`; E2E clínico browser `4/4`; visual `29/29` PASS e 1 especializado skipped; coverage `2.661` testes abaixo do limiar; target externo ausente |
+| LOCAL VALIDATION   | Typecheck/lint PASS; contratos focados `46/46`; identity/graph `3/3`; E2E SPA Docker `424/424` PASS, zero skipped, evidência SHA-bound válida; cobertura anterior `2.661` testes abaixo do limiar; target externo ausente |
 | VERIFIED TARGET    | `NOT PROVEN`                                                                                                                                                                                                                                              |
 | CURRENT VERDICT    | **BLOCKED / NOT PROVEN**                                                                                                                                                                                                                                  |
 

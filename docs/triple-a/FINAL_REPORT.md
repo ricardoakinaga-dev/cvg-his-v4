@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `main@358e546e15fa79f171648a94dfad8cdf0341c68f`
-(código do candidato; documentação publicada em `main@161df773`; identidade/evidence graph correntes; o [CI #175](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35050349312) falhou e target/autoridade ainda não foram comprovados)
+**Candidate funcional avaliado:** `main@f09e79fd275b942b3d9dcd087105faf54403a058`
+(código do candidato; identidade/evidence graph reancorados; o [CI #177](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056707527) estava pendente na observação e target/autoridade ainda não foram comprovados)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
