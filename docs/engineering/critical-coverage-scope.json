@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "a67ec61781994c250bf6ee13d7c3c3fa41f4c059",
+  "head": "01e5a168204ccb0f157ac96e7183391e1a1fc609",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -1067,7 +1067,7 @@
     },
     {
       "path": "apps/api/src/server.ts",
-      "sha256": "f48eeaf652f10cb4c66b2a8a2042410c04627af6555cab5f860f9d0c48b94b67",
+      "sha256": "5b2082424c3384ee0436f65da61640c1de9e6cb1105863f9b3f86ff33471d583",
       "components": [
         "http-routes"
       ],
@@ -10470,6 +10470,25 @@
       "inputsRemoved": [],
       "previousExecutionInputsSha256": "6b090e95795e93b5a31ee583f68ad12a80155da5c267106ac8fa35701c6e73ff",
       "executionInputsSha256": "26facf5233b2a9d222baa604dd1f890385b8d205666913c7408d5a8b277b9163"
+    },
+    {
+      "manifestRevision": 35,
+      "observedAt": "2026-09-16T09:13:35.514Z",
+      "collectionCommit": "01e5a168204ccb0f157ac96e7183391e1a1fc609",
+      "previousManifestSha256": "7e952155ff8acbb274c7a9088d5b711e038ec91b126b35edfa3f4e93eb8fdec7",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-7e952155ff8acbb274c7a9088d5b711e038ec91b126b35edfa3f4e93eb8fdec7.json",
+      "previousSourceSetSha256": "c02011a9e76ec80a6243e5ce15a2c53e07fd3bbb945251eb4d0bcfe99289f84a",
+      "sourceSetSha256": "c53f9daa73ef9a9fff857e6320f636be68b2f4ff5fb5d0f23ec903ac6f36117e",
+      "reason": "Corrigir CORS credentialado e atualizar a identidade da coleta crítica",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/server.ts",
+          "before": "f48eeaf652f10cb4c66b2a8a2042410c04627af6555cab5f860f9d0c48b94b67",
+          "after": "5b2082424c3384ee0436f65da61640c1de9e6cb1105863f9b3f86ff33471d583"
+        }
+      ]
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -11403,8 +11422,8 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 34,
-  "sourceSetSha256": "c02011a9e76ec80a6243e5ce15a2c53e07fd3bbb945251eb4d0bcfe99289f84a",
+  "manifestRevision": 35,
+  "sourceSetSha256": "c53f9daa73ef9a9fff857e6320f636be68b2f4ff5fb5d0f23ec903ac6f36117e",
   "executionInputsSha256": "26facf5233b2a9d222baa604dd1f890385b8d205666913c7408d5a8b277b9163",
   "specializedEvidence": {
     "sql": {
