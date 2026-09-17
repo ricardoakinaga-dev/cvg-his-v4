@@ -40,10 +40,15 @@ const requiredScripts = [
   ['deploy:check', 'Cutover/deploy readiness'],
   ['deploy:rehearsal:local', 'Rehearsal local de cutover com Docker Compose'],
   ['validate:helm', 'Manifestos Helm'],
+  ['validate:production-runtime', 'Contrato final de composicao produtiva'],
+  ['validate:observability', 'Contrato de observabilidade operacional'],
   ['test:e2e:spa:enterprise', 'E2E SPA Enterprise'],
   ['vetus:parity', 'Contrato estrito de paridade funcional Vetus'],
   ['rc:evidence', 'Pacote de evidencias Release Candidate'],
-  ['rc:evidence:strict', 'Pacote de evidencias Release Candidate em modo estrito']
+  ['rc:evidence:strict', 'Pacote de evidencias Release Candidate em modo estrito'],
+  ['test:production-contract', 'Teste do contrato final de composicao produtiva'],
+  ['test:tracing', 'Teste do middleware de tracing HTTP'],
+  ['test:event-catalog', 'Teste de integridade do catalogo de eventos']
 ];
 
 for (const [name, label] of requiredScripts) {

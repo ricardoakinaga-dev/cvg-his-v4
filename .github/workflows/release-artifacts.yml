@@ -63,6 +63,11 @@ jobs:
           pnpm validate:namespaces
           pnpm validate:deploy-surface
           pnpm validate:dependencies
+          pnpm validate:production-runtime
+          pnpm validate:observability
+          pnpm test:production-contract
+          pnpm test:tracing
+          pnpm test:event-catalog
 
       - name: Generate source bundle and repository SBOM
         run: |

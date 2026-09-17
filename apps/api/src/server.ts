@@ -246,13 +246,13 @@ import {
 } from './chaos-operational-state.js';
 import {
   tracingMiddleware,
-  extractTraceContext,
   createSpan,
   endSpan,
   withSpanContext,
   injectTraceContext,
   formatTraceParent,
-  type Span
+  type Span,
+  type TraceableIncomingMessage
 } from './tracing.js';
 import { generateSLOReport, getSLOConfigs } from './slos.js';
 import type { AttachmentSecurityScanner, FileStorage } from '@cvg-his-v2/module-attachments';
@@ -421,6 +421,7 @@ type ApiRateLimiter = Pick<ReturnType<typeof createAuthRateLimiter>, 'check'> &
 export type ApiServer = ReturnType<typeof createServer> & {
   readonly ready: Promise<void>;
   readonly closeDependencies: () => Promise<void>;
+  readonly assertDistributedRuntimeReadiness: () => Promise<void>;
 };
 const DEFAULT_CORS_ALLOWED_ORIGINS = [
   'http://127.0.0.1:3000',
@@ -557,6 +558,34 @@ export function assertProductionProviderReadiness(
     throw new Error(
       `Production-like API cannot start with mock or missing providers: ${missingProviders.join(', ')}`
     );
+  }
+}
+
+/**
+ * Production-like runtimes must prove that the configured Redis backend is
+ * reachable before the listener is exposed. HTTP readiness still probes this
+ * dependency continuously, but this startup preflight prevents a process from
+ * accepting traffic while its distributed state is already degraded.
+ */
+export async function assertDistributedStateReadiness(options: {
+  readonly environment: string;
+  readonly runtimeDistributedStateEnabled: boolean;
+  readonly redisUrl?: string;
+  readonly authRateLimiter?: ApiRateLimiter;
+  readonly pixPaymentAttemptRateLimiter?: ApiRateLimiter;
+  readonly pixProviderWebhookRateLimiter?: ApiRateLimiter;
+}): Promise<void> {
+  if (!isProductionLikeEnvironment(options.environment)) return;
+
+  if (!options.runtimeDistributedStateEnabled || !options.redisUrl) {
+    throw new Error(
+      'Production-like API requires an enabled and configured Redis distributed-state backend'
+    );
+  }
+
+  const health = await resolveRedisHealthStatus(options, true);
+  if (!health?.healthy) {
+    throw new Error('Production-like API cannot start while Redis distributed state is unhealthy');
   }
 }
 function decodeAttachmentContent(contentBase64: unknown): Buffer | undefined {
@@ -4174,10 +4203,24 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   const requestCorrelationIds = new WeakMap<IncomingMessage, string>();
   const requestRoles = new WeakMap<IncomingMessage, readonly string[]>();
   const server = createServer((request: IncomingMessage, response: ServerResponse) => {
-    // Apply W3C trace context propagation before handling
-    tracingMiddleware(request, response, () => {
-      void handleRequest(request, response);
-    });
+    // Create and activate the W3C request span before any route or dependency
+    // code runs. The promise is intentionally observed so an unexpected
+    // handler failure cannot become an unhandled rejection.
+    void tracingMiddleware(request, response, () => handleRequest(request, response)).catch(
+      (error: unknown) => {
+        logger.error('unhandled HTTP request failure after tracing middleware', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+        if (!response.headersSent) {
+          response.statusCode = 500;
+          response.end(
+            JSON.stringify({ code: 'INTERNAL_ERROR', message: 'Internal server error' })
+          );
+        } else if (!response.writableEnded) {
+          response.destroy(error instanceof Error ? error : undefined);
+        }
+      }
+    );
   });
   server.headersTimeout = 15_000;
   server.requestTimeout = 30_000;
@@ -4196,7 +4239,20 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     return closeDependenciesPromise;
   };
 
-  return Object.assign(server, { ready, closeDependencies });
+  let distributedReadinessPromise: Promise<void> | undefined;
+  const assertDistributedRuntimeReadiness = (): Promise<void> => {
+    distributedReadinessPromise ??= assertDistributedStateReadiness({
+      environment: options.environment,
+      runtimeDistributedStateEnabled: effectiveRuntimeDistributedStateEnabled,
+      redisUrl: options.redisUrl,
+      authRateLimiter,
+      pixPaymentAttemptRateLimiter,
+      pixProviderWebhookRateLimiter
+    });
+    return distributedReadinessPromise;
+  };
+
+  return Object.assign(server, { ready, closeDependencies, assertDistributedRuntimeReadiness });
 
   async function handleRequest(request: IncomingMessage, response: ServerResponse) {
     incrementActiveRequests();
@@ -4209,12 +4265,14 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     response.once('finish', finishActiveRequest);
     response.once('close', finishActiveRequest);
 
-    const parentCtx = extractTraceContext(request);
-    const span = createSpan(
-      `HTTP ${request.method ?? 'UNKNOWN'} ${request.url ?? '/'}`,
-      parentCtx ?? null
-    );
-    (request as IncomingMessage & { span?: Span }).span = span;
+    const traceableRequest = request as TraceableIncomingMessage;
+    const span =
+      traceableRequest.span ??
+      createSpan(
+        `HTTP ${request.method ?? 'UNKNOWN'} ${request.url ?? '/'}`,
+        traceableRequest.traceContext ?? null
+      );
+    traceableRequest.span = span;
 
     const startTime = process.hrtime.bigint();
     const correlationIdHeader = request.headers['x-correlation-id'];
@@ -4241,7 +4299,11 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       'traceparent',
       formatTraceParent(span.context.traceId, span.context.spanId, span.context.traceFlags)
     );
-    response.on('finish', () => {
+    let requestTelemetryFinalized = false;
+    const finalizeRequestTelemetry = () => {
+      if (requestTelemetryFinalized) return;
+      requestTelemetryFinalized = true;
+
       const durationNs = process.hrtime.bigint() - startTime;
       const durationSec = Number(durationNs) / 1e9;
       const url = new URL(request.url ?? '/', 'http://localhost');
@@ -4292,7 +4354,12 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
 
       // End the tracing span
       endSpan(span, statusCode >= 400 ? 'error' : 'ok');
-    });
+    };
+    // `close` is the only terminal signal for a client that disconnects before
+    // the response is flushed. Finalizing on both signals prevents orphaned
+    // spans and missing latency/error observations without double-counting.
+    response.once('finish', finalizeRequestTelemetry);
+    response.once('close', finalizeRequestTelemetry);
 
     if (!corsDecision.allowed) {
       response.statusCode = 403;

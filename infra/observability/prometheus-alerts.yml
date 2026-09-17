@@ -149,3 +149,82 @@ groups:
           summary: 'PIX settlement exige reconciliação manual'
           description: 'Há pelo menos uma entrega PIX terminal na DLQ durável. Inspecione a fila tenant-scoped e redrive somente após validar a causa.'
           runbook: 'docs/runbooks/pix-settlement-dlq.md'
+
+  - name: cvg-his-v2-runtime-contracts
+    rules:
+      - alert: CVG_HIS_API_Redis_Unhealthy
+        expr: app_runtime_distributed_state_enabled == 1 and app_redis_healthy == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: redis
+        annotations:
+          summary: 'Redis indisponível para estado distribuído'
+          description: 'O runtime distribuído está habilitado, mas a API não consegue confirmar a saúde do Redis. Readiness e rate limiting podem ser afetados.'
+          runbook: 'docs/runbooks/observability-alerts.md#redis-unhealthy'
+
+      - alert: CVG_HIS_API_DatabasePoolExhaustion
+        expr: app_database_pool_waiting_count > 0 and app_database_pool_total_count >= app_database_pool_max_connections
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: 'Pool de conexões do banco sob pressão'
+          description: 'Há requisições aguardando conexão enquanto o pool está no limite configurado. Investigue lentidão, vazamentos e limites do Postgres.'
+          runbook: 'docs/runbooks/observability-alerts.md#database-pool-exhaustion'
+
+      - alert: CVG_HIS_Worker_Unavailable
+        expr: up{job="cvg-worker"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: 'Worker CVG-HIS-V2 indisponível'
+          description: 'O endpoint Prometheus do worker não está sendo coletado. Jobs duráveis podem acumular backlog.'
+          runbook: 'docs/runbooks/observability-alerts.md#worker-unavailable'
+
+      - alert: CVG_HIS_Worker_ProcessingStale
+        expr: time() - worker_last_successful_tick_timestamp_seconds{environment=~"production|staging|prod|stage"} > 300
+        for: 5m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: 'Worker sem processamento saudável recente'
+          description: 'O worker está sendo coletado, mas não conclui um ciclo sem falha isolada há mais de 5 minutos.'
+          runbook: 'docs/runbooks/observability-alerts.md#worker-processing-stale'
+
+      - alert: CVG_HIS_Worker_DatabaseUnhealthy
+        expr: worker_database_healthy{environment=~"production|staging|prod|stage"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: 'Worker sem banco de dados saudável'
+          description: 'O worker está ativo, mas não consegue confirmar persistência PostgreSQL saudável para processar jobs duráveis.'
+          runbook: 'docs/runbooks/observability-alerts.md#worker-database-unhealthy'
+
+      - alert: CVG_HIS_Worker_InMemoryMode
+        expr: worker_persistence_mode{mode="in-memory",environment=~"production|staging|prod|stage"} == 1
+        for: 5m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: 'Worker em modo de persistência em memória'
+          description: 'O worker está executando sem repositório durável; em ambiente produtivo isso pode perder jobs e quebrar a garantia de entrega.'
+          runbook: 'docs/runbooks/observability-alerts.md#worker-in-memory-mode'
+
+      - alert: CVG_HIS_Worker_JobDeadLettered
+        expr: increase(cvg_job_dead_letter_total[10m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: 'Job durável movido para DLQ'
+          description: 'Um ou mais jobs clínicos excederam as tentativas e foram movidos para dead letter. Preserve a evidência e siga o runbook antes de redrive.'
+          runbook: 'docs/runbooks/observability-alerts.md#worker-job-dead-lettered'

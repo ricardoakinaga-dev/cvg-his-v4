@@ -23,6 +23,7 @@ import {
   mergeEventEnvelopeMetadata,
   type EventActor
 } from './event-envelope.js';
+import { assertEventCatalogIntegrity } from './event-catalog.js';
 
 export type { OutboxEvent, OutboxRepository } from './outbox.interface.js';
 
@@ -614,6 +615,7 @@ export class EventBusService {
     backoff?: BackoffOptions,
     options: EventBusOptions = {}
   ) {
+    assertEventCatalogIntegrity();
     this.#repository = repository ?? new DatabaseOutboxRepository();
     this.#handlers = new Map();
     this.#backoff = backoff ?? DEFAULT_BACKOFF;

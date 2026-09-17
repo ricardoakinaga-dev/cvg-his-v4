@@ -8,7 +8,13 @@
  * Spec: https://www.w3.org/TR/trace-context/
  */
 
-import { ROOT_CONTEXT, SpanStatusCode, context as otelContext, trace as otelTrace, type Span as OtelSpan } from '@opentelemetry/api';
+import {
+  ROOT_CONTEXT,
+  SpanStatusCode,
+  context as otelContext,
+  trace as otelTrace,
+  type Span as OtelSpan
+} from '@opentelemetry/api';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 export interface TraceContext {
@@ -26,6 +32,12 @@ export interface Span {
   errorMessage?: string;
   attributes: Record<string, string | number>;
   otelSpan?: OtelSpan;
+}
+
+/** Request-local tracing state installed before the HTTP handler runs. */
+export interface TraceableIncomingMessage extends IncomingMessage {
+  traceContext?: TraceContext | null;
+  span?: Span;
 }
 
 /** Format: version-traceId-spanId-traceFlags (all hex, 2+16+16+2 = 36 chars + 3 dashes) */
@@ -147,13 +159,43 @@ export function spanToObject(span: Span): Record<string, unknown> {
   };
 }
 
-/** HTTP middleware: attaches trace context to each request */
-export function tracingMiddleware(
-  _request: IncomingMessage,
-  _response: ServerResponse,
-  next: () => void
-): void {
-  next();
+/**
+ * HTTP middleware that creates the request span before application dispatch.
+ *
+ * The previous implementation was a no-op wrapper and left span creation to
+ * the handler. That made tracing easy to regress at early-return paths and did
+ * not activate the OpenTelemetry context for middleware or dependency calls.
+ * The middleware now owns request-span creation and runs the complete handler
+ * inside the span context while retaining the existing response-lifecycle
+ * finalization in the API server.
+ */
+export async function tracingMiddleware(
+  request: IncomingMessage,
+  response: ServerResponse,
+  next: () => void | Promise<void>
+): Promise<void> {
+  const traceableRequest = request as TraceableIncomingMessage;
+  const parent = extractTraceContext(request);
+  const span = createSpan(`HTTP ${request.method ?? 'UNKNOWN'} ${request.url ?? '/'}`, parent);
+
+  traceableRequest.traceContext = parent;
+  traceableRequest.span = span;
+  response.setHeader('x-trace-id', span.context.traceId);
+  response.setHeader(
+    'traceparent',
+    formatTraceParent(span.context.traceId, span.context.spanId, span.context.traceFlags)
+  );
+  response.setHeader('tracestate', 'cvg-api');
+
+  if (!span.otelSpan) {
+    await next();
+    return;
+  }
+
+  const activeContext = otelTrace.setSpan(ROOT_CONTEXT, span.otelSpan);
+  await otelContext.with(activeContext, async () => {
+    await next();
+  });
 }
 
 export interface TracingConfig {

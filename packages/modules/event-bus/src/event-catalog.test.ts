@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 
 import {
+  assertEventCatalogIntegrity,
   EVENT_CATALOG,
+  EVENT_SCHEMA_VERSIONS,
+  EVENTS_BY_DOMAIN,
   INVENTORY_CONSUMPTION_CREATED,
   PAYMENT_CARD_COMPLETED,
   PAYMENT_CARD_FAILED,
@@ -10,7 +13,8 @@ import {
   PAYMENT_PIX_COMPLETED,
   PAYMENT_PIX_FAILED,
   PAYMENT_PIX_INTENT_CREATED,
-  isKnownEvent
+  isKnownEvent,
+  findEventCatalogIntegrityViolations
 } from './event-catalog.js';
 
 test('payment events in catalog use the canonical dotted naming used by runtime publishers', () => {
@@ -27,4 +31,11 @@ test('payment events in catalog use the canonical dotted naming used by runtime 
   assert.equal(EVENT_CATALOG.includes('payment.card.intent.created'), true);
   assert.equal(INVENTORY_CONSUMPTION_CREATED, 'inventory.consumption.created');
   assert.equal(isKnownEvent(INVENTORY_CONSUMPTION_CREATED), true);
+});
+
+test('event catalog is unique, domain-owned and schema-versioned', () => {
+  assert.deepEqual(findEventCatalogIntegrityViolations(), []);
+  assert.doesNotThrow(() => assertEventCatalogIntegrity());
+  assert.equal(Object.keys(EVENT_SCHEMA_VERSIONS).length, EVENT_CATALOG.length);
+  assert.equal(Object.values(EVENTS_BY_DOMAIN).flat().length, EVENT_CATALOG.length);
 });

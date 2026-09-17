@@ -12,6 +12,7 @@ import { createApiServer, type ApiServer } from './server.js';
 import { createApiFeatureFlags, type ApiFeatureFlagsSnapshot } from './feature-flags.js';
 import { setAppState, type PersistenceMode } from './app-state.js';
 import { startApiObservability } from './observability.js';
+import { assertProductionRuntimeContract } from './production-runtime-contract.js';
 import { resolveApiStartup } from './startup-secrets.js';
 import { resolveSetupBootstrapToken } from './setup-token.js';
 import { DatabaseVetusImportLogRepository } from './repositories/vetus-import-log-repository.js';
@@ -308,6 +309,24 @@ async function main() {
 
   const productionReady = readiness.productionReady;
 
+  // This is the final composition-root gate. Individual repository and
+  // provider guards run elsewhere, but this assertion prevents a future
+  // refactor from starting a production-like process with a degraded runtime
+  // and merely advertising readiness=false through health endpoints.
+  assertProductionRuntimeContract({
+    environment: config.environment,
+    databaseConfigured,
+    databaseHealthy: bootstrapResult.databaseHealthy,
+    persistenceMode,
+    repositoriesUseDatabase: bootstrapResult.repositoriesUseDatabase,
+    repositoriesReady: readiness.criticalRepositoriesReady,
+    workerReady,
+    productionReady,
+    unitOfWorkReady: Boolean(bootstrapResult.unitOfWork),
+    runtimeDistributedStateEnabled: config.runtimeDistributedStateEnabled,
+    redisConfigured: Boolean(config.redisUrl)
+  });
+
   setAppState({
     persistenceMode,
     databaseConfigured,
@@ -434,6 +453,11 @@ async function main() {
   if (await stopStartupIfRequested()) return;
 
   await apiServer.ready;
+
+  // Keep the listener closed until distributed state has passed a bounded
+  // Redis health probe. The HTTP /ready endpoint continues to monitor it after
+  // startup, while this preflight protects the initial traffic window.
+  await apiServer.assertDistributedRuntimeReadiness();
 
   if (await stopStartupIfRequested()) return;
 

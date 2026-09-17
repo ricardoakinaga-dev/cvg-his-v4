@@ -149,10 +149,83 @@ export const cvgJobDeadLetterTotal = new Counter({
   registers: [registry]
 });
 
-export function recordWorkflowTaskMetric(
-  outcome: WorkflowTaskMetricOutcome,
-  count = 1
+export type WorkerTickMetricStatus = 'success' | 'degraded' | 'failed';
+
+export const workerTicksTotal = new Counter({
+  name: 'worker_ticks_total',
+  help: 'Worker loop ticks grouped by outcome',
+  labelNames: ['status'] as const,
+  registers: [registry]
+});
+
+export const workerTickDurationSeconds = new Histogram({
+  name: 'worker_tick_duration_seconds',
+  help: 'Worker loop tick duration in seconds grouped by outcome',
+  labelNames: ['status'] as const,
+  buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30],
+  registers: [registry]
+});
+
+export const workerLastSuccessfulTickTimestampSeconds = new Gauge({
+  name: 'worker_last_successful_tick_timestamp_seconds',
+  help: 'Unix timestamp of the last worker tick without an isolated job failure',
+  registers: [registry]
+});
+
+export const workerLastTickTimestampSeconds = new Gauge({
+  name: 'worker_last_tick_timestamp_seconds',
+  help: 'Unix timestamp of the last worker loop tick observed',
+  registers: [registry]
+});
+
+// Publish an explicit zero before the first tick so Prometheus can distinguish
+// "worker is alive but has never processed" from a missing time series.
+workerLastSuccessfulTickTimestampSeconds.set(0);
+workerLastTickTimestampSeconds.set(0);
+
+export const workerDatabaseHealthy = new Gauge({
+  name: 'worker_database_healthy',
+  help: 'Worker database health status (1 = healthy, 0 = unhealthy)',
+  registers: [registry]
+});
+
+export const workerPersistenceMode = new Gauge({
+  name: 'worker_persistence_mode',
+  help: 'Worker persistence mode (1 = active mode)',
+  labelNames: ['mode'] as const,
+  registers: [registry]
+});
+
+export function updateWorkerRuntimeMetrics(options: {
+  readonly databaseHealthy: boolean;
+  readonly persistenceMode: 'database' | 'in-memory';
+}): void {
+  workerDatabaseHealthy.set(options.databaseHealthy ? 1 : 0);
+  workerPersistenceMode.reset();
+  workerPersistenceMode.set({ mode: options.persistenceMode }, 1);
+}
+
+export function recordWorkerTickMetric(
+  status: WorkerTickMetricStatus,
+  durationMs: number,
+  observedAtSeconds = Date.now() / 1000
 ): void {
+  if (!Number.isFinite(durationMs) || durationMs < 0) {
+    throw new Error('Worker tick duration must be a non-negative finite number');
+  }
+  if (!Number.isFinite(observedAtSeconds) || observedAtSeconds <= 0) {
+    throw new Error('Worker tick observation time must be a positive finite number');
+  }
+
+  workerTicksTotal.inc({ status });
+  workerTickDurationSeconds.observe({ status }, durationMs / 1000);
+  workerLastTickTimestampSeconds.set(observedAtSeconds);
+  if (status === 'success') {
+    workerLastSuccessfulTickTimestampSeconds.set(observedAtSeconds);
+  }
+}
+
+export function recordWorkflowTaskMetric(outcome: WorkflowTaskMetricOutcome, count = 1): void {
   if (!Number.isSafeInteger(count) || count < 1) {
     throw new Error('Workflow task metric count must be a positive safe integer');
   }
