@@ -43,7 +43,8 @@ const SNAPSHOT_DOCUMENTS = [
 const DOCUMENTATION_ONLY_PREFIX = 'docs/triple-a/';
 const DOCUMENTATION_ONLY_PATHS = new Set([
   'docs/README.md',
-  'docs/engineering/TRIPLE_A_BASELINE.md'
+  'docs/engineering/TRIPLE_A_BASELINE.md',
+  'docs/engineering/critical-coverage-scope.json'
 ]);
 
 function isDocumentationOnlyPath(path) {

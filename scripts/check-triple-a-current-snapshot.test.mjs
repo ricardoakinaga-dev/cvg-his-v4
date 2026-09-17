@@ -34,6 +34,19 @@ test('accepts a current snapshot with only documentation commits after its candi
   );
 });
 
+test('accepts critical coverage manifest bookkeeping after its candidate', () => {
+  assert.deepEqual(
+    validateCurrentSnapshot({
+      headSha: head,
+      candidateSha: parent,
+      candidateIsAncestor: true,
+      changedPathsSinceCandidate: ['docs/engineering/critical-coverage-scope.json'],
+      documents: documents(parent)
+    }),
+    []
+  );
+});
+
 test('accepts the canonical engineering baseline reconciliation path', () => {
   assert.deepEqual(
     validateCurrentSnapshot({

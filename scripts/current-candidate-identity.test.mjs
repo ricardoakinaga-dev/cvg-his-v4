@@ -39,6 +39,21 @@ test('accepts a candidate followed only by documentation commits', () => {
   );
 });
 
+test('accepts critical coverage manifest bookkeeping as documentation-only', () => {
+  assert.deepEqual(
+    validateIdentityDocument({
+      identity,
+      currentHead: 'd'.repeat(40),
+      candidateIsAncestor: true,
+      changedPathsSinceCandidate: ['docs/engineering/critical-coverage-scope.json'],
+      qualityBarSha256: digest,
+      promptSha256: digest,
+      archivedPromptSha256: digest
+    }),
+    []
+  );
+});
+
 test('rejects source changes after the candidate without regeneration', () => {
   const errors = validateIdentityDocument({
     identity,
