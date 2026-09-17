@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "db154b7afb43f63e644d1b56ea3fb98cbdc13522",
+  "head": "95227098e1f77b99d2a2bbf00cbb244c6ac61a8f",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -1067,7 +1067,7 @@
     },
     {
       "path": "apps/api/src/server.ts",
-      "sha256": "1aa985d09e9fe9033509fe4d1bf6f7fb016107fbe64838d9df23aa548724e555",
+      "sha256": "3d62c7e3bba3ab6ea21ae331f5f6082453943bd1e779c549b08d22c968310419",
       "components": [
         "http-routes"
       ],
@@ -11136,6 +11136,38 @@
           "after": "1aa985d09e9fe9033509fe4d1bf6f7fb016107fbe64838d9df23aa548724e555"
         }
       ]
+    },
+    {
+      "manifestRevision": 55,
+      "observedAt": "2026-09-17T03:20:37.723Z",
+      "collectionCommit": "cf2096f9f6ab5026eaf5bb330c7146b8a9dd2cfb",
+      "previousManifestSha256": "e96c41293bdebb4315e63fba17368fd4f1435606fa6a391aa46dd82b5693e379",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-e96c41293bdebb4315e63fba17368fd4f1435606fa6a391aa46dd82b5693e379.json",
+      "previousSourceSetSha256": "a5160af50c0d84f2087760a8db992de723474d8240ad52950b3721dd8557257c",
+      "sourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
+      "reason": "Keep server.ts within the frozen complexity budget while preserving fail-closed session error mapping",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/server.ts",
+          "before": "1aa985d09e9fe9033509fe4d1bf6f7fb016107fbe64838d9df23aa548724e555",
+          "after": "3d62c7e3bba3ab6ea21ae331f5f6082453943bd1e779c549b08d22c968310419"
+        }
+      ]
+    },
+    {
+      "manifestRevision": 56,
+      "observedAt": "2026-09-17T03:21:43.556Z",
+      "collectionCommit": "95227098e1f77b99d2a2bbf00cbb244c6ac61a8f",
+      "previousManifestSha256": "c19db6c9a04917a7f8a6930996c08efa8c17784a1b99837de3d1b97129434efd",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-c19db6c9a04917a7f8a6930996c08efa8c17784a1b99837de3d1b97129434efd.json",
+      "previousSourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
+      "sourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
+      "reason": "Bind critical source identity to the complexity-budget candidate commit",
+      "added": [],
+      "removed": [],
+      "changed": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12069,8 +12101,8 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 54,
-  "sourceSetSha256": "a5160af50c0d84f2087760a8db992de723474d8240ad52950b3721dd8557257c",
+  "manifestRevision": 56,
+  "sourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
   "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
   "specializedEvidence": {
     "sql": {
