@@ -1873,13 +1873,46 @@ test('production-like API requires a healthy Redis distributed-state preflight',
     runtimeDistributedStateEnabled: true,
     redisUrl: 'redis://redis.test:6379/0',
     authRateLimiter: {
-      healthCheck: async () => ({ healthy: true, backend: 'redis' as const })
+      check: async () => ({
+        limit: 100,
+        remaining: 99,
+        reset: Date.now() + 60_000,
+        blocked: false,
+        retryAfterMs: 0
+      }),
+      healthCheck: async () => ({
+        healthy: true,
+        backend: 'redis' as const,
+        detail: 'test'
+      })
     },
     pixPaymentAttemptRateLimiter: {
-      healthCheck: async () => ({ healthy: true, backend: 'redis' as const })
+      check: async () => ({
+        limit: 100,
+        remaining: 99,
+        reset: Date.now() + 60_000,
+        blocked: false,
+        retryAfterMs: 0
+      }),
+      healthCheck: async () => ({
+        healthy: true,
+        backend: 'redis' as const,
+        detail: 'test'
+      })
     },
     pixProviderWebhookRateLimiter: {
-      healthCheck: async () => ({ healthy: true, backend: 'redis' as const })
+      check: async () => ({
+        limit: 100,
+        remaining: 99,
+        reset: Date.now() + 60_000,
+        blocked: false,
+        retryAfterMs: 0
+      }),
+      healthCheck: async () => ({
+        healthy: true,
+        backend: 'redis' as const,
+        detail: 'test'
+      })
     }
   };
 
@@ -1889,7 +1922,18 @@ test('production-like API requires a healthy Redis distributed-state preflight',
       assertDistributedStateReadiness({
         ...base,
         authRateLimiter: {
-          healthCheck: async () => ({ healthy: false, backend: 'redis' as const })
+          check: async () => ({
+            limit: 100,
+            remaining: 99,
+            reset: Date.now() + 60_000,
+            blocked: false,
+            retryAfterMs: 0
+          }),
+          healthCheck: async () => ({
+            healthy: false,
+            backend: 'redis' as const,
+            detail: 'test failure'
+          })
         }
       }),
     /Redis distributed state is unhealthy/
