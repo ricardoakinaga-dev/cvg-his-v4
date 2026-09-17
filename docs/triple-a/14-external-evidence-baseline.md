@@ -6,13 +6,20 @@
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O snapshot atual é
 > o snapshot anterior `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e`, com código funcional em `578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`, permanece preservado apenas como histórico; a identidade canônica está em
-> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `c27c66a4a0862cffa7f1b7952ac6c94faeb15595`; o registro P0 candidate-bound é validado no CI e no gate de release; Noto Sans e a rasterização sem LCD são fixados nos gates E2E/visual; a correção funcional de fail-closed e complexidade está em `95227098`, sobre a otimização `15ba86a8`; os CI anteriores não são transferidos. O runner crítico usa PostgreSQL 16, checkout completo, trata o par V8 do Node 22 e publica evidência SQL; nenhum resultado parcial é transferido.
+> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `949e420ecf984fb35a7f42769e62e2634b17b499`; o registro P0 candidate-bound é validado no CI e no gate de release; Noto Sans e a rasterização sem LCD são fixados nos gates E2E/visual; a correção funcional de fail-closed e complexidade está em `95227098`, sobre a otimização `15ba86a8`; os CI anteriores não são transferidos. O runner crítico usa PostgreSQL 16, checkout completo, trata o par V8 do Node 22 e publica evidência SQL; nenhum resultado parcial é transferido.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `c27c66a4a0862cffa7f1b7952ac6c94faeb15595` (snapshot reancorado; manifesto crítico revision 62, registro P0 com `1` fechado e `13` abertos, workflow com Chromium, Noto Sans e rasterização sem LCD determinísticos nos gates E2E/visual, verificação portátil do runner, runner privado PostgreSQL 16, par V8 autenticado, produtor SQL, correção fail-closed, classificador documental e harness SPA com proxy same-origin; provas externas e autoridade de release continuam `NOT PROVEN`).
-**Current CI:** o [CI #214](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35204183554) terminou `failure`: os gates críticos, estruturais, funcionais, E2E SPA (`424/424`) e Visual (`29/29`) passaram; o k6 passou `7/9` SLOs e falhou somente em query p95 `217ms` e inventory p95 `202,76ms`. Nenhuma threshold foi relaxada.
+**Current snapshot:** `949e420ecf984fb35a7f42769e62e2634b17b499` (snapshot reancorado; manifesto crítico revision 64, registro P0 com `1` fechado e `13` abertos, workflow com Chromium, Noto Sans e rasterização sem LCD determinísticos nos gates E2E/visual, verificação portátil do runner, runner privado PostgreSQL 16, par V8 autenticado, produtor SQL, correção fail-closed, ciclo de vida de feature flags e harness SPA com proxy same-origin; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current CI:** o [CI #221](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35222726870) foi disparado no snapshot remoto anterior e encontrou hash desatualizado no manifesto crítico; não há resultado terminal verde para este candidato. O último run terminal, [CI #217](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35215228039), passou os gates funcionais, E2E SPA e Visual, mas falhou no k6 em query/inventory. Nenhuma threshold foi relaxada.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-17T09:01:08Z
+**Observation:** 2026-09-17T13:12:08Z
+
+**Current candidate delta:** o provider raw consumido pela API agora respeita
+kill switch persistido, expiração, precedência de escopo e allowlist fail-closed;
+seu cache não atravessa `expiresAt`. O boundary foi coberto por cinco testes
+focados, com typecheck/lint do workspace em `68/68`; o ADR-014 registra limites
+da evidência. Essas provas não substituem PostgreSQL/RLS em CI, performance,
+target, UAT, attestation ou autoridade de release.
 
 **Current local execution:** cobertura global `273/273` arquivos e `2907/2907` testes, com `3` skips esperados; statements `87,46%`, branches `82,00%`, functions `89,32%`, lines `88,91%`; lint, typecheck e API build passaram. A suíte API passou `618/618`, a integração PostgreSQL descartável passou `16/16`, o runner privado PostgreSQL 16.15 repetiu as `171` migrações e o seed em duas rodadas. k6 local limitado a quatro CPUs passou `9/9` SLOs; a captura visual `29/29` foi a execução anterior à normalização final de rasterização. Target, recovery, UAT e autoridade continuam sem prova aceita. A validação local não substitui CI pinned, target ou UAT.
 
