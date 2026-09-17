@@ -1,14 +1,14 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-17T04:38:38Z
+## Snapshot vigente — 2026-09-17T05:57:08Z
 
-O baseline autoritativo do snapshot atual está em: `fa87747596ee36a604b000b5d452176781f3c08b` (snapshot documental reancorado após a implementação do registro P0 e a revisão 57 do manifesto crítico; a correção funcional de fail-closed permanece no commit `95227098` e a otimização de leitura autenticada em `15ba86a8`).
+O baseline autoritativo do snapshot atual está em: `85c105467139bee415896c97232e1a56ad7772b7` (snapshot reancorado após o alinhamento dos gates SPA ao runtime canônico e a revisão 58 do manifesto crítico; a correção funcional de fail-closed permanece no commit `95227098` e a otimização de leitura autenticada em `15ba86a8`).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
 documentação corrente sucede os candidatos históricos sem transferir evidência;
-o candidato `fa877475` consolida a cobertura de contratos de pagamento, marketing,
+o candidato `85c10546` consolida a cobertura de contratos de pagamento, marketing,
 laboratório, ML e limites operacionais, preservando o runner PostgreSQL 16, os
 checksums de migração e a aceitação restrita do par de inicializadores V8; a
 branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
@@ -16,7 +16,7 @@ branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corre
 contém 14 itens, dos quais 1 está fechado com evidência fresca e 13 permanecem
 abertos, sem usar o status legado `DONE`.
 
-Os CI #191/#192 dos ancestrais terminaram `failure` com `13/17` jobs verdes e Critical Coverage Gate aprovado; não são transferidos para o novo candidato. No candidato anterior, a cobertura global passou `273` arquivos, `2.907` testes e o threshold congelado (`87,46%` statements, `82,00%` branches, `89,32%` functions e `88,91%` lines), além de lint e typecheck. A otimização corrente elimina a leitura duplicada de sessão antes da resolução de tenant: o JWT assinado fornece somente contexto de roteamento, enquanto a guarda final continua relendo sessão, usuário, função e permissões de forma autoritativa. A correção `95227098` preserva o mapeamento fail-closed de erros genéricos de sessão para HTTP 503 sem reintroduzir a leitura duplicada e mantém `server.ts` dentro do orçamento de `8.335` linhas; a suíte API passou `618/618` e a integração PostgreSQL descartável passou `16/16`. A captura visual local passou `29/29` e o benchmark local PostgreSQL passou `9/9` SLOs. O CI #198 foi rejeitado por falhas de identidade, integração, Critical Coverage, E2E SPA, Visual Regression e Performance; o #199, no descendente documental seguinte, já falhou em Repository Guards porque `server.ts` excedia o orçamento de complexidade. Nenhuma dessas falhas remotas é promovida para o novo candidato. Target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
+Os CI #191/#192 dos ancestrais terminaram `failure` com `13/17` jobs verdes e Critical Coverage Gate aprovado; não são transferidos para o novo candidato. No candidato anterior, a cobertura global passou `273` arquivos, `2.907` testes e o threshold congelado (`87,46%` statements, `82,00%` branches, `89,32%` functions e `88,91%` lines), além de lint e typecheck. A otimização corrente elimina a leitura duplicada de sessão antes da resolução de tenant: o JWT assinado fornece somente contexto de roteamento, enquanto a guarda final continua relendo sessão, usuário, função e permissões de forma autoritativa. A correção `95227098` preserva o mapeamento fail-closed de erros genéricos de sessão para HTTP 503 sem reintroduzir a leitura duplicada e mantém `server.ts` dentro do orçamento de `8.335` linhas; a suíte API passou `618/618` e a integração PostgreSQL descartável passou `16/16`. A captura visual local passou `29/29` e o benchmark local PostgreSQL passou `9/9` SLOs. O CI #203, executado sobre o ancestral `261e5b45`, falhou nos gates E2E/visual/performance; a reprodução local passou e a correção do harness foi incluída no novo candidato. Nenhuma dessas falhas remotas é promovida para o novo candidato. Target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
 parcial ou histórico é promovido. Target, recovery, UAT, attestation,
 governança e autoridade de release continuam `NOT PROVEN`.
 
@@ -30,7 +30,7 @@ governança e autoridade de release continuam `NOT PROVEN`.
 | Implementação      | Prompt preservado, quality bar congelado, matriz, ledger append-only e registro P0 candidate-bound com fechamento fail-closed.                                                                                                                              |
 | Arquivos alterados | `docs/triple-a/MASTER_PROMPT.md`, `QUALITY_BAR_V1.json`, `P0_REGISTRY.json`, `scripts/validate-p0-registry.mjs`, `15-current-baseline.md`, `17-current-execution-evidence.md`, `.github/workflows/ci.yml`.                                                |
 | Testes             | `pnpm docs:validate`, `pnpm validate:p0-registry`, 3 testes do registro e contratos de CI.                                                                                                                                                                  |
-| Evidências         | Registro P0 com `1` fechado e `13` abertos; CI #202 foi superseded durante a reancoragem; gate local continua `BLOCKED / NOT PROVEN`; gates de target permanecem sem prova.                                                                                |
+| Evidências         | Registro P0 com `1` fechado e `13` abertos; CI #203 do ancestral foi rejeitado por divergência do harness e não é transferido; gate local continua `BLOCKED / NOT PROVEN`; gates de target permanecem sem prova.                                                                                |
 | Riscos residuais   | Evidência de target, recovery, governança, UAT e autoridade humana ausente.                                                                                                                                                                                |
 
 ## Reconciliação corrente — 2026-09-11T22:12:14Z

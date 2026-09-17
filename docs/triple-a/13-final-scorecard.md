@@ -2,17 +2,17 @@
 
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT SNAPSHOT   | candidato `fa87747596ee36a604b000b5d452176781f3c08b`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; registro P0 candidate-bound; correção funcional em `95227098` sobre a otimização `15ba86a8`; históricos não são transferidos |
-| MAIN / ORIGIN      | `main` contém o snapshot candidato `fa877475` e sua documentação corrente; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral sem commits exclusivos, rollback preservado, sem force-push |
-| CURRENT CI         | O CI #202 foi superseded durante a reancoragem; o próximo run será a primeira execução exata do snapshot `fa877475` com o registro P0 integrado |
+| CURRENT SNAPSHOT   | candidato `85c105467139bee415896c97232e1a56ad7772b7`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; registro P0 candidate-bound; correção funcional em `95227098` sobre a otimização `15ba86a8`; históricos não são transferidos |
+| MAIN / ORIGIN      | `main` contém o snapshot candidato `85c10546` e sua documentação corrente; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral sem commits exclusivos, rollback preservado, sem force-push |
+| CURRENT CI         | O CI #203 do ancestral `261e5b45` falhou no harness E2E/visual e no SLO de performance; a reprodução canônica passou e o novo run exato aguardará a publicação de `85c10546` |
 | LOCAL STRICT GATE  | cobertura global local `PASS` no threshold congelado; release/critical externo continuam `NOT_PROVEN`, `claim=NOT PROVEN`, `publication_allowed=false` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
-| LOCAL VALIDATION   | cobertura global `273/273` arquivos e `2.907/2.907` testes, `87,46/82,00/89,32/88,91%` (statements/branches/functions/lines), lint, typecheck, API build, API `618/618`, integração PostgreSQL `16/16`, contratos CI `20/20`, registro P0 `14` itens com `3/3` testes, SQL `34/34`, produtor SQL `171` migrações, complexity `8.335` linhas, k6 local `9/9` SLOs e visual `29/29` passaram; manifesto revision 57 válido; target externo ausente |
+| LOCAL VALIDATION   | cobertura global `273/273` arquivos e `2.907/2.907` testes, `87,46/82,00/89,32/88,91%` (statements/branches/functions/lines), lint, typecheck, API build, API `618/618`, integração PostgreSQL `16/16`, contratos CI `22/22`, registro P0 `14` itens com `3/3` testes, SQL `34/34`, produtor SQL `171` migrações, complexity `8.335` linhas, k6 local `9/9` SLOs e visual `29/29` passaram; manifesto revision 58 válido; target externo ausente |
 | VERIFIED TARGET    | `NOT PROVEN`                                                                                                                                                                                                                                              |
 | CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; CI exato, target e autoridade externa continuam sem prova                                                                                                                                                        |
 
 O snapshot corrente preserva a régua congelada e reancora o manifesto crítico
-na revisão 57. O registro P0 adiciona deduplicação, dependências, classificação
+na revisão 58. O registro P0 adiciona deduplicação, dependências, classificação
 de execução e fechamento candidate-bound ao gate de release. O CI #190 detectou a rejeição de inicializadores V8 legítimos do
 Node 22 e a ausência do produtor SQL; os CI #191/#192 confirmaram a correção no
 Critical Coverage Gate dos ancestrais. O CI #196 confirmou o Critical Coverage

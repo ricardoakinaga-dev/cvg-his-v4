@@ -1,11 +1,11 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato documental observado em 2026-09-17T04:38:38Z
+## Candidato documental observado em 2026-09-17T05:57:08Z
 
-- SHA de código e documentação: `fa87747596ee36a604b000b5d452176781f3c08b`;
+- SHA de código e documentação: `85c105467139bee415896c97232e1a56ad7772b7`;
   identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O manifesto crítico está na revisão 57, ancorado no commit de fonte `e69b4484` e publicado na identidade do snapshot `fa877475`; o candidato instala Chromium, provisiona PostgreSQL 16 via PGDG fingerprint-pinned, aceita o par V8 de inicializadores do Node 22, publica o artefato SQL verificado, valida o registro P0 e fecha o threshold global de branches com contratos determinísticos. O roteamento inicial usa somente o contexto JWT verificado; a guarda final relê sessão, usuário, função e permissões de forma autoritativa, com erros genéricos de sessão sanitizados para 503, e `server.ts` respeita o orçamento de `8.335` linhas. Rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- O manifesto crítico está na revisão 58, ancorado no commit `85c10546` e publicado na identidade do snapshot; o candidato instala Chromium, provisiona PostgreSQL 16 via PGDG fingerprint-pinned, aceita o par V8 de inicializadores do Node 22, publica o artefato SQL verificado, valida o registro P0 e fecha o threshold global de branches com contratos determinísticos. Os gates SPA agora usam API compilada e servidor estático com proxy same-origin `/api`, igual ao harness canônico local. O roteamento inicial usa somente o contexto JWT verificado; a guarda final relê sessão, usuário, função e permissões de forma autoritativa, com erros genéricos de sessão sanitizados para 503, e `server.ts` respeita o orçamento de `8.335` linhas. Rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
 
 ## Validações locais

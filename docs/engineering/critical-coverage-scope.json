@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "e69b44845d6cea670b874272d9d1bf718d957be4",
+  "head": "85c105467139bee415896c97232e1a56ad7772b7",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -11181,6 +11181,19 @@
       "added": [],
       "removed": [],
       "changed": []
+    },
+    {
+      "manifestRevision": 58,
+      "observedAt": "2026-09-17T05:56:57.109Z",
+      "collectionCommit": "85c105467139bee415896c97232e1a56ad7772b7",
+      "previousManifestSha256": "8ea7dcafaac5c0eed867ba938084213aa18675da0cf4e58a362441f14f86cf8e",
+      "preservedManifest": "artifacts/remediation/CI-SPA-HARNESS-20260917/critical-scope-before-8ea7dcafaac5c0eed867ba938084213aa18675da0cf4e58a362441f14f86cf8e.json",
+      "previousSourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
+      "sourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
+      "reason": "Reanchor critical coverage inputs after CI SPA harness correction",
+      "added": [],
+      "removed": [],
+      "changed": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12114,7 +12127,7 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 57,
+  "manifestRevision": 58,
   "sourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
   "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
   "specializedEvidence": {

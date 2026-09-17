@@ -6,13 +6,13 @@
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O snapshot atual é
 > o snapshot anterior `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e`, com código funcional em `578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`, permanece preservado apenas como histórico; a identidade canônica está em
-> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `fa87747596ee36a604b000b5d452176781f3c08b`; o registro P0 candidate-bound é validado no CI e no gate de release; a correção funcional de fail-closed e complexidade está em `95227098`, sobre a otimização `15ba86a8`; os CI anteriores não são transferidos. O runner crítico usa PostgreSQL 16, checkout completo, trata o par V8 do Node 22 e publica evidência SQL; nenhum resultado parcial é transferido.
+> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `85c105467139bee415896c97232e1a56ad7772b7`; o registro P0 candidate-bound é validado no CI e no gate de release; a correção funcional de fail-closed e complexidade está em `95227098`, sobre a otimização `15ba86a8`; os CI anteriores não são transferidos. O runner crítico usa PostgreSQL 16, checkout completo, trata o par V8 do Node 22 e publica evidência SQL; nenhum resultado parcial é transferido.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `fa87747596ee36a604b000b5d452176781f3c08b` (snapshot documental reancorado; manifesto crítico revision 57, registro P0 com `1` fechado e `13` abertos, workflow com Chromium, runner privado PostgreSQL 16, par V8 autenticado, produtor SQL, correção fail-closed e orçamento de complexidade em `95227098` sobre a otimização `15ba86a8` e cobertura global local acima do threshold; provas externas e autoridade de release continuam `NOT PROVEN`).
-**Current CI:** o #202 foi superseded durante a reancoragem; nenhum resultado é transferido. O próximo run será o primeiro snapshot exato com a identidade e o registro P0 reancorados.
+**Current snapshot:** `85c105467139bee415896c97232e1a56ad7772b7` (snapshot reancorado; manifesto crítico revision 58, registro P0 com `1` fechado e `13` abertos, workflow com Chromium, runner privado PostgreSQL 16, par V8 autenticado, produtor SQL, correção fail-closed, orçamento de complexidade em `95227098` e harness SPA com proxy same-origin; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current CI:** o #203 do ancestral `261e5b45` falhou nos gates E2E/visual/performance e não é transferido. A reprodução visual canônica passou `29/29`; o próximo run será o primeiro snapshot exato com o harness corrigido.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-17T04:38:38Z
+**Observation:** 2026-09-17T05:57:08Z
 
 **Current local execution:** cobertura global `273/273` arquivos e `2907/2907` testes, com `3` skips esperados; statements `87,46%`, branches `82,00%`, functions `89,32%`, lines `88,91%`; lint, typecheck e API build passaram. A suíte API passou `618/618`, a integração PostgreSQL descartável passou `16/16`, o runner privado PostgreSQL 16.15 repetiu as `171` migrações e o seed em duas rodadas. k6 local limitado a quatro CPUs passou `9/9` SLOs e a suíte visual local passou `29/29`. Target, recovery, UAT e autoridade continuam sem prova aceita. A validação local não substitui CI pinned, target ou UAT.
 
