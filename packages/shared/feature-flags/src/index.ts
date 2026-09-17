@@ -8,7 +8,12 @@ export type FeatureFlagDecisionReason =
   | 'override'
   | 'kill_switch'
   | 'allowlist'
-  | 'percentage_rollout';
+  | 'allowlist_excluded'
+  | 'percentage'
+  | 'percentage_rollout'
+  | 'expired'
+  | 'invalid_configuration'
+  | 'database_error';
 
 /**
  * Allowlist configuration for targeted rollouts.
@@ -88,6 +93,11 @@ export interface FlagDecision {
 
 export interface FeatureFlagProvider {
   readonly name: string;
+  /**
+   * Invalidates locally cached decisions when the backing catalog changes.
+   * Providers without a cache may omit this hook.
+   */
+  readonly invalidateCache?: (key?: string) => void;
   evaluate(
     definition: FlagDefinition,
     context: EvaluationContext
@@ -524,6 +534,9 @@ export function createCompositeFeatureFlagProvider(
 ): FeatureFlagProvider {
   return {
     name: `${upstream.name}-with-rules`,
+    invalidateCache(key?: string): void {
+      upstream.invalidateCache?.(key);
+    },
 
     async evaluate(definition: FlagDefinition, context: EvaluationContext): Promise<FlagDecision> {
       const rules = getRules(definition.key);
@@ -742,6 +755,9 @@ export function createCompositeFeatureFlagProviderWithMetrics(
 
   return {
     name: `${upstream.name}-with-rules`,
+    invalidateCache(key?: string): void {
+      upstream.invalidateCache?.(key);
+    },
 
     async evaluate(definition: FlagDefinition, context: EvaluationContext): Promise<FlagDecision> {
       const start = Date.now();

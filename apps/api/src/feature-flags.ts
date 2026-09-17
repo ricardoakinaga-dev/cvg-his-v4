@@ -10,9 +10,11 @@ import {
   type FlagDefinition
 } from '@cvg-his-v2/shared-feature-flags';
 import {
-  createDatabaseFeatureFlagProvider
+  createDatabaseFeatureFlagProvider,
+  type DatabaseFeatureFlagProviderOptions
 } from '@cvg-his-v2/module-feature-flags';
-import { getDatabaseClient, type DatabaseClient } from '@cvg-his-v2/shared-database';
+import type { DatabaseClient } from '@cvg-his-v2/shared-database';
+import type { Pool } from 'pg';
 
 export const API_FEATURE_FLAG_DEFINITIONS: readonly FlagDefinition[] = [
   {
@@ -149,11 +151,7 @@ export async function createApiFeatureFlags(params: {
   readonly userId?: EvaluationContext['userId'];
   readonly databaseProviderFactory?: (
     fallbackProvider: FeatureFlagProvider,
-    options: {
-      readonly cacheTtlMs?: number;
-      readonly onFallback?: (key: string, reason: string) => void;
-      readonly metrics?: FeatureFlagMetricsCollector;
-    }
+    options: DatabaseFeatureFlagProviderOptions
   ) => FeatureFlagProvider;
 }): Promise<ApiFeatureFlagsSnapshot> {
   const registry = createRegistry();
@@ -162,11 +160,13 @@ export async function createApiFeatureFlags(params: {
   const envProvider = createEnvFeatureFlagProvider(params.enabledKeys);
 
   // Upstream chain: database → env (database is primary, env is fallback)
-  const createDatabaseProvider = params.databaseProviderFactory ?? createDatabaseFeatureFlagProvider;
+  const createDatabaseProvider =
+    params.databaseProviderFactory ?? createDatabaseFeatureFlagProvider;
   const upstreamProvider: FeatureFlagProvider = params.db
     ? createDatabaseProvider(envProvider, {
         metrics: params.metrics,
-        cacheTtlMs: 60_000
+        cacheTtlMs: 60_000,
+        pool: params.db?.$client as unknown as Pool | undefined
       })
     : envProvider;
 
@@ -183,10 +183,12 @@ export async function createApiFeatureFlags(params: {
     userId: params.userId
   };
   const decisionEntries = await Promise.all(
-    registry.list().map(async (definition: FlagDefinition) => [
-      definition.key,
-      await provider.evaluate(definition, context)
-    ])
+    registry
+      .list()
+      .map(async (definition: FlagDefinition) => [
+        definition.key,
+        await provider.evaluate(definition, context)
+      ])
   );
   const decisions = Object.fromEntries(decisionEntries) as Readonly<Record<string, FlagDecision>>;
   const enabledKeys = normalizeFeatureFlagKeys(
@@ -201,8 +203,7 @@ export async function createApiFeatureFlags(params: {
     decisions,
     authOidcEnabled: decisions['auth.oidc.enabled'].enabled,
     authWebauthnEnabled: decisions['auth.webauthn.enabled'].enabled,
-    runtimeDistributedStateEnabled:
-      decisions['runtime.distributed_state.enabled'].enabled,
+    runtimeDistributedStateEnabled: decisions['runtime.distributed_state.enabled'].enabled,
     fiscalBackofficeEnabled: decisions['fiscal.backoffice.enabled'].enabled,
     notificationsWhatsappRemindersEnabled:
       decisions['notifications.whatsapp.reminders.enabled'].enabled,

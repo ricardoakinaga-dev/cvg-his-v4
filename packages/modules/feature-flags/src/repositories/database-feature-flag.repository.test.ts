@@ -168,3 +168,94 @@ test('catalog expiry also disables accountless evaluation', async () => {
   assert.equal(decision.enabled, false);
   assert.equal(decision.reason, 'expired');
 });
+
+test('bounds, clones and invalidates the local decision cache', async () => {
+  let reads = 0;
+  const accountA = '00000000-0000-4000-8000-0000000000aa';
+  const accountB = '00000000-0000-4000-8000-0000000000bb';
+  const provider = createDatabaseFeatureFlagProvider(FALLBACK, {
+    repository: {
+      async findByKey() {
+        reads += 1;
+        return { ...FLAG, defaultValue: true };
+      },
+      async listOverrides() {
+        return [];
+      }
+    },
+    cacheTtlMs: 60_000,
+    maxCacheEntries: 1
+  });
+  const invalidating = provider as FeatureFlagProvider & {
+    invalidateCache: (key?: string) => void;
+  };
+
+  const first = await provider.evaluate(FLAG, {
+    accountId: accountA,
+    environment: 'production'
+  });
+  (first.context as { environment?: string }).environment = 'tampered';
+  const cached = await provider.evaluate(FLAG, {
+    accountId: accountA,
+    environment: 'production'
+  });
+  assert.equal(reads, 1);
+  assert.equal(cached.context.environment, 'production');
+
+  await provider.evaluate(FLAG, { accountId: accountB, environment: 'production' });
+  await provider.evaluate(FLAG, { accountId: accountA, environment: 'production' });
+  assert.equal(reads, 3);
+
+  invalidating.invalidateCache(FLAG.key);
+  await provider.evaluate(FLAG, { accountId: accountA, environment: 'production' });
+  assert.equal(reads, 4);
+});
+
+test('an in-flight evaluation cannot repopulate a cache invalidated by an admin write', async () => {
+  let reads = 0;
+  let release!: (flag: FlagDefinition) => void;
+  const firstRead = new Promise<FlagDefinition>((resolve) => {
+    release = resolve;
+  });
+  const provider = createDatabaseFeatureFlagProvider(FALLBACK, {
+    repository: {
+      async findByKey() {
+        reads += 1;
+        return reads === 1 ? firstRead : { ...FLAG, defaultValue: false };
+      },
+      async listOverrides() {
+        return [];
+      }
+    }
+  });
+  const invalidating = provider as FeatureFlagProvider & {
+    invalidateCache: (key?: string) => void;
+  };
+  const pending = provider.evaluate(FLAG, {
+    accountId: 'account-1',
+    environment: 'production'
+  });
+
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  invalidating.invalidateCache(FLAG.key);
+  release({ ...FLAG, defaultValue: true });
+  await pending;
+
+  const current = await provider.evaluate(FLAG, {
+    accountId: 'account-1',
+    environment: 'production'
+  });
+  assert.equal(current.enabled, false);
+  assert.equal(reads, 2);
+});
+
+test('rejects invalid cache configuration before creating a provider', () => {
+  assert.throws(
+    () => createDatabaseFeatureFlagProvider(FALLBACK, { cacheTtlMs: Number.NaN }),
+    /cacheTtlMs/
+  );
+  assert.throws(
+    () => createDatabaseFeatureFlagProvider(FALLBACK, { maxCacheEntries: -1 }),
+    /maxCacheEntries/
+  );
+});

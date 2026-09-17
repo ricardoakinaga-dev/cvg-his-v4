@@ -14,7 +14,8 @@ import {
   text,
   uuid,
   primaryKey,
-  smallint
+  smallint,
+  unique
 } from 'drizzle-orm/pg-core';
 
 // Runtime mappings for the tables owned by packages/db/migrations/0016_feature_flags.sql.
@@ -51,25 +52,33 @@ export const featureFlags = pgTable('feature_flags', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
 
-export const featureFlagOverrides = pgTable('feature_flag_overrides', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  accountId: uuid('account_id').notNull(),
-  flagId: uuid('flag_id').notNull(),
-  environment: varchar('environment', { length: 32 }),
-  accountIdOverride: uuid('account_id_override'),
-  userId: uuid('user_id'),
-  percentage: jsonb('percentage').$type<number | null>(),
-  allowedUsers: jsonb('allowed_users')
-    .$type<string[]>()
-    .notNull()
-    .default(sql`'[]'::jsonb`),
-  enabled: jsonb('enabled')
-    .$type<boolean>()
-    .notNull()
-    .default(sql`'true'::jsonb`),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
-});
+export const featureFlagOverrides = pgTable(
+  'feature_flag_overrides',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    accountId: uuid('account_id').notNull(),
+    flagId: uuid('flag_id').notNull(),
+    environment: varchar('environment', { length: 32 }),
+    accountIdOverride: uuid('account_id_override'),
+    userId: uuid('user_id'),
+    percentage: jsonb('percentage').$type<number | null>(),
+    allowedUsers: jsonb('allowed_users')
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    enabled: jsonb('enabled')
+      .$type<boolean>()
+      .notNull()
+      .default(sql`'true'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => ({
+    scopeUnique: unique('uq_feature_flag_overrides_scope')
+      .on(table.flagId, table.environment, table.accountIdOverride, table.userId)
+      .nullsNotDistinct()
+  })
+);
 
 export const sessions = pgTable('sessions', {
   id: varchar('id', { length: 255 }).primaryKey(),

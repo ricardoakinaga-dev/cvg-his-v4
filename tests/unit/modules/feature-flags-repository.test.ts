@@ -1,14 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { queryMock, withTenantQueryMock } = vi.hoisted(() => {
+const { queryMock, withTenantQueryExplicitMock } = vi.hoisted(() => {
   const queryMock = vi.fn();
-  const withTenantQueryMock = vi.fn(
+  const withTenantQueryExplicitMock = vi.fn(
     async (
       _pool: unknown,
+      _accountId: string,
       fn: (client: { query: typeof queryMock }) => Promise<unknown>
     ) => fn({ query: queryMock })
   );
-  return { queryMock, withTenantQueryMock };
+  return { queryMock, withTenantQueryExplicitMock };
 });
 
 vi.mock('@cvg-his-v2/shared-database', () => ({
@@ -16,21 +17,20 @@ vi.mock('@cvg-his-v2/shared-database', () => ({
 }));
 
 vi.mock('@cvg-his-v2/tenant-context', () => ({
-  withTenantQuery: withTenantQueryMock
+  withTenantQueryExplicit: withTenantQueryExplicitMock
 }));
+
+const ACCOUNT_ID = '00000000-0000-4000-8000-0000000000aa';
 
 import { DatabaseFeatureFlagRepository } from '../../../packages/modules/feature-flags/src/index.js';
 
 describe('DatabaseFeatureFlagRepository coverage guard', () => {
   beforeEach(() => {
     queryMock.mockReset();
-    withTenantQueryMock.mockClear();
+    withTenantQueryExplicitMock.mockClear();
   });
 
   it('maps definitions from database rows and lists account-scoped flags', async () => {
-    queryMock.mockResolvedValueOnce({
-      rows: [{ id: '00000000-0000-0000-0000-0000000000aa' }]
-    });
     queryMock.mockResolvedValueOnce({
       rows: [
         {
@@ -38,6 +38,7 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
           owner: 'platform',
           description: 'Distribui estado',
           default_value: true,
+          enabled: true,
           scopes: ['environment', 'account'],
           expires_at: '2026-12-01T00:00:00.000Z',
           audit_required: true,
@@ -47,15 +48,13 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
       ]
     });
     queryMock.mockResolvedValueOnce({
-      rows: [{ id: '00000000-0000-0000-0000-0000000000aa' }]
-    });
-    queryMock.mockResolvedValueOnce({
       rows: [
         {
           key: 'triage.fast_track.enabled',
           owner: 'clinical',
           description: 'Acelera triagem',
           default_value: false,
+          enabled: false,
           scopes: ['account'],
           expires_at: null,
           audit_required: false,
@@ -69,27 +68,19 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
 
     const found = await repository.findByKey(
       'runtime.distributed_state.enabled',
-      'acc_test' as never
+      ACCOUNT_ID as never
     );
-    const listed = await repository.listByAccount('acc_test' as never);
+    const listed = await repository.listByAccount(ACCOUNT_ID as never);
 
     expect(queryMock).toHaveBeenNthCalledWith(
       1,
-      expect.stringContaining('SELECT id')
+      'SELECT * FROM feature_flags WHERE key = $1 AND account_id = $2 LIMIT 1',
+      ['runtime.distributed_state.enabled', ACCOUNT_ID]
     );
     expect(queryMock).toHaveBeenNthCalledWith(
       2,
-      'SELECT * FROM feature_flags WHERE key = $1 AND account_id = $2 LIMIT 1',
-      ['runtime.distributed_state.enabled', '00000000-0000-0000-0000-0000000000aa']
-    );
-    expect(queryMock).toHaveBeenNthCalledWith(
-      3,
-      expect.stringContaining('SELECT id')
-    );
-    expect(queryMock).toHaveBeenNthCalledWith(
-      4,
       'SELECT * FROM feature_flags WHERE account_id = $1 ORDER BY created_at DESC',
-      ['00000000-0000-0000-0000-0000000000aa']
+      [ACCOUNT_ID]
     );
     expect(found).toEqual(
       expect.objectContaining({
@@ -112,12 +103,10 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
 
   it('persists flags and overrides with canonical SQL payloads', async () => {
     queryMock
-      .mockResolvedValueOnce({ rows: [{ id: '00000000-0000-0000-0000-0000000000aa' }] })
       .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ id: '00000000-0000-0000-0000-0000000000aa' }] })
       .mockResolvedValueOnce({ rows: [{ id: 'flag_db_id' }] })
-      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
+    queryMock.mockResolvedValueOnce({ rows: [] });
 
     const repository = new DatabaseFeatureFlagRepository();
 
@@ -133,42 +122,43 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
         tags: ['triage', 'ops'],
         metadata: { rollout: 'phase-1' }
       },
-      'acc_test' as never
+      ACCOUNT_ID as never
     );
 
-    await repository.upsertOverride('triage.fast_track.enabled', 'acc_test' as never, {
+    await repository.upsertOverride('triage.fast_track.enabled', ACCOUNT_ID as never, {
       environment: 'production',
-      accountIdOverride: 'acc_test' as never,
+      accountIdOverride: ACCOUNT_ID as never,
       userId: 'user_triage',
       percentage: 25,
       allowedUsers: ['user_triage', 'user_supervisor'],
       enabled: true
     });
 
-    await repository.update({
-      key: 'triage.fast_track.enabled',
-      owner: 'clinical-ops',
-      description: 'Acelera triagem com guardrails',
-      defaultValue: false,
-      scopes: ['environment', 'account'],
-      expiresAt: undefined,
-      auditRequired: false,
-      tags: ['triage'],
-      metadata: { rollout: 'phase-2' }
-    });
+    await repository.update(
+      {
+        key: 'triage.fast_track.enabled',
+        owner: 'clinical-ops',
+        description: 'Acelera triagem com guardrails',
+        defaultValue: false,
+        enabled: false,
+        scopes: ['environment', 'account'],
+        expiresAt: undefined,
+        auditRequired: false,
+        tags: ['triage'],
+        metadata: { rollout: 'phase-2' }
+      },
+      ACCOUNT_ID as never
+    );
 
     expect(queryMock).toHaveBeenNthCalledWith(
       1,
-      expect.stringContaining('SELECT id')
-    );
-    expect(queryMock).toHaveBeenNthCalledWith(
-      2,
       expect.stringContaining('INSERT INTO feature_flags'),
       [
-        '00000000-0000-0000-0000-0000000000aa',
+        ACCOUNT_ID,
         'triage.fast_track.enabled',
         'clinical',
         'Acelera triagem',
+        'true',
         'true',
         JSON.stringify(['account']),
         new Date('2026-05-01T00:00:00.000Z'),
@@ -178,68 +168,46 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
       ]
     );
     expect(queryMock).toHaveBeenNthCalledWith(
-      3,
-      expect.stringContaining('SELECT id')
-    );
-    expect(queryMock).toHaveBeenNthCalledWith(
-      4,
+      2,
       'SELECT id FROM feature_flags WHERE key = $1 AND account_id = $2 LIMIT 1',
-      ['triage.fast_track.enabled', '00000000-0000-0000-0000-0000000000aa']
+      ['triage.fast_track.enabled', ACCOUNT_ID]
     );
     expect(queryMock).toHaveBeenNthCalledWith(
-      5,
-      expect.stringContaining('UPDATE feature_flag_overrides'),
-      [
-        'flag_db_id',
-        'production',
-        null,
-        null,
-        '25',
-        JSON.stringify(['user_triage', 'user_supervisor', 'user_triage']),
-        'true'
-      ]
-    );
-    expect(queryMock).toHaveBeenNthCalledWith(
-      6,
+      3,
       expect.stringContaining('INSERT INTO feature_flag_overrides'),
       [
-        '00000000-0000-0000-0000-0000000000aa',
+        ACCOUNT_ID,
         'flag_db_id',
         'production',
-        null,
+        ACCOUNT_ID,
         null,
         '25',
-        JSON.stringify(['user_triage', 'user_supervisor', 'user_triage']),
+        JSON.stringify(['user_triage', 'user_supervisor']),
         'true'
       ]
     );
-    expect(queryMock).toHaveBeenNthCalledWith(
-      7,
-      expect.stringContaining('SET owner = $2'),
-      [
-        'triage.fast_track.enabled',
-        'clinical-ops',
-        'Acelera triagem com guardrails',
-        'false',
-        JSON.stringify(['environment', 'account']),
-        null,
-        'false',
-        JSON.stringify(['triage']),
-        JSON.stringify({ rollout: 'phase-2' })
-      ]
-    );
+    expect(queryMock).toHaveBeenNthCalledWith(4, expect.stringContaining('SET owner = $2'), [
+      'triage.fast_track.enabled',
+      'clinical-ops',
+      'Acelera triagem com guardrails',
+      'false',
+      'false',
+      JSON.stringify(['environment', 'account']),
+      null,
+      'false',
+      JSON.stringify(['triage']),
+      JSON.stringify({ rollout: 'phase-2' }),
+      ACCOUNT_ID
+    ]);
   });
 
   it('maps overrides and gracefully returns null when no DB row exists', async () => {
     queryMock
       .mockResolvedValueOnce({
-        rows: [{ id: '00000000-0000-0000-0000-0000000000aa' }]
-      })
-      .mockResolvedValueOnce({
         rows: [
           {
             environment: 'staging',
-            account_id_override: 'acc_test',
+            account_id_override: ACCOUNT_ID,
             user_id: 'user_triage',
             percentage: 75,
             allowed_users: ['user_triage'],
@@ -248,22 +216,16 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
         ]
       })
       .mockResolvedValueOnce({
-        rows: [{ id: '00000000-0000-0000-0000-0000000000aa' }]
-      })
-      .mockResolvedValueOnce({
         rows: [
           {
             environment: 'production',
-            account_id_override: 'acc_test',
+            account_id_override: ACCOUNT_ID,
             user_id: null,
             percentage: null,
             allowed_users: [],
             enabled: false
           }
         ]
-      })
-      .mockResolvedValueOnce({
-        rows: [{ id: '00000000-0000-0000-0000-0000000000aa' }]
       })
       .mockResolvedValueOnce({ rows: [] });
 
@@ -272,14 +234,14 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
     const override = await repository.findOverride(
       'triage.fast_track.enabled',
       'staging',
-      'acc_test' as never
+      ACCOUNT_ID as never
     );
-    const listed = await repository.listOverrides('triage.fast_track.enabled', 'acc_test' as never);
-    const missing = await repository.findByKey('missing.flag', 'acc_test' as never);
+    const listed = await repository.listOverrides('triage.fast_track.enabled', ACCOUNT_ID as never);
+    const missing = await repository.findByKey('missing.flag', ACCOUNT_ID as never);
 
     expect(override).toEqual({
       environment: 'staging',
-      accountIdOverride: 'acc_test',
+      accountIdOverride: ACCOUNT_ID,
       userId: 'user_triage',
       percentage: 75,
       allowedUsers: ['user_triage'],
@@ -287,7 +249,7 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
     });
     expect(listed[0]).toEqual({
       environment: 'production',
-      accountIdOverride: 'acc_test',
+      accountIdOverride: ACCOUNT_ID,
       userId: undefined,
       percentage: null,
       allowedUsers: [],
@@ -315,7 +277,7 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
     queryMock.mockResolvedValueOnce({ rows: [] });
     await repository.create(definition, accountId as never);
     queryMock.mockResolvedValueOnce({ rows: [] });
-    await repository.update(definition);
+    await repository.update(definition, accountId as never);
 
     queryMock.mockResolvedValueOnce({ rows: [] });
     await repository.upsertOverride('missing.flag', accountId as never, { enabled: true });
@@ -334,7 +296,6 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
 
     queryMock
       .mockResolvedValueOnce({ rows: [{ id: 'flag_optional' }] })
-      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
     await repository.upsertOverride('runtime.optional.flag', accountId as never, {
       enabled: true,
@@ -358,7 +319,9 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
         }
       ]
     });
-    await expect(repository.listOverrides('runtime.optional.flag', accountId as never)).resolves.toEqual([
+    await expect(
+      repository.listOverrides('runtime.optional.flag', accountId as never)
+    ).resolves.toEqual([
       {
         environment: null,
         accountIdOverride: null,
@@ -369,9 +332,8 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
       }
     ]);
 
-    queryMock.mockResolvedValueOnce({ rows: [] });
     await expect(repository.findByKey('legacy.flag', 'legacy-account' as never)).rejects.toThrow(
-      'Unable to resolve database account id'
+      'require a UUID accountId'
     );
   });
 });

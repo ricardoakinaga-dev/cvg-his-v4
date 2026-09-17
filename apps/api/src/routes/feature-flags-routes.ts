@@ -1,10 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
-import type {
-  FeatureFlagProvider,
-  FeatureFlagScope
-} from '@cvg-his-v2/shared-feature-flags';
+import type { FeatureFlagProvider, FeatureFlagScope } from '@cvg-his-v2/shared-feature-flags';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import type { DatabaseFeatureFlagRepository } from '@cvg-his-v2/module-feature-flags';
 
@@ -15,7 +12,10 @@ export interface FeatureFlagsRoutesHandlers {
   featureFlagRepository: DatabaseFeatureFlagRepository;
   featureFlagProvider: FeatureFlagProvider;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permissionCode: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 function json(response: ServerResponse, statusCode: number, payload: unknown): true {
@@ -30,6 +30,7 @@ interface CreateFeatureFlagRequest {
   owner: string;
   description: string;
   defaultValue: boolean;
+  enabled?: boolean;
   scopes?: readonly FeatureFlagScope[];
   expiresAt?: string;
   auditRequired?: boolean;
@@ -40,6 +41,7 @@ interface UpdateFeatureFlagRequest {
   owner?: string;
   description?: string;
   defaultValue?: boolean;
+  enabled?: boolean;
   scopes?: readonly FeatureFlagScope[];
   expiresAt?: string;
   auditRequired?: boolean;
@@ -227,6 +229,7 @@ export async function handleFeatureFlagsRoutes(
       owner: body.owner,
       description: body.description,
       defaultValue: body.defaultValue,
+      enabled: body.enabled,
       scopes: body.scopes ?? (['environment'] as const),
       expiresAt: body.expiresAt,
       auditRequired: body.auditRequired ?? false,
@@ -234,6 +237,7 @@ export async function handleFeatureFlagsRoutes(
     };
 
     await featureFlagRepository.create(flag, accountId);
+    featureFlagProvider.invalidateCache?.(body.key);
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -341,13 +345,16 @@ export async function handleFeatureFlagsRoutes(
       owner: body.owner ?? existingFlag.owner,
       description: body.description ?? existingFlag.description,
       defaultValue: body.defaultValue ?? existingFlag.defaultValue,
+      enabled: body.enabled ?? existingFlag.enabled,
       scopes: body.scopes ?? existingFlag.scopes,
       expiresAt: body.expiresAt ?? existingFlag.expiresAt,
       auditRequired: body.auditRequired ?? existingFlag.auditRequired,
-      tags: body.tags ?? existingFlag.tags
+      tags: body.tags ?? existingFlag.tags,
+      metadata: existingFlag.metadata
     };
 
-    await featureFlagRepository.update(updatedFlag);
+    await featureFlagRepository.update(updatedFlag, accountId);
+    featureFlagProvider.invalidateCache?.(flagKey);
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -378,11 +385,10 @@ export async function handleFeatureFlagsRoutes(
       return json(response, 404, { error: 'Flag not found' });
     }
 
-    // Disable the flag via override
-    await featureFlagRepository.upsertOverride(flagKey, accountId, {
-      environment: url.searchParams.get('environment') ?? undefined,
-      enabled: false
-    });
+    // Deletion is an authoritative flag-level kill switch. An override could
+    // be superseded by a more specific enabled rule, which is not deletion.
+    await featureFlagRepository.update({ ...existingFlag, enabled: false }, accountId);
+    featureFlagProvider.invalidateCache?.(flagKey);
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -461,6 +467,7 @@ export async function handleFeatureFlagsRoutes(
       allowedUsers: body.allowedUsers,
       enabled: body.enabled
     });
+    featureFlagProvider.invalidateCache?.(flagKey);
 
     appendAudit(audit, {
       actorId: principal.user.id,

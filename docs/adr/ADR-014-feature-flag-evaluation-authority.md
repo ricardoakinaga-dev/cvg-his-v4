@@ -17,7 +17,11 @@ As invariantes são:
 - o override mais específico vence, com a ordem do repositório como desempate
   determinístico;
 - uma allowlist sem correspondência, inclusive sem usuário, deve negar;
-- o cache não pode sobreviver à expiração da flag.
+- o cache não pode sobreviver à expiração da flag nem crescer sem limite;
+- mutações administrativas invalidam as decisões locais antes da próxima
+  avaliação;
+- uma falha de infraestrutura não pode habilitar uma decisão cujo kill switch
+  persistido ficou desconhecido.
 
 ## Decisão
 
@@ -26,11 +30,21 @@ mas recebe o menor contrato de leitura necessário (`findByKey` e
 `listOverrides`). Ele carrega todos os overrides da flag dentro da conta
 tenant-scoped, seleciona a maior especificidade (usuário, conta, ambiente) e
 aplica o estado/expiração antes da avaliação. Percentuais inválidos são
-rejeitados de forma fail-closed; falhas de infraestrutura continuam usando o
-fallback existente e permanecem observáveis por métricas.
+rejeitados de forma fail-closed. Conta ausente ou flag não cadastrada pode usar
+o provider de bootstrap; falhas de infraestrutura são observáveis, mas
+permanecem fail-closed para não contornar um estado persistido desconhecido.
+As operações de banco exigem `accountId` UUID e usam `withTenantQueryExplicit`,
+sem resolver silenciosamente a conta `default`.
 
-O cache continua local e bounded pelo TTL configurado, com o limite adicional
-de `expiresAt`. Nenhum TTL de autorização ou cache de sessão foi introduzido.
+O cache continua local e bounded por TTL e capacidade, com o limite adicional de
+`expiresAt`, cópia defensiva das decisões, chave contextual completa e
+invalidação por flag. O wrapper de métricas propaga a invalidação para as rotas
+administrativas. Nenhum TTL de autorização ou cache de sessão foi introduzido.
+
+A persistência grava e atualiza o `enabled` autoritativo. Overrides usam um
+índice único PostgreSQL `NULLS NOT DISTINCT` sobre as dimensões da regra e
+`INSERT ... ON CONFLICT`, evitando que dois usuários concorrentes compartilhem
+ou sobrescrevam a linha errada.
 
 ## Alternativas rejeitadas
 
@@ -45,7 +59,8 @@ de `expiresAt`. Nenhum TTL de autorização ou cache de sessão foi introduzido.
 ## Evidência e limites
 
 O boundary foi coberto por testes de seleção de escopo, kill switch persistido,
-expiração com cache e allowlist default-deny em
+expiração com cache, allowlist default-deny, fallback de bootstrap, falha
+fail-closed, validação de capacidade e persistência/upsert em
 `packages/modules/feature-flags/src/repositories/database-feature-flag.repository.test.ts`.
 Typecheck e lint do workspace continuam obrigatórios. Esses testes não
 substituem a execução PostgreSQL/RLS, o CI do candidato, UAT ou a autoridade de

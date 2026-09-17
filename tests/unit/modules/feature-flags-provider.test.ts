@@ -20,7 +20,7 @@ describe('Database feature flag provider coverage guard', () => {
     vi.restoreAllMocks();
   });
 
-  it('returns default decision when account context is absent and records metrics', async () => {
+  it('uses the bootstrap provider when account context is absent and records metrics', async () => {
     const collector = {
       recordEvaluation: vi.fn(),
       recordError: vi.fn(),
@@ -104,7 +104,7 @@ describe('Database feature flag provider coverage guard', () => {
     expect(excluded.enabled).toBe(false);
   });
 
-  it('falls back on missing flags, database errors and caches successful percentage rollout decisions', async () => {
+  it('falls back only for missing flags, fails closed on database errors and caches successful decisions', async () => {
     const collector = {
       recordEvaluation: vi.fn(),
       recordError: vi.fn(),
@@ -156,17 +156,18 @@ describe('Database feature flag provider coverage guard', () => {
       accountId: 'acc_rollout' as never
     });
 
-    expect(missing.reason).toBe('default');
-    expect(missing.enabled).toBe(false);
-    expect(errored.enabled).toBe(true);
-    expect(errored.provider).toBe('env-bootstrap');
+    expect(missing.reason).toBe('bootstrap');
+    expect(missing.enabled).toBe(true);
+    expect(errored.enabled).toBe(false);
+    expect(errored.provider).toBe('database-repository');
+    expect(errored.reason).toBe('database_error');
     expect(rollout.reason).toBe('percentage_rollout');
     expect(rollout.enabled).toBe(true);
     expect(rolloutCached.reason).toBe('percentage_rollout');
     expect(findByKey).toHaveBeenCalledTimes(3);
     expect(listOverrides).toHaveBeenCalledTimes(1);
     expect(onFallback).toHaveBeenCalledWith(TEST_FLAG.key, 'not_found_in_db');
-    expect(onFallback).toHaveBeenCalledWith(TEST_FLAG.key, 'database_error');
+    expect(onFallback).toHaveBeenCalledWith(TEST_FLAG.key, 'database_error_fail_closed');
     expect(collector.recordFallback).toHaveBeenCalledWith(
       expect.objectContaining({ fallbackReason: 'not_found_in_db' })
     );
