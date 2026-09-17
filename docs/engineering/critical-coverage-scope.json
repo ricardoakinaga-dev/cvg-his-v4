@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "03e6fac0a2f726698b40adb351298610f9c1f88d",
+  "head": "8bb1bd71b34d9ed102aee223a51715df244b8c45",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -11453,7 +11453,7 @@
     {
       "manifestRevision": 69,
       "observedAt": "2026-09-17T15:54:54.970Z",
-      "collectionCommit": "03e6fac0a2f726698b40adb351298610f9c1f88d",
+      "collectionCommit": "8bb1bd71b34d9ed102aee223a51715df244b8c45",
       "previousManifestSha256": "ddf9bb40395210c1b71aaea221edd7ee619b4d8bb62c2c215934183221d1c98b",
       "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-ddf9bb40395210c1b71aaea221edd7ee619b4d8bb62c2c215934183221d1c98b.json",
       "previousSourceSetSha256": "c4544d0e34684c639873092339018c0e0f394083b2a2f8470f79112160ffeb0c",

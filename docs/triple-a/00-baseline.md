@@ -2,7 +2,7 @@
 
 ## Snapshot vigente — 2026-09-17T13:28:36Z
 
-O baseline autoritativo do snapshot atual está em: `03e6fac0a2f726698b40adb351298610f9c1f88d` (snapshot reancorado após a normalização de rasterização de texto entre runners, a fixação de Noto Sans nos gates visuais, a verificação portátil do runner, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental, as revisões 66–69 do manifesto crítico e o endurecimento do ciclo de vida de feature flags; a correção funcional atual de fail-closed, tenant explícito, cache bounded, upsert atômico, autoridade request-scoped e ownership composto está no commit `03e6fac0`, sobre a otimização de leitura autenticada em `15ba86a8`).
+O baseline autoritativo do snapshot atual está em: `8bb1bd71b34d9ed102aee223a51715df244b8c45` (snapshot reancorado após a normalização de rasterização de texto entre runners, a fixação de Noto Sans nos gates visuais, a verificação portátil do runner, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental, as revisões 66–69 do manifesto crítico e o endurecimento do ciclo de vida de feature flags; a correção funcional atual de fail-closed, tenant explícito, cache bounded, upsert atômico, autoridade request-scoped e ownership composto está no commit `8bb1bd71`, sobre a otimização de leitura autenticada em `15ba86a8`).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
