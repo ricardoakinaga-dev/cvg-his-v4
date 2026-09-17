@@ -1,8 +1,8 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-17T13:28:36Z
+## Snapshot vigente — 2026-09-17T21:09:34Z
 
-O baseline autoritativo do snapshot atual está em: `836b8b76b95722e422c5bc50c01e0ae61b82a0ae` (snapshot reancorado após a normalização de rasterização de texto entre runners, a fixação de Noto Sans nos gates visuais, a verificação portátil do runner, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental, a revisão 73 do manifesto crítico, o endurecimento do ciclo de vida de feature flags e a correção do contrato de evidência SQL legado; o orçamento físico de `server.ts` foi restaurado a `8.335` linhas sem alteração de comportamento; o teste Node nativo de feature flags ficou fora da varredura global do Vitest para preservar a cobertura congelada).
+O baseline autoritativo do snapshot atual está em: `5a5388281633a235a6e53909c7432c4535194d70` (snapshot reancorado após a implementação do importador candidate-bound do evidence graph, que valida envelope, frescor, ancestralidade, ambiente, integridade e digests sem promover evidência local a PASS; o comportamento ERP anterior permanece preservado).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em

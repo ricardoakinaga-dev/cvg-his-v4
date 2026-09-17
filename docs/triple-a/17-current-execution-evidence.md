@@ -1,13 +1,32 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato documental observado em 2026-09-17T13:28:36Z
+## Candidato documental observado em 2026-09-17T21:24:29Z
 
-- SHA de código e documentação: `836b8b76b95722e422c5bc50c01e0ae61b82a0ae`;
+- SHA de código e documentação: `5a5388281633a235a6e53909c7432c4535194d70`;
   identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
 - O manifesto crítico está na revisão 73, ancorado no commit funcional `836b8b76b957` e publicado na identidade do snapshot; o candidato instala Chromium, fixa Noto Sans nos jobs E2E/visual, desativa LCD text no Playwright e verifica a fonte com comandos portáteis do runner, provisiona PostgreSQL 16 via PGDG fingerprint-pinned, aceita o par V8 de inicializadores do Node 22, publica o artefato SQL verificado, valida o registro P0 e fecha o threshold global de branches com contratos determinísticos. Os gates SPA agora usam API compilada e servidor estático com proxy same-origin `/api`, igual ao harness canônico local. O provider raw de feature flags aplica kill switch persistido, expiração, precedência de escopo, allowlist fail-closed, cache bounded/invalidação, consultas tenant-scoped explícitas e ownership composto entre flag e override; a evidência SQL executa 0173/0174 para validar o schema final, mas publica somente os passos legados 0170/0171/0172 exigidos pelo consumidor. A suíte oficial Node do módulo de feature flags permanece ativa, enquanto seu teste nativo fica fora da varredura global do Vitest; `server.ts` respeita o orçamento de `8.335` linhas. Rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
 - O [CI #238](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35248052991), executado antes desta correção, falhou na cobertura global porque um teste Node nativo foi incluído indevidamente no sweep do Vitest; ele não é evidência do candidato corrigido.
+
+## Importação corrente do evidence graph — 2026-09-17
+
+- `pnpm evidence:triple-a:graph` lê os envelopes locais conhecidos em
+  `artifacts/release/`, valida schema, SHA do envelope, ambiente, frescor,
+  ancestralidade do candidato funcional e digest dos artefatos referenciados.
+- Evidência local fresca de workflow PostgreSQL e auditoria foi importada como
+  `PARTIAL`, com vínculo explícito ao candidato funcional e ao HEAD documental;
+  a ausência de attestation independente impede `PASS` e mantém o graph
+  `BLOCKED`.
+- Os testes do contrato cobrem envelope fresco, descendente documental,
+  stale, digest adulterado e symlink. O importador não substitui o gate de
+  release, CI remoto, target ou autoridade humana.
+- A execução local corrente de `DATABASE_URL_TEST` sobre PostgreSQL descartável
+  terminou com `67/67` arquivos e `618/618` testes de integração aprovados; a
+  fase serial de processo terminou com `11/11` cenários aprovados, incluindo
+  SIGKILL/takeover, idempotência, concorrência financeira, PIX, webhook e
+  workflow. Essa coleta é diagnóstico candidate-bound e não fecha os P0 que
+  exigem CI, target ou autoridade independente.
 
 ## Validações locais
 
@@ -15,14 +34,14 @@
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Gate crítico R05-010   | O [CI #214](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35204183554) terminou com Critical Coverage Gate e gates estruturais/funcionais em `PASS`; E2E SPA `424/424`, Visual `29/29`, e somente Performance falhou |
 | Workspace              | Cobertura global `273/273` arquivos e `2907/2907` testes passou; `87,46%` statements, `82,00%` branches, `89,32%` functions, `88,91%` lines; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas, lint, typecheck, contratos CI `20/20`, cobertura/processo e SQL `34/34` passaram |
-| Identidade/evidence graph | Identidade canônica do snapshot documental `52a62b80`; registro P0 `1 CLOSED / 13 OPEN`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` |
+| Identidade/evidence graph | Identidade canônica do snapshot documental `5a538828`; registro P0 `1 CLOSED / 13 OPEN`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` |
 | Coverage crítico current | O #205 passou o Critical Coverage Gate; a cobertura geral local passou o threshold congelado e a correção do shard de revogação foi validada localmente |
 | Vue especializado current | O #214 passou Visual Regression `29/29` no candidato funcional equivalente; a normalização `--disable-lcd-text` e os seis baselines auditados permanecem; nenhum threshold foi relaxado |
 | SQL/migrações current  | PostgreSQL 16.15 privado socket-only; produtor independente PASS com `173` migrações executáveis + `7` históricos; cadeia completa e seed repetível |
 | Performance/target     | k6 local limitado a quatro CPUs passou `9/9`; o #214 passou `7/9` SLOs e reprovou query p95 `217ms` e inventory p95 `202,76ms`; target/soak/restore/UAT/attestation permanecem `NOT_PROVEN` |
 | Supply/artefatos       | O graph, o pacote local e o registro P0 são gerados/validados fail-closed; nenhum PASS externo ou histórico foi inventado |
 
-### Evidência adicional do candidato `52a62b80`
+### Evidência histórica preservada — candidato `52a62b80`
 
 - O provider de feature flags passou cinco testes focados cobrindo precedência
   de escopo, kill switch persistido, expiração com cache, allowlist sem usuário
@@ -145,7 +164,16 @@ evidência de restore, corrupção, migration mismatch, RPO/RTO, deploy,
 rollback, attestation, soak ou alert delivery em target. O k6 local aprovado
 não substitui a execução remota nem uma certificação de target.
 
-## Decisão
+## Decisão corrente
+
+O candidato `5a5388281633a235a6e53909c7432c4535194d70` permanece
+`BLOCKED / NOT PROVEN`. A suíte local de integração/processo está verde e os
+envelopes locais são candidate-bound, mas o evidence graph os mantém em
+`PARTIAL` até uma verificação independente. O registro P0 permanece em
+`1 CLOSED / 13 OPEN`; não há autorização para release, `main green` ou
+`TRIPLE-A VERIFIED`.
+
+## Decisão histórica preservada
 
 O envelope ignorado `artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json` do candidato
 `358e546e` é `BLOCKED / NOT PROVEN` (`51/49/18`); a execução completa passou
