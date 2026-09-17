@@ -9,6 +9,7 @@ import {
   runWithoutDatabaseTransactionScope,
   withTenantTransaction
 } from '@cvg-his-v2/shared-database';
+import { isProductionLikeEnvironment } from '@cvg-his-v2/shared-config';
 import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
 import { isSecureRequest } from './http/security-headers.js';
 import { requireApiKey as requireApiKeyHelper } from './helpers/auth-helpers.js';
@@ -227,13 +228,7 @@ import {
 import {
   getMetricsText,
   decrementActiveRequests,
-  httpErrorsTotal,
-  httpOperationalOutcomesTotal,
-  httpRequestDurationSeconds,
-  httpRequestsTotal,
-  normalizeRoute,
   incrementActiveRequests,
-  recordRequestSloObservation,
   updateAppMetrics,
   updateDatabasePoolMetrics,
   refreshClinicalOperationalMetrics,
@@ -247,13 +242,15 @@ import {
 import {
   tracingMiddleware,
   createSpan,
-  endSpan,
   withSpanContext,
   injectTraceContext,
   formatTraceParent,
   type Span,
   type TraceableIncomingMessage
 } from './tracing.js';
+import { assertDistributedStateReadiness } from './distributed-runtime-readiness.js';
+import { attachHttpRequestTelemetry } from './http-request-telemetry.js';
+export { assertDistributedStateReadiness } from './distributed-runtime-readiness.js';
 import { generateSLOReport, getSLOConfigs } from './slos.js';
 import type { AttachmentSecurityScanner, FileStorage } from '@cvg-his-v2/module-attachments';
 import { getAppState } from './app-state.js';
@@ -416,7 +413,7 @@ export interface ApiServerOptions {
   /** Secrets manager for reading credentials at startup. Uses EnvSecretsProvider when omitted. */
   readonly secretsManager?: SecretsManager;
 }
-type ApiRateLimiter = Pick<ReturnType<typeof createAuthRateLimiter>, 'check'> &
+export type ApiRateLimiter = Pick<ReturnType<typeof createAuthRateLimiter>, 'check'> &
   Partial<Pick<ReturnType<typeof createAuthRateLimiter>, 'healthCheck' | 'close'>>;
 export type ApiServer = ReturnType<typeof createServer> & {
   readonly ready: Promise<void>;
@@ -449,15 +446,6 @@ function registerChaosExperimentOnce(chaos: ChaosEngine, experiment: { id: strin
   if (!alreadyRegistered) {
     chaos.register(experiment as never);
   }
-}
-function isProductionLikeEnvironment(environment: string): boolean {
-  const normalized = environment.trim().toLowerCase();
-  return (
-    normalized === 'production' ||
-    normalized === 'staging' ||
-    normalized === 'prod' ||
-    normalized === 'stage'
-  );
 }
 function isLocalDevelopmentOrTestEnvironment(environment: string): boolean {
   const normalized = environment.trim().toLowerCase();
@@ -561,33 +549,6 @@ export function assertProductionProviderReadiness(
   }
 }
 
-/**
- * Production-like runtimes must prove that the configured Redis backend is
- * reachable before the listener is exposed. HTTP readiness still probes this
- * dependency continuously, but this startup preflight prevents a process from
- * accepting traffic while its distributed state is already degraded.
- */
-export async function assertDistributedStateReadiness(options: {
-  readonly environment: string;
-  readonly runtimeDistributedStateEnabled: boolean;
-  readonly redisUrl?: string;
-  readonly authRateLimiter?: ApiRateLimiter;
-  readonly pixPaymentAttemptRateLimiter?: ApiRateLimiter;
-  readonly pixProviderWebhookRateLimiter?: ApiRateLimiter;
-}): Promise<void> {
-  if (!isProductionLikeEnvironment(options.environment)) return;
-
-  if (!options.runtimeDistributedStateEnabled || !options.redisUrl) {
-    throw new Error(
-      'Production-like API requires an enabled and configured Redis distributed-state backend'
-    );
-  }
-
-  const health = await resolveRedisHealthStatus(options, true);
-  if (!health?.healthy) {
-    throw new Error('Production-like API cannot start while Redis distributed state is unhealthy');
-  }
-}
 function decodeAttachmentContent(contentBase64: unknown): Buffer | undefined {
   if (contentBase64 === undefined) return undefined;
   if (typeof contentBase64 !== 'string') {
@@ -4299,67 +4260,15 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       'traceparent',
       formatTraceParent(span.context.traceId, span.context.spanId, span.context.traceFlags)
     );
-    let requestTelemetryFinalized = false;
-    const finalizeRequestTelemetry = () => {
-      if (requestTelemetryFinalized) return;
-      requestTelemetryFinalized = true;
-
-      const durationNs = process.hrtime.bigint() - startTime;
-      const durationSec = Number(durationNs) / 1e9;
-      const url = new URL(request.url ?? '/', 'http://localhost');
-      const route = normalizeRoute(url.pathname);
-      const method = request.method ?? 'UNKNOWN';
-      const statusCode = response.statusCode;
-
-      httpRequestsTotal.inc({ method, route, status_code: String(statusCode) });
-      httpRequestDurationSeconds.observe(
-        { method, route, status_code: String(statusCode) },
-        durationSec
-      );
-      recordRequestSloObservation({
-        durationMs: durationSec * 1000,
-        statusCode
-      });
-
-      if (statusCode >= 400) {
-        const category = statusCode >= 500 ? '5xx' : '4xx';
-        httpErrorsTotal.inc({ status_category: category });
-      }
-
-      const role = requestRoles.get(request)?.slice().sort().join('+') || 'anonymous';
-      const isDownload =
-        route === '/reports/executions/:id/export' || route === '/attachments/:id/download';
-      const operation = statusCode === 403 ? 'forbidden' : isDownload ? 'download' : 'route_error';
-      if (statusCode >= 400 || isDownload) {
-        const result = statusCode >= 400 ? 'error' : 'success';
-        httpOperationalOutcomesTotal.inc({ route, role, operation, result });
-        logger.info('http operational outcome', {
-          correlationId,
-          method,
-          route,
-          role,
-          operation,
-          result,
-          statusCode,
-          durationMs: Math.round(durationSec * 1000)
-        });
-      }
-
-      span.attributes['http.method'] = method;
-      span.attributes['http.route'] = route;
-      span.attributes['http.target'] = request.url ?? '/';
-      span.attributes['http.status_code'] = statusCode;
-      span.attributes['http.duration_ms'] = Math.round(durationSec * 1000);
-      span.attributes['request.correlation_id'] = correlationId;
-
-      // End the tracing span
-      endSpan(span, statusCode >= 400 ? 'error' : 'ok');
-    };
-    // `close` is the only terminal signal for a client that disconnects before
-    // the response is flushed. Finalizing on both signals prevents orphaned
-    // spans and missing latency/error observations without double-counting.
-    response.once('finish', finalizeRequestTelemetry);
-    response.once('close', finalizeRequestTelemetry);
+    attachHttpRequestTelemetry({
+      request,
+      response,
+      startTime,
+      correlationId,
+      requestRoles,
+      span,
+      logger
+    });
 
     if (!corsDecision.allowed) {
       response.statusCode = 403;
