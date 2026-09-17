@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "836b8b76b95722e422c5bc50c01e0ae61b82a0ae",
+  "head": "1593f4ea736072880eb8d55427532591622150c0",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -60,6 +60,7 @@
       "apps/api/src/laboratory-provider-keyring.test.ts",
       "apps/api/src/laboratory-result-import-repository.test.ts",
       "apps/api/src/payment-gateway.test.ts",
+      "apps/api/src/production-runtime-contract.test.ts",
       "apps/api/src/registry-request-boundaries.test.ts",
       "apps/api/src/routes/access-control-audit-events.test.ts",
       "apps/api/src/routes/administrative-reports-routes.test.ts",
@@ -116,7 +117,8 @@
       "apps/api/src/server.test.ts",
       "apps/api/src/setup-provisioning.test.ts",
       "apps/api/src/setup-token.test.ts",
-      "apps/api/src/startup-secrets.test.ts"
+      "apps/api/src/startup-secrets.test.ts",
+      "apps/api/src/tracing.test.ts"
     ],
     "native-worker": [
       "apps/worker/src/account-discovery.test.ts",
@@ -129,6 +131,7 @@
       "apps/worker/src/report-delivery-provider.test.ts",
       "apps/worker/src/runner.test.ts",
       "apps/worker/src/scheduled-report-filters.test.ts",
+      "apps/worker/src/worker-metrics.test.ts",
       "apps/worker/src/worker-report-identity.test.ts",
       "apps/worker/src/workflow-task-runner.test.ts"
     ]
@@ -1067,7 +1070,7 @@
     },
     {
       "path": "apps/api/src/server.ts",
-      "sha256": "0d712fac89d5b586db0e92c992445f9273e8ab5899f6d3cda16088403097cece",
+      "sha256": "c04b8c042652fc09ff7c1507c0d7cc1bb6abb858a6913ff00289498cddf564b2",
       "components": [
         "http-routes"
       ],
@@ -8365,7 +8368,13 @@
     "tests/unit/api/laboratory-result-import-coverage.test.ts",
     "tests/unit/api/laboratory-result-import-database-coverage.test.ts",
     "tests/unit/api/pix-repository-boundaries-coverage.test.ts",
-    "tests/unit/api/setup-token-coverage.test.ts"
+    "tests/unit/api/setup-token-coverage.test.ts",
+    "apps/api/src/production-runtime-contract.ts",
+    "apps/api/src/distributed-runtime-readiness.ts",
+    "apps/api/src/http-request-telemetry.ts",
+    "apps/api/src/production-runtime-contract.test.ts",
+    "apps/api/src/tracing.test.ts",
+    "apps/worker/src/worker-metrics.test.ts"
   ],
   "scopeHistory": [
     {
@@ -11531,6 +11540,54 @@
       "added": [],
       "removed": [],
       "changed": []
+    },
+    {
+      "manifestRevision": 74,
+      "observedAt": "2026-09-17T22:42:10.536Z",
+      "collectionCommit": "1593f4ea736072880eb8d55427532591622150c0",
+      "previousManifestSha256": "c68629a9cc4185614f53f508d2fa47092c829bf583227d5de30558b32be5b269",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-c68629a9cc4185614f53f508d2fa47092c829bf583227d5de30558b32be5b269.json",
+      "previousSourceSetSha256": "2833b899557c88a52f30e48ad4c6946a6160c84a5a4517cfac79b57ec2d5cd18",
+      "sourceSetSha256": "e570fc9dca2a635122d7b62de1d5e8e9682d4dcce73a7bbce4481914be574185",
+      "reason": "Reanchor runtime readiness, tracing and worker observability contracts after the State of Art hardening",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/server.ts",
+          "before": "0d712fac89d5b586db0e92c992445f9273e8ab5899f6d3cda16088403097cece",
+          "after": "c04b8c042652fc09ff7c1507c0d7cc1bb6abb858a6913ff00289498cddf564b2"
+        }
+      ],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "apps/api/src/production-runtime-contract.ts",
+        "apps/api/src/distributed-runtime-readiness.ts",
+        "apps/api/src/http-request-telemetry.ts",
+        "apps/api/src/production-runtime-contract.test.ts",
+        "apps/api/src/tracing.test.ts",
+        "apps/worker/src/worker-metrics.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
+      "executionInputsSha256": "a06631caa95b8f9e268e2e40e79533e5c7e66a0d84b9b850528dd785e2ced890",
+      "nativeChanged": [
+        {
+          "shard": "native-api",
+          "added": [
+            "apps/api/src/production-runtime-contract.test.ts",
+            "apps/api/src/tracing.test.ts"
+          ],
+          "removed": []
+        },
+        {
+          "shard": "native-worker",
+          "added": [
+            "apps/worker/src/worker-metrics.test.ts"
+          ],
+          "removed": []
+        }
+      ]
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12464,9 +12521,9 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 73,
-  "sourceSetSha256": "2833b899557c88a52f30e48ad4c6946a6160c84a5a4517cfac79b57ec2d5cd18",
-  "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
+  "manifestRevision": 74,
+  "sourceSetSha256": "e570fc9dca2a635122d7b62de1d5e8e9682d4dcce73a7bbce4481914be574185",
+  "executionInputsSha256": "a06631caa95b8f9e268e2e40e79533e5c7e66a0d84b9b850528dd785e2ced890",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,
