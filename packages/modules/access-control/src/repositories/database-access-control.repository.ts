@@ -258,54 +258,12 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
   async getAccountChangeToken(accountId: AccountId): Promise<string> {
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query<{ readonly token: string }>(
-        `SELECT md5(concat_ws('|',
-           COALESCE((SELECT string_agg(
-             concat_ws(':', id, code, name, description, is_active::text, updated_at::text),
-             '|' ORDER BY id
-           ) FROM access_teams WHERE account_id = $1), ''),
-           COALESCE((SELECT string_agg(
-             concat_ws(':', id, code, name, description, is_active::text, updated_at::text),
-             '|' ORDER BY id
-           ) FROM access_sectors WHERE account_id = $1), ''),
-           COALESCE((SELECT string_agg(
-             concat_ws(':', user_id, team_id, created_at::text),
-             '|' ORDER BY user_id, team_id
-           ) FROM access_team_memberships WHERE account_id = $1), ''),
-           COALESCE((SELECT string_agg(
-             concat_ws(':', user_id, sector_id, created_at::text),
-             '|' ORDER BY user_id, sector_id
-           ) FROM access_sector_memberships WHERE account_id = $1), ''),
-           COALESCE((SELECT string_agg(
-             concat_ws(':', user_id, permission_id, effect, updated_at::text),
-             '|' ORDER BY user_id, permission_id
-           ) FROM access_user_permissions WHERE account_id = $1), ''),
-           COALESCE((SELECT string_agg(
-             concat_ws(':', team_id, permission_id, effect, updated_at::text),
-             '|' ORDER BY team_id, permission_id
-           ) FROM access_team_permissions WHERE account_id = $1), ''),
-           COALESCE((SELECT string_agg(
-             concat_ws(':', sector_id, permission_id, effect, updated_at::text),
-             '|' ORDER BY sector_id, permission_id
-           ) FROM access_sector_permissions WHERE account_id = $1), ''),
-           COALESCE((SELECT string_agg(
-             concat_ws(':', user_id, role_id, assigned_at::text),
-             '|' ORDER BY user_id, role_id
-           ) FROM user_roles
-           WHERE user_id IN (SELECT id FROM users WHERE account_id = $1)), ''),
-           COALESCE((SELECT string_agg(
-             concat_ws(':', id, name, description), '|' ORDER BY id
-           ) FROM roles), ''),
-           COALESCE((SELECT string_agg(
-             concat_ws(':', id, key, description), '|' ORDER BY id
-           ) FROM permissions), ''),
-           COALESCE((SELECT string_agg(
-             concat_ws(':', role_id, permission_id, granted_at::text),
-             '|' ORDER BY role_id, permission_id
-           ) FROM role_permissions), '')
-         )) AS token`,
+        `SELECT version::text AS token
+         FROM access_control_change_versions
+         WHERE account_id = $1`,
         [accountId]
       );
-      return result.rows[0]?.token ?? '';
+      return result.rows[0]?.token ?? '0';
     });
   }
 

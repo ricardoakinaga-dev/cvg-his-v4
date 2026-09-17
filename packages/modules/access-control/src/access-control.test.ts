@@ -2112,7 +2112,7 @@ describe('DatabaseAccessControlRepository', () => {
 
     const repository = new DatabaseAccessControlRepository();
     expect(await repository.getAccountChangeToken(accountId)).toBe('token-1');
-    expect(await repository.getAccountChangeToken(accountId)).toBe('');
+    expect(await repository.getAccountChangeToken(accountId)).toBe('0');
 
     const createdTeam = await repository.createTeam({
       accountId,

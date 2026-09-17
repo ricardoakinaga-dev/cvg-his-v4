@@ -25,6 +25,7 @@ export const RUNTIME_IMMUTABLE_TABLES = ['clinical_workflow_task_events'] as con
 
 /** Direct DML required by API-owned authentication and user repositories. */
 export const API_SENSITIVE_TABLE_PRIVILEGES = [
+  { tableName: 'access_control_change_versions', privileges: 'SELECT' },
   { tableName: 'users', privileges: 'SELECT, INSERT, UPDATE' },
   { tableName: 'sessions', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
   { tableName: 'mfa_credentials', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
@@ -46,6 +47,7 @@ export const WORKER_USER_READ_COLUMNS = [
 ] as const;
 
 export const RUNTIME_SENSITIVE_TABLES = [
+  'access_control_change_versions',
   'users',
   'account_service_principals',
   'sessions',
