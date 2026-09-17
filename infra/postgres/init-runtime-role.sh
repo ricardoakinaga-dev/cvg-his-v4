@@ -289,6 +289,7 @@ WHERE to_regprocedure('app.has_account_context()') IS NOT NULL
 SELECT format('REVOKE ALL PRIVILEGES ON TABLE public.%I FROM %I', candidate.table_name, runtime_role.role_name)
 FROM (
   VALUES
+    ('access_control_change_versions'),
     ('users'),
     ('account_service_principals'),
     ('sessions'),
@@ -309,6 +310,7 @@ WHERE to_regclass(format('public.%I', candidate.table_name)) IS NOT NULL
 SELECT format('GRANT %s ON TABLE public.%I TO %I', candidate.privileges, candidate.table_name, :'api_user')
 FROM (
   VALUES
+    ('access_control_change_versions', 'SELECT'),
     ('users', 'SELECT, INSERT, UPDATE'),
     ('sessions', 'SELECT, INSERT, UPDATE, DELETE'),
     ('mfa_credentials', 'SELECT, INSERT, UPDATE, DELETE'),

@@ -256,7 +256,7 @@ data:
     # broad RLS grants so a repeated Helm bootstrap cannot widen worker access.
     SELECT format('REVOKE ALL PRIVILEGES ON TABLE public.%I FROM %I', candidate.table_name, runtime_role.role_name)
     FROM (
-      VALUES ('users'), ('account_service_principals'), ('sessions'),
+      VALUES ('access_control_change_versions'), ('users'), ('account_service_principals'), ('sessions'),
              ('mfa_credentials'), ('auth_mfa_login_challenges'),
              ('auth_webauthn_credentials'), ('auth_webauthn_challenges'),
              ('api_keys'), ('api_key_usage'), ('api_key_rate_limits')
@@ -266,7 +266,8 @@ data:
 
     SELECT format('GRANT %s ON TABLE public.%I TO %I', candidate.privileges, candidate.table_name, :'api_user')
     FROM (
-      VALUES ('users', 'SELECT, INSERT, UPDATE'),
+      VALUES ('access_control_change_versions', 'SELECT'),
+             ('users', 'SELECT, INSERT, UPDATE'),
              ('sessions', 'SELECT, INSERT, UPDATE, DELETE'),
              ('mfa_credentials', 'SELECT, INSERT, UPDATE, DELETE'),
              ('auth_mfa_login_challenges', 'SELECT, INSERT, UPDATE'),

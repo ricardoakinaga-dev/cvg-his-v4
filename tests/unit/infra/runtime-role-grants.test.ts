@@ -248,6 +248,7 @@ describe('runtime PostgreSQL role grants', () => {
 
   it('defines the API auth/user contract without allowing service-principal mapping mutation', () => {
     expect(API_SENSITIVE_TABLE_PRIVILEGES).toEqual([
+      { tableName: 'access_control_change_versions', privileges: 'SELECT' },
       { tableName: 'users', privileges: 'SELECT, INSERT, UPDATE' },
       { tableName: 'sessions', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
       { tableName: 'mfa_credentials', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
@@ -265,6 +266,7 @@ describe('runtime PostgreSQL role grants', () => {
 
   it('reapplies sensitive-table least privilege after every broad RLS grant', () => {
     const protectedTables = [
+      'access_control_change_versions',
       'users',
       'account_service_principals',
       'sessions',
