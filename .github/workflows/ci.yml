@@ -1453,7 +1453,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends fonts-noto-core
           fc-cache --force
-          fc-match -f '%{family}\n' 'Noto Sans' | rg -q '^Noto Sans$'
+          fc-match -f '%{family}\n' 'Noto Sans' | grep -Fqx 'Noto Sans'
 
       - name: Wait for PostgreSQL
         run: |
@@ -1754,7 +1754,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends fonts-noto-core
           fc-cache --force
-          fc-match -f '%{family}\n' 'Noto Sans' | rg -q '^Noto Sans$'
+          fc-match -f '%{family}\n' 'Noto Sans' | grep -Fqx 'Noto Sans'
 
       - name: Wait for PostgreSQL
         run: |

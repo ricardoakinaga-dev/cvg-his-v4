@@ -70,7 +70,7 @@ describe('CI repository guardrails', () => {
       expect(job).toContain('node infra/scripts/serve-spa-e2e.mjs &');
       expect(job).toContain('SPA_E2E_API_TARGET: http://127.0.0.1:3001');
       expect(job).toContain('fonts-noto-core');
-      expect(job).toContain("fc-match -f '%{family}\\n' 'Noto Sans'");
+      expect(job).toContain("fc-match -f '%{family}\\n' 'Noto Sans' | grep -Fqx 'Noto Sans'");
       expect(job).not.toContain('run preview');
     }
   });
