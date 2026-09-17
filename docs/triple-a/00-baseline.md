@@ -1,14 +1,14 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-17T07:35:26Z
+## Snapshot vigente — 2026-09-17T08:04:22Z
 
-O baseline autoritativo do snapshot atual está em: `144b3b443e966b81fb600dae9c385fafec8516d0` (snapshot reancorado após a fixação de Noto Sans nos gates visuais, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental e a revisão 60 do manifesto crítico; a correção funcional de fail-closed permanece no commit `95227098` e a otimização de leitura autenticada em `15ba86a8`).
+O baseline autoritativo do snapshot atual está em: `a80454733532af1553e46b63babcf1653251cbe3` (snapshot reancorado após a fixação de Noto Sans nos gates visuais, a verificação portátil do runner, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental e a revisão 61 do manifesto crítico; a correção funcional de fail-closed permanece no commit `95227098` e a otimização de leitura autenticada em `15ba86a8`).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
 documentação corrente sucede os candidatos históricos sem transferir evidência;
-o candidato `144b3b44` consolida a cobertura de contratos de pagamento, marketing,
+o candidato `a8045473` consolida a cobertura de contratos de pagamento, marketing,
 laboratório, ML e limites operacionais, preservando o runner PostgreSQL 16, os
 checksums de migração e a aceitação restrita do par de inicializadores V8; a
 branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem

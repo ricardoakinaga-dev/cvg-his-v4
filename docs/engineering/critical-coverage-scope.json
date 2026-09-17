@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "144b3b443e966b81fb600dae9c385fafec8516d0",
+  "head": "a80454733532af1553e46b63babcf1653251cbe3",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -11220,6 +11220,19 @@
       "added": [],
       "removed": [],
       "changed": []
+    },
+    {
+      "manifestRevision": 61,
+      "observedAt": "2026-09-17T08:08:13.702Z",
+      "collectionCommit": "a80454733532af1553e46b63babcf1653251cbe3",
+      "previousManifestSha256": "c0b828360465d8547714ce60a8e692c213c1b5adebfd995529d00c770aad73f5",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-c0b828360465d8547714ce60a8e692c213c1b5adebfd995529d00c770aad73f5.json",
+      "previousSourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
+      "sourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
+      "reason": "Re-anchor critical evidence after portable Noto Sans verification command",
+      "added": [],
+      "removed": [],
+      "changed": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12153,7 +12166,7 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 60,
+  "manifestRevision": 61,
   "sourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
   "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
   "specializedEvidence": {

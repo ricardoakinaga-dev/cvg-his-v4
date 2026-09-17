@@ -1,11 +1,11 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato documental observado em 2026-09-17T07:35:26Z
+## Candidato documental observado em 2026-09-17T08:04:22Z
 
-- SHA de código e documentação: `144b3b443e966b81fb600dae9c385fafec8516d0`;
+- SHA de código e documentação: `a80454733532af1553e46b63babcf1653251cbe3`;
   identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O manifesto crítico está na revisão 60, ancorado no commit `144b3b44` e publicado na identidade do snapshot; o candidato instala Chromium, fixa Noto Sans nos jobs E2E/visual, provisiona PostgreSQL 16 via PGDG fingerprint-pinned, aceita o par V8 de inicializadores do Node 22, publica o artefato SQL verificado, valida o registro P0 e fecha o threshold global de branches com contratos determinísticos. Os gates SPA agora usam API compilada e servidor estático com proxy same-origin `/api`, igual ao harness canônico local. O classificador de identidade aceita a atualização do manifesto como bookkeeping documental sem ignorar mudanças de código. O roteamento inicial usa somente o contexto JWT verificado; a guarda final relê sessão, usuário, função e permissões de forma autoritativa, com erros genéricos de sessão sanitizados para 503, e `server.ts` respeita o orçamento de `8.335` linhas. Rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- O manifesto crítico está na revisão 61, ancorado no commit `a8045473` e publicado na identidade do snapshot; o candidato instala Chromium, fixa Noto Sans nos jobs E2E/visual, verifica a fonte com comandos portáteis do runner, provisiona PostgreSQL 16 via PGDG fingerprint-pinned, aceita o par V8 de inicializadores do Node 22, publica o artefato SQL verificado, valida o registro P0 e fecha o threshold global de branches com contratos determinísticos. Os gates SPA agora usam API compilada e servidor estático com proxy same-origin `/api`, igual ao harness canônico local. O classificador de identidade aceita a atualização do manifesto como bookkeeping documental sem ignorar mudanças de código. O roteamento inicial usa somente o contexto JWT verificado; a guarda final relê sessão, usuário, função e permissões de forma autoritativa, com erros genéricos de sessão sanitizados para 503, e `server.ts` respeita o orçamento de `8.335` linhas. Rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
 
 ## Validações locais
@@ -14,9 +14,9 @@
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Gate crítico R05-010   | O [CI #205](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35188872670) terminou com `Critical Coverage Gate=PASS`; o run geral falhou somente em E2E/visual/performance |
 | Workspace              | Cobertura global `273/273` arquivos e `2907/2907` testes passou; `87,46%` statements, `82,00%` branches, `89,32%` functions, `88,91%` lines; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas, lint, typecheck, contratos CI `20/20`, cobertura/processo e SQL `34/34` passaram |
-| Identidade/evidence graph | Identidade canônica do snapshot documental `144b3b44`; registro P0 `1 CLOSED / 13 OPEN`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` |
+| Identidade/evidence graph | Identidade canônica do snapshot documental `a8045473`; registro P0 `1 CLOSED / 13 OPEN`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` |
 | Coverage crítico current | O #205 passou o Critical Coverage Gate; a cobertura geral local passou o threshold congelado e a correção do shard de revogação foi validada localmente |
-| Vue especializado current | A captura visual local do candidato `144b3b44` passou `29/29` contra os snapshots versionados após a fixação de Noto Sans; o CI remoto exato ainda aguarda execução, sem promoção de baseline |
+| Vue especializado current | A captura visual local do candidato `a8045473` passou `29/29` contra os snapshots versionados após a fixação de Noto Sans; o CI remoto exato ainda aguarda execução, sem promoção de baseline |
 | SQL/migrações current  | PostgreSQL 16.15 privado socket-only; produtor independente PASS com `171` migrações executáveis + `7` históricos; cadeia completa e seed repetível |
 | Performance/target     | k6 local limitado a quatro CPUs passou `9/9`; o #205 histórico reprovou query p95 `212 ms` e inventory p95 `200,36 ms`; target/soak/restore/UAT/attestation permanecem `NOT_PROVEN` |
 | Supply/artefatos       | O graph, o pacote local e o registro P0 são gerados/validados fail-closed; nenhum PASS externo ou histórico foi inventado |

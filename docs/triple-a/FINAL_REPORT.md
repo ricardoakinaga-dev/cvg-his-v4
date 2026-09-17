@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `144b3b443e966b81fb600dae9c385fafec8516d0`
-(snapshot reancorado com o registro P0 candidate-bound, Noto Sans determinístico nos gates E2E/visual, o harness SPA canônico com proxy same-origin e a correção fail-closed e de complexidade no commit `95227098`, sobre a otimização `15ba86a8`; manifesto crítico revision 60; a branch de assurance é ancestral sem commits exclusivos; a cobertura global local passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas, k6 local `9/9` SLOs e visual local `29/29` também passaram; o CI #205 remoto é histórico e não é promovido)
+**Candidate funcional avaliado:** `a80454733532af1553e46b63babcf1653251cbe3`
+(snapshot reancorado com o registro P0 candidate-bound, Noto Sans determinístico nos gates E2E/visual, verificação portátil do runner, o harness SPA canônico com proxy same-origin e a correção fail-closed e de complexidade no commit `95227098`, sobre a otimização `15ba86a8`; manifesto crítico revision 61; a branch de assurance é ancestral sem commits exclusivos; a cobertura global local passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas, k6 local `9/9` SLOs e visual local `29/29` também passaram; o CI #205 remoto é histórico e não é promovido)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
