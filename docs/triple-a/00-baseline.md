@@ -1,8 +1,8 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-17T13:12:08Z
+## Snapshot vigente — 2026-09-17T13:28:36Z
 
-O baseline autoritativo do snapshot atual está em: `949e420ecf984fb35a7f42769e62e2634b17b499` (snapshot reancorado após a normalização de rasterização de texto entre runners, a fixação de Noto Sans nos gates visuais, a verificação portátil do runner, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental, a revisão 64 do manifesto crítico e a correção do ciclo de vida de feature flags; a correção funcional de fail-closed permanece no commit `95227098` e a otimização de leitura autenticada em `15ba86a8`).
+O baseline autoritativo do snapshot atual está em: `afea7ecad8de0c9447c6184dabc07c754369fcd2` (snapshot reancorado após a normalização de rasterização de texto entre runners, a fixação de Noto Sans nos gates visuais, a verificação portátil do runner, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental, a revisão 65 do manifesto crítico e a correção do ciclo de vida de feature flags; a correção funcional de fail-closed permanece no commit `95227098` e a otimização de leitura autenticada em `15ba86a8`).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
@@ -22,7 +22,7 @@ governança e autoridade de release continuam `NOT PROVEN`.
 
 ## Reconciliação da correção visual — 2026-09-17
 
-- O candidato local `949e420ecf984fb35a7f42769e62e2634b17b499` adiciona
+- O candidato local `afea7ecad8de0c9447c6184dabc07c754369fcd2` adiciona
   `--disable-lcd-text` ao Chromium e registra os seis baselines derivados dos
   `actual.png` do artefato visual do CI #212, depois de inspeção pixel-a-pixel
   que encontrou somente fringes de antialiasing de texto, sem mudança de layout
@@ -39,7 +39,7 @@ governança e autoridade de release continuam `NOT PROVEN`.
 
 ## Reconciliação do ciclo de feature flags — 2026-09-17
 
-- O commit `949e420ecf984fb35a7f42769e62e2634b17b499` corrige o provider raw usado
+- O commit `afea7ecad8de0c9447c6184dabc07c754369fcd2` corrige o provider raw usado
   pela API: aplica `enabled=false` e `expiresAt` antes dos overrides, seleciona
   o escopo mais específico entre usuário/conta/ambiente, nega allowlist sem
   correspondência e limita o cache ao vencimento.
@@ -47,7 +47,7 @@ governança e autoridade de release continuam `NOT PROVEN`.
   tenant-scoped de PostgreSQL; percentuais inválidos falham fechado e erros de
   infraestrutura continuam observáveis e delegam ao fallback.
 - O ADR-014 e cinco testes específicos documentam e verificam o comportamento.
-  O manifesto crítico foi reancorado pela ferramenta oficial na revisão 64;
+  O manifesto crítico foi reancorado pela ferramenta oficial na revisão 65;
   nenhum threshold, shard ou evidência histórica foi promovido.
 
 ## Registro obrigatório do prompt

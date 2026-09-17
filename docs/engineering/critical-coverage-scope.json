@@ -1,11 +1,11 @@
-Warning: truncated output (original token count: 139843)
-Total output lines: 12281
+Warning: truncated output (original token count: 140058)
+Total output lines: 12294
 
 {
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "949e420ecf984fb35a7f42769e62e2634b17b499",
+  "head": "afea7ecad8de0c9447c6184dabc07c754369fcd2",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -2316,26 +2316,7 @@ Total output lines: 12281
       "path": "packages/db/migrations/0056_clinical_handoff_completion.sql",
       "sha256": "22420c21aabf346ec3068832d12986be60e49073a5b5d25bfac9c47b4ffb03f3",
       "components": [
-        "roles…99843 tokens truncated…reviousSourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
-      "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
-      "reason": "Adicionar contrato de runtime in-memory para API keys, outbox, webhooks e ML",
-      "added": [],
-      "removed": [],
-      "changed": [],
-      "inputsReplaced": [],
-      "inputsAdded": [
-        "tests/unit/api/runtime-repositories-inmemory.test.ts"
-      ],
-      "inputsRemoved": [],
-      "previousExecutionInputsSha256": "f873a41395b49e0e7f28ac7cc7bc2be9ea1156819e102ea94f0ddd73fdf143de",
-      "executionInputsSha256": "1f51d62a1645b37b4be55d5a0d05e6f70c8b6c7c222a35560f53ccef2ef753a7",
-      "vitestAdded": [
-        "tests/unit/api/runtime-repositories-inmemory.test.ts"
-      ],
-      "vitestRemoved": []
-    },
-    {
-      "manifestRevision": 40,
+        "roles…100058 tokens truncated…: 40,
       "observedAt": "2026-09-16T12:23:26.262Z",
       "collectionCommit": "3fca62b740e35b3c66b2cb9c6a05251c9a08b3b9",
       "previousManifestSha256": "4b87abb58e30ce2edaecd61811e86ce6d8e642b2f874531a25f5f9ceafd7f7c5",
@@ -2943,7 +2924,7 @@ Total output lines: 12281
     {
       "manifestRevision": 64,
       "observedAt": "2026-09-17T13:12:50.746Z",
-      "collectionCommit": "949e420ecf984fb35a7f42769e62e2634b17b499",
+      "collectionCommit": "303e1dfbd993a04e06ca5e3e222239e8c1c9d4d2",
       "previousManifestSha256": "5a885bb84dfc506f9de2361f48e87dc0c882333f3b4564e3cd1aea7dc7ad1b7b",
       "preservedManifest": "artifacts/remediation/MA-02/refresh-auth-and-feature-flags-candidate/critical-scope-before-5a885bb84dfc506f9de2361f48e87dc0c882333f3b4564e3cd1aea7dc7ad1b7b.json",
       "previousSourceSetSha256": "721c5e197b6fa5570368e5a9b4bdf0806064a6ba7c74b7e7ab3307c0263d6724",
@@ -2958,6 +2939,19 @@ Total output lines: 12281
           "after": "6d505d0542649e0e765a00cdfe1bbe9bdcae85e3ee227c308f84855778eb2352"
         }
       ]
+    },
+    {
+      "manifestRevision": 65,
+      "observedAt": "2026-09-17T13:27:45.445Z",
+      "collectionCommit": "afea7ecad8de0c9447c6184dabc07c754369fcd2",
+      "previousManifestSha256": "39818d6379c9de02f15193b091ab9bfca6ade8ae9f974f219e2fae07e7f5254b",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh-auth-and-feature-flags-test-contract/critical-scope-before-39818d6379c9de02f15193b091ab9bfca6ade8ae9f974f219e2fae07e7f5254b.json",
+      "previousSourceSetSha256": "6a09e26a1bbf70bf002546528fcec3d12662043abd4cf2ef67c0ecaeb468301e",
+      "sourceSetSha256": "6a09e26a1bbf70bf002546528fcec3d12662043abd4cf2ef67c0ecaeb468301e",
+      "reason": "Bind critical evidence to the feature-flag precedence test contract; preserve all scope, shards, thresholds and prior evidence.",
+      "added": [],
+      "removed": [],
+      "changed": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -3891,7 +3885,7 @@ Total output lines: 12281
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 64,
+  "manifestRevision": 65,
   "sourceSetSha256": "6a09e26a1bbf70bf002546528fcec3d12662043abd4cf2ef67c0ecaeb468301e",
   "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
   "specializedEvidence": {

@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `949e420ecf984fb35a7f42769e62e2634b17b499`
-(snapshot reancorado com o registro P0 candidate-bound, Noto Sans e rasterização sem LCD determinísticos nos gates E2E/visual, verificação portátil do runner, o harness SPA canônico com proxy same-origin, a correção fail-closed e de complexidade no commit `95227098`, sobre a otimização `15ba86a8`, e o ciclo de vida de feature flags; manifesto crítico revision 64; a branch de assurance é ancestral sem commits exclusivos; typecheck e lint do workspace passaram em `68/68` projetos, shared feature-flags passou `61` testes e module-feature-flags `5`; a cobertura global local anterior passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas e k6 local `9/9` SLOs passaram; o CI #217 remoto confirmou os gates funcionais, E2E SPA `424/424`, Visual `29/29` e Critical Coverage, mas k6 falhou em query/inventory; o CI #221 detectou manifesto desatualizado no snapshot remoto anterior; o veredito permanece bloqueado e nenhum threshold foi alterado)
+**Candidate funcional avaliado:** `afea7ecad8de0c9447c6184dabc07c754369fcd2`
+(snapshot reancorado com o registro P0 candidate-bound, Noto Sans e rasterização sem LCD determinísticos nos gates E2E/visual, verificação portátil do runner, o harness SPA canônico com proxy same-origin, a correção fail-closed e de complexidade no commit `95227098`, sobre a otimização `15ba86a8`, e o ciclo de vida de feature flags; manifesto crítico revision 65; a branch de assurance é ancestral sem commits exclusivos; typecheck e lint do workspace passaram em `68/68` projetos, shared feature-flags passou `61` testes e module-feature-flags `5`; a cobertura global local anterior passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas e k6 local `9/9` SLOs passaram; o CI #217 remoto confirmou os gates funcionais, E2E SPA `424/424`, Visual `29/29` e Critical Coverage, mas k6 falhou em query/inventory; o CI #221 detectou manifesto desatualizado no snapshot remoto anterior; o veredito permanece bloqueado e nenhum threshold foi alterado)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -11,7 +11,7 @@ O candidato preserva o modular monolith e a reconciliação fail-closed de
 proveniência. A paridade de Patient e o CORS credentialado restrito foram
 validados. No candidato corrente, os contratos alterados passaram, o produtor SQL
 passou com PostgreSQL 16.15 e a conversão V8 do processo aceita somente o par
-autenticado de inicializadores; o manifesto crítico está na revisão 64 e o
+autenticado de inicializadores; o manifesto crítico está na revisão 65 e o
 workflow publica evidência SQL antes do checker. O [CI #212](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35198105802)
 passou cobertura crítica, segurança, build, unitários, integração, contratos,
 processo Windows e as duas jornadas clínicas canônicas. O CI #214 confirmou
