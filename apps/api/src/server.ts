@@ -4383,10 +4383,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         return;
       }
 
-      // Synchronize the authoritative session context before tenant
-      // resolution. A failed repository check is remembered for the request
-      // so route guards cannot fall back to stale cache; the final guard still
-      // reloads the complete user and role profile before authorizing.
+      // Verify the signed token before tenant resolution. This is only the
+      // routing context: the final guard below still reloads the authoritative
+      // session, user and role profile before authorizing, so revocations and
+      // permission changes cannot be bypassed by a stale token.
       let accountId: string | undefined;
       let userId: string | undefined;
       const authHeader = request.headers['authorization'];
@@ -4394,9 +4394,9 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         const accessToken = extractBearerToken(authHeader);
         if (accessToken) {
           try {
-            const session = await auth.getAuthoritativeSessionContext(accessToken, correlationId);
-            accountId = session.accountId;
-            userId = session.userId;
+            const tokenContext = auth.getVerifiedAccessTokenContext(accessToken);
+            accountId = tokenContext.accountId;
+            userId = tokenContext.userId;
           } catch (error) {
             accessTokenSynchronizationErrors.set(
               request,

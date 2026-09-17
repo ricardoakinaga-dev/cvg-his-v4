@@ -1437,8 +1437,13 @@ test('AuthService: exposes authoritative session readers and access-token logout
 
   const session = await auth.getSession(login.accessToken);
   const context = await auth.getAuthoritativeSessionContext(login.accessToken);
+  const verifiedTokenContext = auth.getVerifiedAccessTokenContext(login.accessToken);
   assert.equal(session.sessionId, login.principal.session.sessionId);
   assert.deepEqual(context, session);
+  assert.deepEqual(verifiedTokenContext, {
+    accountId: login.principal.user.accountId,
+    userId: login.principal.user.id
+  });
   assert.equal(auth.listSessions().length, 1);
   await auth.hydrateFromRepository();
 

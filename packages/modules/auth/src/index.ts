@@ -20,6 +20,7 @@ import {
 } from '@cvg-his-v2/shared-errors';
 import type {
   AccessProfile,
+  AccountId,
   AuthenticatedPrincipal,
   SessionId,
   SessionSummary,
@@ -41,6 +42,12 @@ import type {
 import { InMemoryMfaLoginChallengeRepository } from './repositories/in-memory-mfa-login-challenge.repository.js';
 
 type SessionRecord = PersistedSessionRecord;
+
+export interface VerifiedAccessTokenContext {
+  readonly accountId: AccountId;
+  readonly userId: UserId;
+}
+
 const MFA_CHALLENGE_TTL_MS = 5 * 60 * 1000;
 const MFA_CHALLENGE_MAX_ATTEMPTS = 5;
 const MFA_CHALLENGE_LOCKOUT_DURATION_MS = 5 * 60 * 1000;
@@ -551,6 +558,32 @@ export class AuthService {
   public async synchronizeAccessToken(accessToken: string, correlationId: string): Promise<void> {
     const payload = this.#verifyToken(accessToken, 'access');
     await this.#loadAuthoritativeSession(payload, 'access', correlationId);
+  }
+
+  /**
+   * Verifies the access-token signature and expiry before tenant resolution.
+   *
+   * This is deliberately only a routing hint: it must never authorize a
+   * request or replace the authoritative session/permission read performed by
+   * the final request guard. Keeping the cryptographic check synchronous lets
+   * the API establish the tenant context without performing a duplicate
+   * database session lookup on every protected request.
+   */
+  public getVerifiedAccessTokenContext(accessToken: string): VerifiedAccessTokenContext {
+    const payload = this.#verifyToken(accessToken, 'access');
+    if (
+      typeof payload.account_id !== 'string' ||
+      payload.account_id.length === 0 ||
+      typeof payload.sub !== 'string' ||
+      payload.sub.length === 0
+    ) {
+      throw new AuthenticationError('Invalid token context');
+    }
+
+    return {
+      accountId: payload.account_id as AccountId,
+      userId: payload.sub as UserId
+    };
   }
 
   /**
