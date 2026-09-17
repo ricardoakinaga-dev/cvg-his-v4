@@ -1493,6 +1493,7 @@ jobs:
       - name: Start API
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
+          DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
           REDIS_URL: redis://localhost:6380
           RUNTIME_DISTRIBUTED_STATE_ENABLED: '1'
           AUTH_SECRET: e2e-ci-secret-key-do-not-use-in-production-12345678
@@ -1502,11 +1503,10 @@ jobs:
           AUTH_RATE_LIMIT_MAX_REQUESTS: '2000'
           API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
           PORT: '3001'
+          HOST: 127.0.0.1
           NODE_ENV: test
         run: |
-          pnpm --filter @cvg-his-v2/api run build &
-          wait
-          pnpm --filter @cvg-his-v2/api run dev &
+          node apps/api/dist/index.js &
           API_PID=$!
           echo "API_PID=$API_PID" >> $GITHUB_ENV
 
@@ -1527,9 +1527,15 @@ jobs:
       - name: Build SPA
         run: pnpm --filter @cvg-his-v2/spa run build
 
-      - name: Start SPA (preview server)
+      - name: Start SPA (static E2E server)
+        env:
+          SPA_E2E_HOST: 127.0.0.1
+          SPA_E2E_PORT: '3002'
+          SPA_E2E_API_TARGET: http://127.0.0.1:3001
         run: |
-          pnpm --filter @cvg-his-v2/spa run preview &
+          # The browser uses same-origin /api requests; this server serves the
+          # immutable build and proxies those requests to the API under test.
+          node infra/scripts/serve-spa-e2e.mjs &
           SPA_PID=$!
           echo "SPA_PID=$SPA_PID" >> $GITHUB_ENV
 
@@ -1778,16 +1784,17 @@ jobs:
       - name: Start API
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
+          DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
           REDIS_URL: redis://localhost:6380
           RUNTIME_DISTRIBUTED_STATE_ENABLED: '1'
           AUTH_SECRET: e2e-ci-secret-key-do-not-use-in-production-12345678
           AUTH_RATE_LIMIT_MAX_REQUESTS: '2000'
+          API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
           PORT: '3001'
+          HOST: 127.0.0.1
           NODE_ENV: test
         run: |
-          pnpm --filter @cvg-his-v2/api run build &
-          wait
-          pnpm --filter @cvg-his-v2/api run dev &
+          node apps/api/dist/index.js &
           API_PID=$!
           echo "API_PID=$API_PID" >> $GITHUB_ENV
 
@@ -1808,9 +1815,15 @@ jobs:
       - name: Build SPA
         run: pnpm --filter @cvg-his-v2/spa run build
 
-      - name: Start SPA (preview server)
+      - name: Start SPA (static E2E server)
+        env:
+          SPA_E2E_HOST: 127.0.0.1
+          SPA_E2E_PORT: '3002'
+          SPA_E2E_API_TARGET: http://127.0.0.1:3001
         run: |
-          pnpm --filter @cvg-his-v2/spa run preview &
+          # Keep visual evidence on the same production-shaped runtime as the
+          # local canonical harness, including the same-origin API proxy.
+          node infra/scripts/serve-spa-e2e.mjs &
           SPA_PID=$!
           echo "SPA_PID=$SPA_PID" >> $GITHUB_ENV
 

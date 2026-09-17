@@ -54,6 +54,25 @@ describe('CI repository guardrails', () => {
     expect(job).not.toContain('continue-on-error: true');
   });
 
+  it('runs browser gates against the compiled API and an API-proxying static SPA server', () => {
+    for (const jobName of ['test-e2e-spa', 'test-visual']) {
+      const jobStart = workflow.indexOf(`  ${jobName}:`);
+      expect(jobStart).toBeGreaterThan(-1);
+      const nextJobOffset = workflow.slice(jobStart + 3).search(/\n {2}[a-z0-9-]+:\n/);
+      const job = workflow.slice(
+        jobStart,
+        nextJobOffset === -1 ? undefined : jobStart + 3 + nextJobOffset
+      );
+
+      expect(job).toContain('node apps/api/dist/index.js &');
+      expect(job).toContain('API_DISABLE_INCOMPATIBLE_DB_REPOS: \'0\'');
+      expect(job).toContain('name: Start SPA (static E2E server)');
+      expect(job).toContain('node infra/scripts/serve-spa-e2e.mjs &');
+      expect(job).toContain('SPA_E2E_API_TARGET: http://127.0.0.1:3001');
+      expect(job).not.toContain('run preview');
+    }
+  });
+
   it('publishes Playwright failure artifacts from the configured output directory', () => {
     expect(playwrightConfig).toContain("outputDir: 'test-results'");
 
