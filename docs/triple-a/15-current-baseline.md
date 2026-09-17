@@ -1,7 +1,7 @@
 # Baseline corrente — State of Art
 
 Observado em `2026-09-17T09:01:08Z`, sobre o candidato documental
-`dfa6d0b4ea60d6e7fbbe42521793b9fad273f702`, que contém a identidade corrente
+`c27c66a4a0862cffa7f1b7952ac6c94faeb15595`, que contém a identidade corrente
 e a correção funcional de fail-closed e complexidade no commit
 `95227098193966638102ccfe1e54842289ebe7f1`, sobre a otimização do
 roteamento autenticado antes da guarda final, além do alinhamento do runner
@@ -18,7 +18,7 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| current_sha     | `dfa6d0b4ea60d6e7fbbe42521793b9fad273f702` (snapshot; registro P0 e manifesto revision 62; Noto Sans e rasterização sem LCD determinísticos nos gates E2E/visual; verificação portátil do runner; correção funcional e classificador documental; harness SPA canônico com proxy same-origin) |
+| current_sha     | `c27c66a4a0862cffa7f1b7952ac6c94faeb15595` (snapshot; registro P0 e manifesto revision 62; Noto Sans e rasterização sem LCD determinísticos nos gates E2E/visual; verificação portátil do runner; correção funcional e classificador documental; harness SPA canônico com proxy same-origin) |
 | main_sha        | `main` local contém o snapshot candidato; a alteração funcional equivalente está publicada em `origin/main@a4f2ef67`; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral, sem commits exclusivos; rollback preservado |
 | worktree        | Limpo antes da documentação corrente; artefatos gerados locais permanecem fora do commit |
 | rollback        | `origin/fix/state-of-art-ci-assurance@fe5406c2`; sem force-push |
@@ -37,7 +37,7 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 ## Decisão
 
-O snapshot `dfa6d0b4ea60d6e7fbbe42521793b9fad273f702` foi reconciliado;
+O snapshot `c27c66a4a0862cffa7f1b7952ac6c94faeb15595` foi reconciliado;
 o candidato funcional `95227098193966638102ccfe1e54842289ebe7f1` preserva a
 otimização autenticada e o fail-closed 503;
 o manifesto crítico foi reancorado na revisão 62, com a correção de tipografia e rasterização CI/visual, a verificação portátil do runner, o código funcional e os

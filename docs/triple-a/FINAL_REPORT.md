@@ -1,6 +1,6 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `dfa6d0b4ea60d6e7fbbe42521793b9fad273f702`
+**Candidate funcional avaliado:** `c27c66a4a0862cffa7f1b7952ac6c94faeb15595`
 (snapshot reancorado com o registro P0 candidate-bound, Noto Sans e rasterização sem LCD determinísticos nos gates E2E/visual, verificação portátil do runner, o harness SPA canônico com proxy same-origin e a correção fail-closed e de complexidade no commit `95227098`, sobre a otimização `15ba86a8`; manifesto crítico revision 62; a branch de assurance é ancestral sem commits exclusivos; a cobertura global local passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas e k6 local `9/9` SLOs passaram; o CI #214 remoto confirmou E2E SPA `424/424`, Visual `29/29`, Critical Coverage e todos os gates estruturais, mas k6 passou `7/9` SLOs e reprovou query/inventory; o veredito permanece bloqueado e nenhum threshold foi alterado)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
