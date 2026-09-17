@@ -209,6 +209,7 @@ describe('CI repository guardrails', () => {
     expect(job).toContain('pnpm validate:deploy-surface');
     expect(job).toContain('pnpm docs:validate');
     expect(job).toContain('pnpm validate:candidate-identity');
+    expect(job).toContain('pnpm validate:p0-registry');
     expect(job).toContain('pnpm evidence:triple-a:graph');
     expect(job).toContain('pnpm complexity:check');
     expect(job).toContain('CVG_HELM_VERSION: v3.15.4');
@@ -224,6 +225,7 @@ describe('CI repository guardrails', () => {
     );
     expect(job).toContain('node --test tests/unit/infra/gauntlet-subcriteria-evidence.test.mjs');
     expect(job).toContain('node --test scripts/current-candidate-identity.test.mjs');
+    expect(job).toContain('node --test scripts/validate-p0-registry.test.mjs');
     expect(job).toContain('node --test scripts/run-security-audit.test.mjs');
     expect(job).toContain('pnpm vetus:parity:test');
     expect(job).toContain(

@@ -129,6 +129,7 @@
     "validate:environment-runtime": "node scripts/validate-environment-runtime-matrix.mjs",
     "validate:identity-contract": "node scripts/validate-prod-019-identity-contract.mjs",
     "validate:candidate-identity": "node scripts/generate-current-candidate-identity.mjs --check",
+    "validate:p0-registry": "node scripts/validate-p0-registry.mjs",
     "validate:loyalty-expiration-contract": "node scripts/validate-prod-052-loyalty-expiration-contract.mjs",
     "validate:behavioral-parity-contract": "node scripts/validate-prod-027-behavioral-parity-contract.mjs",
     "validate:registry-contract": "node scripts/validate-prod-063-registry-contract.mjs",

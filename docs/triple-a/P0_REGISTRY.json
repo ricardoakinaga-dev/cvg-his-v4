@@ -1,0 +1,344 @@
+{
+  "schema_version": 1,
+  "registry_id": "CVG-HIS-P0-REGISTRY-V1",
+  "generated_at": "2026-09-17T04:15:25.000Z",
+  "generated_by": "lead-verification",
+  "candidate": {
+    "candidate_id": "CVG-HIS-V4-e54a4374ce9b",
+    "identity_path": "docs/triple-a/CURRENT_CANDIDATE_IDENTITY.json",
+    "candidate_head_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4",
+    "behavior_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4",
+    "assurance_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4",
+    "documentation_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4"
+  },
+  "closure_policy": {
+    "closed_status": "CLOSED",
+    "forbidden_status": "DONE",
+    "requires_all_required_criteria_pass": true,
+    "requires_fresh_mandatory_evidence": true,
+    "requires_candidate_identity_match": true
+  },
+  "items": [
+    {
+      "id": "P0-CI-CANDIDATE-FREEZE",
+      "epic": "CI",
+      "title": "Candidate identity and evidence binding are frozen",
+      "status": "CLOSED",
+      "classification": "AUTOMATABLE_LOCAL",
+      "closure_policy": "AUTOMATIC",
+      "owner": "release-engineering",
+      "dedupe_key": "ci-candidate-identity",
+      "behavior_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4",
+      "dependencies": [],
+      "acceptance_criteria": [
+        { "id": "P0-CI-CANDIDATE-FREEZE-01", "description": "Candidate identity fields match the frozen source", "status": "PASS", "required": true },
+        { "id": "P0-CI-CANDIDATE-FREEZE-02", "description": "Current snapshot documents agree on the candidate", "status": "PASS", "required": true }
+      ],
+      "evidence_nodes": [
+        {
+          "id": "EVD-P0-CANDIDATE-IDENTITY",
+          "status": "PASS",
+          "fresh": true,
+          "mandatory": true,
+          "candidate_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4",
+          "source": "pnpm validate:candidate-identity && pnpm docs:validate",
+          "artifact": "docs/triple-a/CURRENT_CANDIDATE_IDENTITY.json",
+          "observed_at": "2026-09-17T04:15:25.000Z"
+        }
+      ],
+      "human_required": false,
+      "target_required": false,
+      "linked_backlog_ids": ["TRIPLE-A-BASELINE", "PROD-001"]
+    },
+    {
+      "id": "P0-CI-GREEN-MAIN",
+      "epic": "CI",
+      "title": "Required remote checks are green on the exact candidate",
+      "status": "NOT_PROVEN",
+      "classification": "CI_REQUIRED",
+      "closure_policy": "AUTOMATIC",
+      "owner": "release-engineering",
+      "dedupe_key": "ci-green-main",
+      "behavior_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4",
+      "dependencies": ["P0-CI-CANDIDATE-FREEZE"],
+      "acceptance_criteria": [
+        { "id": "P0-CI-GREEN-MAIN-01", "description": "Every required workflow job passes on the exact candidate", "status": "NOT_PROVEN", "required": true },
+        { "id": "P0-CI-GREEN-MAIN-02", "description": "Branch policy reports the candidate as releasable", "status": "NOT_PROVEN", "required": true }
+      ],
+      "evidence_nodes": [
+        { "id": "EVD-P0-CI-GREEN-MAIN", "status": "NOT_PROVEN", "fresh": false, "mandatory": true, "candidate_sha": null, "source": "GitHub Actions exact-candidate run", "artifact": "docs/triple-a/17-current-execution-evidence.md", "observed_at": "2026-09-17T04:15:25.000Z" }
+      ],
+      "human_required": false,
+      "target_required": false,
+      "linked_backlog_ids": ["TRIPLE-A-RELEASE-CONTROL", "PROD-040"]
+    },
+    {
+      "id": "P0-DATA-POSTGRESQL-RUNTIME",
+      "epic": "DATA",
+      "title": "PostgreSQL runtime and migration contracts are current",
+      "status": "NOT_PROVEN",
+      "classification": "LOCAL_INFRA_REQUIRED",
+      "closure_policy": "AUTOMATIC",
+      "owner": "data-platform",
+      "dedupe_key": "data-postgresql-runtime",
+      "behavior_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4",
+      "dependencies": ["P0-CI-CANDIDATE-FREEZE"],
+      "acceptance_criteria": [
+        { "id": "P0-DATA-POSTGRESQL-RUNTIME-01", "description": "Migration source and checksums are verified without drift", "status": "NOT_PROVEN", "required": true },
+        { "id": "P0-DATA-POSTGRESQL-RUNTIME-02", "description": "Disposable PostgreSQL executes the critical database suite", "status": "NOT_PROVEN", "required": true }
+      ],
+      "evidence_nodes": [
+        { "id": "EVD-P0-DATA-POSTGRESQL-RUNTIME", "status": "NOT_PROVEN", "fresh": false, "mandatory": true, "candidate_sha": null, "source": "current candidate database runtime envelope", "artifact": "docs/triple-a/17-current-execution-evidence.md", "observed_at": "2026-09-17T04:15:25.000Z" }
+      ],
+      "human_required": false,
+      "target_required": false,
+      "linked_backlog_ids": ["PROD-011", "PROD-024"]
+    },
+    {
+      "id": "P0-DATA-RLS-RUNTIME",
+      "epic": "DATA",
+      "title": "Runtime tenant isolation and FORCE RLS are proven",
+      "status": "TARGET_REQUIRED",
+      "classification": "TARGET_REQUIRED",
+      "closure_policy": "AUTOMATIC",
+      "owner": "data-platform",
+      "dedupe_key": "data-rls-runtime-isolation",
+      "behavior_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4",
+      "dependencies": ["P0-DATA-POSTGRESQL-RUNTIME"],
+      "acceptance_criteria": [
+        { "id": "P0-DATA-RLS-RUNTIME-01", "description": "Runtime roles cannot read or write another tenant", "status": "TARGET_REQUIRED", "required": true },
+        { "id": "P0-DATA-RLS-RUNTIME-02", "description": "Owner and FORCE RLS behavior are observed in the approved target", "status": "TARGET_REQUIRED", "required": true }
+      ],
+      "evidence_nodes": [
+        { "id": "EVD-P0-DATA-RLS-RUNTIME", "status": "TARGET_REQUIRED", "fresh": false, "mandatory": true, "candidate_sha": null, "source": "authorized target PostgreSQL role probe", "artifact": "docs/triple-a/08-security-tenant.md", "observed_at": "2026-09-17T04:15:25.000Z" }
+      ],
+      "human_required": false,
+      "target_required": true,
+      "linked_backlog_ids": ["PROD-024"]
+    },
+    {
+      "id": "P0-WORKFLOW-LEASE-FENCING",
+      "epic": "WORKFLOW",
+      "title": "Workflow concurrency, lease and fencing are current",
+      "status": "NOT_PROVEN",
+      "classification": "CI_REQUIRED",
+      "closure_policy": "AUTOMATIC",
+      "owner": "workflow-platform",
+      "dedupe_key": "workflow-lease-fencing",
+      "behavior_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4",
+      "dependencies": ["P0-DATA-POSTGRESQL-RUNTIME"],
+      "acceptance_criteria": [
+        { "id": "P0-WORKFLOW-LEASE-FENCING-01", "description": "Duplicate claims and stale owners are rejected deterministically", "status": "NOT_PROVEN", "required": true },
+        { "id": "P0-WORKFLOW-LEASE-FENCING-02", "description": "Concurrency and cancellation races preserve one material effect", "status": "NOT_PROVEN", "required": true }
+      ],
+      "evidence_nodes": [
+        { "id": "EVD-P0-WORKFLOW-LEASE-FENCING", "status": "NOT_PROVEN", "fresh": false, "mandatory": true, "candidate_sha": null, "source": "critical workflow PostgreSQL envelope", "artifact": "docs/triple-a/05-workflow-engine.md", "observed_at": "2026-09-17T04:15:25.000Z" }
+      ],
+      "human_required": false,
+      "target_required": false,
+      "linked_backlog_ids": ["PROD-025", "PROD-050", "PROD-051"]
+    },
+    {
+      "id": "P0-WORKER-CRASH-RECOVERY",
+      "epic": "WORKER",
+      "title": "Worker crash recovery is durable and idempotent",
+      "status": "TARGET_REQUIRED",
+      "classification": "TARGET_REQUIRED",
+      "closure_policy": "AUTOMATIC",
+      "owner": "worker-platform",
+      "dedupe_key": "worker-crash-recovery",
+      "behavior_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4",
+      "dependencies": ["P0-WORKFLOW-LEASE-FENCING"],
+      "acceptance_criteria": [
+        { "id": "P0-WORKER-CRASH-RECOVERY-01", "description": "SIGKILL and takeover leave no duplicate material effect", "status": "TARGET_REQUIRED", "required": true },
+        { "id": "P0-WORKER-CRASH-RECOVERY-02", "description": "Retry and DLQ policy preserve tenant and audit context", "status": "TARGET_REQUIRED", "required": true }
+      ],
+      "evidence_nodes": [
+        { "id": "EVD-P0-WORKER-CRASH-RECOVERY", "status": "TARGET_REQUIRED", "fresh": false, "mandatory": true, "candidate_sha": null, "source": "authorized worker failure game day", "artifact": "docs/triple-a/04-worker-reliability.md", "observed_at": "2026-09-17T04:15:25.000Z" }
+      ],
+      "human_required": false,
+      "target_required": true,
+      "linked_backlog_ids": ["PROD-025", "PROD-050", "PROD-051"]
+    },
+    {
+      "id": "P0-CLINICAL-GOLDEN-PATH",
+      "epic": "CLINICAL",
+      "title": "Clinical golden path and negative paths are executable",
+      "status": "NOT_PROVEN",
+      "classification": "AUTOMATABLE_LOCAL",
+      "closure_policy": "AUTOMATIC",
+      "owner": "clinical-product",
+      "dedupe_key": "clinical-golden-path",
+      "behavior_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4",
+      "dependencies": ["P0-DATA-RLS-RUNTIME", "P0-WORKER-CRASH-RECOVERY"],
+      "acceptance_criteria": [
+        { "id": "P0-CLINICAL-GOLDEN-PATH-01", "description": "Owner to patient to encounter to inpatient to billing closes with audit", "status": "NOT_PROVEN", "required": true },
+        { "id": "P0-CLINICAL-GOLDEN-PATH-02", "description": "Negative clinical paths fail closed without silent corruption", "status": "NOT_PROVEN", "required": true }
+      ],
+      "evidence_nodes": [
+        { "id": "EVD-P0-CLINICAL-GOLDEN-PATH", "status": "NOT_PROVEN", "fresh": false, "mandatory": true, "candidate_sha": null, "source": "exact-candidate clinical HTTP and browser evidence", "artifact": "docs/triple-a/03-clinical-assurance.md", "observed_at": "2026-09-17T04:15:25.000Z" }
+      ],
+      "human_required": false,
+      "target_required": false,
+      "linked_backlog_ids": ["PROD-026", "PROD-030", "PROD-033"]
+    },
+    {
+      "id": "P0-CLINICAL-AUDIT-INVARIANTS",
+      "epic": "CLINICAL",
+      "title": "Clinical safety, audit and financial invariants hold",
+      "status": "NOT_PROVEN",
+      "classification": "AUTOMATABLE_LOCAL",
+      "closure_policy": "AUTOMATIC",
+      "owner": "clinical-product",
+      "dedupe_key": "clinical-audit-financial-invariants",
+      "behavior_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4",
+      "dependencies": ["P0-CLINICAL-GOLDEN-PATH"],
+      "acceptance_criteria": [
+        { "id": "P0-CLINICAL-AUDIT-INVARIANTS-01", "description": "Append-only audit and timeline records are immutable and searchable", "status": "NOT_PROVEN", "required": true },
+        { "id": "P0-CLINICAL-AUDIT-INVARIANTS-02", "description": "Billing and inventory concurrency preserve balanced durable effects", "status": "NOT_PROVEN", "required": true }
+      ],
+      "evidence_nodes": [
+        { "id": "EVD-P0-CLINICAL-AUDIT-INVARIANTS", "status": "NOT_PROVEN", "fresh": false, "mandatory": true, "candidate_sha": null, "source": "current clinical and financial invariant suite", "artifact": "docs/triple-a/07-clinical-timeline.md", "observed_at": "2026-09-17T04:15:25.000Z" }
+      ],
+      "human_required": false,
+      "target_required": false,
+      "linked_backlog_ids": ["PROD-008", "PROD-030", "PROD-033"]
+    },
+    {
+      "id": "P0-RECOVERY-RESTORE",
+      "epic": "RECOVERY",
+      "title": "Backup restore and corruption drills meet declared limits",
+      "status": "TARGET_REQUIRED",
+      "classification": "TARGET_REQUIRED",
+      "closure_policy": "AUTOMATIC",
+      "owner": "operations",
+      "dedupe_key": "recovery-restore-corruption",
+      "behavior_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4",
+      "dependencies": ["P0-CLINICAL-AUDIT-INVARIANTS"],
+      "acceptance_criteria": [
+        { "id": "P0-RECOVERY-RESTORE-01", "description": "Restore validates globals schema roles storage and checksums", "status": "TARGET_REQUIRED", "required": true },
+        { "id": "P0-RECOVERY-RESTORE-02", "description": "RPO and RTO are measured in the approved target environment", "status": "TARGET_REQUIRED", "required": true }
+      ],
+      "evidence_nodes": [
+        { "id": "EVD-P0-RECOVERY-RESTORE", "status": "TARGET_REQUIRED", "fresh": false, "mandatory": true, "candidate_sha": null, "source": "authorized production-like restore drill", "artifact": "docs/triple-a/09-recovery.md", "observed_at": "2026-09-17T04:15:25.000Z" }
+      ],
+      "human_required": false,
+      "target_required": true,
+      "linked_backlog_ids": ["PROD-037", "PROD-044"]
+    },
+    {
+      "id": "P0-PERFORMANCE-CERTIFICATION",
+      "epic": "PERFORMANCE",
+      "title": "Performance headroom and soak are certified in target conditions",
+      "status": "TARGET_REQUIRED",
+      "classification": "TARGET_REQUIRED",
+      "closure_policy": "AUTOMATIC",
+      "owner": "operations",
+      "dedupe_key": "performance-target-certification",
+      "behavior_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4",
+      "dependencies": ["P0-DATA-POSTGRESQL-RUNTIME", "P0-WORKER-CRASH-RECOVERY"],
+      "acceptance_criteria": [
+        { "id": "P0-PERFORMANCE-CERTIFICATION-01", "description": "Critical API and database SLOs pass the approved target load profile", "status": "TARGET_REQUIRED", "required": true },
+        { "id": "P0-PERFORMANCE-CERTIFICATION-02", "description": "Soak and capacity headroom remain within the approved budget", "status": "TARGET_REQUIRED", "required": true }
+      ],
+      "evidence_nodes": [
+        { "id": "EVD-P0-PERFORMANCE-CERTIFICATION", "status": "TARGET_REQUIRED", "fresh": false, "mandatory": true, "candidate_sha": null, "source": "authorized performance and soak certification", "artifact": "docs/triple-a/10-performance.md", "observed_at": "2026-09-17T04:15:25.000Z" }
+      ],
+      "human_required": false,
+      "target_required": true,
+      "linked_backlog_ids": ["PROD-036", "PROD-044"]
+    },
+    {
+      "id": "P0-UX-A11Y-UAT",
+      "epic": "UX",
+      "title": "Critical UX accessibility and hospital UAT are accepted",
+      "status": "HUMAN_REQUIRED",
+      "classification": "HUMAN_REQUIRED",
+      "closure_policy": "HUMAN",
+      "owner": "product-quality",
+      "dedupe_key": "ux-a11y-hospital-uat",
+      "behavior_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4",
+      "dependencies": ["P0-CLINICAL-GOLDEN-PATH"],
+      "acceptance_criteria": [
+        { "id": "P0-UX-A11Y-UAT-01", "description": "Responsive and accessibility matrix is reviewed on real browsers", "status": "HUMAN_REQUIRED", "required": true },
+        { "id": "P0-UX-A11Y-UAT-02", "description": "Named hospital users accept the critical workflows and states", "status": "HUMAN_REQUIRED", "required": true }
+      ],
+      "evidence_nodes": [
+        { "id": "EVD-P0-UX-A11Y-UAT", "status": "HUMAN_REQUIRED", "fresh": false, "mandatory": true, "candidate_sha": null, "source": "signed hospital UAT and accessibility review", "artifact": "docs/templates/hospital-uat-evidence.template.json", "observed_at": "2026-09-17T04:15:25.000Z" }
+      ],
+      "human_required": true,
+      "target_required": false,
+      "linked_backlog_ids": ["PROD-035", "PROD-059"]
+    },
+    {
+      "id": "P0-SUPPLY-ATTESTATION",
+      "epic": "SUPPLY",
+      "title": "Published artifacts have attestations and immutable provenance",
+      "status": "TARGET_REQUIRED",
+      "classification": "TARGET_REQUIRED",
+      "closure_policy": "AUTOMATIC",
+      "owner": "release-engineering",
+      "dedupe_key": "supply-attestation-provenance",
+      "behavior_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4",
+      "dependencies": ["P0-CI-GREEN-MAIN"],
+      "acceptance_criteria": [
+        { "id": "P0-SUPPLY-ATTESTATION-01", "description": "SBOM source archive and image digests are bound to the candidate", "status": "TARGET_REQUIRED", "required": true },
+        { "id": "P0-SUPPLY-ATTESTATION-02", "description": "Independent registry verification accepts signatures and attestations", "status": "TARGET_REQUIRED", "required": true }
+      ],
+      "evidence_nodes": [
+        { "id": "EVD-P0-SUPPLY-ATTESTATION", "status": "TARGET_REQUIRED", "fresh": false, "mandatory": true, "candidate_sha": null, "source": "authorized registry and attestation verification", "artifact": "docs/triple-a/02-supply-chain.md", "observed_at": "2026-09-17T04:15:25.000Z" }
+      ],
+      "human_required": false,
+      "target_required": true,
+      "linked_backlog_ids": ["PROD-039", "PROD-062"]
+    },
+    {
+      "id": "P0-RELEASE-AUTHORITY",
+      "epic": "GOVERNANCE",
+      "title": "Release authority and risk acceptance are recorded",
+      "status": "HUMAN_REQUIRED",
+      "classification": "HUMAN_REQUIRED",
+      "closure_policy": "HUMAN",
+      "owner": "release-authority",
+      "dedupe_key": "release-authority-decision",
+      "behavior_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4",
+      "dependencies": ["P0-CI-GREEN-MAIN", "P0-UX-A11Y-UAT", "P0-SUPPLY-ATTESTATION"],
+      "acceptance_criteria": [
+        { "id": "P0-RELEASE-AUTHORITY-01", "description": "Named Product Clinical Security and Operations owners sign go or no-go", "status": "HUMAN_REQUIRED", "required": true },
+        { "id": "P0-RELEASE-AUTHORITY-02", "description": "Residual risk acceptance is scoped time-bounded and traceable", "status": "HUMAN_REQUIRED", "required": true }
+      ],
+      "evidence_nodes": [
+        { "id": "EVD-P0-RELEASE-AUTHORITY", "status": "HUMAN_REQUIRED", "fresh": false, "mandatory": true, "candidate_sha": null, "source": "signed release authority record", "artifact": "docs/triple-a/12-production-certification.md", "observed_at": "2026-09-17T04:15:25.000Z" }
+      ],
+      "human_required": true,
+      "target_required": false,
+      "linked_backlog_ids": ["PROD-040", "PROD-045", "PROD-046"]
+    },
+    {
+      "id": "P0-FINAL-EVIDENCE",
+      "epic": "GOVERNANCE",
+      "title": "Final evidence graph is complete and reproducible",
+      "status": "BLOCKED_BY_DEPENDENCY",
+      "classification": "HUMAN_REQUIRED",
+      "closure_policy": "HUMAN",
+      "owner": "release-authority",
+      "dedupe_key": "final-evidence-graph",
+      "behavior_sha": "e54a4374ce9bb597dc20abaab48cf0f248f4e0a4",
+      "dependencies": ["P0-RELEASE-AUTHORITY", "P0-RECOVERY-RESTORE", "P0-PERFORMANCE-CERTIFICATION"],
+      "acceptance_criteria": [
+        { "id": "P0-FINAL-EVIDENCE-01", "description": "Every mandatory P0 has fresh evidence or authority decision", "status": "BLOCKED", "required": true },
+        { "id": "P0-FINAL-EVIDENCE-02", "description": "Final report and scorecard reproduce the candidate-bound verdict", "status": "BLOCKED", "required": true }
+      ],
+      "evidence_nodes": [
+        { "id": "EVD-P0-FINAL-EVIDENCE", "status": "BLOCKED", "fresh": false, "mandatory": true, "candidate_sha": null, "source": "final evidence package and authority ledger", "artifact": "docs/triple-a/FINAL_REPORT.md", "observed_at": "2026-09-17T04:15:25.000Z" }
+      ],
+      "human_required": true,
+      "target_required": false,
+      "linked_backlog_ids": ["PROD-045", "PROD-046"]
+    }
+  ],
+  "summary": {
+    "open_p0": 13,
+    "closed_p0": 1
+  }
+}

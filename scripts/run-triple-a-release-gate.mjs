@@ -255,6 +255,7 @@ const EXECUTABLE_CHECKS = [
   ['Deploy surface', 'pnpm', ['validate:deploy-surface']],
   ['Environment/runtime matrix', 'pnpm', ['validate:environment-runtime']],
   ['Identity contract PROD-019', 'pnpm', ['validate:identity-contract']],
+  ['P0 registry', 'pnpm', ['validate:p0-registry']],
   ['Loyalty expiration contract PROD-052', 'pnpm', ['validate:loyalty-expiration-contract']],
   ['Behavioral parity contract PROD-027', 'pnpm', ['validate:behavioral-parity-contract']],
   ['Registry contract PROD-063', 'pnpm', ['validate:registry-contract']],
