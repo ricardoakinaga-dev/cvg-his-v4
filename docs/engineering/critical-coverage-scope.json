@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "8bbcba3a668709d1ade4588ac59f56948d1b420d",
+  "head": "0fab9fc189e122b4ff7e7700d9b07508e64f54bd",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -11605,6 +11605,33 @@
       },
       "executionInputsAdded": [],
       "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0"
+    },
+    {
+      "manifestRevision": 76,
+      "observedAt": "2026-09-17T22:36:44.202Z",
+      "collectionCommit": "0fab9fc189e122b4ff7e7700d9b07508e64f54bd",
+      "previousManifestSha256": "91cf7c0344b0bdfcd935b78b72c1a8262701bfbf7c7b5f94baa3527dd8c54c05",
+      "preservedManifest": "artifacts/remediation/PROD-011/manifest-refresh/critical-scope-before-91cf7c0344b0bdfcd935b78b72c1a8262701bfbf7c7b5f94baa3527dd8c54c05.json",
+      "previousSourceSetSha256": "b16ab39cfac043410c85fd0e5e7d4c5e304eedc52e579abf03cbd854c434a5c0",
+      "sourceSetSha256": "b16ab39cfac043410c85fd0e5e7d4c5e304eedc52e579abf03cbd854c434a5c0",
+      "reason": "Reconcile PROD-011 SQL active runner inventory while retaining historical SQL bytes",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "sqlScopeBefore": {
+        "manifestSqlCount": 182,
+        "rootSqlCount": 180,
+        "rootActiveCount": 175,
+        "rootHistoricalCount": 5,
+        "hiddenHistoricalCount": 2
+      },
+      "sqlScopeAfter": {
+        "manifestSqlCount": 182,
+        "canonicalActiveCount": 175,
+        "historicalArtifactCount": 7
+      },
+      "executionInputsAdded": [],
+      "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0"
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12538,7 +12565,7 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 75,
+  "manifestRevision": 76,
   "sourceSetSha256": "b16ab39cfac043410c85fd0e5e7d4c5e304eedc52e579abf03cbd854c434a5c0",
   "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
   "specializedEvidence": {
@@ -12569,9 +12596,9 @@
       "verifierPath": "scripts/lib/sql-migration-evidence.mjs",
       "scopeReconciliation": {
         "previousObservedScope": {
-          "manifestSqlCount": 180,
-          "rootSqlCount": 178,
-          "rootActiveCount": 173,
+          "manifestSqlCount": 182,
+          "rootSqlCount": 180,
+          "rootActiveCount": 175,
           "rootHistoricalCount": 5,
           "hiddenHistoricalCount": 2
         },
@@ -12584,10 +12611,7 @@
           "packages/db/migrations/0008_rls_text_based_tables.revert.sql",
           "packages/db/migrations/0017_fiscal_tables.seed.sql"
         ],
-        "addedCanonicalActivePaths": [
-          "packages/db/migrations/0175_access_control_change_versions.sql",
-          "packages/db/migrations/0176_access_control_change_version_cleanup.sql"
-        ],
+        "addedCanonicalActivePaths": [],
         "excludedFromRunner": "revert, seed, hidden drift and backup SQL remain byte-accountable historical artifacts"
       }
     }

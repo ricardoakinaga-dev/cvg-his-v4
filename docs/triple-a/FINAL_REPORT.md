@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `5998287d386559fc3b3ed760a47756e62349f286`
-(snapshot documental reancorado com o registro P0 candidate-bound e a correção de frescor de ACL em tempo constante, usando versionamento monotônico por tenant e triggers transacionais; manifesto crítico revision 74; `server.ts` permanece em `8.335` linhas; typecheck e build do workspace passaram em `68/68` projetos, a suíte real do módulo access-control passou `48/48` testes com as `175` migrações aplicadas em PostgreSQL efêmero, e os guardrails de migration-source, RLS, namespaces, OpenAPI, docs, identidade e P0 passaram; o CI #247 do predecessor `3b4e24f3` passou os gates funcionais, E2E SPA, Visual e segurança, mas falhou em Critical Coverage e Performance; esta nova implementação aguarda CI exato e nenhum threshold foi alterado)
+**Candidate funcional avaliado:** `0fab9fc189e122b4ff7e7700d9b07508e64f54bd`
+(snapshot documental reancorado com o registro P0 candidate-bound e a correção de frescor de ACL em tempo constante, usando versionamento monotônico por tenant, triggers transacionais, cleanup forward-only `0176` e FORCE RLS; manifesto crítico revision 76; `server.ts` permanece em `8.335` linhas; typecheck e build do workspace passaram em `68/68` projetos, os contratos de access-control e PostgreSQL direcionados passaram, e os guardrails de migration-source, RLS, namespaces, OpenAPI, docs, identidade e P0 passaram; o CI #251 do predecessor `8bbcba3a` não é transferido; esta nova implementação aguarda CI exato e nenhum threshold foi alterado)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -11,7 +11,7 @@ O candidato preserva o modular monolith e a reconciliação fail-closed de
 proveniência. A paridade de Patient e o CORS credentialado restrito foram
 validados. No candidato corrente, os contratos alterados passaram, o produtor SQL
 passou com PostgreSQL 16.15 e a conversão V8 do processo aceita somente o par
-autenticado de inicializadores; o manifesto crítico está na revisão 71 e o
+autenticado de inicializadores; o manifesto crítico está na revisão 76 e o
 workflow publica evidência SQL antes do checker. O [CI #212](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35198105802)
 passou cobertura crítica, segurança, build, unitários, integração, contratos,
 processo Windows e as duas jornadas clínicas canônicas. O CI #214 confirmou

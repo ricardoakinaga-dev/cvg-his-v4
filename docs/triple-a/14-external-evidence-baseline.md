@@ -9,10 +9,10 @@
 > [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `5998287d386559fc3b3ed760a47756e62349f286`; o registro P0 candidate-bound é validado no CI e no gate de release; o evidence graph importa envelopes locais somente como `PARTIAL` após validar schema, SHA, ambiente, frescor, ancestralidade e digests; os CI anteriores não são transferidos. Nenhum resultado parcial é transferido.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `5998287d386559fc3b3ed760a47756e62349f286` (snapshot reancorado; o evidence graph agora ingere envelopes locais com validação candidate-bound e status máximo `PARTIAL`; a leitura de frescor de ACL usa versionamento monotônico transacional; registro P0 com `1` fechado e `13` abertos; provas externas e autoridade de release continuam `NOT PROVEN`).
-**Current CI:** o [CI #221](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35222726870) foi disparado no snapshot remoto anterior e encontrou hash desatualizado no manifesto crítico; não há resultado terminal verde para este candidato. O último run terminal, [CI #217](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35215228039), passou os gates funcionais, E2E SPA e Visual, mas falhou no k6 em query/inventory. Nenhuma threshold foi relaxada.
+**Current snapshot:** `0fab9fc189e122b4ff7e7700d9b07508e64f54bd` (snapshot reancorado; o evidence graph agora ingere envelopes locais com validação candidate-bound e status máximo `PARTIAL`; a leitura de frescor de ACL usa versionamento monotônico transacional, `0176` forward-only e `FORCE RLS`; registro P0 com `1` fechado e `13` abertos; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current CI:** o [CI #251](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35281221617) pertence ao predecessor documental `8bbcba3a`; não há resultado transferível para este candidato. Nenhuma threshold foi relaxada.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-17T21:09:34Z
+**Observation:** 2026-09-17T22:37:07Z
 
 **Current candidate delta:** o provider raw consumido pela API agora respeita
 kill switch persistido, expiração, precedência de escopo e allowlist fail-closed;

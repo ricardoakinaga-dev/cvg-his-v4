@@ -1,13 +1,13 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato documental observado em 2026-09-17T22:11:19Z
+## Candidato documental observado em 2026-09-17T22:37:07Z
 
-- SHA de código e documentação: `5998287d386559fc3b3ed760a47756e62349f286`;
+- SHA de código e documentação: `0fab9fc189e122b4ff7e7700d9b07508e64f54bd`;
   identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O manifesto crítico está na revisão 74, ancorado no commit funcional `5998287d3865` e publicado na identidade do snapshot; o candidato mantém os gates E2E/visual, provisiona PostgreSQL 16, publica o artefato SQL verificado e valida o registro P0. A leitura do token de frescor de ACL foi reduzida de uma reconstrução global de tabelas para uma versão monotônica indexada por tenant, com triggers transacionais e RLS/privilege reconciliation explícitos. Os gates SPA usam API compilada e proxy same-origin `/api`; o provider raw de feature flags mantém kill switch persistido, expiração, precedência de escopo, allowlist fail-closed e cache bounded. Rollback preservado em `origin/main@3b4e24f3` e nas branches ancestrais integradas.
+- O manifesto crítico está na revisão 76, ancorado no commit funcional `0fab9fc189e1` e publicado na identidade do snapshot; a migration `0176` preserva o checksum da `0175`, força RLS na ledger e evita recriação durante cascatas de conta. O candidato mantém os gates E2E/visual, provisiona PostgreSQL 16, publica o artefato SQL verificado e valida o registro P0. A leitura do token de frescor de ACL foi reduzida de uma reconstrução global de tabelas para uma versão monotônica indexada por tenant, com triggers transacionais e RLS/privilege reconciliation explícitos. Os gates SPA usam API compilada e proxy same-origin `/api`; o provider raw de feature flags mantém kill switch persistido, expiração, precedência de escopo, allowlist fail-closed e cache bounded. Rollback preservado em `origin/main@8bbcba3a` e nas branches ancestrais integradas.
 - Nenhum force-push foi usado.
-- O [CI #247](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35276834295), executado no predecessor documental `3b4e24f3`, passou os gates funcionais, E2E SPA, Visual e segurança, mas falhou em Critical Coverage e Performance; ele não é evidência deste candidato.
+- O [CI #251](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35281221617), executado no predecessor documental `8bbcba3a`, terminou `failure` em Critical Coverage, Coverage, Repository Guards, Performance, Integration e Unit; ele não é evidência deste candidato.
 
 ## Importação corrente do evidence graph — 2026-09-17
 
@@ -21,12 +21,11 @@
 - Os testes do contrato cobrem envelope fresco, descendente documental,
   stale, digest adulterado e symlink. O importador não substitui o gate de
   release, CI remoto, target ou autoridade humana.
-- A execução local corrente de `DATABASE_URL_TEST` sobre PostgreSQL descartável
-  terminou com `67/67` arquivos e `618/618` testes de integração aprovados; a
-  fase serial de processo terminou com `11/11` cenários aprovados, incluindo
-  SIGKILL/takeover, idempotência, concorrência financeira, PIX, webhook e
-  workflow. Essa coleta é diagnóstico candidate-bound e não fecha os P0 que
-  exigem CI, target ou autoridade independente.
+- A execução local corrente sobre PostgreSQL descartável terminou com `394/394`
+  arquivos e `3932/3932` testes aprovados após aplicar as `176` migrations,
+  incluindo cenários de SIGKILL/takeover, idempotência, concorrência financeira,
+  PIX, webhook e workflow. Essa coleta é diagnóstico candidate-bound e não fecha
+  os P0 que exigem CI, target ou autoridade independente.
 
 ## Validações locais
 
@@ -34,10 +33,10 @@
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Gate crítico R05-010   | O [CI #214](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35204183554) terminou com Critical Coverage Gate e gates estruturais/funcionais em `PASS`; E2E SPA `424/424`, Visual `29/29`, e somente Performance falhou |
 | Workspace              | Cobertura global `273/273` arquivos e `2907/2907` testes passou; `87,46%` statements, `82,00%` branches, `89,32%` functions, `88,91%` lines; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas, lint, typecheck, contratos CI `20/20`, cobertura/processo e SQL `34/34` passaram |
-| Identidade/evidence graph | Identidade canônica do snapshot documental `5998287d`; registro P0 `1 CLOSED / 13 OPEN`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` |
+| Identidade/evidence graph | Identidade canônica do snapshot documental `0fab9fc1`; registro P0 `1 CLOSED / 13 OPEN`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` |
 | Coverage crítico current | O #205 passou o Critical Coverage Gate; a cobertura geral local passou o threshold congelado e a correção do shard de revogação foi validada localmente |
 | Vue especializado current | O #214 passou Visual Regression `29/29` no candidato funcional equivalente; a normalização `--disable-lcd-text` e os seis baselines auditados permanecem; nenhum threshold foi relaxado |
-| SQL/migrações current  | PostgreSQL 16.15 privado socket-only; produtor independente PASS com `173` migrações executáveis + `7` históricos; cadeia completa e seed repetível |
+| SQL/migrações current  | PostgreSQL 16.15 privado socket-only; suíte completa aplicou `176` migrações executáveis + `7` históricos contabilizados no manifesto; cadeia e seed repetíveis |
 | Performance/target     | O #247 falhou no job k6 do predecessor; a otimização de frescor ACL está pronta para nova execução exata, sem relaxar thresholds; target/soak/restore/UAT/attestation permanecem `NOT_PROVEN` |
 | Supply/artefatos       | O graph, o pacote local e o registro P0 são gerados/validados fail-closed; nenhum PASS externo ou histórico foi inventado |
 
