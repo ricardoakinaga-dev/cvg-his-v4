@@ -1,5 +1,23 @@
 # Triple-A — Execution Log
 
+## 2026-09-16T23:57:01Z — reconciliação do inventário Vitest no candidato `33c178c0`
+
+- O CI #195 do snapshot documental anterior identificou uma inconsistência no
+  `vitestTests`: nove suítes de cobertura crítica novas estavam fora do
+  inventário congelado. A falha foi reproduzida localmente; nenhum teste de
+  produto falhou.
+- A revisão 52 do manifesto (`docs/engineering/critical-coverage-scope.json`)
+  registra as nove suítes em `vitestTests` e `executionInputs`, recalcula o
+  digest de entradas e preserva o manifesto anterior em artefato de
+  remediação. Thresholds, fontes críticas e aplicabilidade não mudaram.
+- Validação local: `node --test scripts/critical-source-manifest.test.mjs`
+  passou `16/16`, `node scripts/refresh-critical-source-manifest.mjs --check`,
+  `pnpm docs:validate` e `git diff --check` passaram.
+- O commit `33c178c0b87ad708c4ac66366bbbfed2cfb798f2` é a nova âncora funcional;
+  a identidade corrente permanece `BLOCKED / NOT PROVEN` até o novo CI exato,
+  target, recovery, UAT, attestation e autoridade de release. Nenhum resultado
+  do #195 é transferido.
+
 ## 2026-09-16T23:37:42Z — candidato `c11858ed` / fechamento do gate global de branches
 
 - **Código e testes:** a onda de cobertura adicionou contratos determinísticos para

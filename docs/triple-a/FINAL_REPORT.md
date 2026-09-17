@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `c11858ed523a9a027e60b5fd4788d9332b3516cd`
-(manifesto crítico revision 51 ancorado em `0812cb49`; a branch de assurance é ancestral sem commits exclusivos; a cobertura global local passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; os CI #191/#192 dos ancestrais passaram o Critical Coverage Gate, mas terminaram com falhas gerais; o candidato atual aguarda CI próprio)
+**Candidate funcional avaliado:** `33c178c0b87ad708c4ac66366bbbfed2cfb798f2`
+(manifesto crítico revision 52 ancorado no commit de reconciliação do inventário; a branch de assurance é ancestral sem commits exclusivos; a cobertura global local passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; os CI #191/#192 dos ancestrais passaram o Critical Coverage Gate, mas terminaram com falhas gerais; o candidato atual aguarda CI próprio)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -11,7 +11,7 @@ O candidato preserva o modular monolith e a reconciliação fail-closed de
 proveniência. A paridade de Patient e o CORS credentialado restrito foram
 validados. No candidato corrente, os contratos alterados passaram, o produtor SQL
 passou com PostgreSQL 16.15 e a conversão V8 do processo aceita somente o par
-autenticado de inicializadores; o manifesto crítico está na revisão 51 e o
+autenticado de inicializadores; o manifesto crítico está na revisão 52 e o
 workflow publica evidência SQL antes do checker. A evidência crítica/Vue foi aceita no
 Critical Coverage Gate dos ancestrais #191/#192, mas o candidato atual ainda não tem CI próprio; não há target, recovery,
 attestation, UAT, governança, performance certificada ou autoridade de release.
@@ -26,17 +26,17 @@ A cobertura global passou `273` arquivos e `2.907` testes: `87,46%` statements,
 passaram. Isso é evidência local; não substitui CI terminal, target, recovery,
 UAT, attestation ou autoridade de release.
 
-## Atualização corrente — revisão 51 / CI #191
+## Atualização corrente — revisão 52 / novo CI pendente
 
-O manifest crítico revision 51 foi reancorado em `0812cb49`, sem mudança de
+O manifest crítico revision 52 foi reancorado no commit de reconciliação do inventário, sem mudança de
 thresholds, fontes ou aplicabilidade funcional; o snapshot corrente é
-`c11858ed523a9a027e60b5fd4788d9332b3516cd`. O runner crítico preserva o SQL histórico,
+`33c178c0b87ad708c4ac66366bbbfed2cfb798f2`. O runner crítico preserva o SQL histórico,
 usa PostgreSQL 16 e trata os inicializadores V8 do Node 22 sem fundir identidades.
 O produtor SQL agora é executado e publicado antes do checker. Os produtores atuais são identificados na
 [`evidência corrente`](./17-current-execution-evidence.md). Os CI #191/#192
 terminaram `failure` com `13/17` jobs verdes nos ancestrais, mas o Critical
 Coverage Gate passou com R05-010, processo crítico, Vue especializado e
-evidência SQL aceitos. A correção do teste ML inaugura o candidato atual, cujo
+evidência SQL aceitos. A correção do teste ML e a reconciliação do inventário Vitest inauguram o candidato atual, cujo
 CI próprio ainda está pendente; o candidato permanece
 **BLOCKED / NOT PROVEN**.
 

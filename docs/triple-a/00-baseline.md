@@ -1,20 +1,20 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-16T23:37:42Z
+## Snapshot vigente — 2026-09-16T23:57:01Z
 
-O baseline autoritativo do snapshot atual está em: `c11858ed523a9a027e60b5fd4788d9332b3516cd` (manifesto crítico revision 51, ancorado em `0812cb49`).
+O baseline autoritativo do snapshot atual está em: `33c178c0b87ad708c4ac66366bbbfed2cfb798f2` (manifesto crítico revision 52, ancorado no commit de reconciliação do inventário).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
 documentação corrente sucede os candidatos históricos sem transferir evidência;
-o candidato `c11858ed` consolida a cobertura de contratos de pagamento, marketing,
+o candidato `33c178c0` consolida a cobertura de contratos de pagamento, marketing,
 laboratório, ML e limites operacionais, preservando o runner PostgreSQL 16, os
 checksums de migração e a aceitação restrita do par de inicializadores V8; a
 branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
 `BLOCKED / NOT PROVEN`.
 
-Os CI #191/#192 dos ancestrais terminaram `failure` com `13/17` jobs verdes e Critical Coverage Gate aprovado; não são transferidos para o novo candidato. No candidato atual, a cobertura global passou `273` arquivos, `2.907` testes e o threshold congelado (`87,46%` statements, `82,00%` branches, `89,32%` functions e `88,91%` lines), além de lint e typecheck. O CI próprio do candidato `c11858ed` ainda aguarda. Target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
+Os CI #191/#192 dos ancestrais terminaram `failure` com `13/17` jobs verdes e Critical Coverage Gate aprovado; não são transferidos para o novo candidato. No candidato atual, a cobertura global passou `273` arquivos, `2.907` testes e o threshold congelado (`87,46%` statements, `82,00%` branches, `89,32%` functions e `88,91%` lines), além de lint e typecheck. O CI próprio do candidato `33c178c0` ainda aguarda. Target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
 parcial ou histórico é promovido. Target, recovery, UAT, attestation,
 governança e autoridade de release continuam `NOT PROVEN`.
 

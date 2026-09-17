@@ -1,22 +1,22 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato de código observado em 2026-09-16T23:37:42Z
+## Candidato de código observado em 2026-09-16T23:57:01Z
 
-- SHA de código e documentação: `c11858ed523a9a027e60b5fd4788d9332b3516cd`;
+- SHA de código e documentação: `33c178c0b87ad708c4ac66366bbbfed2cfb798f2`;
   identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O manifesto crítico está na revisão 51, ancorado em `0812cb49`; o candidato instala Chromium, provisiona PostgreSQL 16 via PGDG fingerprint-pinned, aceita o par V8 de inicializadores do Node 22, publica o artefato SQL verificado e fecha o threshold global de branches com contratos determinísticos. Rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- O manifesto crítico está na revisão 52, ancorado em `33c178c0`; o candidato instala Chromium, provisiona PostgreSQL 16 via PGDG fingerprint-pinned, aceita o par V8 de inicializadores do Node 22, publica o artefato SQL verificado e fecha o threshold global de branches com contratos determinísticos. Rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
 
 ## Validações locais
 
 | Escopo                 | Resultado                                                                                                                                                                                                                                                                                                                                                                     |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate crítico R05-010   | `NOT_PROVEN` no candidato `c11858ed` até novo CI; #191/#192 passaram nos ancestrais, com thresholds e escopo inalterados |
+| Gate crítico R05-010   | `NOT_PROVEN` no candidato `33c178c0` até novo CI; #191/#192 passaram nos ancestrais, com thresholds e escopo inalterados |
 | Workspace              | Cobertura global `273/273` arquivos e `2907/2907` testes passou; `87,46%` statements, `82,00%` branches, `89,32%` functions, `88,91%` lines; lint, typecheck, contratos CI `20/20`, cobertura/processo e SQL `34/34` passaram |
-| Identidade/evidence graph | Identidade canônica do candidato `c11858ed`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` até evidência terminal e autoridade externa |
+| Identidade/evidence graph | Identidade canônica do candidato `33c178c0`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` até evidência terminal e autoridade externa |
 | Coverage crítico current | A cobertura geral local passou o threshold congelado; CI próprio do candidato ainda é necessário |
-| Vue especializado current | O produtor e o checker passaram nos ancestrais #191/#192; o candidato `c11858ed` ainda precisa de evidência própria |
+| Vue especializado current | O produtor e o checker passaram nos ancestrais #191/#192; o candidato `33c178c0` ainda precisa de evidência própria |
 | SQL/migrações current  | PostgreSQL 16.15 privado socket-only; produtor independente PASS com `171` migrações executáveis + `7` históricos; cadeia completa e seed repetível |
 | Performance/target     | Sem certificação do candidato; k6/target/soak/restore/UAT/attestation permanecem `NOT_PROVEN` |
 | Supply/artefatos       | O graph e o pacote local são gerados fail-closed; nenhum PASS externo ou histórico foi inventado |
@@ -27,7 +27,7 @@ protection ou autoridade de release.
 
 ## CI remoto e reancoragem
 
-Os CI [#191](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35144297381) e #192, nos ancestrais documental/funcional, terminaram `failure` com `13/17` jobs verdes. O Critical Coverage Gate passou, incluindo processo crítico, Vue especializado, SQL (`171` migrações ativas e `7` históricos) e R05-010. Coverage geral falhou no contrato PostgreSQL de ML em `:5433`; k6 perdeu 3/9 SLOs; E2E e Visual Regression registraram 29 divergências de snapshot. O candidato `c11858ed` corrige a classificação desse contrato e fecha o threshold geral local; aguarda CI próprio; nenhum threshold, baseline ou resultado histórico é promovido.
+Os CI [#191](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35144297381) e #192, nos ancestrais documental/funcional, terminaram `failure` com `13/17` jobs verdes. O Critical Coverage Gate passou, incluindo processo crítico, Vue especializado, SQL (`171` migrações ativas e `7` históricos) e R05-010. Coverage geral falhou no contrato PostgreSQL de ML em `:5433`; k6 perdeu 3/9 SLOs; E2E e Visual Regression registraram 29 divergências de snapshot. O candidato `33c178c0` corrige a classificação desse contrato, fecha o threshold geral local e reconcilia o inventário Vitest; aguarda CI próprio; nenhum threshold, baseline ou resultado histórico é promovido.
 
 O [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106), executado no `main@6b7c1cec`, terminou `failure`. Repository Guards, API Contract, Integration e Windows passaram junto com os checks de segurança, typecheck, lint, OpenAPI e build; Critical Coverage, Coverage, Unit Tests, Performance/k6, Visual Regression e E2E SPA falharam. O E2E remoto falhou na etapa principal e na validação de usabilidade, embora a API clínica canônica tenha passado; o gate local explícito do candidato retornou `51/49/18` e bloqueou publicação; nenhum resultado histórico ou parcial é promovido.
 

@@ -6,17 +6,17 @@
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O snapshot atual é
 > o snapshot anterior `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e`, com código funcional em `578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`, permanece preservado apenas como histórico; a identidade canônica está em
-> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `c11858ed523a9a027e60b5fd4788d9332b3516cd`; os CI anteriores não são transferidos. O runner crítico usa PostgreSQL 16, checkout completo, trata o par V8 do Node 22 e publica evidência SQL; nenhum resultado parcial é transferido.
+> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `33c178c0b87ad708c4ac66366bbbfed2cfb798f2`; os CI anteriores não são transferidos. O runner crítico usa PostgreSQL 16, checkout completo, trata o par V8 do Node 22 e publica evidência SQL; nenhum resultado parcial é transferido.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `c11858ed523a9a027e60b5fd4788d9332b3516cd` (manifesto crítico revision 51, workflow com Chromium, runner privado PostgreSQL 16, par V8 autenticado, produtor SQL e cobertura global local acima do threshold; provas externas e autoridade de release continuam `NOT PROVEN`).
-**Current CI:** o candidato `c11858ed` aguarda CI próprio; os #191/#192 dos ancestrais terminaram `failure` com Critical Coverage Gate `PASS` e falhas em Coverage geral, k6, E2E e Visual Regression.
+**Current snapshot:** `33c178c0b87ad708c4ac66366bbbfed2cfb798f2` (manifesto crítico revision 52, workflow com Chromium, runner privado PostgreSQL 16, par V8 autenticado, produtor SQL e cobertura global local acima do threshold; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current CI:** o candidato `33c178c0` aguarda CI próprio; os #191/#192 dos ancestrais terminaram `failure` com Critical Coverage Gate `PASS` e falhas em Coverage geral, k6, E2E e Visual Regression.
 **Current status:** **BLOCKED / NOT PROVEN**
 **Observation:** 2026-09-16T23:37:42Z
 
 **Current local execution:** cobertura global `273/273` arquivos e `2907/2907` testes, com `3` skips esperados; statements `87,46%`, branches `82,00%`, functions `89,32%`, lines `88,91%`; lint e typecheck completos passaram. O runner privado PostgreSQL 16.15 repetiu as `171` migrações e o seed em duas rodadas. A evidência Vue especializada foi aceita no Critical Coverage Gate dos ancestrais #191/#192; target, recovery, UAT e autoridade continuam sem prova aceita. A validação local não substitui CI pinned, target ou UAT.
 
-**Current critical gate:** `NOT_PROVEN` para o candidato `c11858ed` até CI próprio com os cinco shards, SQL e Vue contra o manifesto revision 51. Os ancestrais #191/#192 passaram esse gate, mas sua evidência não é transferida. O gate agregado local/Triple-A permanece `BLOCKED / NOT PROVEN` e `publication_allowed=false`.
+**Current critical gate:** `NOT_PROVEN` para o candidato `33c178c0` até CI próprio com os cinco shards, SQL e Vue contra o manifesto revision 52. Os ancestrais #191/#192 passaram esse gate, mas sua evidência não é transferida. O gate agregado local/Triple-A permanece `BLOCKED / NOT PROVEN` e `publication_allowed=false`.
 
 **Current candidate implementation delta:** o workflow de coverage usa
 um índice APT isolado dos archives oficiais assinados do Ubuntu 22.04, pois o

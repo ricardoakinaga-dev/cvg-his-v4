@@ -2,12 +2,12 @@
 
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT SNAPSHOT   | candidato `c11858ed523a9a027e60b5fd4788d9332b3516cd`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
-| MAIN / ORIGIN      | `main@c11858ed`; `origin/fix/state-of-art-ci-assurance@fe5406c2` ancestral sem commits exclusivos, rollback preservado, sem force-push |
-| CURRENT CI         | O candidato `c11858ed` aguarda CI próprio; os #191/#192 dos ancestrais terminaram `failure` com Critical Coverage Gate `PASS` e falhas gerais |
+| CURRENT SNAPSHOT   | candidato `33c178c0b87ad708c4ac66366bbbfed2cfb798f2`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
+| MAIN / ORIGIN      | `main@33c178c0`; `origin/fix/state-of-art-ci-assurance@fe5406c2` ancestral sem commits exclusivos, rollback preservado, sem force-push |
+| CURRENT CI         | O candidato `33c178c0` aguarda CI próprio; os #191/#192 dos ancestrais terminaram `failure` com Critical Coverage Gate `PASS` e falhas gerais |
 | LOCAL STRICT GATE  | cobertura global local `PASS` no threshold congelado; release/critical externo continuam `NOT_PROVEN`, `claim=NOT PROVEN`, `publication_allowed=false` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
-| LOCAL VALIDATION   | cobertura global `273/273` arquivos e `2.907/2.907` testes, `87,46/82,00/89,32/88,91%` (statements/branches/functions/lines), lint, typecheck, contratos CI `20/20`, SQL `34/34`, produtor SQL `171` migrações e conversão V8 real passaram; manifesto revision 51 válido; target externo ausente |
+| LOCAL VALIDATION   | cobertura global `273/273` arquivos e `2.907/2.907` testes, `87,46/82,00/89,32/88,91%` (statements/branches/functions/lines), lint, typecheck, contratos CI `20/20`, SQL `34/34`, produtor SQL `171` migrações e conversão V8 real passaram; manifesto revision 52 válido; target externo ausente |
 | VERIFIED TARGET    | `NOT PROVEN`                                                                                                                                                                                                                                              |
 | CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; CI terminal, target e autoridade externa continuam sem prova                                                                                                                                                        |
 
