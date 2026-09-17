@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "95227098193966638102ccfe1e54842289ebe7f1",
+  "head": "e69b44845d6cea670b874272d9d1bf718d957be4",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -11168,6 +11168,19 @@
       "added": [],
       "removed": [],
       "changed": []
+    },
+    {
+      "manifestRevision": 57,
+      "observedAt": "2026-09-17T04:38:20.991Z",
+      "collectionCommit": "e69b44845d6cea670b874272d9d1bf718d957be4",
+      "previousManifestSha256": "21d2bfa2e353275bc57447b1469f5edef2ac618a33feea1dd6a2b15078903198",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-21d2bfa2e353275bc57447b1469f5edef2ac618a33feea1dd6a2b15078903198.json",
+      "previousSourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
+      "sourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
+      "reason": "Add machine-readable P0 registry validation and release enforcement",
+      "added": [],
+      "removed": [],
+      "changed": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12101,7 +12114,7 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 56,
+  "manifestRevision": 57,
   "sourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
   "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
   "specializedEvidence": {
