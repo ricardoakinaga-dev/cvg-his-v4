@@ -35,7 +35,7 @@ O manifest crítico revision 56 foi reancorado no commit de correção fail-clos
 complexidade, sem mudança de
 thresholds, fontes ou aplicabilidade funcional; o snapshot corrente é
 `1bbdd63a4f53e39394d8aaee96fce067a1d2f735`, com implementação funcional em
-`95227098e1f77b99d2a2bbf00cbb244c6ac61a8f`, sobre `15ba86a883a4283c5bf86c5825bf7d9a6ca5d089`. O runner crítico preserva o SQL histórico,
+`95227098193966638102ccfe1e54842289ebe7f1`, sobre `15ba86a883a4283c5bf86c5825bf7d9a6ca5d089`. O runner crítico preserva o SQL histórico,
 usa PostgreSQL 16 e trata os inicializadores V8 do Node 22 sem fundir identidades.
 O produtor SQL agora é executado e publicado antes do checker. Os produtores atuais são identificados na
 [`evidência corrente`](./17-current-execution-evidence.md). Os CI #191/#192

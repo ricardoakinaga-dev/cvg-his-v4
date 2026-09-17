@@ -5,7 +5,7 @@
 - O CI [#199](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35176824096)
   validou a identidade canônica e falhou no guard de complexidade: `server.ts`
   tinha `8.350` linhas contra o limite congelado de `8.335`. A correção
-  `95227098e1f77b99d2a2bbf00cbb244c6ac61a8f` compacta somente o tratamento de
+  `95227098193966638102ccfe1e54842289ebe7f1` compacta somente o tratamento de
   erro do carregamento autoritativo, mantendo o fail-closed 503, a única leitura
   final e a semântica de autorização.
 - Validação local: complexity passou em `8.335` linhas, lint completo passou e a

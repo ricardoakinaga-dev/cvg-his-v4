@@ -3,7 +3,7 @@
 Observado em `2026-09-17T03:22:00Z`, sobre o candidato funcional
 `1bbdd63a4f53e39394d8aaee96fce067a1d2f735`, que contém a documentação corrente
 e a correção funcional de fail-closed e complexidade no commit
-`95227098e1f77b99d2a2bbf00cbb244c6ac61a8f`, sobre a otimização do
+`95227098193966638102ccfe1e54842289ebe7f1`, sobre a otimização do
 roteamento autenticado antes da guarda final, além do alinhamento do runner
 crítico à versão canônica PostgreSQL 16, a aceitação restrita dos inicializadores
 V8 do Node 22, a produção de evidência SQL e a reancoragem do manifesto crítico.
@@ -36,7 +36,7 @@ fotografia não promove evidência histórica nem altera thresholds.
 ## Decisão
 
 O snapshot candidato `1bbdd63a4f53e39394d8aaee96fce067a1d2f735` foi reconciliado;
-o candidato funcional `95227098e1f77b99d2a2bbf00cbb244c6ac61a8f` preserva a
+o candidato funcional `95227098193966638102ccfe1e54842289ebe7f1` preserva a
 otimização autenticada e o fail-closed 503;
 o manifesto crítico foi reancorado na revisão 56, com o código funcional e os
 thresholds preservados. `origin/fix/state-of-art-ci-assurance` já era ancestral de `main` e
