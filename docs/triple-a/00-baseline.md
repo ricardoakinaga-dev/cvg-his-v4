@@ -1,20 +1,20 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-16T23:57:01Z
+## Snapshot vigente — 2026-09-17T02:14:20Z
 
-O baseline autoritativo do snapshot atual está em: `33c178c0b87ad708c4ac66366bbbfed2cfb798f2` (manifesto crítico revision 52, ancorado no commit de reconciliação do inventário).
+O baseline autoritativo do snapshot atual está em: `15ba86a883a4283c5bf86c5825bf7d9a6ca5d089` (manifesto crítico revision 53, ancorado no commit de otimização do roteamento autenticado).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
 documentação corrente sucede os candidatos históricos sem transferir evidência;
-o candidato `33c178c0` consolida a cobertura de contratos de pagamento, marketing,
+o candidato `15ba86a8` consolida a cobertura de contratos de pagamento, marketing,
 laboratório, ML e limites operacionais, preservando o runner PostgreSQL 16, os
 checksums de migração e a aceitação restrita do par de inicializadores V8; a
 branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
 `BLOCKED / NOT PROVEN`.
 
-Os CI #191/#192 dos ancestrais terminaram `failure` com `13/17` jobs verdes e Critical Coverage Gate aprovado; não são transferidos para o novo candidato. No candidato atual, a cobertura global passou `273` arquivos, `2.907` testes e o threshold congelado (`87,46%` statements, `82,00%` branches, `89,32%` functions e `88,91%` lines), além de lint e typecheck. O CI #196 do candidato terminou `failure` com `14/17` jobs verdes: Critical Coverage passou, enquanto E2E SPA, Performance/k6 e Visual Regression falharam. Target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
+Os CI #191/#192 dos ancestrais terminaram `failure` com `13/17` jobs verdes e Critical Coverage Gate aprovado; não são transferidos para o novo candidato. No candidato anterior, a cobertura global passou `273` arquivos, `2.907` testes e o threshold congelado (`87,46%` statements, `82,00%` branches, `89,32%` functions e `88,91%` lines), além de lint e typecheck. A otimização corrente elimina a leitura duplicada de sessão antes da resolução de tenant: o JWT assinado fornece somente contexto de roteamento, enquanto a guarda final continua relendo sessão, usuário, função e permissões de forma autoritativa. A captura visual local passou `29/29` e o benchmark local PostgreSQL passou `9/9` SLOs; o novo CI exato ainda aguarda execução. O CI #197 do candidato documental anterior terminou `failure` com o mesmo padrão de E2E SPA, Performance/k6 e Visual Regression. Target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
 parcial ou histórico é promovido. Target, recovery, UAT, attestation,
 governança e autoridade de release continuam `NOT PROVEN`.
 

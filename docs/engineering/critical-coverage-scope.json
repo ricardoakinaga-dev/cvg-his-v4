@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "cbab9bc9f0d3d3c7f32efe50cc7f8e6fa7486d08",
+  "head": "15ba86a883a4283c5bf86c5825bf7d9a6ca5d089",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -1067,7 +1067,7 @@
     },
     {
       "path": "apps/api/src/server.ts",
-      "sha256": "5b2082424c3384ee0436f65da61640c1de9e6cb1105863f9b3f86ff33471d583",
+      "sha256": "a97eb81fd238c9165dc1b8a9e27fcf659042c5d029e4503e0e5a0264459a902a",
       "components": [
         "http-routes"
       ],
@@ -4635,7 +4635,7 @@
     },
     {
       "path": "packages/modules/auth/src/index.ts",
-      "sha256": "7d5cbfed9b712e415e08ab238bbff1d2714a57fa7ed8d4f667e4e4ad7ff0e846",
+      "sha256": "17037e2d352bb35d9210fac73872cbf18306110bac076193322109fbb8c6acf5",
       "components": [
         "auth"
       ],
@@ -11093,6 +11093,30 @@
         "tests/unit/api/setup-token-coverage.test.ts"
       ],
       "vitestRemoved": []
+    },
+    {
+      "manifestRevision": 53,
+      "observedAt": "2026-09-17T02:13:30.107Z",
+      "collectionCommit": "15ba86a883a4283c5bf86c5825bf7d9a6ca5d089",
+      "previousManifestSha256": "bbd9da3c1e0b3fcbbe15e5a1c12e17a8db93c9fc0a159ce7342250258d1bffd0",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-bbd9da3c1e0b3fcbbe15e5a1c12e17a8db93c9fc0a159ce7342250258d1bffd0.json",
+      "previousSourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+      "sourceSetSha256": "580089584e03a6c711540c8329f99182b7cc3c451c2b6dd45e54386e1831184d",
+      "reason": "Optimize authenticated request routing by using verified JWT tenant context before the authoritative final guard; preserve session, user, role, and permission revalidation",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/server.ts",
+          "before": "5b2082424c3384ee0436f65da61640c1de9e6cb1105863f9b3f86ff33471d583",
+          "after": "a97eb81fd238c9165dc1b8a9e27fcf659042c5d029e4503e0e5a0264459a902a"
+        },
+        {
+          "path": "packages/modules/auth/src/index.ts",
+          "before": "7d5cbfed9b712e415e08ab238bbff1d2714a57fa7ed8d4f667e4e4ad7ff0e846",
+          "after": "17037e2d352bb35d9210fac73872cbf18306110bac076193322109fbb8c6acf5"
+        }
+      ]
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12026,8 +12050,8 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 52,
-  "sourceSetSha256": "3bde0e16a4b31f558a90f4a8ff1ddf376e34f526853f9b3a24917bbd832ed6fe",
+  "manifestRevision": 53,
+  "sourceSetSha256": "580089584e03a6c711540c8329f99182b7cc3c451c2b6dd45e54386e1831184d",
   "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
   "specializedEvidence": {
     "sql": {

@@ -1,5 +1,25 @@
 # Triple-A — Execution Log
 
+## 2026-09-17T02:14:20Z — candidato `15ba86a8` / otimização autenticada local
+
+- O candidato `15ba86a883a4283c5bf86c5825bf7d9a6ca5d089` remove a leitura
+  duplicada da sessão antes da resolução de tenant. O JWT assinado é verificado
+  sincronicamente apenas para roteamento; a guarda final continua relendo a
+  sessão, usuário, função e permissões de forma autoritativa, preservando
+  revogação e alterações de acesso.
+- O manifesto crítico foi reancorado na revisão 53, com `sourceSetSha256`
+  `580089584e03a6c711540c8329f99182b7cc3c451c2b6dd45e54386e1831184d`.
+  O check do manifesto e a identidade canônica passaram.
+- Auth focado passou `54/54`; typecheck e API build passaram. Com PostgreSQL
+  descartável e API limitada a quatro CPUs, o k6 passou `9/9` SLOs (`query`
+  p95 `138ms`, limite `150ms`). A suíte visual local passou `29/29` depois de
+  configurar o rate limit experimental em `200` requisições.
+- O CI exato deste candidato ainda aguarda execução. O #197 anterior terminou
+  `failure` em E2E SPA, Performance/k6 e Visual Regression; nenhuma evidência
+  desse SHA anterior é transferida e nenhum baseline/threshold foi promovido.
+- A branch `origin/fix/state-of-art-ci-assurance` continua ancestral de
+  `main`, sem commits exclusivos; não houve merge destrutivo nem force-push.
+
 ## 2026-09-17T00:36:05Z — CI terminal do candidato `3a87663f`
 
 - O [CI #196](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35164769380), no snapshot documental `3a87663f` sobre o candidato funcional `33c178c0`, terminou `failure` com `14/17` jobs verdes.

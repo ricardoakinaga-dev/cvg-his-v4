@@ -1,22 +1,22 @@
 # Triple-A External Assurance — Current Reconciliation
 
-> **Current candidate supersession (2026-09-16):** este arquivo preserva
+> **Current candidate supersession (2026-09-17):** este arquivo preserva
 > snapshots históricos. Para o candidato vigente, use
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O snapshot atual é
 > o snapshot anterior `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e`, com código funcional em `578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`, permanece preservado apenas como histórico; a identidade canônica está em
-> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `33c178c0b87ad708c4ac66366bbbfed2cfb798f2`; os CI anteriores não são transferidos. O runner crítico usa PostgreSQL 16, checkout completo, trata o par V8 do Node 22 e publica evidência SQL; nenhum resultado parcial é transferido.
+> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `15ba86a883a4283c5bf86c5825bf7d9a6ca5d089`; os CI anteriores não são transferidos. O runner crítico usa PostgreSQL 16, checkout completo, trata o par V8 do Node 22 e publica evidência SQL; nenhum resultado parcial é transferido.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `33c178c0b87ad708c4ac66366bbbfed2cfb798f2` (manifesto crítico revision 52, workflow com Chromium, runner privado PostgreSQL 16, par V8 autenticado, produtor SQL e cobertura global local acima do threshold; provas externas e autoridade de release continuam `NOT PROVEN`).
-**Current CI:** o [#196](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35164769380), no snapshot `3a87663f`, terminou `failure` com `14/17` jobs verdes. Critical Coverage passou; E2E SPA, Performance/k6 e Visual Regression falharam.
+**Current snapshot:** `15ba86a883a4283c5bf86c5825bf7d9a6ca5d089` (manifesto crítico revision 53, workflow com Chromium, runner privado PostgreSQL 16, par V8 autenticado, produtor SQL, otimização de roteamento autenticado e cobertura global local acima do threshold; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current CI:** aguardando execução exata do candidato `15ba86a8`. O [#197](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35167554015), no descendente documental anterior, terminou `failure` em E2E SPA, Performance/k6 e Visual Regression.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-16T23:37:42Z
+**Observation:** 2026-09-17T02:14:20Z
 
-**Current local execution:** cobertura global `273/273` arquivos e `2907/2907` testes, com `3` skips esperados; statements `87,46%`, branches `82,00%`, functions `89,32%`, lines `88,91%`; lint e typecheck completos passaram. O runner privado PostgreSQL 16.15 repetiu as `171` migrações e o seed em duas rodadas. O Critical Coverage Gate do candidato passou no #196; target, recovery, UAT e autoridade continuam sem prova aceita. A validação local não substitui CI pinned, target ou UAT.
+**Current local execution:** cobertura global `273/273` arquivos e `2907/2907` testes, com `3` skips esperados; statements `87,46%`, branches `82,00%`, functions `89,32%`, lines `88,91%`; lint, typecheck e API build passaram. O runner privado PostgreSQL 16.15 repetiu as `171` migrações e o seed em duas rodadas. Auth focado passou `54/54`, k6 local limitado a quatro CPUs passou `9/9` SLOs e a suíte visual local passou `29/29`. Target, recovery, UAT e autoridade continuam sem prova aceita. A validação local não substitui CI pinned, target ou UAT.
 
-**Current critical gate:** `PASS` no CI #196 para o snapshot `3a87663f`, com os cinco shards, SQL e Vue contra o manifesto revision 52. Isso não promove o gate agregado: E2E SPA, Performance/k6 e Visual Regression falharam, e target, recovery, UAT, attestation e autoridade permanecem sem prova. O gate agregado local/Triple-A permanece `BLOCKED / NOT PROVEN` e `publication_allowed=false`.
+**Current critical gate:** o candidato `15ba86a8` ainda aguarda o CI exato. O CI #196 anterior passou os cinco shards, SQL e Vue contra a revisão 52, mas não é transferido; o #197 documental repetiu falhas em E2E SPA, Performance/k6 e Visual Regression. Target, recovery, UAT, attestation e autoridade permanecem sem prova. O gate agregado local/Triple-A permanece `BLOCKED / NOT PROVEN` e `publication_allowed=false`.
 
 **Current candidate implementation delta:** o workflow de coverage usa
 um índice APT isolado dos archives oficiais assinados do Ubuntu 22.04, pois o
@@ -32,6 +32,7 @@ The previous external-assurance sections below are historical snapshots. Their S
 - O job crítico agora provisiona PostgreSQL 16.15 via PGDG assinado com fingerprint verificada, preservando o SQL histórico e os checksums das migrações; o checkout usa `fetch-depth: 0` para provar a ancestralidade do manifesto.
 - O conversor de coverage aceita somente o par coextensivo V8 `<instance_members_initializer>`/`<static_initializer>` emitido pelo Node 22 e preserva suas identidades ao combinar snapshots; duplicações arbitrárias continuam rejeitadas.
 - O job crítico produz e verifica `artifacts/remediation/PROD-011/sql-migration-evidence/accepted/evidence.json` antes do checker e inclui esse artefato no upload de diagnóstico.
+- O candidato `15ba86a8` elimina a segunda leitura de sessão antes da resolução de tenant: o JWT assinado é usado somente como contexto de roteamento, enquanto a guarda final relê sessão, usuário, função e permissões de forma autoritativa. Auth focado passou `54/54`; nenhum controle de autorização foi relaxado.
 
 - O logger compartilhado agora redige recursivamente chaves sensíveis, mensagens, erros estruturados, objetos aninhados e referências circulares; `@cvg-his-v2/shared-logging` passou 16/16 testes locais.
 - The prepublication gate now evaluates an explicit phase and marks criteria that require a published target as `NOT_APPLICABLE`; they are excluded from the phase denominator and critical/P0 counts without weakening the postpublication quality bar.
