@@ -1,9 +1,9 @@
 # Baseline corrente — State of Art
 
 Observado em `2026-09-17T13:28:36Z`, sobre o candidato documental
-`190a9a535da082716bf7006be3e278a29f8bd4c2`, que contém a identidade corrente
+`ec6a8b730e7bbb9d5e56496f54fa58ceb9a8a503`, que contém a identidade corrente
 e a correção funcional de fail-closed, autoridade request-scoped e ownership composto no commit
-`190a9a535da082716bf7006be3e278a29f8bd4c2`, sobre a otimização do
+`ec6a8b730e7bbb9d5e56496f54fa58ceb9a8a503`, sobre a otimização do
 roteamento autenticado antes da guarda final e o ciclo de vida de feature flags,
 além do alinhamento do runner
 crítico à versão canônica PostgreSQL 16, a aceitação restrita dos inicializadores
@@ -19,7 +19,7 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| current_sha     | `190a9a535da082716bf7006be3e278a29f8bd4c2` (snapshot; registro P0 e manifesto revision 67; Noto Sans e rasterização sem LCD determinísticos nos gates E2E/visual; verificação portátil do runner; endurecimento funcional do provider de feature flags, autoridade request-scoped, ownership composto, classificador documental e ciclo de vida; harness SPA canônico com proxy same-origin) |
+| current_sha     | `ec6a8b730e7bbb9d5e56496f54fa58ceb9a8a503` (snapshot; registro P0 e manifesto revision 67; Noto Sans e rasterização sem LCD determinísticos nos gates E2E/visual; verificação portátil do runner; endurecimento funcional do provider de feature flags, autoridade request-scoped, ownership composto, classificador documental e ciclo de vida; harness SPA canônico com proxy same-origin) |
 | main_sha        | `main` local contém o candidato `52a62b80`; a `main` remota está publicada em `origin/main@9754ff15`; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral, sem commits funcionais exclusivos; rollback preservado |
 | worktree        | Limpo antes da documentação corrente; artefatos gerados locais permanecem fora do commit |
 | rollback        | `origin/fix/state-of-art-ci-assurance@fe5406c2`; sem force-push |
@@ -38,8 +38,8 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 ## Decisão
 
-O snapshot `190a9a535da082716bf7006be3e278a29f8bd4c2` foi reconciliado;
-o candidato funcional `190a9a535da082716bf7006be3e278a29f8bd4c2` preserva a
+O snapshot `ec6a8b730e7bbb9d5e56496f54fa58ceb9a8a503` foi reconciliado;
+o candidato funcional `ec6a8b730e7bbb9d5e56496f54fa58ceb9a8a503` preserva a
 otimização autenticada e o fail-closed 503;
 o manifesto crítico foi reancorado na revisão 67, com a correção de tipografia e rasterização CI/visual, a verificação portátil do runner, o código funcional de feature flags e os
 thresholds preservados. `origin/fix/state-of-art-ci-assurance` já era ancestral de `main` e

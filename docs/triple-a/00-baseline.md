@@ -2,7 +2,7 @@
 
 ## Snapshot vigente — 2026-09-17T13:28:36Z
 
-O baseline autoritativo do snapshot atual está em: `190a9a535da082716bf7006be3e278a29f8bd4c2` (snapshot reancorado após a normalização de rasterização de texto entre runners, a fixação de Noto Sans nos gates visuais, a verificação portátil do runner, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental, a revisão 66 do manifesto crítico e o endurecimento do ciclo de vida de feature flags; a correção funcional atual de fail-closed, tenant explícito, cache bounded, upsert atômico, autoridade request-scoped e ownership composto está no commit `190a9a53`, sobre a otimização de leitura autenticada em `15ba86a8`).
+O baseline autoritativo do snapshot atual está em: `ec6a8b730e7bbb9d5e56496f54fa58ceb9a8a503` (snapshot reancorado após a normalização de rasterização de texto entre runners, a fixação de Noto Sans nos gates visuais, a verificação portátil do runner, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental, a revisão 66 do manifesto crítico e o endurecimento do ciclo de vida de feature flags; a correção funcional atual de fail-closed, tenant explícito, cache bounded, upsert atômico, autoridade request-scoped e ownership composto está no commit `ec6a8b73`, sobre a otimização de leitura autenticada em `15ba86a8`).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
@@ -22,7 +22,7 @@ governança e autoridade de release continuam `NOT PROVEN`.
 
 ## Reconciliação da correção visual — 2026-09-17
 
-- O candidato local `190a9a535da082716bf7006be3e278a29f8bd4c2` adiciona
+- O candidato local `ec6a8b730e7bbb9d5e56496f54fa58ceb9a8a503` adiciona
   `--disable-lcd-text` ao Chromium e registra os seis baselines derivados dos
   `actual.png` do artefato visual do CI #212, depois de inspeção pixel-a-pixel
   que encontrou somente fringes de antialiasing de texto, sem mudança de layout
@@ -39,7 +39,7 @@ governança e autoridade de release continuam `NOT PROVEN`.
 
 ## Reconciliação do ciclo de feature flags — 2026-09-17
 
-- O commit `190a9a535da082716bf7006be3e278a29f8bd4c2` corrige o provider raw usado
+- O commit `ec6a8b730e7bbb9d5e56496f54fa58ceb9a8a503` corrige o provider raw usado
   pela API: aplica `enabled=false` e `expiresAt` antes dos overrides, seleciona
   o escopo mais específico entre usuário/conta/ambiente, nega allowlist sem
   correspondência e limita o cache ao vencimento.
