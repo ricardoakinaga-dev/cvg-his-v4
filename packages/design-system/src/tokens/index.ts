@@ -130,7 +130,7 @@ export const shadows = {
 
 /**
  * Legacy JS typography snapshot (including Inter). Keep it stable for existing
- * consumers; use `cvgPulseTokens.typography` for the current Aptos-backed roles.
+ * consumers; use `cvgPulseTokens.typography` for the current Noto Sans-backed roles.
  */
 export const typography = {
   fontFamily: {
@@ -281,12 +281,12 @@ export const semanticTokens = {
 /**
  * Current CVG Pulse token map. Values are CSS custom-property references so
  * `variables.css` remains the runtime source of truth for cyan, mint, ink,
- * Aptos, themes, and reduced motion.
+ * Noto Sans, themes, and reduced motion.
  *
  * Migration map for the public JS API:
  * - `colors.*` (blue/slate snapshot) -> `cvgPulseTokens.colors.*`
  * - `typography.fontFamily.sans` (Inter) ->
- *   `cvgPulseTokens.typography.fontFamily.interface` (Aptos stack)
+ *   `cvgPulseTokens.typography.fontFamily.interface` (Noto Sans stack)
  * - `lightTheme` / `darkTheme` -> `cvgPulseLightTheme` / `cvgPulseDarkTheme`
  * - existing `semanticTokens` remains available and is also exposed as the
  *   `semantic` layer below.

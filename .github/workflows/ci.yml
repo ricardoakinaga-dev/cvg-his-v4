@@ -1448,6 +1448,13 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Install deterministic UI font
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends fonts-noto-core
+          fc-cache --force
+          fc-match -f '%{family}\n' 'Noto Sans' | rg -q '^Noto Sans$'
+
       - name: Wait for PostgreSQL
         run: |
           ready=0
@@ -1741,6 +1748,13 @@ jobs:
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
+
+      - name: Install deterministic UI font
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends fonts-noto-core
+          fc-cache --force
+          fc-match -f '%{family}\n' 'Noto Sans' | rg -q '^Noto Sans$'
 
       - name: Wait for PostgreSQL
         run: |

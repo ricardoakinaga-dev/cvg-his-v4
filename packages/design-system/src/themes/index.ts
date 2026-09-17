@@ -63,7 +63,7 @@ export const darkTheme: ThemeColors = {
 /**
  * Current CVG Pulse light theme values, matching the first `:root` block in
  * `tokens/variables.css`. These values keep the existing SSR-friendly theme
- * shape while making the current cyan/mint/ink and Aptos CSS contract explicit.
+ * shape while making the current cyan/mint/ink and Noto Sans CSS contract explicit.
  * The corresponding CSS source remains authoritative; unit tests bind these
  * values to its declarations.
  */
