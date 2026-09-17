@@ -25,4 +25,4 @@
     "Target, UAT, recovery, attestation, branch governance and release authority remain unproven.",
     "Documentation-only commits after head_sha are allowed; source changes require regeneration."
   ]
-}\n
+}
