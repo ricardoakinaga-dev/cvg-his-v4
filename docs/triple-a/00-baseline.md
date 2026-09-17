@@ -2,7 +2,7 @@
 
 ## Snapshot vigente — 2026-09-17T09:01:08Z
 
-O baseline autoritativo do snapshot atual está em: `a4f2ef6705cebca552b07f20ebd3d596d5714079` (snapshot reancorado após a normalização de rasterização de texto entre runners, a fixação de Noto Sans nos gates visuais, a verificação portátil do runner, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental e a revisão 62 do manifesto crítico; a correção funcional de fail-closed permanece no commit `95227098` e a otimização de leitura autenticada em `15ba86a8`).
+O baseline autoritativo do snapshot atual está em: `dfa6d0b4ea60d6e7fbbe42521793b9fad273f702` (snapshot reancorado após a normalização de rasterização de texto entre runners, a fixação de Noto Sans nos gates visuais, a verificação portátil do runner, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental e a revisão 62 do manifesto crítico; a correção funcional de fail-closed permanece no commit `95227098` e a otimização de leitura autenticada em `15ba86a8`).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
@@ -22,13 +22,13 @@ governança e autoridade de release continuam `NOT PROVEN`.
 
 ## Reconciliação da correção visual — 2026-09-17
 
-- O candidato local `a4f2ef6705cebca552b07f20ebd3d596d5714079` adiciona
+- O candidato local `dfa6d0b4ea60d6e7fbbe42521793b9fad273f702` adiciona
   `--disable-lcd-text` ao Chromium e registra os seis baselines derivados dos
   `actual.png` do artefato visual do CI #212, depois de inspeção pixel-a-pixel
   que encontrou somente fringes de antialiasing de texto, sem mudança de layout
   ou conteúdo.
 - A mesma árvore funcional foi publicada na `main` remota como
-  `a4f2ef6705cebca552b07f20ebd3d596d5714079`, sem force-push. A branch
+  `dfa6d0b4ea60d6e7fbbe42521793b9fad273f702`, sem force-push. A branch
   `origin/fix/state-of-art-ci-assurance@fe5406c2` continua ancestral e sem
   commits exclusivos; não há merge seletivo adicional a reaplicar.
 - O [CI #214](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35204183554)

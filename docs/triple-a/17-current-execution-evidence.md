@@ -2,7 +2,7 @@
 
 ## Candidato documental observado em 2026-09-17T09:01:08Z
 
-- SHA de código e documentação: `a4f2ef6705cebca552b07f20ebd3d596d5714079`;
+- SHA de código e documentação: `dfa6d0b4ea60d6e7fbbe42521793b9fad273f702`;
   identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
 - O manifesto crítico está na revisão 62, ancorado no candidato `a4f2ef67` e publicado na identidade do snapshot; o candidato instala Chromium, fixa Noto Sans nos jobs E2E/visual, desativa LCD text no Playwright e verifica a fonte com comandos portáteis do runner, provisiona PostgreSQL 16 via PGDG fingerprint-pinned, aceita o par V8 de inicializadores do Node 22, publica o artefato SQL verificado, valida o registro P0 e fecha o threshold global de branches com contratos determinísticos. Os gates SPA agora usam API compilada e servidor estático com proxy same-origin `/api`, igual ao harness canônico local. O classificador de identidade aceita a atualização do manifesto como bookkeeping documental sem ignorar mudanças de código. O roteamento inicial usa somente o contexto JWT verificado; a guarda final relê sessão, usuário, função e permissões de forma autoritativa, com erros genéricos de sessão sanitizados para 503, e `server.ts` respeita o orçamento de `8.335` linhas. Rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
