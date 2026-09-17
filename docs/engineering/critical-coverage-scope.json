@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "0fab9fc189e122b4ff7e7700d9b07508e64f54bd",
+  "head": "dc620fd15ce877d98a60e3d9bad28b4d1fa12a12",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -8394,7 +8394,11 @@
     "apps/api/src/http-request-telemetry.ts",
     "apps/api/src/production-runtime-contract.test.ts",
     "apps/api/src/tracing.test.ts",
-    "apps/worker/src/worker-metrics.test.ts"
+    "apps/worker/src/worker-metrics.test.ts",
+    "scripts/validate-observability-contract.mjs",
+    "scripts/validate-observability-contract.test.mjs",
+    "scripts/validate-production-runtime-contract.mjs",
+    "scripts/validate-production-runtime-contract.test.mjs"
   ],
   "scopeHistory": [
     {
@@ -11641,6 +11645,29 @@
       },
       "executionInputsAdded": [],
       "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0"
+    },
+    {
+      "manifestRevision": 77,
+      "observedAt": "2026-09-17T23:12:21.586Z",
+      "collectionCommit": "dc620fd15ce877d98a60e3d9bad28b4d1fa12a12",
+      "previousManifestSha256": "ffb9c8b690747b3a39018acf1ee81be668dd2445c11116972ddfd69fb19d2a52",
+      "preservedManifest": "artifacts/remediation/PROD-011/manifest-refresh-merge-20260917/critical-scope-before-ffb9c8b690747b3a39018acf1ee81be668dd2445c11116972ddfd69fb19d2a52.json",
+      "previousSourceSetSha256": "b16ab39cfac043410c85fd0e5e7d4c5e304eedc52e579abf03cbd854c434a5c0",
+      "sourceSetSha256": "4853da66c0f044cd36cba46c8603d2c84d98713364e625e645db4946dbc74809",
+      "reason": "Reanchor critical source identity after unifying ACL, runtime readiness, tracing and worker observability",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "scripts/validate-observability-contract.mjs",
+        "scripts/validate-observability-contract.test.mjs",
+        "scripts/validate-production-runtime-contract.mjs",
+        "scripts/validate-production-runtime-contract.test.mjs"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
+      "executionInputsSha256": "9f1953c5b288ecd06f6228fa6b9023fc9dee4cd1d166e6ab8c0958c70b83611c"
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12574,9 +12601,9 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 76,
-  "sourceSetSha256": "b16ab39cfac043410c85fd0e5e7d4c5e304eedc52e579abf03cbd854c434a5c0",
-  "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
+  "manifestRevision": 77,
+  "sourceSetSha256": "4853da66c0f044cd36cba46c8603d2c84d98713364e625e645db4946dbc74809",
+  "executionInputsSha256": "9f1953c5b288ecd06f6228fa6b9023fc9dee4cd1d166e6ab8c0958c70b83611c",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,
