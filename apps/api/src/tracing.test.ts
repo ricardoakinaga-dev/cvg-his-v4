@@ -13,6 +13,8 @@ import {
 
 import {
   extractTraceContext,
+  injectTraceContext,
+  sanitizeHttpTarget,
   tracingMiddleware,
   type TraceableIncomingMessage
 } from './tracing.js';
@@ -87,9 +89,25 @@ test('tracing middleware creates the request span before dispatch and activates 
   assert.ok(request.span);
   assert.equal(request.traceContext?.traceId, '11111111111111111111111111111111');
   assert.equal(headers.get('x-trace-id'), request.span.context.traceId);
-  assert.equal(headers.get('tracestate'), 'cvg-api');
+  assert.equal(headers.get('tracestate'), 'cvg-api=1');
   assert.match(headers.get('traceparent') ?? '', /^00-[a-f0-9]{32}-[a-f0-9]{16}-[a-f0-9]{2}$/);
   assert.equal(extractTraceContext(request)?.spanId, '2222222222222222');
+});
+
+test('telemetry target removes query credentials from span-safe HTTP targets', () => {
+  assert.equal(
+    sanitizeHttpTarget('/attachments/attachment-1/content?token=secret-token&download=1'),
+    '/attachments/attachment-1/content'
+  );
+  assert.equal(sanitizeHttpTarget(undefined), '/');
+
+  const headers: Record<string, string> = {};
+  injectTraceContext(headers, {
+    traceId: '11111111111111111111111111111111',
+    spanId: '2222222222222222',
+    traceFlags: 1
+  });
+  assert.equal(headers.tracestate, 'cvg-api=1');
 });
 
 test('tracing middleware awaits async handlers and preserves handler errors', async () => {

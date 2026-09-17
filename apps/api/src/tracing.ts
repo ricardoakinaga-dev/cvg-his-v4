@@ -40,6 +40,23 @@ export interface TraceableIncomingMessage extends IncomingMessage {
   span?: Span;
 }
 
+/**
+ * Return a safe HTTP target for telemetry.
+ *
+ * Query strings are intentionally excluded because this application exposes
+ * signed download URLs whose credentials are carried in query parameters.
+ * Keeping only the pathname prevents bearer tokens, signatures and other
+ * request secrets from reaching span attributes or span names.
+ */
+export function sanitizeHttpTarget(rawUrl: string | undefined): string {
+  try {
+    const parsed = new URL(rawUrl ?? '/', 'http://localhost');
+    return parsed.pathname || '/';
+  } catch {
+    return '/';
+  }
+}
+
 /** Format: version-traceId-spanId-traceFlags (all hex, 2+16+16+2 = 36 chars + 3 dashes) */
 export function formatTraceParent(traceId: string, spanId: string, flags: number): string {
   return `00-${traceId.slice(0, 32)}-${spanId.slice(0, 16)}-${flags.toString(16).padStart(2, '0')}`;
@@ -74,7 +91,7 @@ export function extractTraceContext(request: IncomingMessage): TraceContext | nu
 
 export function injectTraceContext(headers: Record<string, string>, ctx: TraceContext): void {
   headers['traceparent'] = formatTraceParent(ctx.traceId, ctx.spanId, ctx.traceFlags);
-  headers['tracestate'] = 'cvg-api';
+  headers['tracestate'] = 'cvg-api=1';
 }
 
 export function createSpan(name: string, parent?: TraceContext | null): Span {
@@ -176,7 +193,10 @@ export async function tracingMiddleware(
 ): Promise<void> {
   const traceableRequest = request as TraceableIncomingMessage;
   const parent = extractTraceContext(request);
-  const span = createSpan(`HTTP ${request.method ?? 'UNKNOWN'} ${request.url ?? '/'}`, parent);
+  const span = createSpan(
+    `HTTP ${request.method ?? 'UNKNOWN'} ${sanitizeHttpTarget(request.url)}`,
+    parent
+  );
 
   traceableRequest.traceContext = parent;
   traceableRequest.span = span;
@@ -185,7 +205,7 @@ export async function tracingMiddleware(
     'traceparent',
     formatTraceParent(span.context.traceId, span.context.spanId, span.context.traceFlags)
   );
-  response.setHeader('tracestate', 'cvg-api');
+  response.setHeader('tracestate', 'cvg-api=1');
 
   if (!span.otelSpan) {
     await next();

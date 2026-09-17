@@ -10,7 +10,7 @@ import {
   normalizeRoute,
   recordRequestSloObservation
 } from './metrics.js';
-import { endSpan, type Span } from './tracing.js';
+import { endSpan, sanitizeHttpTarget, type Span } from './tracing.js';
 
 export function attachHttpRequestTelemetry(options: {
   readonly request: IncomingMessage;
@@ -64,7 +64,7 @@ export function attachHttpRequestTelemetry(options: {
 
     options.span.attributes['http.method'] = method;
     options.span.attributes['http.route'] = route;
-    options.span.attributes['http.target'] = options.request.url ?? '/';
+    options.span.attributes['http.target'] = sanitizeHttpTarget(options.request.url);
     options.span.attributes['http.status_code'] = statusCode;
     options.span.attributes['http.duration_ms'] = Math.round(durationSec * 1000);
     options.span.attributes['request.correlation_id'] = options.correlationId;

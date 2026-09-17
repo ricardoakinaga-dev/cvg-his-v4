@@ -245,6 +245,7 @@ import {
   withSpanContext,
   injectTraceContext,
   formatTraceParent,
+  sanitizeHttpTarget,
   type Span,
   type TraceableIncomingMessage
 } from './tracing.js';
@@ -4230,7 +4231,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     const span =
       traceableRequest.span ??
       createSpan(
-        `HTTP ${request.method ?? 'UNKNOWN'} ${request.url ?? '/'}`,
+        `HTTP ${request.method ?? 'UNKNOWN'} ${sanitizeHttpTarget(request.url)}`,
         traceableRequest.traceContext ?? null
       );
     traceableRequest.span = span;
@@ -4255,7 +4256,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       : applyCorsPolicy(request, response, corsAllowedOrigins);
 
     // Inject trace context into response for downstream propagation
-    response.setHeader('tracestate', `cvg-api`);
+    response.setHeader('tracestate', 'cvg-api=1');
     response.setHeader(
       'traceparent',
       formatTraceParent(span.context.traceId, span.context.spanId, span.context.traceFlags)
@@ -4283,7 +4284,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
 
     try {
       span.attributes['http.method'] = request.method ?? 'UNKNOWN';
-      span.attributes['http.target'] = request.url ?? '/';
+      span.attributes['http.target'] = sanitizeHttpTarget(request.url);
       span.attributes['request.correlation_id'] = correlationId;
       const url = new URL(request.url ?? '/', 'http://localhost');
       const pathname = url.pathname;
