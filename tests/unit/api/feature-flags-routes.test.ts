@@ -229,6 +229,19 @@ describe('feature-flags routes operational reports', () => {
         '/flags/runtime.distributed_state.enabled/overrides',
         jsonRequest('POST', '/flags/runtime.distributed_state.enabled/overrides', {
           enabled: true,
+          accountIdOverride: 'not-a-uuid'
+        }) as never,
+        response as never,
+        'corr-invalid-account-override',
+        handlers as never
+      )
+    ).rejects.toThrow("Field 'accountIdOverride' must be a UUID");
+
+    await expect(
+      handleFeatureFlagsRoutes(
+        '/flags/runtime.distributed_state.enabled/overrides',
+        jsonRequest('POST', '/flags/runtime.distributed_state.enabled/overrides', {
+          enabled: true,
           allowedUsers: ['not-a-uuid']
         }) as never,
         response as never,
@@ -276,6 +289,36 @@ describe('feature-flags routes operational reports', () => {
     expect(handlers.featureFlagRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({ defaultValue: false, enabled: false, scopes: ['account'] }),
       'acc_demo'
+    );
+  });
+
+  it('accepts a UUID allowlist in a valid override write', async () => {
+    const handlers = createHandlers();
+    const response = new MockResponse();
+    const allowedUser = '00000000-0000-4000-8000-000000000001';
+
+    const handled = await handleFeatureFlagsRoutes(
+      '/flags/runtime.distributed_state.enabled/overrides',
+      jsonRequest('POST', '/flags/runtime.distributed_state.enabled/overrides', {
+        environment: 'production',
+        allowedUsers: [allowedUser],
+        enabled: true
+      }) as never,
+      response as never,
+      'corr-valid-allowlist',
+      handlers as never
+    );
+
+    expect(handled).toBe(true);
+    expect(response.statusCode).toBe(200);
+    expect(handlers.featureFlagRepository.upsertOverride).toHaveBeenCalledWith(
+      'runtime.distributed_state.enabled',
+      'acc_demo',
+      expect.objectContaining({
+        environment: 'production',
+        allowedUsers: [allowedUser],
+        enabled: true
+      })
     );
   });
 });

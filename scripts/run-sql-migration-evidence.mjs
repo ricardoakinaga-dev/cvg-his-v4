@@ -39,7 +39,9 @@ const FOUNDATIONAL_TARGET = '0016_feature_flags';
 const LEGACY_FORWARD_TARGETS = [
   '0170_outbox_event_envelope',
   '0171_outbox_event_envelope_backfill_correction',
-  '0172_outbox_event_envelope_full_validity_backfill'
+  '0172_outbox_event_envelope_full_validity_backfill',
+  '0173_feature_flag_override_scope_uniqueness',
+  '0174_feature_flag_override_tenant_ownership'
 ];
 const QUERY_TIMEOUT_MS = 30000;
 const MIGRATION_TIMEOUT_MS = 300000;
@@ -645,7 +647,9 @@ export async function produceSqlMigrationEvidence({ root = ROOT, output = null }
             });
             steps.push(step);
             const rows = await snapshotOutbox(client, accountId);
-            snapshots[targetName.slice(0, 4) === '0170' ? 'after0170' : targetName.slice(0, 4) === '0171' ? 'after0171' : 'after0172'] = snapshotRows(rows);
+            const snapshotKey = targetName.slice(0, 4);
+            if (snapshotKey === '0170' || snapshotKey === '0171' || snapshotKey === '0172')
+              snapshots[`after${snapshotKey}`] = snapshotRows(rows);
           }
           const finalCatalog = await catalogSnapshot(client);
           assert.equal(finalCatalog.fingerprint, cleanSchemaFingerprint, 'legacy schema differs from clean schema');
