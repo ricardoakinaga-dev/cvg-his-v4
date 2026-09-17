@@ -21,11 +21,12 @@
 - Os testes do contrato cobrem envelope fresco, descendente documental,
   stale, digest adulterado e symlink. O importador não substitui o gate de
   release, CI remoto, target ou autoridade humana.
-- A execução local corrente sobre PostgreSQL descartável terminou com `394/394`
-  arquivos e `3932/3932` testes aprovados após aplicar as `176` migrations,
-  incluindo cenários de SIGKILL/takeover, idempotência, concorrência financeira,
-  PIX, webhook e workflow. Essa coleta é diagnóstico candidate-bound e não fecha
-  os P0 que exigem CI, target ou autoridade independente.
+- A execução local corrente sobre PostgreSQL descartável terminou com `393/394`
+  arquivos e `3930/3933` testes aprovados, com `1` arquivo e `3` testes ignorados
+  de forma esperada, após aplicar as `176` migrations, incluindo cenários de
+  SIGKILL/takeover, idempotência, concorrência financeira, PIX, webhook e
+  workflow. Essa coleta é diagnóstico candidate-bound e não fecha os P0 que
+  exigem CI, target ou autoridade independente.
 
 ## Validações locais
 
