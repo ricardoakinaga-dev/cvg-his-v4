@@ -2,7 +2,7 @@
 
 ## Snapshot vigente — 2026-09-17T13:28:36Z
 
-O baseline autoritativo do snapshot atual está em: `afea7ecad8de0c9447c6184dabc07c754369fcd2` (snapshot reancorado após a normalização de rasterização de texto entre runners, a fixação de Noto Sans nos gates visuais, a verificação portátil do runner, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental, a revisão 65 do manifesto crítico e a correção do ciclo de vida de feature flags; a correção funcional de fail-closed permanece no commit `95227098` e a otimização de leitura autenticada em `15ba86a8`).
+O baseline autoritativo do snapshot atual está em: `7d3c8345cd922fc2a9316d2b046788bf9d8586e6` (snapshot reancorado após a normalização de rasterização de texto entre runners, a fixação de Noto Sans nos gates visuais, a verificação portátil do runner, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental, a revisão 66 do manifesto crítico e o endurecimento do ciclo de vida de feature flags; a correção funcional atual de fail-closed, tenant explícito, cache bounded e upsert atômico está no commit `7d3c8345`, sobre a otimização de leitura autenticada em `15ba86a8`).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
@@ -22,7 +22,7 @@ governança e autoridade de release continuam `NOT PROVEN`.
 
 ## Reconciliação da correção visual — 2026-09-17
 
-- O candidato local `afea7ecad8de0c9447c6184dabc07c754369fcd2` adiciona
+- O candidato local `7d3c8345cd922fc2a9316d2b046788bf9d8586e6` adiciona
   `--disable-lcd-text` ao Chromium e registra os seis baselines derivados dos
   `actual.png` do artefato visual do CI #212, depois de inspeção pixel-a-pixel
   que encontrou somente fringes de antialiasing de texto, sem mudança de layout
@@ -39,7 +39,7 @@ governança e autoridade de release continuam `NOT PROVEN`.
 
 ## Reconciliação do ciclo de feature flags — 2026-09-17
 
-- O commit `afea7ecad8de0c9447c6184dabc07c754369fcd2` corrige o provider raw usado
+- O commit `7d3c8345cd922fc2a9316d2b046788bf9d8586e6` corrige o provider raw usado
   pela API: aplica `enabled=false` e `expiresAt` antes dos overrides, seleciona
   o escopo mais específico entre usuário/conta/ambiente, nega allowlist sem
   correspondência e limita o cache ao vencimento.
