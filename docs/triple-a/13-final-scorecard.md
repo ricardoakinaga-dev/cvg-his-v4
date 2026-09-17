@@ -2,17 +2,17 @@
 
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT SNAPSHOT   | candidato `7d3c8345cd922fc2a9316d2b046788bf9d8586e6`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; registro P0 candidate-bound; Noto Sans e rasterização de texto determinísticos nos gates E2E/visual; históricos não são transferidos |
-| MAIN / ORIGIN      | `main` local contém o candidato `834fc72b`; a main remota está publicada em origin/main@7d3c8345, sem force-push; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral sem commits funcionais exclusivos, rollback preservado |
+| CURRENT SNAPSHOT   | candidato `190a9a535da082716bf7006be3e278a29f8bd4c2`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; registro P0 candidate-bound; Noto Sans e rasterização de texto determinísticos nos gates E2E/visual; históricos não são transferidos |
+| MAIN / ORIGIN      | `main` local contém o candidato `190a9a53`; a `main` remota será reancorada via Git Data API sem force-push; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral sem commits funcionais exclusivos, rollback preservado |
 | CURRENT CI         | O [CI #221](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35222726870) foi disparado para o snapshot remoto anterior; o Repository Guards detectou manifesto crítico desatualizado e não há resultado verde transferível. O último run terminal, #217, terminou `failure` somente no k6 |
 | LOCAL STRICT GATE  | cobertura global local `PASS` no threshold congelado; release/critical externo continuam `NOT_PROVEN`, `claim=NOT PROVEN`, `publication_allowed=false` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
-| LOCAL VALIDATION   | Neste candidato, typecheck e lint do workspace passaram em `68/68` projetos; module-feature-flags passou `8/8` testes e os testes focados da API passaram `15/15`; manifesto revision 66, identidade e registro P0 foram validados. A cobertura global `273/273`, API `618/618`, integração PostgreSQL `16/16`, SQL `34/34`, visual `29/29` e k6 local `9/9` permanecem evidências locais/históricas anteriores; target externo ausente |
+| LOCAL VALIDATION   | Neste candidato, typecheck e lint do workspace passaram em `68/68` projetos; module-feature-flags passou `9/9` testes e os testes focados da API/repositório passaram `15/15`; manifesto revision 67, identidade e registro P0 foram validados. A cobertura global `273/273`, API `618/618`, integração PostgreSQL `16/16`, SQL `34/34`, visual `29/29` e k6 local `9/9` permanecem evidências locais/históricas anteriores; target externo ausente |
 | VERIFIED TARGET    | `NOT PROVEN`                                                                                                                                                                                                                                              |
 | CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; o CI exato do candidato ainda não está verde, o último run terminal falhou em performance e target, recovery, UAT e autoridade externa continuam sem prova |
 
 O snapshot corrente preserva a régua congelada e reancora o manifesto crítico
-na revisão 65. O registro P0 adiciona deduplicação, dependências, classificação
+na revisão 67. O registro P0 adiciona deduplicação, dependências, classificação
 de execução e fechamento candidate-bound ao gate de release. O CI #190 detectou a rejeição de inicializadores V8 legítimos do
 Node 22 e a ausência do produtor SQL; os CI #191/#192 confirmaram a correção no
 Critical Coverage Gate dos ancestrais. O CI #196 confirmou o Critical Coverage

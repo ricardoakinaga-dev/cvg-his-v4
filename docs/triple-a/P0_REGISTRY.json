@@ -4,12 +4,12 @@
   "generated_at": "2026-09-17T13:28:36.000Z",
   "generated_by": "lead-verification",
   "candidate": {
-    "candidate_id": "CVG-HIS-V4-7d3c8345cd92",
+    "candidate_id": "CVG-HIS-V4-190a9a535da0",
     "identity_path": "docs/triple-a/CURRENT_CANDIDATE_IDENTITY.json",
-    "candidate_head_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
-    "behavior_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
-    "assurance_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
-    "documentation_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6"
+    "candidate_head_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2",
+    "behavior_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2",
+    "assurance_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2",
+    "documentation_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2"
   },
   "closure_policy": {
     "closed_status": "CLOSED",
@@ -28,7 +28,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "release-engineering",
       "dedupe_key": "ci-candidate-identity",
-      "behavior_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
+      "behavior_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2",
       "dependencies": [],
       "acceptance_criteria": [
         { "id": "P0-CI-CANDIDATE-FREEZE-01", "description": "Candidate identity fields match the frozen source", "status": "PASS", "required": true },
@@ -40,7 +40,7 @@
           "status": "PASS",
           "fresh": true,
           "mandatory": true,
-          "candidate_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
+          "candidate_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2",
           "source": "pnpm validate:candidate-identity && pnpm docs:validate",
           "artifact": "docs/triple-a/CURRENT_CANDIDATE_IDENTITY.json",
           "observed_at": "2026-09-17T13:28:36.000Z"
@@ -59,7 +59,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "release-engineering",
       "dedupe_key": "ci-green-main",
-      "behavior_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
+      "behavior_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2",
       "dependencies": ["P0-CI-CANDIDATE-FREEZE"],
       "acceptance_criteria": [
         { "id": "P0-CI-GREEN-MAIN-01", "description": "Every required workflow job passes on the exact candidate", "status": "NOT_PROVEN", "required": true },
@@ -81,7 +81,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "data-platform",
       "dedupe_key": "data-postgresql-runtime",
-      "behavior_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
+      "behavior_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2",
       "dependencies": ["P0-CI-CANDIDATE-FREEZE"],
       "acceptance_criteria": [
         { "id": "P0-DATA-POSTGRESQL-RUNTIME-01", "description": "Migration source and checksums are verified without drift", "status": "NOT_PROVEN", "required": true },
@@ -103,7 +103,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "data-platform",
       "dedupe_key": "data-rls-runtime-isolation",
-      "behavior_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
+      "behavior_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2",
       "dependencies": ["P0-DATA-POSTGRESQL-RUNTIME"],
       "acceptance_criteria": [
         { "id": "P0-DATA-RLS-RUNTIME-01", "description": "Runtime roles cannot read or write another tenant", "status": "TARGET_REQUIRED", "required": true },
@@ -125,7 +125,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "workflow-platform",
       "dedupe_key": "workflow-lease-fencing",
-      "behavior_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
+      "behavior_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2",
       "dependencies": ["P0-DATA-POSTGRESQL-RUNTIME"],
       "acceptance_criteria": [
         { "id": "P0-WORKFLOW-LEASE-FENCING-01", "description": "Duplicate claims and stale owners are rejected deterministically", "status": "NOT_PROVEN", "required": true },
@@ -147,7 +147,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "worker-platform",
       "dedupe_key": "worker-crash-recovery",
-      "behavior_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
+      "behavior_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2",
       "dependencies": ["P0-WORKFLOW-LEASE-FENCING"],
       "acceptance_criteria": [
         { "id": "P0-WORKER-CRASH-RECOVERY-01", "description": "SIGKILL and takeover leave no duplicate material effect", "status": "TARGET_REQUIRED", "required": true },
@@ -169,7 +169,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "clinical-product",
       "dedupe_key": "clinical-golden-path",
-      "behavior_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
+      "behavior_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2",
       "dependencies": ["P0-DATA-RLS-RUNTIME", "P0-WORKER-CRASH-RECOVERY"],
       "acceptance_criteria": [
         { "id": "P0-CLINICAL-GOLDEN-PATH-01", "description": "Owner to patient to encounter to inpatient to billing closes with audit", "status": "NOT_PROVEN", "required": true },
@@ -191,7 +191,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "clinical-product",
       "dedupe_key": "clinical-audit-financial-invariants",
-      "behavior_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
+      "behavior_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2",
       "dependencies": ["P0-CLINICAL-GOLDEN-PATH"],
       "acceptance_criteria": [
         { "id": "P0-CLINICAL-AUDIT-INVARIANTS-01", "description": "Append-only audit and timeline records are immutable and searchable", "status": "NOT_PROVEN", "required": true },
@@ -213,7 +213,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "operations",
       "dedupe_key": "recovery-restore-corruption",
-      "behavior_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
+      "behavior_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2",
       "dependencies": ["P0-CLINICAL-AUDIT-INVARIANTS"],
       "acceptance_criteria": [
         { "id": "P0-RECOVERY-RESTORE-01", "description": "Restore validates globals schema roles storage and checksums", "status": "TARGET_REQUIRED", "required": true },
@@ -235,7 +235,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "operations",
       "dedupe_key": "performance-target-certification",
-      "behavior_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
+      "behavior_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2",
       "dependencies": ["P0-DATA-POSTGRESQL-RUNTIME", "P0-WORKER-CRASH-RECOVERY"],
       "acceptance_criteria": [
         { "id": "P0-PERFORMANCE-CERTIFICATION-01", "description": "Critical API and database SLOs pass the approved target load profile", "status": "TARGET_REQUIRED", "required": true },
@@ -257,7 +257,7 @@
       "closure_policy": "HUMAN",
       "owner": "product-quality",
       "dedupe_key": "ux-a11y-hospital-uat",
-      "behavior_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
+      "behavior_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2",
       "dependencies": ["P0-CLINICAL-GOLDEN-PATH"],
       "acceptance_criteria": [
         { "id": "P0-UX-A11Y-UAT-01", "description": "Responsive and accessibility matrix is reviewed on real browsers", "status": "HUMAN_REQUIRED", "required": true },
@@ -279,7 +279,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "release-engineering",
       "dedupe_key": "supply-attestation-provenance",
-      "behavior_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
+      "behavior_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2",
       "dependencies": ["P0-CI-GREEN-MAIN"],
       "acceptance_criteria": [
         { "id": "P0-SUPPLY-ATTESTATION-01", "description": "SBOM source archive and image digests are bound to the candidate", "status": "TARGET_REQUIRED", "required": true },
@@ -301,7 +301,7 @@
       "closure_policy": "HUMAN",
       "owner": "release-authority",
       "dedupe_key": "release-authority-decision",
-      "behavior_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
+      "behavior_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2",
       "dependencies": ["P0-CI-GREEN-MAIN", "P0-UX-A11Y-UAT", "P0-SUPPLY-ATTESTATION"],
       "acceptance_criteria": [
         { "id": "P0-RELEASE-AUTHORITY-01", "description": "Named Product Clinical Security and Operations owners sign go or no-go", "status": "HUMAN_REQUIRED", "required": true },
@@ -323,7 +323,7 @@
       "closure_policy": "HUMAN",
       "owner": "release-authority",
       "dedupe_key": "final-evidence-graph",
-      "behavior_sha": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
+      "behavior_sha": "190a9a535da082716bf7006be3e278a29f8bd4c2",
       "dependencies": ["P0-RELEASE-AUTHORITY", "P0-RECOVERY-RESTORE", "P0-PERFORMANCE-CERTIFICATION"],
       "acceptance_criteria": [
         { "id": "P0-FINAL-EVIDENCE-01", "description": "Every mandatory P0 has fresh evidence or authority decision", "status": "BLOCKED", "required": true },

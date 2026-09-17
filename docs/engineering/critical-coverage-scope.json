@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
+  "head": "190a9a535da082716bf7006be3e278a29f8bd4c2",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -559,7 +559,7 @@
     },
     {
       "path": "apps/api/src/routes/auth-routes.ts",
-      "sha256": "bc051d602c7e3af57a894b53f16244710e16207a2c9f6758904a41716d9ae078",
+      "sha256": "d76fea83cc0ecfa57bff0a4770a9204de8e318eb8a8d51d34e9f158c0e09ec02",
       "components": [
         "auth",
         "http-routes"
@@ -687,7 +687,7 @@
     },
     {
       "path": "apps/api/src/routes/feature-flags-routes.ts",
-      "sha256": "8ca50ee2eb05bd5851fee3c3ffa12d4bdeaf973e161228122bde0512e6c6ec09",
+      "sha256": "c34311993aa72cfd394f39a881b3134f2127a2112b9a0c98962f837b7249fcc8",
       "components": [
         "http-routes"
       ],
@@ -708,7 +708,7 @@
     },
     {
       "path": "apps/api/src/routes/fiscal-routes.ts",
-      "sha256": "24775e9e0694dff9e901a93f06ddabdff15e6e2c01f867e33d3b21c9451ee71a",
+      "sha256": "e3201120d98320bd885d411efbe185afcbba0b6e5cf5e46cc0bf2479bd990079",
       "components": [
         "http-routes"
       ],
@@ -849,7 +849,7 @@
     },
     {
       "path": "apps/api/src/routes/ml-routes.ts",
-      "sha256": "f0e126cbc284e0c8d3084bfb1582e73b1b5f6caeb2cbfb20896fc84563b0afad",
+      "sha256": "440ad0b55860e30ffc83a71e2a0e7bd95d7a809aa5d2f5475db2d2e67f1dbbd6",
       "components": [
         "http-routes"
       ],
@@ -966,7 +966,7 @@
     },
     {
       "path": "apps/api/src/routes/scheduling-routes.ts",
-      "sha256": "1965da9db37369de4943bcc9d393f76d571008362de8a1e099d2beaba0e840ec",
+      "sha256": "9a6841d1123ef180d1e06b92b5121a3c2fa223ac67de8691a1909e3e4931fc50",
       "components": [
         "http-routes"
       ],
@@ -1047,7 +1047,7 @@
     },
     {
       "path": "apps/api/src/routes/whatsapp-routes.ts",
-      "sha256": "ade6ffbb7aaff81736357a90410ba70e03db639b0b7100f31f20000daca02b25",
+      "sha256": "172d4cf12bdc3e4d7b2d37c8a421753a515d4a77ddd28029fef9773e653def0a",
       "components": [
         "http-routes"
       ],
@@ -1067,7 +1067,7 @@
     },
     {
       "path": "apps/api/src/server.ts",
-      "sha256": "3d62c7e3bba3ab6ea21ae331f5f6082453943bd1e779c549b08d22c968310419",
+      "sha256": "1f89fc65af022ae128ad9fa618defbe518fef8717a2c1b768840e69ad974ec8c",
       "components": [
         "http-routes"
       ],
@@ -3967,7 +3967,7 @@
     },
     {
       "path": "packages/db/src/schema/feature_flags.ts",
-      "sha256": "fd4ab7783a1edf0e18943304f207c8b6022fc87fcfa10acfdae210eed864925c",
+      "sha256": "6520f082166d0a9d2b03cca0025f1e913210662b9d1f0284dd110b9ad4465f9f",
       "components": [
         "roles-rls"
       ],
@@ -4948,7 +4948,7 @@
     },
     {
       "path": "packages/modules/feature-flags/src/repositories/database-feature-flag.repository.ts",
-      "sha256": "f5c594457d7a008ba70af80203a22b61b43ea69b80f3199796fce3390b0128de",
+      "sha256": "3f668c421f5d4f023bb7d11b39cc577fc2ba3f1e2adb5e37711399903d5b5cb3",
       "components": [
         "repositories"
       ],
@@ -11316,7 +11316,7 @@
     {
       "manifestRevision": 66,
       "observedAt": "2026-09-17T14:12:33.502Z",
-      "collectionCommit": "7d3c8345cd922fc2a9316d2b046788bf9d8586e6",
+      "collectionCommit": "1f3ea11e331431a43a127eaf9a843d7a3f3036a4",
       "previousManifestSha256": "370a03527782ecafa90edd99900333204b043f94c03708ec9069e85b8a3390af",
       "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-370a03527782ecafa90edd99900333204b043f94c03708ec9069e85b8a3390af.json",
       "previousSourceSetSha256": "6a09e26a1bbf70bf002546528fcec3d12662043abd4cf2ef67c0ecaeb468301e",
@@ -11349,6 +11349,65 @@
           "path": "packages/shared/database/src/schemas/index.ts",
           "before": "04c2cb437ed16e89cda74e8d2d47c9a36123ce34a9438c46847469b3902de377",
           "after": "1d147000ed213a3dc834f5df8b2cb624a20f117b5cd859ffb1b9089a30fc2a80"
+        }
+      ]
+    },
+    {
+      "manifestRevision": 67,
+      "observedAt": "2026-09-17T15:19:06.641Z",
+      "collectionCommit": "190a9a535da082716bf7006be3e278a29f8bd4c2",
+      "previousManifestSha256": "274fb7f311af66b4c77666ec0df743fd4b715794de51ed8a0fd965b5c1bc86d8",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-274fb7f311af66b4c77666ec0df743fd4b715794de51ed8a0fd965b5c1bc86d8.json",
+      "previousSourceSetSha256": "34ce61512c194a575b93f51af31835a0e8fd1a1c9ad1c97177351a4ef8e1bf97",
+      "sourceSetSha256": "22a0d5ec233c340b5d3f54ff9077e0cca36671f54c1429e62ec8a6ab1cf70985",
+      "reason": "Reconcile feature-flag request authority, tenant ownership, validation, cache identity and PostgreSQL migration",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/routes/auth-routes.ts",
+          "before": "bc051d602c7e3af57a894b53f16244710e16207a2c9f6758904a41716d9ae078",
+          "after": "d76fea83cc0ecfa57bff0a4770a9204de8e318eb8a8d51d34e9f158c0e09ec02"
+        },
+        {
+          "path": "apps/api/src/routes/feature-flags-routes.ts",
+          "before": "8ca50ee2eb05bd5851fee3c3ffa12d4bdeaf973e161228122bde0512e6c6ec09",
+          "after": "c34311993aa72cfd394f39a881b3134f2127a2112b9a0c98962f837b7249fcc8"
+        },
+        {
+          "path": "apps/api/src/routes/fiscal-routes.ts",
+          "before": "24775e9e0694dff9e901a93f06ddabdff15e6e2c01f867e33d3b21c9451ee71a",
+          "after": "e3201120d98320bd885d411efbe185afcbba0b6e5cf5e46cc0bf2479bd990079"
+        },
+        {
+          "path": "apps/api/src/routes/ml-routes.ts",
+          "before": "f0e126cbc284e0c8d3084bfb1582e73b1b5f6caeb2cbfb20896fc84563b0afad",
+          "after": "440ad0b55860e30ffc83a71e2a0e7bd95d7a809aa5d2f5475db2d2e67f1dbbd6"
+        },
+        {
+          "path": "apps/api/src/routes/scheduling-routes.ts",
+          "before": "1965da9db37369de4943bcc9d393f76d571008362de8a1e099d2beaba0e840ec",
+          "after": "9a6841d1123ef180d1e06b92b5121a3c2fa223ac67de8691a1909e3e4931fc50"
+        },
+        {
+          "path": "apps/api/src/routes/whatsapp-routes.ts",
+          "before": "ade6ffbb7aaff81736357a90410ba70e03db639b0b7100f31f20000daca02b25",
+          "after": "172d4cf12bdc3e4d7b2d37c8a421753a515d4a77ddd28029fef9773e653def0a"
+        },
+        {
+          "path": "apps/api/src/server.ts",
+          "before": "3d62c7e3bba3ab6ea21ae331f5f6082453943bd1e779c549b08d22c968310419",
+          "after": "1f89fc65af022ae128ad9fa618defbe518fef8717a2c1b768840e69ad974ec8c"
+        },
+        {
+          "path": "packages/db/src/schema/feature_flags.ts",
+          "before": "fd4ab7783a1edf0e18943304f207c8b6022fc87fcfa10acfdae210eed864925c",
+          "after": "6520f082166d0a9d2b03cca0025f1e913210662b9d1f0284dd110b9ad4465f9f"
+        },
+        {
+          "path": "packages/modules/feature-flags/src/repositories/database-feature-flag.repository.ts",
+          "before": "f5c594457d7a008ba70af80203a22b61b43ea69b80f3199796fce3390b0128de",
+          "after": "3f668c421f5d4f023bb7d11b39cc577fc2ba3f1e2adb5e37711399903d5b5cb3"
         }
       ]
     }
@@ -12284,8 +12343,8 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 66,
-  "sourceSetSha256": "34ce61512c194a575b93f51af31835a0e8fd1a1c9ad1c97177351a4ef8e1bf97",
+  "manifestRevision": 67,
+  "sourceSetSha256": "22a0d5ec233c340b5d3f54ff9077e0cca36671f54c1429e62ec8a6ab1cf70985",
   "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
   "specializedEvidence": {
     "sql": {
