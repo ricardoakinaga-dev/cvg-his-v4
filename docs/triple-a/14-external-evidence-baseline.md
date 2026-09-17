@@ -6,10 +6,10 @@
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O snapshot atual é
 > o snapshot anterior `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e`, com código funcional em `578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`, permanece preservado apenas como histórico; a identidade canônica está em
-> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `85c105467139bee415896c97232e1a56ad7772b7`; o registro P0 candidate-bound é validado no CI e no gate de release; a correção funcional de fail-closed e complexidade está em `95227098`, sobre a otimização `15ba86a8`; os CI anteriores não são transferidos. O runner crítico usa PostgreSQL 16, checkout completo, trata o par V8 do Node 22 e publica evidência SQL; nenhum resultado parcial é transferido.
+> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `b313fba795175947559347b7e82b460040fc459d`; o registro P0 candidate-bound é validado no CI e no gate de release; a correção funcional de fail-closed e complexidade está em `95227098`, sobre a otimização `15ba86a8`; os CI anteriores não são transferidos. O runner crítico usa PostgreSQL 16, checkout completo, trata o par V8 do Node 22 e publica evidência SQL; nenhum resultado parcial é transferido.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `85c105467139bee415896c97232e1a56ad7772b7` (snapshot reancorado; manifesto crítico revision 58, registro P0 com `1` fechado e `13` abertos, workflow com Chromium, runner privado PostgreSQL 16, par V8 autenticado, produtor SQL, correção fail-closed, orçamento de complexidade em `95227098` e harness SPA com proxy same-origin; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current snapshot:** `b313fba795175947559347b7e82b460040fc459d` (snapshot reancorado; manifesto crítico revision 58, registro P0 com `1` fechado e `13` abertos, workflow com Chromium, runner privado PostgreSQL 16, par V8 autenticado, produtor SQL, correção fail-closed, orçamento de complexidade em `95227098` e harness SPA com proxy same-origin; provas externas e autoridade de release continuam `NOT PROVEN`).
 **Current CI:** o #203 do ancestral `261e5b45` falhou nos gates E2E/visual/performance e não é transferido. A reprodução visual canônica passou `29/29`; o próximo run será o primeiro snapshot exato com o harness corrigido.
 **Current status:** **BLOCKED / NOT PROVEN**
 **Observation:** 2026-09-17T05:57:08Z

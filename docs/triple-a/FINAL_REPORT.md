@@ -1,6 +1,6 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `85c105467139bee415896c97232e1a56ad7772b7`
+**Candidate funcional avaliado:** `b313fba795175947559347b7e82b460040fc459d`
 (snapshot reancorado com o registro P0 candidate-bound, o harness SPA canônico com proxy same-origin e a correção fail-closed e de complexidade no commit `95227098`, sobre a otimização `15ba86a8`; manifesto crítico revision 58; a branch de assurance é ancestral sem commits exclusivos; a cobertura global local passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas, k6 local `9/9` SLOs e visual local `29/29` também passaram; o CI #203 pertence ao ancestral `261e5b45`, falhou e não é transferido)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
@@ -29,12 +29,12 @@ k6 local limitado a quatro CPUs passou `9/9` SLOs e a suíte visual local passou
 `29/29`; isso não substitui CI terminal, target, recovery, UAT, attestation ou
 autoridade de release.
 
-## Atualização corrente — revisão 58 / snapshot `85c10546`
+## Atualização corrente — revisão 58 / snapshot `b313fba7`
 
-O manifest crítico revision 58 foi reancorado no commit de fonte `85c10546` e
+O manifest crítico revision 58 foi reancorado no commit de fonte `b313fba7` e
 complexidade, sem mudança de
 thresholds, fontes ou aplicabilidade funcional; o snapshot corrente é
-`85c105467139bee415896c97232e1a56ad7772b7`, com implementação funcional em
+`b313fba795175947559347b7e82b460040fc459d`, com implementação funcional em
 `95227098193966638102ccfe1e54842289ebe7f1`, sobre `15ba86a883a4283c5bf86c5825bf7d9a6ca5d089`. O runner crítico preserva o SQL histórico,
 usa PostgreSQL 16 e trata os inicializadores V8 do Node 22 sem fundir identidades.
 O produtor SQL agora é executado e publicado antes do checker. Os produtores atuais são identificados na
@@ -55,7 +55,7 @@ representar o snapshot reancorado; o novo CI exato aguarda execução. O candida
 O CI #203 foi executado no ancestral `261e5b45` e não é promovido. A correção do
 manifesto, o registro P0, a identidade e o harness SPA foram validados localmente, não relaxam
 nenhum guard, threshold ou baseline; o novo CI será executado após o push do
-snapshot `85c10546` reancorado.
+snapshot `b313fba7` reancorado.
 
 O registro [`P0_REGISTRY.json`](./P0_REGISTRY.json) contabiliza 14 itens, com 1
 fechado por evidência local fresca e 13 abertos por dependerem de CI remoto,

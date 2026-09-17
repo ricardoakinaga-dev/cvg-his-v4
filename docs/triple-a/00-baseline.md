@@ -2,13 +2,13 @@
 
 ## Snapshot vigente — 2026-09-17T05:57:08Z
 
-O baseline autoritativo do snapshot atual está em: `85c105467139bee415896c97232e1a56ad7772b7` (snapshot reancorado após o alinhamento dos gates SPA ao runtime canônico e a revisão 58 do manifesto crítico; a correção funcional de fail-closed permanece no commit `95227098` e a otimização de leitura autenticada em `15ba86a8`).
+O baseline autoritativo do snapshot atual está em: `b313fba795175947559347b7e82b460040fc459d` (snapshot reancorado após o alinhamento dos gates SPA ao runtime canônico e a revisão 58 do manifesto crítico; a correção funcional de fail-closed permanece no commit `95227098` e a otimização de leitura autenticada em `15ba86a8`).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
 documentação corrente sucede os candidatos históricos sem transferir evidência;
-o candidato `85c10546` consolida a cobertura de contratos de pagamento, marketing,
+o candidato `b313fba7` consolida a cobertura de contratos de pagamento, marketing,
 laboratório, ML e limites operacionais, preservando o runner PostgreSQL 16, os
 checksums de migração e a aceitação restrita do par de inicializadores V8; a
 branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem

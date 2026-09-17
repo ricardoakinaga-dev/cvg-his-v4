@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "85c105467139bee415896c97232e1a56ad7772b7",
+  "head": "b313fba795175947559347b7e82b460040fc459d",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -11185,7 +11185,7 @@
     {
       "manifestRevision": 58,
       "observedAt": "2026-09-17T05:56:57.109Z",
-      "collectionCommit": "85c105467139bee415896c97232e1a56ad7772b7",
+      "collectionCommit": "b313fba795175947559347b7e82b460040fc459d",
       "previousManifestSha256": "8ea7dcafaac5c0eed867ba938084213aa18675da0cf4e58a362441f14f86cf8e",
       "preservedManifest": "artifacts/remediation/CI-SPA-HARNESS-20260917/critical-scope-before-8ea7dcafaac5c0eed867ba938084213aa18675da0cf4e58a362441f14f86cf8e.json",
       "previousSourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
