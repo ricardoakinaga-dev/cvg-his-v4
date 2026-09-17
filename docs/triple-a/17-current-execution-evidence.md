@@ -2,11 +2,12 @@
 
 ## Candidato documental observado em 2026-09-17T13:28:36Z
 
-- SHA de código e documentação: `8bb1bd71b34d9ed102aee223a51715df244b8c45`;
+- SHA de código e documentação: `aa6ab73e70bd8f97b1b61c2e0eccb2380545117c`;
   identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O manifesto crítico está na revisão 69, ancorado no commit funcional `8bb1bd71` e publicado na identidade do snapshot; o candidato instala Chromium, fixa Noto Sans nos jobs E2E/visual, desativa LCD text no Playwright e verifica a fonte com comandos portáteis do runner, provisiona PostgreSQL 16 via PGDG fingerprint-pinned, aceita o par V8 de inicializadores do Node 22, publica o artefato SQL verificado, valida o registro P0 e fecha o threshold global de branches com contratos determinísticos. Os gates SPA agora usam API compilada e servidor estático com proxy same-origin `/api`, igual ao harness canônico local. O provider raw de feature flags aplica kill switch persistido, expiração, precedência de escopo, allowlist fail-closed, cache bounded/invalidação, consultas tenant-scoped explícitas e ownership composto entre flag e override; o bootstrap mantém WebAuthn production-like fail-closed sem verificador FIDO2 completo, valida UUIDs direcionados e trata o estado distribuído como process-wide. A autoridade de avaliação é request-scoped nas gates operacionais que recebem contexto autenticado, mantendo snapshots como fallback de bootstrap. O classificador de identidade aceita a atualização do manifesto como bookkeeping documental sem ignorar mudanças de código. O roteamento inicial usa somente o contexto JWT verificado; a guarda final relê sessão, usuário, função e permissões de forma autoritativa, com erros genéricos de sessão sanitizados para 503, e `server.ts` respeita o orçamento de `8.335` linhas. Rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- O manifesto crítico está na revisão 70, ancorado no commit funcional `aa6ab73e` e publicado na identidade do snapshot; o candidato instala Chromium, fixa Noto Sans nos jobs E2E/visual, desativa LCD text no Playwright e verifica a fonte com comandos portáteis do runner, provisiona PostgreSQL 16 via PGDG fingerprint-pinned, aceita o par V8 de inicializadores do Node 22, publica o artefato SQL verificado, valida o registro P0 e fecha o threshold global de branches com contratos determinísticos. Os gates SPA agora usam API compilada e servidor estático com proxy same-origin `/api`, igual ao harness canônico local. O provider raw de feature flags aplica kill switch persistido, expiração, precedência de escopo, allowlist fail-closed, cache bounded/invalidação, consultas tenant-scoped explícitas e ownership composto entre flag e override; o bootstrap mantém WebAuthn production-like fail-closed sem verificador FIDO2 completo, valida UUIDs direcionados e trata o estado distribuído como process-wide. A autoridade de avaliação é request-scoped nas gates operacionais que recebem contexto autenticado, mantendo snapshots como fallback de bootstrap. O classificador de identidade aceita a atualização do manifesto como bookkeeping documental sem ignorar mudanças de código. O roteamento inicial usa somente o contexto JWT verificado; a guarda final relê sessão, usuário, função e permissões de forma autoritativa, com erros genéricos de sessão sanitizados para 503, e `server.ts` respeita o orçamento de `8.335` linhas. Rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
+- O [CI #235](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35244228724), executado antes desta correção de código, falhou no Repository Guards por `server.ts` exceder o limite congelado (`8.384 > 8.335`); ele não é evidência do candidato corrigido.
 
 ## Validações locais
 
@@ -26,7 +27,7 @@
 - O provider de feature flags passou cinco testes focados cobrindo precedência
   de escopo, kill switch persistido, expiração com cache, allowlist sem usuário
   e expiração do catálogo sem conta.
-- O typecheck e o lint do workspace passaram em `68/68` projetos. A revisão 69
+- O typecheck e o lint do workspace passaram em `68/68` projetos. A revisão 70
   do manifesto crítico foi produzida pela ferramenta oficial e preserva todos
   os hashes, thresholds, shards e histórico anterior.
 - Essa evidência é local; não prova PostgreSQL/RLS em CI, performance do target,
