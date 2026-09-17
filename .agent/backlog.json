@@ -90,14 +90,20 @@
         ".agent/verification.jsonl#VER-MA11-ROUND2-ADJUDICATION-20260913",
         ".agent/verification.jsonl#VER-MA05-INTEGRATION-FIXES-20260913",
         "artifacts/remediation/MA-05-INTEGRATION-FIXES/attempt-20260913T0539Z/REPORT.md",
-        ".agent/verification.jsonl#VER-ROUND3-ADJUDICATION-20260913"
+        ".agent/verification.jsonl#VER-ROUND3-ADJUDICATION-20260913",
+        "docs/triple-a/22-ci-215-evidence.md",
+        ".agent/verification.jsonl#VER-TRIPLE-A-CI-215-R05-010-20260917",
+        ".agent/verification.jsonl#VER-TRIPLE-A-CI-215-E2E-VISUAL-20260917",
+        ".agent/verification.jsonl#VER-TRIPLE-A-CI-215-PERFORMANCE-20260917",
+        ".agent/verification.jsonl#VER-TRIPLE-A-CI-215-OVERALL-20260917",
+        ".agent/verification.jsonl#VER-TRIPLE-A-PERF-LOCAL-BASELINE-20260917"
       ],
       "next_action": {
-        "id": "TRIPLE-A-RELEASE-CONTROL:MA05-D5-AND-COVERAGE",
-        "kind": "IMPLEMENT",
-        "summary": "Implementar o evidence model especializado (D5) para 168 migrations SQL + 25 Vue e elevar as 29 metricas criticas abaixo de 85 com testes de dominio, sem reduzir thresholds",
-        "target": "artifacts/remediation/MA-05-SPECIALIZED-PREP/attempt-1-20260913T0012Z/SLICE_CONTRACTS.md; scripts/check-critical-coverage.mjs; docs/engineering/critical-coverage-scope.json",
-        "completion_signal": "Fontes especializadas com evidencia aceita e 5/5 shards com todas as metricas >=85; entao agregar e submeter a MA-35"
+        "id": "TRIPLE-A-RELEASE-CONTROL:PERFORMANCE-CI-RERUN",
+        "kind": "VERIFY",
+        "summary": "Executar novo CI remoto do candidato sem alterar thresholds, denominador ou escopo e verificar as duas SLOs que falharam no CI #215",
+        "target": "benchmarks/k6/api-benchmark.js; benchmarks/k6/slos.json; .github/workflows/ci.yml; apps/api/src/routes/patients-routes.ts; apps/api/src/routes/inventory-routes.ts; packages/modules/patients/src; packages/modules/inventory/src",
+        "completion_signal": "Run remoto terminal com 9/9 SLOs e gates íntegros; se houver nova falha, registrar métricas/diagnóstico exatos e manter BLOCKED, sem retry mascarador ou relaxamento da régua"
       }
     },
     {

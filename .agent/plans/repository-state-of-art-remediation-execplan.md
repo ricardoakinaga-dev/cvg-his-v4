@@ -1,6 +1,6 @@
 # Remediação do repositório para ERP State of Art — ExecPlan
 
-<!-- engineering-framework: active_action_id=TRIPLE-A-RELEASE-CONTROL:MA05-D5-AND-COVERAGE -->
+<!-- engineering-framework: active_action_id=TRIPLE-A-RELEASE-CONTROL:PERFORMANCE-CI-RERUN -->
 
 ## Purpose / Big Picture
 
@@ -202,13 +202,13 @@ Preservar o monólito modular API/SPA/worker, isolamento tenant/RLS, transaçõe
 
 ## Plan of Work
 
-A frente executável corrente é `TRIPLE-A-RELEASE-CONTROL:MA05-D5-AND-COVERAGE`; `PROD-062:PROD-062-FRESH-CRITIC-AUTHORITY-20260915` permanece aguardando revisão fresh e autoridade após preparação local enquanto PROD-010 permanece BLOCKED. O slice atual corrige o binding de evidência para descendentes exclusivamente documentais e revalida as métricas críticas; nenhum threshold, escopo, trust root ou claim de release será alterado. PROD-027 continua em espera por crítica fresh e Product/QA/domínio; PROD-019, PROD-048, PROD-049 e PROD-052 aguardam suas autoridades; D1/S3 de PROD-014 aguardam QA/release. Cada slice segue `BUILD → focused test → critic → fix → regression → integrate`, e o release continua bloqueado.
+A frente executável corrente é `TRIPLE-A-RELEASE-CONTROL:PERFORMANCE-CI-RERUN`; `PROD-062:PROD-062-FRESH-CRITIC-AUTHORITY-20260915` permanece aguardando revisão fresh e autoridade após preparação local enquanto PROD-010 permanece BLOCKED. O CI #215 confirmou R05-010, os gates estruturais, E2E SPA e Visual, mas falhou em duas SLOs de latência: query p95 `222,00 ms` contra `150 ms` e inventory p95 `205,53 ms` contra `200 ms`. A reprodução local equivalente passou 9/9, e a análise dos caminhos não sustentou patch seguro sem evidência adicional; o próximo slice é um rerun remoto do candidato, com thresholds, denominador, escopo e trust root congelados. PROD-027 continua em espera por crítica fresh e Product/QA/domínio; PROD-019, PROD-048, PROD-049 e PROD-052 aguardam suas autoridades; D1/S3 de PROD-014 aguardam QA/release. Cada slice segue `BUILD → focused test → critic → fix → regression → integrate`, e o release continua bloqueado.
 
 ## Concrete Steps
 
 From `/home/ricardo/cvg-his-v4`:
 
-1. [TRIPLE-A-RELEASE-CONTROL:MA05-D5-AND-COVERAGE] Integrar o binding documental fail-closed no manifesto, revalidar os produtores no candidato atual e elevar as métricas críticas abaixo dos limiares com testes de domínio; sem reduzir thresholds, escopo ou aplicabilidade.
+1. [TRIPLE-A-RELEASE-CONTROL:PERFORMANCE-CI-RERUN] Executar novo CI remoto do candidato atual e verificar as SLOs de query/inventory; registrar resultado terminal e manter a régua inalterada.
 2. [PROD-062:PROD-062-FAMILY-VERIFIERS-20260915] [CONCLUÍDO LOCALMENTE] Implementar e testar os contratos criterion-specific por família, atualizar o gerador para usar o mesmo validador e produzir pacote local digest-bound; preservar PROD-010, thresholds, trust root e bloqueio externo.
 3. [PROD-027:PROD-027-PRODUCT-QA-DOMAIN-OWNER-20260915] Obter crítica independente fresh atual ou substituto autorizado e decisão formal de Product/QA/donos de domínio; preservar PROD-003 como dependência integral e não alegar paridade.
 4. [PROD-048:PROD-048-DPO-OWNER-20260915] Obter owner Segurança/DPO e decisão restrita sobre os 28 digests/localizações, exemplos sintéticos, ACL, retenção, restauração e destino durável; não expor valores.
@@ -391,3 +391,18 @@ controle/documentação após a coleta funcional. O próximo passo executável �
 fail-closed no manifesto, revalidar a coleta e atacar as 19 métricas críticas
 sem reduzir thresholds, escopo ou aplicabilidade. PROD-062 permanece em espera
 por crítica/autoridade externa; release continua `BLOCKED / NOT PROVEN`.
+
+Plan revision note, 2026-09-17 (session recovery and CI #215): a evidência
+terminal remota atualizou o diagnóstico: R05-010 está PASS no candidato
+funcional `a4f2ef67`, enquanto o run agregado `#215` segue FAILURE por query e
+inventory. A ação singular foi reancorada em
+`TRIPLE-A-RELEASE-CONTROL:PERFORMANCE-SLO-REPRODUCTION` para separar causa de
+medição, código e variância do runner; nenhum resultado histórico foi apagado
+ou promovido e o release permanece `BLOCKED / NOT PROVEN`.
+
+Plan revision note, 2026-09-17 (local baseline and fresh critic): o perfil
+`operational-minimum-v1` passou 9/9 localmente com o mesmo pool e sem erro,
+enquanto o crítico fresh não encontrou patch de baixo risco que justificasse
+alterar a métrica ou a regra. A ação foi reancorada em
+`TRIPLE-A-RELEASE-CONTROL:PERFORMANCE-CI-RERUN`; a diferença local/remota é
+registrada como evidência limitada, não como prova conclusiva de variância.

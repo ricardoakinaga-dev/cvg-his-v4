@@ -18,7 +18,7 @@
   "active_execplan": ".agent/plans/repository-state-of-art-remediation-execplan.md",
   "active_task": "TRIPLE-A-RELEASE-CONTROL",
   "verification_state": "PARTIAL",
-  "repository_state": "Reconciliado em 2026-09-16: HEAD/main está em 4d7b6f569414fb254d98d164b5897a8602dfb3fc, origin/main em 6217654ab33b0c8c8d720dd8ac2d7c6f97629257 e origin/fix/state-of-art-ci-assurance em fe5406c23c515585629060e0dc01b91f2d113d65; a branch de assurance é ancestral e não há merge funcional pendente. O candidato funcional é 01e5a168204ccb0f157ac96e7183391e1a1fc609 e o manifest crítico está na revisão 35. Após a correção CORS, a API/server, cinco shards críticos, Vue especializado e SQL foram reexecutados com PASS e proveniência válida; o checker R05-010 permanece FAIL/BLOCKED somente por 19 métricas abaixo dos limiares. Thresholds, denominador, escopo e aplicabilidade permanecem intactos; CI remoto, target, UAT, recovery, attestation, autoridade e Triplo AAA continuam NOT PROVEN.",
+  "repository_state": "Reconciliado em 2026-09-17: worktree/main local está em 0cd8d2c503e4cadbff315b88163770f3c9e163b8 e origin/main em 4d4ec251024678e594afe1afb21d3a60178fcfb4; origin/fix/state-of-art-ci-assurance em fe5406c23c515585629060e0dc01b91f2d113d65 é ancestral de origin/main e não há merge funcional pendente. O candidato funcional remoto é a4f2ef6705cebca552b07f20ebd3d596d5714079 e 4d4ec251 é descendente exclusivamente documental. CI #215 passou R05-010, gates estruturais, E2E SPA e Visual, mas terminou FAILURE por query p95 222.00ms contra 150ms e inventory p95 205.53ms contra 200ms; thresholds, denominador, escopo e aplicabilidade permanecem intactos. Target, UAT, recovery, attestation, autoridade e Triplo AAA continuam NOT PROVEN.",
   "instruction_scope_refs": [
     ".agent/plans/repository-state-of-art-remediation-execplan.md",
     "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
@@ -33,12 +33,12 @@
     "docs/2026-09-13-backlog-prontidao-producao.md"
   ],
   "last_gate_record": ".agent/gates/implementation-ready-triple-a-release-control-20260912-r3.json",
-  "last_event_id": "EVT-TRIPLE-A-REV35-REBLOCK-20260916",
-  "state_revision": 111,
+  "last_event_id": "EVT-TRIPLE-A-PERF-LOCAL-BASELINE-20260917",
+  "state_revision": 113,
   "next_gate": "VERIFIED",
-  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:MA05-D5-AND-COVERAGE",
+  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:PERFORMANCE-CI-RERUN",
   "blocked_by": [
-    "R05-010/PROD-014: 19 metricas criticas abaixo dos limiares apos recoleta current; elevar cobertura por dominio e repetir o gate sem reduzir thresholds",
+    "CI #215: Performance/k6 terminou FAILURE com query p95 222.00ms > 150ms e inventory p95 205.53ms > 200ms; executar rerun remoto sem reduzir thresholds",
     "Decisao de autoridade sobre a unificacao da identidade dual do process shard e aceite QA/release do instrumento",
     "PROD-004/005/011/012/013 aceitos no escopo seguem BLOCKED ate cadeia bottom-up (002/003 DONE)",
     "SSO/providers/UAT/autoridade/alvos pendentes de decisao humana externa",
@@ -64,5 +64,5 @@
     "PROD-027 behavioral parity taxonomy, 45-module classification, fixtures and acceptance — Product/QA/domain authority",
     "PROD-062 family verifier trust root, targets, limits, issuer policy and acceptance — Platform/Security/QA authority"
   ],
-  "updated_at": "2026-09-16T09:57:03Z"
+  "updated_at": "2026-09-17T10:58:46Z"
 }
