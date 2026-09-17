@@ -1,7 +1,7 @@
 # Baseline corrente — State of Art
 
-Observado em `2026-09-17T22:37:07Z`, sobre o candidato documental
-`0fab9fc189e122b4ff7e7700d9b07508e64f54bd`, que contém a identidade corrente
+Observado em `2026-09-17T23:13:46Z`, sobre o candidato documental
+`dc620fd15ce877d98a60e3d9bad28b4d1fa12a12`, que contém a identidade corrente
 e a correção funcional de fail-closed, autoridade request-scoped e ownership composto no commit
 `03e6fac0a2f726698b40adb351298610f9c1f88d`, sobre a otimização do
 roteamento autenticado antes da guarda final e o ciclo de vida de feature flags,
@@ -19,8 +19,8 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| current_sha     | `0fab9fc189e122b4ff7e7700d9b07508e64f54bd` (snapshot; registro P0 e manifesto revision 76; migration `0176` forward-only corrige a cascata da ledger de frescor e força RLS; importador do evidence graph mantém validação candidate-bound e evidência local sem promoção automática a PASS) |
-| main_sha        | `main` remota em `origin/main@8bbcba3a6687` antes deste candidato; publicação deste candidato será sem force-push; `origin/fix/state-of-art-ci-assurance@fe5406c2` e `origin/codex/state-of-art-hardening-20260917@a902fc24` permanecem ancestrais já integradas |
+| current_sha     | `dc620fd15ce877d98a60e3d9bad28b4d1fa12a12` (snapshot; registro P0 e manifesto revision 77; unificação de ACL, readiness Redis, tracing HTTP, observabilidade do worker, contrato produtivo e catálogo de eventos; importador do evidence graph mantém validação candidate-bound e evidência local sem promoção automática a PASS) |
+| main_sha        | `main` remota em `origin/main@893d6cac0a68` antes deste candidato; publicação deste candidato será sem force-push; as branches de assurance e hardening estão ancestrais integradas |
 | worktree        | Limpo antes da documentação corrente; artefatos gerados locais permanecem fora do commit |
 | rollback        | `origin/main@8bbcba3a6687` (pai publicado); sem force-push |
 | ci_run          | O candidato funcional `0fab9fc1` aguarda execução remota exata; o [CI #251](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35281221617) pertence ao predecessor `8bbcba3a` e não é transferido. |

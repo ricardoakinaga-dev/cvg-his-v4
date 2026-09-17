@@ -1,13 +1,13 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato documental observado em 2026-09-17T22:37:07Z
+## Candidato documental observado em 2026-09-17T23:13:46Z
 
-- SHA de código e documentação: `0fab9fc189e122b4ff7e7700d9b07508e64f54bd`;
+- SHA de código e documentação: `dc620fd15ce877d98a60e3d9bad28b4d1fa12a12`;
   identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O manifesto crítico está na revisão 76, ancorado no commit funcional `0fab9fc189e1` e publicado na identidade do snapshot; a migration `0176` preserva o checksum da `0175`, força RLS na ledger e evita recriação durante cascatas de conta. O candidato mantém os gates E2E/visual, provisiona PostgreSQL 16, publica o artefato SQL verificado e valida o registro P0. A leitura do token de frescor de ACL foi reduzida de uma reconstrução global de tabelas para uma versão monotônica indexada por tenant, com triggers transacionais e RLS/privilege reconciliation explícitos. Os gates SPA usam API compilada e proxy same-origin `/api`; o provider raw de feature flags mantém kill switch persistido, expiração, precedência de escopo, allowlist fail-closed e cache bounded. Rollback preservado em `origin/main@8bbcba3a` e nas branches ancestrais integradas.
+- O manifesto crítico está na revisão 77, ancorado no commit funcional `dc620fd15ce8` e publicado na identidade do snapshot; a migration `0176` preserva o checksum da `0175`, força RLS na ledger e evita recriação durante cascatas de conta. O candidato também exige Redis saudável antes de abrir o listener em produção-like, ativa tracing HTTP W3C/OTel, publica métricas de frescor e modo de persistência do worker, valida o contrato de composição produtiva e a integridade do catálogo de eventos. Rollback preservado em `origin/main@893d6cac` e nas branches ancestrais integradas.
 - Nenhum force-push foi usado.
-- O [CI #251](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35281221617), executado no predecessor documental `8bbcba3a`, terminou `failure` em Critical Coverage, Coverage, Repository Guards, Performance, Integration e Unit; ele não é evidência deste candidato.
+- O [CI #252](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35284475981), executado no predecessor `893d6cac`, não é evidência deste candidato e nenhum resultado é transferido.
 
 ## Importação corrente do evidence graph — 2026-09-17
 

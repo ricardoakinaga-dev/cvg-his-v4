@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `0fab9fc189e122b4ff7e7700d9b07508e64f54bd`
-(snapshot documental reancorado com o registro P0 candidate-bound e a correção de frescor de ACL em tempo constante, usando versionamento monotônico por tenant, triggers transacionais, cleanup forward-only `0176` e FORCE RLS; manifesto crítico revision 76; `server.ts` permanece em `8.335` linhas; typecheck e build do workspace passaram em `68/68` projetos, os contratos de access-control e PostgreSQL direcionados passaram, e os guardrails de migration-source, RLS, namespaces, OpenAPI, docs, identidade e P0 passaram; o CI #251 do predecessor `8bbcba3a` não é transferido; esta nova implementação aguarda CI exato e nenhum threshold foi alterado)
+**Candidate funcional avaliado:** `dc620fd15ce877d98a60e3d9bad28b4d1fa12a12`
+(snapshot documental reancorado com o registro P0 candidate-bound, ACL em tempo constante, readiness Redis, tracing HTTP, observabilidade do worker, contrato produtivo e integridade do catálogo de eventos; manifesto crítico revision 77; typecheck e build do workspace passaram em `68/68` projetos; os contratos novos passaram localmente; o CI #252 do predecessor `893d6cac` não é transferido; esta implementação aguarda CI exato e nenhum threshold foi alterado)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
