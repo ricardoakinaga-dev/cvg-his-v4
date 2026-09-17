@@ -12197,3 +12197,16 @@
         ],
         "addedCanonicalActivePaths": [
           "packages/db/migrations/0163_force_report_runtime_rls.sql",
+          "packages/db/migrations/0164_allow_billing_item_cascade_delete.sql",
+          "packages/db/migrations/0165_idempotency_actor_binding.sql",
+          "packages/db/migrations/0166_clinical_workflow_tasks.sql",
+          "packages/db/migrations/0167_clinical_workflow_permissions.sql",
+          "packages/db/migrations/0168_clinical_workflow_event_governance.sql",
+          "packages/db/migrations/0169_clinical_workflow_event_order.sql",
+          "packages/db/migrations/0170_outbox_event_envelope.sql"
+        ],
+        "excludedFromRunner": "revert, seed, hidden drift and backup SQL remain byte-accountable historical artifacts"
+      }
+    }
+  }
+}
