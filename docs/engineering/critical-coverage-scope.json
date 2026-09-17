@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "b313fba795175947559347b7e82b460040fc459d",
+  "head": "144b3b443e966b81fb600dae9c385fafec8516d0",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -11198,12 +11198,25 @@
     {
       "manifestRevision": 59,
       "observedAt": "2026-09-17T06:13:42.073Z",
-      "collectionCommit": "b313fba795175947559347b7e82b460040fc459d",
+      "collectionCommit": "d9acec6ef1763138d0b8b04a31ba7960db865c9c",
       "previousManifestSha256": "6bd7fccf12f2fad4c5bda83bc591904527abff25819e34454861e91837324084",
       "preservedManifest": "artifacts/remediation/ASSURANCE-MANIFEST-20260917/critical-scope-before-6bd7fccf12f2fad4c5bda83bc591904527abff25819e34454861e91837324084.json",
       "previousSourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
       "sourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
       "reason": "Reanchor local assurance after documentation-only candidate classification fix",
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    {
+      "manifestRevision": 60,
+      "observedAt": "2026-09-17T07:33:08.730Z",
+      "collectionCommit": "144b3b443e966b81fb600dae9c385fafec8516d0",
+      "previousManifestSha256": "478f88901c90b5b8fe45a4361cd2d3e1f91004aa14fdc0ecdc53702d7ad56e8d",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-478f88901c90b5b8fe45a4361cd2d3e1f91004aa14fdc0ecdc53702d7ad56e8d.json",
+      "previousSourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
+      "sourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
+      "reason": "Re-anchor critical evidence after deterministic Noto Sans CI typography change",
       "added": [],
       "removed": [],
       "changed": []
@@ -12140,7 +12153,7 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 59,
+  "manifestRevision": 60,
   "sourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
   "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
   "specializedEvidence": {
@@ -12184,16 +12197,3 @@
         ],
         "addedCanonicalActivePaths": [
           "packages/db/migrations/0163_force_report_runtime_rls.sql",
-          "packages/db/migrations/0164_allow_billing_item_cascade_delete.sql",
-          "packages/db/migrations/0165_idempotency_actor_binding.sql",
-          "packages/db/migrations/0166_clinical_workflow_tasks.sql",
-          "packages/db/migrations/0167_clinical_workflow_permissions.sql",
-          "packages/db/migrations/0168_clinical_workflow_event_governance.sql",
-          "packages/db/migrations/0169_clinical_workflow_event_order.sql",
-          "packages/db/migrations/0170_outbox_event_envelope.sql"
-        ],
-        "excludedFromRunner": "revert, seed, hidden drift and backup SQL remain byte-accountable historical artifacts"
-      }
-    }
-  }
-}

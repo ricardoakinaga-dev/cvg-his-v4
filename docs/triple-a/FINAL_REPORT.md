@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `b313fba795175947559347b7e82b460040fc459d`
-(snapshot reancorado com o registro P0 candidate-bound, o harness SPA canônico com proxy same-origin e a correção fail-closed e de complexidade no commit `95227098`, sobre a otimização `15ba86a8`; manifesto crítico revision 59; a branch de assurance é ancestral sem commits exclusivos; a cobertura global local passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas, k6 local `9/9` SLOs e visual local `29/29` também passaram; o CI #205 do `main` remoto terminou `failure` em E2E/visual/performance e não é promovido)
+**Candidate funcional avaliado:** `144b3b443e966b81fb600dae9c385fafec8516d0`
+(snapshot reancorado com o registro P0 candidate-bound, Noto Sans determinístico nos gates E2E/visual, o harness SPA canônico com proxy same-origin e a correção fail-closed e de complexidade no commit `95227098`, sobre a otimização `15ba86a8`; manifesto crítico revision 60; a branch de assurance é ancestral sem commits exclusivos; a cobertura global local passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas, k6 local `9/9` SLOs e visual local `29/29` também passaram; o CI #205 remoto é histórico e não é promovido)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -31,12 +31,12 @@ k6 local limitado a quatro CPUs passou `9/9` SLOs e a suíte visual local passou
 `29/29`; isso não substitui CI terminal, target, recovery, UAT, attestation ou
 autoridade de release.
 
-## Atualização corrente — revisão 59 / snapshot `b313fba7`
+## Atualização corrente — revisão 59 / snapshot `d9acec6e`
 
-O manifest crítico revision 59 foi reancorado no commit de fonte `b313fba7` e
+O manifest crítico revision 59 foi reancorado no commit de fonte `d9acec6e` e
 complexidade, sem mudança de
 thresholds, fontes ou aplicabilidade funcional; o snapshot corrente é
-`b313fba795175947559347b7e82b460040fc459d`, com implementação funcional em
+`d9acec6ef1763138d0b8b04a31ba7960db865c9c`, com implementação funcional em
 `95227098193966638102ccfe1e54842289ebe7f1`, sobre `15ba86a883a4283c5bf86c5825bf7d9a6ca5d089`. O runner crítico preserva o SQL histórico,
 usa PostgreSQL 16 e trata os inicializadores V8 do Node 22 sem fundir identidades.
 O produtor SQL agora é executado e publicado antes do checker. Os produtores atuais são identificados na

@@ -1,7 +1,7 @@
 # Baseline corrente — State of Art
 
-Observado em `2026-09-17T05:57:08Z`, sobre o candidato documental
-`b313fba795175947559347b7e82b460040fc459d`, que contém a identidade corrente
+Observado em `2026-09-17T07:35:26Z`, sobre o candidato documental
+`144b3b443e966b81fb600dae9c385fafec8516d0`, que contém a identidade corrente
 e a correção funcional de fail-closed e complexidade no commit
 `95227098193966638102ccfe1e54842289ebe7f1`, sobre a otimização do
 roteamento autenticado antes da guarda final, além do alinhamento do runner
@@ -18,7 +18,7 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| current_sha     | `b313fba795175947559347b7e82b460040fc459d` (snapshot; registro P0 e manifesto revision 59; correção funcional e classificador documental; harness SPA canônico com proxy same-origin) |
+| current_sha     | `144b3b443e966b81fb600dae9c385fafec8516d0` (snapshot; registro P0 e manifesto revision 60; Noto Sans determinístico nos gates E2E/visual; correção funcional e classificador documental; harness SPA canônico com proxy same-origin) |
 | main_sha        | `main` contém o snapshot candidato e sua documentação corrente; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral, sem commits exclusivos; rollback preservado |
 | worktree        | Limpo antes da documentação corrente; artefatos gerados locais permanecem fora do commit |
 | rollback        | `origin/fix/state-of-art-ci-assurance@fe5406c2`; sem force-push |
@@ -28,7 +28,7 @@ fotografia não promove evidência histórica nem altera thresholds.
 | critical_score  | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `49`, abaixo do mínimo 95 |
 | open_p0         | Registro P0: `13` itens abertos e `1` fechado; o quality bar de release continua exigindo zero P0 para certificação |
 | local_gate      | `FAIL/BLOCKED` no R05-010: cobertura crítica abaixo dos limiares e aplicabilidades Vue sem evidência aceita; `claim=NOT PROVEN`, `publication_allowed=false` |
-| implemented     | Paridade do contrato Patient; CORS credentialado restrito a origens permitidas; manifest crítico revision 59, ancorado em `b313fba7`, com thresholds inalterados e inventário Vitest reconciliado; workflow provisiona PostgreSQL 16, aceita somente o par V8 autenticado, publica evidência SQL antes do checker, valida o registro P0 e executa os gates SPA com API compilada e proxy same-origin; o classificador de identidade trata o manifesto de cobertura como governança documental; o JWT inicial só resolve contexto de roteamento e a guarda final mantém revalidação autoritativa, com erros genéricos sanitizados para 503; `server.ts` permanece no orçamento físico de `8.335` linhas; nenhum threshold foi alterado |
+| implemented     | Paridade do contrato Patient; CORS credentialado restrito a origens permitidas; manifest crítico revision 59, ancorado em `d9acec6e`, com thresholds inalterados e inventário Vitest reconciliado; workflow provisiona PostgreSQL 16, aceita somente o par V8 autenticado, publica evidência SQL antes do checker, valida o registro P0 e executa os gates SPA com API compilada e proxy same-origin; o classificador de identidade trata o manifesto de cobertura como governança documental; o JWT inicial só resolve contexto de roteamento e a guarda final mantém revalidação autoritativa, com erros genéricos sanitizados para 503; `server.ts` permanece no orçamento físico de `8.335` linhas; nenhum threshold foi alterado |
 | verified_local  | cobertura global `273/273` arquivos e `2907/2907` testes passou o threshold; lint, typecheck e API build passaram; API `618/618`; integração PostgreSQL `16/16`; contratos CI `20/20`; cobertura/processo e evidência SQL `34/34`; produtor SQL PostgreSQL 16.15 passou com `171` migrações e `7` históricos; k6 local `9/9` SLOs com CPU limitada e visual `29/29`; target externo permanece ausente |
 | verified_remote | O CI #205 é a execução terminal do `main@7ff8847b` e falhou nos gates E2E/visual/performance; não há `main green`. Target, recovery, UAT, attestation, governança de branch e autoridade de release seguem ausentes |
 | verified_target | `NOT_PROVEN` |
@@ -37,10 +37,10 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 ## Decisão
 
-O snapshot `b313fba795175947559347b7e82b460040fc459d` foi reconciliado;
+O snapshot `144b3b443e966b81fb600dae9c385fafec8516d0` foi reconciliado;
 o candidato funcional `95227098193966638102ccfe1e54842289ebe7f1` preserva a
 otimização autenticada e o fail-closed 503;
-o manifesto crítico foi reancorado na revisão 59, com o código funcional e os
+o manifesto crítico foi reancorado na revisão 60, com a correção de tipografia CI/visual, o código funcional e os
 thresholds preservados. `origin/fix/state-of-art-ci-assurance` já era ancestral de `main` e
 não possuía mudanças exclusivas, portanto nenhum merge seletivo adicional foi
 necessário. A validação local passou os contratos alterados, o produtor SQL
