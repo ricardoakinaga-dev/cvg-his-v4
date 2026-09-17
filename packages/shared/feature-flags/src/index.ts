@@ -48,6 +48,11 @@ export interface FlagDefinition {
   readonly owner: string;
   readonly description: string;
   readonly defaultValue: boolean;
+  /**
+   * Authoritative persisted switch. Bootstrap definitions leave this unset;
+   * database-backed providers use false as a flag-level kill switch.
+   */
+  readonly enabled?: boolean;
   readonly scopes: readonly FeatureFlagScope[];
   readonly expiresAt?: string;
   readonly auditRequired?: boolean;
@@ -83,7 +88,10 @@ export interface FlagDecision {
 
 export interface FeatureFlagProvider {
   readonly name: string;
-  evaluate(definition: FlagDefinition, context: EvaluationContext): Promise<FlagDecision> | FlagDecision;
+  evaluate(
+    definition: FlagDefinition,
+    context: EvaluationContext
+  ): Promise<FlagDecision> | FlagDecision;
 }
 
 export class InvalidFlagDefinitionError extends Error {
@@ -291,9 +299,7 @@ export function createEnvFeatureFlagProvider(enabledKeys: readonly string[]): Fe
   return {
     name: 'env-bootstrap',
     evaluate(definition, context) {
-      const enabled = normalizedEnabledKeys.has(definition.key)
-        ? true
-        : definition.defaultValue;
+      const enabled = normalizedEnabledKeys.has(definition.key) ? true : definition.defaultValue;
 
       return createFlagDecision(definition, context, {
         enabled,
@@ -336,10 +342,7 @@ export async function isFeatureFlagEnabled(
  * Uses a deterministic hash so the same accountId/userId always
  * maps to the same bucket across evaluations.
  */
-export function computeRolloutBucket(
-  flagKey: string,
-  entityId: string
-): number {
+export function computeRolloutBucket(flagKey: string, entityId: string): number {
   // Simple deterministic hash: sum of char codes modulo 100 + 1
   // Gives a value 1-100 that is deterministic for the given inputs
   let hash = 0;
@@ -482,21 +485,25 @@ export function createRulesBasedFeatureFlagProvider(
         if (baseProvider) {
           return Promise.resolve(baseProvider.evaluate(definition, context));
         }
-        return Promise.resolve(createFlagDecision(definition, context, {
-          provider: 'rules-based',
-          reason: 'default'
-        }));
+        return Promise.resolve(
+          createFlagDecision(definition, context, {
+            provider: 'rules-based',
+            reason: 'default'
+          })
+        );
       }
 
       // Evaluate rollout rules (always sync)
       const result = evaluateRolloutRules(definition, context);
 
-      return Promise.resolve(createFlagDecision(definition, context, {
-        enabled: result.enabled,
-        provider: 'rules-based',
-        reason: result.reason,
-        metadata: result.metadata
-      }));
+      return Promise.resolve(
+        createFlagDecision(definition, context, {
+          enabled: result.enabled,
+          provider: 'rules-based',
+          reason: result.reason,
+          metadata: result.metadata
+        })
+      );
     }
   };
 }
@@ -537,10 +544,7 @@ export function createCompositeFeatureFlagProvider(
       }
 
       // Evaluate rules (always sync)
-      const result = evaluateRolloutRules(
-        { ...definition, rolloutRules: rules },
-        context
-      );
+      const result = evaluateRolloutRules({ ...definition, rolloutRules: rules }, context);
 
       // If kill switch, always return disabled regardless of upstream
       if (result.reason === 'kill_switch') {
@@ -747,8 +751,8 @@ export function createCompositeFeatureFlagProviderWithMetrics(
 
         // If no rules for this key, delegate entirely to upstream
         if (!rules) {
-          return Promise.resolve(upstream.evaluate(definition, context))
-            .then((upstreamDecision) => {
+          return Promise.resolve(upstream.evaluate(definition, context)).then(
+            (upstreamDecision) => {
               metrics.recordEvaluation({
                 flagKey: definition.key,
                 provider: `${upstream.name}-with-rules`,
@@ -765,14 +769,12 @@ export function createCompositeFeatureFlagProviderWithMetrics(
                   upstreamReason: upstreamDecision.reason
                 }
               });
-            }) as Promise<FlagDecision>;
+            }
+          ) as Promise<FlagDecision>;
         }
 
         // Evaluate rules (always sync)
-        const result = evaluateRolloutRules(
-          { ...definition, rolloutRules: rules },
-          context
-        );
+        const result = evaluateRolloutRules({ ...definition, rolloutRules: rules }, context);
 
         // Kill switch — always disabled regardless of upstream
         if (result.reason === 'kill_switch') {

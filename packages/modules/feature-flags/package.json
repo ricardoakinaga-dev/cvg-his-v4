@@ -22,6 +22,6 @@
     "build": "tsc -b tsconfig.json --force",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "node -e \"console.log('no tests for module-feature-flags')\""
+    "test": "tsc -p tsconfig.json && node --test dist/**/*.test.js"
   }
 }

@@ -30,13 +30,37 @@ export interface FeatureFlagRepository {
   listByAccount(accountId: AccountId): Promise<readonly FlagDefinition[]>;
   create(flag: FlagDefinition, accountId: AccountId): Promise<void>;
   update(flag: FlagDefinition): Promise<void>;
-  upsertOverride(flagKey: string, accountId: AccountId, override: PartialFlagOverride): Promise<void>;
-  findOverride(flagKey: string, environment: string, accountId: AccountId): Promise<PartialFlagOverride | null>;
+  upsertOverride(
+    flagKey: string,
+    accountId: AccountId,
+    override: PartialFlagOverride
+  ): Promise<void>;
+  findOverride(
+    flagKey: string,
+    environment: string,
+    accountId: AccountId
+  ): Promise<PartialFlagOverride | null>;
   listOverrides(flagKey: string, accountId: AccountId): Promise<readonly PartialFlagOverride[]>;
 }
 
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+/**
+ * Minimal repository boundary required to evaluate a flag. Keeping evaluation
+ * injectable makes the decision policy testable without weakening the
+ * production repository's tenant and database boundaries.
+ */
+export type FeatureFlagEvaluationRepository = Pick<
+  FeatureFlagRepository,
+  'findByKey' | 'listOverrides'
+>;
+
+export interface DatabaseFeatureFlagProviderOptions {
+  readonly cacheTtlMs?: number;
+  readonly onFallback?: (key: string, reason: string) => void;
+  readonly metrics?: FeatureFlagMetricsCollector;
+  readonly repository?: FeatureFlagEvaluationRepository;
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function isUuid(value: string | undefined | null): value is string {
   return typeof value === 'string' && UUID_PATTERN.test(value);
@@ -209,13 +233,17 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
     });
   }
 
-  public async listOverrides(flagKey: string, accountId: AccountId): Promise<readonly PartialFlagOverride[]> {
+  public async listOverrides(
+    flagKey: string,
+    accountId: AccountId
+  ): Promise<readonly PartialFlagOverride[]> {
     return withTenantQuery(getPool(), async (client) => {
       const resolvedAccountId = await this.resolveAccountId(client, accountId);
       const result = await client.query(
         `SELECT o.* FROM feature_flag_overrides o
          JOIN feature_flags f ON f.id = o.flag_id
-         WHERE f.key = $1 AND f.account_id = $2`,
+         WHERE f.key = $1 AND f.account_id = $2
+         ORDER BY o.updated_at DESC, o.id ASC`,
         [flagKey, resolvedAccountId]
       );
       return result.rows.map((row) => this.mapRowToOverride(row));
@@ -223,7 +251,12 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
   }
 
   private async resolveAccountId(
-    client: { query: (queryText: string, params?: readonly unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }> },
+    client: {
+      query: (
+        queryText: string,
+        params?: readonly unknown[]
+      ) => Promise<{ rows: Array<Record<string, unknown>> }>;
+    },
     accountId: AccountId
   ): Promise<string> {
     if (isUuid(String(accountId))) {
@@ -240,7 +273,9 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
 
     const resolved = result.rows[0]?.id;
     if (typeof resolved !== 'string' || resolved.length === 0) {
-      throw new Error(`Unable to resolve database account id for legacy account "${String(accountId)}"`);
+      throw new Error(
+        `Unable to resolve database account id for legacy account "${String(accountId)}"`
+      );
     }
 
     return resolved;
@@ -252,6 +287,7 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
       owner: row.owner as string,
       description: row.description as string,
       defaultValue: row.default_value as boolean,
+      enabled: row.enabled === undefined || row.enabled === null ? undefined : Boolean(row.enabled),
       scopes: row.scopes as unknown as readonly FeatureFlagScope[],
       expiresAt: row.expires_at ? new Date(row.expires_at as string).toISOString() : undefined,
       auditRequired: row.audit_required as boolean,
@@ -278,17 +314,13 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
  */
 export function createDatabaseFeatureFlagProvider(
   fallbackProvider: FeatureFlagProvider,
-  options: {
-    readonly cacheTtlMs?: number;
-    readonly onFallback?: (key: string, reason: string) => void;
-    /** GAP-06: metrics collector for Prometheus instrumentation */
-    readonly metrics?: FeatureFlagMetricsCollector;
-  } = {}
+  options: DatabaseFeatureFlagProviderOptions = {}
 ): FeatureFlagProvider {
   const cache = new Map<string, { decision: FlagDecision; expiresAt: number }>();
   const cacheTtlMs = options.cacheTtlMs ?? 60_000;
   const onFallback = options.onFallback ?? (() => {});
   const metrics = options.metrics;
+  const repository = options.repository ?? new DatabaseFeatureFlagRepository();
 
   return {
     name: 'database-repository',
@@ -311,7 +343,18 @@ export function createDatabaseFeatureFlagProvider(
       }
 
       // GAP-06: pass metrics to async evaluation
-      return evaluateFromDbWithRepo(definition, context, cache, cacheKey, nowMs, cacheTtlMs, onFallback, fallbackProvider, metrics);
+      return evaluateFromDbWithRepo(
+        definition,
+        context,
+        cache,
+        cacheKey,
+        nowMs,
+        cacheTtlMs,
+        onFallback,
+        fallbackProvider,
+        repository,
+        metrics
+      );
     }
   };
 }
@@ -329,6 +372,7 @@ async function evaluateFromDbWithRepo(
   cacheTtlMs: number,
   onFallback: (key: string, reason: string) => void,
   fallbackProvider: FeatureFlagProvider,
+  repository: FeatureFlagEvaluationRepository,
   metrics?: FeatureFlagMetricsCollector
 ): Promise<FlagDecision> {
   const startTime = Date.now();
@@ -344,6 +388,44 @@ async function evaluateFromDbWithRepo(
       durationMs: Date.now() - startTime
     });
   };
+  let cacheExpiryMs = Number.POSITIVE_INFINITY;
+  const cacheDecision = (decision: FlagDecision): FlagDecision => {
+    cache.set(cacheKey, {
+      decision,
+      expiresAt: Math.min(nowMs + cacheTtlMs, cacheExpiryMs)
+    });
+    return decision;
+  };
+
+  const definitionExpiryMs = definition.expiresAt
+    ? Date.parse(definition.expiresAt)
+    : Number.POSITIVE_INFINITY;
+  if (definition.expiresAt && !Number.isFinite(definitionExpiryMs)) {
+    const invalidDecision = createFlagDecision(definition, context, {
+      enabled: false,
+      provider: 'database-repository',
+      reason: 'invalid_configuration',
+      metadata: { field: 'expiresAt' }
+    });
+    metrics?.recordError({
+      flagKey: definition.key,
+      provider: 'database-repository',
+      errorType: 'InvalidFlagExpiry'
+    });
+    recordMetrics('invalid_configuration', false);
+    return cacheDecision(invalidDecision);
+  }
+  cacheExpiryMs = definitionExpiryMs;
+  if (definitionExpiryMs <= nowMs) {
+    const expiredDecision = createFlagDecision(definition, context, {
+      enabled: false,
+      provider: 'database-repository',
+      reason: 'expired',
+      metadata: { expiresAt: definition.expiresAt }
+    });
+    recordMetrics('expired', false);
+    return cacheDecision(expiredDecision);
+  }
 
   if (!accountId) {
     const decision = createFlagDecision(definition, context, {
@@ -351,15 +433,12 @@ async function evaluateFromDbWithRepo(
       reason: 'default'
     });
     recordMetrics('default', decision.enabled);
-    cache.set(cacheKey, { decision, expiresAt: nowMs + cacheTtlMs });
-    return decision;
+    return cacheDecision(decision);
   }
-
-  const repo = new DatabaseFeatureFlagRepository();
 
   let decision: FlagDecision;
   try {
-    const flagDef = await repo.findByKey(definition.key, accountId as AccountId);
+    const flagDef = await repository.findByKey(definition.key, accountId as AccountId);
 
     if (!flagDef) {
       onFallback(definition.key, 'not_found_in_db');
@@ -374,11 +453,55 @@ async function evaluateFromDbWithRepo(
         reason: 'default'
       });
       recordMetrics('not_found_in_db', decision.enabled);
-      cache.set(cacheKey, { decision, expiresAt: nowMs + cacheTtlMs });
-      return decision;
+      return cacheDecision(decision);
     }
 
-    const override = await repo.findOverride(definition.key, environment, accountId as AccountId);
+    const expiryMs = flagDef.expiresAt ? Date.parse(flagDef.expiresAt) : Number.POSITIVE_INFINITY;
+    if (flagDef.expiresAt && !Number.isFinite(expiryMs)) {
+      const invalidDecision = createFlagDecision(definition, context, {
+        enabled: false,
+        provider: 'database-repository',
+        reason: 'invalid_configuration',
+        metadata: { field: 'expiresAt' }
+      });
+      metrics?.recordError({
+        flagKey: definition.key,
+        provider: 'database-repository',
+        errorType: 'InvalidFlagExpiry'
+      });
+      recordMetrics('invalid_configuration', false);
+      return cacheDecision(invalidDecision);
+    }
+    cacheExpiryMs = Math.min(cacheExpiryMs, expiryMs);
+
+    if (flagDef.enabled === false) {
+      decision = createFlagDecision(definition, context, {
+        enabled: false,
+        provider: 'database-repository',
+        reason: 'kill_switch',
+        metadata: { level: 'flag' }
+      });
+      recordMetrics('kill_switch', false);
+      return cacheDecision(decision);
+    }
+
+    if (expiryMs <= nowMs) {
+      decision = createFlagDecision(definition, context, {
+        enabled: false,
+        provider: 'database-repository',
+        reason: 'expired',
+        metadata: { expiresAt: flagDef.expiresAt }
+      });
+      recordMetrics('expired', false);
+      return cacheDecision(decision);
+    }
+
+    const overrides = await repository.listOverrides(definition.key, accountId as AccountId);
+    const override = selectApplicableOverride(overrides, {
+      environment,
+      accountId,
+      userId
+    });
 
     if (!override) {
       decision = createFlagDecision(definition, context, {
@@ -387,8 +510,7 @@ async function evaluateFromDbWithRepo(
         reason: 'default'
       });
       recordMetrics('default', decision.enabled);
-      cache.set(cacheKey, { decision, expiresAt: nowMs + cacheTtlMs });
-      return decision;
+      return cacheDecision(decision);
     }
 
     if (!override.enabled) {
@@ -399,20 +521,18 @@ async function evaluateFromDbWithRepo(
         metadata: { level: 'override' }
       });
       recordMetrics('kill_switch', false);
-      cache.set(cacheKey, { decision, expiresAt: nowMs + cacheTtlMs });
-      return decision;
+      return cacheDecision(decision);
     }
 
-    if (override.allowedUsers && override.allowedUsers.length > 0 && userId) {
-      if (override.allowedUsers.includes(userId)) {
+    if (override.allowedUsers && override.allowedUsers.length > 0) {
+      if (userId && override.allowedUsers.includes(userId)) {
         decision = createFlagDecision(definition, context, {
           enabled: true,
           provider: 'database-repository',
           reason: 'allowlist'
         });
         recordMetrics('allowlist', true);
-        cache.set(cacheKey, { decision, expiresAt: nowMs + cacheTtlMs });
-        return decision;
+        return cacheDecision(decision);
       } else {
         decision = createFlagDecision(definition, context, {
           enabled: false,
@@ -420,12 +540,30 @@ async function evaluateFromDbWithRepo(
           reason: 'allowlist_excluded'
         });
         recordMetrics('allowlist_excluded', false);
-        cache.set(cacheKey, { decision, expiresAt: nowMs + cacheTtlMs });
-        return decision;
+        return cacheDecision(decision);
       }
     }
 
     if (override.percentage !== null && override.percentage !== undefined && accountId) {
+      if (
+        !Number.isFinite(override.percentage) ||
+        override.percentage < 0 ||
+        override.percentage > 100
+      ) {
+        const invalidDecision = createFlagDecision(definition, context, {
+          enabled: false,
+          provider: 'database-repository',
+          reason: 'invalid_configuration',
+          metadata: { field: 'percentage' }
+        });
+        metrics?.recordError({
+          flagKey: definition.key,
+          provider: 'database-repository',
+          errorType: 'InvalidFlagPercentage'
+        });
+        recordMetrics('invalid_configuration', false);
+        return cacheDecision(invalidDecision);
+      }
       const bucket = computeRolloutBucket(definition.key, accountId);
       const enabled = bucket <= override.percentage;
       decision = createFlagDecision(definition, context, {
@@ -435,8 +573,7 @@ async function evaluateFromDbWithRepo(
         metadata: { percentageRollout: override.percentage, rolloutBucket: bucket }
       });
       recordMetrics('percentage_rollout', enabled);
-      cache.set(cacheKey, { decision, expiresAt: nowMs + cacheTtlMs });
-      return decision;
+      return cacheDecision(decision);
     }
 
     decision = createFlagDecision(definition, context, {
@@ -445,8 +582,7 @@ async function evaluateFromDbWithRepo(
       reason: 'override'
     });
     recordMetrics('override', true);
-    cache.set(cacheKey, { decision, expiresAt: nowMs + cacheTtlMs });
-    return decision;
+    return cacheDecision(decision);
   } catch (err) {
     metrics?.recordError({
       flagKey: definition.key,
@@ -458,4 +594,31 @@ async function evaluateFromDbWithRepo(
     recordMetrics('database_error_fallback', decision.enabled);
     return decision;
   }
+}
+
+export function selectApplicableOverride(
+  overrides: readonly PartialFlagOverride[],
+  context: {
+    readonly environment: string;
+    readonly accountId?: string;
+    readonly userId?: string;
+  }
+): PartialFlagOverride | null {
+  let selected: { override: PartialFlagOverride; specificity: number } | null = null;
+
+  for (const override of overrides) {
+    if (override.environment && override.environment !== context.environment) continue;
+    if (override.accountIdOverride && override.accountIdOverride !== context.accountId) continue;
+    if (override.userId && override.userId !== context.userId) continue;
+
+    const specificity =
+      (override.userId ? 4 : 0) +
+      (override.accountIdOverride ? 2 : 0) +
+      (override.environment ? 1 : 0);
+    if (!selected || specificity > selected.specificity) {
+      selected = { override, specificity };
+    }
+  }
+
+  return selected ? selected.override : null;
 }
