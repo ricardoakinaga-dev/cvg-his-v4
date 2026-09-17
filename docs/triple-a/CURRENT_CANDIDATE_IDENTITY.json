@@ -11,7 +11,7 @@
   "merge_sha": "dfa6d0b4ea60d6e7fbbe42521793b9fad273f702",
   "status": "BLOCKED / NOT PROVEN",
   "release_state": "BLOCKED / NOT PROVEN",
-  "ci_status": "IN_PROGRESS",
+  "ci_status": "FAILURE",
   "quality_bar": "docs/triple-a/QUALITY_BAR_V1.json",
   "quality_bar_sha256": "26ff154d84ce80036b28886325b8d8462883e3b830282f2cf884394054b5c0e4",
   "prompt_source": "docs/triple-a/MASTER_PROMPT.md",
@@ -21,7 +21,7 @@
   "generated_at": "2026-09-17T11:19:59.744Z",
   "generated_by": "scripts/generate-current-candidate-identity.mjs",
   "limitations": [
-    "Exact-candidate remote CI #216 is in progress; ci_sha remains null until a terminal green envelope is verified.",
+    "Exact-candidate remote CI #217 completed with failure in query and inventory performance SLOs; ci_sha remains null until a terminal green envelope is verified.",
     "Target, UAT, recovery, attestation, branch governance and release authority remain unproven.",
     "Documentation-only commits after head_sha are allowed; source changes require regeneration."
   ]
