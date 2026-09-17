@@ -9,6 +9,7 @@ import {
   runWithoutDatabaseTransactionScope,
   withTenantTransaction
 } from '@cvg-his-v2/shared-database';
+import { isProductionLikeEnvironment } from '@cvg-his-v2/shared-config';
 import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
 import { isSecureRequest } from './http/security-headers.js';
 import { requireApiKey as requireApiKeyHelper } from './helpers/auth-helpers.js';
@@ -227,13 +228,7 @@ import {
 import {
   getMetricsText,
   decrementActiveRequests,
-  httpErrorsTotal,
-  httpOperationalOutcomesTotal,
-  httpRequestDurationSeconds,
-  httpRequestsTotal,
-  normalizeRoute,
   incrementActiveRequests,
-  recordRequestSloObservation,
   updateAppMetrics,
   updateDatabasePoolMetrics,
   refreshClinicalOperationalMetrics,
@@ -246,14 +241,16 @@ import {
 } from './chaos-operational-state.js';
 import {
   tracingMiddleware,
-  extractTraceContext,
   createSpan,
-  endSpan,
   withSpanContext,
   injectTraceContext,
   formatTraceParent,
-  type Span
+  type Span,
+  type TraceableIncomingMessage
 } from './tracing.js';
+import { assertDistributedStateReadiness } from './distributed-runtime-readiness.js';
+import { attachHttpRequestTelemetry } from './http-request-telemetry.js';
+export { assertDistributedStateReadiness } from './distributed-runtime-readiness.js';
 import { generateSLOReport, getSLOConfigs } from './slos.js';
 import type { AttachmentSecurityScanner, FileStorage } from '@cvg-his-v2/module-attachments';
 import { getAppState } from './app-state.js';
@@ -416,11 +413,12 @@ export interface ApiServerOptions {
   /** Secrets manager for reading credentials at startup. Uses EnvSecretsProvider when omitted. */
   readonly secretsManager?: SecretsManager;
 }
-type ApiRateLimiter = Pick<ReturnType<typeof createAuthRateLimiter>, 'check'> &
+export type ApiRateLimiter = Pick<ReturnType<typeof createAuthRateLimiter>, 'check'> &
   Partial<Pick<ReturnType<typeof createAuthRateLimiter>, 'healthCheck' | 'close'>>;
 export type ApiServer = ReturnType<typeof createServer> & {
   readonly ready: Promise<void>;
   readonly closeDependencies: () => Promise<void>;
+  readonly assertDistributedRuntimeReadiness: () => Promise<void>;
 };
 const DEFAULT_CORS_ALLOWED_ORIGINS = [
   'http://127.0.0.1:3000',
@@ -448,15 +446,6 @@ function registerChaosExperimentOnce(chaos: ChaosEngine, experiment: { id: strin
   if (!alreadyRegistered) {
     chaos.register(experiment as never);
   }
-}
-function isProductionLikeEnvironment(environment: string): boolean {
-  const normalized = environment.trim().toLowerCase();
-  return (
-    normalized === 'production' ||
-    normalized === 'staging' ||
-    normalized === 'prod' ||
-    normalized === 'stage'
-  );
 }
 function isLocalDevelopmentOrTestEnvironment(environment: string): boolean {
   const normalized = environment.trim().toLowerCase();
@@ -559,6 +548,7 @@ export function assertProductionProviderReadiness(
     );
   }
 }
+
 function decodeAttachmentContent(contentBase64: unknown): Buffer | undefined {
   if (contentBase64 === undefined) return undefined;
   if (typeof contentBase64 !== 'string') {
@@ -4174,10 +4164,24 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   const requestCorrelationIds = new WeakMap<IncomingMessage, string>();
   const requestRoles = new WeakMap<IncomingMessage, readonly string[]>();
   const server = createServer((request: IncomingMessage, response: ServerResponse) => {
-    // Apply W3C trace context propagation before handling
-    tracingMiddleware(request, response, () => {
-      void handleRequest(request, response);
-    });
+    // Create and activate the W3C request span before any route or dependency
+    // code runs. The promise is intentionally observed so an unexpected
+    // handler failure cannot become an unhandled rejection.
+    void tracingMiddleware(request, response, () => handleRequest(request, response)).catch(
+      (error: unknown) => {
+        logger.error('unhandled HTTP request failure after tracing middleware', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+        if (!response.headersSent) {
+          response.statusCode = 500;
+          response.end(
+            JSON.stringify({ code: 'INTERNAL_ERROR', message: 'Internal server error' })
+          );
+        } else if (!response.writableEnded) {
+          response.destroy(error instanceof Error ? error : undefined);
+        }
+      }
+    );
   });
   server.headersTimeout = 15_000;
   server.requestTimeout = 30_000;
@@ -4196,7 +4200,20 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     return closeDependenciesPromise;
   };
 
-  return Object.assign(server, { ready, closeDependencies });
+  let distributedReadinessPromise: Promise<void> | undefined;
+  const assertDistributedRuntimeReadiness = (): Promise<void> => {
+    distributedReadinessPromise ??= assertDistributedStateReadiness({
+      environment: options.environment,
+      runtimeDistributedStateEnabled: effectiveRuntimeDistributedStateEnabled,
+      redisUrl: options.redisUrl,
+      authRateLimiter,
+      pixPaymentAttemptRateLimiter,
+      pixProviderWebhookRateLimiter
+    });
+    return distributedReadinessPromise;
+  };
+
+  return Object.assign(server, { ready, closeDependencies, assertDistributedRuntimeReadiness });
 
   async function handleRequest(request: IncomingMessage, response: ServerResponse) {
     incrementActiveRequests();
@@ -4209,12 +4226,14 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     response.once('finish', finishActiveRequest);
     response.once('close', finishActiveRequest);
 
-    const parentCtx = extractTraceContext(request);
-    const span = createSpan(
-      `HTTP ${request.method ?? 'UNKNOWN'} ${request.url ?? '/'}`,
-      parentCtx ?? null
-    );
-    (request as IncomingMessage & { span?: Span }).span = span;
+    const traceableRequest = request as TraceableIncomingMessage;
+    const span =
+      traceableRequest.span ??
+      createSpan(
+        `HTTP ${request.method ?? 'UNKNOWN'} ${request.url ?? '/'}`,
+        traceableRequest.traceContext ?? null
+      );
+    traceableRequest.span = span;
 
     const startTime = process.hrtime.bigint();
     const correlationIdHeader = request.headers['x-correlation-id'];
@@ -4241,57 +4260,14 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       'traceparent',
       formatTraceParent(span.context.traceId, span.context.spanId, span.context.traceFlags)
     );
-    response.on('finish', () => {
-      const durationNs = process.hrtime.bigint() - startTime;
-      const durationSec = Number(durationNs) / 1e9;
-      const url = new URL(request.url ?? '/', 'http://localhost');
-      const route = normalizeRoute(url.pathname);
-      const method = request.method ?? 'UNKNOWN';
-      const statusCode = response.statusCode;
-
-      httpRequestsTotal.inc({ method, route, status_code: String(statusCode) });
-      httpRequestDurationSeconds.observe(
-        { method, route, status_code: String(statusCode) },
-        durationSec
-      );
-      recordRequestSloObservation({
-        durationMs: durationSec * 1000,
-        statusCode
-      });
-
-      if (statusCode >= 400) {
-        const category = statusCode >= 500 ? '5xx' : '4xx';
-        httpErrorsTotal.inc({ status_category: category });
-      }
-
-      const role = requestRoles.get(request)?.slice().sort().join('+') || 'anonymous';
-      const isDownload =
-        route === '/reports/executions/:id/export' || route === '/attachments/:id/download';
-      const operation = statusCode === 403 ? 'forbidden' : isDownload ? 'download' : 'route_error';
-      if (statusCode >= 400 || isDownload) {
-        const result = statusCode >= 400 ? 'error' : 'success';
-        httpOperationalOutcomesTotal.inc({ route, role, operation, result });
-        logger.info('http operational outcome', {
-          correlationId,
-          method,
-          route,
-          role,
-          operation,
-          result,
-          statusCode,
-          durationMs: Math.round(durationSec * 1000)
-        });
-      }
-
-      span.attributes['http.method'] = method;
-      span.attributes['http.route'] = route;
-      span.attributes['http.target'] = request.url ?? '/';
-      span.attributes['http.status_code'] = statusCode;
-      span.attributes['http.duration_ms'] = Math.round(durationSec * 1000);
-      span.attributes['request.correlation_id'] = correlationId;
-
-      // End the tracing span
-      endSpan(span, statusCode >= 400 ? 'error' : 'ok');
+    attachHttpRequestTelemetry({
+      request,
+      response,
+      startTime,
+      correlationId,
+      requestRoles,
+      span,
+      logger
     });
 
     if (!corsDecision.allowed) {

@@ -58,6 +58,9 @@ export default defineConfig({
         // Entry points, HTTP wiring and generated runtime shells are not meaningful unit coverage targets.
         'apps/api/src/index.ts',
         'apps/api/src/server.ts',
+        'apps/api/src/production-runtime-contract.ts',
+        'apps/api/src/distributed-runtime-readiness.ts',
+        'apps/api/src/http-request-telemetry.ts',
         'apps/api/src/metrics.ts',
         'apps/api/src/observability.ts',
         'apps/api/src/tracing.ts',

@@ -31,6 +31,7 @@ import {
   updateDatabasePoolMetrics
 } from './metrics.js';
 import {
+  assertDistributedStateReadiness,
   assertProductionProviderReadiness,
   buildAuthenticatedActorAttributes,
   createApiServer
@@ -1863,6 +1864,79 @@ test('production-like API refuses missing or mock providers', () => {
         secretAccessKey: 'test-secret'
       })
     })
+  );
+});
+
+test('production-like API requires a healthy Redis distributed-state preflight', async () => {
+  const base = {
+    environment: 'production',
+    runtimeDistributedStateEnabled: true,
+    redisUrl: 'redis://redis.test:6379/0',
+    authRateLimiter: {
+      check: async () => ({
+        limit: 100,
+        remaining: 99,
+        reset: Date.now() + 60_000,
+        blocked: false,
+        retryAfterMs: 0
+      }),
+      healthCheck: async () => ({
+        healthy: true,
+        backend: 'redis' as const,
+        detail: 'test'
+      })
+    },
+    pixPaymentAttemptRateLimiter: {
+      check: async () => ({
+        limit: 100,
+        remaining: 99,
+        reset: Date.now() + 60_000,
+        blocked: false,
+        retryAfterMs: 0
+      }),
+      healthCheck: async () => ({
+        healthy: true,
+        backend: 'redis' as const,
+        detail: 'test'
+      })
+    },
+    pixProviderWebhookRateLimiter: {
+      check: async () => ({
+        limit: 100,
+        remaining: 99,
+        reset: Date.now() + 60_000,
+        blocked: false,
+        retryAfterMs: 0
+      }),
+      healthCheck: async () => ({
+        healthy: true,
+        backend: 'redis' as const,
+        detail: 'test'
+      })
+    }
+  };
+
+  await assert.doesNotReject(() => assertDistributedStateReadiness(base));
+  await assert.rejects(
+    () =>
+      assertDistributedStateReadiness({
+        ...base,
+        authRateLimiter: {
+          check: async () => ({
+            limit: 100,
+            remaining: 99,
+            reset: Date.now() + 60_000,
+            blocked: false,
+            retryAfterMs: 0
+          }),
+          healthCheck: async () => ({
+            healthy: false,
+            backend: 'redis' as const,
+            detail: 'test failure'
+          })
+        }
+      }),
+    /Redis distributed state is unhealthy/
   );
 });
 

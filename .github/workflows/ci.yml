@@ -290,6 +290,8 @@ jobs:
           pnpm validate:rls
           pnpm validate:deploy-surface
           pnpm validate:environment-runtime
+          pnpm validate:production-runtime
+          pnpm validate:observability
           pnpm validate:identity-contract
           pnpm validate:candidate-identity
           pnpm validate:p0-registry
@@ -335,6 +337,11 @@ jobs:
           node --test scripts/validate-p0-registry.test.mjs
           node --test scripts/run-security-audit.test.mjs
           node --test scripts/validate-supply-chain.test.mjs
+          node --test scripts/validate-production-runtime-contract.test.mjs
+          node --test scripts/validate-observability-contract.test.mjs
+          pnpm test:production-contract
+          pnpm test:tracing
+          pnpm test:event-catalog
           node --test scripts/process-reexport-coverage.test.mjs scripts/source-metric-presence.test.mjs scripts/check-critical-coverage.test.mjs
           node --test scripts/refresh-critical-source-manifest.test.mjs scripts/run-critical-coverage-shard.test.mjs scripts/promote-critical-shard.test.mjs
           node --test scripts/run-native-critical-coverage.test.mjs scripts/native-v8-line-terminators.test.mjs scripts/native-v8-conversion-semantics.test.mjs scripts/process-v8-conversion.test.mjs scripts/process-coverage-collection.test.mjs

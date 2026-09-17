@@ -308,3 +308,66 @@ export const EVENTS_BY_DOMAIN: Record<string, readonly string[]> = {
 export const EVENT_SCHEMA_VERSIONS: Readonly<Record<string, number>> = Object.freeze(
   Object.fromEntries(EVENT_CATALOG.map((eventType) => [eventType, 1]))
 );
+
+/**
+ * Validate the catalog as a runtime contract instead of treating it as
+ * documentation only. This catches duplicate names, unowned events and
+ * schema-version drift before a worker can consume an ambiguous envelope.
+ */
+export function findEventCatalogIntegrityViolations(): readonly string[] {
+  const violations: string[] = [];
+  const catalogSet = new Set(EVENT_CATALOG);
+
+  if (catalogSet.size !== EVENT_CATALOG.length) {
+    violations.push('EVENT_CATALOG contains duplicate event names');
+  }
+
+  for (const eventType of EVENT_CATALOG) {
+    if (!/^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$/.test(eventType)) {
+      violations.push(`event name is not a stable dotted identifier: ${eventType}`);
+    }
+
+    const schemaVersion = EVENT_SCHEMA_VERSIONS[eventType];
+    if (!Number.isSafeInteger(schemaVersion) || schemaVersion < 1) {
+      violations.push(`event has no valid schema version: ${eventType}`);
+    }
+  }
+
+  const domainEvents = Object.entries(EVENTS_BY_DOMAIN).flatMap(([domain, events]) =>
+    events.map((eventType) => ({ domain, eventType }))
+  );
+  const ownership = new Map<string, string>();
+  for (const { domain, eventType } of domainEvents) {
+    if (!catalogSet.has(eventType)) {
+      violations.push(`domain ${domain} references an unknown event: ${eventType}`);
+      continue;
+    }
+    const previousDomain = ownership.get(eventType);
+    if (previousDomain) {
+      violations.push(`event is owned by multiple domains: ${eventType}`);
+    } else {
+      ownership.set(eventType, domain);
+    }
+  }
+
+  for (const eventType of EVENT_CATALOG) {
+    if (!ownership.has(eventType)) {
+      violations.push(`event is not assigned to a domain: ${eventType}`);
+    }
+  }
+
+  for (const eventType of Object.keys(EVENT_SCHEMA_VERSIONS)) {
+    if (!catalogSet.has(eventType)) {
+      violations.push(`schema registry references an unknown event: ${eventType}`);
+    }
+  }
+
+  return violations;
+}
+
+export function assertEventCatalogIntegrity(): void {
+  const violations = findEventCatalogIntegrityViolations();
+  if (violations.length > 0) {
+    throw new Error(`Event catalog integrity failed: ${violations.join('; ')}`);
+  }
+}

@@ -19,7 +19,9 @@ import { createWorkerFeatureFlags } from './feature-flags.js';
 import {
   createWorkerFeatureFlagMetricsCollector,
   getWorkerMetricsText,
-  setPixProviderSettlementReconciliationRequired
+  recordWorkerTickMetric,
+  setPixProviderSettlementReconciliationRequired,
+  updateWorkerRuntimeMetrics
 } from './worker-metrics.js';
 import {
   createWorkerHealthResponse,
@@ -113,6 +115,10 @@ async function main() {
   if (workerShutdownRequested) return;
   workerState.databaseHealthy = bootstrap.databaseHealthy;
   workerState.persistenceMode = bootstrap.notificationRepository ? 'database' : 'in-memory';
+  updateWorkerRuntimeMetrics({
+    databaseHealthy: workerState.databaseHealthy,
+    persistenceMode: workerState.persistenceMode
+  });
 
   // Feature flags — evaluated once at startup with Prometheus metrics collector (PR-FF-13, GAP-12)
   const workerFeatureFlags = await createWorkerFeatureFlags({
@@ -631,9 +637,15 @@ async function main() {
       workerState.lastTickAt = new Date().toISOString();
       workerState.lastTickDurationMs = Date.now() - tickStart;
       workerState.lastError = isolatedTickError;
+      recordWorkerTickMetric(
+        isolatedTickError === null ? 'success' : 'degraded',
+        workerState.lastTickDurationMs
+      );
     } catch (error) {
       workerState.errors++;
       workerState.lastError = error instanceof Error ? error.message : String(error);
+      workerState.lastTickDurationMs = Date.now() - tickStart;
+      recordWorkerTickMetric('failed', workerState.lastTickDurationMs);
       logger.error('worker tick failed', { error: workerState.lastError });
     }
     if (!workerShutdownRequested) {

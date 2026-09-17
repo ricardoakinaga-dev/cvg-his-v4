@@ -60,6 +60,7 @@
       "apps/api/src/laboratory-provider-keyring.test.ts",
       "apps/api/src/laboratory-result-import-repository.test.ts",
       "apps/api/src/payment-gateway.test.ts",
+      "apps/api/src/production-runtime-contract.test.ts",
       "apps/api/src/registry-request-boundaries.test.ts",
       "apps/api/src/routes/access-control-audit-events.test.ts",
       "apps/api/src/routes/administrative-reports-routes.test.ts",
@@ -116,7 +117,8 @@
       "apps/api/src/server.test.ts",
       "apps/api/src/setup-provisioning.test.ts",
       "apps/api/src/setup-token.test.ts",
-      "apps/api/src/startup-secrets.test.ts"
+      "apps/api/src/startup-secrets.test.ts",
+      "apps/api/src/tracing.test.ts"
     ],
     "native-worker": [
       "apps/worker/src/account-discovery.test.ts",
@@ -129,6 +131,7 @@
       "apps/worker/src/report-delivery-provider.test.ts",
       "apps/worker/src/runner.test.ts",
       "apps/worker/src/scheduled-report-filters.test.ts",
+      "apps/worker/src/worker-metrics.test.ts",
       "apps/worker/src/worker-report-identity.test.ts",
       "apps/worker/src/workflow-task-runner.test.ts"
     ]
@@ -1067,7 +1070,7 @@
     },
     {
       "path": "apps/api/src/server.ts",
-      "sha256": "0d712fac89d5b586db0e92c992445f9273e8ab5899f6d3cda16088403097cece",
+      "sha256": "c04b8c042652fc09ff7c1507c0d7cc1bb6abb858a6913ff00289498cddf564b2",
       "components": [
         "http-routes"
       ],
@@ -8385,7 +8388,13 @@
     "tests/unit/api/laboratory-result-import-coverage.test.ts",
     "tests/unit/api/laboratory-result-import-database-coverage.test.ts",
     "tests/unit/api/pix-repository-boundaries-coverage.test.ts",
-    "tests/unit/api/setup-token-coverage.test.ts"
+    "tests/unit/api/setup-token-coverage.test.ts",
+    "apps/api/src/production-runtime-contract.ts",
+    "apps/api/src/distributed-runtime-readiness.ts",
+    "apps/api/src/http-request-telemetry.ts",
+    "apps/api/src/production-runtime-contract.test.ts",
+    "apps/api/src/tracing.test.ts",
+    "apps/worker/src/worker-metrics.test.ts"
   ],
   "scopeHistory": [
     {

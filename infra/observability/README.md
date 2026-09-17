@@ -68,6 +68,12 @@ tenant, paciente, atendimento e tarefa são proibidos como labels.
 |---|---|---|---|
 | `cvg_job_retry_total` | Counter | — | Retries duráveis observados pelo worker |
 | `cvg_job_dead_letter_total` | Counter | — | Jobs movidos para DLQ pelo worker |
+| `worker_ticks_total` | Counter | `status` | Ciclos do worker por resultado (`success`, `degraded`, `failed`) |
+| `worker_tick_duration_seconds` | Histogram | `status` | Duração dos ciclos do worker |
+| `worker_last_successful_tick_timestamp_seconds` | Gauge | — | Unix timestamp do último ciclo sem falha isolada |
+| `worker_last_tick_timestamp_seconds` | Gauge | — | Unix timestamp do último ciclo observado |
+| `worker_database_healthy` | Gauge | — | Saúde do banco visto pelo worker |
+| `worker_persistence_mode` | Gauge | `mode` | Modo de persistência ativo do worker |
 
 ### 2.2 Default Metrics (Node.js)
 
@@ -98,6 +104,13 @@ Ref: `apps/api/src/slos.ts`
 | Runtime em memoria explícito      | `/health`, Prometheus gauge                          | `CVG_HIS_API_InMemoryMode`                           | health + alert                                                    |
 | Liveness da aplicacao             | `/live`                                              | `CVG_HIS_API_Liveness_Failing`                       | probe + alert                                                     |
 | PIX settlement DLQ                | `/internal/pix-settlement/deliveries`, worker metric | `CVG_HIS_PIX_Settlement_ReconciliationRequired`      | painel DLQ + [runbook](../../docs/runbooks/pix-settlement-dlq.md) |
+| Estado distribuído Redis          | `/ready`, API metrics                              | `CVG_HIS_API_Redis_Unhealthy`                        | alerta + [runbook](../../docs/runbooks/observability-alerts.md#redis-unhealthy) |
+| Saturação do pool do banco        | API metrics                                        | `CVG_HIS_API_DatabasePoolExhaustion`                | alerta + [runbook](../../docs/runbooks/observability-alerts.md#database-pool-exhaustion) |
+| Disponibilidade do worker         | worker `/health/ready`, Prometheus                 | `CVG_HIS_Worker_Unavailable`                        | alerta + [runbook](../../docs/runbooks/observability-alerts.md#worker-unavailable) |
+| Frescor de processamento worker   | worker metrics                                     | `CVG_HIS_Worker_ProcessingStale`                    | alerta + [runbook](../../docs/runbooks/observability-alerts.md#worker-processing-stale) |
+| Saúde do banco do worker           | worker metrics                                     | `CVG_HIS_Worker_DatabaseUnhealthy`                 | alerta + [runbook](../../docs/runbooks/observability-alerts.md#worker-database-unhealthy) |
+| Worker em memória                 | worker metrics                                     | `CVG_HIS_Worker_InMemoryMode`                      | alerta + [runbook](../../docs/runbooks/observability-alerts.md#worker-in-memory-mode) |
+| Jobs em DLQ                       | worker metric                                     | `CVG_HIS_Worker_JobDeadLettered`                    | alerta + [runbook](../../docs/runbooks/observability-alerts.md#worker-job-dead-lettered) |
 
 ---
 
@@ -200,6 +213,9 @@ Arquivo: `infra/observability/grafana/cvg-his-v2-api-dashboard.json`
 | Latency P95 by Endpoint | Timeseries | Por rota normalizada  |
 | Error Budget Remaining  | Stat       | Budget 30d            |
 | Error Budget Burn Rate  | Stat       | Taxa de consumo       |
+| Worker processing freshness | Timeseries | Último tick saudável e último tick observado |
+| Worker outcomes and DLQ | Timeseries | Resultado dos ticks e jobs em DLQ |
+| Runtime dependencies    | Timeseries | Redis, pool PostgreSQL e saúde do banco do worker |
 
 ### Importar dashboard
 
