@@ -645,11 +645,12 @@ export async function produceSqlMigrationEvidence({ root = ROOT, output = null }
               label: `upgrade-legacy-${targetName.slice(0, 4)}`,
               saveLog: (label, result) => saveLog(outputRoot, label, result)
             });
-            steps.push(step);
             const rows = await snapshotOutbox(client, accountId);
             const snapshotKey = targetName.slice(0, 4);
-            if (snapshotKey === '0170' || snapshotKey === '0171' || snapshotKey === '0172')
+            if (snapshotKey === '0170' || snapshotKey === '0171' || snapshotKey === '0172') {
+              steps.push(step);
               snapshots[`after${snapshotKey}`] = snapshotRows(rows);
+            }
           }
           const finalCatalog = await catalogSnapshot(client);
           assert.equal(finalCatalog.fingerprint, cleanSchemaFingerprint, 'legacy schema differs from clean schema');
