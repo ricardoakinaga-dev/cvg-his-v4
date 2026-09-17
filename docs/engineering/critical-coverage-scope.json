@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "15ba86a883a4283c5bf86c5825bf7d9a6ca5d089",
+  "head": "db154b7afb43f63e644d1b56ea3fb98cbdc13522",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -1067,7 +1067,7 @@
     },
     {
       "path": "apps/api/src/server.ts",
-      "sha256": "a97eb81fd238c9165dc1b8a9e27fcf659042c5d029e4503e0e5a0264459a902a",
+      "sha256": "1aa985d09e9fe9033509fe4d1bf6f7fb016107fbe64838d9df23aa548724e555",
       "components": [
         "http-routes"
       ],
@@ -11117,6 +11117,25 @@
           "after": "17037e2d352bb35d9210fac73872cbf18306110bac076193322109fbb8c6acf5"
         }
       ]
+    },
+    {
+      "manifestRevision": 54,
+      "observedAt": "2026-09-17T02:51:08.773Z",
+      "collectionCommit": "db154b7afb43f63e644d1b56ea3fb98cbdc13522",
+      "previousManifestSha256": "ed031e00d02b8ea5fcb6498e5b165e44e68b05a1642cd82643de38c1403cfb67",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-ed031e00d02b8ea5fcb6498e5b165e44e68b05a1642cd82643de38c1403cfb67.json",
+      "previousSourceSetSha256": "580089584e03a6c711540c8329f99182b7cc3c451c2b6dd45e54386e1831184d",
+      "sourceSetSha256": "a5160af50c0d84f2087760a8db992de723474d8240ad52950b3721dd8557257c",
+      "reason": "Preserve the authenticated guard fail-closed contract while removing duplicate session routing reads",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/server.ts",
+          "before": "a97eb81fd238c9165dc1b8a9e27fcf659042c5d029e4503e0e5a0264459a902a",
+          "after": "1aa985d09e9fe9033509fe4d1bf6f7fb016107fbe64838d9df23aa548724e555"
+        }
+      ]
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12050,8 +12069,8 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 53,
-  "sourceSetSha256": "580089584e03a6c711540c8329f99182b7cc3c451c2b6dd45e54386e1831184d",
+  "manifestRevision": 54,
+  "sourceSetSha256": "a5160af50c0d84f2087760a8db992de723474d8240ad52950b3721dd8557257c",
   "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
   "specializedEvidence": {
     "sql": {
