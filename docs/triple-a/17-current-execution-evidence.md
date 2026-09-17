@@ -1,13 +1,13 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato documental observado em 2026-09-17T21:24:29Z
+## Candidato documental observado em 2026-09-17T22:11:19Z
 
-- SHA de código e documentação: `5a5388281633a235a6e53909c7432c4535194d70`;
+- SHA de código e documentação: `5998287d386559fc3b3ed760a47756e62349f286`;
   identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O manifesto crítico está na revisão 73, ancorado no commit funcional `836b8b76b957` e publicado na identidade do snapshot; o candidato instala Chromium, fixa Noto Sans nos jobs E2E/visual, desativa LCD text no Playwright e verifica a fonte com comandos portáteis do runner, provisiona PostgreSQL 16 via PGDG fingerprint-pinned, aceita o par V8 de inicializadores do Node 22, publica o artefato SQL verificado, valida o registro P0 e fecha o threshold global de branches com contratos determinísticos. Os gates SPA agora usam API compilada e servidor estático com proxy same-origin `/api`, igual ao harness canônico local. O provider raw de feature flags aplica kill switch persistido, expiração, precedência de escopo, allowlist fail-closed, cache bounded/invalidação, consultas tenant-scoped explícitas e ownership composto entre flag e override; a evidência SQL executa 0173/0174 para validar o schema final, mas publica somente os passos legados 0170/0171/0172 exigidos pelo consumidor. A suíte oficial Node do módulo de feature flags permanece ativa, enquanto seu teste nativo fica fora da varredura global do Vitest; `server.ts` respeita o orçamento de `8.335` linhas. Rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- O manifesto crítico está na revisão 74, ancorado no commit funcional `5998287d3865` e publicado na identidade do snapshot; o candidato mantém os gates E2E/visual, provisiona PostgreSQL 16, publica o artefato SQL verificado e valida o registro P0. A leitura do token de frescor de ACL foi reduzida de uma reconstrução global de tabelas para uma versão monotônica indexada por tenant, com triggers transacionais e RLS/privilege reconciliation explícitos. Os gates SPA usam API compilada e proxy same-origin `/api`; o provider raw de feature flags mantém kill switch persistido, expiração, precedência de escopo, allowlist fail-closed e cache bounded. Rollback preservado em `origin/main@3b4e24f3` e nas branches ancestrais integradas.
 - Nenhum force-push foi usado.
-- O [CI #238](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35248052991), executado antes desta correção, falhou na cobertura global porque um teste Node nativo foi incluído indevidamente no sweep do Vitest; ele não é evidência do candidato corrigido.
+- O [CI #247](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35276834295), executado no predecessor documental `3b4e24f3`, passou os gates funcionais, E2E SPA, Visual e segurança, mas falhou em Critical Coverage e Performance; ele não é evidência deste candidato.
 
 ## Importação corrente do evidence graph — 2026-09-17
 
@@ -34,11 +34,11 @@
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Gate crítico R05-010   | O [CI #214](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35204183554) terminou com Critical Coverage Gate e gates estruturais/funcionais em `PASS`; E2E SPA `424/424`, Visual `29/29`, e somente Performance falhou |
 | Workspace              | Cobertura global `273/273` arquivos e `2907/2907` testes passou; `87,46%` statements, `82,00%` branches, `89,32%` functions, `88,91%` lines; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas, lint, typecheck, contratos CI `20/20`, cobertura/processo e SQL `34/34` passaram |
-| Identidade/evidence graph | Identidade canônica do snapshot documental `5a538828`; registro P0 `1 CLOSED / 13 OPEN`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` |
+| Identidade/evidence graph | Identidade canônica do snapshot documental `5998287d`; registro P0 `1 CLOSED / 13 OPEN`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` |
 | Coverage crítico current | O #205 passou o Critical Coverage Gate; a cobertura geral local passou o threshold congelado e a correção do shard de revogação foi validada localmente |
 | Vue especializado current | O #214 passou Visual Regression `29/29` no candidato funcional equivalente; a normalização `--disable-lcd-text` e os seis baselines auditados permanecem; nenhum threshold foi relaxado |
 | SQL/migrações current  | PostgreSQL 16.15 privado socket-only; produtor independente PASS com `173` migrações executáveis + `7` históricos; cadeia completa e seed repetível |
-| Performance/target     | k6 local limitado a quatro CPUs passou `9/9`; o #214 passou `7/9` SLOs e reprovou query p95 `217ms` e inventory p95 `202,76ms`; target/soak/restore/UAT/attestation permanecem `NOT_PROVEN` |
+| Performance/target     | O #247 falhou no job k6 do predecessor; a otimização de frescor ACL está pronta para nova execução exata, sem relaxar thresholds; target/soak/restore/UAT/attestation permanecem `NOT_PROVEN` |
 | Supply/artefatos       | O graph, o pacote local e o registro P0 são gerados/validados fail-closed; nenhum PASS externo ou histórico foi inventado |
 
 ### Evidência histórica preservada — candidato `52a62b80`
@@ -166,7 +166,7 @@ não substitui a execução remota nem uma certificação de target.
 
 ## Decisão corrente
 
-O candidato `5a5388281633a235a6e53909c7432c4535194d70` permanece
+O candidato `5998287d386559fc3b3ed760a47756e62349f286` permanece
 `BLOCKED / NOT PROVEN`. A suíte local de integração/processo está verde e os
 envelopes locais são candidate-bound, mas o evidence graph os mantém em
 `PARTIAL` até uma verificação independente. O registro P0 permanece em

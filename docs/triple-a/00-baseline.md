@@ -1,8 +1,8 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-17T21:09:34Z
+## Snapshot vigente — 2026-09-17T22:11:19Z
 
-O baseline autoritativo do snapshot atual está em: `5a5388281633a235a6e53909c7432c4535194d70` (snapshot reancorado após a implementação do importador candidate-bound do evidence graph, que valida envelope, frescor, ancestralidade, ambiente, integridade e digests sem promover evidência local a PASS; o comportamento ERP anterior permanece preservado).
+O baseline autoritativo do snapshot atual está em: `5998287d386559fc3b3ed760a47756e62349f286` (snapshot reancorado após a implementação do importador candidate-bound do evidence graph e da correção de frescor de ACL em tempo constante, com versão monotônica por tenant, sem promover evidência local a PASS; o comportamento ERP anterior permanece preservado).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em

@@ -6,10 +6,10 @@
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O snapshot atual é
 > o snapshot anterior `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e`, com código funcional em `578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`, permanece preservado apenas como histórico; a identidade canônica está em
-> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `5a5388281633a235a6e53909c7432c4535194d70`; o registro P0 candidate-bound é validado no CI e no gate de release; o evidence graph importa envelopes locais somente como `PARTIAL` após validar schema, SHA, ambiente, frescor, ancestralidade e digests; os CI anteriores não são transferidos. Nenhum resultado parcial é transferido.
+> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `5998287d386559fc3b3ed760a47756e62349f286`; o registro P0 candidate-bound é validado no CI e no gate de release; o evidence graph importa envelopes locais somente como `PARTIAL` após validar schema, SHA, ambiente, frescor, ancestralidade e digests; os CI anteriores não são transferidos. Nenhum resultado parcial é transferido.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `5a5388281633a235a6e53909c7432c4535194d70` (snapshot reancorado; o evidence graph agora ingere envelopes locais com validação candidate-bound e status máximo `PARTIAL`; registro P0 com `1` fechado e `13` abertos; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current snapshot:** `5998287d386559fc3b3ed760a47756e62349f286` (snapshot reancorado; o evidence graph agora ingere envelopes locais com validação candidate-bound e status máximo `PARTIAL`; a leitura de frescor de ACL usa versionamento monotônico transacional; registro P0 com `1` fechado e `13` abertos; provas externas e autoridade de release continuam `NOT PROVEN`).
 **Current CI:** o [CI #221](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35222726870) foi disparado no snapshot remoto anterior e encontrou hash desatualizado no manifesto crítico; não há resultado terminal verde para este candidato. O último run terminal, [CI #217](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35215228039), passou os gates funcionais, E2E SPA e Visual, mas falhou no k6 em query/inventory. Nenhuma threshold foi relaxada.
 **Current status:** **BLOCKED / NOT PROVEN**
 **Observation:** 2026-09-17T21:09:34Z

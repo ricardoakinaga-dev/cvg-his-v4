@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "836b8b76b95722e422c5bc50c01e0ae61b82a0ae",
+  "head": "5998287d386559fc3b3ed760a47756e62349f286",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -3564,7 +3564,7 @@
     },
     {
       "path": "packages/db/src/runtime-role-policy.ts",
-      "sha256": "b285b4fcad8688c9a657476558a5e2696de72a1752684e1bc2d8010d09e4cfaa",
+      "sha256": "cba055794e74bdcc507ff9b0c2bb8efe6a5960f06cef1a31fcc5481c8f7a2ec9",
       "components": [
         "roles-rls"
       ],
@@ -4584,7 +4584,7 @@
     },
     {
       "path": "packages/modules/access-control/src/repositories/database-access-control.repository.ts",
-      "sha256": "4ae24bed96b3d65b85b9c59fb475e6085a421a2910abc2fc897fc89deb35c312",
+      "sha256": "5bdc1e5c42f6614d1eec27d8104005d00ed09423dc6690efc76b648433131f08",
       "components": [
         "roles-rls",
         "repositories"
@@ -11531,6 +11531,30 @@
       "added": [],
       "removed": [],
       "changed": []
+    },
+    {
+      "manifestRevision": 74,
+      "observedAt": "2026-09-17T22:10:39.517Z",
+      "collectionCommit": "5998287d386559fc3b3ed760a47756e62349f286",
+      "previousManifestSha256": "c68629a9cc4185614f53f508d2fa47092c829bf583227d5de30558b32be5b269",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh-20260917/critical-scope-before-c68629a9cc4185614f53f508d2fa47092c829bf583227d5de30558b32be5b269.json",
+      "previousSourceSetSha256": "2833b899557c88a52f30e48ad4c6946a6160c84a5a4517cfac79b57ec2d5cd18",
+      "sourceSetSha256": "0f80d74b36d412ebbcb87c1a12931b6f7e07c21821c918e4044e2bda2ccee28e",
+      "reason": "Re-anchor the frozen critical source identity after the constant-time access-control freshness fix",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "packages/db/src/runtime-role-policy.ts",
+          "before": "b285b4fcad8688c9a657476558a5e2696de72a1752684e1bc2d8010d09e4cfaa",
+          "after": "cba055794e74bdcc507ff9b0c2bb8efe6a5960f06cef1a31fcc5481c8f7a2ec9"
+        },
+        {
+          "path": "packages/modules/access-control/src/repositories/database-access-control.repository.ts",
+          "before": "4ae24bed96b3d65b85b9c59fb475e6085a421a2910abc2fc897fc89deb35c312",
+          "after": "5bdc1e5c42f6614d1eec27d8104005d00ed09423dc6690efc76b648433131f08"
+        }
+      ]
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12464,8 +12488,8 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 73,
-  "sourceSetSha256": "2833b899557c88a52f30e48ad4c6946a6160c84a5a4517cfac79b57ec2d5cd18",
+  "manifestRevision": 74,
+  "sourceSetSha256": "0f80d74b36d412ebbcb87c1a12931b6f7e07c21821c918e4044e2bda2ccee28e",
   "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
   "specializedEvidence": {
     "sql": {
