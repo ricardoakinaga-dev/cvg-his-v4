@@ -47,31 +47,35 @@ describe('Database feature flag provider coverage guard', () => {
     const findByKey = vi
       .spyOn(DatabaseFeatureFlagRepository.prototype, 'findByKey')
       .mockResolvedValue({ ...TEST_FLAG, defaultValue: true });
-    const findOverride = vi
-      .spyOn(DatabaseFeatureFlagRepository.prototype, 'findOverride')
-      .mockResolvedValueOnce({
-        enabled: false,
-        environment: 'production',
-        accountIdOverride: 'acc_test' as never,
-        percentage: null,
-        allowedUsers: []
-      })
-      .mockResolvedValueOnce({
-        enabled: true,
-        environment: 'production',
-        accountIdOverride: 'acc_test' as never,
-        userId: 'user-1',
-        percentage: null,
-        allowedUsers: ['user-1']
-      })
-      .mockResolvedValueOnce({
-        enabled: true,
-        environment: 'production',
-        accountIdOverride: 'acc_test' as never,
-        userId: 'user-1',
-        percentage: null,
-        allowedUsers: ['other-user']
-      });
+    const listOverrides = vi
+      .spyOn(DatabaseFeatureFlagRepository.prototype, 'listOverrides')
+      .mockResolvedValueOnce([
+        {
+          enabled: false,
+          environment: 'production',
+          accountIdOverride: 'acc_test' as never,
+          percentage: null,
+          allowedUsers: []
+        }
+      ])
+      .mockResolvedValueOnce([
+        {
+          enabled: true,
+          environment: 'production',
+          accountIdOverride: 'acc_test' as never,
+          percentage: null,
+          allowedUsers: ['user-1']
+        }
+      ])
+      .mockResolvedValueOnce([
+        {
+          enabled: true,
+          environment: 'production',
+          accountIdOverride: 'acc_test' as never,
+          percentage: null,
+          allowedUsers: ['user-1']
+        }
+      ]);
 
     const provider = createDatabaseFeatureFlagProvider(createEnvFeatureFlagProvider([]));
 
@@ -91,7 +95,7 @@ describe('Database feature flag provider coverage guard', () => {
     });
 
     expect(findByKey).toHaveBeenCalledTimes(3);
-    expect(findOverride).toHaveBeenCalledTimes(3);
+    expect(listOverrides).toHaveBeenCalledTimes(3);
     expect(killSwitch.reason).toBe('kill_switch');
     expect(killSwitch.enabled).toBe(false);
     expect(allowlisted.reason).toBe('allowlist');
@@ -116,15 +120,17 @@ describe('Database feature flag provider coverage guard', () => {
         ...TEST_FLAG,
         defaultValue: false
       });
-    const findOverride = vi
-      .spyOn(DatabaseFeatureFlagRepository.prototype, 'findOverride')
-      .mockResolvedValue({
-        enabled: true,
-        environment: 'production',
-        accountIdOverride: 'acc_rollout' as never,
-        percentage: 100,
-        allowedUsers: []
-      });
+    const listOverrides = vi
+      .spyOn(DatabaseFeatureFlagRepository.prototype, 'listOverrides')
+      .mockResolvedValue([
+        {
+          enabled: true,
+          environment: 'production',
+          accountIdOverride: 'acc_rollout' as never,
+          percentage: 100,
+          allowedUsers: []
+        }
+      ]);
 
     const onFallback = vi.fn();
     const provider = createDatabaseFeatureFlagProvider(fallback, {
@@ -158,7 +164,7 @@ describe('Database feature flag provider coverage guard', () => {
     expect(rollout.enabled).toBe(true);
     expect(rolloutCached.reason).toBe('percentage_rollout');
     expect(findByKey).toHaveBeenCalledTimes(3);
-    expect(findOverride).toHaveBeenCalledTimes(1);
+    expect(listOverrides).toHaveBeenCalledTimes(1);
     expect(onFallback).toHaveBeenCalledWith(TEST_FLAG.key, 'not_found_in_db');
     expect(onFallback).toHaveBeenCalledWith(TEST_FLAG.key, 'database_error');
     expect(collector.recordFallback).toHaveBeenCalledWith(
