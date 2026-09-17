@@ -9,19 +9,19 @@
 > [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `5998287d386559fc3b3ed760a47756e62349f286`; o registro P0 candidate-bound é validado no CI e no gate de release; o evidence graph importa envelopes locais somente como `PARTIAL` após validar schema, SHA, ambiente, frescor, ancestralidade e digests; os CI anteriores não são transferidos. Nenhum resultado parcial é transferido.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `dc620fd15ce877d98a60e3d9bad28b4d1fa12a12` (snapshot reancorado após a unificação de ACL, readiness Redis, tracing HTTP, observabilidade do worker, contrato produtivo e catálogo de eventos; o evidence graph continua candidate-bound e com status máximo `PARTIAL`; registro P0 com `1` fechado e `13` abertos; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current snapshot:** `db47bb1501b9c713213b0b4d4f1794c2a5b6f53b` (snapshot reancorado após a unificação de ACL, readiness Redis, tracing HTTP seguro contra credenciais em query string, observabilidade do worker, contrato produtivo e catálogo de eventos; o evidence graph continua candidate-bound e com status máximo `PARTIAL`; registro P0 com `1` fechado e `13` abertos; provas externas e autoridade de release continuam `NOT PROVEN`).
 **Current CI:** o [CI #252](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35284475981) pertence ao predecessor `893d6cac`; não há resultado transferível para este candidato. Nenhuma threshold foi relaxada.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-17T23:13:46Z
+**Observation:** 2026-09-17T23:39:52Z
 
 **Current candidate delta:** o provider raw consumido pela API agora respeita
 kill switch persistido, expiração, precedência de escopo e allowlist fail-closed;
 seu cache não atravessa `expiresAt`. O boundary foi coberto por cinco testes
-focados, com typecheck/lint do workspace em `68/68`; o ADR-014 registra limites
+focados, com typecheck/lint do workspace em `68/69`; o ADR-014 registra limites
 da evidência. Essas provas não substituem PostgreSQL/RLS em CI, performance,
 target, UAT, attestation ou autoridade de release.
 
-**Current local execution:** cobertura global `273/273` arquivos e `2907/2907` testes, com `3` skips esperados; statements `87,46%`, branches `82,00%`, functions `89,32%`, lines `88,91%`; lint, typecheck e API build passaram. A suíte API passou `618/618`, a integração PostgreSQL descartável passou `16/16`, o runner privado PostgreSQL 16.15 repetiu as `173` migrações e o seed em duas rodadas. k6 local limitado a quatro CPUs passou `9/9` SLOs; a captura visual `29/29` foi a execução anterior à normalização final de rasterização. Target, recovery, UAT e autoridade continuam sem prova aceita. A validação local não substitui CI pinned, target ou UAT.
+**Current local execution:** cobertura global `273/273` arquivos e `2907/2907` testes, com `3` skips esperados; statements `87,46%`, branches `82,00%`, functions `89,32%`, lines `88,91%`; lint, typecheck e API build passaram. A suíte API passou `619/619`, a integração PostgreSQL descartável passou `16/16`, o runner privado PostgreSQL 16.15 repetiu as `176` migrações e o seed em duas rodadas. k6 local limitado a quatro CPUs passou `9/9` SLOs; a captura visual `29/29` foi a execução anterior à normalização final de rasterização. Target, recovery, UAT e autoridade continuam sem prova aceita. A validação local não substitui CI pinned, target ou UAT.
 
 **Current critical gate:** o #214 terminou com Critical Coverage, E2E SPA e Visual em `PASS`; a única falha do run foi Performance/k6, com query p95 `217ms` e inventory p95 `202,76ms` acima dos limites congelados. Target, recovery, UAT, attestation e autoridade permanecem sem prova. O gate agregado local/Triple-A permanece `BLOCKED / NOT PROVEN` e `publication_allowed=false`.
 

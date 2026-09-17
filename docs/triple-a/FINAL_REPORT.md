@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `dc620fd15ce877d98a60e3d9bad28b4d1fa12a12`
-(snapshot documental reancorado com o registro P0 candidate-bound, ACL em tempo constante, readiness Redis, tracing HTTP, observabilidade do worker, contrato produtivo e integridade do catálogo de eventos; manifesto crítico revision 77; typecheck e build do workspace passaram em `68/68` projetos; os contratos novos passaram localmente; o CI #252 do predecessor `893d6cac` não é transferido; esta implementação aguarda CI exato e nenhum threshold foi alterado)
+**Candidate funcional avaliado:** `db47bb1501b9c713213b0b4d4f1794c2a5b6f53b`
+(snapshot documental reancorado com o registro P0 candidate-bound, ACL em tempo constante, readiness Redis, tracing HTTP seguro contra credenciais em query string, observabilidade do worker, contrato produtivo e integridade do catálogo de eventos; manifesto crítico revision 78; typecheck e build do workspace passaram em `68/69` projetos; os contratos novos passaram localmente; o CI #252 do predecessor `893d6cac` não é transferido; esta implementação aguarda CI exato e nenhum threshold foi alterado)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -11,7 +11,7 @@ O candidato preserva o modular monolith e a reconciliação fail-closed de
 proveniência. A paridade de Patient e o CORS credentialado restrito foram
 validados. No candidato corrente, os contratos alterados passaram, o produtor SQL
 passou com PostgreSQL 16.15 e a conversão V8 do processo aceita somente o par
-autenticado de inicializadores; o manifesto crítico está na revisão 76 e o
+autenticado de inicializadores; o manifesto crítico está na revisão 78 e o
 workflow publica evidência SQL antes do checker. O [CI #212](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35198105802)
 passou cobertura crítica, segurança, build, unitários, integração, contratos,
 processo Windows e as duas jornadas clínicas canônicas. O CI #214 confirmou
@@ -86,7 +86,7 @@ remota e pelos gates externos de target e release.
 | -------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | Architecture         | BOUNDED PASS                 | guards e contratos locais                                                                                                               |
 | Security             | PARTIAL                      | SAST, secrets, dependency audit e testes locais                                                                                         |
-| Testing              | PARTIAL                      | API `618/618` e integração `16/16` locais passaram; o CI #205 teve `395` testes SPA funcionais passados, mas `29` screenshots falharam; API clínica canônica `2/2` passou |
+| Testing              | PARTIAL                      | API `619/619` e integração `16/16` locais passaram; o CI #205 teve `395` testes SPA funcionais passados, mas `29` screenshots falharam; API clínica canônica `2/2` passou |
 | Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas                                                                                                |
 | Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                                                                                                           |
 | CI/CD                | BLOQUEADO no SHA atual       | #205 foi terminal, mas reprovou E2E/visual/performance; não há `main green` |

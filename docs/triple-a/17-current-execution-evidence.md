@@ -1,11 +1,11 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato documental observado em 2026-09-17T23:13:46Z
+## Candidato documental observado em 2026-09-17T23:39:52Z
 
-- SHA de código e documentação: `dc620fd15ce877d98a60e3d9bad28b4d1fa12a12`;
+- SHA de código e documentação: `db47bb1501b9c713213b0b4d4f1794c2a5b6f53b`;
   identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O manifesto crítico está na revisão 77, ancorado no commit funcional `dc620fd15ce8` e publicado na identidade do snapshot; a migration `0176` preserva o checksum da `0175`, força RLS na ledger e evita recriação durante cascatas de conta. O candidato também exige Redis saudável antes de abrir o listener em produção-like, ativa tracing HTTP W3C/OTel, publica métricas de frescor e modo de persistência do worker, valida o contrato de composição produtiva e a integridade do catálogo de eventos. Rollback preservado em `origin/main@893d6cac` e nas branches ancestrais integradas.
+- O manifesto crítico está na revisão 78, ancorado no commit funcional `db47bb1501b9` e publicado na identidade do snapshot; a migration `0176` preserva o checksum da `0175`, força RLS na ledger e evita recriação durante cascatas de conta. O candidato também exige Redis saudável antes de abrir o listener em produção-like, ativa tracing HTTP W3C/OTel com targets sem query strings sensíveis, publica métricas de frescor e modo de persistência do worker, valida o contrato de composição produtiva e a integridade do catálogo de eventos. Rollback preservado em `origin/main@893d6cac` e nas branches ancestrais integradas.
 - Nenhum force-push foi usado.
 - O [CI #252](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35284475981), executado no predecessor `893d6cac`, não é evidência deste candidato e nenhum resultado é transferido.
 
@@ -32,8 +32,8 @@
 | Escopo                 | Resultado                                                                                                                                                                                                                                                                                                                                                                     |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Gate crítico R05-010   | O [CI #214](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35204183554) terminou com Critical Coverage Gate e gates estruturais/funcionais em `PASS`; E2E SPA `424/424`, Visual `29/29`, e somente Performance falhou |
-| Workspace              | Cobertura global `273/273` arquivos e `2907/2907` testes passou; `87,46%` statements, `82,00%` branches, `89,32%` functions, `88,91%` lines; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas, lint, typecheck, contratos CI `20/20`, cobertura/processo e SQL `34/34` passaram |
-| Identidade/evidence graph | Identidade canônica do snapshot documental `0fab9fc1`; registro P0 `1 CLOSED / 13 OPEN`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` |
+| Workspace              | Cobertura global `273/273` arquivos e `2907/2907` testes passou; `87,46%` statements, `82,00%` branches, `89,32%` functions, `88,91%` lines; API `619/619`, integração PostgreSQL `16/16`, complexity `8.335` linhas, lint, typecheck `68/69` projetos, contratos CI `20/20`, cobertura/processo e SQL `34/34` passaram |
+| Identidade/evidence graph | Identidade canônica do snapshot documental `db47bb15`; registro P0 `1 CLOSED / 13 OPEN`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` |
 | Coverage crítico current | O #205 passou o Critical Coverage Gate; a cobertura geral local passou o threshold congelado e a correção do shard de revogação foi validada localmente |
 | Vue especializado current | O #214 passou Visual Regression `29/29` no candidato funcional equivalente; a normalização `--disable-lcd-text` e os seis baselines auditados permanecem; nenhum threshold foi relaxado |
 | SQL/migrações current  | PostgreSQL 16.15 privado socket-only; suíte completa aplicou `176` migrações executáveis + `7` históricos contabilizados no manifesto; cadeia e seed repetíveis |
@@ -45,7 +45,7 @@
 - O provider de feature flags passou cinco testes focados cobrindo precedência
   de escopo, kill switch persistido, expiração com cache, allowlist sem usuário
   e expiração do catálogo sem conta.
-- O typecheck e o lint do workspace passaram em `68/68` projetos. A revisão 71
+- O typecheck e o lint do workspace passaram em `68/69` projetos. A revisão 71
   do manifesto crítico foi produzida pela ferramenta oficial e preserva todos
   os hashes, thresholds, shards e histórico anterior.
 - Essa evidência é local; não prova PostgreSQL/RLS em CI, performance do target,
@@ -53,7 +53,7 @@
 
 ### Evidência adicional do candidato `95227098`
 
-- API: `618/618` testes passaram, incluindo o fail-closed de erro genérico de sessão em HTTP 503; a integração PostgreSQL descartável passou `16/16`, incluindo a revogação concorrente durante a guarda final.
+- API: `619/619` testes passaram, incluindo o fail-closed de erro genérico de sessão em HTTP 503; a integração PostgreSQL descartável passou `16/16`, incluindo a revogação concorrente durante a guarda final.
 - Performance local: PostgreSQL 16 descartável, API compilada limitada a quatro CPUs e perfil k6 de 60 VUs passaram `9/9` SLOs; `query_latency_ms.p95=138ms` contra o limite de `150ms`, sem erros HTTP e com disponibilidade de `100%`.
 - Visual local: Chromium/Playwright com o runtime do workspace passou `29/29` cenários visuais. O primeiro ensaio com o rate limit padrão falhou por `429` após quatro cenários; a repetição com `AUTH_RATE_LIMIT_MAX_REQUESTS=200` passou integralmente. Nenhuma baseline foi promovida.
 
