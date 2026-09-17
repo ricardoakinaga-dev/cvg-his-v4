@@ -8158,7 +8158,22 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     // to the database transaction/policy layer.
     const correlationId = requestCorrelationIds.get(request) ?? createCorrelationId('auth-guard');
     const loadSessionAndRefreshAccessControl = async () => {
-      const session = await auth.getSession(accessToken, correlationId);
+      let session: Awaited<ReturnType<typeof auth.getSession>>;
+      try {
+        session = await auth.getSession(accessToken, correlationId);
+      } catch (error) {
+        // Preserve the previous fail-closed contract without bringing back a
+        // second repository read before tenant routing. Authentication
+        // persistence failures must not leak as generic 500 responses.
+        if (error instanceof AppError) {
+          throw error;
+        }
+        throw new AppError(
+          'AUTHENTICATION_UNAVAILABLE',
+          'Authentication service unavailable',
+          503
+        );
+      }
       await accessControl.ensureFreshForRequest(session.accountId);
       return session;
     };

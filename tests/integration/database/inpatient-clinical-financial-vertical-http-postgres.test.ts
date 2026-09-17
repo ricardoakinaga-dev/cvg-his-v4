@@ -96,7 +96,10 @@ function createGatedSessionRepository(repository: SessionRepository): SessionRep
         const result = await findById(...args);
         if (secondarySessionReadGate.armed) {
           secondarySessionReadGate.reads += 1;
-          if (secondarySessionReadGate.reads === 2) {
+          // The final request guard is now the only authoritative session
+          // read. Pause after that read so a concurrent permission revocation
+          // still has to be observed by the fresh ACL snapshot.
+          if (secondarySessionReadGate.reads === 1) {
             secondarySessionReadGate.armed = false;
             secondarySessionReadGate.signalStarted();
             await secondarySessionReadGate.release;
