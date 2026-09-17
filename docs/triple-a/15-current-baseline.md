@@ -1,7 +1,7 @@
 # Baseline corrente — State of Art
 
 Observado em `2026-09-17T13:28:36Z`, sobre o candidato documental
-`721b2bb3eb140921eabf271d8e59c222106f40a7`, que contém a identidade corrente
+`2a02970cc15bdadaa056dc81a65e58f06f866a2f`, que contém a identidade corrente
 e a correção funcional de fail-closed, autoridade request-scoped e ownership composto no commit
 `03e6fac0a2f726698b40adb351298610f9c1f88d`, sobre a otimização do
 roteamento autenticado antes da guarda final e o ciclo de vida de feature flags,
@@ -19,8 +19,8 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| current_sha     | `721b2bb3eb140921eabf271d8e59c222106f40a7` (snapshot; registro P0 e manifesto revision 71; Noto Sans e rasterização sem LCD determinísticos nos gates E2E/visual; verificação portátil do runner; endurecimento funcional do provider de feature flags, autoridade request-scoped, ownership composto, classificador documental e ciclo de vida; harness SPA canônico com proxy same-origin; `server.ts` em `8.335` linhas; cobertura global em `82,00%` branches) |
-| main_sha        | `main` local contém o candidato `a8ba89fd`; a `main` remota está publicada em `origin/main@721b2bb3`; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral, sem commits funcionais exclusivos; rollback preservado |
+| current_sha     | `2a02970cc15bdadaa056dc81a65e58f06f866a2f` (snapshot; registro P0 e manifesto revision 72; Noto Sans e rasterização sem LCD determinísticos nos gates E2E/visual; verificação portátil do runner; endurecimento funcional do provider de feature flags, autoridade request-scoped, ownership composto, classificador documental, ciclo de vida, evidência SQL e cobertura de rotas; harness SPA canônico com proxy same-origin; `server.ts` em `8.335` linhas; cobertura global em `82,00%` branches) |
+| main_sha        | `main` remota publicada em `origin/main@2a02970cc15b` via Git Data API sem force-push; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral, sem commits funcionais exclusivos; rollback preservado |
 | worktree        | Limpo antes da documentação corrente; artefatos gerados locais permanecem fora do commit |
 | rollback        | `origin/fix/state-of-art-ci-assurance@fe5406c2`; sem force-push |
 | ci_run          | O [CI #238](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35248052991) falhou na cobertura global porque um teste Node nativo foi incluído indevidamente no sweep do Vitest; o resultado não é promovido. |
