@@ -16,6 +16,16 @@ do k6. A reprodução local do perfil exato passou 9/9; isso não identifica por
 si só a causa no runner remoto. Nenhum threshold foi relaxado e a certificação
 permanece `NOT PROVEN`.
 
+### Reconciliação terminal do candidato corrente — CI #205
+
+O [CI #205](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35188872670)
+terminou `failure` com diagnóstico disponível. O k6 mediu API p95 `189,15 ms`,
+p99 `235,63 ms`, erros `0%` e disponibilidade `100%`; a métrica agregada de
+query ficou em `212 ms` contra `150 ms` e inventory em `200,36 ms` contra
+`200 ms`. O diagnóstico não encontrou deadlocks ou erros de banco; a carga do
+runner chegou próxima da capacidade observada. Essa é uma hipótese operacional,
+não uma autorização para alterar thresholds ou declarar certificação.
+
 ## Registro obrigatório do prompt
 
 | Campo              | Registro                                                                                                          |

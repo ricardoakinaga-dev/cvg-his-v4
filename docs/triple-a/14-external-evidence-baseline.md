@@ -9,8 +9,8 @@
 > [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `b313fba795175947559347b7e82b460040fc459d`; o registro P0 candidate-bound é validado no CI e no gate de release; a correção funcional de fail-closed e complexidade está em `95227098`, sobre a otimização `15ba86a8`; os CI anteriores não são transferidos. O runner crítico usa PostgreSQL 16, checkout completo, trata o par V8 do Node 22 e publica evidência SQL; nenhum resultado parcial é transferido.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `b313fba795175947559347b7e82b460040fc459d` (snapshot reancorado; manifesto crítico revision 58, registro P0 com `1` fechado e `13` abertos, workflow com Chromium, runner privado PostgreSQL 16, par V8 autenticado, produtor SQL, correção fail-closed, orçamento de complexidade em `95227098` e harness SPA com proxy same-origin; provas externas e autoridade de release continuam `NOT PROVEN`).
-**Current CI:** o #203 do ancestral `261e5b45` falhou nos gates E2E/visual/performance e não é transferido. A reprodução visual canônica passou `29/29`; o próximo run será o primeiro snapshot exato com o harness corrigido.
+**Current snapshot:** `b313fba795175947559347b7e82b460040fc459d` (snapshot reancorado; manifesto crítico revision 59, registro P0 com `1` fechado e `13` abertos, workflow com Chromium, runner privado PostgreSQL 16, par V8 autenticado, produtor SQL, correção fail-closed, classificador documental e harness SPA com proxy same-origin; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current CI:** o [CI #205](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35188872670) no `main@7ff8847b` terminou `failure`: o Critical Coverage Gate e os gates funcionais passaram, mas E2E/visual teve `395/29` e o k6 reprovou query/inventory. A reprodução visual local passou `29/29`; nenhuma baseline foi promovida.
 **Current status:** **BLOCKED / NOT PROVEN**
 **Observation:** 2026-09-17T05:57:08Z
 

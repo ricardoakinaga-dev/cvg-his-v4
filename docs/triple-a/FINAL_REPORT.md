@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
 **Candidate funcional avaliado:** `b313fba795175947559347b7e82b460040fc459d`
-(snapshot reancorado com o registro P0 candidate-bound, o harness SPA canônico com proxy same-origin e a correção fail-closed e de complexidade no commit `95227098`, sobre a otimização `15ba86a8`; manifesto crítico revision 58; a branch de assurance é ancestral sem commits exclusivos; a cobertura global local passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas, k6 local `9/9` SLOs e visual local `29/29` também passaram; o CI #203 pertence ao ancestral `261e5b45`, falhou e não é transferido)
+(snapshot reancorado com o registro P0 candidate-bound, o harness SPA canônico com proxy same-origin e a correção fail-closed e de complexidade no commit `95227098`, sobre a otimização `15ba86a8`; manifesto crítico revision 59; a branch de assurance é ancestral sem commits exclusivos; a cobertura global local passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas, k6 local `9/9` SLOs e visual local `29/29` também passaram; o CI #205 do `main` remoto terminou `failure` em E2E/visual/performance e não é promovido)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -11,9 +11,11 @@ O candidato preserva o modular monolith e a reconciliação fail-closed de
 proveniência. A paridade de Patient e o CORS credentialado restrito foram
 validados. No candidato corrente, os contratos alterados passaram, o produtor SQL
 passou com PostgreSQL 16.15 e a conversão V8 do processo aceita somente o par
-autenticado de inicializadores; o manifesto crítico está na revisão 58 e o
-workflow publica evidência SQL antes do checker. A evidência crítica/Vue foi aceita no
-Critical Coverage Gate do #203 anterior, mas E2E SPA, Performance/k6 e Visual Regression falharam; não há target, recovery,
+autenticado de inicializadores; o manifesto crítico está na revisão 59 e o
+workflow publica evidência SQL antes do checker. O [CI #205](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35188872670)
+passou cobertura crítica, segurança, build, unitários, integração, contratos,
+processo Windows e as duas jornadas clínicas canônicas, mas falhou nas 29
+comparações visuais e em dois SLOs de cauda do k6. Não há target, recovery,
 attestation, UAT, governança, performance certificada ou autoridade de release.
 Nenhum threshold ou baseline visual foi relaxado e não há autorização para declarar `main green`,
 release produtivo ou `TRIPLE-A VERIFIED`.
@@ -29,9 +31,9 @@ k6 local limitado a quatro CPUs passou `9/9` SLOs e a suíte visual local passou
 `29/29`; isso não substitui CI terminal, target, recovery, UAT, attestation ou
 autoridade de release.
 
-## Atualização corrente — revisão 58 / snapshot `b313fba7`
+## Atualização corrente — revisão 59 / snapshot `b313fba7`
 
-O manifest crítico revision 58 foi reancorado no commit de fonte `b313fba7` e
+O manifest crítico revision 59 foi reancorado no commit de fonte `b313fba7` e
 complexidade, sem mudança de
 thresholds, fontes ou aplicabilidade funcional; o snapshot corrente é
 `b313fba795175947559347b7e82b460040fc459d`, com implementação funcional em
@@ -49,13 +51,13 @@ erros genéricos do carregamento autoritativo para 503 e ajusta o teste de
 revogação para a única leitura final e mantém `server.ts` dentro de `8.335`
 linhas. O CI #198 anterior terminou `failure` e o #199 falhou em complexity;
 nenhum dos dois é transferido; o #203 falhou nos gates E2E/visual/performance no ancestral antes de
-representar o snapshot reancorado; o novo CI exato aguarda execução. O candidato permanece
+representar o snapshot reancorado. O #205 executou o `main` remoto com o workflow corrigido: o fluxo funcional passou, mas a matriz visual falhou em `29/29` por drift provável de fonte/renderização e o k6 excedeu `query p95=212 ms` e `inventory p95=200,36 ms`. O candidato permanece
 **BLOCKED / NOT PROVEN**.
 
 O CI #203 foi executado no ancestral `261e5b45` e não é promovido. A correção do
 manifesto, o registro P0, a identidade e o harness SPA foram validados localmente, não relaxam
-nenhum guard, threshold ou baseline; o novo CI será executado após o push do
-snapshot `b313fba7` reancorado.
+nenhum guard, threshold ou baseline; a falha terminal do #205 está registrada em
+[`20-ci-205-evidence.md`](./20-ci-205-evidence.md).
 
 O registro [`P0_REGISTRY.json`](./P0_REGISTRY.json) contabiliza 14 itens, com 1
 fechado por evidência local fresca e 13 abertos por dependerem de CI remoto,
@@ -79,17 +81,17 @@ remota e pelos gates externos de target e release.
 | -------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | Architecture         | BOUNDED PASS                 | guards e contratos locais                                                                                                               |
 | Security             | PARTIAL                      | SAST, secrets, dependency audit e testes locais                                                                                         |
-| Testing              | PARTIAL                      | API `618/618` e integração `16/16` locais passaram; o CI #198 falhou em `29` screenshots/usabilidade, e o #199 foi bloqueado pelo guard de complexity |
+| Testing              | PARTIAL                      | API `618/618` e integração `16/16` locais passaram; o CI #205 teve `395` testes SPA funcionais passados, mas `29` screenshots falharam; API clínica canônica `2/2` passou |
 | Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas                                                                                                |
 | Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                                                                                                           |
-| CI/CD                | BLOQUEADO no SHA atual       | #199 já falhou em Repository Guards por complexity; o novo snapshot aguarda execução exata |
+| CI/CD                | BLOQUEADO no SHA atual       | #205 foi terminal, mas reprovou E2E/visual/performance; não há `main green` |
 | Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                                                                                                         |
 | Recovery             | BLOCKED                      | Docker impediu restore drill real                                                                                                       |
-| Frontend             | LOCAL PASS / REMOTE PENDING  | Suíte visual local `29/29`; o runner remoto anterior registrou 29 divergências, sem baseline promovido |
+| Frontend             | LOCAL PASS / REMOTE FAIL     | Suíte visual local `29/29`; o #205 registrou `29/29` divergências estáveis, sem baseline promovido |
 | Database             | PARTIAL                      | testes locais; RLS target não provado                                                                                                   |
 | Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas                                                                                                |
 | Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes                                                                                               |
-| Overall              | `FAIL/BLOCKED`               | CI #199 não foi aprovado; target, recovery, UAT, governança e autoridade continuam abertos |
+| Overall              | `FAIL/BLOCKED`               | CI #205 não foi aprovado; target, recovery, UAT, governança e autoridade continuam abertos |
 
 ## P0 Findings
 
@@ -105,6 +107,15 @@ p95 `138 ms`, auth p95 `36,56 ms`, erros HTTP `0%` e disponibilidade `100%`.
 Essa prova é local e não substitui o CI remoto, o target ou um envelope externo.
 O Docker daemon indisponível ainda impede o drill real de recuperação nesta
 estação.
+
+O CI #205 confirmou a execução remota no `main`, mas terminou `failure`: o
+workflow funcional e clínico passou, enquanto as 29 imagens divergiram em
+desktop/mobile e light/dark. O comparativo esperado/atual aponta drift provável
+de fonte/renderização entre o host local e Ubuntu 22.04; nenhuma baseline foi
+promovida. No mesmo run, `query_latency_ms.p95=212 ms` e
+`inventory_latency_ms.p95=200,36 ms` excederam os limites congelados, embora
+erros tenham permanecido em `0%`. A evidência terminal está em
+[`20-ci-205-evidence.md`](./20-ci-205-evidence.md).
 
 ## Release Recommendation
 
