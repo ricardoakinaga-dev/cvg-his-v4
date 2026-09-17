@@ -1,5 +1,21 @@
 # Triple-A — Execution Log
 
+## 2026-09-17T03:22:00Z — candidato `95227098` / orçamento de complexidade reconciliado
+
+- O CI [#199](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35176824096)
+  validou a identidade canônica e falhou no guard de complexidade: `server.ts`
+  tinha `8.350` linhas contra o limite congelado de `8.335`. A correção
+  `95227098e1f77b99d2a2bbf00cbb244c6ac61a8f` compacta somente o tratamento de
+  erro do carregamento autoritativo, mantendo o fail-closed 503, a única leitura
+  final e a semântica de autorização.
+- Validação local: complexity passou em `8.335` linhas, lint completo passou e a
+  suíte API passou `618/618`. O manifesto crítico foi reancorado na revisão 56,
+  com `collectionCommit=95227098`; o snapshot candidato documental é
+  `1bbdd63a4f53e39394d8aaee96fce067a1d2f735`.
+- O snapshot permanece `BLOCKED / NOT PROVEN`; o #199 não é transferido e um novo
+  CI exato será disparado após o push. Nenhum threshold, baseline visual ou
+  resultado remoto foi promovido.
+
 ## 2026-09-17T02:55:33Z — candidato `db154b7a` / correção fail-closed e reconciliação terminal
 
 - A remoção da leitura duplicada de sessão foi preservada: o JWT fornece apenas

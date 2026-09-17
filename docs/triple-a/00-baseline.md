@@ -1,20 +1,20 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-17T02:55:33Z
+## Snapshot vigente — 2026-09-17T03:22:00Z
 
-O baseline autoritativo do snapshot atual está em: `8babc6f769533ffd33ba32afed5933695d49b326` (manifesto crítico revision 54, com a correção funcional de fail-closed no commit `db154b7a`; a otimização de leitura autenticada permanece em `15ba86a8`).
+O baseline autoritativo do snapshot atual está em: `1bbdd63a4f53e39394d8aaee96fce067a1d2f735` (manifesto crítico revision 56, com a correção funcional de fail-closed no commit `95227098`; a otimização de leitura autenticada permanece em `15ba86a8`).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
 documentação corrente sucede os candidatos históricos sem transferir evidência;
-o candidato `db154b7a` consolida a cobertura de contratos de pagamento, marketing,
+o candidato `95227098` consolida a cobertura de contratos de pagamento, marketing,
 laboratório, ML e limites operacionais, preservando o runner PostgreSQL 16, os
 checksums de migração e a aceitação restrita do par de inicializadores V8; a
 branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
 `BLOCKED / NOT PROVEN`.
 
-Os CI #191/#192 dos ancestrais terminaram `failure` com `13/17` jobs verdes e Critical Coverage Gate aprovado; não são transferidos para o novo candidato. No candidato anterior, a cobertura global passou `273` arquivos, `2.907` testes e o threshold congelado (`87,46%` statements, `82,00%` branches, `89,32%` functions e `88,91%` lines), além de lint e typecheck. A otimização corrente elimina a leitura duplicada de sessão antes da resolução de tenant: o JWT assinado fornece somente contexto de roteamento, enquanto a guarda final continua relendo sessão, usuário, função e permissões de forma autoritativa. A correção `db154b7a` preserva o mapeamento fail-closed de erros genéricos de sessão para HTTP 503 sem reintroduzir a leitura duplicada; a suíte API passou `618/618` e a integração PostgreSQL descartável passou `16/16`. A captura visual local passou `29/29` e o benchmark local PostgreSQL passou `9/9` SLOs. O CI #198 terminou `failure`: Repository Guards encontrou identidade stale, o shard de integração falhou no teste de revogação, o Critical Coverage Gate ficou abaixo dos limiares após esse shard incompleto, o E2E SPA registrou `395` passados mas `29` falhas de screenshot/usabilidade e Performance passou `8/9` SLOs por inventory p95 `227,28ms` contra `200ms`. Nenhuma dessas falhas remotas é promovida para o novo candidato. Target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
+Os CI #191/#192 dos ancestrais terminaram `failure` com `13/17` jobs verdes e Critical Coverage Gate aprovado; não são transferidos para o novo candidato. No candidato anterior, a cobertura global passou `273` arquivos, `2.907` testes e o threshold congelado (`87,46%` statements, `82,00%` branches, `89,32%` functions e `88,91%` lines), além de lint e typecheck. A otimização corrente elimina a leitura duplicada de sessão antes da resolução de tenant: o JWT assinado fornece somente contexto de roteamento, enquanto a guarda final continua relendo sessão, usuário, função e permissões de forma autoritativa. A correção `95227098` preserva o mapeamento fail-closed de erros genéricos de sessão para HTTP 503 sem reintroduzir a leitura duplicada e mantém `server.ts` dentro do orçamento de `8.335` linhas; a suíte API passou `618/618` e a integração PostgreSQL descartável passou `16/16`. A captura visual local passou `29/29` e o benchmark local PostgreSQL passou `9/9` SLOs. O CI #198 foi rejeitado por falhas de identidade, integração, Critical Coverage, E2E SPA, Visual Regression e Performance; o #199, no descendente documental seguinte, já falhou em Repository Guards porque `server.ts` excedia o orçamento de complexidade. Nenhuma dessas falhas remotas é promovida para o novo candidato. Target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
 parcial ou histórico é promovido. Target, recovery, UAT, attestation,
 governança e autoridade de release continuam `NOT PROVEN`.
 
