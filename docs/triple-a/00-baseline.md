@@ -2,7 +2,7 @@
 
 ## Snapshot vigente — 2026-09-17T13:28:36Z
 
-O baseline autoritativo do snapshot atual está em: `2a02970cc15bdadaa056dc81a65e58f06f866a2f` (snapshot reancorado após a normalização de rasterização de texto entre runners, a fixação de Noto Sans nos gates visuais, a verificação portátil do runner, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental, a revisão 72 do manifesto crítico, o endurecimento do ciclo de vida de feature flags e as correções de evidência SQL e cobertura de rotas; o orçamento físico de `server.ts` foi restaurado a `8.335` linhas sem alteração de comportamento; o teste Node nativo de feature flags ficou fora da varredura global do Vitest para preservar a cobertura congelada).
+O baseline autoritativo do snapshot atual está em: `836b8b76b95722e422c5bc50c01e0ae61b82a0ae` (snapshot reancorado após a normalização de rasterização de texto entre runners, a fixação de Noto Sans nos gates visuais, a verificação portátil do runner, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental, a revisão 73 do manifesto crítico, o endurecimento do ciclo de vida de feature flags e a correção do contrato de evidência SQL legado; o orçamento físico de `server.ts` foi restaurado a `8.335` linhas sem alteração de comportamento; o teste Node nativo de feature flags ficou fora da varredura global do Vitest para preservar a cobertura congelada).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
