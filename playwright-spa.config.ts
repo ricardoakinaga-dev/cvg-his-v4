@@ -28,6 +28,7 @@ const browserProjects = {
       launchOptions: {
         args: [
           '--font-render-hinting=none',
+          '--disable-lcd-text',
           '--disable-skia-runtime-opts',
           '--disable-dev-shm-usage',
           '--disable-gpu'
