@@ -12,13 +12,13 @@
 
 | Escopo                 | Resultado                                                                                                                                                                                                                                                                                                                                                                     |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate crítico R05-010   | O [CI #212](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35198105802) terminou com Critical Coverage Gate e gates estruturais/funcionais em `PASS`; o run geral falhou em E2E/visual/performance; o candidato novo aguarda CI exato |
+| Gate crítico R05-010   | O [CI #214](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35204183554) terminou com Critical Coverage Gate e gates estruturais/funcionais em `PASS`; E2E SPA `424/424`, Visual `29/29`, e somente Performance falhou |
 | Workspace              | Cobertura global `273/273` arquivos e `2907/2907` testes passou; `87,46%` statements, `82,00%` branches, `89,32%` functions, `88,91%` lines; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas, lint, typecheck, contratos CI `20/20`, cobertura/processo e SQL `34/34` passaram |
 | Identidade/evidence graph | Identidade canônica do snapshot documental `a4f2ef67`; registro P0 `1 CLOSED / 13 OPEN`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` |
 | Coverage crítico current | O #205 passou o Critical Coverage Gate; a cobertura geral local passou o threshold congelado e a correção do shard de revogação foi validada localmente |
-| Vue especializado current | Os seis `actual.png` do #212 foram inspecionados e promovidos como baselines do candidato `a4f2ef67` junto da normalização `--disable-lcd-text`; o CI remoto exato ainda aguarda execução, sem relaxamento de threshold |
+| Vue especializado current | O #214 passou Visual Regression `29/29` no candidato `a4f2ef67`, confirmando a normalização `--disable-lcd-text` e os seis baselines auditados; nenhum threshold foi relaxado |
 | SQL/migrações current  | PostgreSQL 16.15 privado socket-only; produtor independente PASS com `171` migrações executáveis + `7` históricos; cadeia completa e seed repetível |
-| Performance/target     | k6 local limitado a quatro CPUs passou `9/9`; o #212 reprovou 5/9 SLOs (API/query/write/billing/inventory); target/soak/restore/UAT/attestation permanecem `NOT_PROVEN` |
+| Performance/target     | k6 local limitado a quatro CPUs passou `9/9`; o #214 passou `7/9` SLOs e reprovou query p95 `217ms` e inventory p95 `202,76ms`; target/soak/restore/UAT/attestation permanecem `NOT_PROVEN` |
 | Supply/artefatos       | O graph, o pacote local e o registro P0 são gerados/validados fail-closed; nenhum PASS externo ou histórico foi inventado |
 
 ### Evidência adicional do candidato `95227098`

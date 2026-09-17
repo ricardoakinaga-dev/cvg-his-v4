@@ -1,5 +1,23 @@
 # Triple-A — Execution Log
 
+## 2026-09-17T09:50:13Z — CI #214 terminal do candidato visual
+
+- O [CI #214](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35204183554)
+  foi terminal no snapshot documental `2aee42aa` sobre o candidato funcional
+  `a4f2ef67` e terminou `failure` somente em Performance/k6. Critical Coverage,
+  segurança, typecheck, lint, guards, OpenAPI, coverage, build, API Contract,
+  Unit, Integration, Windows, E2E SPA e Visual passaram.
+- O E2E SPA concluiu `424 passed`; a jornada clínica canônica concluiu `2/2`;
+  Visual Regression concluiu `29/29`. A normalização de fonte/rasterização
+  continua sem relaxamento de `maxDiffPixels` ou thresholds.
+- Performance passou `7/9` SLOs: API p95 `190,33ms`, p99 `244,21ms`, auth
+  p95 `29,77ms`, write p95 `212ms`, billing p95 `202ms`, erros `0%` e
+  disponibilidade `100%`; falhou query p95 `217ms > 150ms` e inventory p95
+  `202,76ms > 200ms`. Diagnóstico e amostras passaram.
+- O snapshot permanece **BLOCKED / NOT PROVEN**: `13` P0 permanecem abertos,
+  não há `main green`, e target, recovery, UAT, attestation, governança e
+  autoridade de release continuam sem prova.
+
 ## 2026-09-17T09:01:08Z — normalização visual do candidato `a4f2ef67`
 
 - O CI [#212](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35198105802)

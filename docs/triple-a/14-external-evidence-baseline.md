@@ -10,13 +10,13 @@
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
 **Current snapshot:** `a4f2ef6705cebca552b07f20ebd3d596d5714079` (snapshot reancorado; manifesto crítico revision 62, registro P0 com `1` fechado e `13` abertos, workflow com Chromium, Noto Sans e rasterização sem LCD determinísticos nos gates E2E/visual, verificação portátil do runner, runner privado PostgreSQL 16, par V8 autenticado, produtor SQL, correção fail-closed, classificador documental e harness SPA com proxy same-origin; provas externas e autoridade de release continuam `NOT PROVEN`).
-**Current CI:** o [CI #212](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35198105802) terminou `failure`: o Critical Coverage Gate e os gates funcionais passaram, mas 6 comparações visuais falharam, a E2E SPA reproduziu essas 6 falhas (`418 passed`, `6 failed`) e o k6 passou `4/9` SLOs. O candidato atual contém a normalização de rasterização e aguarda CI exato; nenhuma threshold foi relaxada.
+**Current CI:** o [CI #214](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35204183554) terminou `failure`: os gates críticos, estruturais, funcionais, E2E SPA (`424/424`) e Visual (`29/29`) passaram; o k6 passou `7/9` SLOs e falhou somente em query p95 `217ms` e inventory p95 `202,76ms`. Nenhuma threshold foi relaxada.
 **Current status:** **BLOCKED / NOT PROVEN**
 **Observation:** 2026-09-17T09:01:08Z
 
 **Current local execution:** cobertura global `273/273` arquivos e `2907/2907` testes, com `3` skips esperados; statements `87,46%`, branches `82,00%`, functions `89,32%`, lines `88,91%`; lint, typecheck e API build passaram. A suíte API passou `618/618`, a integração PostgreSQL descartável passou `16/16`, o runner privado PostgreSQL 16.15 repetiu as `171` migrações e o seed em duas rodadas. k6 local limitado a quatro CPUs passou `9/9` SLOs; a captura visual `29/29` foi a execução anterior à normalização final de rasterização. Target, recovery, UAT e autoridade continuam sem prova aceita. A validação local não substitui CI pinned, target ou UAT.
 
-**Current critical gate:** o #212 terminou `failure` com 6 falhas visuais, as mesmas 6 na E2E SPA, e 5 de 9 SLOs de performance; a normalização de rasterização e os seis baselines auditados foram publicados no candidato `a4f2ef67`, cujo CI exato ainda aguarda. Target, recovery, UAT, attestation e autoridade permanecem sem prova. O gate agregado local/Triple-A permanece `BLOCKED / NOT PROVEN` e `publication_allowed=false`.
+**Current critical gate:** o #214 terminou com Critical Coverage, E2E SPA e Visual em `PASS`; a única falha do run foi Performance/k6, com query p95 `217ms` e inventory p95 `202,76ms` acima dos limites congelados. Target, recovery, UAT, attestation e autoridade permanecem sem prova. O gate agregado local/Triple-A permanece `BLOCKED / NOT PROVEN` e `publication_allowed=false`.
 
 **Current candidate implementation delta:** o workflow de coverage usa
 um índice APT isolado dos archives oficiais assinados do Ubuntu 22.04, pois o

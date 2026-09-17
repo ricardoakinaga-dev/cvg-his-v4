@@ -16,7 +16,7 @@ branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corre
 contém 14 itens, dos quais 1 está fechado com evidência fresca e 13 permanecem
 abertos, sem usar o status legado `DONE`.
 
-Os CI #191/#192 dos ancestrais terminaram `failure` com `13/17` jobs verdes e Critical Coverage Gate aprovado; não são transferidos para o novo candidato. No candidato anterior, a cobertura global passou `273` arquivos, `2.907` testes e o threshold congelado (`87,46%` statements, `82,00%` branches, `89,32%` functions e `88,91%` lines), além de lint e typecheck. A otimização corrente elimina a leitura duplicada de sessão antes da resolução de tenant: o JWT assinado fornece somente contexto de roteamento, enquanto a guarda final continua relendo sessão, usuário, função e permissões de forma autoritativa. A correção `95227098` preserva o mapeamento fail-closed de erros genéricos de sessão para HTTP 503 sem reintroduzir a leitura duplicada e mantém `server.ts` dentro do orçamento de `8.335` linhas; a suíte API passou `618/618` e a integração PostgreSQL descartável passou `16/16`. A captura visual local do candidato anterior passou `29/29` e o benchmark local PostgreSQL passou `9/9` SLOs. O [CI #212](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35198105802), executado no candidato remoto anterior, passou os gates funcionais, mas terminou com 6 falhas visuais, as mesmas 6 refletidas na E2E SPA (`418 passed`, `6 failed`), e reprovou 5 de 9 SLOs do k6; a correção visual atual promove somente os seis `actual.png` inspecionados e aguarda CI exato do novo candidato. Nenhuma baseline ou threshold é promovida por conveniência. Target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
+Os CI #191/#192 dos ancestrais terminaram `failure` com `13/17` jobs verdes e Critical Coverage Gate aprovado; não são transferidos para o novo candidato. No candidato anterior, a cobertura global passou `273` arquivos, `2.907` testes e o threshold congelado (`87,46%` statements, `82,00%` branches, `89,32%` functions e `88,91%` lines), além de lint e typecheck. A otimização corrente elimina a leitura duplicada de sessão antes da resolução de tenant: o JWT assinado fornece somente contexto de roteamento, enquanto a guarda final continua relendo sessão, usuário, função e permissões de forma autoritativa. A correção `95227098` preserva o mapeamento fail-closed de erros genéricos de sessão para HTTP 503 sem reintroduzir a leitura duplicada e mantém `server.ts` dentro do orçamento de `8.335` linhas; a suíte API passou `618/618` e a integração PostgreSQL descartável passou `16/16`. A captura visual local do candidato anterior passou `29/29` e o benchmark local PostgreSQL passou `9/9` SLOs. O [CI #214](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35204183554), executado no candidato publicado com documentação, passou todos os gates estruturais, críticos, unitários, integração, API, Windows, E2E SPA (`424/424`) e Visual (`29/29`), mas reprovou 2 de 9 SLOs do k6: query p95 `217 ms` e inventory p95 `202,76 ms`. Nenhuma baseline ou threshold foi relaxada. Target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
 parcial ou histórico é promovido. Target, recovery, UAT, attestation,
 governança e autoridade de release continuam `NOT PROVEN`.
 
@@ -31,9 +31,11 @@ governança e autoridade de release continuam `NOT PROVEN`.
   `a4f2ef6705cebca552b07f20ebd3d596d5714079`, sem force-push. A branch
   `origin/fix/state-of-art-ci-assurance@fe5406c2` continua ancestral e sem
   commits exclusivos; não há merge seletivo adicional a reaplicar.
-- O CI exato do novo candidato ainda está pendente. Até sua terminalização,
-  `main green`, certificação visual, performance remota e release continuam
-  `BLOCKED / NOT PROVEN`.
+- O [CI #214](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35204183554)
+  confirmou Visual `29/29`, E2E SPA `424/424` e Critical Coverage `PASS`, mas
+  terminou `failure` nos SLOs remotos de query e inventory. Até a correção de
+  performance e as provas externas, `main green`, certificação Triple-A e
+  release continuam `BLOCKED / NOT PROVEN`.
 
 ## Registro obrigatório do prompt
 
