@@ -13,6 +13,12 @@ export interface UserRecord {
   readonly isActive: boolean;
   readonly principalKind?: 'human' | 'service';
   readonly interactiveLoginEnabled?: boolean;
+  /**
+   * Optional role projection used by authoritative authentication reads.
+   * Keeping this optional preserves compatibility with legacy repository
+   * implementations while allowing findById to avoid a second round trip.
+   */
+  readonly roleCodes?: readonly string[];
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -112,7 +118,23 @@ export class DatabaseUsersRepository implements UsersRepository {
 
   async findById(id: UserId, accountId?: AccountId): Promise<UserRecord | null> {
     const query = async (client: { query: typeof getPool.prototype.query }) => {
-      const result = await client.query('SELECT * FROM users WHERE id = $1', [id]);
+      const result = await client.query(
+        `SELECT users.*,
+                COALESCE(
+                  (
+                    SELECT array_agg(roles.name ORDER BY roles.name)
+                    FROM user_roles
+                    JOIN roles ON roles.id = user_roles.role_id
+                    WHERE user_roles.user_id = users.id
+                  ),
+                  ARRAY[]::text[]
+                ) AS role_codes
+           FROM users
+          WHERE users.id = $1
+            AND ($2::uuid IS NULL OR users.account_id = $2)
+          LIMIT 1`,
+        [id, accountId ?? null]
+      );
       if (result.rows.length === 0) return null;
       return this.mapRow(result.rows[0]);
     };
@@ -209,6 +231,11 @@ export class DatabaseUsersRepository implements UsersRepository {
       isActive: row.is_active as boolean,
       principalKind: row.principal_kind as 'human' | 'service',
       interactiveLoginEnabled: row.interactive_login_enabled as boolean,
+      roleCodes: Array.isArray(row.role_codes)
+        ? (row.role_codes.filter(
+            (role): role is string => typeof role === 'string'
+          ) as readonly string[])
+        : undefined,
       createdAt: new Date(row.created_at as string).toISOString(),
       updatedAt: new Date(row.updated_at as string).toISOString()
     };

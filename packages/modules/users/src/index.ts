@@ -522,10 +522,9 @@ export class UsersService {
   async #materializeUser(repositoryUser: RepositoryUserRecord): Promise<UserRecord> {
     const principalKind = repositoryUser.principalKind ?? 'human';
     const interactiveLoginEnabled = repositoryUser.interactiveLoginEnabled ?? true;
-    const roleCodes = await this.#repository!.findRoleCodesByUserId(
-      repositoryUser.id,
-      repositoryUser.accountId
-    );
+    const roleCodes =
+      repositoryUser.roleCodes ??
+      (await this.#repository!.findRoleCodesByUserId(repositoryUser.id, repositoryUser.accountId));
     return {
       id: repositoryUser.id,
       accountId: repositoryUser.accountId,

@@ -12,6 +12,7 @@ class InMemoryUsersRepository implements UsersRepository {
   readonly created: Array<Record<string, unknown>> = [];
   readonly updated: Array<Record<string, unknown>> = [];
   successfulPasswordUpgrades = 0;
+  roleLookups = 0;
   readonly #users = new Map<UserId, Record<string, unknown>>();
 
   constructor(
@@ -93,6 +94,7 @@ class InMemoryUsersRepository implements UsersRepository {
   }
 
   async findRoleCodesByUserId(id: UserId): Promise<readonly string[]> {
+    this.roleLookups += 1;
     const user = this.#users.get(id);
     return (user?.roleCodes as readonly string[] | undefined) ?? [];
   }
@@ -311,6 +313,32 @@ describe('UsersService', () => {
     const refreshed = await reader.resolveById(created.id, 'acc_shared' as AccountId);
 
     expect(refreshed?.status).toBe('inactive');
+  });
+
+  it('uses an embedded authoritative role projection without a second role lookup', async () => {
+    const repository = new InMemoryUsersRepository([
+      {
+        id: 'user_projected_roles' as UserId,
+        accountId: 'acc_projected_roles' as AccountId,
+        username: 'projected_roles',
+        email: 'projected-roles@cvg.local',
+        passwordHash: 'hash',
+        fullName: 'Projected Roles',
+        isActive: true,
+        roleCodes: ['admin'],
+        createdAt: '2026-04-01T10:00:00.000Z',
+        updatedAt: '2026-04-01T10:00:00.000Z'
+      }
+    ]);
+    const service = new UsersService({ repository }, []);
+
+    const resolved = await service.resolveInteractiveById(
+      'user_projected_roles' as UserId,
+      'acc_projected_roles' as AccountId
+    );
+
+    expect(resolved?.roleCodes).toEqual(['admin']);
+    expect(repository.roleLookups).toBe(0);
   });
 
   it('does not resolve an unscoped username shared by multiple accounts', async () => {
