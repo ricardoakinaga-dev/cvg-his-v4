@@ -95,7 +95,6 @@ import type {
   SchedulingAppointmentSummary,
   AccountId
 } from '@cvg-his-v2/shared-types';
-
 import {
   createInMemoryOidcStateStore,
   createStatelessOidcStateStore,
@@ -160,11 +159,7 @@ import { handleAccessControlRoutes } from './routes/access-control-routes.js';
 import { handleInpatientRoutes } from './routes/inpatient-routes.js';
 import { handleApiKeysRoutes } from './routes/api-keys-routes.js';
 import { handleInternalEventsRoutes } from './routes/internal-events-routes.js';
-import {
-  isCashDrawerMutationPath,
-  paginateList,
-  parseIncludeArchived
-} from './request-boundaries.js';
+import { isCashDrawerMutationPath, paginateList, parseIncludeArchived } from './request-boundaries.js';
 import {
   handlePixProviderSettlementRoutes,
   type PixProviderSettlementDlqRepository
@@ -331,7 +326,6 @@ export function buildAuthenticatedActorAttributes(
     isActive: principal.user.status === 'active'
   };
 }
-
 export interface ApiServerOptions {
   readonly appName: string;
   readonly environment: string;
@@ -422,15 +416,12 @@ export interface ApiServerOptions {
   /** Secrets manager for reading credentials at startup. Uses EnvSecretsProvider when omitted. */
   readonly secretsManager?: SecretsManager;
 }
-
 type ApiRateLimiter = Pick<ReturnType<typeof createAuthRateLimiter>, 'check'> &
   Partial<Pick<ReturnType<typeof createAuthRateLimiter>, 'healthCheck' | 'close'>>;
-
 export type ApiServer = ReturnType<typeof createServer> & {
   readonly ready: Promise<void>;
   readonly closeDependencies: () => Promise<void>;
 };
-
 const DEFAULT_CORS_ALLOWED_ORIGINS = [
   'http://127.0.0.1:3000',
   'http://localhost:3000',
@@ -452,14 +443,12 @@ const DEFAULT_CORS_EXPOSE_HEADERS =
   'x-correlation-id, x-request-id, x-trace-id, traceparent, tracestate';
 const WEBAUTHN_CHALLENGE_TTL_MS = 5 * 60 * 1000;
 const OIDC_STATE_TTL_MS = 10 * 60 * 1000;
-
 function registerChaosExperimentOnce(chaos: ChaosEngine, experiment: { id: string }): void {
   const alreadyRegistered = chaos.listExperiments().some((item) => item.id === experiment.id);
   if (!alreadyRegistered) {
     chaos.register(experiment as never);
   }
 }
-
 function isProductionLikeEnvironment(environment: string): boolean {
   const normalized = environment.trim().toLowerCase();
   return (
@@ -469,12 +458,10 @@ function isProductionLikeEnvironment(environment: string): boolean {
     normalized === 'stage'
   );
 }
-
 function isLocalDevelopmentOrTestEnvironment(environment: string): boolean {
   const normalized = environment.trim().toLowerCase();
   return normalized === 'development' || normalized === 'dev' || normalized === 'test';
 }
-
 export function assertWebAuthnDurableStateReadiness(options: {
   readonly environment: string;
   readonly enabled: boolean;
@@ -484,7 +471,6 @@ export function assertWebAuthnDurableStateReadiness(options: {
   if (!options.enabled || isLocalDevelopmentOrTestEnvironment(options.environment)) {
     return;
   }
-
   const missing: string[] = [];
   if (
     !options.credentialRepository ||
@@ -501,12 +487,10 @@ export function assertWebAuthnDurableStateReadiness(options: {
       `Production-like WebAuthn requires durable WebAuthn state (${missing.join(', ')})`
     );
   }
-
   throw new Error(
     'Production-like WebAuthn is disabled until a full FIDO2 attestation and assertion verifier is configured'
   );
 }
-
 export function assertProductionProviderReadiness(
   options: Pick<
     ApiServerOptions,
@@ -533,7 +517,6 @@ export function assertProductionProviderReadiness(
   if (!isProductionLikeEnvironment(options.environment)) {
     return;
   }
-
   const missingProviders: string[] = [];
   if (options.pixMockMode === true || !options.pagarmeApiKey || !options.pagarmePixKey) {
     missingProviders.push('Pagar.me PIX (PAGARME_API_KEY/PAGARME_PIX_KEY)');
@@ -570,20 +553,17 @@ export function assertProductionProviderReadiness(
   if (options.fileStorage?.productionReady !== true) {
     missingProviders.push('private S3/MinIO attachment storage (ATTACHMENT_STORAGE_S3_*)');
   }
-
   if (missingProviders.length > 0) {
     throw new Error(
       `Production-like API cannot start with mock or missing providers: ${missingProviders.join(', ')}`
     );
   }
 }
-
 function decodeAttachmentContent(contentBase64: unknown): Buffer | undefined {
   if (contentBase64 === undefined) return undefined;
   if (typeof contentBase64 !== 'string') {
     throw new ValidationError('contentBase64 must be a base64 string', { field: 'contentBase64' });
   }
-
   const normalized = contentBase64.trim();
   if (
     normalized.length === 0 ||
@@ -593,7 +573,6 @@ function decodeAttachmentContent(contentBase64: unknown): Buffer | undefined {
   ) {
     throw new ValidationError('contentBase64 is invalid', { field: 'contentBase64' });
   }
-
   const content = Buffer.from(normalized, 'base64');
   if (content.length > 25 * 1024 * 1024 || content.toString('base64') !== normalized) {
     throw new ValidationError('contentBase64 is invalid or exceeds the upload limit', {
@@ -602,7 +581,6 @@ function decodeAttachmentContent(contentBase64: unknown): Buffer | undefined {
   }
   return content;
 }
-
 function appendVaryHeader(response: ServerResponse, headerName: string): void {
   const current = response.getHeader('vary');
   const values = new Set<string>();
@@ -611,7 +589,6 @@ function appendVaryHeader(response: ServerResponse, headerName: string): void {
     : typeof current === 'string'
       ? current.split(',')
       : [];
-
   for (const value of rawValues) {
     const trimmed = value.trim();
     if (trimmed.length > 0) {
@@ -3821,20 +3798,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           ): Promise<T> => withTenantTransaction(accountId, async () => command(), metadata)
         : undefined)
   });
-  const workflowTasks =
-    options.workflowTaskService ?? createApiWorkflowTaskService(options.environment);
-  const clinicalOperationalMetricsProvider =
-    options.clinicalOperationalMetricsProvider ??
-    createClinicalOperationalMetricsProvider({
-      users,
-      inpatient,
-      encounters,
-      workflowTasks,
-      prescriptionExecutions,
-      diagnostics,
-      clinicalHandoffs
-    });
-  const ensureWorkflowTaskSchemaReady = createWorkflowTaskSchemaReadinessGuard(options.environment);
+  const workflowTasks = options.workflowTaskService ?? createApiWorkflowTaskService(options.environment);
+  const clinicalOperationalMetricsProvider = options.clinicalOperationalMetricsProvider ?? createClinicalOperationalMetricsProvider({ users, inpatient, encounters, workflowTasks, prescriptionExecutions, diagnostics, clinicalHandoffs }); const ensureWorkflowTaskSchemaReady = createWorkflowTaskSchemaReadinessGuard(options.environment);
   const refreshAccessControlCaches = async (accountId: AccountId): Promise<void> => {
     try {
       await Promise.all([
@@ -4610,13 +4575,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             return;
           }
 
-          const featureFlagContext: EvaluationContext = {
-            environment: options.environment,
-            tenantId: tenantCtx.tenantId,
-            accountId: tenantCtx.accountId,
-            userId: tenantCtx.userId,
-            correlationId
-          };
+          const featureFlagContext: EvaluationContext = { environment: options.environment, tenantId: tenantCtx.tenantId, accountId: tenantCtx.accountId, userId: tenantCtx.userId, correlationId };
 
           const dispatchRequest = async (): Promise<void> => {
             // The equipment bridge must be the first body-consuming mutation
@@ -4664,8 +4623,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 webauthnChallengeTtlMs: WEBAUTHN_CHALLENGE_TTL_MS,
                 oidcStateStore,
                 oidcStateTtlMs: OIDC_STATE_TTL_MS,
-                featureFlagEvaluator: featureFlags.evaluate,
-                featureFlagContext,
+                featureFlagEvaluator: featureFlags.evaluate, featureFlagContext,
                 refreshCookieMaxAgeSeconds: options.refreshTokenTtlSeconds,
                 secureCookies: isProductionLikeEnvironment(options.environment),
                 csrfAllowedOrigins: corsAllowedOrigins,
@@ -4770,8 +4728,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 audit,
                 requirePrincipal,
                 fiscalBackofficeEnabled: featureFlags.fiscalBackofficeEnabled,
-                featureFlagEvaluator: featureFlags.evaluate,
-                featureFlagContext
+                featureFlagEvaluator: featureFlags.evaluate, featureFlagContext
               })
             ) {
               return;
@@ -4784,8 +4741,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 smartScheduling,
                 audit,
                 featureFlags,
-                featureFlagEvaluator: featureFlags.evaluate,
-                featureFlagContext,
+                featureFlagEvaluator: featureFlags.evaluate, featureFlagContext,
                 requirePrincipal,
                 runCommand: runTenantCommand
               })
@@ -5732,10 +5688,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             }
             if (pathname === '/encounters' && request.method === 'GET') {
               const principal = await requirePrincipal(request, 'encounters.read');
-              const encounterItems = paginateList(
-                encounters.listAll(principal.user.accountId),
-                url
-              );
+              const encounterItems = paginateList(encounters.listAll(principal.user.accountId), url);
               appendAudit(
                 principal.user.id,
                 principal.user.accountId,
@@ -8028,8 +7981,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 telemetry: mlTelemetry,
                 audit,
                 featureFlags,
-                featureFlagEvaluator: featureFlags.evaluate,
-                featureFlagContext,
+                featureFlagEvaluator: featureFlags.evaluate, featureFlagContext,
                 requirePrincipal
               })
             ) {
@@ -8042,8 +7994,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 scheduling,
                 audit,
                 requirePrincipal,
-                featureFlagEvaluator: featureFlags.evaluate,
-                featureFlagContext,
+                featureFlagEvaluator: featureFlags.evaluate, featureFlagContext,
                 notificationsWhatsappInboundActionsEnabled:
                   featureFlags.notificationsWhatsappInboundActionsEnabled,
                 inboundWebhookSecret: options.whatsappWebhookSecret
