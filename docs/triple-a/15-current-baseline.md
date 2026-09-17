@@ -1,7 +1,7 @@
 # Baseline corrente — State of Art
 
-Observado em `2026-09-17T08:04:22Z`, sobre o candidato documental
-`a80454733532af1553e46b63babcf1653251cbe3`, que contém a identidade corrente
+Observado em `2026-09-17T09:01:08Z`, sobre o candidato documental
+`a4f2ef6705cebca552b07f20ebd3d596d5714079`, que contém a identidade corrente
 e a correção funcional de fail-closed e complexidade no commit
 `95227098193966638102ccfe1e54842289ebe7f1`, sobre a otimização do
 roteamento autenticado antes da guarda final, além do alinhamento do runner
@@ -18,29 +18,29 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| current_sha     | `a80454733532af1553e46b63babcf1653251cbe3` (snapshot; registro P0 e manifesto revision 61; Noto Sans determinístico nos gates E2E/visual; verificação portátil do runner; correção funcional e classificador documental; harness SPA canônico com proxy same-origin) |
-| main_sha        | `main` contém o snapshot candidato e sua documentação corrente; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral, sem commits exclusivos; rollback preservado |
+| current_sha     | `a4f2ef6705cebca552b07f20ebd3d596d5714079` (snapshot; registro P0 e manifesto revision 62; Noto Sans e rasterização sem LCD determinísticos nos gates E2E/visual; verificação portátil do runner; correção funcional e classificador documental; harness SPA canônico com proxy same-origin) |
+| main_sha        | `main` local contém o snapshot candidato; a alteração funcional equivalente está publicada em `origin/main@a4f2ef67`; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral, sem commits exclusivos; rollback preservado |
 | worktree        | Limpo antes da documentação corrente; artefatos gerados locais permanecem fora do commit |
 | rollback        | `origin/fix/state-of-art-ci-assurance@fe5406c2`; sem force-push |
-| ci_run          | O [CI #205](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35188872670) foi terminal no `main@7ff8847b`; o código/workflow do candidato remoto `b313fba7` é equivalente ao candidato local `d9acec6e`, e o run terminou `failure`. |
-| ci_failure      | O #205 passou cobertura crítica, segurança, build, unitários, integração, contratos, processo Windows e API clínica `2/2`, mas reprovou E2E/visual (`395 passed`, `29 failed`) e k6 (`query p95=212 ms > 150`; `inventory p95=200,36 ms > 200`). Nenhum baseline ou threshold foi alterado. |
+| ci_run          | O [CI #212](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35198105802) foi terminal no `main@26176f7f`; o novo candidato foi publicado depois como `origin/main@a4f2ef67` e aguarda CI exato. |
+| ci_failure      | O #212 passou os gates estruturais, críticos e funcionais, mas teve 23/29 visuais aprovados e 6 reprovados; E2E SPA teve `418 passed`, `6 failed`; k6 passou `4/9` SLOs e reprovou API p95 `241,77 ms > 200`, query `182 ms > 150`, write `313 ms > 300`, billing `276 ms > 250` e inventory `260,52 ms > 200`. Nenhum threshold foi alterado. |
 | overall_score   | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `51`, abaixo do mínimo 97 |
 | critical_score  | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `49`, abaixo do mínimo 95 |
 | open_p0         | Registro P0: `13` itens abertos e `1` fechado; o quality bar de release continua exigindo zero P0 para certificação |
 | local_gate      | `FAIL/BLOCKED` no R05-010: cobertura crítica abaixo dos limiares e aplicabilidades Vue sem evidência aceita; `claim=NOT PROVEN`, `publication_allowed=false` |
-| implemented     | Paridade do contrato Patient; CORS credentialado restrito a origens permitidas; manifest crítico revision 59, ancorado em `d9acec6e`, com thresholds inalterados e inventário Vitest reconciliado; workflow provisiona PostgreSQL 16, aceita somente o par V8 autenticado, publica evidência SQL antes do checker, valida o registro P0 e executa os gates SPA com API compilada e proxy same-origin; o classificador de identidade trata o manifesto de cobertura como governança documental; o JWT inicial só resolve contexto de roteamento e a guarda final mantém revalidação autoritativa, com erros genéricos sanitizados para 503; `server.ts` permanece no orçamento físico de `8.335` linhas; nenhum threshold foi alterado |
-| verified_local  | cobertura global `273/273` arquivos e `2907/2907` testes passou o threshold; lint, typecheck e API build passaram; API `618/618`; integração PostgreSQL `16/16`; contratos CI `20/20`; cobertura/processo e evidência SQL `34/34`; produtor SQL PostgreSQL 16.15 passou com `171` migrações e `7` históricos; k6 local `9/9` SLOs com CPU limitada e visual `29/29`; target externo permanece ausente |
-| verified_remote | O CI #205 é a execução terminal do `main@7ff8847b` e falhou nos gates E2E/visual/performance; não há `main green`. Target, recovery, UAT, attestation, governança de branch e autoridade de release seguem ausentes |
+| implemented     | Paridade do contrato Patient; CORS credentialado restrito a origens permitidas; manifest crítico revision 62, ancorado no candidato visual, com thresholds inalterados e inventário Vitest reconciliado; workflow provisiona PostgreSQL 16, aceita somente o par V8 autenticado, instala/verifica Noto Sans com comando portátil, publica evidência SQL antes do checker, valida o registro P0 e executa os gates SPA com API compilada e proxy same-origin; o Playwright desativa LCD text para reduzir drift de antialiasing entre runners e os seis baselines promovidos são os `actual.png` do #212 após inspeção; o classificador de identidade trata o manifesto de cobertura como governança documental; o JWT inicial só resolve contexto de roteamento e a guarda final mantém revalidação autoritativa, com erros genéricos sanitizados para 503; `server.ts` permanece no orçamento físico de `8.335` linhas; nenhum threshold foi alterado |
+| verified_local  | cobertura global `273/273` arquivos e `2907/2907` testes passou o threshold; lint, typecheck e API build passaram; API `618/618`; integração PostgreSQL `16/16`; contratos focados `21/21` e 62 testes unitários/contratuais passaram; cobertura/processo e evidência SQL `34/34`; produtor SQL PostgreSQL 16.15 passou com `171` migrações e `7` históricos; k6 local `9/9` SLOs e a execução visual anterior `29/29`; target externo permanece ausente |
+| verified_remote | O CI #212 é a execução terminal do `main@26176f7f`, falhou nos gates E2E/visual/performance e não é transferido; o candidato atual `origin/main@a4f2ef67` ainda aguarda CI exato. Não há `main green`. Target, recovery, UAT, attestation, governança de branch e autoridade de release seguem ausentes |
 | verified_target | `NOT_PROVEN` |
 | blocked         | CI remoto verde, target, restore/DR, UAT e autoridade humana continuam abertos; os thresholds gerais e snapshots permanecem sem promoção |
 | not_proven      | Qualquer claim de release Triple-A, score ≥97, critical ≥95, zero P0, `main_green` ou `TRIPLE-A VERIFIED` |
 
 ## Decisão
 
-O snapshot `a80454733532af1553e46b63babcf1653251cbe3` foi reconciliado;
+O snapshot `a4f2ef6705cebca552b07f20ebd3d596d5714079` foi reconciliado;
 o candidato funcional `95227098193966638102ccfe1e54842289ebe7f1` preserva a
 otimização autenticada e o fail-closed 503;
-o manifesto crítico foi reancorado na revisão 61, com a correção de tipografia CI/visual, a verificação portátil do runner, o código funcional e os
+o manifesto crítico foi reancorado na revisão 62, com a correção de tipografia e rasterização CI/visual, a verificação portátil do runner, o código funcional e os
 thresholds preservados. `origin/fix/state-of-art-ci-assurance` já era ancestral de `main` e
 não possuía mudanças exclusivas, portanto nenhum merge seletivo adicional foi
 necessário. A validação local passou os contratos alterados, o produtor SQL

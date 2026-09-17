@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "a80454733532af1553e46b63babcf1653251cbe3",
+  "head": "a4f2ef6705cebca552b07f20ebd3d596d5714079",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -11233,6 +11233,19 @@
       "added": [],
       "removed": [],
       "changed": []
+    },
+    {
+      "manifestRevision": 62,
+      "observedAt": "2026-09-17T09:01:08.139Z",
+      "collectionCommit": "a4f2ef6705cebca552b07f20ebd3d596d5714079",
+      "previousManifestSha256": "a254f78d097624e91737b5a313393d1fd9ef1d71a13f6f82e1b3a0b5ed4972ed",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-a254f78d097624e91737b5a313393d1fd9ef1d71a13f6f82e1b3a0b5ed4972ed.json",
+      "previousSourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
+      "sourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
+      "reason": "Reanchor the critical-source manifest to the visual rasterization normalization candidate after remote CI diff inspection.",
+      "added": [],
+      "removed": [],
+      "changed": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12166,7 +12179,7 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 61,
+  "manifestRevision": 62,
   "sourceSetSha256": "04da18b8b5b6afaab211bbd6294afd2d57b0dbfe4e3a21bab8fd243be243840b",
   "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
   "specializedEvidence": {

@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `a80454733532af1553e46b63babcf1653251cbe3`
-(snapshot reancorado com o registro P0 candidate-bound, Noto Sans determinístico nos gates E2E/visual, verificação portátil do runner, o harness SPA canônico com proxy same-origin e a correção fail-closed e de complexidade no commit `95227098`, sobre a otimização `15ba86a8`; manifesto crítico revision 61; a branch de assurance é ancestral sem commits exclusivos; a cobertura global local passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas, k6 local `9/9` SLOs e visual local `29/29` também passaram; o CI #205 remoto é histórico e não é promovido)
+**Candidate funcional avaliado:** `a4f2ef6705cebca552b07f20ebd3d596d5714079`
+(snapshot reancorado com o registro P0 candidate-bound, Noto Sans e rasterização sem LCD determinísticos nos gates E2E/visual, verificação portátil do runner, o harness SPA canônico com proxy same-origin e a correção fail-closed e de complexidade no commit `95227098`, sobre a otimização `15ba86a8`; manifesto crítico revision 62; a branch de assurance é ancestral sem commits exclusivos; a cobertura global local passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas e k6 local `9/9` SLOs passaram; a execução visual anterior passou `29/29` e o CI #212 remoto identificou 6 diffs residuais de rasterização, usados para a correção atual; o CI exato do novo candidato ainda aguarda e não é promovido)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -11,11 +11,13 @@ O candidato preserva o modular monolith e a reconciliação fail-closed de
 proveniência. A paridade de Patient e o CORS credentialado restrito foram
 validados. No candidato corrente, os contratos alterados passaram, o produtor SQL
 passou com PostgreSQL 16.15 e a conversão V8 do processo aceita somente o par
-autenticado de inicializadores; o manifesto crítico está na revisão 59 e o
-workflow publica evidência SQL antes do checker. O [CI #205](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35188872670)
+autenticado de inicializadores; o manifesto crítico está na revisão 62 e o
+workflow publica evidência SQL antes do checker. O [CI #212](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35198105802)
 passou cobertura crítica, segurança, build, unitários, integração, contratos,
-processo Windows e as duas jornadas clínicas canônicas, mas falhou nas 29
-comparações visuais e em dois SLOs de cauda do k6. Não há target, recovery,
+processo Windows e as duas jornadas clínicas canônicas, mas o CI #212 falhou em 6
+comparações visuais, reproduzidas na E2E SPA (`418 passed`, `6 failed`), e em
+5 de 9 SLOs do k6. A correção atual desativa LCD text e incorpora os seis
+`actual.png` inspecionados; não há target, recovery,
 attestation, UAT, governança, performance certificada ou autoridade de release.
 Nenhum threshold ou baseline visual foi relaxado e não há autorização para declarar `main green`,
 release produtivo ou `TRIPLE-A VERIFIED`.
@@ -31,7 +33,7 @@ k6 local limitado a quatro CPUs passou `9/9` SLOs e a suíte visual local passou
 `29/29`; isso não substitui CI terminal, target, recovery, UAT, attestation ou
 autoridade de release.
 
-## Atualização corrente — revisão 59 / snapshot `d9acec6e`
+## Contexto histórico — revisão 59 / snapshot `d9acec6e`
 
 O manifest crítico revision 59 foi reancorado no commit de fonte `d9acec6e` e
 complexidade, sem mudança de

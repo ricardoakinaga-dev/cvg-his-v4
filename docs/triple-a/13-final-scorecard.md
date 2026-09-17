@@ -2,17 +2,17 @@
 
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT SNAPSHOT   | candidato `a80454733532af1553e46b63babcf1653251cbe3`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; registro P0 candidate-bound; Noto Sans determinístico nos gates E2E/visual; históricos não são transferidos |
-| MAIN / ORIGIN      | `main` contém o snapshot candidato `a8045473` e sua documentação corrente; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral sem commits exclusivos, rollback preservado, sem force-push |
-| CURRENT CI         | O [CI #205](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35188872670) do `main@7ff8847b` terminou `failure`: cobertura crítica, segurança, build, unitários, integração, contratos, processo Windows e API clínica `2/2` passaram; E2E/visual teve `395/29` e k6 reprovou query/inventory |
+| CURRENT SNAPSHOT   | candidato `a4f2ef6705cebca552b07f20ebd3d596d5714079`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; registro P0 candidate-bound; Noto Sans e rasterização de texto determinísticos nos gates E2E/visual; históricos não são transferidos |
+| MAIN / ORIGIN      | `main` local contém o snapshot `a4f2ef67`; a mesma alteração funcional está publicada remotamente em `a4f2ef67`; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral sem commits exclusivos, rollback preservado, sem force-push |
+| CURRENT CI         | O [CI #212](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35198105802) terminou `failure`: 23/29 visuais passaram, 6 falharam, E2E SPA teve `418 passed` e `6 failed`, e k6 passou `4/9` SLOs; o CI exato do novo candidato aguarda execução |
 | LOCAL STRICT GATE  | cobertura global local `PASS` no threshold congelado; release/critical externo continuam `NOT_PROVEN`, `claim=NOT PROVEN`, `publication_allowed=false` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
-| LOCAL VALIDATION   | cobertura global `273/273` arquivos e `2.907/2.907` testes, `87,46/82,00/89,32/88,91%` (statements/branches/functions/lines), lint, typecheck, API build, API `618/618`, integração PostgreSQL `16/16`, contratos CI `22/22`, validadores documentais `13/13`, registro P0 `14` itens com `3/3` testes, SQL `34/34`, produtor SQL `171` migrações, complexity `8.335` linhas, k6 local `9/9` SLOs e visual `29/29` passaram com Noto Sans; manifesto revision 60 válido; target externo ausente |
+| LOCAL VALIDATION   | cobertura global `273/273` arquivos e `2.907/2.907` testes, `87,46/82,00/89,32/88,91%` (statements/branches/functions/lines), lint, typecheck, API build, API `618/618`, integração PostgreSQL `16/16`, contratos focados `21/21` e 62 testes unitários/contratuais passaram; validadores documentais, registro P0, SQL `34/34`, produtor SQL `171` migrações e complexity `8.335` linhas permanecem válidos; a execução visual `29/29` anterior é prévia à normalização final; manifesto revision 62 válido; target externo ausente |
 | VERIFIED TARGET    | `NOT PROVEN`                                                                                                                                                                                                                                              |
-| CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; o CI exato terminou com falhas E2E/visual/performance, e target e autoridade externa continuam sem prova                                                                                                          |
+| CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; o CI #212 anterior terminou com falhas E2E/visual/performance e o novo candidato ainda aguarda CI exato; target e autoridade externa continuam sem prova |
 
 O snapshot corrente preserva a régua congelada e reancora o manifesto crítico
-na revisão 59. O registro P0 adiciona deduplicação, dependências, classificação
+na revisão 62. O registro P0 adiciona deduplicação, dependências, classificação
 de execução e fechamento candidate-bound ao gate de release. O CI #190 detectou a rejeição de inicializadores V8 legítimos do
 Node 22 e a ausência do produtor SQL; os CI #191/#192 confirmaram a correção no
 Critical Coverage Gate dos ancestrais. O CI #196 confirmou o Critical Coverage
@@ -24,7 +24,8 @@ orçamento físico congelado; a checagem criptográfica
 síncrona só fornece contexto de roteamento, e a guarda final permanece
 autoritativa. O CI #198 foi terminalmente reprovado e o #199 falhou no guard de
 complexidade; nenhum dos dois é evidência do candidato documental `fa877475`,
-que precisa de uma execução exata após o push da identidade reancorada.
+que precisa de uma execução exata após a publicação do candidato visual
+`a4f2ef67`.
 
 O score não é uma média permissiva: os gates externos ausentes e as falhas do CI
 remoto vinculadas ao reancoramento continuam bloqueando a certificação. Os thresholds não foram relaxados

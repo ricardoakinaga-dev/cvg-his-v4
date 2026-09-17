@@ -1,14 +1,14 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-17T08:04:22Z
+## Snapshot vigente — 2026-09-17T09:01:08Z
 
-O baseline autoritativo do snapshot atual está em: `a80454733532af1553e46b63babcf1653251cbe3` (snapshot reancorado após a fixação de Noto Sans nos gates visuais, a verificação portátil do runner, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental e a revisão 61 do manifesto crítico; a correção funcional de fail-closed permanece no commit `95227098` e a otimização de leitura autenticada em `15ba86a8`).
+O baseline autoritativo do snapshot atual está em: `a4f2ef6705cebca552b07f20ebd3d596d5714079` (snapshot reancorado após a normalização de rasterização de texto entre runners, a fixação de Noto Sans nos gates visuais, a verificação portátil do runner, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental e a revisão 62 do manifesto crítico; a correção funcional de fail-closed permanece no commit `95227098` e a otimização de leitura autenticada em `15ba86a8`).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
 documentação corrente sucede os candidatos históricos sem transferir evidência;
-o candidato `a8045473` consolida a cobertura de contratos de pagamento, marketing,
+o candidato `a4f2ef67` consolida a cobertura de contratos de pagamento, marketing,
 laboratório, ML e limites operacionais, preservando o runner PostgreSQL 16, os
 checksums de migração e a aceitação restrita do par de inicializadores V8; a
 branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
@@ -16,9 +16,24 @@ branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corre
 contém 14 itens, dos quais 1 está fechado com evidência fresca e 13 permanecem
 abertos, sem usar o status legado `DONE`.
 
-Os CI #191/#192 dos ancestrais terminaram `failure` com `13/17` jobs verdes e Critical Coverage Gate aprovado; não são transferidos para o novo candidato. No candidato anterior, a cobertura global passou `273` arquivos, `2.907` testes e o threshold congelado (`87,46%` statements, `82,00%` branches, `89,32%` functions e `88,91%` lines), além de lint e typecheck. A otimização corrente elimina a leitura duplicada de sessão antes da resolução de tenant: o JWT assinado fornece somente contexto de roteamento, enquanto a guarda final continua relendo sessão, usuário, função e permissões de forma autoritativa. A correção `95227098` preserva o mapeamento fail-closed de erros genéricos de sessão para HTTP 503 sem reintroduzir a leitura duplicada e mantém `server.ts` dentro do orçamento de `8.335` linhas; a suíte API passou `618/618` e a integração PostgreSQL descartável passou `16/16`. A captura visual local passou `29/29` e o benchmark local PostgreSQL passou `9/9` SLOs. O CI #205, executado no `main` remoto, passou os gates funcionais e o Critical Coverage Gate, mas falhou em E2E/visual (`395/29`) e em dois SLOs do k6; nenhuma baseline ou threshold é promovida. Target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
+Os CI #191/#192 dos ancestrais terminaram `failure` com `13/17` jobs verdes e Critical Coverage Gate aprovado; não são transferidos para o novo candidato. No candidato anterior, a cobertura global passou `273` arquivos, `2.907` testes e o threshold congelado (`87,46%` statements, `82,00%` branches, `89,32%` functions e `88,91%` lines), além de lint e typecheck. A otimização corrente elimina a leitura duplicada de sessão antes da resolução de tenant: o JWT assinado fornece somente contexto de roteamento, enquanto a guarda final continua relendo sessão, usuário, função e permissões de forma autoritativa. A correção `95227098` preserva o mapeamento fail-closed de erros genéricos de sessão para HTTP 503 sem reintroduzir a leitura duplicada e mantém `server.ts` dentro do orçamento de `8.335` linhas; a suíte API passou `618/618` e a integração PostgreSQL descartável passou `16/16`. A captura visual local do candidato anterior passou `29/29` e o benchmark local PostgreSQL passou `9/9` SLOs. O [CI #212](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35198105802), executado no candidato remoto anterior, passou os gates funcionais, mas terminou com 6 falhas visuais, as mesmas 6 refletidas na E2E SPA (`418 passed`, `6 failed`), e reprovou 5 de 9 SLOs do k6; a correção visual atual promove somente os seis `actual.png` inspecionados e aguarda CI exato do novo candidato. Nenhuma baseline ou threshold é promovida por conveniência. Target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
 parcial ou histórico é promovido. Target, recovery, UAT, attestation,
 governança e autoridade de release continuam `NOT PROVEN`.
+
+## Reconciliação da correção visual — 2026-09-17
+
+- O candidato local `a4f2ef6705cebca552b07f20ebd3d596d5714079` adiciona
+  `--disable-lcd-text` ao Chromium e registra os seis baselines derivados dos
+  `actual.png` do artefato visual do CI #212, depois de inspeção pixel-a-pixel
+  que encontrou somente fringes de antialiasing de texto, sem mudança de layout
+  ou conteúdo.
+- A mesma árvore funcional foi publicada na `main` remota como
+  `a4f2ef6705cebca552b07f20ebd3d596d5714079`, sem force-push. A branch
+  `origin/fix/state-of-art-ci-assurance@fe5406c2` continua ancestral e sem
+  commits exclusivos; não há merge seletivo adicional a reaplicar.
+- O CI exato do novo candidato ainda está pendente. Até sua terminalização,
+  `main green`, certificação visual, performance remota e release continuam
+  `BLOCKED / NOT PROVEN`.
 
 ## Registro obrigatório do prompt
 

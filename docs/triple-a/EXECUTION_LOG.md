@@ -1,5 +1,30 @@
 # Triple-A — Execution Log
 
+## 2026-09-17T09:01:08Z — normalização visual do candidato `a4f2ef67`
+
+- O CI [#212](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35198105802)
+  terminou `failure` no `main@26176f7f`: os gates estruturais, críticos e
+  funcionais passaram; Visual Regression passou `23/29` e falhou em 6
+  comparações de antialiasing de texto; E2E SPA terminou com `418 passed` e
+  `6 failed`, correspondentes às mesmas imagens; Performance/k6 passou `4/9`
+  SLOs e falhou em API p95 `241,77ms`, query `182ms`, write `313ms`, billing
+  `276ms` e inventory `260,52ms`. Nenhum threshold foi relaxado.
+- A inspeção dos seis pares expected/actual/diff do artefato
+  `visual-regression-diffs` (`10487129596`) encontrou somente fringes de texto,
+  sem divergência de layout ou conteúdo. O candidato local
+  `a4f2ef6705cebca552b07f20ebd3d596d5714079` adiciona `--disable-lcd-text` ao
+  Chromium e promove exatamente os seis `actual.png` inspecionados como
+  baselines versionados; a proveniência está em
+  [`20-ci-212-evidence.md`](./20-ci-212-evidence.md).
+- A árvore funcional equivalente foi publicada na `main` remota como
+  `a4f2ef6705cebca552b07f20ebd3d596d5714079` via atualização fast-forward
+  condicional, sem force-push. A branch
+  `origin/fix/state-of-art-ci-assurance@fe5406c2` permanece ancestral, sem
+  commits exclusivos, e continua disponível para rollback.
+- A revisão 62 do manifesto e a identidade corrente permanecem
+  `BLOCKED / NOT PROVEN`; o CI exato deste novo candidato ainda não foi
+  terminalizado. Nenhum resultado do #212 é transferido como aprovação.
+
 ## 2026-09-17T04:38:38Z — registro P0 candidate-bound
 
 - O commit `e69b44845d6cea670b874272d9d1bf718d957be4` adicionou o registro
