@@ -4,7 +4,7 @@
   "generated_at": "2026-09-17T13:28:36.000Z",
   "generated_by": "lead-verification",
   "candidate": {
-    "candidate_id": "CVG-HIS-V4-721b2bb38e33",
+    "candidate_id": "CVG-HIS-V4-721b2bb3eb14",
     "identity_path": "docs/triple-a/CURRENT_CANDIDATE_IDENTITY.json",
     "candidate_head_sha": "721b2bb3eb140921eabf271d8e59c222106f40a7",
     "behavior_sha": "721b2bb3eb140921eabf271d8e59c222106f40a7",
