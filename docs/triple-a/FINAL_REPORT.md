@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `1bbdd63a4f53e39394d8aaee96fce067a1d2f735`
-(snapshot candidato com a correção fail-closed e de complexidade no commit `95227098`, sobre a otimização `15ba86a8`; manifesto crítico revision 56; a branch de assurance é ancestral sem commits exclusivos; a cobertura global local passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas, k6 local `9/9` SLOs e visual local `29/29` também passaram; o CI #199 anterior falhou no Repository Guards e não é transferido)
+**Candidate funcional avaliado:** `e54a4374ce9bb597dc20abaab48cf0f248f4e0a4`
+(snapshot reancorado com a correção fail-closed e de complexidade no commit `95227098`, sobre a otimização `15ba86a8`; manifesto crítico revision 56; a branch de assurance é ancestral sem commits exclusivos; a cobertura global local passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas, k6 local `9/9` SLOs e visual local `29/29` também passaram; o CI #201 falhou no Repository Guards por identidade stale e não é transferido)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -29,12 +29,12 @@ k6 local limitado a quatro CPUs passou `9/9` SLOs e a suíte visual local passou
 `29/29`; isso não substitui CI terminal, target, recovery, UAT, attestation ou
 autoridade de release.
 
-## Atualização corrente — revisão 56 / snapshot `1bbdd63a`
+## Atualização corrente — revisão 56 / snapshot `e54a4374`
 
 O manifest crítico revision 56 foi reancorado no commit de correção fail-closed e
 complexidade, sem mudança de
 thresholds, fontes ou aplicabilidade funcional; o snapshot corrente é
-`1bbdd63a4f53e39394d8aaee96fce067a1d2f735`, com implementação funcional em
+`e54a4374ce9bb597dc20abaab48cf0f248f4e0a4`, com implementação funcional em
 `95227098193966638102ccfe1e54842289ebe7f1`, sobre `15ba86a883a4283c5bf86c5825bf7d9a6ca5d089`. O runner crítico preserva o SQL histórico,
 usa PostgreSQL 16 e trata os inicializadores V8 do Node 22 sem fundir identidades.
 O produtor SQL agora é executado e publicado antes do checker. Os produtores atuais são identificados na
@@ -48,13 +48,14 @@ roteamento e mantendo a guarda final autoritativa; a correção `95227098` mapei
 erros genéricos do carregamento autoritativo para 503 e ajusta o teste de
 revogação para a única leitura final e mantém `server.ts` dentro de `8.335`
 linhas. O CI #198 anterior terminou `failure` e o #199 falhou em complexity;
-nenhum dos dois é transferido; o novo CI exato aguarda execução. O candidato permanece
+nenhum dos dois é transferido; o #201 falhou no guard de identidade antes de
+representar o snapshot reancorado; o novo CI exato aguarda execução. O candidato permanece
 **BLOCKED / NOT PROVEN**.
 
-O CI #199 falhou em Repository Guards porque o candidato documental anterior
-estava com `8.350` linhas em `server.ts`, acima do limite congelado de `8.335`.
-A correção foi validada localmente, não relaxa nenhum guard, threshold ou
-baseline; o novo CI será executado após o push do snapshot `1bbdd63a`.
+O CI #201 falhou em Repository Guards porque a identidade ainda apontava ao
+manifesto pré-correção. A correção do manifesto e a identidade foram validadas
+localmente, não relaxam nenhum guard, threshold ou baseline; o novo CI será
+executado após o push do snapshot `e54a4374` reancorado.
 
 ## Atualização terminal — isolamento da prova clínica
 

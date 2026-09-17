@@ -1,7 +1,7 @@
 # Baseline corrente — State of Art
 
-Observado em `2026-09-17T03:22:00Z`, sobre o candidato funcional
-`1bbdd63a4f53e39394d8aaee96fce067a1d2f735`, que contém a documentação corrente
+Observado em `2026-09-17T04:15:25Z`, sobre o candidato documental
+`e54a4374ce9bb597dc20abaab48cf0f248f4e0a4`, que contém a identidade corrente
 e a correção funcional de fail-closed e complexidade no commit
 `95227098193966638102ccfe1e54842289ebe7f1`, sobre a otimização do
 roteamento autenticado antes da guarda final, além do alinhamento do runner
@@ -16,26 +16,26 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| current_sha     | `1bbdd63a4f53e39394d8aaee96fce067a1d2f735` (snapshot candidato; correção funcional em `95227098` sobre `15ba86a8`) |
+| current_sha     | `e54a4374ce9bb597dc20abaab48cf0f248f4e0a4` (snapshot documental; correção funcional em `95227098` sobre `15ba86a8`) |
 | main_sha        | `main` contém o snapshot candidato e sua documentação corrente; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral, sem commits exclusivos; rollback preservado |
 | worktree        | Limpo antes da documentação corrente; artefatos gerados locais permanecem fora do commit |
 | rollback        | `origin/fix/state-of-art-ci-assurance@fe5406c2`; sem force-push |
-| ci_run          | [CI #199](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35176824096) falhou em Repository Guards no snapshot documental anterior; o novo snapshot `1bbdd63a` aguarda execução exata após o push. |
-| ci_failure      | O #199 detectou `apps/api/src/server.ts` com `8.350` linhas contra o limite `8.335`; essa falha foi corrigida em `95227098`. O #198 anterior também falhou em múltiplos gates e não é transferido. Nenhum baseline ou threshold foi alterado. |
+| ci_run          | [CI #201](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35180698030) falhou em Repository Guards porque a identidade ainda apontava ao manifesto pré-correção; o próximo run será a primeira execução exata do snapshot reancorado. |
+| ci_failure      | O #200 detectou o SHA completo inválido no binding do manifesto; o #201 detectou a identidade stale após a correção. Ambos não são promovidos. Nenhum baseline ou threshold foi alterado. |
 | overall_score   | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `51`, abaixo do mínimo 97 |
 | critical_score  | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `49`, abaixo do mínimo 95 |
 | open_p0         | `NOT_EVALUATED` no gate R05-010; o último gate estrito histórico registrou `18`, acima do máximo 0 |
 | local_gate      | `FAIL/BLOCKED` no R05-010: cobertura crítica abaixo dos limiares e aplicabilidades Vue sem evidência aceita; `claim=NOT PROVEN`, `publication_allowed=false` |
 | implemented     | Paridade do contrato Patient; CORS credentialado restrito a origens permitidas; manifest crítico revision 56, ancorado em `95227098`, com thresholds inalterados e inventário Vitest reconciliado; workflow provisiona PostgreSQL 16, aceita somente o par V8 autenticado e publica a evidência SQL antes do checker; o JWT inicial só resolve contexto de roteamento e a guarda final mantém revalidação autoritativa, com erros genéricos sanitizados para 503; `server.ts` permanece no orçamento físico de `8.335` linhas; nenhum threshold foi alterado |
 | verified_local  | cobertura global `273/273` arquivos e `2907/2907` testes passou o threshold; lint, typecheck e API build passaram; API `618/618`; integração PostgreSQL `16/16`; contratos CI `20/20`; cobertura/processo e evidência SQL `34/34`; produtor SQL PostgreSQL 16.15 passou com `171` migrações e `7` históricos; k6 local `9/9` SLOs com CPU limitada e visual `29/29`; target externo permanece ausente |
-| verified_remote | O CI #199 do snapshot documental anterior já falhou no guard de complexidade e não é transferido; o novo candidato ainda precisa de execução exata. Target, recovery, UAT, attestation, governança de branch e autoridade de release seguem ausentes |
+| verified_remote | O CI #201 falhou no guard de identidade antes de representar o snapshot reancorado; o próximo candidato precisa de execução exata. Target, recovery, UAT, attestation, governança de branch e autoridade de release seguem ausentes |
 | verified_target | `NOT_PROVEN` |
 | blocked         | CI exato, target, restore/DR, UAT e autoridade humana continuam abertos; os thresholds gerais e snapshots permanecem sem promoção |
 | not_proven      | Qualquer claim de release Triple-A, score ≥97, critical ≥95, zero P0, `main_green` ou `TRIPLE-A VERIFIED` |
 
 ## Decisão
 
-O snapshot candidato `1bbdd63a4f53e39394d8aaee96fce067a1d2f735` foi reconciliado;
+O snapshot documental `e54a4374ce9bb597dc20abaab48cf0f248f4e0a4` foi reconciliado;
 o candidato funcional `95227098193966638102ccfe1e54842289ebe7f1` preserva a
 otimização autenticada e o fail-closed 503;
 o manifesto crítico foi reancorado na revisão 56, com o código funcional e os

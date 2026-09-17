@@ -1,5 +1,21 @@
 # Triple-A — Execution Log
 
+## 2026-09-17T04:15:25Z — reancoragem da identidade do manifesto
+
+- O CI [#200](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35178121309)
+  identificou que o manifesto crítico carregava um SHA completo inválido para o
+  commit `95227098`; a ancestralidade local correta é
+  `95227098193966638102ccfe1e54842289ebe7f1`.
+- A identidade do manifesto foi corrigida e validada localmente. O CI
+  [#201](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35180698030),
+  iniciado antes dessa reancoragem, falhou em `Repository Guards` porque a
+  identidade ainda apontava ao candidato anterior; nenhum resultado parcial é
+  promovido.
+- A identidade canônica foi regenerada no snapshot documental
+  `e54a4374ce9bb597dc20abaab48cf0f248f4e0a4`, mantendo o estado
+  `BLOCKED / NOT PROVEN`. O próximo CI exato deverá exercitar o manifesto válido;
+  thresholds, baselines visuais e evidências históricas não foram alterados.
+
 ## 2026-09-17T03:22:00Z — candidato `95227098` / orçamento de complexidade reconciliado
 
 - O CI [#199](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35176824096)

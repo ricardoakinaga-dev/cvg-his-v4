@@ -1,14 +1,14 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-17T03:22:00Z
+## Snapshot vigente — 2026-09-17T04:15:25Z
 
-O baseline autoritativo do snapshot atual está em: `1bbdd63a4f53e39394d8aaee96fce067a1d2f735` (manifesto crítico revision 56, com a correção funcional de fail-closed no commit `95227098`; a otimização de leitura autenticada permanece em `15ba86a8`).
+O baseline autoritativo do snapshot atual está em: `e54a4374ce9bb597dc20abaab48cf0f248f4e0a4` (snapshot documental reancorado após a correção da identidade do manifesto crítico revision 56; a correção funcional de fail-closed permanece no commit `95227098` e a otimização de leitura autenticada em `15ba86a8`).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). A
 documentação corrente sucede os candidatos históricos sem transferir evidência;
-o candidato `95227098` consolida a cobertura de contratos de pagamento, marketing,
+o candidato `e54a4374` consolida a cobertura de contratos de pagamento, marketing,
 laboratório, ML e limites operacionais, preservando o runner PostgreSQL 16, os
 checksums de migração e a aceitação restrita do par de inicializadores V8; a
 branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem

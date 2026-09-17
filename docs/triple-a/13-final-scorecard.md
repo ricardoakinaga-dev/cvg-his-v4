@@ -2,9 +2,9 @@
 
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT SNAPSHOT   | candidato `1bbdd63a4f53e39394d8aaee96fce067a1d2f735`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; correção funcional em `95227098` sobre a otimização `15ba86a8`; históricos não são transferidos |
-| MAIN / ORIGIN      | `main` contém o snapshot candidato `1bbdd63a` e sua documentação corrente; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral sem commits exclusivos, rollback preservado, sem force-push |
-| CURRENT CI         | [#199](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35176824096) já falhou em Repository Guards porque `server.ts` excedia o orçamento de complexidade; o resultado não é promovido e será substituído pelo CI do novo snapshot |
+| CURRENT SNAPSHOT   | candidato `e54a4374ce9bb597dc20abaab48cf0f248f4e0a4`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; correção funcional em `95227098` sobre a otimização `15ba86a8`; históricos não são transferidos |
+| MAIN / ORIGIN      | `main` contém o snapshot candidato `e54a4374` e sua documentação corrente; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral sem commits exclusivos, rollback preservado, sem force-push |
+| CURRENT CI         | [#201](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35180698030) falhou em Repository Guards porque a identidade ainda apontava ao manifesto pré-correção; o resultado não é promovido e será substituído pelo CI do snapshot reancorado |
 | LOCAL STRICT GATE  | cobertura global local `PASS` no threshold congelado; release/critical externo continuam `NOT_PROVEN`, `claim=NOT PROVEN`, `publication_allowed=false` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
 | LOCAL VALIDATION   | cobertura global `273/273` arquivos e `2.907/2.907` testes, `87,46/82,00/89,32/88,91%` (statements/branches/functions/lines), lint, typecheck, API build, API `618/618`, integração PostgreSQL `16/16`, contratos CI `20/20`, SQL `34/34`, produtor SQL `171` migrações, complexity `8.335` linhas, k6 local `9/9` SLOs e visual `29/29` passaram; manifesto revision 56 válido; target externo ausente |
@@ -22,8 +22,8 @@ erros genéricos do único carregamento autoritativo e mantém `server.ts` dentr
 orçamento físico congelado; a checagem criptográfica
 síncrona só fornece contexto de roteamento, e a guarda final permanece
 autoritativa. O CI #198 foi terminalmente reprovado e o #199 falhou no guard de
-complexidade; nenhum dos dois é evidência do novo candidato, que precisa de uma
-execução exata após o push.
+complexidade; nenhum dos dois é evidência do candidato documental `e54a4374`,
+que precisa de uma execução exata após o push da identidade reancorada.
 
 O score não é uma média permissiva: os gates externos ausentes e as falhas do CI
 remoto vinculadas ao reancoramento continuam bloqueando a certificação. Os thresholds não foram relaxados
@@ -39,7 +39,7 @@ em [`17-current-execution-evidence.md`](./17-current-execution-evidence.md).
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Problema           | Resumir qualidade por domínio sem esconder P0 ou converter ausência em PASS.                                                                                         |
 | Estado anterior    | Scorecards anteriores apontavam para SHAs e CIs já superados.                                                                                                        |
-| Decisão            | Reancorar o snapshot no candidato `1bbdd63a`, registrar a correção fail-closed `95227098` e aguardar CI terminal vinculado, mantendo `BLOCKED` sem relaxar SLOs ou provas externas. |
+| Decisão            | Reancorar o snapshot no candidato `e54a4374`, registrar a correção fail-closed `95227098` e aguardar CI terminal vinculado, mantendo `BLOCKED` sem relaxar SLOs ou provas externas. |
 | Implementação      | Fixtures k6 tenant-safe, companions obrigatórios de evidência, override explícito fail-closed e contexto JWT somente para roteamento antes da guarda autoritativa. |
 | Arquivos alterados | `benchmarks/k6/*`, `scripts/generate-triple-a-evidence-package.*`, `tests/unit/infra/performance-gate-contract.test.ts`, `.github/workflows/ci.yml`, docs correntes. |
 | Testes             | Gate local completo, API `618/618`, integração PostgreSQL `16/16`, typecheck/API build, seed idempotente, k6 local `9/9`, visual local `29/29`, suíte crítica local validada. |
