@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   API_FEATURE_FLAG_DEFINITIONS,
-  createApiFeatureFlags
+  createApiFeatureFlags,
+  resolveApiFeatureFlag
 } from '../../../apps/api/src/feature-flags.ts';
 import { createEnvFeatureFlagProvider } from '@cvg-his-v2/shared-feature-flags';
 
@@ -109,6 +110,57 @@ describe('api feature flags', () => {
 
     expect(flags.authWebauthnEnabled).toBe(true);
     expect(flags.enabledKeys).toContain('auth.webauthn.enabled');
+  });
+
+  it('fails closed with fresh metadata when a persisted WebAuthn decision has no metadata', async () => {
+    const databaseProviderFactory = vi.fn((fallbackProvider) => ({
+      name: 'database-repository',
+      async evaluate(definition, context) {
+        if (definition.key === 'auth.webauthn.enabled') {
+          return {
+            key: definition.key,
+            enabled: true,
+            reason: 'persisted_override',
+            provider: 'database-repository'
+          };
+        }
+        return fallbackProvider.evaluate(definition, context);
+      }
+    }));
+
+    const flags = await createApiFeatureFlags({
+      environment: 'production',
+      enabledKeys: [],
+      db: {} as never,
+      databaseProviderFactory
+    });
+
+    const decision = await flags.evaluate?.('auth.webauthn.enabled', {
+      environment: 'production'
+    });
+
+    expect(decision).toEqual(
+      expect.objectContaining({
+        enabled: false,
+        reason: 'verifier_not_ready',
+        metadata: expect.objectContaining({
+          failureMode: 'fail_closed',
+          requiredCapability: 'fido2_attestation_and_assertion_verifier'
+        })
+      })
+    );
+  });
+
+  it('falls back to the bootstrap snapshot when no request evaluator exists', async () => {
+    await expect(
+      resolveApiFeatureFlag(undefined, 'auth.oidc.enabled', { environment: 'production' }, true)
+    ).resolves.toBe(true);
+
+    const evaluator = vi.fn().mockResolvedValue({ enabled: false });
+    await expect(
+      resolveApiFeatureFlag(evaluator, 'auth.oidc.enabled', { environment: 'production' }, true)
+    ).resolves.toBe(false);
+    expect(evaluator).toHaveBeenCalledTimes(1);
   });
 
   it('maps multiple bootstrap rollouts into the snapshot booleans', async () => {

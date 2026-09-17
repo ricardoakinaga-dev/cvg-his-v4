@@ -13,7 +13,14 @@ const productTestFiles = [
   'packages/tenant-context/src/**/*.test.ts',
   'tests/unit/**/*.test.ts'
 ];
-const commonTestExcludes = ['**/node_modules/**', '**/dist/**', 'e2e/**'];
+const commonTestExcludes = [
+  '**/node_modules/**',
+  '**/dist/**',
+  'e2e/**',
+  // This package test is intentionally executed by Node's native test runner;
+  // keep it out of the browser-oriented global Vitest sweep.
+  'packages/modules/feature-flags/src/repositories/database-feature-flag.repository.test.ts'
+];
 const coverageSourceFiles = [
   'apps/api/src/**/*.ts',
   'packages/modules/*/src/**/*.ts',
