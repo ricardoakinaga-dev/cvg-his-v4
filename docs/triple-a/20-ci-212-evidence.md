@@ -42,6 +42,6 @@ O candidato seguinte adiciona `--disable-lcd-text` ao Chromium e registra como
 baseline exatamente os seis `actual.png` do artefato acima. Essa promoção é
 limitada à causa de rasterização demonstrada, não altera thresholds e não fecha
 nenhum P0. O commit local é
-`a4f2ef6705cebca552b07f20ebd3d596d5714079`; a árvore funcional equivalente foi
+`4c12b259578d68a7babe2db3674d85c919015289`; a árvore funcional equivalente foi
 publicada na `main` como `a4f2ef6705cebca552b07f20ebd3d596d5714079` e aguarda
 uma execução CI exata.

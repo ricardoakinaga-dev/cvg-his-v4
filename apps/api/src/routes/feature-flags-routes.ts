@@ -91,6 +91,16 @@ function validateStringArray(
   }
 }
 
+function validateUuidArray(value: unknown, field: string, correlationId: string): void {
+  validateStringArray(value, field, correlationId);
+  if (value !== undefined && (value as string[]).some((entry) => !UUID_PATTERN.test(entry))) {
+    throw new ValidationError(`Field '${field}' must contain only UUIDs`, {
+      correlationId,
+      field
+    });
+  }
+}
+
 function validateFlagDefinitionBody(
   value: unknown,
   correlationId: string,
@@ -154,10 +164,19 @@ function validateOverrideBody(value: unknown, correlationId: string): Record<str
       field: 'enabled'
     });
   }
-  for (const field of ['environment', 'accountIdOverride', 'userId']) {
+  for (const field of ['accountIdOverride', 'userId']) {
     if (body[field] !== undefined && typeof body[field] !== 'string') {
       throw new ValidationError(`Field '${field}' must be a string`, { correlationId, field });
     }
+  }
+  if (
+    body.environment !== undefined &&
+    (typeof body.environment !== 'string' || body.environment.trim().length === 0)
+  ) {
+    throw new ValidationError("Field 'environment' must be a non-empty string", {
+      correlationId,
+      field: 'environment'
+    });
   }
   if (
     body.accountIdOverride !== undefined &&
@@ -184,7 +203,7 @@ function validateOverrideBody(value: unknown, correlationId: string): Record<str
       field: 'percentage'
     });
   }
-  validateStringArray(body.allowedUsers, 'allowedUsers', correlationId);
+  validateUuidArray(body.allowedUsers, 'allowedUsers', correlationId);
   return body;
 }
 

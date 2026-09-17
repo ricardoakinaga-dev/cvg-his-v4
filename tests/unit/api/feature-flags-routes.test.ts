@@ -223,6 +223,32 @@ describe('feature-flags routes operational reports', () => {
       )
     ).rejects.toThrow("Field 'userId' must be a UUID");
     expect(handlers.featureFlagRepository.upsertOverride).not.toHaveBeenCalled();
+
+    await expect(
+      handleFeatureFlagsRoutes(
+        '/flags/runtime.distributed_state.enabled/overrides',
+        jsonRequest('POST', '/flags/runtime.distributed_state.enabled/overrides', {
+          enabled: true,
+          allowedUsers: ['not-a-uuid']
+        }) as never,
+        response as never,
+        'corr-invalid-allowlist',
+        handlers as never
+      )
+    ).rejects.toThrow("Field 'allowedUsers' must contain only UUIDs");
+
+    await expect(
+      handleFeatureFlagsRoutes(
+        '/flags/runtime.distributed_state.enabled/overrides',
+        jsonRequest('POST', '/flags/runtime.distributed_state.enabled/overrides', {
+          enabled: true,
+          environment: '   '
+        }) as never,
+        response as never,
+        'corr-invalid-environment',
+        handlers as never
+      )
+    ).rejects.toThrow("Field 'environment' must be a non-empty string");
   });
 
   it('preserves explicit false values in a valid flag write', async () => {

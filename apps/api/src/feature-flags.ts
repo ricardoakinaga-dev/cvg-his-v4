@@ -40,9 +40,10 @@ export const API_FEATURE_FLAG_DEFINITIONS: readonly FlagDefinition[] = [
   {
     key: 'runtime.distributed_state.enabled',
     owner: 'platform-runtime',
-    description: 'Controls rollout of distributed runtime state beyond the auth limiter.',
+    description:
+      'Controls the process-wide rollout of distributed runtime state beyond the auth limiter.',
     defaultValue: false,
-    scopes: ['environment', 'account'],
+    scopes: ['environment'],
     expiresAt: '2026-12-31T00:00:00.000Z',
     auditRequired: true,
     tags: ['runtime', 'redis', 'rollout']
@@ -149,6 +150,42 @@ export type ApiFeatureFlagEvaluator = (
   context: EvaluationContext
 ) => Promise<FlagDecision>;
 
+const PRODUCTION_LIKE_ENVIRONMENTS = new Set(['production', 'staging', 'prod', 'stage']);
+
+function isProductionLikeEnvironment(environment: string): boolean {
+  return PRODUCTION_LIKE_ENVIRONMENTS.has(environment.trim().toLowerCase());
+}
+
+function applyApiFeatureFlagSafetyPolicy(
+  key: ApiFeatureFlagKey,
+  decision: FlagDecision,
+  environment: string,
+  webauthnVerifierReady: boolean
+): FlagDecision {
+  // The current WebAuthn module stores credentials/challenges but does not yet
+  // perform complete FIDO2 attestation and assertion verification. Keep every
+  // production-like path fail-closed, including account-scoped evaluations.
+  if (
+    key === 'auth.webauthn.enabled' &&
+    isProductionLikeEnvironment(environment) &&
+    !webauthnVerifierReady &&
+    decision.enabled
+  ) {
+    return {
+      ...decision,
+      enabled: false,
+      reason: 'verifier_not_ready',
+      metadata: {
+        ...(decision.metadata ?? {}),
+        failureMode: 'fail_closed',
+        requiredCapability: 'fido2_attestation_and_assertion_verifier'
+      }
+    };
+  }
+
+  return decision;
+}
+
 export async function resolveApiFeatureFlag(
   evaluator: ApiFeatureFlagEvaluator | undefined,
   key: ApiFeatureFlagKey,
@@ -172,6 +209,8 @@ export async function createApiFeatureFlags(params: {
   readonly metrics?: FeatureFlagMetricsCollector;
   readonly accountId?: EvaluationContext['accountId'];
   readonly userId?: EvaluationContext['userId'];
+  /** Explicit capability declaration required before enabling WebAuthn outside local/test. */
+  readonly webauthnVerifierReady?: boolean;
   readonly databaseProviderFactory?: (
     fallbackProvider: FeatureFlagProvider,
     options: DatabaseFeatureFlagProviderOptions
@@ -207,11 +246,17 @@ export async function createApiFeatureFlags(params: {
   };
   const evaluate: ApiFeatureFlagEvaluator = async (key, evaluationContext) => {
     const definition = registry.require(key);
-    return provider.evaluate(definition, {
+    const decision = await provider.evaluate(definition, {
       ...evaluationContext,
       // The deployment environment is an authority boundary, not caller data.
       environment: params.environment
     });
+    return applyApiFeatureFlagSafetyPolicy(
+      key,
+      decision,
+      params.environment,
+      params.webauthnVerifierReady === true
+    );
   };
   const decisionEntries = await Promise.all(
     registry

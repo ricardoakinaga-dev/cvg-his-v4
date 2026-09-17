@@ -345,5 +345,21 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
         enabled: true
       })
     ).rejects.toThrow('userId must be a UUID');
+
+    queryMock.mockResolvedValueOnce({ rows: [{ id: 'flag_optional' }] });
+    await expect(
+      repository.upsertOverride('runtime.optional.flag', accountId as never, {
+        allowedUsers: ['not-a-uuid'],
+        enabled: true
+      })
+    ).rejects.toThrow('allowedUsers must be an array of UUIDs');
+
+    queryMock.mockResolvedValueOnce({ rows: [{ id: 'flag_optional' }] });
+    await expect(
+      repository.upsertOverride('runtime.optional.flag', accountId as never, {
+        environment: '   ',
+        enabled: true
+      })
+    ).rejects.toThrow('environment must be a non-empty string');
   });
 });

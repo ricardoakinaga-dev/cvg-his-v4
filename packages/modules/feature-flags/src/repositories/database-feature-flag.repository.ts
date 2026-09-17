@@ -182,6 +182,12 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
       if (flagResult.rows.length === 0) return;
 
       const flagId = flagResult.rows[0].id;
+      if (
+        override.environment !== undefined &&
+        (typeof override.environment !== 'string' || override.environment.trim().length === 0)
+      ) {
+        throw new Error('Feature flag override environment must be a non-empty string');
+      }
       if (override.accountIdOverride && !isUuid(String(override.accountIdOverride))) {
         throw new Error('Feature flag override accountIdOverride must be a UUID');
       }
@@ -191,9 +197,9 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
       if (
         override.allowedUsers !== undefined &&
         (!Array.isArray(override.allowedUsers) ||
-          override.allowedUsers.some((userId) => typeof userId !== 'string'))
+          override.allowedUsers.some((userId) => typeof userId !== 'string' || !isUuid(userId)))
       ) {
-        throw new Error('Feature flag override allowedUsers must be an array of strings');
+        throw new Error('Feature flag override allowedUsers must be an array of UUIDs');
       }
       if (typeof override.enabled !== 'boolean') {
         throw new Error('Feature flag override enabled must be a boolean');
@@ -315,10 +321,16 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
       throw new Error('Invalid feature flag override percentage in database');
     }
     const allowedUsers = readStringArray(row.allowed_users, 'allowed_users', true);
+    if (allowedUsers.some((userId) => !isUuid(userId))) {
+      throw new Error('Invalid feature flag override allowed_users in database: expected UUIDs');
+    }
     const environment =
       row.environment === null || row.environment === undefined
         ? undefined
         : readString(row.environment, 'override.environment');
+    if (environment !== undefined && environment.trim().length === 0) {
+      throw new Error('Invalid feature flag override environment in database');
+    }
     const accountIdOverride =
       row.account_id_override === null || row.account_id_override === undefined
         ? undefined
@@ -459,7 +471,10 @@ export function createDatabaseFeatureFlagProvider(
           reason: 'cache_hit',
           enabled: cached.decision.enabled
         });
-        return structuredClone(cached.decision);
+        return {
+          ...structuredClone(cached.decision),
+          context
+        };
       }
       if (cached) cache.delete(cacheKey);
       const evaluationGeneration = cacheGeneration;
@@ -489,9 +504,7 @@ function buildCacheKey(definition: FlagDefinition, context: EvaluationContext): 
     context.tenantId,
     context.accountId,
     context.userId,
-    context.attributes,
-    context.correlationId,
-    context.now?.toISOString()
+    context.attributes
   ]);
 }
 

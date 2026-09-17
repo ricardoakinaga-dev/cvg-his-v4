@@ -22,6 +22,8 @@ As invariantes são:
   avaliação;
 - uma falha de infraestrutura não pode habilitar uma decisão cujo kill switch
   persistido ficou desconhecido.
+- WebAuthn não pode ser habilitado em ambiente production-like sem o verificador
+  completo de attestation e assertion FIDO2 explicitamente declarado pronto;
 - um gate de request deve avaliar a conta e o usuário do principal
   autoritativo, não apenas o snapshot de bootstrap do processo;
 - um override nunca pode apontar para uma flag de outra conta, mesmo que um
@@ -41,9 +43,12 @@ As operações de banco exigem `accountId` UUID e usam `withTenantQueryExplicit`
 sem resolver silenciosamente a conta `default`.
 
 O cache continua local e bounded por TTL e capacidade, com o limite adicional de
-`expiresAt`, cópia defensiva das decisões, chave contextual completa e
-invalidação por flag. O wrapper de métricas propaga a invalidação para as rotas
-administrativas. Nenhum TTL de autorização ou cache de sessão foi introduzido.
+`expiresAt`, cópia defensiva das decisões, chave contextual completa para os
+atributos que alteram a decisão e invalidação por flag. Metadados de transporte
+(`correlationId` e `now`) não fragmentam o cache; em um cache hit, o contexto da
+decisão é reidratado com o request corrente. O wrapper de métricas propaga a
+invalidação para as rotas administrativas. Nenhum TTL de autorização ou cache de
+sessão foi introduzido.
 
 A persistência grava e atualiza o `enabled` autoritativo. Overrides usam um
 índice único PostgreSQL `NULLS NOT DISTINCT` sobre as dimensões da regra e
@@ -51,7 +56,7 @@ A persistência grava e atualiza o `enabled` autoritativo. Overrides usam um
 ou sobrescrevam a linha errada. A migração `0174` adiciona uma chave estrangeira
 composta `(flag_id, account_id) -> feature_flags(id, account_id)`, fechando a
 fronteira de ownership no banco; o repositório também repete o predicado de
-conta nas leituras e rejeita `userId` não-UUID antes de persistir.
+conta nas leituras e rejeita `userId`/`allowedUsers` não-UUID antes de persistir.
 
 O bootstrap expõe `evaluate(key, context)` como autoridade request-scoped. As
 rotas autenticadas passam o `accountId`/`userId` do principal após a autorização
@@ -60,9 +65,16 @@ ligações processuais. O callback de lembretes WhatsApp reavalia a conta do
 agendamento; flags de infraestrutura que controlam o processo permanecem
 explicitamente process-wide e não são apresentadas como rollout por conta.
 
+Como o módulo WebAuthn atual ainda não implementa a verificação FIDO2 completa,
+`createApiFeatureFlags` aplica uma política adicional fail-closed a
+`auth.webauthn.enabled` em `production`, `staging`, `prod` e `stage`. A flag só
+volta a ser elegível quando o bootstrap fornecer
+`webauthnVerifierReady: true` junto da implementação verificada.
+
 As rotas administrativas validam o JSON recebido antes de chamar o repositório:
 booleanos não são coagidos (`"false"` não vira `true`), escopos são enumerados,
-percentuais ficam entre 0 e 100 e identificadores direcionados devem ser UUID.
+percentuais ficam entre 0 e 100, ambientes não podem ser vazios e
+identificadores direcionados devem ser UUID.
 
 ## Alternativas rejeitadas
 
@@ -79,7 +91,7 @@ percentuais ficam entre 0 e 100 e identificadores direcionados devem ser UUID.
 O boundary foi coberto por testes de seleção de escopo, kill switch persistido,
 expiração com cache, allowlist default-deny, fallback de bootstrap, falha
 fail-closed, invalidação/limite de cache, cache sensível à definição,
-validação de payloads, avaliação request-scoped e persistência/upsert em
+validação de payloads, avaliação request-scoped, política WebAuthn fail-closed e persistência/upsert em
 `packages/modules/feature-flags/src/repositories/database-feature-flag.repository.test.ts`,
 `tests/unit/api/feature-flags.test.ts` e
 `tests/unit/api/feature-flags-routes.test.ts`. A FK `0174` também foi aplicada

@@ -19,17 +19,17 @@ const manifestPath = 'docs/engineering/critical-coverage-scope.json';
 const manifestBytes = readFileSync(resolve(root, manifestPath));
 const manifest = JSON.parse(manifestBytes);
 
-test('SQL scope distinguishes the 171 active runner files from all retained historical bytes', () => {
+test('SQL scope distinguishes the 173 active runner files from all retained historical bytes', () => {
   const migrations = discoverSqlMigrations(root);
   const artifacts = discoverSqlArtifacts(root);
   const scope = validateSqlManifest({ root, manifest });
 
-  assert.equal(migrations.length, 171);
-  assert.equal(artifacts.length, 178);
+  assert.equal(migrations.length, 173);
+  assert.equal(artifacts.length, 180);
   assert.equal(artifacts.filter((artifact) => artifact.kind === 'historical-sql-artifact').length, 7);
   assert.equal(scope.errors.length, 0, scope.errors.join('\n'));
-  assert.equal(scope.sqlScope.manifestSqlCount, 178);
-  assert.equal(scope.sqlScope.canonicalActiveCount, 171);
+  assert.equal(scope.sqlScope.manifestSqlCount, 180);
+  assert.equal(scope.sqlScope.canonicalActiveCount, 173);
   assert.deepEqual(
     scope.sqlScope.historicalArtifactPaths,
     [
@@ -48,7 +48,9 @@ test('SQL scope distinguishes the 171 active runner files from all retained hist
   assert.equal(manifest.specializedEvidence.sql.contractualMigrationCount, 169);
   assert.deepEqual(manifest.specializedEvidence.sql.forwardOnlyAdditions, [
     'packages/db/migrations/0171_outbox_event_envelope_backfill_correction.sql',
-    'packages/db/migrations/0172_outbox_event_envelope_full_validity_backfill.sql'
+    'packages/db/migrations/0172_outbox_event_envelope_full_validity_backfill.sql',
+    'packages/db/migrations/0173_feature_flag_override_scope_uniqueness.sql',
+    'packages/db/migrations/0174_feature_flag_override_tenant_ownership.sql'
   ]);
 });
 
@@ -60,7 +62,7 @@ test('consumer fails closed when the accepted SQL evidence artifact is absent', 
   });
   assert.equal(result.status, 'FAIL');
   assert.match(result.errors.join('\n'), /SQL evidence artifact/);
-  assert.equal(result.migrationCount, 171);
+  assert.equal(result.migrationCount, 173);
 });
 
 test('consumer rejects historical bytes mislabeled as executable evidence', () => {

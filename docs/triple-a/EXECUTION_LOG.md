@@ -18,7 +18,7 @@
   não há `main green`, e target, recovery, UAT, attestation, governança e
   autoridade de release continuam sem prova.
 
-## 2026-09-17T09:01:08Z — normalização visual do candidato `a4f2ef67`
+## 2026-09-17T09:01:08Z — normalização visual do candidato `4c12b259`
 
 - O CI [#212](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35198105802)
   terminou `failure` no `main@26176f7f`: os gates estruturais, críticos e
@@ -30,7 +30,7 @@
 - A inspeção dos seis pares expected/actual/diff do artefato
   `visual-regression-diffs` (`10487129596`) encontrou somente fringes de texto,
   sem divergência de layout ou conteúdo. O candidato local
-  `a4f2ef6705cebca552b07f20ebd3d596d5714079` adiciona `--disable-lcd-text` ao
+  `4c12b259578d68a7babe2db3674d85c919015289` adiciona `--disable-lcd-text` ao
   Chromium e promove exatamente os seis `actual.png` inspecionados como
   baselines versionados; a proveniência está em
   [`20-ci-212-evidence.md`](./20-ci-212-evidence.md).

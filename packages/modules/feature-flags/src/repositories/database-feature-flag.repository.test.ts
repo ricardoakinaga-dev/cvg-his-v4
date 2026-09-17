@@ -273,6 +273,41 @@ test('definition changes cannot reuse a cached decision', async () => {
   assert.equal(reads, 2);
 });
 
+test('reuses cached decisions across request correlation and clock metadata', async () => {
+  let reads = 0;
+  const provider = createDatabaseFeatureFlagProvider(FALLBACK, {
+    repository: {
+      async findByKey() {
+        reads += 1;
+        return { ...FLAG, defaultValue: true };
+      },
+      async listOverrides() {
+        return [];
+      }
+    },
+    cacheTtlMs: 60_000
+  });
+  const firstNow = new Date('2026-09-17T12:00:00.000Z');
+  const secondNow = new Date('2026-09-17T12:00:01.000Z');
+
+  await provider.evaluate(FLAG, {
+    accountId: 'account-1',
+    environment: 'production',
+    correlationId: 'request-1',
+    now: firstNow
+  });
+  const cached = await provider.evaluate(FLAG, {
+    accountId: 'account-1',
+    environment: 'production',
+    correlationId: 'request-2',
+    now: secondNow
+  });
+
+  assert.equal(reads, 1);
+  assert.equal(cached.context.correlationId, 'request-2');
+  assert.equal(cached.context.now?.toISOString(), secondNow.toISOString());
+});
+
 test('rejects invalid cache configuration before creating a provider', () => {
   assert.throws(
     () => createDatabaseFeatureFlagProvider(FALLBACK, { cacheTtlMs: Number.NaN }),

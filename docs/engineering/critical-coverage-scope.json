@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "ec6a8b730e7bbb9d5e56496f54fa58ceb9a8a503",
+  "head": "03e6fac0a2f726698b40adb351298610f9c1f88d",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -687,7 +687,7 @@
     },
     {
       "path": "apps/api/src/routes/feature-flags-routes.ts",
-      "sha256": "c34311993aa72cfd394f39a881b3134f2127a2112b9a0c98962f837b7249fcc8",
+      "sha256": "b87d71ce4c8c27eb4b3ffa71cbbfbc7b6e3a4ee03a06ed9d7df9951611922863",
       "components": [
         "http-routes"
       ],
@@ -3503,6 +3503,16 @@
       "review": null
     },
     {
+      "path": "packages/db/migrations/0174_feature_flag_override_tenant_ownership.sql",
+      "components": [
+        "roles-rls"
+      ],
+      "justification": "Executable SQL migration consumed by packages/db/src/migrate.ts and verified by PROD-011 SQL evidence.",
+      "review": null,
+      "sha256": "4b618258b4cef673d6534a5a61b72f9c62baa3a66902b7ff23b4dd4c03de3a75",
+      "applicability": "sql-migration-evidence"
+    },
+    {
       "path": "packages/db/src/access-control-seeds.ts",
       "sha256": "328ec971031a7c98789bce27eb4a37560782dc61f36043db15fb4d8debf94652",
       "components": [
@@ -4948,7 +4958,7 @@
     },
     {
       "path": "packages/modules/feature-flags/src/repositories/database-feature-flag.repository.ts",
-      "sha256": "3f668c421f5d4f023bb7d11b39cc577fc2ba3f1e2adb5e37711399903d5b5cb3",
+      "sha256": "362f7ccf3da0028fa6883e4fab111de0f1d3851b07a2a6099e112701e2df1342",
       "components": [
         "repositories"
       ],
@@ -11355,7 +11365,7 @@
     {
       "manifestRevision": 67,
       "observedAt": "2026-09-17T15:19:06.641Z",
-      "collectionCommit": "ec6a8b730e7bbb9d5e56496f54fa58ceb9a8a503",
+      "collectionCommit": "e4acaf40e399dd29f7c6ec51232dd0ecc92301b7",
       "previousManifestSha256": "274fb7f311af66b4c77666ec0df743fd4b715794de51ed8a0fd965b5c1bc86d8",
       "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-274fb7f311af66b4c77666ec0df743fd4b715794de51ed8a0fd965b5c1bc86d8.json",
       "previousSourceSetSha256": "34ce61512c194a575b93f51af31835a0e8fd1a1c9ad1c97177351a4ef8e1bf97",
@@ -11408,6 +11418,59 @@
           "path": "packages/modules/feature-flags/src/repositories/database-feature-flag.repository.ts",
           "before": "f5c594457d7a008ba70af80203a22b61b43ea69b80f3199796fce3390b0128de",
           "after": "3f668c421f5d4f023bb7d11b39cc577fc2ba3f1e2adb5e37711399903d5b5cb3"
+        }
+      ]
+    },
+    {
+      "manifestRevision": 68,
+      "observedAt": "2026-09-17T15:40:21.158Z",
+      "collectionCommit": "b247503db328ba93e5efd99b274f1730d01e1cc5",
+      "previousManifestSha256": "2aff12874c587ee16174bf9ca1179c3816068df782734313410fd9575d3a582d",
+      "preservedManifest": "artifacts/remediation/PROD-011/manifest-refresh/critical-scope-before-2aff12874c587ee16174bf9ca1179c3816068df782734313410fd9575d3a582d.json",
+      "previousSourceSetSha256": "22a0d5ec233c340b5d3f54ff9077e0cca36671f54c1429e62ec8a6ab1cf70985",
+      "sourceSetSha256": "c4544d0e34684c639873092339018c0e0f394083b2a2f8470f79112160ffeb0c",
+      "reason": "Reconcile PROD-011 SQL active runner inventory while retaining historical SQL bytes",
+      "added": [
+        "packages/db/migrations/0174_feature_flag_override_tenant_ownership.sql"
+      ],
+      "removed": [],
+      "changed": [],
+      "sqlScopeBefore": {
+        "manifestSqlCount": 179,
+        "rootSqlCount": 177,
+        "rootActiveCount": 172,
+        "rootHistoricalCount": 5,
+        "hiddenHistoricalCount": 2
+      },
+      "sqlScopeAfter": {
+        "manifestSqlCount": 180,
+        "canonicalActiveCount": 173,
+        "historicalArtifactCount": 7
+      },
+      "executionInputsAdded": [],
+      "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0"
+    },
+    {
+      "manifestRevision": 69,
+      "observedAt": "2026-09-17T15:54:54.970Z",
+      "collectionCommit": "03e6fac0a2f726698b40adb351298610f9c1f88d",
+      "previousManifestSha256": "ddf9bb40395210c1b71aaea221edd7ee619b4d8bb62c2c215934183221d1c98b",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-ddf9bb40395210c1b71aaea221edd7ee619b4d8bb62c2c215934183221d1c98b.json",
+      "previousSourceSetSha256": "c4544d0e34684c639873092339018c0e0f394083b2a2f8470f79112160ffeb0c",
+      "sourceSetSha256": "dc6ae49d56e0a8a4efb8a05a74bde857f39623604f966d1cfbaf7bf8a10a93e5",
+      "reason": "Close WebAuthn, override validation, cache identity and SQL evidence reconciliation",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/routes/feature-flags-routes.ts",
+          "before": "c34311993aa72cfd394f39a881b3134f2127a2112b9a0c98962f837b7249fcc8",
+          "after": "b87d71ce4c8c27eb4b3ffa71cbbfbc7b6e3a4ee03a06ed9d7df9951611922863"
+        },
+        {
+          "path": "packages/modules/feature-flags/src/repositories/database-feature-flag.repository.ts",
+          "before": "3f668c421f5d4f023bb7d11b39cc577fc2ba3f1e2adb5e37711399903d5b5cb3",
+          "after": "362f7ccf3da0028fa6883e4fab111de0f1d3851b07a2a6099e112701e2df1342"
         }
       ]
     }
@@ -12343,21 +12406,22 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 67,
-  "sourceSetSha256": "22a0d5ec233c340b5d3f54ff9077e0cca36671f54c1429e62ec8a6ab1cf70985",
+  "manifestRevision": 69,
+  "sourceSetSha256": "dc6ae49d56e0a8a4efb8a05a74bde857f39623604f966d1cfbaf7bf8a10a93e5",
   "executionInputsSha256": "7875400264379a0f3ce317e9690fced3a10e07dfde93dac677d5e905f83db9c0",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,
       "sourceDirectory": "packages/db/migrations",
-      "expectedMigrationCount": 172,
+      "expectedMigrationCount": 173,
       "contractualMigrationCount": 169,
       "forwardOnlyAdditions": [
         "packages/db/migrations/0171_outbox_event_envelope_backfill_correction.sql",
         "packages/db/migrations/0172_outbox_event_envelope_full_validity_backfill.sql",
-        "packages/db/migrations/0173_feature_flag_override_scope_uniqueness.sql"
+        "packages/db/migrations/0173_feature_flag_override_scope_uniqueness.sql",
+        "packages/db/migrations/0174_feature_flag_override_tenant_ownership.sql"
       ],
-      "expectedArtifactCount": 179,
+      "expectedArtifactCount": 180,
       "historicalArtifactCount": 7,
       "acceptedArtifactPath": "artifacts/remediation/PROD-011/sql-migration-evidence/accepted/evidence.json",
       "requiredPhases": [
@@ -12371,9 +12435,9 @@
       "verifierPath": "scripts/lib/sql-migration-evidence.mjs",
       "scopeReconciliation": {
         "previousObservedScope": {
-          "manifestSqlCount": 170,
-          "rootSqlCount": 168,
-          "rootActiveCount": 163,
+          "manifestSqlCount": 179,
+          "rootSqlCount": 177,
+          "rootActiveCount": 172,
           "rootHistoricalCount": 5,
           "hiddenHistoricalCount": 2
         },
@@ -12387,14 +12451,7 @@
           "packages/db/migrations/0017_fiscal_tables.seed.sql"
         ],
         "addedCanonicalActivePaths": [
-          "packages/db/migrations/0163_force_report_runtime_rls.sql",
-          "packages/db/migrations/0164_allow_billing_item_cascade_delete.sql",
-          "packages/db/migrations/0165_idempotency_actor_binding.sql",
-          "packages/db/migrations/0166_clinical_workflow_tasks.sql",
-          "packages/db/migrations/0167_clinical_workflow_permissions.sql",
-          "packages/db/migrations/0168_clinical_workflow_event_governance.sql",
-          "packages/db/migrations/0169_clinical_workflow_event_order.sql",
-          "packages/db/migrations/0170_outbox_event_envelope.sql"
+          "packages/db/migrations/0174_feature_flag_override_tenant_ownership.sql"
         ],
         "excludedFromRunner": "revert, seed, hidden drift and backup SQL remain byte-accountable historical artifacts"
       }

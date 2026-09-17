@@ -20,6 +20,10 @@ describe('api feature flags', () => {
       'ml.anomaly_detection.enabled',
       'ml.ocr_fiscal.enabled'
     ]);
+    expect(
+      API_FEATURE_FLAG_DEFINITIONS.find((flag) => flag.key === 'runtime.distributed_state.enabled')
+        ?.scopes
+    ).toEqual(['environment']);
   });
 
   it('enables only explicit bootstrap flags by default', async () => {
@@ -69,6 +73,42 @@ describe('api feature flags', () => {
     expect(decision.enabled).toBe(true);
     expect(decision.reason).toBe('bootstrap');
     expect(decision.provider).toBe('env-bootstrap');
+  });
+
+  it('fails closed for WebAuthn in production-like environments without a complete verifier', async () => {
+    const flags = await createApiFeatureFlags({
+      environment: 'production',
+      enabledKeys: ['auth.webauthn.enabled']
+    });
+
+    expect(flags.authWebauthnEnabled).toBe(false);
+    expect(flags.enabledKeys).not.toContain('auth.webauthn.enabled');
+    const decision = await flags.evaluate?.('auth.webauthn.enabled', {
+      environment: 'staging',
+      accountId: '00000000-0000-4000-8000-0000000000aa',
+      userId: '00000000-0000-4000-8000-0000000000ab'
+    });
+    expect(decision).toEqual(
+      expect.objectContaining({
+        enabled: false,
+        reason: 'verifier_not_ready',
+        metadata: expect.objectContaining({
+          failureMode: 'fail_closed',
+          requiredCapability: 'fido2_attestation_and_assertion_verifier'
+        })
+      })
+    );
+  });
+
+  it('allows WebAuthn only when the complete verifier capability is explicitly declared', async () => {
+    const flags = await createApiFeatureFlags({
+      environment: 'production',
+      enabledKeys: ['auth.webauthn.enabled'],
+      webauthnVerifierReady: true
+    });
+
+    expect(flags.authWebauthnEnabled).toBe(true);
+    expect(flags.enabledKeys).toContain('auth.webauthn.enabled');
   });
 
   it('maps multiple bootstrap rollouts into the snapshot booleans', async () => {
@@ -123,7 +163,7 @@ describe('api feature flags', () => {
       name: 'database-repository',
       async evaluate(definition, context) {
         if (
-          definition.key === 'runtime.distributed_state.enabled' &&
+          definition.key === 'fiscal.backoffice.enabled' &&
           context.accountId === accountId &&
           context.environment === 'production'
         ) {
@@ -153,9 +193,9 @@ describe('api feature flags', () => {
     );
     expect(flags.providerName).toBe('database-repository-with-rules');
     expect(flags.authOidcEnabled).toBe(true);
-    expect(flags.runtimeDistributedStateEnabled).toBe(true);
+    expect(flags.fiscalBackofficeEnabled).toBe(true);
     expect(flags.enabledKeys).toEqual(
-      expect.arrayContaining(['auth.oidc.enabled', 'runtime.distributed_state.enabled'])
+      expect.arrayContaining(['auth.oidc.enabled', 'fiscal.backoffice.enabled'])
     );
   });
 
@@ -168,7 +208,7 @@ describe('api feature flags', () => {
         databaseEvaluate(definition, context);
         const fallback = await fallbackProvider.evaluate(definition, context);
         if (
-          definition.key === 'runtime.distributed_state.enabled' &&
+          definition.key === 'fiscal.backoffice.enabled' &&
           context.accountId === accountId &&
           context.environment === 'production'
         ) {
@@ -191,7 +231,7 @@ describe('api feature flags', () => {
       databaseProviderFactory
     });
 
-    const decision = await flags.evaluate?.('runtime.distributed_state.enabled', {
+    const decision = await flags.evaluate?.('fiscal.backoffice.enabled', {
       environment: 'staging',
       accountId,
       userId: '00000000-0000-4000-8000-0000000000ab'
@@ -199,7 +239,7 @@ describe('api feature flags', () => {
 
     expect(decision?.enabled).toBe(true);
     expect(databaseEvaluate).toHaveBeenLastCalledWith(
-      expect.objectContaining({ key: 'runtime.distributed_state.enabled' }),
+      expect.objectContaining({ key: 'fiscal.backoffice.enabled' }),
       expect.objectContaining({
         environment: 'production',
         accountId,
