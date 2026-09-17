@@ -3,8 +3,8 @@
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | CURRENT SNAPSHOT   | candidato `33c178c0b87ad708c4ac66366bbbfed2cfb798f2`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; históricos não são transferidos |
-| MAIN / ORIGIN      | `main@33c178c0`; `origin/fix/state-of-art-ci-assurance@fe5406c2` ancestral sem commits exclusivos, rollback preservado, sem force-push |
-| CURRENT CI         | O candidato `33c178c0` aguarda CI próprio; os #191/#192 dos ancestrais terminaram `failure` com Critical Coverage Gate `PASS` e falhas gerais |
+| MAIN / ORIGIN      | `main@3a87663f`; `origin/fix/state-of-art-ci-assurance@fe5406c2` ancestral sem commits exclusivos, rollback preservado, sem force-push |
+| CURRENT CI         | [#196](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35164769380) no snapshot `3a87663f` terminou `failure` com `14/17` jobs verdes; Critical Coverage `PASS`, E2E SPA/Performance/Visual `FAIL` |
 | LOCAL STRICT GATE  | cobertura global local `PASS` no threshold congelado; release/critical externo continuam `NOT_PROVEN`, `claim=NOT PROVEN`, `publication_allowed=false` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
 | LOCAL VALIDATION   | cobertura global `273/273` arquivos e `2.907/2.907` testes, `87,46/82,00/89,32/88,91%` (statements/branches/functions/lines), lint, typecheck, contratos CI `20/20`, SQL `34/34`, produtor SQL `171` migrações e conversão V8 real passaram; manifesto revision 52 válido; target externo ausente |
@@ -12,10 +12,11 @@
 | CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; CI terminal, target e autoridade externa continuam sem prova                                                                                                                                                        |
 
 O snapshot corrente preserva a régua congelada e reancora o manifesto crítico
-na revisão 51. O CI #190 detectou a rejeição de inicializadores V8 legítimos do
+na revisão 52. O CI #190 detectou a rejeição de inicializadores V8 legítimos do
 Node 22 e a ausência do produtor SQL; os CI #191/#192 confirmaram a correção no
-Critical Coverage Gate dos ancestrais, mas a alteração do teste ML inaugura um
-novo candidato sem evidência remota própria.
+Critical Coverage Gate dos ancestrais. O CI #196 confirmou o Critical Coverage
+Gate no snapshot atual, mas terminou com falhas em E2E SPA, Performance/k6 e
+Visual Regression.
 
 O score não é uma média permissiva: os gates externos ausentes e as falhas do CI
 remoto vinculadas ao reancoramento continuam bloqueando a certificação. Os thresholds não foram relaxados

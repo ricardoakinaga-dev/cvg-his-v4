@@ -10,13 +10,13 @@
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
 **Current snapshot:** `33c178c0b87ad708c4ac66366bbbfed2cfb798f2` (manifesto crítico revision 52, workflow com Chromium, runner privado PostgreSQL 16, par V8 autenticado, produtor SQL e cobertura global local acima do threshold; provas externas e autoridade de release continuam `NOT PROVEN`).
-**Current CI:** o candidato `33c178c0` aguarda CI próprio; os #191/#192 dos ancestrais terminaram `failure` com Critical Coverage Gate `PASS` e falhas em Coverage geral, k6, E2E e Visual Regression.
+**Current CI:** o [#196](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35164769380), no snapshot `3a87663f`, terminou `failure` com `14/17` jobs verdes. Critical Coverage passou; E2E SPA, Performance/k6 e Visual Regression falharam.
 **Current status:** **BLOCKED / NOT PROVEN**
 **Observation:** 2026-09-16T23:37:42Z
 
-**Current local execution:** cobertura global `273/273` arquivos e `2907/2907` testes, com `3` skips esperados; statements `87,46%`, branches `82,00%`, functions `89,32%`, lines `88,91%`; lint e typecheck completos passaram. O runner privado PostgreSQL 16.15 repetiu as `171` migrações e o seed em duas rodadas. A evidência Vue especializada foi aceita no Critical Coverage Gate dos ancestrais #191/#192; target, recovery, UAT e autoridade continuam sem prova aceita. A validação local não substitui CI pinned, target ou UAT.
+**Current local execution:** cobertura global `273/273` arquivos e `2907/2907` testes, com `3` skips esperados; statements `87,46%`, branches `82,00%`, functions `89,32%`, lines `88,91%`; lint e typecheck completos passaram. O runner privado PostgreSQL 16.15 repetiu as `171` migrações e o seed em duas rodadas. O Critical Coverage Gate do candidato passou no #196; target, recovery, UAT e autoridade continuam sem prova aceita. A validação local não substitui CI pinned, target ou UAT.
 
-**Current critical gate:** `NOT_PROVEN` para o candidato `33c178c0` até CI próprio com os cinco shards, SQL e Vue contra o manifesto revision 52. Os ancestrais #191/#192 passaram esse gate, mas sua evidência não é transferida. O gate agregado local/Triple-A permanece `BLOCKED / NOT PROVEN` e `publication_allowed=false`.
+**Current critical gate:** `PASS` no CI #196 para o snapshot `3a87663f`, com os cinco shards, SQL e Vue contra o manifesto revision 52. Isso não promove o gate agregado: E2E SPA, Performance/k6 e Visual Regression falharam, e target, recovery, UAT, attestation e autoridade permanecem sem prova. O gate agregado local/Triple-A permanece `BLOCKED / NOT PROVEN` e `publication_allowed=false`.
 
 **Current candidate implementation delta:** o workflow de coverage usa
 um índice APT isolado dos archives oficiais assinados do Ubuntu 22.04, pois o

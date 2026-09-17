@@ -5,13 +5,13 @@
   "assurance_sha": "33c178c0b87ad708c4ac66366bbbfed2cfb798f2",
   "documentation_sha": "33c178c0b87ad708c4ac66366bbbfed2cfb798f2",
   "head_sha": "33c178c0b87ad708c4ac66366bbbfed2cfb798f2",
-  "origin_main_sha": "cbab9bc9f0d3d3c7f32efe50cc7f8e6fa7486d08",
+  "origin_main_sha": "3a87663f5c1cab136230f7f29b5df46b03963225",
   "ci_sha": null,
   "release_sha": null,
   "merge_sha": "33c178c0b87ad708c4ac66366bbbfed2cfb798f2",
   "status": "BLOCKED / NOT PROVEN",
   "release_state": "BLOCKED / NOT PROVEN",
-  "ci_status": "NOT_FOUND",
+  "ci_status": "FAILURE",
   "quality_bar": "docs/triple-a/QUALITY_BAR_V1.json",
   "quality_bar_sha256": "26ff154d84ce80036b28886325b8d8462883e3b830282f2cf884394054b5c0e4",
   "prompt_source": "docs/triple-a/MASTER_PROMPT.md",
@@ -21,7 +21,7 @@
   "generated_at": "2026-09-16T23:56:23.647Z",
   "generated_by": "scripts/generate-current-candidate-identity.mjs",
   "limitations": [
-    "Exact-candidate remote CI is not available at generation time.",
+    "Exact-candidate remote CI #196 terminated with failure in E2E SPA, Performance/k6 and Visual Regression; no passing CI envelope is promoted.",
     "Target, UAT, recovery, attestation, branch governance and release authority remain unproven.",
     "Documentation-only commits after head_sha are allowed; source changes require regeneration."
   ]

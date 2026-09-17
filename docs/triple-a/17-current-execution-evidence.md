@@ -12,11 +12,11 @@
 
 | Escopo                 | Resultado                                                                                                                                                                                                                                                                                                                                                                     |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate crítico R05-010   | `NOT_PROVEN` no candidato `33c178c0` até novo CI; #191/#192 passaram nos ancestrais, com thresholds e escopo inalterados |
+| Gate crítico R05-010   | `PASS` no CI #196 para o snapshot `3a87663f`; cinco shards, SQL, Vue e manifesto revision 52 foram aceitos |
 | Workspace              | Cobertura global `273/273` arquivos e `2907/2907` testes passou; `87,46%` statements, `82,00%` branches, `89,32%` functions, `88,91%` lines; lint, typecheck, contratos CI `20/20`, cobertura/processo e SQL `34/34` passaram |
 | Identidade/evidence graph | Identidade canônica do candidato `33c178c0`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` até evidência terminal e autoridade externa |
-| Coverage crítico current | A cobertura geral local passou o threshold congelado; CI próprio do candidato ainda é necessário |
-| Vue especializado current | O produtor e o checker passaram nos ancestrais #191/#192; o candidato `33c178c0` ainda precisa de evidência própria |
+| Coverage crítico current | O CI #196 passou o gate crítico; a cobertura geral local e remota passaram o threshold congelado |
+| Vue especializado current | O produtor e o checker passaram no CI #196 contra o manifesto revision 52 |
 | SQL/migrações current  | PostgreSQL 16.15 privado socket-only; produtor independente PASS com `171` migrações executáveis + `7` históricos; cadeia completa e seed repetível |
 | Performance/target     | Sem certificação do candidato; k6/target/soak/restore/UAT/attestation permanecem `NOT_PROVEN` |
 | Supply/artefatos       | O graph e o pacote local são gerados fail-closed; nenhum PASS externo ou histórico foi inventado |
@@ -27,7 +27,7 @@ protection ou autoridade de release.
 
 ## CI remoto e reancoragem
 
-Os CI [#191](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35144297381) e #192, nos ancestrais documental/funcional, terminaram `failure` com `13/17` jobs verdes. O Critical Coverage Gate passou, incluindo processo crítico, Vue especializado, SQL (`171` migrações ativas e `7` históricos) e R05-010. Coverage geral falhou no contrato PostgreSQL de ML em `:5433`; k6 perdeu 3/9 SLOs; E2E e Visual Regression registraram 29 divergências de snapshot. O candidato `33c178c0` corrige a classificação desse contrato, fecha o threshold geral local e reconcilia o inventário Vitest; aguarda CI próprio; nenhum threshold, baseline ou resultado histórico é promovido.
+O CI [#196](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35164769380), no snapshot `3a87663f` que contém o candidato funcional `33c178c0`, terminou `failure` com `14/17` jobs verdes. O Critical Coverage Gate passou, incluindo processo crítico, Vue especializado, SQL (`171` migrações ativas e `7` históricos) e R05-010; Coverage geral, Repository Guards, Unit, Integration, API, Build e segurança também passaram. E2E SPA registrou `395 passed` e `29` falhas de screenshot, com validador de usabilidade inválido; Performance passou `8/9` SLOs e falhou em `query_latency_ms.p95` (`172ms` contra `150ms`); Visual Regression registrou `29` divergências. Nenhum threshold, baseline ou resultado histórico é promovido.
 
 O [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106), executado no `main@6b7c1cec`, terminou `failure`. Repository Guards, API Contract, Integration e Windows passaram junto com os checks de segurança, typecheck, lint, OpenAPI e build; Critical Coverage, Coverage, Unit Tests, Performance/k6, Visual Regression e E2E SPA falharam. O E2E remoto falhou na etapa principal e na validação de usabilidade, embora a API clínica canônica tenha passado; o gate local explícito do candidato retornou `51/49/18` e bloqueou publicação; nenhum resultado histórico ou parcial é promovido.
 

@@ -1,5 +1,19 @@
 # Triple-A — Execution Log
 
+## 2026-09-17T00:36:05Z — CI terminal do candidato `3a87663f`
+
+- O [CI #196](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35164769380), no snapshot documental `3a87663f` sobre o candidato funcional `33c178c0`, terminou `failure` com `14/17` jobs verdes.
+- O Critical Coverage Gate passou com os cinco shards, SQL, Vue e manifesto
+  revision 52; também passaram segurança, typecheck, lint, OpenAPI, Coverage,
+  Repository Guards, Build, Unit, Integration, Windows e API Contract.
+- E2E SPA terminou com `395 passed` e `29` falhas de screenshot, além de
+  evidência de usabilidade inválida; Performance passou `8/9` SLOs e falhou em
+  `query_latency_ms.p95` (`172ms` contra `150ms`); Visual Regression registrou
+  `29` divergências de snapshot.
+- O resultado confirma `BLOCKED / NOT PROVEN`: nenhuma baseline visual,
+  performance ou evidência histórica foi promovida. Target, recovery, UAT,
+  attestation, governança e autoridade de release continuam sem prova.
+
 ## 2026-09-16T23:57:01Z — reconciliação do inventário Vitest no candidato `33c178c0`
 
 - O CI #195 do snapshot documental anterior identificou uma inconsistência no

@@ -14,20 +14,20 @@ fotografia não promove evidência histórica nem altera thresholds.
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | current_sha     | `33c178c0b87ad708c4ac66366bbbfed2cfb798f2` (candidato funcional; documentação de reconciliação posterior é somente documental) |
-| main_sha        | `main@33c178c0`; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral, sem commits exclusivos; rollback preservado |
+| main_sha        | `main@3a87663f`; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral, sem commits exclusivos; rollback preservado |
 | worktree        | Limpo após os commits de coverage, manifesto e identidade; artefatos em `artifacts/` permanecem ignorados |
 | rollback        | `origin/fix/state-of-art-ci-assurance@fe5406c2`; sem force-push |
-| ci_run          | O CI do candidato `33c178c0` ainda aguarda execução terminal; os #191/#192 são evidência de ancestrais e não são transferidos. |
-| ci_failure      | Nos ancestrais, Coverage falhou por conexão do contrato ML em `:5433`; k6 perdeu 3/9 SLOs; E2E/Visual falharam em 29 snapshots divergentes. Nenhum baseline ou threshold foi alterado. |
+| ci_run          | [CI #196](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35164769380), no snapshot documental `3a87663f`, terminou `failure` com `14/17` jobs verdes; o Critical Coverage Gate passou. |
+| ci_failure      | E2E SPA registrou `395 passed` e `29` falhas de screenshot, além de evidência de usabilidade inválida; Performance passou `8/9` SLOs e perdeu `query_latency_ms.p95` (`172ms` contra `150ms`); Visual repetiu `29` divergências. Nenhum baseline ou threshold foi alterado. |
 | overall_score   | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `51`, abaixo do mínimo 97 |
 | critical_score  | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `49`, abaixo do mínimo 95 |
 | open_p0         | `NOT_EVALUATED` no gate R05-010; o último gate estrito histórico registrou `18`, acima do máximo 0 |
 | local_gate      | `FAIL/BLOCKED` no R05-010: cobertura crítica abaixo dos limiares e aplicabilidades Vue sem evidência aceita; `claim=NOT PROVEN`, `publication_allowed=false` |
 | implemented     | Paridade do contrato Patient; CORS credentialado restrito a origens permitidas; manifest crítico revision 52, ancorado em `33c178c0`, com source set e thresholds inalterados e inventário Vitest reconciliado; workflow provisiona PostgreSQL 16, aceita somente o par V8 autenticado e publica a evidência SQL antes do checker; nenhum threshold foi alterado |
 | verified_local  | cobertura global `273/273` arquivos e `2907/2907` testes passou o threshold; lint e typecheck passaram; contratos CI `20/20`; cobertura/processo e evidência SQL `34/34`; produtor SQL PostgreSQL 16.15 passou com `171` migrações e `7` históricos; target externo permanece ausente |
-| verified_remote | `NOT_PROVEN` para o candidato `33c178c0` até novo CI; #191/#192 provaram o gate crítico apenas nos ancestrais. Target, recovery, UAT, attestation, governança de branch e autoridade de release seguem ausentes |
+| verified_remote | Critical Coverage `PASS` no #196; verificação remota integral `NOT_PROVEN` porque E2E SPA, Performance/k6 e Visual Regression falharam. Target, recovery, UAT, attestation, governança de branch e autoridade de release seguem ausentes |
 | verified_target | `NOT_PROVEN` |
-| blocked         | Novo CI do candidato, target, restore/DR, performance certificada, UAT e autoridade humana continuam abertos; os thresholds gerais e snapshots permanecem sem promoção |
+| blocked         | E2E/visual/performance, target, restore/DR, UAT e autoridade humana continuam abertos; os thresholds gerais e snapshots permanecem sem promoção |
 | not_proven      | Qualquer claim de release Triple-A, score ≥97, critical ≥95, zero P0, `main_green` ou `TRIPLE-A VERIFIED` |
 
 ## Decisão
@@ -38,8 +38,8 @@ thresholds preservados. `origin/fix/state-of-art-ci-assurance` já era ancestral
 não possuía mudanças exclusivas, portanto nenhum merge seletivo adicional foi
 necessário. A validação local passou os contratos alterados, o produtor SQL
 com PostgreSQL 16 e a conversão do artifact real com os inicializadores V8; a
-recoleta crítica/Vue passou no Critical Coverage Gate dos ancestrais #191/#192, mas
-o novo candidato ainda precisa de CI próprio. A `main` permanece bloqueada para Green Main
+recoleta crítica/Vue passou no Critical Coverage Gate do #196, mas E2E SPA,
+Performance/k6 e Visual Regression falharam. A `main` permanece bloqueada para Green Main
 sem relaxar thresholds; target, recovery, attestation, UAT, governança e
 autoridade continuam bloqueados. Não há declaração de release ou
 `TRIPLE-A VERIFIED`.
