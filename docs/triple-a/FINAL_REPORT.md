@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `e54a4374ce9bb597dc20abaab48cf0f248f4e0a4`
-(snapshot reancorado com a correção fail-closed e de complexidade no commit `95227098`, sobre a otimização `15ba86a8`; manifesto crítico revision 56; a branch de assurance é ancestral sem commits exclusivos; a cobertura global local passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas, k6 local `9/9` SLOs e visual local `29/29` também passaram; o CI #201 falhou no Repository Guards por identidade stale e não é transferido)
+**Candidate funcional avaliado:** `fa87747596ee36a604b000b5d452176781f3c08b`
+(snapshot reancorado com o registro P0 candidate-bound e a correção fail-closed e de complexidade no commit `95227098`, sobre a otimização `15ba86a8`; manifesto crítico revision 57; a branch de assurance é ancestral sem commits exclusivos; a cobertura global local passou `273/273` arquivos e `2907/2907` testes com `82,00%` branches; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas, k6 local `9/9` SLOs e visual local `29/29` também passaram; o CI #202 foi superseded e não é transferido)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -11,7 +11,7 @@ O candidato preserva o modular monolith e a reconciliação fail-closed de
 proveniência. A paridade de Patient e o CORS credentialado restrito foram
 validados. No candidato corrente, os contratos alterados passaram, o produtor SQL
 passou com PostgreSQL 16.15 e a conversão V8 do processo aceita somente o par
-autenticado de inicializadores; o manifesto crítico está na revisão 56 e o
+autenticado de inicializadores; o manifesto crítico está na revisão 57 e o
 workflow publica evidência SQL antes do checker. A evidência crítica/Vue foi aceita no
 Critical Coverage Gate do #196 anterior, mas E2E SPA, Performance/k6 e Visual Regression falharam; não há target, recovery,
 attestation, UAT, governança, performance certificada ou autoridade de release.
@@ -29,12 +29,12 @@ k6 local limitado a quatro CPUs passou `9/9` SLOs e a suíte visual local passou
 `29/29`; isso não substitui CI terminal, target, recovery, UAT, attestation ou
 autoridade de release.
 
-## Atualização corrente — revisão 56 / snapshot `e54a4374`
+## Atualização corrente — revisão 57 / snapshot `fa877475`
 
-O manifest crítico revision 56 foi reancorado no commit de correção fail-closed e
+O manifest crítico revision 57 foi reancorado no commit de fonte `e69b4484` e
 complexidade, sem mudança de
 thresholds, fontes ou aplicabilidade funcional; o snapshot corrente é
-`e54a4374ce9bb597dc20abaab48cf0f248f4e0a4`, com implementação funcional em
+`fa87747596ee36a604b000b5d452176781f3c08b`, com implementação funcional em
 `95227098193966638102ccfe1e54842289ebe7f1`, sobre `15ba86a883a4283c5bf86c5825bf7d9a6ca5d089`. O runner crítico preserva o SQL histórico,
 usa PostgreSQL 16 e trata os inicializadores V8 do Node 22 sem fundir identidades.
 O produtor SQL agora é executado e publicado antes do checker. Os produtores atuais são identificados na
@@ -52,10 +52,16 @@ nenhum dos dois é transferido; o #201 falhou no guard de identidade antes de
 representar o snapshot reancorado; o novo CI exato aguarda execução. O candidato permanece
 **BLOCKED / NOT PROVEN**.
 
-O CI #201 falhou em Repository Guards porque a identidade ainda apontava ao
-manifesto pré-correção. A correção do manifesto e a identidade foram validadas
-localmente, não relaxam nenhum guard, threshold ou baseline; o novo CI será
-executado após o push do snapshot `e54a4374` reancorado.
+O CI #202 foi superseded durante a reancoragem e não é promovido. A correção do
+manifesto, o registro P0 e a identidade foram validados localmente, não relaxam
+nenhum guard, threshold ou baseline; o novo CI será executado após o push do
+snapshot `fa877475` reancorado.
+
+O registro [`P0_REGISTRY.json`](./P0_REGISTRY.json) contabiliza 14 itens, com 1
+fechado por evidência local fresca e 13 abertos por dependerem de CI remoto,
+infraestrutura alvo, operação autorizada ou decisão humana. A regra é
+fail-closed: ausência de evidência não vira `PASS`, e o status legado `DONE` é
+inválido.
 
 ## Atualização terminal — isolamento da prova clínica
 

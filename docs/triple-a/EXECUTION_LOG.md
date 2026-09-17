@@ -1,5 +1,22 @@
 # Triple-A — Execution Log
 
+## 2026-09-17T04:38:38Z — registro P0 candidate-bound
+
+- O commit `e69b44845d6cea670b874272d9d1bf718d957be4` adicionou o registro
+  canônico [`P0_REGISTRY.json`](./P0_REGISTRY.json), com 14 itens, deduplicação
+  por `dedupe_key`, dependências acíclicas, classificação de execução e
+  fechamento apenas com evidência fresca vinculada ao candidato.
+- O validador `scripts/validate-p0-registry.mjs` rejeita `DONE`, ciclos,
+  duplicidades e evidências não candidate-bound; `pnpm validate:p0-registry`,
+  seus 3 testes e o contrato de CI passaram localmente. O validador também foi
+  integrado ao `repository-guards` e ao `release:triple-a`.
+- O manifesto crítico foi reancorado na revisão 57 no commit
+  `fa87747596ee36a604b000b5d452176781f3c08b`; a identidade canônica aponta ao
+  mesmo SHA. O CI #202 foi superseded pela nova reancoragem e não é promovido.
+- Estado corrente: **BLOCKED / NOT PROVEN**. O registro mantém `1 CLOSED` e
+  `13` P0 abertos; CI remoto exato, target, recovery, UAT e autoridade humana
+  ainda não foram provados.
+
 ## 2026-09-17T04:15:25Z — reancoragem da identidade do manifesto
 
 - O CI [#200](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35178121309)

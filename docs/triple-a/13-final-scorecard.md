@@ -2,17 +2,18 @@
 
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT SNAPSHOT   | candidato `e54a4374ce9bb597dc20abaab48cf0f248f4e0a4`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; correção funcional em `95227098` sobre a otimização `15ba86a8`; históricos não são transferidos |
-| MAIN / ORIGIN      | `main` contém o snapshot candidato `e54a4374` e sua documentação corrente; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral sem commits exclusivos, rollback preservado, sem force-push |
-| CURRENT CI         | [#201](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35180698030) falhou em Repository Guards porque a identidade ainda apontava ao manifesto pré-correção; o resultado não é promovido e será substituído pelo CI do snapshot reancorado |
+| CURRENT SNAPSHOT   | candidato `fa87747596ee36a604b000b5d452176781f3c08b`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; registro P0 candidate-bound; correção funcional em `95227098` sobre a otimização `15ba86a8`; históricos não são transferidos |
+| MAIN / ORIGIN      | `main` contém o snapshot candidato `fa877475` e sua documentação corrente; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral sem commits exclusivos, rollback preservado, sem force-push |
+| CURRENT CI         | O CI #202 foi superseded durante a reancoragem; o próximo run será a primeira execução exata do snapshot `fa877475` com o registro P0 integrado |
 | LOCAL STRICT GATE  | cobertura global local `PASS` no threshold congelado; release/critical externo continuam `NOT_PROVEN`, `claim=NOT PROVEN`, `publication_allowed=false` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
-| LOCAL VALIDATION   | cobertura global `273/273` arquivos e `2.907/2.907` testes, `87,46/82,00/89,32/88,91%` (statements/branches/functions/lines), lint, typecheck, API build, API `618/618`, integração PostgreSQL `16/16`, contratos CI `20/20`, SQL `34/34`, produtor SQL `171` migrações, complexity `8.335` linhas, k6 local `9/9` SLOs e visual `29/29` passaram; manifesto revision 56 válido; target externo ausente |
+| LOCAL VALIDATION   | cobertura global `273/273` arquivos e `2.907/2.907` testes, `87,46/82,00/89,32/88,91%` (statements/branches/functions/lines), lint, typecheck, API build, API `618/618`, integração PostgreSQL `16/16`, contratos CI `20/20`, registro P0 `14` itens com `3/3` testes, SQL `34/34`, produtor SQL `171` migrações, complexity `8.335` linhas, k6 local `9/9` SLOs e visual `29/29` passaram; manifesto revision 57 válido; target externo ausente |
 | VERIFIED TARGET    | `NOT PROVEN`                                                                                                                                                                                                                                              |
 | CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; CI exato, target e autoridade externa continuam sem prova                                                                                                                                                        |
 
 O snapshot corrente preserva a régua congelada e reancora o manifesto crítico
-na revisão 56. O CI #190 detectou a rejeição de inicializadores V8 legítimos do
+na revisão 57. O registro P0 adiciona deduplicação, dependências, classificação
+de execução e fechamento candidate-bound ao gate de release. O CI #190 detectou a rejeição de inicializadores V8 legítimos do
 Node 22 e a ausência do produtor SQL; os CI #191/#192 confirmaram a correção no
 Critical Coverage Gate dos ancestrais. O CI #196 confirmou o Critical Coverage
 Gate no snapshot anterior, mas terminou com falhas em E2E SPA, Performance/k6 e
@@ -22,7 +23,7 @@ erros genéricos do único carregamento autoritativo e mantém `server.ts` dentr
 orçamento físico congelado; a checagem criptográfica
 síncrona só fornece contexto de roteamento, e a guarda final permanece
 autoritativa. O CI #198 foi terminalmente reprovado e o #199 falhou no guard de
-complexidade; nenhum dos dois é evidência do candidato documental `e54a4374`,
+complexidade; nenhum dos dois é evidência do candidato documental `fa877475`,
 que precisa de uma execução exata após o push da identidade reancorada.
 
 O score não é uma média permissiva: os gates externos ausentes e as falhas do CI
