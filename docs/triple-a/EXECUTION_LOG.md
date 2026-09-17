@@ -1,5 +1,28 @@
 # Triple-A — Execution Log
 
+## 2026-09-17T02:55:33Z — candidato `db154b7a` / correção fail-closed e reconciliação terminal
+
+- A remoção da leitura duplicada de sessão foi preservada: o JWT fornece apenas
+  contexto de roteamento e a guarda final faz o carregamento autoritativo. A
+  correção `db154b7afb43f63e644d1b56ea3fb98cbdc13522` converte erros genéricos
+  desse carregamento único em HTTP 503, mantendo o contrato fail-closed sem
+  reintroduzir uma leitura.
+- A suíte API passou `618/618`; a integração PostgreSQL descartável passou
+  `16/16`, incluindo a revogação concorrente enquanto a guarda final está
+  pausada. O manifesto crítico foi reancorado na revisão 54 e o snapshot
+  candidato é `8babc6f769533ffd33ba32afed5933695d49b326`.
+- O CI [#198](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35173992742)
+  terminou `failure` no snapshot anterior: Repository Guards encontrou identidade
+  stale; Unit/Integration reproduziram contratos agora corrigidos; Critical
+  Coverage falhou após shard incompleto; E2E registrou `395` passados e `29`
+  screenshots/usabilidade falhos; Visual registrou `29` divergências; Performance
+  passou `8/9` SLOs por inventory p95 `227,28ms` contra `200ms`. Nenhum threshold,
+  baseline ou resultado histórico foi promovido.
+- O snapshot atual permanece `BLOCKED / NOT PROVEN` e requer uma execução CI
+  exata após o push. A branch `origin/fix/state-of-art-ci-assurance` continua
+  ancestral de `main`, sem commits exclusivos; não houve merge destrutivo nem
+  force-push.
+
 ## 2026-09-17T02:14:20Z — candidato `15ba86a8` / otimização autenticada local
 
 - O candidato `15ba86a883a4283c5bf86c5825bf7d9a6ca5d089` remove a leitura

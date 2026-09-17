@@ -1,29 +1,29 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato de código observado em 2026-09-17T02:14:20Z
+## Candidato de código observado em 2026-09-17T02:55:33Z
 
-- SHA de código e documentação: `15ba86a883a4283c5bf86c5825bf7d9a6ca5d089`;
+- SHA de código e documentação: `8babc6f769533ffd33ba32afed5933695d49b326`;
   identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O manifesto crítico está na revisão 53, ancorado em `15ba86a8`; o candidato instala Chromium, provisiona PostgreSQL 16 via PGDG fingerprint-pinned, aceita o par V8 de inicializadores do Node 22, publica o artefato SQL verificado e fecha o threshold global de branches com contratos determinísticos. O roteamento inicial usa somente o contexto JWT verificado; a guarda final relê sessão, usuário, função e permissões de forma autoritativa. Rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- O manifesto crítico está na revisão 54, ancorado no funcional `db154b7a` e publicado no snapshot `8babc6f7`; o candidato instala Chromium, provisiona PostgreSQL 16 via PGDG fingerprint-pinned, aceita o par V8 de inicializadores do Node 22, publica o artefato SQL verificado e fecha o threshold global de branches com contratos determinísticos. O roteamento inicial usa somente o contexto JWT verificado; a guarda final relê sessão, usuário, função e permissões de forma autoritativa, com erros genéricos de sessão sanitizados para 503. Rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
 - Nenhum force-push foi usado.
 
 ## Validações locais
 
 | Escopo                 | Resultado                                                                                                                                                                                                                                                                                                                                                                     |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate crítico R05-010   | Aguardando CI exato para o snapshot `15ba86a8`; o #196 anterior aceitou cinco shards, SQL, Vue e manifesto revision 52, mas não é transferido |
-| Workspace              | Cobertura global `273/273` arquivos e `2907/2907` testes passou; `87,46%` statements, `82,00%` branches, `89,32%` functions, `88,91%` lines; lint, typecheck, contratos CI `20/20`, cobertura/processo e SQL `34/34` passaram |
-| Identidade/evidence graph | Identidade canônica do candidato `15ba86a8`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` até evidência terminal e autoridade externa |
-| Coverage crítico current | O CI exato ainda aguarda; a cobertura geral local passou o threshold congelado |
-| Vue especializado current | O CI exato ainda aguarda; a captura visual local passou `29/29` contra os snapshots versionados |
+| Gate crítico R05-010   | O CI #198 terminou `failure` após o shard de integração incompleto e métricas abaixo dos limiares; o novo snapshot `8babc6f7` aguarda execução exata |
+| Workspace              | Cobertura global `273/273` arquivos e `2907/2907` testes passou; `87,46%` statements, `82,00%` branches, `89,32%` functions, `88,91%` lines; API `618/618`, integração PostgreSQL `16/16`, lint, typecheck, contratos CI `20/20`, cobertura/processo e SQL `34/34` passaram |
+| Identidade/evidence graph | Identidade canônica do snapshot `8babc6f7` com funcional `db154b7a`; graph/CI/authority permanecem `BLOCKED / NOT PROVEN` até evidência terminal e autoridade externa |
+| Coverage crítico current | O #198 não é promovido; a cobertura geral local passou o threshold congelado e a correção do shard de revogação foi validada localmente |
+| Vue especializado current | O CI #198 falhou com `29` divergências remotas; a captura visual local passou `29/29` contra os snapshots versionados |
 | SQL/migrações current  | PostgreSQL 16.15 privado socket-only; produtor independente PASS com `171` migrações executáveis + `7` históricos; cadeia completa e seed repetível |
 | Performance/target     | k6 local limitado a quatro CPUs passou `9/9` SLOs; CI/target/soak/restore/UAT/attestation permanecem `NOT_PROVEN` |
 | Supply/artefatos       | O graph e o pacote local são gerados fail-closed; nenhum PASS externo ou histórico foi inventado |
 
-### Evidência adicional do candidato `15ba86a8`
+### Evidência adicional do candidato `db154b7a`
 
-- Auth focado: `54/54` testes passaram, incluindo a leitura síncrona de contexto do token e a revalidação autoritativa existente.
+- API: `618/618` testes passaram, incluindo o fail-closed de erro genérico de sessão em HTTP 503; a integração PostgreSQL descartável passou `16/16`, incluindo a revogação concorrente durante a guarda final.
 - Performance local: PostgreSQL 16 descartável, API compilada limitada a quatro CPUs e perfil k6 de 60 VUs passaram `9/9` SLOs; `query_latency_ms.p95=138ms` contra o limite de `150ms`, sem erros HTTP e com disponibilidade de `100%`.
 - Visual local: Chromium/Playwright com o runtime do workspace passou `29/29` cenários visuais. O primeiro ensaio com o rate limit padrão falhou por `429` após quatro cenários; a repetição com `AUTH_RATE_LIMIT_MAX_REQUESTS=200` passou integralmente. Nenhuma baseline foi promovida.
 
@@ -33,7 +33,7 @@ protection ou autoridade de release.
 
 ## CI remoto e reancoragem
 
-O CI [#197](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35167554015), no descendente documental anterior, terminou `failure` com o mesmo padrão: os gates estruturais, segurança e Critical Coverage passaram, enquanto E2E SPA, Performance/k6 e Visual Regression falharam. O candidato atual `15ba86a8` ainda aguarda execução exata; nenhum threshold, baseline ou resultado histórico é promovido.
+O CI [#198](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35173992742), no snapshot anterior `715bdfa4`, terminou `failure`: Repository Guards encontrou identidade stale; Unit e Integration falharam nos contratos que foram corrigidos em `db154b7a`; Critical Coverage falhou após o shard incompleto; E2E SPA registrou `395` passados e `29` screenshots/usabilidade falhos; Visual Regression registrou `29` divergências; Performance passou `8/9` SLOs por inventory p95 `227,28ms` contra `200ms`. Nenhum threshold, baseline ou resultado histórico é promovido. O novo snapshot `8babc6f7` aguarda uma execução exata após o push.
 
 O [CI #178](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35056933106), executado no `main@6b7c1cec`, terminou `failure`. Repository Guards, API Contract, Integration e Windows passaram junto com os checks de segurança, typecheck, lint, OpenAPI e build; Critical Coverage, Coverage, Unit Tests, Performance/k6, Visual Regression e E2E SPA falharam. O E2E remoto falhou na etapa principal e na validação de usabilidade, embora a API clínica canônica tenha passado; o gate local explícito do candidato retornou `51/49/18` e bloqueou publicação; nenhum resultado histórico ou parcial é promovido.
 
