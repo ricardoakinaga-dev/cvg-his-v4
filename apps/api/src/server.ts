@@ -8151,29 +8151,14 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       throw synchronizationError;
     }
 
-    // The request-level synchronization above is an optimization for tenant
-    // resolution. Re-read the authoritative session at the final guard so
-    // this decision cannot use a profile assembled before the access-control
-    // snapshot was refreshed. Full handler-wide linearization still belongs
-    // to the database transaction/policy layer.
+    // JWT routes only; this final read remains authoritative for fresh ACL.
+    // Database transactions provide handler-wide linearization.
     const correlationId = requestCorrelationIds.get(request) ?? createCorrelationId('auth-guard');
     const loadSessionAndRefreshAccessControl = async () => {
-      let session: Awaited<ReturnType<typeof auth.getSession>>;
-      try {
-        session = await auth.getSession(accessToken, correlationId);
-      } catch (error) {
-        // Preserve the previous fail-closed contract without bringing back a
-        // second repository read before tenant routing. Authentication
-        // persistence failures must not leak as generic 500 responses.
-        if (error instanceof AppError) {
-          throw error;
-        }
-        throw new AppError(
-          'AUTHENTICATION_UNAVAILABLE',
-          'Authentication service unavailable',
-          503
-        );
-      }
+      const session = await auth.getSession(accessToken, correlationId).catch((error) => {
+        if (error instanceof AppError) throw error;
+        throw new AppError('AUTHENTICATION_UNAVAILABLE', 'Authentication service unavailable', 503);
+      });
       await accessControl.ensureFreshForRequest(session.accountId);
       return session;
     };
