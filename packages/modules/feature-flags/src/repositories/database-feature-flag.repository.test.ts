@@ -249,6 +249,30 @@ test('an in-flight evaluation cannot repopulate a cache invalidated by an admin 
   assert.equal(reads, 2);
 });
 
+test('definition changes cannot reuse a cached decision', async () => {
+  let reads = 0;
+  const provider = createDatabaseFeatureFlagProvider(FALLBACK, {
+    repository: {
+      async findByKey() {
+        reads += 1;
+        return { ...FLAG, defaultValue: true };
+      },
+      async listOverrides() {
+        return [];
+      }
+    }
+  });
+
+  const context = { accountId: 'account-1', environment: 'production' };
+  const first = await provider.evaluate(FLAG, context);
+  const changedDefinition = { ...FLAG, defaultValue: false };
+  const second = await provider.evaluate(changedDefinition, context);
+
+  assert.equal(first.enabled, true);
+  assert.equal(second.enabled, true);
+  assert.equal(reads, 2);
+});
+
 test('rejects invalid cache configuration before creating a provider', () => {
   assert.throws(
     () => createDatabaseFeatureFlagProvider(FALLBACK, { cacheTtlMs: Number.NaN }),

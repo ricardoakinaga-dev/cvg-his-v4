@@ -71,6 +71,9 @@ function createHandlers() {
 
   return {
     featureFlagRepository: {
+      create: vi.fn(),
+      update: vi.fn(),
+      upsertOverride: vi.fn(),
       listByAccount: vi.fn(async () => flags),
       findByKey: vi.fn(async (key: string) => flags.find((flag) => flag.key === key) ?? null),
       listOverrides: vi.fn(async (key: string) => overridesByFlag.get(key) ?? [])
@@ -80,7 +83,8 @@ function createHandlers() {
         enabled: definition.key === 'runtime.distributed_state.enabled',
         reason: 'override',
         provider: 'database-repository'
-      }))
+      })),
+      invalidateCache: vi.fn()
     },
     audit: {
       write: vi.fn()
@@ -91,6 +95,16 @@ function createHandlers() {
         accountId: 'acc_demo'
       }
     }))
+  };
+}
+
+function jsonRequest(method: string, url: string, payload: unknown): object {
+  return {
+    method,
+    url,
+    [Symbol.asyncIterator]: async function* () {
+      yield Buffer.from(JSON.stringify(payload));
+    }
   };
 }
 
@@ -174,5 +188,68 @@ describe('feature-flags routes operational reports', () => {
         enabled: true
       }
     ]);
+  });
+
+  it('validates feature flag writes before touching persistence', async () => {
+    const handlers = createHandlers();
+    const response = new MockResponse();
+
+    await expect(
+      handleFeatureFlagsRoutes(
+        '/flags',
+        jsonRequest('POST', '/flags', {
+          key: 'runtime.invalid.payload',
+          owner: 'platform',
+          description: 'Invalid payload',
+          defaultValue: 'false'
+        }) as never,
+        response as never,
+        'corr-invalid-flag',
+        handlers as never
+      )
+    ).rejects.toThrow("Field 'defaultValue' must be a boolean");
+    expect(handlers.featureFlagRepository.create).not.toHaveBeenCalled();
+
+    await expect(
+      handleFeatureFlagsRoutes(
+        '/flags/runtime.distributed_state.enabled/overrides',
+        jsonRequest('POST', '/flags/runtime.distributed_state.enabled/overrides', {
+          enabled: true,
+          userId: 'not-a-uuid'
+        }) as never,
+        response as never,
+        'corr-invalid-override',
+        handlers as never
+      )
+    ).rejects.toThrow("Field 'userId' must be a UUID");
+    expect(handlers.featureFlagRepository.upsertOverride).not.toHaveBeenCalled();
+  });
+
+  it('preserves explicit false values in a valid flag write', async () => {
+    const handlers = createHandlers();
+    const response = new MockResponse();
+
+    const handled = await handleFeatureFlagsRoutes(
+      '/flags',
+      jsonRequest('POST', '/flags', {
+        key: 'runtime.explicitly.disabled',
+        owner: 'platform',
+        description: 'Disabled until rollout',
+        defaultValue: false,
+        enabled: false,
+        scopes: ['account'],
+        tags: ['rollout']
+      }) as never,
+      response as never,
+      'corr-valid-flag',
+      handlers as never
+    );
+
+    expect(handled).toBe(true);
+    expect(response.statusCode).toBe(201);
+    expect(handlers.featureFlagRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ defaultValue: false, enabled: false, scopes: ['account'] }),
+      'acc_demo'
+    );
   });
 });

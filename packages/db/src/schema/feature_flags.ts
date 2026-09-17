@@ -1,5 +1,6 @@
 import {
   index,
+  foreignKey,
   jsonb,
   pgEnum,
   pgTable,
@@ -57,6 +58,7 @@ export const featureFlags = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({
+    idAccountUnique: unique('uq_feature_flags_id_account').on(table.id, table.accountId),
     accountKeyIdx: index('idx_feature_flags_account_key').on(table.accountId, table.key),
     accountEnabledIdx: index('idx_feature_flags_account_enabled').on(table.accountId, table.enabled)
   })
@@ -88,6 +90,11 @@ export const featureFlagOverrides = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({
+    tenantFlagFk: foreignKey({
+      columns: [table.flagId, table.accountId],
+      foreignColumns: [featureFlags.id, featureFlags.accountId],
+      name: 'fk_feature_flag_overrides_flag_account'
+    }),
     flagEnvironmentIdx: index('idx_flag_overrides_flag_env').on(table.flagId, table.environment),
     flagAccountIdx: index('idx_flag_overrides_flag_account').on(
       table.flagId,

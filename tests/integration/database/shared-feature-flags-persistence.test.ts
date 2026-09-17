@@ -414,14 +414,15 @@ it('provider SQL respects user, account, environment and global precedence witho
       false
     );
 
-    // Canonical 0016 has independent account/flag foreign keys, not a composite
-    // ownership constraint. Raw fixture insertion tests the provider's defense
-    // against a malformed stored row; the repository remains strict.
-    await getTestPool().query(
-      `INSERT INTO feature_flag_overrides (account_id, flag_id, environment, account_id_override, user_id, enabled)
-       VALUES ($1, $2, 'test', $3, $4, 'true'::jsonb)`,
-      [accountB, flag.id, accountA, otherUser]
+    // The composite ownership constraint rejects a cross-account flag/override
+    // pair before the provider can observe it.
+    await assert.rejects(
+      getTestPool().query(
+        `INSERT INTO feature_flag_overrides (account_id, flag_id, environment, account_id_override, user_id, enabled)
+         VALUES ($1, $2, 'test', $3, $4, 'true'::jsonb)`,
+        [accountB, flag.id, accountA, otherUser]
+      ),
+      /fk_feature_flag_overrides_flag_account/
     );
-    assert.equal((await provider.evaluate(def, { ...context, userId: otherUser })).enabled, false);
     assert.equal((await provider.evaluate(def, context)).enabled, false);
   }));

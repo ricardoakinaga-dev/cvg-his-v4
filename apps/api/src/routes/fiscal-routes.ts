@@ -36,9 +36,11 @@ import { getPool } from '@cvg-his-v2/shared-database';
 import { ValidationError } from '@cvg-his-v2/shared-errors';
 import { readJsonBody as readLimitedJsonBody } from '../helpers/common.js';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
+import type { EvaluationContext } from '@cvg-his-v2/shared-feature-flags';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 import { appendAudit } from '../helpers/audit-helper.js';
+import { resolveApiFeatureFlag, type ApiFeatureFlagEvaluator } from '../feature-flags.js';
 
 export interface FiscalRoutesHandlers {
   fiscal: FiscalService;
@@ -48,6 +50,8 @@ export interface FiscalRoutesHandlers {
     permissionCode: string
   ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   fiscalBackofficeEnabled: boolean;
+  featureFlagEvaluator?: ApiFeatureFlagEvaluator;
+  featureFlagContext?: EvaluationContext;
 }
 
 function json(response: ServerResponse, statusCode: number, payload: unknown): true {
@@ -145,10 +149,17 @@ export async function handleFiscalRoutes(
     return false;
   }
 
-  const { fiscal, audit, requirePrincipal, fiscalBackofficeEnabled } = handlers;
-
   // Feature flag gate: fiscal backoffice write operations require the flag
   const isWriteOperation = request.method !== 'GET';
+  const { fiscal, audit, requirePrincipal, featureFlagEvaluator, featureFlagContext } = handlers;
+  const fiscalBackofficeEnabled = isWriteOperation
+    ? await resolveApiFeatureFlag(
+        featureFlagEvaluator,
+        'fiscal.backoffice.enabled',
+        featureFlagContext ?? {},
+        handlers.fiscalBackofficeEnabled
+      )
+    : true;
   if (isWriteOperation && !fiscalBackofficeEnabled) {
     response.statusCode = 403;
     response.setHeader('content-type', 'application/json');

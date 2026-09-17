@@ -123,9 +123,9 @@ describe('api feature flags', () => {
       name: 'database-repository',
       async evaluate(definition, context) {
         if (
-          definition.key === 'runtime.distributed_state.enabled'
-          && context.accountId === accountId
-          && context.environment === 'production'
+          definition.key === 'runtime.distributed_state.enabled' &&
+          context.accountId === accountId &&
+          context.environment === 'production'
         ) {
           return {
             key: definition.key,
@@ -156,6 +156,55 @@ describe('api feature flags', () => {
     expect(flags.runtimeDistributedStateEnabled).toBe(true);
     expect(flags.enabledKeys).toEqual(
       expect.arrayContaining(['auth.oidc.enabled', 'runtime.distributed_state.enabled'])
+    );
+  });
+
+  it('evaluates operational gates with the request context and authoritative environment', async () => {
+    const accountId = '00000000-0000-4000-8000-0000000000aa';
+    const databaseEvaluate = vi.fn();
+    const databaseProviderFactory = vi.fn((fallbackProvider) => ({
+      name: 'database-repository',
+      evaluate: async (definition, context) => {
+        databaseEvaluate(definition, context);
+        const fallback = await fallbackProvider.evaluate(definition, context);
+        if (
+          definition.key === 'runtime.distributed_state.enabled' &&
+          context.accountId === accountId &&
+          context.environment === 'production'
+        ) {
+          return {
+            ...(fallback ?? {}),
+            key: definition.key,
+            enabled: true,
+            provider: 'database-repository',
+            reason: 'persisted_override'
+          };
+        }
+        return fallback;
+      }
+    }));
+
+    const flags = await createApiFeatureFlags({
+      environment: 'production',
+      enabledKeys: [],
+      db: {} as never,
+      databaseProviderFactory
+    });
+
+    const decision = await flags.evaluate?.('runtime.distributed_state.enabled', {
+      environment: 'staging',
+      accountId,
+      userId: '00000000-0000-4000-8000-0000000000ab'
+    });
+
+    expect(decision?.enabled).toBe(true);
+    expect(databaseEvaluate).toHaveBeenLastCalledWith(
+      expect.objectContaining({ key: 'runtime.distributed_state.enabled' }),
+      expect.objectContaining({
+        environment: 'production',
+        accountId,
+        userId: '00000000-0000-4000-8000-0000000000ab'
+      })
     );
   });
 });

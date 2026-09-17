@@ -4,6 +4,7 @@ import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { FeatureFlagProvider, FeatureFlagScope } from '@cvg-his-v2/shared-feature-flags';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import type { DatabaseFeatureFlagRepository } from '@cvg-his-v2/module-feature-flags';
+import { ValidationError } from '@cvg-his-v2/shared-errors';
 
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
@@ -58,6 +59,134 @@ interface CreateOverrideRequest {
 }
 
 type FeatureFlagLifecycleStatus = 'active' | 'expired' | 'expiring_soon' | 'permanent';
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const FEATURE_FLAG_SCOPES = new Set<FeatureFlagScope>([
+  'global',
+  'environment',
+  'tenant',
+  'account',
+  'user'
+]);
+
+function requireObjectBody(value: unknown, correlationId: string): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new ValidationError('Request body must be a JSON object', { correlationId });
+  }
+  return value as Record<string, unknown>;
+}
+
+function validateStringArray(
+  value: unknown,
+  field: string,
+  correlationId: string,
+  required = false
+): void {
+  if (value === undefined && !required) return;
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
+    throw new ValidationError(`Field '${field}' must be an array of strings`, {
+      correlationId,
+      field
+    });
+  }
+}
+
+function validateFlagDefinitionBody(
+  value: unknown,
+  correlationId: string,
+  mode: 'create' | 'update'
+): Record<string, unknown> {
+  const body = requireObjectBody(value, correlationId);
+  const requiredStrings = mode === 'create' ? ['key', 'owner', 'description'] : [];
+  for (const field of requiredStrings) {
+    if (typeof body[field] !== 'string' || body[field].trim().length === 0) {
+      throw new ValidationError(`Field '${field}' is required`, { correlationId, field });
+    }
+  }
+  for (const field of ['key', 'owner', 'description']) {
+    if (body[field] !== undefined && typeof body[field] !== 'string') {
+      throw new ValidationError(`Field '${field}' must be a string`, { correlationId, field });
+    }
+  }
+  for (const field of ['defaultValue', 'enabled', 'auditRequired']) {
+    if (body[field] !== undefined && typeof body[field] !== 'boolean') {
+      throw new ValidationError(`Field '${field}' must be a boolean`, { correlationId, field });
+    }
+  }
+  if (mode === 'create' && typeof body.defaultValue !== 'boolean') {
+    throw new ValidationError("Field 'defaultValue' is required", {
+      correlationId,
+      field: 'defaultValue'
+    });
+  }
+  validateStringArray(body.scopes, 'scopes', correlationId);
+  if (body.scopes !== undefined) {
+    if (
+      (body.scopes as unknown[]).length === 0 ||
+      (body.scopes as unknown[]).some(
+        (scope) => !FEATURE_FLAG_SCOPES.has(scope as FeatureFlagScope)
+      )
+    ) {
+      throw new ValidationError("Field 'scopes' contains an invalid scope", {
+        correlationId,
+        field: 'scopes'
+      });
+    }
+  }
+  validateStringArray(body.tags, 'tags', correlationId);
+  if (
+    body.expiresAt !== undefined &&
+    (typeof body.expiresAt !== 'string' || !Number.isFinite(Date.parse(body.expiresAt)))
+  ) {
+    throw new ValidationError("Field 'expiresAt' must be a valid date", {
+      correlationId,
+      field: 'expiresAt'
+    });
+  }
+  return body;
+}
+
+function validateOverrideBody(value: unknown, correlationId: string): Record<string, unknown> {
+  const body = requireObjectBody(value, correlationId);
+  if (typeof body.enabled !== 'boolean') {
+    throw new ValidationError("Field 'enabled' must be a boolean", {
+      correlationId,
+      field: 'enabled'
+    });
+  }
+  for (const field of ['environment', 'accountIdOverride', 'userId']) {
+    if (body[field] !== undefined && typeof body[field] !== 'string') {
+      throw new ValidationError(`Field '${field}' must be a string`, { correlationId, field });
+    }
+  }
+  if (
+    body.accountIdOverride !== undefined &&
+    !UUID_PATTERN.test(body.accountIdOverride as string)
+  ) {
+    throw new ValidationError("Field 'accountIdOverride' must be a UUID", {
+      correlationId,
+      field: 'accountIdOverride'
+    });
+  }
+  if (body.userId !== undefined && !UUID_PATTERN.test(body.userId as string)) {
+    throw new ValidationError("Field 'userId' must be a UUID", { correlationId, field: 'userId' });
+  }
+  if (
+    body.percentage !== undefined &&
+    body.percentage !== null &&
+    (typeof body.percentage !== 'number' ||
+      !Number.isFinite(body.percentage) ||
+      body.percentage < 0 ||
+      body.percentage > 100)
+  ) {
+    throw new ValidationError("Field 'percentage' must be between 0 and 100", {
+      correlationId,
+      field: 'percentage'
+    });
+  }
+  validateStringArray(body.allowedUsers, 'allowedUsers', correlationId);
+  return body;
+}
 
 function resolveLifecycleStatus(expiresAt?: string): FeatureFlagLifecycleStatus {
   if (!expiresAt) {
@@ -223,6 +352,7 @@ export async function handleFeatureFlagsRoutes(
     const principal = await requirePrincipal(request, 'flags.admin');
     const accountId = principal.user.accountId;
     const body = (await readJsonBody(request)) as CreateFeatureFlagRequest;
+    validateFlagDefinitionBody(body, correlationId, 'create');
 
     const flag = {
       key: body.key,
@@ -334,6 +464,7 @@ export async function handleFeatureFlagsRoutes(
     const accountId = principal.user.accountId;
     const flagKey = match[1];
     const body = (await readJsonBody(request)) as UpdateFeatureFlagRequest;
+    validateFlagDefinitionBody(body, correlationId, 'update');
 
     const existingFlag = await featureFlagRepository.findByKey(flagKey, accountId);
     if (!existingFlag) {
@@ -453,6 +584,7 @@ export async function handleFeatureFlagsRoutes(
     const accountId = principal.user.accountId;
     const flagKey = match[1];
     const body = (await readJsonBody(request)) as CreateOverrideRequest;
+    validateOverrideBody(body, correlationId);
 
     const flag = await featureFlagRepository.findByKey(flagKey, accountId);
     if (!flag) {

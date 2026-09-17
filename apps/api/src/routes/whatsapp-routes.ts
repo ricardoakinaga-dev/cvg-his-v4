@@ -9,17 +9,27 @@ import { createCorrelationId } from '@cvg-his-v2/shared-utils';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { SchedulingService } from '@cvg-his-v2/module-scheduling';
 import type { WhatsAppAppointmentReportResponse } from '@cvg-his-v2/shared-contracts';
-import type { AuthenticatedPrincipal, SchedulingAppointmentSummary } from '@cvg-his-v2/shared-types';
+import type {
+  AuthenticatedPrincipal,
+  SchedulingAppointmentSummary
+} from '@cvg-his-v2/shared-types';
+import type { EvaluationContext } from '@cvg-his-v2/shared-feature-flags';
 
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
+import { resolveApiFeatureFlag, type ApiFeatureFlagEvaluator } from '../feature-flags.js';
 
 export interface WhatsAppRoutesHandlers {
   scheduling: SchedulingService;
   audit: AuditService;
   notificationsWhatsappInboundActionsEnabled: boolean;
   inboundWebhookSecret?: string;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
+  featureFlagEvaluator?: ApiFeatureFlagEvaluator;
+  featureFlagContext?: EvaluationContext;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permissionCode: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 type ScopedScheduling = {
@@ -67,9 +77,9 @@ function buildAppointmentReport(
     }
 
     return (
-      event.module === 'whatsapp'
-      && event.action === 'inbound_received'
-      && event.payloadSummary.includes(`appointmentId=${appointmentId}`)
+      event.module === 'whatsapp' &&
+      event.action === 'inbound_received' &&
+      event.payloadSummary.includes(`appointmentId=${appointmentId}`)
     );
   });
   const sentEvent = events.find((event) => event.action === 'whatsapp_reminder_sent');
@@ -96,13 +106,17 @@ function buildAppointmentReport(
     appointmentId,
     deliveryStatus,
     vendorProvider:
-      (sentMetadata['provider'] as 'twilio' | '360dialog' | undefined)
-      ?? (failedMetadata['provider'] as 'twilio' | '360dialog' | undefined)
-      ?? null,
+      (sentMetadata['provider'] as 'twilio' | '360dialog' | undefined) ??
+      (failedMetadata['provider'] as 'twilio' | '360dialog' | undefined) ??
+      null,
     vendorMessageId: sentMetadata['messageId'] || null,
     lastError: failedMetadata['error'] || null,
     correlationIds: Array.from(
-      new Set(events.map((event) => event.correlationId).filter((value): value is string => Boolean(value)))
+      new Set(
+        events
+          .map((event) => event.correlationId)
+          .filter((value): value is string => Boolean(value))
+      )
     ),
     events
   };
@@ -119,7 +133,7 @@ export async function handleWhatsAppRoutes(
   correlationId: string,
   handlers: WhatsAppRoutesHandlers
 ): Promise<boolean> {
-  const { scheduling, audit, notificationsWhatsappInboundActionsEnabled, requirePrincipal } = handlers;
+  const { scheduling, audit, requirePrincipal } = handlers;
 
   if (
     pathname.startsWith('/whatsapp/appointments/') &&
@@ -169,7 +183,28 @@ export async function handleWhatsAppRoutes(
   const messageSid = typeof body['MessageSid'] === 'string' ? body['MessageSid'] : 'unknown';
   const from = typeof body['From'] === 'string' ? body['From'] : '';
   const bodyText = typeof body['Body'] === 'string' ? body['Body'].trim().toUpperCase() : '';
-  const appointmentId = typeof body['AppointmentId'] === 'string' ? body['AppointmentId'] : undefined;
+  const appointmentId =
+    typeof body['AppointmentId'] === 'string' ? body['AppointmentId'] : undefined;
+
+  let notificationsWhatsappInboundActionsEnabled =
+    handlers.notificationsWhatsappInboundActionsEnabled;
+  if (handlers.featureFlagEvaluator && appointmentId) {
+    try {
+      const appointment = scheduling.getAppointmentOrThrow(appointmentId as never);
+      notificationsWhatsappInboundActionsEnabled = await resolveApiFeatureFlag(
+        handlers.featureFlagEvaluator,
+        'notifications.whatsapp.inbound_actions.enabled',
+        {
+          ...handlers.featureFlagContext,
+          accountId: appointment.accountId
+        },
+        notificationsWhatsappInboundActionsEnabled
+      );
+    } catch {
+      // Unknown appointments cannot be mutated; keep the webhook fail-closed.
+      notificationsWhatsappInboundActionsEnabled = false;
+    }
+  }
 
   appendAudit(audit, {
     actorId: 'system',
@@ -189,11 +224,11 @@ export async function handleWhatsAppRoutes(
 
   if (!notificationsWhatsappInboundActionsEnabled) {
     const requestedMutation =
-      bodyText === 'CONFIRMAR'
-      || bodyText === 'CONFIRM'
-      || bodyText === 'CANCELAR'
-      || bodyText === 'CANCELAR CONSULTA'
-      || bodyText === 'REMARCAR';
+      bodyText === 'CONFIRMAR' ||
+      bodyText === 'CONFIRM' ||
+      bodyText === 'CANCELAR' ||
+      bodyText === 'CANCELAR CONSULTA' ||
+      bodyText === 'REMARCAR';
 
     if (requestedMutation && appointmentId !== undefined) {
       appendAudit(audit, {
@@ -246,10 +281,7 @@ export async function handleWhatsAppRoutes(
   ) {
     try {
       const appointment = scopedScheduling.getAppointmentOrThrow(appointmentId);
-      await scopedScheduling.cancelAppointment(
-        appointmentId,
-        'Cancelled via WhatsApp by tutor'
-      );
+      await scopedScheduling.cancelAppointment(appointmentId, 'Cancelled via WhatsApp by tutor');
       appendAudit(audit, {
         actorId: 'system',
         accountId: appointment.accountId as never,

@@ -9,7 +9,9 @@ import {
   OcrFiscalService
 } from '@cvg-his-v2/module-ml';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
+import type { EvaluationContext } from '@cvg-his-v2/shared-feature-flags';
 import type { ApiFeatureFlagsSnapshot } from '../feature-flags.js';
+import { resolveApiFeatureFlag, type ApiFeatureFlagEvaluator } from '../feature-flags.js';
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
 import type { MlTelemetryService } from '../ml-telemetry.js';
@@ -23,7 +25,12 @@ export interface MlRoutesHandlers {
   telemetry?: MlTelemetryService;
   audit: AuditService;
   featureFlags?: ApiFeatureFlagsSnapshot;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
+  featureFlagEvaluator?: ApiFeatureFlagEvaluator;
+  featureFlagContext?: EvaluationContext;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permissionCode: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 function json(response: ServerResponse, statusCode: number, payload: unknown): true {
@@ -66,13 +73,36 @@ export async function handleMlRoutes(
         mlForecastingEnabled: true,
         mlAnomalyDetectionEnabled: true,
         mlOcrFiscalEnabled: true,
-        provider: { name: 'unknown', evaluate: async () => ({ key: '', enabled: false, provider: 'unknown', reason: 'unknown', evaluatedAt: '', definition: {} as never, context: {} as never }) } as never
+        provider: {
+          name: 'unknown',
+          evaluate: async () => ({
+            key: '',
+            enabled: false,
+            provider: 'unknown',
+            reason: 'unknown',
+            evaluatedAt: '',
+            definition: {} as never,
+            context: {} as never
+          })
+        } as never
       }
     }) ?? {
       generatedAt: new Date().toISOString(),
-      smartScheduling: { recommendations: 0, adopted: 0, adoptionRate: 0, overrides: 0, overrideRate: 0 },
+      smartScheduling: {
+        recommendations: 0,
+        adopted: 0,
+        adoptionRate: 0,
+        overrides: 0,
+        overrideRate: 0
+      },
       forecasting: { snapshots: 0, comparedDays: 0, meanAbsoluteError: 0 },
-      anomalyDetection: { scans: 0, reviewedOrders: 0, confirmedOrders: 0, dismissedOrders: 0, precision: 0 },
+      anomalyDetection: {
+        scans: 0,
+        reviewedOrders: 0,
+        confirmedOrders: 0,
+        dismissedOrders: 0,
+        precision: 0
+      },
       governance: { features: [] },
       valueSummary: { keep: [], monitor: [] }
     };
@@ -91,10 +121,21 @@ export async function handleMlRoutes(
   }
 
   if (pathname === '/ml/ocr/fiscal-preview' && request.method === 'POST') {
-    if (handlers.featureFlags?.mlOcrFiscalEnabled === false) {
+    const principal = await handlers.requirePrincipal(request, 'fiscal.read');
+    if (
+      !(await resolveApiFeatureFlag(
+        handlers.featureFlagEvaluator,
+        'ml.ocr_fiscal.enabled',
+        {
+          ...handlers.featureFlagContext,
+          accountId: principal.user.accountId,
+          userId: principal.user.id
+        },
+        handlers.featureFlags?.mlOcrFiscalEnabled ?? true
+      ))
+    ) {
       return json(response, 404, { error: 'feature_disabled', message: 'OCR fiscal is disabled' });
     }
-    const principal = await handlers.requirePrincipal(request, 'fiscal.read');
     const body = (await readJsonBody(request)) as { rawText?: string; documentName?: string };
     const preview = handlers.ocrFiscal.preview({
       rawText: String(body.rawText ?? ''),
@@ -115,10 +156,24 @@ export async function handleMlRoutes(
   }
 
   if (pathname === '/ml/forecasting/demand' && request.method === 'GET') {
-    if (handlers.featureFlags?.mlForecastingEnabled === false) {
-      return json(response, 404, { error: 'feature_disabled', message: 'Demand forecasting is disabled' });
-    }
     const principal = await handlers.requirePrincipal(request, 'scheduling.read');
+    if (
+      !(await resolveApiFeatureFlag(
+        handlers.featureFlagEvaluator,
+        'ml.forecasting.enabled',
+        {
+          ...handlers.featureFlagContext,
+          accountId: principal.user.accountId,
+          userId: principal.user.id
+        },
+        handlers.featureFlags?.mlForecastingEnabled ?? true
+      ))
+    ) {
+      return json(response, 404, {
+        error: 'feature_disabled',
+        message: 'Demand forecasting is disabled'
+      });
+    }
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const rawHorizonDays = url.searchParams.get('horizonDays');
     const rawReferenceDate = url.searchParams.get('referenceDate');
@@ -155,10 +210,24 @@ export async function handleMlRoutes(
   }
 
   if (pathname === '/ml/anomalies/laboratory-results' && request.method === 'GET') {
-    if (handlers.featureFlags?.mlAnomalyDetectionEnabled === false) {
-      return json(response, 404, { error: 'feature_disabled', message: 'Anomaly detection is disabled' });
-    }
     const principal = await handlers.requirePrincipal(request, 'diagnostics.read');
+    if (
+      !(await resolveApiFeatureFlag(
+        handlers.featureFlagEvaluator,
+        'ml.anomaly_detection.enabled',
+        {
+          ...handlers.featureFlagContext,
+          accountId: principal.user.accountId,
+          userId: principal.user.id
+        },
+        handlers.featureFlags?.mlAnomalyDetectionEnabled ?? true
+      ))
+    ) {
+      return json(response, 404, {
+        error: 'feature_disabled',
+        message: 'Anomaly detection is disabled'
+      });
+    }
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const examType = url.searchParams.get('examType') ?? undefined;
     const [orders, referenceValues] = await Promise.all([
@@ -192,10 +261,24 @@ export async function handleMlRoutes(
   }
 
   if (pathname === '/ml/anomalies/reviews' && request.method === 'POST') {
-    if (handlers.featureFlags?.mlAnomalyDetectionEnabled === false) {
-      return json(response, 404, { error: 'feature_disabled', message: 'Anomaly detection is disabled' });
-    }
     const principal = await handlers.requirePrincipal(request, 'diagnostics.manage');
+    if (
+      !(await resolveApiFeatureFlag(
+        handlers.featureFlagEvaluator,
+        'ml.anomaly_detection.enabled',
+        {
+          ...handlers.featureFlagContext,
+          accountId: principal.user.accountId,
+          userId: principal.user.id
+        },
+        handlers.featureFlags?.mlAnomalyDetectionEnabled ?? true
+      ))
+    ) {
+      return json(response, 404, {
+        error: 'feature_disabled',
+        message: 'Anomaly detection is disabled'
+      });
+    }
     const body = (await readJsonBody(request)) as {
       orderId?: string;
       disposition?: 'confirmed' | 'dismissed';

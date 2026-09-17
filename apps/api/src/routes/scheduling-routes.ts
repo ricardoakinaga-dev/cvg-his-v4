@@ -4,7 +4,12 @@ import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { EncountersService } from '@cvg-his-v2/module-encounters';
 import type { SmartSchedulingService } from '@cvg-his-v2/module-ml';
 import type { SchedulingService } from '@cvg-his-v2/module-scheduling';
-import type { ApiFeatureFlagsSnapshot } from '../feature-flags.js';
+import {
+  resolveApiFeatureFlag,
+  type ApiFeatureFlagEvaluator,
+  type ApiFeatureFlagsSnapshot
+} from '../feature-flags.js';
+import type { EvaluationContext } from '@cvg-his-v2/shared-feature-flags';
 import type { MlTelemetryService } from '../ml-telemetry.js';
 import type {
   AppointmentListResponse,
@@ -38,8 +43,13 @@ export interface SchedulingRoutesHandlers {
   smartScheduling: SmartSchedulingService;
   audit: AuditService;
   featureFlags?: Pick<ApiFeatureFlagsSnapshot, 'mlSmartSchedulingEnabled'>;
+  featureFlagEvaluator?: ApiFeatureFlagEvaluator;
+  featureFlagContext?: EvaluationContext;
   telemetry?: MlTelemetryService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permissionCode: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   runCommand?: TenantCommandRunner;
 }
 
@@ -50,7 +60,9 @@ function json(response: ServerResponse, statusCode: number, payload: unknown): t
   return true;
 }
 
-function parseStatuses(url: URL): Array<'scheduled' | 'checked_in' | 'completed' | 'cancelled'> | undefined {
+function parseStatuses(
+  url: URL
+): Array<'scheduled' | 'checked_in' | 'completed' | 'cancelled'> | undefined {
   const raw = url.searchParams.get('statuses') ?? url.searchParams.get('status');
   if (!raw) return undefined;
 
@@ -69,8 +81,17 @@ export async function handleSchedulingRoutes(
   correlationId: string,
   handlers: SchedulingRoutesHandlers
 ): Promise<boolean> {
-  const { scheduling, encounters, smartScheduling, audit, requirePrincipal, featureFlags, telemetry } = handlers;
-  const runCommand = handlers.runCommand ?? (async <T>(input: TenantCommandInput<T>) => input.command());
+  const {
+    scheduling,
+    encounters,
+    smartScheduling,
+    audit,
+    requirePrincipal,
+    featureFlags,
+    telemetry
+  } = handlers;
+  const runCommand =
+    handlers.runCommand ?? (async <T>(input: TenantCommandInput<T>) => input.command());
   const method = request.method ?? 'GET';
   const url = new URL(request.url ?? pathname, 'http://localhost');
 
@@ -83,7 +104,8 @@ export async function handleSchedulingRoutes(
         patientId: url.searchParams.get('patientId') ?? undefined,
         statuses: parseStatuses(url),
         practitionerStaffId:
-          (url.searchParams.get('practitionerStaffId') as 'unassigned' | string | null) ?? undefined,
+          (url.searchParams.get('practitionerStaffId') as 'unassigned' | string | null) ??
+          undefined,
         serviceId: url.searchParams.get('serviceId') ?? undefined,
         specialty: url.searchParams.get('specialty') ?? undefined,
         unit: url.searchParams.get('unit') ?? undefined,
@@ -144,20 +166,34 @@ export async function handleSchedulingRoutes(
   }
 
   if (pathname === '/scheduling/recommendations/duration' && method === 'POST') {
-    if (featureFlags?.mlSmartSchedulingEnabled === false) {
+    const principal = await requirePrincipal(request, 'scheduling.read');
+    if (
+      !(await resolveApiFeatureFlag(
+        handlers.featureFlagEvaluator,
+        'ml.smart_scheduling.enabled',
+        {
+          ...handlers.featureFlagContext,
+          accountId: principal.user.accountId,
+          userId: principal.user.id
+        },
+        featureFlags?.mlSmartSchedulingEnabled ?? true
+      ))
+    ) {
       response.statusCode = 404;
-      response.end(JSON.stringify({ error: 'feature_disabled', message: 'Smart scheduling is disabled' }));
+      response.end(
+        JSON.stringify({ error: 'feature_disabled', message: 'Smart scheduling is disabled' })
+      );
       return true;
     }
-    const principal = await requirePrincipal(request, 'scheduling.read');
     const payload = (await readJsonBody(request)) as SmartSchedulingRecommendationRequest;
     const patientId = requireNonEmptyString(payload.patientId, 'patientId');
     const scheduledAt = requireNonEmptyString(payload.scheduledAt, 'scheduledAt');
     const visitType = payload.visitType ?? 'scheduled';
     const previousVisits = scheduling
       .listAppointments(principal.user.accountId)
-      .filter((appointment) => appointment.patientId === patientId && appointment.status !== 'cancelled')
-      .length;
+      .filter(
+        (appointment) => appointment.patientId === patientId && appointment.status !== 'cancelled'
+      ).length;
 
     const prediction = await smartScheduling.predictDuration({
       visitType,
@@ -269,9 +305,9 @@ export async function handleSchedulingRoutes(
   }
 
   if (
-    pathname.startsWith('/appointments/')
-    && pathname.endsWith('/reschedule')
-    && method === 'POST'
+    pathname.startsWith('/appointments/') &&
+    pathname.endsWith('/reschedule') &&
+    method === 'POST'
   ) {
     const principal = await requirePrincipal(request, 'scheduling.manage');
     const appointmentId = requireNonEmptyString(pathname.split('/')[2], 'appointmentId');
@@ -311,9 +347,9 @@ export async function handleSchedulingRoutes(
   }
 
   if (
-    pathname.startsWith('/appointments/')
-    && pathname.endsWith('/start-encounter')
-    && method === 'POST'
+    pathname.startsWith('/appointments/') &&
+    pathname.endsWith('/start-encounter') &&
+    method === 'POST'
   ) {
     if (!encounters) {
       return false;
@@ -347,12 +383,12 @@ export async function handleSchedulingRoutes(
       principal.user.accountId,
       principal.user.id,
       {
-      patientId: appointment.patientId,
-      ownerId: appointment.ownerId,
-      appointmentId: appointment.id,
-      visitType: appointment.visitType,
-      origin: 'schedule',
-      reason: appointment.reason
+        patientId: appointment.patientId,
+        ownerId: appointment.ownerId,
+        appointmentId: appointment.id,
+        visitType: appointment.visitType,
+        origin: 'schedule',
+        reason: appointment.reason
       }
     );
 
@@ -375,11 +411,13 @@ export async function handleSchedulingRoutes(
     const payload: SchedulingOverviewResponse = scheduling.getSchedulingOverview(
       principal.user.accountId,
       {
-        viewMode: (url.searchParams.get('viewMode') as 'day' | 'week' | 'month' | null) ?? undefined,
+        viewMode:
+          (url.searchParams.get('viewMode') as 'day' | 'week' | 'month' | null) ?? undefined,
         referenceDate: url.searchParams.get('referenceDate') ?? undefined,
         statuses: parseStatuses(url),
         practitionerStaffId:
-          (url.searchParams.get('practitionerStaffId') as 'unassigned' | string | null) ?? undefined,
+          (url.searchParams.get('practitionerStaffId') as 'unassigned' | string | null) ??
+          undefined,
         serviceId: url.searchParams.get('serviceId') ?? undefined,
         specialty: url.searchParams.get('specialty') ?? undefined,
         unit: url.searchParams.get('unit') ?? undefined,
@@ -542,7 +580,10 @@ export async function handleSchedulingRoutes(
       operation: 'scheduling.queue.transfer',
       payload: { queueEntryId, ...transferPayload } as unknown as JsonValue,
       command: async () => {
-        const transferred = await scheduling.transferQueueEntry(queueEntryId as never, transferPayload);
+        const transferred = await scheduling.transferQueueEntry(
+          queueEntryId as never,
+          transferPayload
+        );
         await appendAuditAndWait(audit, {
           actorId: principal.user.id,
           accountId: principal.user.accountId,
@@ -583,9 +624,7 @@ export async function handleSchedulingRoutes(
     return json(response, 200, { items });
   }
 
-  const receiveTransferMatch = pathname.match(
-    /^\/queue\/([^/]+)\/transfers\/([^/]+)\/receive$/
-  );
+  const receiveTransferMatch = pathname.match(/^\/queue\/([^/]+)\/transfers\/([^/]+)\/receive$/);
   if (receiveTransferMatch && method === 'POST') {
     const principal = await requirePrincipal(request, 'scheduling.manage');
     const queueEntryId = requireNonEmptyString(receiveTransferMatch[1], 'queueEntryId');
@@ -639,7 +678,10 @@ export async function handleSchedulingRoutes(
       operation: 'scheduling.queue.start-care',
       payload: { queueEntryId },
       command: async () => {
-        const started = await scheduling.transitionQueueEntry(queueEntryId as never, 'in_care' as never);
+        const started = await scheduling.transitionQueueEntry(
+          queueEntryId as never,
+          'in_care' as never
+        );
         await appendAuditAndWait(audit, {
           actorId: principal.user.id,
           accountId: principal.user.accountId,
@@ -705,7 +747,10 @@ export async function handleSchedulingRoutes(
       operation: 'scheduling.queue.no-show',
       payload: { queueEntryId },
       command: async () => {
-        const cancelled = await scheduling.transitionQueueEntry(queueEntryId as never, 'cancelled' as never);
+        const cancelled = await scheduling.transitionQueueEntry(
+          queueEntryId as never,
+          'cancelled' as never
+        );
         await appendAuditAndWait(audit, {
           actorId: principal.user.id,
           accountId: principal.user.accountId,

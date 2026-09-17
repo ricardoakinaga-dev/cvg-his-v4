@@ -21,6 +21,8 @@ vi.mock('@cvg-his-v2/tenant-context', () => ({
 }));
 
 const ACCOUNT_ID = '00000000-0000-4000-8000-0000000000aa';
+const USER_TRIAGE_ID = '00000000-0000-4000-8000-0000000000ab';
+const USER_SUPERVISOR_ID = '00000000-0000-4000-8000-0000000000ac';
 
 import { DatabaseFeatureFlagRepository } from '../../../packages/modules/feature-flags/src/index.js';
 
@@ -128,9 +130,9 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
     await repository.upsertOverride('triage.fast_track.enabled', ACCOUNT_ID as never, {
       environment: 'production',
       accountIdOverride: ACCOUNT_ID as never,
-      userId: 'user_triage',
+      userId: USER_TRIAGE_ID,
       percentage: 25,
-      allowedUsers: ['user_triage', 'user_supervisor'],
+      allowedUsers: [USER_TRIAGE_ID, USER_SUPERVISOR_ID],
       enabled: true
     });
 
@@ -180,9 +182,9 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
         'flag_db_id',
         'production',
         ACCOUNT_ID,
-        null,
+        USER_TRIAGE_ID,
         '25',
-        JSON.stringify(['user_triage', 'user_supervisor']),
+        JSON.stringify([USER_TRIAGE_ID, USER_SUPERVISOR_ID]),
         'true'
       ]
     );
@@ -208,9 +210,9 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
           {
             environment: 'staging',
             account_id_override: ACCOUNT_ID,
-            user_id: 'user_triage',
+            user_id: USER_TRIAGE_ID,
             percentage: 75,
-            allowed_users: ['user_triage'],
+            allowed_users: [USER_TRIAGE_ID],
             enabled: true
           }
         ]
@@ -242,9 +244,9 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
     expect(override).toEqual({
       environment: 'staging',
       accountIdOverride: ACCOUNT_ID,
-      userId: 'user_triage',
+      userId: USER_TRIAGE_ID,
       percentage: 75,
-      allowedUsers: ['user_triage'],
+      allowedUsers: [USER_TRIAGE_ID],
       enabled: true
     });
     expect(listed[0]).toEqual({
@@ -323,8 +325,8 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
       repository.listOverrides('runtime.optional.flag', accountId as never)
     ).resolves.toEqual([
       {
-        environment: null,
-        accountIdOverride: null,
+        environment: undefined,
+        accountIdOverride: undefined,
         userId: undefined,
         percentage: null,
         allowedUsers: [],
@@ -335,5 +337,13 @@ describe('DatabaseFeatureFlagRepository coverage guard', () => {
     await expect(repository.findByKey('legacy.flag', 'legacy-account' as never)).rejects.toThrow(
       'require a UUID accountId'
     );
+
+    queryMock.mockResolvedValueOnce({ rows: [{ id: 'flag_optional' }] });
+    await expect(
+      repository.upsertOverride('runtime.optional.flag', accountId as never, {
+        userId: 'not-a-uuid',
+        enabled: true
+      })
+    ).rejects.toThrow('userId must be a UUID');
   });
 });

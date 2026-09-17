@@ -133,7 +133,30 @@ export interface ApiFeatureFlagsSnapshot {
   readonly mlForecastingEnabled: boolean;
   readonly mlAnomalyDetectionEnabled: boolean;
   readonly mlOcrFiscalEnabled: boolean;
+  /**
+   * Resolves an API flag with the authoritative request context. The scalar
+   * fields above remain the bootstrap snapshot used by process-level wiring;
+   * request handlers must use this resolver for account/user-scoped gates.
+   */
+  readonly evaluate?: ApiFeatureFlagEvaluator;
   readonly provider: FeatureFlagProvider;
+}
+
+export type ApiFeatureFlagKey = (typeof API_FEATURE_FLAG_DEFINITIONS)[number]['key'];
+
+export type ApiFeatureFlagEvaluator = (
+  key: ApiFeatureFlagKey,
+  context: EvaluationContext
+) => Promise<FlagDecision>;
+
+export async function resolveApiFeatureFlag(
+  evaluator: ApiFeatureFlagEvaluator | undefined,
+  key: ApiFeatureFlagKey,
+  context: EvaluationContext,
+  bootstrapValue: boolean
+): Promise<boolean> {
+  if (!evaluator) return bootstrapValue;
+  return (await evaluator(key, context)).enabled;
 }
 
 function createRegistry(): FeatureFlagRegistry {
@@ -182,12 +205,20 @@ export async function createApiFeatureFlags(params: {
     accountId: params.accountId,
     userId: params.userId
   };
+  const evaluate: ApiFeatureFlagEvaluator = async (key, evaluationContext) => {
+    const definition = registry.require(key);
+    return provider.evaluate(definition, {
+      ...evaluationContext,
+      // The deployment environment is an authority boundary, not caller data.
+      environment: params.environment
+    });
+  };
   const decisionEntries = await Promise.all(
     registry
       .list()
       .map(async (definition: FlagDefinition) => [
         definition.key,
-        await provider.evaluate(definition, context)
+        await evaluate(definition.key as ApiFeatureFlagKey, context)
       ])
   );
   const decisions = Object.fromEntries(decisionEntries) as Readonly<Record<string, FlagDecision>>;
@@ -213,6 +244,7 @@ export async function createApiFeatureFlags(params: {
     mlForecastingEnabled: decisions['ml.forecasting.enabled'].enabled,
     mlAnomalyDetectionEnabled: decisions['ml.anomaly_detection.enabled'].enabled,
     mlOcrFiscalEnabled: decisions['ml.ocr_fiscal.enabled'].enabled,
+    evaluate,
     provider
   };
 }

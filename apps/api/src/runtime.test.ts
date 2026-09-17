@@ -13,6 +13,7 @@ function createTestRuntime(
   repositories?: RuntimeRepositories,
   options?: {
     readonly notificationsWhatsappRemindersEnabled?: boolean;
+    readonly notificationsWhatsappRemindersEvaluator?: (accountId: string) => Promise<boolean>;
   }
 ) {
   return createApiRuntime({
@@ -21,6 +22,7 @@ function createTestRuntime(
     refreshTokenTtlSeconds: 604800,
     repositories,
     notificationsWhatsappRemindersEnabled: options?.notificationsWhatsappRemindersEnabled,
+    notificationsWhatsappRemindersEvaluator: options?.notificationsWhatsappRemindersEvaluator,
     // The restart suite uses the in-memory repository bundle, whose explicit
     // transaction boundary is supplied by the test harness. Production SQL
     // runtimes provide the real tenant transaction from bootstrap.
@@ -2282,6 +2284,33 @@ test('runtime gates automatic WhatsApp reminders behind feature flag state', asy
       .some((entry) => entry.action === 'whatsapp_reminder_skipped_flag_disabled'),
     false
   );
+});
+
+test('runtime resolves WhatsApp reminders against the appointment account', async () => {
+  let evaluatedAccountId = '';
+  const runtime = createTestRuntime(undefined, {
+    notificationsWhatsappRemindersEnabled: false,
+    notificationsWhatsappRemindersEvaluator: async (accountId) => {
+      evaluatedAccountId = accountId;
+      return true;
+    }
+  });
+  const login = (await runtime.auth.login(
+    { username: 'reception', password: 'seed_reception' },
+    'corr_whatsapp_reminder_request_scope'
+  )) as AuthSessionResponse;
+  const principal = runtime.auth.authenticateAccessToken(login.accessToken);
+
+  await runtime.scheduling.createAppointment(principal.user.accountId, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    scheduledAt: '2026-04-13T12:00:00.000Z',
+    visitType: 'scheduled',
+    reason: 'Reminder request-scoped evaluation'
+  });
+
+  assert.equal(evaluatedAccountId, principal.user.accountId);
+  assert.equal(await waitForAuditAction(runtime, 'whatsapp_reminder_scheduled'), true);
 });
 
 test('runtime records successful WhatsApp reminder delivery with vendor correlation metadata', async () => {

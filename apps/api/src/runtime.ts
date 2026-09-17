@@ -293,6 +293,8 @@ export interface ApiRuntimeOptions {
   readonly runtimeDistributedStateEnabled?: boolean;
   /** Gates automatic WhatsApp reminder dispatch on appointment creation. */
   readonly notificationsWhatsappRemindersEnabled?: boolean;
+  /** Resolves the reminder gate with the appointment's authoritative account context. */
+  readonly notificationsWhatsappRemindersEvaluator?: (accountId: string) => Promise<boolean>;
   /** Keeps canonical seed principals even when a users repository is configured. */
   readonly preserveSeedUsersWithRepository?: boolean;
   /** Keeps canonical owner/patient registry seeds even when repositories are configured. */
@@ -463,7 +465,18 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
           status: appointment.status,
           createdAt: appointment.createdAt
         });
-        if (!notificationsWhatsappRemindersEnabled) {
+        let remindersEnabled = notificationsWhatsappRemindersEnabled;
+        if (options.notificationsWhatsappRemindersEvaluator) {
+          try {
+            remindersEnabled = await options.notificationsWhatsappRemindersEvaluator(
+              appointment.accountId
+            );
+          } catch {
+            // A flag-control-plane failure must never enable an external side effect.
+            remindersEnabled = false;
+          }
+        }
+        if (!remindersEnabled) {
           audit.write({
             actorId: 'system',
             accountId: appointment.accountId,

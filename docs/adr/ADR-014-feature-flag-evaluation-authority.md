@@ -22,6 +22,10 @@ As invariantes são:
   avaliação;
 - uma falha de infraestrutura não pode habilitar uma decisão cujo kill switch
   persistido ficou desconhecido.
+- um gate de request deve avaliar a conta e o usuário do principal
+  autoritativo, não apenas o snapshot de bootstrap do processo;
+- um override nunca pode apontar para uma flag de outra conta, mesmo que um
+  chamador consiga contornar a camada de serviço.
 
 ## Decisão
 
@@ -44,7 +48,21 @@ administrativas. Nenhum TTL de autorização ou cache de sessão foi introduzido
 A persistência grava e atualiza o `enabled` autoritativo. Overrides usam um
 índice único PostgreSQL `NULLS NOT DISTINCT` sobre as dimensões da regra e
 `INSERT ... ON CONFLICT`, evitando que dois usuários concorrentes compartilhem
-ou sobrescrevam a linha errada.
+ou sobrescrevam a linha errada. A migração `0174` adiciona uma chave estrangeira
+composta `(flag_id, account_id) -> feature_flags(id, account_id)`, fechando a
+fronteira de ownership no banco; o repositório também repete o predicado de
+conta nas leituras e rejeita `userId` não-UUID antes de persistir.
+
+O bootstrap expõe `evaluate(key, context)` como autoridade request-scoped. As
+rotas autenticadas passam o `accountId`/`userId` do principal após a autorização
+e mantêm os booleanos escalares apenas como compatibilidade para testes e
+ligações processuais. O callback de lembretes WhatsApp reavalia a conta do
+agendamento; flags de infraestrutura que controlam o processo permanecem
+explicitamente process-wide e não são apresentadas como rollout por conta.
+
+As rotas administrativas validam o JSON recebido antes de chamar o repositório:
+booleanos não são coagidos (`"false"` não vira `true`), escopos são enumerados,
+percentuais ficam entre 0 e 100 e identificadores direcionados devem ser UUID.
 
 ## Alternativas rejeitadas
 
@@ -60,8 +78,12 @@ ou sobrescrevam a linha errada.
 
 O boundary foi coberto por testes de seleção de escopo, kill switch persistido,
 expiração com cache, allowlist default-deny, fallback de bootstrap, falha
-fail-closed, validação de capacidade e persistência/upsert em
-`packages/modules/feature-flags/src/repositories/database-feature-flag.repository.test.ts`.
+fail-closed, invalidação/limite de cache, cache sensível à definição,
+validação de payloads, avaliação request-scoped e persistência/upsert em
+`packages/modules/feature-flags/src/repositories/database-feature-flag.repository.test.ts`,
+`tests/unit/api/feature-flags.test.ts` e
+`tests/unit/api/feature-flags-routes.test.ts`. A FK `0174` também foi aplicada
+em PostgreSQL de teste dentro de uma transação revertida com sucesso.
 Typecheck e lint do workspace continuam obrigatórios. Esses testes não
 substituem a execução PostgreSQL/RLS, o CI do candidato, UAT ou a autoridade de
 release; essas provas permanecem explicitamente `NOT PROVEN` até serem

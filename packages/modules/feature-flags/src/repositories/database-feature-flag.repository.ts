@@ -185,6 +185,19 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
       if (override.accountIdOverride && !isUuid(String(override.accountIdOverride))) {
         throw new Error('Feature flag override accountIdOverride must be a UUID');
       }
+      if (override.userId !== undefined && !isUuid(override.userId)) {
+        throw new Error('Feature flag override userId must be a UUID');
+      }
+      if (
+        override.allowedUsers !== undefined &&
+        (!Array.isArray(override.allowedUsers) ||
+          override.allowedUsers.some((userId) => typeof userId !== 'string'))
+      ) {
+        throw new Error('Feature flag override allowedUsers must be an array of strings');
+      }
+      if (typeof override.enabled !== 'boolean') {
+        throw new Error('Feature flag override enabled must be a boolean');
+      }
       if (
         override.percentage !== null &&
         override.percentage !== undefined &&
@@ -198,17 +211,12 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
         override.accountIdOverride && isUuid(String(override.accountIdOverride))
           ? override.accountIdOverride
           : null;
-      const normalizedUserId = isUuid(override.userId) ? override.userId : null;
+      const normalizedUserId = override.userId ?? null;
       const serializedPercentage =
         override.percentage === null || override.percentage === undefined
           ? null
           : JSON.stringify(override.percentage);
-      const serializedAllowedUsers = JSON.stringify([
-        ...new Set([
-          ...(override.allowedUsers ?? []),
-          ...(override.userId && !normalizedUserId ? [override.userId] : [])
-        ])
-      ]);
+      const serializedAllowedUsers = JSON.stringify([...new Set(override.allowedUsers ?? [])]);
       await client.query(
         `INSERT INTO feature_flag_overrides (account_id, flag_id, environment, account_id_override, user_id, percentage, allowed_users, enabled, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8::jsonb, NOW(), NOW())
@@ -226,7 +234,7 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
           normalizedUserId,
           serializedPercentage,
           serializedAllowedUsers,
-          JSON.stringify(Boolean(override.enabled))
+          JSON.stringify(override.enabled)
         ]
       );
     });
@@ -242,7 +250,8 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
       const result = await client.query(
         `SELECT o.* FROM feature_flag_overrides o
          JOIN feature_flags f ON f.id = o.flag_id
-         WHERE f.key = $1 AND f.account_id = $2 AND o.environment = $3 AND o.account_id_override = $4
+         WHERE f.key = $1 AND f.account_id = $2 AND o.account_id = $2
+           AND o.environment = $3 AND o.account_id_override = $4
          LIMIT 1`,
         [flagKey, accountId, environment, accountId]
       );
@@ -260,7 +269,7 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
       const result = await client.query(
         `SELECT o.* FROM feature_flag_overrides o
          JOIN feature_flags f ON f.id = o.flag_id
-         WHERE f.key = $1 AND f.account_id = $2
+         WHERE f.key = $1 AND f.account_id = $2 AND o.account_id = $2
          ORDER BY o.updated_at DESC, o.id ASC`,
         [flagKey, accountId]
       );
@@ -306,10 +315,28 @@ export class DatabaseFeatureFlagRepository implements FeatureFlagRepository {
       throw new Error('Invalid feature flag override percentage in database');
     }
     const allowedUsers = readStringArray(row.allowed_users, 'allowed_users', true);
+    const environment =
+      row.environment === null || row.environment === undefined
+        ? undefined
+        : readString(row.environment, 'override.environment');
+    const accountIdOverride =
+      row.account_id_override === null || row.account_id_override === undefined
+        ? undefined
+        : readString(row.account_id_override, 'override.account_id_override');
+    if (accountIdOverride && !isUuid(accountIdOverride)) {
+      throw new Error('Invalid feature flag override account_id_override in database');
+    }
+    const userId =
+      row.user_id === null || row.user_id === undefined
+        ? undefined
+        : readString(row.user_id, 'override.user_id');
+    if (userId && !isUuid(userId)) {
+      throw new Error('Invalid feature flag override user_id in database');
+    }
     return {
-      environment: row.environment as string | undefined,
-      accountIdOverride: row.account_id_override as AccountId | undefined,
-      userId: row.user_id ? (row.user_id as string) : undefined,
+      environment,
+      accountIdOverride: accountIdOverride as AccountId | undefined,
+      userId,
       percentage: percentage as number | null | undefined,
       allowedUsers,
       enabled: readBoolean(row.enabled, 'override.enabled')
@@ -419,7 +446,7 @@ export function createDatabaseFeatureFlagProvider(
     async evaluate(definition: FlagDefinition, context: EvaluationContext): Promise<FlagDecision> {
       const now = context.now ?? new Date();
       const nowMs = now.getTime();
-      const cacheKey = buildCacheKey(definition.key, context);
+      const cacheKey = buildCacheKey(definition, context);
 
       const cached = cache.get(cacheKey);
       if (cached && cached.expiresAt > nowMs) {
@@ -455,9 +482,9 @@ export function createDatabaseFeatureFlagProvider(
   };
 }
 
-function buildCacheKey(flagKey: string, context: EvaluationContext): string {
+function buildCacheKey(definition: FlagDefinition, context: EvaluationContext): string {
   return JSON.stringify([
-    flagKey,
+    definition,
     context.environment,
     context.tenantId,
     context.accountId,

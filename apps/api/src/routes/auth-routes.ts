@@ -26,9 +26,11 @@ import type {
 } from '@cvg-his-v2/shared-contracts';
 import { AppError, toErrorResponse, ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal, SessionSummary } from '@cvg-his-v2/shared-types';
+import type { EvaluationContext } from '@cvg-his-v2/shared-feature-flags';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 import { readJsonBody, validateRequestBody } from '../helpers/common.js';
+import { resolveApiFeatureFlag, type ApiFeatureFlagEvaluator } from '../feature-flags.js';
 
 type AuditAppender = (
   actorId: string,
@@ -378,6 +380,8 @@ export interface AuthRoutesHandlers {
     authOidcEnabled: boolean;
     authWebauthnEnabled: boolean;
   };
+  featureFlagEvaluator?: ApiFeatureFlagEvaluator;
+  featureFlagContext?: EvaluationContext;
   webauthnService?: WebAuthnService;
   webauthnChallengeStore?: WebAuthnChallengeStore;
   webauthnChallenges: Map<string, WebAuthnChallengeValue>;
@@ -719,6 +723,8 @@ export async function handleAuthRoutes(
     oidcConfig,
     oidcStateStore,
     oidcStateTtlMs,
+    featureFlagEvaluator,
+    featureFlagContext,
     trustedProxyCidrs,
     requirePrincipal,
     appendAudit
@@ -954,7 +960,11 @@ export async function handleAuthRoutes(
     if (!mfaService) {
       return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'MFA not configured' });
     }
-    const payload = parseRequiredStringFields(await readJsonBody(request), ['token'], correlationId);
+    const payload = parseRequiredStringFields(
+      await readJsonBody(request),
+      ['token'],
+      correlationId
+    );
     const record = await mfaService.confirmSetup(
       principal.user.accountId,
       principal.user.id,
@@ -991,7 +1001,11 @@ export async function handleAuthRoutes(
     if (!mfaService) {
       return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'MFA not configured' });
     }
-    const payload = parseRequiredStringFields(await readJsonBody(request), ['token'], correlationId);
+    const payload = parseRequiredStringFields(
+      await readJsonBody(request),
+      ['token'],
+      correlationId
+    );
     await mfaService.disableMfa(principal.user.accountId, principal.user.id, payload.token);
     appendAudit(
       principal.user.id,
@@ -1028,7 +1042,14 @@ export async function handleAuthRoutes(
         message: 'WebAuthn not configured'
       });
     }
-    if (!featureFlags.authWebauthnEnabled) {
+    if (
+      !(await resolveApiFeatureFlag(
+        featureFlagEvaluator,
+        'auth.webauthn.enabled',
+        { ...featureFlagContext, accountId: principal.user.accountId, userId: principal.user.id },
+        featureFlags.authWebauthnEnabled
+      ))
+    ) {
       return sendJson(response, 403, { code: 'FLAG_DISABLED', message: 'WebAuthn is not enabled' });
     }
     const rpId = request.headers['x-rp-id']?.toString() ?? 'localhost';
@@ -1061,7 +1082,14 @@ export async function handleAuthRoutes(
         message: 'WebAuthn not configured'
       });
     }
-    if (!featureFlags.authWebauthnEnabled) {
+    if (
+      !(await resolveApiFeatureFlag(
+        featureFlagEvaluator,
+        'auth.webauthn.enabled',
+        { ...featureFlagContext, accountId: principal.user.accountId, userId: principal.user.id },
+        featureFlags.authWebauthnEnabled
+      ))
+    ) {
       return sendJson(response, 403, { code: 'FLAG_DISABLED', message: 'WebAuthn is not enabled' });
     }
     const payload = parseRequiredStringFields(
@@ -1117,7 +1145,14 @@ export async function handleAuthRoutes(
         message: 'WebAuthn not configured'
       });
     }
-    if (!featureFlags.authWebauthnEnabled) {
+    if (
+      !(await resolveApiFeatureFlag(
+        featureFlagEvaluator,
+        'auth.webauthn.enabled',
+        { ...featureFlagContext, accountId: principal.user.accountId, userId: principal.user.id },
+        featureFlags.authWebauthnEnabled
+      ))
+    ) {
       return sendJson(response, 403, { code: 'FLAG_DISABLED', message: 'WebAuthn is not enabled' });
     }
     const payload = parseOptionalStringFields(
@@ -1155,7 +1190,14 @@ export async function handleAuthRoutes(
         message: 'WebAuthn not configured'
       });
     }
-    if (!featureFlags.authWebauthnEnabled) {
+    if (
+      !(await resolveApiFeatureFlag(
+        featureFlagEvaluator,
+        'auth.webauthn.enabled',
+        { ...featureFlagContext, accountId: principal.user.accountId, userId: principal.user.id },
+        featureFlags.authWebauthnEnabled
+      ))
+    ) {
       return sendJson(response, 403, { code: 'FLAG_DISABLED', message: 'WebAuthn is not enabled' });
     }
     const rawPayload = await readJsonBody(request);
@@ -1226,7 +1268,14 @@ export async function handleAuthRoutes(
     if (!oidcConfig) {
       return sendJson(response, 501, { code: 'NOT_CONFIGURED', message: 'OIDC not configured' });
     }
-    if (!featureFlags.authOidcEnabled) {
+    if (
+      !(await resolveApiFeatureFlag(
+        featureFlagEvaluator,
+        'auth.oidc.enabled',
+        featureFlagContext ?? {},
+        featureFlags.authOidcEnabled
+      ))
+    ) {
       return sendJson(response, 403, {
         code: 'FLAG_DISABLED',
         message: 'OIDC login is not enabled'
@@ -1251,7 +1300,14 @@ export async function handleAuthRoutes(
     if (!oidcConfig) {
       return sendJson(response, 501, { code: 'NOT_CONFIGURED', message: 'OIDC not configured' });
     }
-    if (!featureFlags.authOidcEnabled) {
+    if (
+      !(await resolveApiFeatureFlag(
+        featureFlagEvaluator,
+        'auth.oidc.enabled',
+        featureFlagContext ?? {},
+        featureFlags.authOidcEnabled
+      ))
+    ) {
       return sendJson(response, 403, {
         code: 'FLAG_DISABLED',
         message: 'OIDC login is not enabled'
