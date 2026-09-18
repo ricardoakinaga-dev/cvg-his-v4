@@ -10,14 +10,16 @@ WebAuthn FIDO2 passou `14/14` testes criptográficos, configuração `47/47`, MF
 `66/66`, rotas nativas `47/47`, typechecks MFA/API e guards OpenAPI/runtime/
 dependências; as rotas OpenAPI passaram `5/5`, o build da API e as rotas nativas
 compiladas passaram `2/2`. O registro persiste o credential ID e a chave pública reais e
-rejeita RP ID vindo de header. O [CI exato #35304185255](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35304185255)
+rejeita RP ID vindo de header. O [CI exato #282](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35306907606)
 terminou `failure`: `Critical Coverage Gate` e `Performance (k6 SLOs)` falharam;
 E2E SPA, integração, unitários, build, guards, OpenAPI, visual e os demais jobs
-terminaram `success`. O [State of Art Closure #35304185156](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35304185156)
+terminaram `success`. A ficha de jobs e artefatos está em
+[`26-remote-ci-35306907606.md`](./26-remote-ci-35306907606.md). O [State of Art Closure #43](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35306907572)
 terminou `success`, mas não substitui os gates obrigatórios. Há `2` P0 fechados
 e `12` abertos; target, recovery, UAT, attestation de fabricante, governança e
-autoridade de release continuam sem prova. A observação detalhada está em
-[`25-remote-ci-35304185255.md`](./25-remote-ci-35304185255.md).
+autoridade de release continuam sem prova. A matriz local cross-browser também
+falhou fora do Chromium e está registrada em
+[`27-local-visual-matrix-20260918.md`](./27-local-visual-matrix-20260918.md).
 
 ## Executive Summary
 

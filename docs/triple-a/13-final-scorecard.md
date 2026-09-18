@@ -2,9 +2,9 @@
 
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT SNAPSHOT   | candidato funcional `4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; registro P0 candidate-bound; importador do evidence graph com validação de envelope, frescor, ancestralidade, ambiente e digest; nenhum envelope local é promovido a PASS; históricos não são transferidos |
-| MAIN / ORIGIN      | `origin/main@4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`; o commit publicado implementa verificação criptográfica WebAuthn/FIDO2, configuração autoritativa de RP/origens e resolução OpenAPI compatível com source/build/Vitest, sem force-push |
-| CURRENT CI         | [CI #35304185255](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35304185255) terminou `failure`: `Critical Coverage Gate` e `Performance (k6 SLOs)` falharam; os demais jobs terminaram `success`. [State of Art Closure #35304185156](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35304185156) terminou `success`, mas não substitui os gates externos |
+| CURRENT SNAPSHOT   | candidato funcional `4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`; HEAD documental candidate-bound `0d230b65d41cfc3f227c0815bb821369241dcbb7`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; nenhum envelope local é promovido a PASS |
+| MAIN / ORIGIN      | `origin/main@0d230b65d41cfc3f227c0815bb821369241dcbb7`; o histórico publicado implementa verificação criptográfica WebAuthn/FIDO2, configuração autoritativa de RP/origens e resolução OpenAPI compatível com source/build/Vitest, sem force-push |
+| CURRENT CI         | [CI #282](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35306907606) terminou `failure`: `Critical Coverage Gate` e `Performance (k6 SLOs)` falharam; os demais jobs terminaram `success`. [State of Art Closure #43](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35306907572) terminou `success`, mas não substitui os gates externos |
 | LOCAL STRICT GATE  | R05-010 e SQL local `PASS`; release/Triple-A continuam `NOT_PROVEN`, `claim=NOT PROVEN`, `publication_allowed=false` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
 | LOCAL VALIDATION   | Migration-source PASS; integração efêmera `105/105` arquivos e `933/933` testes; WebAuthn FIDO2 `14/14`, configuração `47/47`, MFA `66/66`, rotas nativas `47/47`, OpenAPI `5/5`, manifesto crítico `16/16` e typechecks MFA/API PASS; a validação local não prova CI exato, target, recovery, UAT, attestation ou autoridade |
@@ -34,8 +34,12 @@ e o pacote local permanece fail-closed.
 Não são emitidos `main green`, release produtivo ou `TRIPLE-A VERIFIED`.
 Limitações operacionais, humanas, de target e de governança estão detalhadas
 em [`17-current-execution-evidence.md`](./17-current-execution-evidence.md).
-A observação terminal do CI exato está em
-[`25-remote-ci-35304185255.md`](./25-remote-ci-35304185255.md).
+A observação terminal anterior está preservada em
+[`25-remote-ci-35304185255.md`](./25-remote-ci-35304185255.md). A evidência
+current do CI #282 está em
+[`26-remote-ci-35306907606.md`](./26-remote-ci-35306907606.md), e a matriz
+visual local cross-browser em
+[`27-local-visual-matrix-20260918.md`](./27-local-visual-matrix-20260918.md).
 
 ## Registro obrigatório do prompt
 

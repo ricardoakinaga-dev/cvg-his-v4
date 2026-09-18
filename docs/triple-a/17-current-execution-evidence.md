@@ -1,5 +1,17 @@
 # Evidência de execução corrente — State of Art
 
+## Observação terminal mais recente — CI #282
+
+O [CI #282](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35306907606)
+terminou `failure` no HEAD documental `0d230b65d41cfc3f227c0815bb821369241dcbb7`:
+`Critical Coverage Gate` e `Performance (k6 SLOs)` falharam, enquanto os demais
+jobs passaram. A ficha exata, os horários, os jobs e os artefatos estão em
+[`26-remote-ci-35306907606.md`](./26-remote-ci-35306907606.md). A matriz visual
+local reproduziu `29/29` no Chromium e `0/29` em Firefox e WebKit por engine;
+essa evidência diagnóstica está em
+[`27-local-visual-matrix-20260918.md`](./27-local-visual-matrix-20260918.md).
+O release permanece `BLOCKED / NOT PROVEN`.
+
 ## Observação terminal do CI exato — 2026-09-18T04:20:23Z
 
 O [CI #35304185255](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35304185255)

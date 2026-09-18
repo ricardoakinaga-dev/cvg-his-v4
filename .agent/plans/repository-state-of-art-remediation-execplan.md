@@ -1,6 +1,6 @@
 # Remediação do repositório para ERP State of Art — ExecPlan
 
-<!-- engineering-framework: active_action_id=TRIPLE-A-RELEASE-CONTROL:PERFORMANCE-CI-RERUN -->
+<!-- engineering-framework: active_action_id=TRIPLE-A-RELEASE-CONTROL:CI-282-ROOT-CAUSE-REVIEW -->
 
 ## Purpose / Big Picture
 
@@ -202,13 +202,13 @@ Preservar o monólito modular API/SPA/worker, isolamento tenant/RLS, transaçõe
 
 ## Plan of Work
 
-A frente executável corrente é `TRIPLE-A-RELEASE-CONTROL:PERFORMANCE-CI-RERUN`; `PROD-062:PROD-062-FRESH-CRITIC-AUTHORITY-20260915` permanece aguardando revisão fresh e autoridade após preparação local enquanto PROD-010 permanece BLOCKED. O CI #215 confirmou R05-010, os gates estruturais, E2E SPA e Visual, mas falhou em duas SLOs de latência: query p95 `222,00 ms` contra `150 ms` e inventory p95 `205,53 ms` contra `200 ms`. A reprodução local equivalente passou 9/9, e a análise dos caminhos não sustentou patch seguro sem evidência adicional; o próximo slice é um rerun remoto do candidato, com thresholds, denominador, escopo e trust root congelados. PROD-027 continua em espera por crítica fresh e Product/QA/domínio; PROD-019, PROD-048, PROD-049 e PROD-052 aguardam suas autoridades; D1/S3 de PROD-014 aguardam QA/release. Cada slice segue `BUILD → focused test → critic → fix → regression → integrate`, e o release continua bloqueado.
+A frente executável corrente é `TRIPLE-A-RELEASE-CONTROL:CI-282-ROOT-CAUSE-REVIEW`; `PROD-062:PROD-062-FRESH-CRITIC-AUTHORITY-20260915` permanece aguardando revisão fresh e autoridade após preparação local enquanto PROD-010 permanece BLOCKED. O CI #282 terminou FAILURE no candidato documental `0d230b65`: Critical Coverage Gate e Performance/k6 falharam, e a matriz visual local registrou 29/29 no Chromium contra 0/29 em Firefox e WebKit. O rerun remoto foi concluído sem alterar thresholds, denominador, escopo ou trust root; o próximo slice único é inspecionar artefatos e logs candidate-bound para separar defeito determinístico de infraestrutura/runner. PROD-027 continua em espera por crítica fresh e Product/QA/domínio; PROD-019, PROD-048, PROD-049 e PROD-052 aguardam suas autoridades; D1/S3 de PROD-014 aguardam QA/release. Cada slice segue `BUILD → focused test → critic → fix → regression → integrate`, e o release continua bloqueado.
 
 ## Concrete Steps
 
 From `/home/ricardo/cvg-his-v4`:
 
-1. [TRIPLE-A-RELEASE-CONTROL:PERFORMANCE-CI-RERUN] Executar novo CI remoto do candidato atual e verificar as SLOs de query/inventory; registrar resultado terminal e manter a régua inalterada.
+1. [TRIPLE-A-RELEASE-CONTROL:CI-282-ROOT-CAUSE-REVIEW] Inspecionar os artefatos e logs candidate-bound do CI #282; separar falha determinística de infraestrutura/runner e decidir um único rework, sem alterar thresholds, denominador, escopo ou identidade.
 2. [PROD-062:PROD-062-FAMILY-VERIFIERS-20260915] [CONCLUÍDO LOCALMENTE] Implementar e testar os contratos criterion-specific por família, atualizar o gerador para usar o mesmo validador e produzir pacote local digest-bound; preservar PROD-010, thresholds, trust root e bloqueio externo.
 3. [PROD-027:PROD-027-PRODUCT-QA-DOMAIN-OWNER-20260915] Obter crítica independente fresh atual ou substituto autorizado e decisão formal de Product/QA/donos de domínio; preservar PROD-003 como dependência integral e não alegar paridade.
 4. [PROD-048:PROD-048-DPO-OWNER-20260915] Obter owner Segurança/DPO e decisão restrita sobre os 28 digests/localizações, exemplos sintéticos, ACL, retenção, restauração e destino durável; não expor valores.
@@ -406,3 +406,13 @@ enquanto o crítico fresh não encontrou patch de baixo risco que justificasse
 alterar a métrica ou a regra. A ação foi reancorada em
 `TRIPLE-A-RELEASE-CONTROL:PERFORMANCE-CI-RERUN`; a diferença local/remota é
 registrada como evidência limitada, não como prova conclusiva de variância.
+
+Plan revision note, 2026-09-18 (CI #282 terminal and visual matrix): o rerun
+remoto terminou `FAILURE` com `Critical Coverage Gate` e `Performance (k6 SLOs)`
+rejeitados; os demais jobs observados passaram. A execução visual local
+cross-browser passou somente no Chromium (`29/29`) e falhou em Firefox e WebKit
+(`0/29` por engine) contra snapshots Chromium. O diagnóstico corrente passa a
+ser `TRIPLE-A-RELEASE-CONTROL:CI-282-ROOT-CAUSE-REVIEW`; nenhum snapshot foi
+atualizado, nenhum threshold foi reduzido e o release permanece
+`BLOCKED / NOT PROVEN` até haver artefatos/logs autenticados e aceitação visual
+independente.
