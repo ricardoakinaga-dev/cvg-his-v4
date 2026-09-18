@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -5,31 +7,44 @@ import {
   InMemoryWebAuthnRepository,
   WebAuthnServiceImpl
 } from '../../../packages/modules/mfa/src/webauthn.js';
+import {
+  createWebAuthnAssertionFixture,
+  createWebAuthnRegistrationFixture
+} from './webauthn-fixtures.js';
 
 const ACCOUNT_ID = 'account-webauthn';
+const USER_ID = 'user-webauthn';
+const RP_ID = 'cvg.local';
+const ORIGIN = 'https://cvg.local';
+const VERIFIER_CONFIG = { rpId: RP_ID, origins: [ORIGIN] } as const;
 
-describe('WebAuthn coverage guard', () => {
-  it('generates URL-safe challenges and registration options with existing credential exclusion', async () => {
+function userHandle(userId: string): string {
+  return Buffer.from(userId, 'utf8').toString('base64url');
+}
+
+describe('WebAuthn FIDO2 verification', () => {
+  it('generates URL-safe challenges and registration options with real exclusions', async () => {
     const repository = new InMemoryWebAuthnRepository();
-    const existingCredentialId = await repository.save(ACCOUNT_ID, 'user_reg', {
-      publicKey: 'user:user_reg:cred_existing',
+    const existingCredentialId = await repository.save(ACCOUNT_ID, USER_ID, {
+      id: 'existing-credential',
+      publicKey: 'stored-public-key',
       counter: 2,
       deviceType: 'platform',
       createdAt: '2026-04-18T00:00:00.000Z',
       lastUsedAt: null,
       nickname: 'MacBook'
     });
-    const service = new WebAuthnServiceImpl(repository);
+    const service = new WebAuthnServiceImpl(repository, VERIFIER_CONFIG);
 
     const challenge = generateWebAuthnChallenge();
-    expect(challenge).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(challenge).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(generateWebAuthnChallenge()).not.toBe(challenge);
 
-    const registration = await service.generateRegistrationOptions(ACCOUNT_ID, 'user_reg', {
+    const registration = await service.generateRegistrationOptions(ACCOUNT_ID, USER_ID, {
       rpName: 'CVG HIS',
-      rpId: 'cvg.local',
+      rpId: RP_ID,
       userName: 'user@example.com',
-      userId: 'user_reg',
+      userId: USER_ID,
       timeout: 45_000,
       authenticatorSelection: {
         requireResidentKey: true,
@@ -39,12 +54,12 @@ describe('WebAuthn coverage guard', () => {
       }
     });
 
-    expect(registration.challenge).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(registration.challenge).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(registration.publicKeyOptions).toEqual(
       expect.objectContaining({
         timeout: 45_000,
         attestation: 'none',
-        rp: { name: 'CVG HIS', id: 'cvg.local' },
+        rp: { name: 'CVG HIS', id: RP_ID },
         authenticatorSelection: {
           requireResidentKey: true,
           residentKey: 'required',
@@ -58,105 +73,187 @@ describe('WebAuthn coverage guard', () => {
     );
   });
 
-  it('persists registrations with repository ids and lists credentials by user', async () => {
+  it('verifies attestation, stores the browser credential ID and rejects tampering', async () => {
     const repository = new InMemoryWebAuthnRepository();
-    const service = new WebAuthnServiceImpl(repository);
+    const service = new WebAuthnServiceImpl(repository, VERIFIER_CONFIG);
+    const options = await service.generateRegistrationOptions(ACCOUNT_ID, USER_ID, {
+      rpName: 'CVG HIS',
+      rpId: RP_ID,
+      userName: 'user@example.com',
+      userId: USER_ID
+    });
+    const fixture = createWebAuthnRegistrationFixture({
+      rpId: RP_ID,
+      origin: ORIGIN,
+      challenge: options.challenge
+    });
 
     const registered = await service.verifyRegistration(
       ACCOUNT_ID,
-      'user_register',
-      {
-        credentialId: 'browser-credential-id',
-        attestationObject: 'attestation',
-        clientDataJSON: 'client-data'
-      },
-      'expected-challenge'
+      USER_ID,
+      fixture.registration,
+      options.challenge
     );
-
     const stored = await repository.findByCredentialId(
       ACCOUNT_ID,
-      'user_register',
+      USER_ID,
       registered.credentialId
     );
-    const byUser = await repository.findByUserId(ACCOUNT_ID, 'user_register');
 
-    expect(registered.credentialId).toMatch(/^webauthn_/);
+    expect(registered.credentialId).toBe(fixture.credentialId);
     expect(stored).toEqual(
       expect.objectContaining({
-        id: registered.credentialId,
-        publicKey: 'user:user_register:browser-credential-id',
+        id: fixture.credentialId,
+        publicKey: expect.stringMatching(/^[A-Za-z0-9_-]+$/),
         counter: 0,
         deviceType: 'cross-platform'
       })
     );
-    expect(byUser).toHaveLength(1);
+    await expect(
+      service.verifyRegistration(
+        ACCOUNT_ID,
+        USER_ID,
+        fixture.registration,
+        `${options.challenge}-tampered`
+      )
+    ).rejects.toThrow('WebAuthn verification failed');
   });
 
-  it('generates authentication options and verifies assertions only for known credentials', async () => {
+  it('verifies signed assertions, advances the counter and rejects replay, origin and signature changes', async () => {
     const repository = new InMemoryWebAuthnRepository();
-    const service = new WebAuthnServiceImpl(repository);
+    const service = new WebAuthnServiceImpl(repository, VERIFIER_CONFIG);
+    const registrationOptions = await service.generateRegistrationOptions(ACCOUNT_ID, USER_ID, {
+      rpName: 'CVG HIS',
+      rpId: RP_ID,
+      userName: 'user@example.com',
+      userId: USER_ID
+    });
+    const registrationFixture = createWebAuthnRegistrationFixture({
+      rpId: RP_ID,
+      origin: ORIGIN,
+      challenge: registrationOptions.challenge
+    });
+    await service.verifyRegistration(
+      ACCOUNT_ID,
+      USER_ID,
+      registrationFixture.registration,
+      registrationOptions.challenge
+    );
 
-    const authOptions = await service.generateAuthenticationOptions(ACCOUNT_ID, 'user_auth', {
-      rpId: 'cvg.local',
+    const authenticationOptions = await service.generateAuthenticationOptions(ACCOUNT_ID, USER_ID, {
+      rpId: RP_ID,
       timeout: 20_000,
       userVerification: 'required'
     });
-
-    expect(authOptions.publicKeyOptions).toEqual(
+    expect(authenticationOptions.publicKeyOptions).toEqual(
       expect.objectContaining({
         timeout: 20_000,
-        rpId: 'cvg.local',
-        userVerification: 'required',
-        extensions: { appid: 'cvg.local' }
+        rpId: RP_ID,
+        userVerification: 'required'
       })
     );
+    expect(authenticationOptions.publicKeyOptions).not.toHaveProperty('extensions.appid');
 
-    const missing = await service.verifyAuthentication(
-      ACCOUNT_ID,
-      'user_auth',
-      'cred_missing',
-      {
-        authenticatorData: 'auth-data',
-        clientDataJSON: 'client-data',
-        signature: 'signature'
-      },
-      authOptions.challenge,
-      'cvg.local'
-    );
-    expect(missing).toEqual({ success: false });
-
-    const savedCredentialId = await repository.save(ACCOUNT_ID, 'user_auth', {
-      publicKey: 'user:user_auth:cred_real',
-      counter: 4,
-      deviceType: 'cross-platform',
-      createdAt: '2026-04-18T00:00:00.000Z',
-      lastUsedAt: null
+    const validAssertion = createWebAuthnAssertionFixture({
+      rpId: RP_ID,
+      origin: ORIGIN,
+      challenge: authenticationOptions.challenge,
+      privateKey: registrationFixture.privateKey,
+      counter: 1,
+      userHandle: userHandle(USER_ID)
     });
+    const invalidSignature = {
+      ...validAssertion,
+      signature: `${validAssertion.signature.slice(0, -1)}A`
+    };
 
-    const verified = await service.verifyAuthentication(
+    await expect(
+      service.verifyAuthentication(
+        ACCOUNT_ID,
+        USER_ID,
+        registrationFixture.credentialId,
+        invalidSignature,
+        authenticationOptions.challenge,
+        RP_ID
+      )
+    ).resolves.toEqual({ success: false });
+
+    await expect(
+      service.verifyAuthentication(
+        ACCOUNT_ID,
+        USER_ID,
+        registrationFixture.credentialId,
+        validAssertion,
+        authenticationOptions.challenge,
+        RP_ID
+      )
+    ).resolves.toEqual({ success: true, newCounter: 1 });
+
+    await expect(
+      service.verifyAuthentication(
+        ACCOUNT_ID,
+        USER_ID,
+        registrationFixture.credentialId,
+        validAssertion,
+        authenticationOptions.challenge,
+        RP_ID
+      )
+    ).resolves.toEqual({ success: false });
+
+    const nextOptions = await service.generateAuthenticationOptions(ACCOUNT_ID, USER_ID, {
+      rpId: RP_ID
+    });
+    const wrongOrigin = createWebAuthnAssertionFixture({
+      rpId: RP_ID,
+      origin: 'https://attacker.example',
+      challenge: nextOptions.challenge,
+      privateKey: registrationFixture.privateKey,
+      counter: 2
+    });
+    await expect(
+      service.verifyAuthentication(
+        ACCOUNT_ID,
+        USER_ID,
+        registrationFixture.credentialId,
+        wrongOrigin,
+        nextOptions.challenge,
+        RP_ID
+      )
+    ).resolves.toEqual({ success: false });
+
+    const stored = await repository.findByCredentialId(
       ACCOUNT_ID,
-      'user_auth',
-      savedCredentialId,
-      {
-        authenticatorData: 'auth-data',
-        clientDataJSON: 'client-data',
-        signature: 'signature',
-        userHandle: 'user_auth'
-      },
-      authOptions.challenge,
-      'cvg.local'
+      USER_ID,
+      registrationFixture.credentialId
     );
+    expect(stored?.counter).toBe(1);
+  });
 
-    const updated = await repository.findByCredentialId(ACCOUNT_ID, 'user_auth', savedCredentialId);
-    expect(verified).toEqual({ success: true, newCounter: 5 });
-    expect(updated?.counter).toBe(5);
-    expect(updated?.lastUsedAt).toBeTypeOf('string');
+  it('rejects unknown credentials and RP changes before verification', async () => {
+    const repository = new InMemoryWebAuthnRepository();
+    const service = new WebAuthnServiceImpl(repository, VERIFIER_CONFIG);
+
+    await expect(
+      service.generateAuthenticationOptions(ACCOUNT_ID, USER_ID, { rpId: 'attacker.example' })
+    ).rejects.toThrow('RP ID');
+
+    await expect(
+      service.verifyAuthentication(
+        ACCOUNT_ID,
+        USER_ID,
+        'credential-not-found',
+        { authenticatorData: 'bad', clientDataJSON: 'bad', signature: 'bad' },
+        'challenge',
+        RP_ID
+      )
+    ).resolves.toEqual({ success: false });
   });
 
   it('supports repository lifecycle operations for stored authenticators', async () => {
     const repository = new InMemoryWebAuthnRepository();
     const credentialId = await repository.save(ACCOUNT_ID, 'user_delete', {
-      publicKey: 'user:user_delete:cred_to_delete',
+      id: 'credential-to-delete',
+      publicKey: 'stored-public-key',
       counter: 0,
       deviceType: 'platform',
       createdAt: '2026-04-18T00:00:00.000Z',

@@ -162,9 +162,8 @@ function applyApiFeatureFlagSafetyPolicy(
   environment: string,
   webauthnVerifierReady: boolean
 ): FlagDecision {
-  // The current WebAuthn module stores credentials/challenges but does not yet
-  // perform complete FIDO2 attestation and assertion verification. Keep every
-  // production-like path fail-closed, including account-scoped evaluations.
+  // Keep every production-like path fail-closed unless the composition root
+  // has supplied both the FIDO2 verifier and its authoritative RP settings.
   if (
     key === 'auth.webauthn.enabled' &&
     isProductionLikeEnvironment(environment) &&

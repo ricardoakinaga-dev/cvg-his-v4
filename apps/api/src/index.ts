@@ -217,7 +217,10 @@ async function main() {
     environment: config.environment,
     enabledKeys: config.apiFeatureFlags ?? [],
     db,
-    metrics: featureFlagMetrics
+    metrics: featureFlagMetrics,
+    webauthnVerifierReady:
+      databaseConfigured &&
+      Boolean(config.webauthnRpId && config.webauthnOrigins && config.webauthnOrigins.length > 0)
   });
   if (await stopStartupIfRequested()) return;
 
@@ -388,6 +391,8 @@ async function main() {
     mfaEncryptionKey: config.mfaEncryptionKey,
     mfaEncryptionKeyVersion: config.mfaEncryptionKeyVersion,
     mfaEncryptionKeyring: config.mfaEncryptionKeyring,
+    webauthnRpId: config.webauthnRpId,
+    webauthnOrigins: config.webauthnOrigins,
     repositories: bootstrapResult.repositories,
     fileStorage,
     attachmentScanner,

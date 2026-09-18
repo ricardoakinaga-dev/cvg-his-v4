@@ -342,6 +342,10 @@ export interface ApiServerOptions {
   readonly mfaEncryptionKey?: string;
   readonly mfaEncryptionKeyVersion?: string;
   readonly mfaEncryptionKeyring?: Readonly<Record<string, string>>;
+  /** Authoritative WebAuthn RP ID, supplied by deployment configuration. */
+  readonly webauthnRpId?: string;
+  /** Browser origins accepted by the WebAuthn verifier. */
+  readonly webauthnOrigins?: readonly string[];
   readonly repositories?: RuntimeRepositories;
   /** Durable clinical workflow/reminder control plane. Tests may inject an in-memory service. */
   readonly workflowTaskService?: WorkflowTaskService;
@@ -457,6 +461,7 @@ export function assertWebAuthnDurableStateReadiness(options: {
   readonly enabled: boolean;
   readonly credentialRepository?: WebAuthnRepository;
   readonly challengeStore?: WebAuthnChallengeStore;
+  readonly verifierConfigured?: boolean;
 }): void {
   if (!options.enabled || isLocalDevelopmentOrTestEnvironment(options.environment)) {
     return;
@@ -477,9 +482,11 @@ export function assertWebAuthnDurableStateReadiness(options: {
       `Production-like WebAuthn requires durable WebAuthn state (${missing.join(', ')})`
     );
   }
-  throw new Error(
-    'Production-like WebAuthn is disabled until a full FIDO2 attestation and assertion verifier is configured'
-  );
+  if (!options.verifierConfigured) {
+    throw new Error(
+      'Production-like WebAuthn is disabled until an authoritative RP ID and browser origin are configured'
+    );
+  }
 }
 export function assertProductionProviderReadiness(
   options: Pick<
@@ -4071,10 +4078,18 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     environment: options.environment,
     enabled: featureFlags.authWebauthnEnabled,
     credentialRepository: webauthnRepository,
-    challengeStore: webauthnChallengeStore
+    challengeStore: webauthnChallengeStore,
+    verifierConfigured:
+      typeof options.webauthnRpId === 'string' &&
+      options.webauthnRpId.trim().length > 0 &&
+      Array.isArray(options.webauthnOrigins) &&
+      options.webauthnOrigins.length > 0
   });
   const webauthnService = webauthnRepository
-    ? new WebAuthnServiceImpl(webauthnRepository)
+    ? new WebAuthnServiceImpl(webauthnRepository, {
+        rpId: options.webauthnRpId ?? 'localhost',
+        origins: options.webauthnOrigins ?? ['http://localhost:3000']
+      })
     : undefined;
   const webauthnChallenges = new Map<string, { challenge: string; createdAt: number }>();
 
@@ -4594,6 +4609,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 appName: options.appName,
                 featureFlags,
                 webauthnService,
+                webauthnRpId: options.webauthnRpId ?? 'localhost',
                 webauthnChallengeStore,
                 webauthnChallenges,
                 oidcConfig,

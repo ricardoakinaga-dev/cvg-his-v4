@@ -286,6 +286,20 @@ export const API_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
   },
   {
     app: 'api',
+    key: 'WEBAUTHN_RP_ID',
+    required: false,
+    description:
+      'Authoritative WebAuthn relying-party ID. Required when WebAuthn is enabled in production-like environments.'
+  },
+  {
+    app: 'api',
+    key: 'WEBAUTHN_ORIGINS',
+    required: false,
+    description:
+      'Comma-separated browser origins accepted by WebAuthn registration and assertion verification.'
+  },
+  {
+    app: 'api',
     key: 'FEATURE_FLAGS_PROVIDER',
     required: false,
     defaultValue: 'env',
@@ -691,6 +705,8 @@ export interface ApiAppConfig {
   readonly mfaEncryptionKey?: string;
   readonly mfaEncryptionKeyVersion?: string;
   readonly mfaEncryptionKeyring: Readonly<Record<string, string>>;
+  readonly webauthnRpId?: string;
+  readonly webauthnOrigins?: readonly string[];
   readonly featureFlagsProvider: string;
   readonly apiFeatureFlags: readonly string[];
   readonly runtimeDistributedStateEnabled: boolean;
@@ -809,43 +825,70 @@ function hasShortRepeatingPeriod(token: string): boolean {
   return false;
 }
 
-function validateCorsOrigin(origin: string): string {
+function validateHttpOrigin(origin: string, fieldName: string): string {
   let parsed: URL;
   try {
     parsed = new URL(origin);
   } catch {
     throw new Error(
-      `CORS_ALLOWED_ORIGINS must contain only absolute http(s) origins. Invalid value: ${origin}`
+      `${fieldName} must contain only absolute http(s) origins. Invalid value: ${origin}`
     );
   }
 
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     throw new Error(
-      `CORS_ALLOWED_ORIGINS must contain only absolute http(s) origins. Invalid value: ${origin}`
+      `${fieldName} must contain only absolute http(s) origins. Invalid value: ${origin}`
     );
   }
 
   if (parsed.pathname !== '/' || parsed.search.length > 0 || parsed.hash.length > 0) {
     throw new Error(
-      `CORS_ALLOWED_ORIGINS entries must be origins without path, query or hash. Invalid value: ${origin}`
+      `${fieldName} entries must be origins without path, query or hash. Invalid value: ${origin}`
     );
   }
 
   return parsed.origin;
 }
 
-function parseCorsAllowedOrigins(value: string): readonly string[] {
+function parseOriginList(value: string, fieldName: string): readonly string[] {
   const parsed = value
     .split(',')
     .map((item) => item.trim())
     .filter((item) => item.length > 0)
-    .map(validateCorsOrigin);
+    .map((item) => validateHttpOrigin(item, fieldName));
 
   if (parsed.length === 0) {
-    throw new Error('CORS_ALLOWED_ORIGINS must include at least one allowed origin');
+    throw new Error(`${fieldName} must include at least one allowed origin`);
   }
 
   return Array.from(new Set(parsed));
+}
+
+function parseCorsAllowedOrigins(value: string): readonly string[] {
+  return parseOriginList(value, 'CORS_ALLOWED_ORIGINS');
+}
+
+function parseWebAuthnRpId(value?: string): string | undefined {
+  if (!value) return undefined;
+  const rpId = value.trim().toLowerCase();
+  if (!rpId || /[\s/:?#]/.test(rpId)) {
+    throw new Error('WEBAUTHN_RP_ID must be a hostname without a scheme, port, or path');
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(`https://${rpId}`);
+  } catch {
+    throw new Error('WEBAUTHN_RP_ID must be a valid hostname');
+  }
+  if (parsed.hostname !== rpId || parsed.pathname !== '/') {
+    throw new Error('WEBAUTHN_RP_ID must be a valid hostname');
+  }
+  return rpId;
+}
+
+function parseWebAuthnOrigins(value: string): readonly string[] {
+  return parseOriginList(value, 'WEBAUTHN_ORIGINS');
 }
 
 function resolveCorsAllowedOrigins(
@@ -1025,6 +1068,8 @@ const apiEnvSchema = z
     MFA_SECRET_ENCRYPTION_KEY: optionalNonEmptyStringSchema,
     MFA_SECRET_ENCRYPTION_KEY_VERSION: optionalNonEmptyStringSchema,
     MFA_SECRET_ENCRYPTION_KEYRING_JSON: optionalNonEmptyStringSchema,
+    WEBAUTHN_RP_ID: optionalNonEmptyStringSchema,
+    WEBAUTHN_ORIGINS: optionalNonEmptyStringSchema,
     FEATURE_FLAGS_PROVIDER: nonEmptyStringSchema.default('env'),
     API_FEATURE_FLAGS: optionalNonEmptyStringSchema,
     RUNTIME_DISTRIBUTED_STATE_ENABLED: booleanStringSchema.default(false),
@@ -1218,6 +1263,10 @@ export function loadApiConfig(env: NodeJS.ProcessEnv): ApiAppConfig {
     mfaEncryptionKey: parsed.MFA_SECRET_ENCRYPTION_KEY,
     mfaEncryptionKeyVersion: parsed.MFA_SECRET_ENCRYPTION_KEY_VERSION,
     mfaEncryptionKeyring: parseMfaEncryptionKeyring(parsed.MFA_SECRET_ENCRYPTION_KEYRING_JSON),
+    webauthnRpId: parseWebAuthnRpId(parsed.WEBAUTHN_RP_ID),
+    webauthnOrigins: parsed.WEBAUTHN_ORIGINS
+      ? parseWebAuthnOrigins(parsed.WEBAUTHN_ORIGINS)
+      : undefined,
     featureFlagsProvider: parsed.FEATURE_FLAGS_PROVIDER,
     apiFeatureFlags: parseFeatureFlagKeys(parsed.API_FEATURE_FLAGS),
     runtimeDistributedStateEnabled: parsed.RUNTIME_DISTRIBUTED_STATE_ENABLED,

@@ -2,7 +2,11 @@ import { and, eq, sql } from 'drizzle-orm';
 import { randomBytes } from 'node:crypto';
 
 import { webauthnCredentials, type DatabaseClient } from '@cvg-his-v2/shared-database';
-import type { WebAuthnCredential, WebAuthnRepository } from '../webauthn.js';
+import type {
+  WebAuthnCredential,
+  WebAuthnCredentialInput,
+  WebAuthnRepository
+} from '../webauthn.js';
 
 type WebAuthnCredentialRow = typeof webauthnCredentials.$inferSelect;
 
@@ -57,13 +61,9 @@ export class DatabaseWebAuthnRepository implements WebAuthnRepository {
     return rows[0] ? this.#toCredential(rows[0]) : null;
   }
 
-  async save(
-    accountId: string,
-    userId: string,
-    data: Omit<WebAuthnCredential, 'id' | 'accountId' | 'userId'>
-  ): Promise<string> {
+  async save(accountId: string, userId: string, data: WebAuthnCredentialInput): Promise<string> {
     assertCounter(data.counter);
-    const credentialId = generateCredentialId();
+    const credentialId = data.id ?? generateCredentialId();
     const rows = await this.#db
       .insert(webauthnCredentials)
       .values({

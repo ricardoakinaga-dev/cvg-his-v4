@@ -383,6 +383,8 @@ export interface AuthRoutesHandlers {
   featureFlagEvaluator?: ApiFeatureFlagEvaluator;
   featureFlagContext?: EvaluationContext;
   webauthnService?: WebAuthnService;
+  /** Server-owned RP ID; never derive this from a request header. */
+  webauthnRpId?: string;
   webauthnChallengeStore?: WebAuthnChallengeStore;
   webauthnChallenges: Map<string, WebAuthnChallengeValue>;
   webauthnChallengeTtlMs: number;
@@ -717,6 +719,7 @@ export async function handleAuthRoutes(
     appName,
     featureFlags,
     webauthnService,
+    webauthnRpId,
     webauthnChallengeStore,
     webauthnChallenges,
     webauthnChallengeTtlMs,
@@ -1052,7 +1055,7 @@ export async function handleAuthRoutes(
     ) {
       return sendJson(response, 403, { code: 'FLAG_DISABLED', message: 'WebAuthn is not enabled' });
     }
-    const rpId = request.headers['x-rp-id']?.toString() ?? 'localhost';
+    const rpId = webauthnRpId ?? 'localhost';
     const { publicKeyOptions, challenge } = await webauthnService.generateRegistrationOptions(
       principal.user.accountId,
       principal.user.id,
@@ -1113,16 +1116,24 @@ export async function handleAuthRoutes(
             : challengeResult.message
       });
     }
-    const result = await webauthnService.verifyRegistration(
-      principal.user.accountId,
-      principal.user.id,
-      {
-        credentialId: payload.credentialId,
-        attestationObject: payload.attestationObject,
-        clientDataJSON: payload.clientDataJSON
-      },
-      challengeResult.challenge
-    );
+    let result: { credentialId: string };
+    try {
+      result = await webauthnService.verifyRegistration(
+        principal.user.accountId,
+        principal.user.id,
+        {
+          credentialId: payload.credentialId,
+          attestationObject: payload.attestationObject,
+          clientDataJSON: payload.clientDataJSON
+        },
+        challengeResult.challenge
+      );
+    } catch {
+      return sendJson(response, 400, {
+        code: 'REGISTRATION_FAILED',
+        message: 'WebAuthn registration failed'
+      });
+    }
     appendAudit(
       principal.user.id,
       principal.user.accountId,
@@ -1160,7 +1171,7 @@ export async function handleAuthRoutes(
       ['credentialId'],
       correlationId
     );
-    const rpId = request.headers['x-rp-id']?.toString() ?? 'localhost';
+    const rpId = webauthnRpId ?? 'localhost';
     const { publicKeyOptions, challenge } = await webauthnService.generateAuthenticationOptions(
       principal.user.accountId,
       principal.user.id,
@@ -1230,7 +1241,7 @@ export async function handleAuthRoutes(
             : challengeResult.message
       });
     }
-    const rpId = request.headers['x-rp-id']?.toString() ?? 'localhost';
+    const rpId = webauthnRpId ?? 'localhost';
     const result = await webauthnService.verifyAuthentication(
       principal.user.accountId,
       principal.user.id,

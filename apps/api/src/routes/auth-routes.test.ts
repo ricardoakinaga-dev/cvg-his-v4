@@ -1771,7 +1771,7 @@ test('handleAuthRoutes uses account-scoped durable WebAuthn challenge state', as
     {
       method: 'GET',
       url: '/auth/mfa/webauthn/setup',
-      headers: { 'x-rp-id': 'cvg.local' },
+      headers: { 'x-rp-id': 'attacker.example' },
       socket: { remoteAddress: '127.0.0.1' }
     } as never,
     response as never,
@@ -1785,6 +1785,7 @@ test('handleAuthRoutes uses account-scoped durable WebAuthn challenge state', as
         authOidcEnabled: false,
         authWebauthnEnabled: true
       },
+      webauthnRpId: 'cvg.local',
       webauthnService: {
         generateRegistrationOptions: async (...args: unknown[]) => {
           generatedScope = args.slice(0, 2) as string[];
@@ -2121,6 +2122,7 @@ test('handleAuthRoutes handles fallback WebAuthn challenges and failed assertion
   };
   const handlers = createBaseAuthHandlers({
     featureFlags: { authOidcEnabled: false, authWebauthnEnabled: true },
+    webauthnRpId: 'cvg.local',
     webauthnService,
     webauthnChallenges,
     requirePrincipal: () => principal
@@ -2129,7 +2131,9 @@ test('handleAuthRoutes handles fallback WebAuthn challenges and failed assertion
   const registrationOptionsResponse = new MockResponse();
   await handleAuthRoutes(
     '/auth/mfa/webauthn/setup',
-    createJsonRequest('GET', '/auth/mfa/webauthn/setup', undefined, { 'x-rp-id': 'cvg.local' }),
+    createJsonRequest('GET', '/auth/mfa/webauthn/setup', undefined, {
+      'x-rp-id': 'attacker.example'
+    }),
     registrationOptionsResponse as never,
     'corr-webauthn-fallback-registration-options',
     handlers
@@ -2217,13 +2221,13 @@ test('handleAuthRoutes handles fallback WebAuthn challenges and failed assertion
   assert.deepEqual(successfulAssertionResponse.bodyJson(), { success: true });
   assert.deepEqual(registrationScopes, [
     `${principal.user.accountId}:${principal.user.id}:cvg.local`,
-    `${principal.user.accountId}:${principal.user.id}:localhost`,
-    `${principal.user.accountId}:${principal.user.id}:localhost`
+    `${principal.user.accountId}:${principal.user.id}:cvg.local`,
+    `${principal.user.accountId}:${principal.user.id}:cvg.local`
   ]);
   assert.deepEqual(verificationScopes, [
     `${principal.user.accountId}:${principal.user.id}:client-credential:registration-challenge`,
-    `${principal.user.accountId}:${principal.user.id}:stored-credential:assertion-challenge:localhost`,
-    `${principal.user.accountId}:${principal.user.id}:stored-credential:assertion-challenge:localhost`
+    `${principal.user.accountId}:${principal.user.id}:stored-credential:assertion-challenge:cvg.local`,
+    `${principal.user.accountId}:${principal.user.id}:stored-credential:assertion-challenge:cvg.local`
   ]);
 });
 

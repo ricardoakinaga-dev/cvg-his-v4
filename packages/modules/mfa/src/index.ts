@@ -27,6 +27,8 @@ export { InMemoryMfaRepository } from './repositories/in-memory-mfa.repository.j
 // WebAuthn/FIDO2
 export {
   type WebAuthnCredential,
+  type WebAuthnCredentialInput,
+  type WebAuthnVerifierConfig,
   type WebAuthnChallengeKey,
   type WebAuthnChallengePurpose,
   type IssueWebAuthnChallengeInput,
@@ -39,7 +41,8 @@ export {
   generateWebAuthnChallenge,
   InMemoryWebAuthnChallengeStore,
   InMemoryWebAuthnRepository,
-  WebAuthnServiceImpl
+  WebAuthnServiceImpl,
+  WebAuthnVerificationError
 } from './webauthn.js';
 
 export { DatabaseWebAuthnRepository } from './repositories/database-webauthn.repository.js';

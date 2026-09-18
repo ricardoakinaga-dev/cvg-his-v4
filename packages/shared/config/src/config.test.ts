@@ -166,6 +166,35 @@ describe('config module', () => {
       expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow();
     });
 
+    it('loads authoritative WebAuthn RP and browser origins', () => {
+      const env = cleanApiEnv();
+      env.WEBAUTHN_RP_ID = 'cvg.example.com';
+      env.WEBAUTHN_ORIGINS = 'https://cvg.example.com, https://admin.cvg.example.com';
+
+      const config = loadApiConfig(env as NodeJS.ProcessEnv);
+
+      expect(config.webauthnRpId).toBe('cvg.example.com');
+      expect(config.webauthnOrigins).toEqual([
+        'https://cvg.example.com',
+        'https://admin.cvg.example.com'
+      ]);
+    });
+
+    it('rejects a WebAuthn RP ID that contains URL syntax', () => {
+      const env = cleanApiEnv();
+      env.WEBAUTHN_RP_ID = 'https://cvg.example.com';
+
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow(/WEBAUTHN_RP_ID/);
+    });
+
+    it('rejects a WebAuthn browser origin with a path', () => {
+      const env = cleanApiEnv();
+      env.WEBAUTHN_RP_ID = 'cvg.example.com';
+      env.WEBAUTHN_ORIGINS = 'https://cvg.example.com/app';
+
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow(/WEBAUTHN_ORIGINS/);
+    });
+
     it('throws when AUTH_SECRET is too short in production', () => {
       const env = cleanApiEnv();
       env.NODE_ENV = 'production';
