@@ -5,18 +5,19 @@
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
-**Atualização corrente — 2026-09-18:** além do baseline PostgreSQL local,
+**Atualização terminal — 2026-09-18:** além do baseline PostgreSQL local,
 WebAuthn FIDO2 passou `14/14` testes criptográficos, configuração `47/47`, MFA
 `66/66`, rotas nativas `47/47`, typechecks MFA/API e guards OpenAPI/runtime/
 dependências; as rotas OpenAPI passaram `5/5`, o build da API e as rotas nativas
 compiladas passaram `2/2`. O registro persiste o credential ID e a chave pública reais e
-rejeita RP ID vindo de header. O CI exato
-#35302897107](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35302897107)
-estava `pending` na observação; o State of Art Closure
-[#35302897028](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35302897028)
-estava em execução. Há `2` P0 fechados e `12` abertos; target, recovery, UAT,
-attestation de fabricante, governança e autoridade de release continuam sem
-prova.
+rejeita RP ID vindo de header. O [CI exato #35304185255](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35304185255)
+terminou `failure`: `Critical Coverage Gate` e `Performance (k6 SLOs)` falharam;
+E2E SPA, integração, unitários, build, guards, OpenAPI, visual e os demais jobs
+terminaram `success`. O [State of Art Closure #35304185156](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35304185156)
+terminou `success`, mas não substitui os gates obrigatórios. Há `2` P0 fechados
+e `12` abertos; target, recovery, UAT, attestation de fabricante, governança e
+autoridade de release continuam sem prova. A observação detalhada está em
+[`25-remote-ci-35304185255.md`](./25-remote-ci-35304185255.md).
 
 ## Executive Summary
 
@@ -95,14 +96,14 @@ remota e pelos gates externos de target e release.
 | Testing              | PARTIAL                      | API `619/619` e integração `16/16` locais passaram; o CI #205 teve `395` testes SPA funcionais passados, mas `29` screenshots falharam; API clínica canônica `2/2` passou |
 | Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas                                                                                                |
 | Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                                                                                                           |
-| CI/CD                | BLOQUEADO no SHA atual       | CI exato ainda está `in_progress`; não há `main green` terminal |
+| CI/CD                | BLOQUEADO no SHA atual       | CI exato terminou `failure` em Critical Coverage e Performance; não há `main green` |
 | Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                                                                                                         |
 | Recovery             | BLOCKED                      | Docker impediu restore drill real                                                                                                       |
-| Frontend             | LOCAL PASS / REMOTE PENDING  | Suíte visual local promovida; CI exato ainda não terminou e nenhuma baseline foi promovida |
+| Frontend             | LOCAL PASS / REMOTE PASS     | E2E SPA e Visual Regression passaram no CI exato; nenhuma baseline foi promovida |
 | Database             | PARTIAL                      | testes locais; RLS target não provado                                                                                                   |
 | Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas                                                                                                |
 | Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes                                                                                               |
-| Overall              | `FAIL/BLOCKED`               | CI exato ainda não terminou; target, recovery, UAT, governança e autoridade continuam abertos |
+| Overall              | `FAIL/BLOCKED`               | CI exato tem dois gates rejeitados; target, recovery, UAT, governança e autoridade continuam abertos |
 
 ## P0 Findings
 

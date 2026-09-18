@@ -1,5 +1,22 @@
 # Evidência de execução corrente — State of Art
 
+## Observação terminal do CI exato — 2026-09-18T04:20:23Z
+
+O [CI #35304185255](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35304185255)
+foi executado no HEAD documental `52453612a7d45c1e2a002aae8e1e0a1f4eb7fcc9`,
+com comportamento ancorado no candidato funcional
+`4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`, e terminou `failure`. O
+`Critical Coverage Gate` falhou no checker completo e o `Performance (k6 SLOs)`
+falhou no benchmark/validação; E2E SPA, integração, unitários, build, guards,
+OpenAPI, visual e os demais jobs terminaram `success`.
+
+O artefato remoto de performance foi publicado, mas suas métricas não foram
+inferidas porque o download exige autenticação neste ambiente. A execução local
+independente do mesmo perfil passou `9/9` SLOs (API P95 `97,78 ms`, query P95
+`107 ms`, erro `0%`, disponibilidade `100%`). Essa leitura não promove o CI
+remoto nem altera thresholds. A ficha terminal completa está em
+[`25-remote-ci-35304185255.md`](./25-remote-ci-35304185255.md).
+
 ## Recoleta local do candidato OpenAPI/WebAuthn — 2026-09-18T03:21:30Z
 
 O candidato funcional corrente é
