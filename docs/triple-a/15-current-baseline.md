@@ -1,7 +1,7 @@
 # Baseline corrente — State of Art
 
 Observado em `2026-09-18T05:30:00Z`, sobre o candidato funcional
-`686c47d09adc6b57d624f3ca822ca649710425f6`. A identidade corrente preserva a
+`0a2eba022fac4b1100138e1ad17cab87f8d049c8`. A identidade corrente preserva a
 separação entre código/assurance e documentação; a implementação deste
 snapshot fecha localmente a verificação criptográfica WebAuthn, sem promover
 evidência externa.
@@ -16,8 +16,8 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| current_sha     | `686c47d09adc6b57d624f3ca822ca649710425f6` (snapshot integrado; auth com lookup autoritativo combinado, health probe coalescido, teste de reexport ESM corrigido, manifesto revision 81, registro P0 e thresholds inalterados) |
-| main_sha        | candidato funcional `686c47d09adc6b57d624f3ca822ca649710425f6` preparado para fast-forward de `origin/main`; pai publicado `e011cfd2e47a8a8290b26b5c6328750d71586c95`; sem force-push |
+| current_sha     | `0a2eba022fac4b1100138e1ad17cab87f8d049c8` (snapshot integrado; auth com lookup autoritativo combinado, health probe coalescido, teste de reexport ESM corrigido, manifesto revision 81, registro P0 e thresholds inalterados) |
+| main_sha        | candidato funcional `0a2eba022fac4b1100138e1ad17cab87f8d049c8` preparado para fast-forward de `origin/main`; pai publicado `e011cfd2e47a8a8290b26b5c6328750d71586c95`; sem force-push |
 | worktree        | Limpo após o commit funcional; artefatos gerados locais permanecem fora do commit |
 | rollback        | `origin/main@94b1ae08b7dda6c0e9d670ba4ffb749fcfea3fbb` (pai publicado); sem force-push |
 | ci_run          | [CI #282](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35306907606) é o terminal mais recente e terminou `failure`; o CI do candidato integrado será disparado após o push |

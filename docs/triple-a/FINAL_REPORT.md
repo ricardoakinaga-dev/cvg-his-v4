@@ -1,6 +1,6 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `686c47d09adc6b57d624f3ca822ca649710425f6`
+**Candidate funcional avaliado:** `0a2eba022fac4b1100138e1ad17cab87f8d049c8`
 (snapshot integrado seletivamente das branches, com registro P0 candidate-bound, evidence graph, lookup autoritativo combinado, health probe coalescido, verificação criptográfica WebAuthn/FIDO2, resolução OpenAPI cross-runtime, configuração de RP/origens server-owned e thresholds inalterados)
 
 **Verdict:** **BLOCKED / NOT PROVEN**

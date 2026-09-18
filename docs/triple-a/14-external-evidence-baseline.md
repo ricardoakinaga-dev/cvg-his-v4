@@ -8,7 +8,7 @@
 > [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato funcional corrente é `4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`, publicado em `origin/main`; o registro P0 candidate-bound é validado no CI e no gate de release; o evidence graph importa envelopes locais somente como `PARTIAL` após validar schema, SHA, ambiente, frescor, ancestralidade e digests; os CI anteriores não são transferidos. Nenhum resultado parcial é transferido.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `686c47d09adc6b57d624f3ca822ca649710425f6` (reconciliação seletiva de branches, lookup autoritativo combinado, health probe coalescido, verificação WebAuthn/FIDO2, resolução OpenAPI cross-runtime, evidence graph candidate-bound e status máximo `PARTIAL`; registro P0 com `2` fechados e `12` abertos; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current snapshot:** `0a2eba022fac4b1100138e1ad17cab87f8d049c8` (reconciliação seletiva de branches, lookup autoritativo combinado, health probe coalescido, verificação WebAuthn/FIDO2, resolução OpenAPI cross-runtime, evidence graph candidate-bound e status máximo `PARTIAL`; registro P0 com `2` fechados e `12` abertos; provas externas e autoridade de release continuam `NOT PROVEN`).
 **Current CI:** o [CI #35302897107](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35302897107) estava `pending` na observação; nenhum resultado é promovido antes do terminal. Nenhum threshold foi relaxado.
 **Current status:** **BLOCKED / NOT PROVEN**
 **Observation:** 2026-09-18T03:21:30Z

@@ -2,7 +2,7 @@
 
 ## Snapshot vigente — 2026-09-18T03:21:30Z
 
-O baseline autoritativo do snapshot funcional atual está em: `686c47d09adc6b57d624f3ca822ca649710425f6`, candidato integrado para publicação em `origin/main` (reconciliação seletiva de branches, lookup autoritativo combinado, health probe coalescido, verificação criptográfica WebAuthn/FIDO2, RP ID/origens server-owned, resolução robusta do artefato OpenAPI e thresholds preservados; o comportamento ERP anterior permanece preservado).
+O baseline autoritativo do snapshot funcional atual está em: `0a2eba022fac4b1100138e1ad17cab87f8d049c8`, candidato integrado para publicação em `origin/main` (reconciliação seletiva de branches, lookup autoritativo combinado, health probe coalescido, verificação criptográfica WebAuthn/FIDO2, RP ID/origens server-owned, resolução robusta do artefato OpenAPI e thresholds preservados; o comportamento ERP anterior permanece preservado).
 
 O delta de autenticação foi validado localmente com credencial P-256 real,
 attestation `fmt:none`, assertions assinadas, rejeição de replay/origem/RP ID e

@@ -2,8 +2,8 @@
 
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT SNAPSHOT   | candidato funcional `686c47d09adc6b57d624f3ca822ca649710425f6`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; nenhum envelope local é promovido a PASS |
-| MAIN / ORIGIN      | fast-forward de `origin/main` para o candidato integrado `686c47d09adc6b57d624f3ca822ca649710425f6`, com pai publicado `e011cfd2e47a8a8290b26b5c6328750d71586c95`; sem force-push |
+| CURRENT SNAPSHOT   | candidato funcional `0a2eba022fac4b1100138e1ad17cab87f8d049c8`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; nenhum envelope local é promovido a PASS |
+| MAIN / ORIGIN      | fast-forward de `origin/main` para o candidato integrado `0a2eba022fac4b1100138e1ad17cab87f8d049c8`, com pai publicado `e011cfd2e47a8a8290b26b5c6328750d71586c95`; sem force-push |
 | CURRENT CI         | [CI #282](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35306907606) é o terminal mais recente e terminou `failure`: `Critical Coverage Gate` e `Performance (k6 SLOs)` falharam; o CI do candidato integrado ficará pendente após o push |
 | LOCAL STRICT GATE  | R05-010 e SQL local `PASS`; release/Triple-A continuam `NOT_PROVEN`, `claim=NOT PROVEN`, `publication_allowed=false` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |

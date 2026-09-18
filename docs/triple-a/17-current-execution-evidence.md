@@ -3,7 +3,7 @@
 ## Candidato integrado e reconciliação de branches — 2026-09-18T05:30:00Z
 
 O candidato funcional corrente é
-`686c47d09adc6b57d624f3ca822ca649710425f6`. A reconciliação preservou as
+`0a2eba022fac4b1100138e1ad17cab87f8d049c8`. A reconciliação preservou as
 migrations ACL canônicas `0175/0176` de `main` e incorporou somente os deltas
 não conflitantes da branch `final-ci`: lookup autoritativo combinado de
 sessão/usuário, coalescência do health probe, compatibilidade do teste de
@@ -55,7 +55,7 @@ force-push. Esta recoleta cobre somente a mudança de autenticação WebAuthn e
 seus contratos e a resolução do artefato OpenAPI entre source/build/Vitest; não
 transfere evidência de candidatos anteriores nem fecha gates externos.
 
-SHA de código e documentação: `686c47d09adc6b57d624f3ca822ca649710425f6`.
+SHA de código e documentação: `0a2eba022fac4b1100138e1ad17cab87f8d049c8`.
 
 - manifesto de cobertura crítica na revisão `81`, ancorado no candidato
   funcional, com `node --test scripts/critical-source-manifest.test.mjs`
