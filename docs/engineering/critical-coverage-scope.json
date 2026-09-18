@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "1593f4ea736072880eb8d55427532591622150c0",
+  "head": "8098e8be2fbade69f38ed99719b4ef04e78bf240",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -731,7 +731,7 @@
     },
     {
       "path": "apps/api/src/routes/health-routes.ts",
-      "sha256": "842b76e5a357a4c04033f7242e6c116ee31473cd07033c32b606469393fdafc2",
+      "sha256": "cdac12dc866be862fc85e3bed217b7aebf5aba35b01edba1172172a8f1d86a47",
       "components": [
         "http-routes"
       ],
@@ -4658,7 +4658,7 @@
     },
     {
       "path": "packages/modules/auth/src/index.ts",
-      "sha256": "17037e2d352bb35d9210fac73872cbf18306110bac076193322109fbb8c6acf5",
+      "sha256": "1b4e3c11d2a86c22855c5a7cb97497ae4e4b81b4499cd5d5a12974d345812cbb",
       "components": [
         "auth"
       ],
@@ -4689,7 +4689,7 @@
     },
     {
       "path": "packages/modules/auth/src/repositories/database-session.repository.ts",
-      "sha256": "24e7f636b2d1ab2dbcb46c4223bb2d1271ff681418ceb14ddd8874f6a962ecc6",
+      "sha256": "a5f9a2755175d9af217e286f0ae3d9d20ba4adefee5343bc0bdf13c35835c3e8",
       "components": [
         "auth",
         "repositories"
@@ -4733,7 +4733,7 @@
     },
     {
       "path": "packages/modules/auth/src/repositories/session.repository.ts",
-      "sha256": "2b69119d74121d1c4ad78629da8cc4cdb59a7a7c5edefff506ab104b0122b410",
+      "sha256": "c498d6aa05f6bd01c984762eec1da1a99b690cd5f2ae309b7181eaeab361371b",
       "components": [
         "auth",
         "repositories"
@@ -6183,7 +6183,8 @@
     "tests/unit/api/laboratory-result-import-coverage.test.ts",
     "tests/unit/api/laboratory-result-import-database-coverage.test.ts",
     "tests/unit/api/pix-repository-boundaries-coverage.test.ts",
-    "tests/unit/api/setup-token-coverage.test.ts"
+    "tests/unit/api/setup-token-coverage.test.ts",
+    "packages/modules/auth/src/database-session.repository.test.ts"
   ],
   "executionInputs": [
     ".eslintrc.cjs",
@@ -8374,7 +8375,8 @@
     "apps/api/src/http-request-telemetry.ts",
     "apps/api/src/production-runtime-contract.test.ts",
     "apps/api/src/tracing.test.ts",
-    "apps/worker/src/worker-metrics.test.ts"
+    "apps/worker/src/worker-metrics.test.ts",
+    "packages/modules/auth/src/database-session.repository.test.ts"
   ],
   "scopeHistory": [
     {
@@ -11588,6 +11590,51 @@
           "removed": []
         }
       ]
+    },
+    {
+      "manifestRevision": 75,
+      "observedAt": "2026-09-18T00:43:01.476Z",
+      "collectionCommit": "8098e8be2fbade69f38ed99719b4ef04e78bf240",
+      "previousManifestSha256": "13f4a4c5899de6d9c1ec59eed0577d229015518df4954360a5de88c0bbff5077",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-13f4a4c5899de6d9c1ec59eed0577d229015518df4954360a5de88c0bbff5077.json",
+      "previousSourceSetSha256": "e570fc9dca2a635122d7b62de1d5e8e9682d4dcce73a7bbce4481914be574185",
+      "sourceSetSha256": "90747ddefd4e28d9a1658194c412ee9f2e0695ce59a7bb5618422774b6658065",
+      "reason": "Reanchor critical coverage after authoritative auth read optimization, health probe coalescing and new repository mapping coverage",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/routes/health-routes.ts",
+          "before": "842b76e5a357a4c04033f7242e6c116ee31473cd07033c32b606469393fdafc2",
+          "after": "cdac12dc866be862fc85e3bed217b7aebf5aba35b01edba1172172a8f1d86a47"
+        },
+        {
+          "path": "packages/modules/auth/src/index.ts",
+          "before": "17037e2d352bb35d9210fac73872cbf18306110bac076193322109fbb8c6acf5",
+          "after": "1b4e3c11d2a86c22855c5a7cb97497ae4e4b81b4499cd5d5a12974d345812cbb"
+        },
+        {
+          "path": "packages/modules/auth/src/repositories/database-session.repository.ts",
+          "before": "24e7f636b2d1ab2dbcb46c4223bb2d1271ff681418ceb14ddd8874f6a962ecc6",
+          "after": "a5f9a2755175d9af217e286f0ae3d9d20ba4adefee5343bc0bdf13c35835c3e8"
+        },
+        {
+          "path": "packages/modules/auth/src/repositories/session.repository.ts",
+          "before": "2b69119d74121d1c4ad78629da8cc4cdb59a7a7c5edefff506ab104b0122b410",
+          "after": "c498d6aa05f6bd01c984762eec1da1a99b690cd5f2ae309b7181eaeab361371b"
+        }
+      ],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "packages/modules/auth/src/database-session.repository.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "a06631caa95b8f9e268e2e40e79533e5c7e66a0d84b9b850528dd785e2ced890",
+      "executionInputsSha256": "e1c5acf2ba633e31d7491d324f8f29e30fcff3093c375fef8d2ef3fbb9f68555",
+      "vitestAdded": [
+        "packages/modules/auth/src/database-session.repository.test.ts"
+      ],
+      "vitestRemoved": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12521,9 +12568,9 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 74,
-  "sourceSetSha256": "e570fc9dca2a635122d7b62de1d5e8e9682d4dcce73a7bbce4481914be574185",
-  "executionInputsSha256": "a06631caa95b8f9e268e2e40e79533e5c7e66a0d84b9b850528dd785e2ced890",
+  "manifestRevision": 75,
+  "sourceSetSha256": "90747ddefd4e28d9a1658194c412ee9f2e0695ce59a7bb5618422774b6658065",
+  "executionInputsSha256": "e1c5acf2ba633e31d7491d324f8f29e30fcff3093c375fef8d2ef3fbb9f68555",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,
