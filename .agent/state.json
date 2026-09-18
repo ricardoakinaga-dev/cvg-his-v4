@@ -18,7 +18,7 @@
   "active_execplan": ".agent/plans/p0-closure-20260918.md",
   "active_task": "P0-CLOSURE",
   "verification_state": "PARTIAL",
-  "repository_state": "Local remediation verified: build/typecheck/lint PASS; matched k6 75168/75168 checks and9/9SLOs; cascade protections PostgreSQL7/7 and contracts32/32; exact published CI and external authority pending.",
+  "repository_state": "CI35405157837 confirmed k6 69536/69536 and9SLOs; two newly exposed assurance fixture failures repaired locally, PostgreSQL24/24 and workflow18/18. Publish corrected candidate and await exact fullCI; external acceptance pending.",
   "instruction_scope_refs": [
     ".agent/plans/repository-state-of-art-remediation-execplan.md",
     "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
@@ -33,8 +33,8 @@
     "docs/2026-09-13-backlog-prontidao-producao.md"
   ],
   "last_gate_record": ".agent/gates/implementation-ready-unify-main-20260918.json",
-  "last_event_id": "EVT-P0-CLOSURE-LOCAL-VERIFIED-20260918",
-  "state_revision": 122,
+  "last_event_id": "EVT-P0-CLOSURE-CI-REPAIRED-20260918",
+  "state_revision": 124,
   "next_gate": "VERIFIED",
   "active_action_id": "P0-CLOSURE:VERIFY-CANDIDATE",
   "blocked_by": [
@@ -60,5 +60,5 @@
     "PROD-027 behavioral parity taxonomy, 45-module classification, fixtures and acceptance — Product/QA/domain authority",
     "PROD-062 family verifier trust root, targets, limits, issuer policy and acceptance — Platform/Security/QA authority"
   ],
-  "updated_at": "2026-09-18T23:13:30.456528+00:00"
+  "updated_at": "2026-09-18T23:46:31.773211+00:00"
 }

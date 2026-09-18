@@ -2,11 +2,60 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
 
 import { inspectReleaseWorkflowPolicy } from '../../../scripts/validate-supply-chain.mjs';
 
 const root = resolve(import.meta.dirname, '../../..');
 const workflow = readFileSync(resolve(root, '.github/workflows/release-artifacts.yml'), 'utf8');
+
+interface WorkflowStep {
+  name: string;
+  uses?: string;
+  with?: Record<string, unknown>;
+  env?: Record<string, unknown>;
+}
+
+const releaseSteps = (): WorkflowStep[] =>
+  parse(workflow).jobs['publish-sha-artifacts'].steps;
+
+function expectAttestationContract(steps: WorkflowStep[]) {
+  const attestations = steps.filter((step) => step.uses?.startsWith('actions/attest-build-provenance@'));
+  expect(attestations).toHaveLength(4);
+  for (const step of attestations) {
+    expect(step.uses).toMatch(/^actions\/attest-build-provenance@[0-9a-f]{40}$/);
+  }
+  const images = attestations.filter((step) => step.with?.['subject-digest'] !== undefined);
+  expect(images).toHaveLength(3);
+  const imageVerificationIndex = steps.findIndex((step) => step.name === 'Verify image attestations');
+  const finalGateIndex = steps.findIndex((step) => step.name === 'Run blocking Triple-A release gate');
+  expect(imageVerificationIndex).toBeGreaterThan(-1);
+  expect(finalGateIndex).toBeGreaterThan(imageVerificationIndex);
+  for (const component of ['api', 'worker', 'spa']) {
+    const matching = images.filter((step) =>
+      step.with?.['subject-name'] === `ghcr.io/\${{ github.repository_owner }}/cvg-his-v4-${component}`
+    );
+    expect(matching).toHaveLength(1);
+    expect(steps.indexOf(matching[0])).toBeLessThan(imageVerificationIndex);
+    expect(matching[0].with).toEqual({
+      'subject-name': `ghcr.io/\${{ github.repository_owner }}/cvg-his-v4-${component}`,
+      'subject-digest': `\${{ steps.${component}.outputs.digest }}`,
+      'push-to-registry': true
+    });
+  }
+  const reports = attestations.filter((step) => step.with?.['subject-path'] !== undefined);
+  expect(reports).toHaveLength(1);
+  expect(reports[0].with).toEqual({ 'subject-path': 'artifacts/release/security-evidence.json' });
+  const reportIndex = steps.indexOf(reports[0]);
+  const generationIndex = steps.findIndex((step) => step.name === 'Generate source bundle and repository SBOM');
+  const prepublicationIndex = steps.findIndex((step) => step.name === 'Run pre-publication candidate assurance');
+  expect(generationIndex).toBeGreaterThan(-1);
+  expect(reportIndex).toBeGreaterThan(generationIndex);
+  expect(prepublicationIndex).toBeGreaterThan(reportIndex);
+  for (const name of ['Run pre-publication candidate assurance', 'Run blocking Triple-A release gate']) {
+    expect(steps.find((step) => step.name === name)?.env?.TRIPLE_A_VERIFY_SECURITY_ATTESTATION).toBe('1');
+  }
+}
 
 describe('immutable release workflow contract', () => {
   it('only publishes a successful main push from the exact CI-tested SHA', () => {
@@ -26,7 +75,29 @@ describe('immutable release workflow contract', () => {
     ).toHaveLength(3);
     expect(workflow.match(/provenance: mode=max/g)).toHaveLength(3);
     expect(workflow.match(/sbom: true/g)).toHaveLength(3);
-    expect(workflow.match(/actions\/attest-build-provenance@[0-9a-f]{40}/g)).toHaveLength(3);
+    expectAttestationContract(releaseSteps());
+  });
+
+  it.each(['remove image', 'late image', 'substitute report', 'remove report', 'late report', 'disable prepublication verification', 'disable final verification'])('rejects an invalid attestation contract: %s', (mutation) => {
+    const steps = releaseSteps();
+    const imageIndex = steps.findIndex((step) => step.name === 'Attest API image');
+    const reportIndex = steps.findIndex((step) => step.name === 'Attest candidate security evidence');
+    if (mutation === 'remove image') steps.splice(imageIndex, 1);
+    else if (mutation === 'late image') {
+      const [image] = steps.splice(imageIndex, 1);
+      const verificationIndex = steps.findIndex((step) => step.name === 'Verify image attestations');
+      steps.splice(verificationIndex + 1, 0, image);
+    }
+    else if (mutation === 'substitute report') steps[imageIndex] = structuredClone(steps[reportIndex]);
+    else if (mutation === 'remove report') steps.splice(reportIndex, 1);
+    else if (mutation === 'late report') steps.push(...steps.splice(reportIndex, 1));
+    else {
+      const name = mutation === 'disable prepublication verification'
+        ? 'Run pre-publication candidate assurance'
+        : 'Run blocking Triple-A release gate';
+      delete steps.find((step) => step.name === name)!.env!.TRIPLE_A_VERIFY_SECURITY_ATTESTATION;
+    }
+    expect(() => expectAttestationContract(steps)).toThrow();
   });
 
   it('scans every exact OCI candidate fail-closed before publishing without a rebuild', () => {
