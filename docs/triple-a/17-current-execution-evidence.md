@@ -1,8 +1,8 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato documental observado em 2026-09-18T01:00:00Z
+## Candidato documental observado em 2026-09-18T01:10:00Z
 
-- SHA de código e documentação: `8098e8be2fbade69f38ed99719b4ef04e78bf240`;
+- SHA de código e documentação: `271bc3c3658a1a0e31075ed96f74f07f75decf44`;
   identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
 - O manifesto crítico está na revisão 75, reancorado após a leitura autoritativa combinada de sessão/usuário, a coalescência do probe Redis e a cobertura de mapeamento do repositório; nenhum threshold foi relaxado.

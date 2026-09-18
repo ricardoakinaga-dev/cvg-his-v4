@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "8098e8be2fbade69f38ed99719b4ef04e78bf240",
+  "head": "271bc3c3658a1a0e31075ed96f74f07f75decf44",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -11635,6 +11635,19 @@
         "packages/modules/auth/src/database-session.repository.test.ts"
       ],
       "vitestRemoved": []
+    },
+    {
+      "manifestRevision": 76,
+      "observedAt": "2026-09-18T01:10:00.000Z",
+      "collectionCommit": "271bc3c3658a1a0e31075ed96f74f07f75decf44",
+      "previousManifestSha256": "4d6e52222b23ed1b6c70be5111efe4eb7b0bf18952f7d33dfcb58e9d8897777f",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-4d6e52222b23ed1b6c70be5111efe4eb7b0bf18952f7d33dfcb58e9d8897777f.json",
+      "previousSourceSetSha256": "90747ddefd4e28d9a1658194c412ee9f2e0695ce59a7bb5618422774b6658065",
+      "sourceSetSha256": "90747ddefd4e28d9a1658194c412ee9f2e0695ce59a7bb5618422774b6658065",
+      "reason": "Reanchor critical coverage after making the combined authoritative session lookup race gate deterministic",
+      "added": [],
+      "removed": [],
+      "changed": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12568,7 +12581,7 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 75,
+  "manifestRevision": 76,
   "sourceSetSha256": "90747ddefd4e28d9a1658194c412ee9f2e0695ce59a7bb5618422774b6658065",
   "executionInputsSha256": "e1c5acf2ba633e31d7491d324f8f29e30fcff3093c375fef8d2ef3fbb9f68555",
   "specializedEvidence": {
