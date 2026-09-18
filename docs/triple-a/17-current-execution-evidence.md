@@ -1,13 +1,19 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato documental observado em 2026-09-17T13:28:36Z
+## Candidato documental observado em 2026-09-18T01:00:00Z
 
-- SHA de código e documentação: `59bbb1ac1bab7565706178a954cbfeb62c1bd565`;
+- SHA de código e documentação: `8098e8be2fbade69f38ed99719b4ef04e78bf240`;
   identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O manifesto crítico está na revisão 73, ancorado no commit funcional `973d70b48827` e publicado na identidade do snapshot; o candidato instala Chromium, fixa Noto Sans nos jobs E2E/visual, desativa LCD text no Playwright e verifica a fonte com comandos portáteis do runner, provisiona PostgreSQL 16 via PGDG fingerprint-pinned, aceita o par V8 de inicializadores do Node 22, publica o artefato SQL verificado, valida o registro P0 e fecha o threshold global de branches com contratos determinísticos. Os gates SPA agora usam API compilada e servidor estático com proxy same-origin `/api`, igual ao harness canônico local. O provider raw de feature flags aplica kill switch persistido, expiração, precedência de escopo, allowlist fail-closed, cache bounded/invalidação, consultas tenant-scoped explícitas e ownership composto entre flag e override; a evidência SQL executa 0173/0174 para validar o schema final, mas publica somente os passos legados 0170/0171/0172 exigidos pelo consumidor. A suíte oficial Node do módulo de feature flags permanece ativa, enquanto seu teste nativo fica fora da varredura global do Vitest; `server.ts` respeita o orçamento de `8.335` linhas. Rollback preservado em `origin/fix/state-of-art-ci-assurance@fe5406c2`.
+- O manifesto crítico está na revisão 75, reancorado após a leitura autoritativa combinada de sessão/usuário, a coalescência do probe Redis e a cobertura de mapeamento do repositório; nenhum threshold foi relaxado.
 - Nenhum force-push foi usado.
 - O [CI #238](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35248052991), executado antes desta correção, falhou na cobertura global porque um teste Node nativo foi incluído indevidamente no sweep do Vitest; ele não é evidência do candidato corrigido.
+
+## Incremento de hardening do candidato
+
+- A sessão autenticada agora resolve sessão e usuário humano/interativo em uma única consulta autoritativa dentro da mesma transação tenant-scoped; o caminho mantém validação de token, sessão ativa, expiração e permissões fail-closed.
+- O probe de saúde Redis coalesce chamadas concorrentes e usa cache bounded de 250 ms por composição de API, reduzindo tempestades de readiness sem esconder falhas.
+- A nova suíte de mapeamento do repositório autentica o SQL combinado e verifica que o adapter executa uma única consulta.
 
 ## Validações locais
 
