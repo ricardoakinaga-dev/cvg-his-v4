@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d",
+  "head": "686c47d09adc6b57d624f3ca822ca649710425f6",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -731,7 +731,7 @@
     },
     {
       "path": "apps/api/src/routes/health-routes.ts",
-      "sha256": "842b76e5a357a4c04033f7242e6c116ee31473cd07033c32b606469393fdafc2",
+      "sha256": "cdac12dc866be862fc85e3bed217b7aebf5aba35b01edba1172172a8f1d86a47",
       "components": [
         "http-routes"
       ],
@@ -4678,7 +4678,7 @@
     },
     {
       "path": "packages/modules/auth/src/index.ts",
-      "sha256": "17037e2d352bb35d9210fac73872cbf18306110bac076193322109fbb8c6acf5",
+      "sha256": "1b4e3c11d2a86c22855c5a7cb97497ae4e4b81b4499cd5d5a12974d345812cbb",
       "components": [
         "auth"
       ],
@@ -4709,7 +4709,7 @@
     },
     {
       "path": "packages/modules/auth/src/repositories/database-session.repository.ts",
-      "sha256": "24e7f636b2d1ab2dbcb46c4223bb2d1271ff681418ceb14ddd8874f6a962ecc6",
+      "sha256": "a5f9a2755175d9af217e286f0ae3d9d20ba4adefee5343bc0bdf13c35835c3e8",
       "components": [
         "auth",
         "repositories"
@@ -4753,7 +4753,7 @@
     },
     {
       "path": "packages/modules/auth/src/repositories/session.repository.ts",
-      "sha256": "2b69119d74121d1c4ad78629da8cc4cdb59a7a7c5edefff506ab104b0122b410",
+      "sha256": "c498d6aa05f6bd01c984762eec1da1a99b690cd5f2ae309b7181eaeab361371b",
       "components": [
         "auth",
         "repositories"
@@ -6206,7 +6206,8 @@
     "tests/unit/api/setup-token-coverage.test.ts",
     "tests/unit/api/api-keys-routes.test.ts",
     "tests/unit/api/billing-routes-validation.test.ts",
-    "tests/unit/api/security-headers.test.ts"
+    "tests/unit/api/security-headers.test.ts",
+    "packages/modules/auth/src/database-session.repository.test.ts"
   ],
   "executionInputs": [
     ".eslintrc.cjs",
@@ -8404,7 +8405,8 @@
     "scripts/validate-production-runtime-contract.test.mjs",
     "tests/unit/api/api-keys-routes.test.ts",
     "tests/unit/api/billing-routes-validation.test.ts",
-    "tests/unit/api/security-headers.test.ts"
+    "tests/unit/api/security-headers.test.ts",
+    "packages/modules/auth/src/database-session.repository.test.ts"
   ],
   "scopeHistory": [
     {
@@ -11774,6 +11776,51 @@
           "after": "e55d32d03a934bc3b985ff31a0381fe1ccb7083878d605310a6fe087e0c6bdd1"
         }
       ]
+    },
+    {
+      "manifestRevision": 81,
+      "observedAt": "2026-09-18T05:26:30.827Z",
+      "collectionCommit": "686c47d09adc6b57d624f3ca822ca649710425f6",
+      "previousManifestSha256": "dd682cce34b5437fefafdb27bce5e1ad5d9d6db8da1490db35bd6a7a53d58f3a",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-dd682cce34b5437fefafdb27bce5e1ad5d9d6db8da1490db35bd6a7a53d58f3a.json",
+      "previousSourceSetSha256": "7b8deaee7ed03df83dbd7e2d61ae5cc749e7484a40ddd8ff6a14217443d37aa9",
+      "sourceSetSha256": "bbc7338025fac688e9313b648126a1d0b7ae2f3d760a9b42e650c5b61ade1d94",
+      "reason": "Integrate validated auth read coalescing, health-probe coalescing and coverage-test compatibility",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/routes/health-routes.ts",
+          "before": "842b76e5a357a4c04033f7242e6c116ee31473cd07033c32b606469393fdafc2",
+          "after": "cdac12dc866be862fc85e3bed217b7aebf5aba35b01edba1172172a8f1d86a47"
+        },
+        {
+          "path": "packages/modules/auth/src/index.ts",
+          "before": "17037e2d352bb35d9210fac73872cbf18306110bac076193322109fbb8c6acf5",
+          "after": "1b4e3c11d2a86c22855c5a7cb97497ae4e4b81b4499cd5d5a12974d345812cbb"
+        },
+        {
+          "path": "packages/modules/auth/src/repositories/database-session.repository.ts",
+          "before": "24e7f636b2d1ab2dbcb46c4223bb2d1271ff681418ceb14ddd8874f6a962ecc6",
+          "after": "a5f9a2755175d9af217e286f0ae3d9d20ba4adefee5343bc0bdf13c35835c3e8"
+        },
+        {
+          "path": "packages/modules/auth/src/repositories/session.repository.ts",
+          "before": "2b69119d74121d1c4ad78629da8cc4cdb59a7a7c5edefff506ab104b0122b410",
+          "after": "c498d6aa05f6bd01c984762eec1da1a99b690cd5f2ae309b7181eaeab361371b"
+        }
+      ],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "packages/modules/auth/src/database-session.repository.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "6896d22c77285ff9af7a2934320c88f706e93d7105c5e15fa9b17483d3487560",
+      "executionInputsSha256": "0a6adfa2285dd13ffd912a42c0460f970facb8aadc7c89f0f80cc054c9ae3903",
+      "vitestAdded": [
+        "packages/modules/auth/src/database-session.repository.test.ts"
+      ],
+      "vitestRemoved": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12707,9 +12754,9 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 80,
-  "sourceSetSha256": "7b8deaee7ed03df83dbd7e2d61ae5cc749e7484a40ddd8ff6a14217443d37aa9",
-  "executionInputsSha256": "6896d22c77285ff9af7a2934320c88f706e93d7105c5e15fa9b17483d3487560",
+  "manifestRevision": 81,
+  "sourceSetSha256": "bbc7338025fac688e9313b648126a1d0b7ae2f3d760a9b42e650c5b61ade1d94",
+  "executionInputsSha256": "0a6adfa2285dd13ffd912a42c0460f970facb8aadc7c89f0f80cc054c9ae3903",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,

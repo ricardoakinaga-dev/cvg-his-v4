@@ -1,5 +1,23 @@
 # Evidência de execução corrente — State of Art
 
+## Candidato integrado e reconciliação de branches — 2026-09-18T05:30:00Z
+
+O candidato funcional corrente é
+`686c47d09adc6b57d624f3ca822ca649710425f6`. A reconciliação preservou as
+migrations ACL canônicas `0175/0176` de `main` e incorporou somente os deltas
+não conflitantes da branch `final-ci`: lookup autoritativo combinado de
+sessão/usuário, coalescência do health probe, compatibilidade do teste de
+reexport ESM e o gate de revogação correspondente. A migração alternativa de
+versionamento de ACL, o teste SQL duplicado e os commits de CI/documentação
+reancorados ficaram fora por conflito ou obsolescência de identidade.
+
+As verificações locais do delta passaram: build, DB `36/36`, auth `72/72`, API
+`620/620`, reexport `17/17`, SQL evidence `6/6`, identidade/P0/docs/prompt e
+manifesto crítico revision `81`. O novo candidato ainda não possui CI remoto
+terminal; o último CI terminal disponível é o #282 e permanece `failure`.
+O parecer detalhado está em
+[`28-branch-reconciliation-20260918.md`](./28-branch-reconciliation-20260918.md).
+
 ## Observação terminal mais recente — CI #282
 
 O [CI #282](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35306907606)
@@ -31,15 +49,15 @@ remoto nem altera thresholds. A ficha terminal completa está em
 
 ## Recoleta local do candidato OpenAPI/WebAuthn — 2026-09-18T03:21:30Z
 
-O candidato funcional corrente é
+O candidato funcional dessa recoleta histórica foi
 `4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`, publicado em `origin/main` sem
 force-push. Esta recoleta cobre somente a mudança de autenticação WebAuthn e
 seus contratos e a resolução do artefato OpenAPI entre source/build/Vitest; não
 transfere evidência de candidatos anteriores nem fecha gates externos.
 
-SHA de código e documentação: `4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`.
+SHA de código e documentação: `686c47d09adc6b57d624f3ca822ca649710425f6`.
 
-- manifesto de cobertura crítica na revisão `80`, ancorado no candidato
+- manifesto de cobertura crítica na revisão `81`, ancorado no candidato
   funcional, com `node --test scripts/critical-source-manifest.test.mjs`
   **16/16 PASS** e `refresh-critical-source-manifest.mjs --check` **PASS**;
 - o rebind atualiza seis hashes de fontes modificadas e preserva o manifesto

@@ -2,18 +2,20 @@
 
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT SNAPSHOT   | candidato funcional `4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`; HEAD documental candidate-bound `0d230b65d41cfc3f227c0815bb821369241dcbb7`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; nenhum envelope local é promovido a PASS |
-| MAIN / ORIGIN      | `origin/main@0d230b65d41cfc3f227c0815bb821369241dcbb7`; o histórico publicado implementa verificação criptográfica WebAuthn/FIDO2, configuração autoritativa de RP/origens e resolução OpenAPI compatível com source/build/Vitest, sem force-push |
-| CURRENT CI         | [CI #282](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35306907606) terminou `failure`: `Critical Coverage Gate` e `Performance (k6 SLOs)` falharam; os demais jobs terminaram `success`. [State of Art Closure #43](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35306907572) terminou `success`, mas não substitui os gates externos |
+| CURRENT SNAPSHOT   | candidato funcional `686c47d09adc6b57d624f3ca822ca649710425f6`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; nenhum envelope local é promovido a PASS |
+| MAIN / ORIGIN      | fast-forward de `origin/main` para o candidato integrado `686c47d09adc6b57d624f3ca822ca649710425f6`, com pai publicado `e011cfd2e47a8a8290b26b5c6328750d71586c95`; sem force-push |
+| CURRENT CI         | [CI #282](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35306907606) é o terminal mais recente e terminou `failure`: `Critical Coverage Gate` e `Performance (k6 SLOs)` falharam; o CI do candidato integrado ficará pendente após o push |
 | LOCAL STRICT GATE  | R05-010 e SQL local `PASS`; release/Triple-A continuam `NOT_PROVEN`, `claim=NOT PROVEN`, `publication_allowed=false` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
-| LOCAL VALIDATION   | Migration-source PASS; integração efêmera `105/105` arquivos e `933/933` testes; WebAuthn FIDO2 `14/14`, configuração `47/47`, MFA `66/66`, rotas nativas `47/47`, OpenAPI `5/5`, manifesto crítico `16/16` e typechecks MFA/API PASS; a validação local não prova CI exato, target, recovery, UAT, attestation ou autoridade |
+| LOCAL VALIDATION   | Build, DB `36/36`, auth `72/72`, API `620/620`, reexport `17/17`, SQL evidence `6/6`, identidade/P0/docs/prompt e manifesto revision 81 PASS; a validação local não prova CI exato, target, recovery, UAT, attestation ou autoridade |
 | VERIFIED TARGET    | `NOT PROVEN`                                                                                                                                                                                                                                              |
 | CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; o CI exato terminou com dois gates rejeitados e target, recovery, UAT, attestation, governança e autoridade externa continuam sem prova |
 
 O snapshot corrente preserva a régua congelada e reancora o manifesto crítico
-na revisão 80. O registro P0 adiciona deduplicação, dependências, classificação
-de execução e fechamento candidate-bound ao gate de release. O CI #190 detectou a rejeição de inicializadores V8 legítimos do
+na revisão 81. O registro P0 adiciona deduplicação, dependências, classificação
+de execução e fechamento candidate-bound ao gate de release. A reconciliação de
+branches incorporou somente os deltas auth/health/teste comprovados; a migração
+alternativa de ACL e evidências reancoradas obsoletas ficaram fora. O CI #190 detectou a rejeição de inicializadores V8 legítimos do
 Node 22 e a ausência do produtor SQL; os CI #191/#192 confirmaram a correção no
 Critical Coverage Gate dos ancestrais. O CI #196 confirmou o Critical Coverage
 Gate no snapshot anterior, mas terminou com falhas em E2E SPA, Performance/k6 e

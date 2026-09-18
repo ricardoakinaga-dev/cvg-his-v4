@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`
-(snapshot com registro P0 candidate-bound, evidence graph, verificação criptográfica WebAuthn/FIDO2, resolução OpenAPI cross-runtime, configuração de RP/origens server-owned e thresholds inalterados)
+**Candidate funcional avaliado:** `686c47d09adc6b57d624f3ca822ca649710425f6`
+(snapshot integrado seletivamente das branches, com registro P0 candidate-bound, evidence graph, lookup autoritativo combinado, health probe coalescido, verificação criptográfica WebAuthn/FIDO2, resolução OpenAPI cross-runtime, configuração de RP/origens server-owned e thresholds inalterados)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -37,6 +37,12 @@ relaxado e não há autorização para declarar `main green`,
 release produtivo ou `TRIPLE-A VERIFIED`.
 
 ## Validação local do candidato atual
+
+A reconciliação seletiva preservou as migrations ACL canônicas `0175/0176` de
+`main` e incorporou somente os deltas não conflitantes da branch final-ci. O
+novo candidato passou build, DB `36/36`, auth `72/72`, API `620/620`, reexport
+`17/17` e SQL evidence `6/6`; o CI remoto exato desse candidato ainda precisa
+terminar.
 
 A validação local corrente passou a fonte canônica de migrações, o produtor SQL
 com `175` migrações ativas e `7` históricos, a integração efêmera com `105/105`

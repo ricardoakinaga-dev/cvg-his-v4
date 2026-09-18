@@ -18,7 +18,7 @@
   "active_execplan": ".agent/plans/repository-state-of-art-remediation-execplan.md",
   "active_task": "TRIPLE-A-RELEASE-CONTROL",
   "verification_state": "PARTIAL",
-  "repository_state": "Reconciliado em 2026-09-18: o worktree candidate-bound e origin/main estão em 0d230b65d41cfc3f227c0815bb821369241dcbb7, descendente exclusivamente documental do candidato funcional 4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d; as branches de trabalho relevantes continuam ancestrais de main e não há merge funcional pendente. O CI #282 terminou FAILURE: Critical Coverage Gate e Performance/k6 falharam; os demais jobs observados passaram. A matriz visual local executou 29/29 no Chromium e falhou 29/29 em Firefox e WebKit contra snapshots Chromium. Thresholds, denominador, escopo e aplicabilidade permanecem intactos; target, UAT, recovery, attestation, autoridade, cross-browser e Triplo AAA continuam NOT PROVEN.",
+  "repository_state": "Reconciliado em 2026-09-18: o candidato integrado é 686c47d09adc6b57d624f3ca822ca649710425f6, descendente direto de origin/main@e011cfd2e47a8a8290b26b5c6328750d71586c95. As branches ancestrais não exigiam merge; da branch final-ci divergente foram mantidos somente deltas auth/health/teste verificados. A migration alternativa de ACL, o teste SQL duplicado e docs/CI obsoletos ficaram fora. Build, DB 36/36, auth 72/72, API 620/620, reexport 17/17, SQL 6/6 e validators candidate-bound passaram. O CI #282 terminal continua FAILURE nos gates Critical Coverage e Performance/k6; o novo CI do candidato está pendente. A matriz visual local executou 29/29 no Chromium e falhou 29/29 em Firefox e WebKit contra snapshots Chromium. Thresholds, denominador, escopo e aplicabilidade permanecem intactos; target, UAT, recovery, attestation, autoridade, cross-browser e Triplo AAA continuam NOT PROVEN.",
   "instruction_scope_refs": [
     ".agent/plans/repository-state-of-art-remediation-execplan.md",
     "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
@@ -33,10 +33,10 @@
     "docs/2026-09-13-backlog-prontidao-producao.md"
   ],
   "last_gate_record": ".agent/gates/implementation-ready-triple-a-release-control-20260912-r3.json",
-  "last_event_id": "EVT-TRIPLE-A-CI-282-TERMINAL-20260918",
-  "state_revision": 114,
+  "last_event_id": "EVT-TRIPLE-A-BRANCH-RECONCILIATION-20260918",
+  "state_revision": 115,
   "next_gate": "VERIFIED",
-  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:CI-282-ROOT-CAUSE-REVIEW",
+  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:CI-RERUN-INTEGRATED-CANDIDATE",
   "blocked_by": [
     "CI #282: Critical Coverage Gate terminou FAILURE (exit 1) e Performance/k6 terminou FAILURE (benchmark exit 99; SLO check exit 1); métricas remotas de performance e diagnóstico do checker exigem inspeção autenticada candidate-bound",
     "Matriz visual cross-browser local: Chromium 29/29 PASS, Firefox 0/29 e WebKit 0/29 em comparação contra snapshots Chromium; UAT visual e acessibilidade independente continuam ausentes",
@@ -65,5 +65,5 @@
     "PROD-027 behavioral parity taxonomy, 45-module classification, fixtures and acceptance — Product/QA/domain authority",
     "PROD-062 family verifier trust root, targets, limits, issuer policy and acceptance — Platform/Security/QA authority"
   ],
-  "updated_at": "2026-09-18T05:03:00Z"
+  "updated_at": "2026-09-18T05:30:00Z"
 }

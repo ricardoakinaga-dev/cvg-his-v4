@@ -102,14 +102,17 @@
         ".agent/verification.jsonl#VER-TRIPLE-A-CI-282-OVERALL-20260918",
         ".agent/verification.jsonl#VER-TRIPLE-A-CI-282-PERFORMANCE-20260918",
         ".agent/verification.jsonl#VER-TRIPLE-A-CI-282-CRITICAL-20260918",
-        ".agent/verification.jsonl#VER-TRIPLE-A-VISUAL-MATRIX-20260918"
+        ".agent/verification.jsonl#VER-TRIPLE-A-VISUAL-MATRIX-20260918",
+        "docs/triple-a/28-branch-reconciliation-20260918.md",
+        ".agent/verification.jsonl#VER-TRIPLE-A-BRANCH-RECONCILIATION-20260918",
+        ".agent/verification.jsonl#VER-TRIPLE-A-SAFE-DELTA-TESTS-20260918"
       ],
       "next_action": {
-        "id": "TRIPLE-A-RELEASE-CONTROL:CI-282-ROOT-CAUSE-REVIEW",
-        "kind": "REVIEW",
-        "summary": "Inspecionar os artefatos e logs candidate-bound do CI #282, separar falha determinística de infraestrutura/runner e decidir um único rework sem alterar thresholds, escopo ou identidade",
-        "target": ".github/workflows/ci.yml; scripts/check-critical-coverage.mjs; scripts/run-critical-coverage-shard.mjs; scripts/run-native-critical-coverage.mjs; benchmarks/k6/*; artefatos remotos do CI #282",
-        "completion_signal": "Parecer/diagnóstico reproduzível e hipótese única; se houver defeito local, rework bounded + checks; se não houver métricas/log acessíveis, manter BLOCKED e registrar autoridade/artefato faltante"
+        "id": "TRIPLE-A-RELEASE-CONTROL:CI-RERUN-INTEGRATED-CANDIDATE",
+        "kind": "VERIFY",
+        "summary": "Aguardar e reconciliar o CI exato do candidato integrado, preservando os thresholds e o estado fail-closed",
+        "target": "GitHub Actions run disparado pelo candidato 686c47d09adc6b57d624f3ca822ca649710425f6; docs/triple-a/26-remote-ci-35306907606.md",
+        "completion_signal": "Run remoto terminal e candidate-bound reconciliado; qualquer falha mantém BLOCKED e qualquer aprovação ainda exige target, UAT, recovery, attestation, governança e autoridade humana"
       }
     },
     {

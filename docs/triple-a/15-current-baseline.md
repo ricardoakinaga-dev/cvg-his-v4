@@ -1,7 +1,7 @@
 # Baseline corrente — State of Art
 
-Observado em `2026-09-18T04:20:23Z`, sobre o candidato funcional
-`4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`. A identidade corrente preserva a
+Observado em `2026-09-18T05:30:00Z`, sobre o candidato funcional
+`686c47d09adc6b57d624f3ca822ca649710425f6`. A identidade corrente preserva a
 separação entre código/assurance e documentação; a implementação deste
 snapshot fecha localmente a verificação criptográfica WebAuthn, sem promover
 evidência externa.
@@ -16,24 +16,35 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| current_sha     | `4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d` (snapshot; verificação FIDO2 criptográfica, RP/origens autoritativos, resolução OpenAPI source/build/Vitest, registro P0 e thresholds inalterados) |
-| main_sha        | candidato funcional `4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d` alcançável em `origin/main`; HEAD documental observado `52453612a7d45c1e2a002aae8e1e0a1f4eb7fcc9`; sem force-push |
+| current_sha     | `686c47d09adc6b57d624f3ca822ca649710425f6` (snapshot integrado; auth com lookup autoritativo combinado, health probe coalescido, teste de reexport ESM corrigido, manifesto revision 81, registro P0 e thresholds inalterados) |
+| main_sha        | candidato funcional `686c47d09adc6b57d624f3ca822ca649710425f6` preparado para fast-forward de `origin/main`; pai publicado `e011cfd2e47a8a8290b26b5c6328750d71586c95`; sem force-push |
 | worktree        | Limpo após o commit funcional; artefatos gerados locais permanecem fora do commit |
 | rollback        | `origin/main@94b1ae08b7dda6c0e9d670ba4ffb749fcfea3fbb` (pai publicado); sem force-push |
-| ci_run          | [CI #35304185255](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35304185255) terminou `failure`; `Critical Coverage Gate` e `Performance (k6 SLOs)` falharam, e os demais jobs terminaram `success` |
+| ci_run          | [CI #282](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35306907606) é o terminal mais recente e terminou `failure`; o CI do candidato integrado será disparado após o push |
 | ci_failure      | Falha terminal no checker de cobertura crítica e no benchmark/validação k6; métricas remotas não foram inferidas sem acesso autenticado ao artefato |
 | overall_score   | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `51`, abaixo do mínimo 97 |
 | critical_score  | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `49`, abaixo do mínimo 95 |
 | open_p0         | Registro P0: `12` itens abertos e `2` fechados; o quality bar de release continua exigindo zero P0 para certificação |
 | local_gate      | R05-010 e SQL local `PASS`; release/Triple-A permanece `BLOCKED / NOT PROVEN` porque CI terminal, target, recovery, UAT, attestation e autoridade ainda não foram provados |
-| implemented     | Paridade do contrato Patient; CORS credentialado restrito; manifesto crítico revision 80; workflow PostgreSQL/evidence graph/P0 preservados; feature flags tenant-scoped fail-closed; telemetria HTTP sanitizada; WebAuthn agora usa SimpleWebAuthn para verificar attestation/assertion, persiste credential ID e chave COSE reais, aplica challenge/origem/RP ID/user handle, contador CAS e isolamento de conta/usuário; configuração `WEBAUTHN_RP_ID`/`WEBAUTHN_ORIGINS` é server-owned; o loader OpenAPI aceita source, build e URLs `file:` sob Vitest; nenhum threshold foi alterado |
-| verified_local  | `pnpm validate:migration-source` PASS; SQL producer PASS (`175` migrações ativas + `7` históricas); integração efêmera PASS (`105/105` arquivos, `933/933` testes); WebAuthn FIDO2 `14/14`, config `47/47`, MFA `66/66`, rotas nativas `47/47`, OpenAPI routes `5/5`, API build/native routes `2/2`, typecheck MFA/API e OpenAPI/runtime/dependency guards PASS. A evidência local não substitui CI exato, target externo, recovery, UAT, attestation de fabricante ou autoridade |
-| verified_remote | O [CI #35304185255](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35304185255) terminou `failure`; não há `main green` terminal promovido. Target, recovery, UAT, governança de branch e autoridade de release seguem ausentes |
+| implemented     | Paridade do contrato Patient; CORS credentialado restrito; manifesto crítico revision 81; workflow PostgreSQL/evidence graph/P0 preservados; feature flags tenant-scoped fail-closed; telemetria HTTP sanitizada; WebAuthn agora usa SimpleWebAuthn para verificar attestation/assertion, persiste credential ID e chave COSE reais, aplica challenge/origem/RP ID/user handle, contador CAS e isolamento de conta/usuário; configuração `WEBAUTHN_RP_ID`/`WEBAUTHN_ORIGINS` é server-owned; o loader OpenAPI aceita source, build e URLs `file:` sob Vitest; sessões DB fazem lookup combinado de sessão/usuário e probes Redis compartilham trabalho por janela curta; nenhum threshold foi alterado |
+| verified_local  | Build PASS; DB `36/36`, auth `72/72`, API `620/620`, reexport `17/17`, SQL evidence `6/6`; `pnpm validate:candidate-identity`, `pnpm validate:p0-registry`, `pnpm docs:validate` e `pnpm validate:prompt-traceability` revalidados após a reancoragem. A evidência local não substitui CI exato, target externo, recovery, UAT, attestation de fabricante ou autoridade |
+| verified_remote | O [CI #282](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35306907606) terminou `failure`; o novo candidato ainda não tem CI terminal e não há `main green` promovido. Target, recovery, UAT, governança de branch e autoridade de release seguem ausentes |
 | verified_target | `NOT_PROVEN` |
 | blocked         | CI terminal do candidato, RLS no target, restore/DR, performance/soak, UAT, attestation, governança e autoridade humana continuam abertos; os thresholds permanecem sem alteração |
 | not_proven      | Qualquer claim de release Triple-A, score ≥97, critical ≥95, zero P0, `main_green` ou `TRIPLE-A VERIFIED` |
 
 ## Reconciliação atual
+
+A branch `origin/codex/state-of-art-hardening-20260917` e a branch de correções
+anteriores já eram ancestrais de `main`. Da branch divergente
+`origin/codex/state-of-art-hardening-final-ci-20260917`, somente as atualizações
+não conflitantes e verificadas foram integradas: lookup autoritativo combinado,
+coalescência do health probe, compatibilidade do teste de reexport ESM e o gate
+de revogação correspondente. A migração alternativa de versionamento de ACL, o
+teste SQL duplicado e os commits de CI/documentação reancorados foram rejeitados:
+eles conflitam com as migrações canônicas `0175/0176` já presentes ou carregam
+identidade/evidência obsoletas. O detalhamento está em
+[`28-branch-reconciliation-20260918.md`](./28-branch-reconciliation-20260918.md).
 
 O fechamento local de `P0-DATA-POSTGRESQL-RUNTIME` está registrado em
 [`24-local-automated-closure-2026-09-18.md`](./24-local-automated-closure-2026-09-18.md).
