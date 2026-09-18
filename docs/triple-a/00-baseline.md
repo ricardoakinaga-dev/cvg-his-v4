@@ -2,31 +2,36 @@
 
 ## Consolidação atual — 2026-09-18
 
-Baseline autoritativo: `56b4daf5a939a99dc66f085b9838ec3646d9ab54`.
+Baseline autoritativo: `96e9a2c46bad4d40be468261fab277f8463190ec`.
 
 A consolidação Git está concluída: somente main permanece localmente e no
-GitHub, com histórico anterior em bundle verificado. O candidato preserva os
-reparos de OpenAPI, WebAuthn e cobertura e remove o deslocamento de arrays por
-requisição na auditoria e nas métricas, mantendo ordem, retenção e persistência.
-A validação integrada local passou: cobertura global 2.932 testes/82,03% de
-branches, API nativa 679/679 sem skips, build e testes focados. A crítica
-independente aprovou os quatro arquivos alterados. O benchmark sem profiler,
-com quatro CPUs e workload original de até 60 VUs, passou 9/9 SLOs: query p95
-29ms, zero erros HTTP, 4.322 iterações.
+GitHub, com histórico anterior em bundle verificado. O runtime da aplicação
+segue a fonte `d8d8b821`; os reparos de OpenAPI, WebAuthn, auditoria e métricas
+preservam ordem, retenção, persistência e controles de acesso.
+
+O [CI 35349067677](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35349067677)
+do predecessor `0d0ea920` aprovou performance **9/9 SLOs, query p95 137ms**,
+cobertura global **2.932 testes/82,03% de branches**, build, controles do
+repositório, tipos, lint, segurança, unitários, contratos da API, Windows,
+regressão visual, E2E e cobertura crítica. Integração teve 618 asserções aprovadas,
+mas uma exceção
+PostgreSQL57P01 no encerramento de um banco privado reprovou o job.
+
+O candidato atual corrige apenas os fixtures de bootstrap/instalação que
+encerravam conexões à força antes do fechamento real. Os dois arquivos passaram
+18/18 testes com PostgreSQL real. Uma revisão independente reproduziu e corrigiu
+um problema de cleanup na nova regressão; confirmou isolamento, propagação de
+erros e espera por desconexão sem exceções órfãs. A validação local anterior do
+mesmo runtime passou API nativa679/679 e benchmark de quatro CPUs9/9/query29ms;
+essas evidências locais não substituem o CI final.
 
 [Relatório atual, decisões por branch e limitações](./29-main-unification-20260918.md).
-Manifesto crítico revision83, ancorado na fonte `d8d8b821`; escopo,
-thresholds e workload preservados. O [CI 35343988828](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35343988828)
-pertence ao predecessor6e724d07 e falhou em performance (query191ms) e na
-identidade do manifesto crítico. Os cinco coletores passaram, porém a promoção
-foi rejeitada. O manifesto foi reancorado após o commit funcional; o resultado
-remoto do novo candidato será observado após publicação. O CI35347927091 do
-snapshot56b4daf5 detectou que os registros `.agent` posteriores à identidade
-anterior exigiam reancoragem; a identidade agora inclui esse commit e a próxima
-publicação altera somente `docs/triple-a`, conforme o contrato do validador.
-
-Target, UAT, recuperação operacional, attestations e autoridade de release
-continuam sem prova suficiente; não há declaração de certificação Triplo AAA.
+Manifesto crítico revision84, ancorado no candidato acima e registrando o novo
+helper de execução dos testes. Os 555 caminhos de fonte, os thresholds e o
+workload permanecem inalterados. Ambas as identidades serão novamente validadas
+sobre o commit documental concluído antes do push; o CI final será observado
+após a publicação. Target, UAT, recuperação operacional, attestations e
+autoridade de release continuam sem prova suficiente; não há certificação AAA.
 
 ## Registro histórico anterior
 

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "d8d8b82196be8d29c6a06e7d3c15633bd06b5627",
+  "head": "96e9a2c46bad4d40be468261fab277f8463190ec",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -8406,7 +8406,8 @@
     "tests/unit/api/api-keys-routes.test.ts",
     "tests/unit/api/billing-routes-validation.test.ts",
     "tests/unit/api/security-headers.test.ts",
-    "packages/modules/auth/src/database-session.repository.test.ts"
+    "packages/modules/auth/src/database-session.repository.test.ts",
+    "tests/setup/wait-for-database-disconnect.ts"
   ],
   "scopeHistory": [
     {
@@ -11853,6 +11854,26 @@
       "added": [],
       "removed": [],
       "changed": []
+    },
+    {
+      "manifestRevision": 84,
+      "observedAt": "2026-09-18T13:46:47.947Z",
+      "collectionCommit": "96e9a2c46bad4d40be468261fab277f8463190ec",
+      "previousManifestSha256": "4b2621ba6399c920a2370b127bce48b89ebc5142b3c21650ec8c97c94e71cd39",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-4b2621ba6399c920a2370b127bce48b89ebc5142b3c21650ec8c97c94e71cd39.json",
+      "previousSourceSetSha256": "4d0da3e15f9f67d45dca1105515c1cf104157c003244320ad2eee86813e4fa2d",
+      "sourceSetSha256": "4d0da3e15f9f67d45dca1105515c1cf104157c003244320ad2eee86813e4fa2d",
+      "reason": "Register owned PostgreSQL fixture lifecycle helper and bind the unchanged 555-source coverage scope to the committed fixture repair",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "tests/setup/wait-for-database-disconnect.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "0a6adfa2285dd13ffd912a42c0460f970facb8aadc7c89f0f80cc054c9ae3903",
+      "executionInputsSha256": "3bed91a6b0e07b4074282bd554c3ef63534015b17842bf72da6f49eb6a1f164d"
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12786,9 +12807,9 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 83,
+  "manifestRevision": 84,
   "sourceSetSha256": "4d0da3e15f9f67d45dca1105515c1cf104157c003244320ad2eee86813e4fa2d",
-  "executionInputsSha256": "0a6adfa2285dd13ffd912a42c0460f970facb8aadc7c89f0f80cc054c9ae3903",
+  "executionInputsSha256": "3bed91a6b0e07b4074282bd554c3ef63534015b17842bf72da6f49eb6a1f164d",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,

@@ -164,6 +164,50 @@ identidade geral em `56b4daf5`. Essa correção altera apenas `docs/triple-a` e
 mantém ambos os validadores intactos; suas verificações serão executadas sobre
 o commit concluído antes da publicação. A fonte da aplicação segue `d8d8b821`.
 
+## Confirmação remota e ciclo de vida dos fixtures
+
+O [CI 35349067677](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35349067677)
+do commit `0d0ea920` confirmou a correção de performance: **9/9 SLOs**, query
+p95 **137ms** contra limite150ms. Também passaram cobertura global
+**2.932 testes/82,03% de branches**, build, tipos, lint, identidade/controles do
+repositório, segurança, unitários, contratos da API, Windows, regressão visual
+e E2E. A cobertura crítica também terminou com PASS: 16 dos17 jobs passaram;
+a única falha foi a corrida de encerramento descrita abaixo.
+
+As **618 asserções de integração passaram**, porém uma exceção não tratada
+`57P01` reprovou o job. O cliente pertencia ao banco privado do fixture
+`production-like-runtime-bootstrap`. A implementação de `pg-pool` remove o
+cliente de sua lista antes de concluir `client.end`; por isso `pool.end()` pode
+resolver antes de o backend desaparecer do PostgreSQL. A chamada seguinte a
+`pg_terminate_backend` competia com o fechamento gracioso e podia entregar um
+erro fatal ao cliente ainda encerrando. O fixture de instalação tinha a mesma
+sequência e recebeu o mesmo reparo.
+
+Os dois fixtures agora consultam, por parâmetro, somente o nome do próprio
+banco, aguardam os backends desaparecerem e fazem `DROP DATABASE` normal.
+O polling tem deadline de10s entre consultas e informa PIDs remanescentes.
+Esse prazo não cobre uma consulta/conexão bloqueada indefinidamente; os testes
+e hooks têm seus próprios limites de30/120s. Vazamento real falha de forma
+visível e pode conservar o banco de teste para diagnóstico. Não há supressão de
+erros, encerramento forçado de sessões nem alteração no código produtivo.
+
+A regressão segura `client.end` deliberadamente, comprova no PostgreSQL que o
+backend ainda existe após `pool.end()` e só permite concluir a limpeza após a
+desconexão real. A revisão independente também forçou uma asserção falha e
+encontrou uma espera órfã no primeiro desenho de cleanup; o reparo aguarda essa
+espera no `finally`, antes de encerrar o pool administrativo. A reprodução
+independente posterior teve zero rejeições órfãs e confirmou timeout com PID,
+isolamento por banco e propagação do erro original de consulta.
+
+As duas suítes focadas passaram **18/18**, sem erros não tratados, em Node22 e
+PostgreSQL real; fingerprints finais foram conferidos pela crítica e pelo
+executor. Fonte de testes/controller: `96e9a2c46bad4d40be468261fab277f8463190ec`;
+runtime da aplicação permanece `d8d8b821`. O manifesto revision84 registra
+`tests/setup/wait-for-database-disconnect.ts` como novo execution input e mantém
+os mesmos555 caminhos de fonte/thresholds. Todos os registros `.agent` foram
+incluídos antes de gerar a identidade; o próximo commit altera somente os
+caminhos documentais permitidos. O CI final exato continua necessário.
+
 ## Limites da conclusão
 
 A consolidação do Git não concede certificação operacional. A régua
