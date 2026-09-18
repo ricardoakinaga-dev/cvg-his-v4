@@ -1,7 +1,7 @@
 # Baseline corrente — State of Art
 
-Observado em `2026-09-17T13:28:36Z`, sobre o candidato documental
-`59bbb1ac1bab7565706178a954cbfeb62c1bd565`, que contém a identidade corrente
+Observado em `2026-09-18T01:00:00Z`, sobre o candidato documental
+`8098e8be2fbade69f38ed99719b4ef04e78bf240`, que contém a identidade corrente
 e a correção funcional de fail-closed, autoridade request-scoped e ownership composto no commit
 `03e6fac0a2f726698b40adb351298610f9c1f88d`, sobre a otimização do
 roteamento autenticado antes da guarda final e o ciclo de vida de feature flags,
@@ -19,11 +19,11 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| current_sha     | `59bbb1ac1bab7565706178a954cbfeb62c1bd565` (snapshot; registro P0 e manifesto revision 73; Noto Sans e rasterização sem LCD determinísticos nos gates E2E/visual; verificação portátil do runner; endurecimento funcional do provider de feature flags, autoridade request-scoped, ownership composto, classificador documental, ciclo de vida, evidência SQL legada corrigida e cobertura de rotas; harness SPA canônico com proxy same-origin; `server.ts` em `8.335` linhas; cobertura global em `82,00%` branches) |
+| current_sha     | `8098e8be2fbade69f38ed99719b4ef04e78bf240` (snapshot; registro P0 e manifesto revision 73; Noto Sans e rasterização sem LCD determinísticos nos gates E2E/visual; verificação portátil do runner; endurecimento funcional do provider de feature flags, autoridade request-scoped, ownership composto, classificador documental, ciclo de vida, evidência SQL legada corrigida e cobertura de rotas; harness SPA canônico com proxy same-origin; `server.ts` em `8.335` linhas; cobertura global em `82,00%` branches) |
 | main_sha        | `main` remota publicada em `origin/main@893d6cac0a68` via Git Data API sem force-push; `origin/fix/state-of-art-ci-assurance@fe5406c2` é ancestral, sem commits funcionais exclusivos; rollback preservado |
 | worktree        | Limpo antes da documentação corrente; artefatos gerados locais permanecem fora do commit |
 | rollback        | `origin/fix/state-of-art-ci-assurance@fe5406c2`; sem force-push |
-| ci_run          | O [CI #238](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35248052991) falhou na cobertura global porque um teste Node nativo foi incluído indevidamente no sweep do Vitest; o resultado não é promovido. |
+| ci_run          | pendente: o candidato otimizado será validado por uma nova execução exata; resultados de outros SHAs não são transferidos |
 | ci_failure      | O último run terminal relevante do candidato anterior, [CI #217](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35215228039), passou os gates críticos/funcionais, E2E SPA (`424/424`) e Visual (`29/29`), mas reprovou query e inventory no k6. Nenhum threshold foi alterado. |
 | overall_score   | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `51`, abaixo do mínimo 97 |
 | critical_score  | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `49`, abaixo do mínimo 95 |
