@@ -2,7 +2,7 @@
 
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CURRENT SNAPSHOT   | candidato `db47bb1501b9c713213b0b4d4f1794c2a5b6f53b`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; registro P0 candidate-bound; importador do evidence graph com validação de envelope, frescor, ancestralidade, ambiente e digest; nenhum envelope local é promovido a PASS; históricos não são transferidos |
+| CURRENT SNAPSHOT   | candidato `28043455f12cf2ef076eafcf09516ffd67007c74`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; registro P0 candidate-bound; importador do evidence graph com validação de envelope, frescor, ancestralidade, ambiente e digest; nenhum envelope local é promovido a PASS; históricos não são transferidos |
 | MAIN / ORIGIN      | `main` remota publicada em `893d6cac0a6842f7f92a362a5cab307fc20d27da`; a branch de hardening `origin/codex/state-of-art-hardening-20260917@4c8200f2` foi integrada por merge sem force-push; este candidato aguarda publicação |
 | CURRENT CI         | O [CI #252](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35284475981) pertence ao predecessor `893d6cac`; não é transferido para este candidato, que aguarda execução exata após a publicação |
 | LOCAL STRICT GATE  | cobertura global local `PASS` no threshold congelado; release/critical externo continuam `NOT_PROVEN`, `claim=NOT PROVEN`, `publication_allowed=false` |
@@ -12,7 +12,7 @@
 | CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; o CI exato deste candidato ainda não foi executado, o predecessor não é transferível e target, recovery, UAT e autoridade externa continuam sem prova |
 
 O snapshot corrente preserva a régua congelada e reancora o manifesto crítico
-na revisão 76. O registro P0 adiciona deduplicação, dependências, classificação
+na revisão 79. O registro P0 adiciona deduplicação, dependências, classificação
 de execução e fechamento candidate-bound ao gate de release. O CI #190 detectou a rejeição de inicializadores V8 legítimos do
 Node 22 e a ausência do produtor SQL; os CI #191/#192 confirmaram a correção no
 Critical Coverage Gate dos ancestrais. O CI #196 confirmou o Critical Coverage

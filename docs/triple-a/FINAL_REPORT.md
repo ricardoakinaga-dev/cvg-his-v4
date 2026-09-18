@@ -1,7 +1,7 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `db47bb1501b9c713213b0b4d4f1794c2a5b6f53b`
-(snapshot documental reancorado com o registro P0 candidate-bound, ACL em tempo constante, readiness Redis, tracing HTTP seguro contra credenciais em query string, observabilidade do worker, contrato produtivo e integridade do catálogo de eventos; manifesto crítico revision 78; typecheck e build do workspace passaram em `68/69` projetos; os contratos novos passaram localmente; o CI #252 do predecessor `893d6cac` não é transferido; esta implementação aguarda CI exato e nenhum threshold foi alterado)
+**Candidate funcional avaliado:** `28043455f12cf2ef076eafcf09516ffd67007c74`
+(snapshot documental reancorado com o registro P0 candidate-bound, correção do produtor de evidência SQL e cobertura de validação HTTP; manifesto crítico revision 79; typecheck e build do workspace passaram em `68/69` projetos; os contratos novos passaram localmente; o CI #258 do predecessor `8efc250f` não é transferido; esta implementação aguarda CI exato e nenhum threshold foi alterado)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
@@ -11,7 +11,7 @@ O candidato preserva o modular monolith e a reconciliação fail-closed de
 proveniência. A paridade de Patient e o CORS credentialado restrito foram
 validados. No candidato corrente, os contratos alterados passaram, o produtor SQL
 passou com PostgreSQL 16.15 e a conversão V8 do processo aceita somente o par
-autenticado de inicializadores; o manifesto crítico está na revisão 78 e o
+autenticado de inicializadores; o manifesto crítico está na revisão 79 e o
 workflow publica evidência SQL antes do checker. O [CI #212](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35198105802)
 passou cobertura crítica, segurança, build, unitários, integração, contratos,
 processo Windows e as duas jornadas clínicas canônicas. O CI #214 confirmou

@@ -1,11 +1,11 @@
 # Evidência de execução corrente — State of Art
 
-## Candidato documental observado em 2026-09-17T23:39:52Z
+## Candidato documental observado em 2026-09-18T01:07:08Z
 
-- SHA de código e documentação: `db47bb1501b9c713213b0b4d4f1794c2a5b6f53b`;
+- SHA de código e documentação: `28043455f12cf2ef076eafcf09516ffd67007c74`;
   identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
-- O manifesto crítico está na revisão 78, ancorado no commit funcional `db47bb1501b9` e publicado na identidade do snapshot; a migration `0176` preserva o checksum da `0175`, força RLS na ledger e evita recriação durante cascatas de conta. O candidato também exige Redis saudável antes de abrir o listener em produção-like, ativa tracing HTTP W3C/OTel com targets sem query strings sensíveis, publica métricas de frescor e modo de persistência do worker, valida o contrato de composição produtiva e a integridade do catálogo de eventos. Rollback preservado em `origin/main@893d6cac` e nas branches ancestrais integradas.
+- O manifesto crítico está na revisão 79, ancorado no commit funcional `28043455f12c` e publicado na identidade do snapshot; a migration `0176` preserva o checksum da `0175`, força RLS na ledger e evita recriação durante cascatas de conta. O produtor de evidência SQL cobre as `175` migrações ativas e preserva os artefatos históricos. O candidato também exige Redis saudável antes de abrir o listener em produção-like, ativa tracing HTTP W3C/OTel com targets sem query strings sensíveis, publica métricas de frescor e modo de persistência do worker, valida o contrato de composição produtiva e a integridade do catálogo de eventos. Rollback preservado em `origin/main@893d6cac` e nas branches ancestrais integradas.
 - Nenhum force-push foi usado.
 - O [CI #252](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35284475981), executado no predecessor `893d6cac`, não é evidência deste candidato e nenhum resultado é transferido.
 

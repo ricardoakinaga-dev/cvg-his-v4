@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "db47bb1501b9c713213b0b4d4f1794c2a5b6f53b",
+  "head": "28043455f12cf2ef076eafcf09516ffd67007c74",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -6203,7 +6203,10 @@
     "tests/unit/api/laboratory-result-import-coverage.test.ts",
     "tests/unit/api/laboratory-result-import-database-coverage.test.ts",
     "tests/unit/api/pix-repository-boundaries-coverage.test.ts",
-    "tests/unit/api/setup-token-coverage.test.ts"
+    "tests/unit/api/setup-token-coverage.test.ts",
+    "tests/unit/api/api-keys-routes.test.ts",
+    "tests/unit/api/billing-routes-validation.test.ts",
+    "tests/unit/api/security-headers.test.ts"
   ],
   "executionInputs": [
     ".eslintrc.cjs",
@@ -8398,7 +8401,10 @@
     "scripts/validate-observability-contract.mjs",
     "scripts/validate-observability-contract.test.mjs",
     "scripts/validate-production-runtime-contract.mjs",
-    "scripts/validate-production-runtime-contract.test.mjs"
+    "scripts/validate-production-runtime-contract.test.mjs",
+    "tests/unit/api/api-keys-routes.test.ts",
+    "tests/unit/api/billing-routes-validation.test.ts",
+    "tests/unit/api/security-headers.test.ts"
   ],
   "scopeHistory": [
     {
@@ -11687,6 +11693,43 @@
           "after": "a50994a8161c5c724c419a61193686e8b64faf5c2f667d484f46e748904959ff"
         }
       ]
+    },
+    {
+      "manifestRevision": 79,
+      "observedAt": "2026-09-18T01:06:29.339Z",
+      "collectionCommit": "28043455f12cf2ef076eafcf09516ffd67007c74",
+      "previousManifestSha256": "f592e2433fb6be0b86a17273631339c09a43fa8c9b1aac31b5ccd4fcf3dcf716",
+      "preservedManifest": "artifacts/remediation/PROD-011/manifest-refresh-route-branches-20260918/critical-scope-before-f592e2433fb6be0b86a17273631339c09a43fa8c9b1aac31b5ccd4fcf3dcf716.json",
+      "previousSourceSetSha256": "f38d14580fa8fe25fbf2013008e267a3618a19fbdb2b54745ecca33e3e64657b",
+      "sourceSetSha256": "f38d14580fa8fe25fbf2013008e267a3618a19fbdb2b54745ecca33e3e64657b",
+      "reason": "Reanchor critical evidence after closing SQL migration coverage and HTTP route validation branches",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [
+        {
+          "from": "tests/unit/api/openapi-routes.test.ts",
+          "to": "tests/unit/api/openapi-routes.test.ts"
+        },
+        {
+          "from": "scripts/run-sql-migration-evidence.mjs",
+          "to": "scripts/run-sql-migration-evidence.mjs"
+        }
+      ],
+      "inputsAdded": [
+        "tests/unit/api/api-keys-routes.test.ts",
+        "tests/unit/api/billing-routes-validation.test.ts",
+        "tests/unit/api/security-headers.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "9f1953c5b288ecd06f6228fa6b9023fc9dee4cd1d166e6ab8c0958c70b83611c",
+      "executionInputsSha256": "6896d22c77285ff9af7a2934320c88f706e93d7105c5e15fa9b17483d3487560",
+      "vitestAdded": [
+        "tests/unit/api/api-keys-routes.test.ts",
+        "tests/unit/api/billing-routes-validation.test.ts",
+        "tests/unit/api/security-headers.test.ts"
+      ],
+      "vitestRemoved": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12620,9 +12663,9 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 78,
+  "manifestRevision": 79,
   "sourceSetSha256": "f38d14580fa8fe25fbf2013008e267a3618a19fbdb2b54745ecca33e3e64657b",
-  "executionInputsSha256": "9f1953c5b288ecd06f6228fa6b9023fc9dee4cd1d166e6ab8c0958c70b83611c",
+  "executionInputsSha256": "6896d22c77285ff9af7a2934320c88f706e93d7105c5e15fa9b17483d3487560",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,

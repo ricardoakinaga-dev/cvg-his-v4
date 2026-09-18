@@ -9,10 +9,10 @@
 > [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `5998287d386559fc3b3ed760a47756e62349f286`; o registro P0 candidate-bound é validado no CI e no gate de release; o evidence graph importa envelopes locais somente como `PARTIAL` após validar schema, SHA, ambiente, frescor, ancestralidade e digests; os CI anteriores não são transferidos. Nenhum resultado parcial é transferido.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `db47bb1501b9c713213b0b4d4f1794c2a5b6f53b` (snapshot reancorado após a unificação de ACL, readiness Redis, tracing HTTP seguro contra credenciais em query string, observabilidade do worker, contrato produtivo e catálogo de eventos; o evidence graph continua candidate-bound e com status máximo `PARTIAL`; registro P0 com `1` fechado e `13` abertos; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current snapshot:** `28043455f12cf2ef076eafcf09516ffd67007c74` (snapshot reancorado após a correção do produtor de evidência SQL e a cobertura dos contratos de validação HTTP; o evidence graph continua candidate-bound e com status máximo `PARTIAL`; registro P0 com `1` fechado e `13` abertos; provas externas e autoridade de release continuam `NOT PROVEN`).
 **Current CI:** o [CI #252](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35284475981) pertence ao predecessor `893d6cac`; não há resultado transferível para este candidato. Nenhuma threshold foi relaxada.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-17T23:39:52Z
+**Observation:** 2026-09-18T01:07:08Z
 
 **Current candidate delta:** o provider raw consumido pela API agora respeita
 kill switch persistido, expiração, precedência de escopo e allowlist fail-closed;
