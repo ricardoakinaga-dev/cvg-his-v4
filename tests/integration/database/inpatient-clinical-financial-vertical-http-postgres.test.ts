@@ -87,18 +87,20 @@ function createGatedSessionRepository(repository: SessionRepository): SessionRep
   return new Proxy(repository, {
     get(target, property, receiver) {
       const value = Reflect.get(target, property, target);
-      if (property !== 'findById') {
+      if (property !== 'findById' && property !== 'findByIdWithUser') {
         return typeof value === 'function' ? value.bind(target) : value;
       }
 
-      const findById = value.bind(target) as SessionRepository['findById'];
-      return async (...args: Parameters<SessionRepository['findById']>) => {
-        const result = await findById(...args);
+      const authoritativeLookup = value.bind(target) as (...args: never[]) => Promise<unknown>;
+      return async (...args: never[]) => {
+        const result = await authoritativeLookup(...args);
         if (secondarySessionReadGate.armed) {
           secondarySessionReadGate.reads += 1;
           // The final request guard is now the only authoritative session
-          // read. Pause after that read so a concurrent permission revocation
-          // still has to be observed by the fresh ACL snapshot.
+          // read, whether the adapter uses the legacy session lookup or the
+          // database adapter's combined session/user projection. Pause after
+          // that read so a concurrent permission revocation still has to be
+          // observed by the fresh ACL snapshot.
           if (secondarySessionReadGate.reads === 1) {
             secondarySessionReadGate.armed = false;
             secondarySessionReadGate.signalStarted();
