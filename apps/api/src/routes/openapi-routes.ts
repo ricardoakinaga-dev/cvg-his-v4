@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { resolve } from 'node:path';
 
 import { parse as parseYaml } from 'yaml';
 
@@ -47,18 +48,35 @@ const API_DOCS_RESPONSE = {
 let cachedOpenApiYaml: string | undefined;
 let cachedOpenApiSpec: unknown | undefined;
 
+function openApiYamlCandidates(): Array<string | URL> {
+  const moduleRelativeCandidates = [
+    new URL('./openapi.yaml', import.meta.url),
+    new URL('../openapi.yaml', import.meta.url)
+  ].filter((candidate) => candidate.protocol === 'file:');
+
+  return [
+    ...moduleRelativeCandidates,
+    resolve(process.cwd(), 'apps/api/src/openapi.yaml'),
+    resolve(process.cwd(), 'apps/api/dist/openapi.yaml')
+  ];
+}
+
 function loadOpenApiYaml(): string {
   if (cachedOpenApiYaml !== undefined) {
     return cachedOpenApiYaml;
   }
 
-  try {
-    cachedOpenApiYaml = readFileSync(new URL('./openapi.yaml', import.meta.url), 'utf8');
-  } catch {
-    cachedOpenApiYaml = readFileSync(new URL('../openapi.yaml', import.meta.url), 'utf8');
+  let lastError: unknown;
+  for (const candidate of openApiYamlCandidates()) {
+    try {
+      cachedOpenApiYaml = readFileSync(candidate, 'utf8');
+      return cachedOpenApiYaml;
+    } catch (error) {
+      lastError = error;
+    }
   }
 
-  return cachedOpenApiYaml;
+  throw lastError instanceof Error ? lastError : new Error('OpenAPI spec not available');
 }
 
 function loadOpenApiSpec(): unknown {
