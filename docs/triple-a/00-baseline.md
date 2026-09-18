@@ -1,14 +1,14 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-18T02:45:16Z
+## Snapshot vigente — 2026-09-18T03:21:30Z
 
-O baseline autoritativo do snapshot funcional atual está em: `cef206bf4600c3fdb1dbf428ef37e407abaf4996`, publicado diretamente em `origin/main` (verificação criptográfica WebAuthn/FIDO2, RP ID/origens server-owned, testes criptográficos e thresholds preservados; o comportamento ERP anterior permanece preservado).
+O baseline autoritativo do snapshot funcional atual está em: `4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`, publicado diretamente em `origin/main` (verificação criptográfica WebAuthn/FIDO2, RP ID/origens server-owned, resolução robusta do artefato OpenAPI e thresholds preservados; o comportamento ERP anterior permanece preservado).
 
 O delta de autenticação foi validado localmente com credencial P-256 real,
 attestation `fmt:none`, assertions assinadas, rejeição de replay/origem/RP ID e
-CAS de contador. O [CI #35300563062](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563062)
-continua em execução; a closure do State of Art #35300563044 terminou com
-sucesso, mas não prova target, recovery, UAT, attestation de fabricante ou
+CAS de contador. O [CI #35302897107](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35302897107)
+estava `pending` na observação; a closure do State of Art #35302897028 estava
+em execução, mas não prova target, recovery, UAT, attestation de fabricante ou
 autoridade de release.
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e

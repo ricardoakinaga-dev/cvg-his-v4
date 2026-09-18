@@ -1,14 +1,14 @@
 # Evidência de execução corrente — State of Art
 
-## Recoleta local do candidato WebAuthn — 2026-09-18T02:45:16Z
+## Recoleta local do candidato OpenAPI/WebAuthn — 2026-09-18T03:21:30Z
 
 O candidato funcional corrente é
-`cef206bf4600c3fdb1dbf428ef37e407abaf4996`, publicado em `origin/main` sem
+`4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`, publicado em `origin/main` sem
 force-push. Esta recoleta cobre somente a mudança de autenticação WebAuthn e
-seus contratos; não transfere evidência de candidatos anteriores nem fecha
-gates externos.
+seus contratos e a resolução do artefato OpenAPI entre source/build/Vitest; não
+transfere evidência de candidatos anteriores nem fecha gates externos.
 
-SHA de código e documentação: `cef206bf4600c3fdb1dbf428ef37e407abaf4996`.
+SHA de código e documentação: `4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`.
 
 - `pnpm --filter @cvg-his-v2/module-mfa typecheck`: **PASS**;
 - `pnpm --filter @cvg-his-v2/shared-config typecheck`: **PASS**;
@@ -18,14 +18,18 @@ SHA de código e documentação: `cef206bf4600c3fdb1dbf428ef37e407abaf4996`.
 - `pnpm --filter @cvg-his-v2/module-mfa test`: **66/66 PASS**;
 - `pnpm --filter @cvg-his-v2/api test:auth-route`: **47/47 PASS**;
 - `pnpm --filter @cvg-his-v2/api typecheck`: **PASS**;
-- OpenAPI, runtime de produção e política de dependências: **PASS**.
+- OpenAPI routes Vitest: **5/5 PASS**;
+- `pnpm validate:openapi`: **PASS**, 430 paths e 525 schemas;
+- API build e rotas nativas compiladas: **PASS**, **2/2**;
+- runtime de produção e política de dependências: **PASS**.
 
 A suíte nativa confirma que `x-rp-id: attacker.example` não altera o RP ID
-server-owned `cvg.local`. O ADR-015 registra a decisão e o limite explícito:
+server-owned `cvg.local`. O loader OpenAPI ignora URLs não-`file:` geradas pelo
+Vitest e usa candidatos source/build; o ADR-015 registra a decisão e o limite explícito:
 attestation de fabricante/enterprise trust não foi habilitada; o registro usa
-`attestation: none` para o fluxo de passkeys. O [CI #35300563062](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563062)
-está `in_progress`; o [State of Art Closure #35300563044](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563044)
-terminou `success`. Portanto, a conclusão local continua separada de CI
+`attestation: none` para o fluxo de passkeys. O [CI #35302897107](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35302897107)
+estava `pending` na observação; o [State of Art Closure #35302897028](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35302897028)
+estava em execução. Portanto, a conclusão local continua separada de CI
 terminal, target, recovery, UAT, governança e release authority.
 
 ## Recoleta terminal local — 2026-09-18T01:53:20Z

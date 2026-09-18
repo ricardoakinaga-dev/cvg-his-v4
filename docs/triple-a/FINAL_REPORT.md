@@ -1,19 +1,20 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `cef206bf4600c3fdb1dbf428ef37e407abaf4996`
-(snapshot com registro P0 candidate-bound, evidence graph, verificação criptográfica WebAuthn/FIDO2, configuração de RP/origens server-owned e thresholds inalterados)
+**Candidate funcional avaliado:** `4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`
+(snapshot com registro P0 candidate-bound, evidence graph, verificação criptográfica WebAuthn/FIDO2, resolução OpenAPI cross-runtime, configuração de RP/origens server-owned e thresholds inalterados)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
 **Atualização corrente — 2026-09-18:** além do baseline PostgreSQL local,
 WebAuthn FIDO2 passou `14/14` testes criptográficos, configuração `47/47`, MFA
 `66/66`, rotas nativas `47/47`, typechecks MFA/API e guards OpenAPI/runtime/
-dependências. O registro persiste o credential ID e a chave pública reais e
+dependências; as rotas OpenAPI passaram `5/5`, o build da API e as rotas nativas
+compiladas passaram `2/2`. O registro persiste o credential ID e a chave pública reais e
 rejeita RP ID vindo de header. O CI exato
-[#35300563062](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563062)
-está `in_progress`; o State of Art Closure
-[#35300563044](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563044)
-terminou `success`. Há `2` P0 fechados e `12` abertos; target, recovery, UAT,
+#35302897107](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35302897107)
+estava `pending` na observação; o State of Art Closure
+[#35302897028](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35302897028)
+estava em execução. Há `2` P0 fechados e `12` abertos; target, recovery, UAT,
 attestation de fabricante, governança e autoridade de release continuam sem
 prova.
 

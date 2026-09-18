@@ -5,13 +5,13 @@
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). A identidade canônica está em
-> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato funcional corrente é `cef206bf4600c3fdb1dbf428ef37e407abaf4996`, publicado em `origin/main`; o registro P0 candidate-bound é validado no CI e no gate de release; o evidence graph importa envelopes locais somente como `PARTIAL` após validar schema, SHA, ambiente, frescor, ancestralidade e digests; os CI anteriores não são transferidos. Nenhum resultado parcial é transferido.
+> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato funcional corrente é `4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`, publicado em `origin/main`; o registro P0 candidate-bound é validado no CI e no gate de release; o evidence graph importa envelopes locais somente como `PARTIAL` após validar schema, SHA, ambiente, frescor, ancestralidade e digests; os CI anteriores não são transferidos. Nenhum resultado parcial é transferido.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `cef206bf4600c3fdb1dbf428ef37e407abaf4996` (verificação WebAuthn/FIDO2, evidence graph candidate-bound e status máximo `PARTIAL`; registro P0 com `2` fechados e `12` abertos; provas externas e autoridade de release continuam `NOT PROVEN`).
-**Current CI:** o [CI #35300563062](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563062) está `in_progress` no SHA exato; nenhum resultado é promovido antes do terminal. Nenhum threshold foi relaxado.
+**Current snapshot:** `4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d` (verificação WebAuthn/FIDO2, resolução OpenAPI cross-runtime, evidence graph candidate-bound e status máximo `PARTIAL`; registro P0 com `2` fechados e `12` abertos; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current CI:** o [CI #35302897107](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35302897107) estava `pending` na observação; nenhum resultado é promovido antes do terminal. Nenhum threshold foi relaxado.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-18T02:45:16Z
+**Observation:** 2026-09-18T03:21:30Z
 
 **Current candidate delta:** o provider raw consumido pela API agora respeita
 kill switch persistido, expiração, precedência de escopo e allowlist fail-closed;

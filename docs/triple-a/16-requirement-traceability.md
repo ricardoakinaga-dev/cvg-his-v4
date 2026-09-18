@@ -12,13 +12,13 @@ A tabela mantém o escopo completo. “NOT PROVEN” significa que a aceitação
 integral da fase não foi demonstrada no candidato corrente; não significa que o
 código esteja ausente. Evidência local, CI e alvo são avaliados separadamente.
 A fotografia vigente é o candidato de código
-`cef206bf4600c3fdb1dbf428ef37e407abaf4996`, com pins imutáveis de deployment,
+`4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`, com pins imutáveis de deployment,
 envelope de eventos versionado, crosswalk normativo, hardening conjunto de
 logging/workflow/tenant e verificação criptográfica WebAuthn/FIDO2. O [CI
-#35300563062](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563062)
-está `in_progress` no SHA exato; o [State of Art Closure
-#35300563044](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563044)
-terminou `success`. A evidência local WebAuthn é `14/14`, mas não substitui
+#35302897107](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35302897107)
+estava `pending` na observação; o [State of Art Closure
+#35302897028](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35302897028)
+estava em execução. A evidência local WebAuthn é `14/14`, e OpenAPI `5/5`, mas não substitui
 CI terminal, target, governança, UAT ou autoridade de release. A
 [fotografia atual](./15-current-baseline.md) contém SHA, CI e lacunas medidas.
 

@@ -1,7 +1,7 @@
 # Baseline corrente — State of Art
 
-Observado em `2026-09-18T02:45:16Z`, sobre o candidato funcional
-`cef206bf4600c3fdb1dbf428ef37e407abaf4996`. A identidade corrente preserva a
+Observado em `2026-09-18T03:21:30Z`, sobre o candidato funcional
+`4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`. A identidade corrente preserva a
 separação entre código/assurance e documentação; a implementação deste
 snapshot fecha localmente a verificação criptográfica WebAuthn, sem promover
 evidência externa.
@@ -16,19 +16,19 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| current_sha     | `cef206bf4600c3fdb1dbf428ef37e407abaf4996` (snapshot; verificação FIDO2 criptográfica, RP/origens autoritativos, registro P0 e thresholds inalterados) |
-| main_sha        | `origin/main@cef206bf4600c3fdb1dbf428ef37e407abaf4996`; sem force-push |
+| current_sha     | `4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d` (snapshot; verificação FIDO2 criptográfica, RP/origens autoritativos, resolução OpenAPI source/build/Vitest, registro P0 e thresholds inalterados) |
+| main_sha        | `origin/main@4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`; sem force-push |
 | worktree        | Limpo após o commit funcional; artefatos gerados locais permanecem fora do commit |
-| rollback        | `origin/main@0d830f2966b7873cb9dad5fb9006d757c4577221` (pai publicado); sem force-push |
-| ci_run          | [CI #35300563062](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563062) está `in_progress` no SHA exato; [State of Art Closure #35300563044](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563044) terminou `success` |
+| rollback        | `origin/main@94b1ae08b7dda6c0e9d670ba4ffb749fcfea3fbb` (pai publicado); sem force-push |
+| ci_run          | [CI #35302897107](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35302897107) estava `pending` na observação; [State of Art Closure #35302897028](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35302897028) estava em execução |
 | ci_failure      | Nenhuma falha terminal do SHA atual foi observada; o CI exato ainda não terminou e falhas de predecessores não são transferidas |
 | overall_score   | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `51`, abaixo do mínimo 97 |
 | critical_score  | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `49`, abaixo do mínimo 95 |
 | open_p0         | Registro P0: `12` itens abertos e `2` fechados; o quality bar de release continua exigindo zero P0 para certificação |
 | local_gate      | R05-010 e SQL local `PASS`; release/Triple-A permanece `BLOCKED / NOT PROVEN` porque CI terminal, target, recovery, UAT, attestation e autoridade ainda não foram provados |
-| implemented     | Paridade do contrato Patient; CORS credentialado restrito; manifesto crítico revision 79; workflow PostgreSQL/evidence graph/P0 preservados; feature flags tenant-scoped fail-closed; telemetria HTTP sanitizada; WebAuthn agora usa SimpleWebAuthn para verificar attestation/assertion, persiste credential ID e chave COSE reais, aplica challenge/origem/RP ID/user handle, contador CAS e isolamento de conta/usuário; configuração `WEBAUTHN_RP_ID`/`WEBAUTHN_ORIGINS` é server-owned; nenhum threshold foi alterado |
-| verified_local  | `pnpm validate:migration-source` PASS; SQL producer PASS (`175` migrações ativas + `7` históricas); integração efêmera PASS (`105/105` arquivos, `933/933` testes); WebAuthn FIDO2 `14/14`, config `47/47`, MFA `66/66`, rotas nativas `47/47`, typecheck MFA/API e OpenAPI/runtime/dependency guards PASS. A evidência local não substitui CI exato, target externo, recovery, UAT, attestation de fabricante ou autoridade |
-| verified_remote | O [CI #35300563062](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563062) está `in_progress`; não há `main green` terminal promovido. Target, recovery, UAT, governança de branch e autoridade de release seguem ausentes |
+| implemented     | Paridade do contrato Patient; CORS credentialado restrito; manifesto crítico revision 79; workflow PostgreSQL/evidence graph/P0 preservados; feature flags tenant-scoped fail-closed; telemetria HTTP sanitizada; WebAuthn agora usa SimpleWebAuthn para verificar attestation/assertion, persiste credential ID e chave COSE reais, aplica challenge/origem/RP ID/user handle, contador CAS e isolamento de conta/usuário; configuração `WEBAUTHN_RP_ID`/`WEBAUTHN_ORIGINS` é server-owned; o loader OpenAPI aceita source, build e URLs `file:` sob Vitest; nenhum threshold foi alterado |
+| verified_local  | `pnpm validate:migration-source` PASS; SQL producer PASS (`175` migrações ativas + `7` históricas); integração efêmera PASS (`105/105` arquivos, `933/933` testes); WebAuthn FIDO2 `14/14`, config `47/47`, MFA `66/66`, rotas nativas `47/47`, OpenAPI routes `5/5`, API build/native routes `2/2`, typecheck MFA/API e OpenAPI/runtime/dependency guards PASS. A evidência local não substitui CI exato, target externo, recovery, UAT, attestation de fabricante ou autoridade |
+| verified_remote | O [CI #35302897107](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35302897107) estava `pending` na observação; não há `main green` terminal promovido. Target, recovery, UAT, governança de branch e autoridade de release seguem ausentes |
 | verified_target | `NOT_PROVEN` |
 | blocked         | CI terminal do candidato, RLS no target, restore/DR, performance/soak, UAT, attestation, governança e autoridade humana continuam abertos; os thresholds permanecem sem alteração |
 | not_proven      | Qualquer claim de release Triple-A, score ≥97, critical ≥95, zero P0, `main_green` ou `TRIPLE-A VERIFIED` |
