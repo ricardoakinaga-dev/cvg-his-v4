@@ -31,6 +31,7 @@ import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 import { runWithTenantContext } from '@cvg-his-v2/tenant-context';
 import { getPool, runInTenantTransaction } from '@cvg-his-v2/shared-database';
 import type {
+  AuthoritativeSessionLookup,
   PersistedSessionRecord,
   SessionRepository
 } from './repositories/session.repository.js';
@@ -892,12 +893,48 @@ export class AuthService {
     };
 
     // Database repositories already honor the active transaction scope. Keep
-    // session, user and role reads on one tenant-scoped connection to avoid
-    // repeated BEGIN/SET/COMMIT cycles while preserving the final guard's
-    // authoritative re-read on every protected request.
-    if (this.#sessionRepository instanceof DatabaseSessionRepository) {
+    // session, user and role reads on one tenant-scoped connection. The
+    // database adapter also provides a combined projection, eliminating a
+    // second user query while preserving the final guard's authoritative
+    // re-read on every protected request.
+    const databaseSessionRepository =
+      this.#sessionRepository instanceof DatabaseSessionRepository
+        ? this.#sessionRepository
+        : undefined;
+    if (databaseSessionRepository) {
       return this.#runAsTokenPayload(payload, correlationId, () =>
-        runInTenantTransaction(getPool(), payload.account_id, loadFromRepository)
+        runInTenantTransaction(getPool(), payload.account_id, async () => {
+          const lookup = await databaseSessionRepository.findByIdWithUser(
+            payload.session_id as SessionId,
+            payload.account_id as AccountId
+          );
+          if (!lookup) {
+            throw new AuthenticationError('Session is not active');
+          }
+
+          const { session, user } = lookup;
+          this.#assertTokenSessionMatch(payload, session);
+          if (!session.active || session.revokedAt) {
+            this.#sessions.set(session.sessionId, session);
+            throw new AuthenticationError('Session is not active');
+          }
+
+          const expiry = tokenType === 'refresh' ? session.refreshExpiresAt : session.expiresAt;
+          if (new Date(expiry).getTime() <= Date.now()) {
+            const expiredSession: SessionRecord = {
+              ...session,
+              active: false,
+              revokedAt: nowIso()
+            };
+            await databaseSessionRepository.update(expiredSession);
+            this.#sessions.set(expiredSession.sessionId, expiredSession);
+            throw new AuthenticationError('Session expired');
+          }
+
+          this.#sessions.set(session.sessionId, session);
+          this.#users.rememberAuthoritativeUser(user);
+          return { session, user } satisfies AuthoritativeSessionLookup;
+        })
       );
     }
 

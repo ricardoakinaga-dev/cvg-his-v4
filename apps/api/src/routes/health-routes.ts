@@ -14,6 +14,17 @@ import { generateSLOReport, getSLOConfigs } from '../slos.js';
 import { getCurrentSloSnapshot, updateSloMetrics } from '../metrics.js';
 
 const REDIS_HEALTH_PROBE_TIMEOUT_MS = 1_000;
+// Readiness is polled by load balancers and orchestration agents. A short
+// per-options cache prevents a probe storm from turning health checks into a
+// Redis workload while keeping dependency state bounded to 250 ms of age.
+const REDIS_HEALTH_CACHE_TTL_MS = 250;
+const redisHealthCache = new WeakMap<object, RedisHealthCacheEntry>();
+
+interface RedisHealthCacheEntry {
+  expiresAt: number;
+  result?: RateLimiterHealth;
+  inFlight?: Promise<RateLimiterHealth>;
+}
 
 /**
  * Handle all /health, /ready, /live routes.
@@ -218,6 +229,40 @@ export async function resolveRedisHealthStatus(
 ): Promise<RateLimiterHealth | undefined> {
   if (!runtimeDistributedStateEnabled) return undefined;
 
+  const cached = redisHealthCache.get(options);
+  const now = Date.now();
+  if (cached?.result && cached.expiresAt > now) {
+    return cached.result;
+  }
+  if (cached?.inFlight) {
+    return cached.inFlight;
+  }
+
+  const inFlight = probeRedisHealthStatus(options);
+  const entry: RedisHealthCacheEntry = { expiresAt: 0, inFlight };
+  redisHealthCache.set(options, entry);
+  void inFlight.then(
+    (result) => {
+      entry.result = result;
+      entry.expiresAt = Date.now() + REDIS_HEALTH_CACHE_TTL_MS;
+      entry.inFlight = undefined;
+    },
+    () => {
+      redisHealthCache.delete(options);
+    }
+  );
+  return inFlight;
+}
+
+async function probeRedisHealthStatus(
+  options: Pick<
+    ApiServerOptions,
+    | 'authRateLimiter'
+    | 'pixPaymentAttemptRateLimiter'
+    | 'pixProviderWebhookRateLimiter'
+    | 'redisUrl'
+  >
+): Promise<RateLimiterHealth> {
   if (!options.redisUrl) {
     return {
       healthy: false,

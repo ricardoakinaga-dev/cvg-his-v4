@@ -11,6 +11,8 @@ import {
   resolveProductionReadiness
 } from './bootstrap.js';
 import { createHealthResponse, createLivenessResponse, createReadinessResponse } from './health.js';
+import { resolveRedisHealthStatus } from './routes/health-routes.js';
+import type { RateLimiterHealth } from '@cvg-his-v2/shared-rate-limiter';
 import type { RuntimeRepositories } from './runtime.js';
 
 type RateLimiterMode = 'redis' | 'in-memory' | 'fail-closed';
@@ -382,4 +384,34 @@ test('createLivenessResponse returns live even before full initialization', () =
   assert.equal(response.liveness.live, true);
   assert.equal(response.liveness.initialized, false);
   assert.equal(response.readiness.ready, false);
+});
+
+test('Redis health probes are coalesced per API options object', async () => {
+  let probeCount = 0;
+  let release!: (health: RateLimiterHealth) => void;
+  const pending = new Promise<RateLimiterHealth>((resolve) => {
+    release = resolve;
+  });
+  const options = {
+    redisUrl: 'redis://health-probe.test',
+    authRateLimiter: {
+      healthCheck: async () => {
+        probeCount += 1;
+        return pending;
+      }
+    }
+  } as Parameters<typeof resolveRedisHealthStatus>[0];
+
+  const first = resolveRedisHealthStatus(options, true);
+  const second = resolveRedisHealthStatus(options, true);
+  assert.equal(probeCount, 1);
+
+  release({ healthy: true, backend: 'redis', detail: 'test' });
+  const [firstResult, secondResult] = await Promise.all([first, second]);
+  assert.equal(firstResult?.healthy, true);
+  assert.equal(secondResult?.healthy, true);
+
+  const cached = await resolveRedisHealthStatus(options, true);
+  assert.equal(cached?.healthy, true);
+  assert.equal(probeCount, 1);
 });

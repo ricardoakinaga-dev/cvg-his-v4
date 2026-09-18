@@ -362,6 +362,16 @@ export class UsersService {
     return user;
   }
 
+  /**
+   * Adds a row that was already validated by an authoritative repository
+   * query to the process-local index without issuing a second database read.
+   */
+  public rememberAuthoritativeUser(user: UserRecord): void {
+    if (isInteractiveHumanUser(user)) {
+      this.#indexRepositoryUser(user);
+    }
+  }
+
   public async verifyPassword(user: UserRecord, password: string): Promise<boolean> {
     const isValid = await comparePassword(password, user.passwordHash);
     if (!isValid || !LEGACY_SHA256_PATTERN.test(user.passwordHash)) {
