@@ -9,6 +9,7 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { evaluateChecks, checkSummaryText } from './check-results.js';
 
 const resultsPath = resolve(process.argv[2] ?? 'benchmarks/k6/results/performance-report.json');
 const asMarkdown = process.argv.includes('--markdown');
@@ -61,6 +62,7 @@ function endpointLatencyMetrics(data) {
 
 try {
   const data = JSON.parse(readFileSync(resultsPath, 'utf8'));
+  const checks = evaluateChecks(data.checks, data.metrics?.checks);
   const flattenedSloResults = flattenSloResults(data.slo);
   const summary = data.slo?._summary ?? {
     total: flattenedSloResults.length,
@@ -102,7 +104,9 @@ try {
         );
       }
     }
-    process.exit(summary.allPassed ? 0 : 1);
+    console.log('');
+    console.log(checkSummaryText(data.checks, data.metrics?.checks, true));
+    process.exit(summary.allPassed && checks.allPassed ? 0 : 1);
   }
 
   console.log('=== CVG-HIS-V2 Performance Results ===');
@@ -120,6 +124,7 @@ try {
     );
   }
   console.log(`  Summary: ${summary.passed}/${summary.total} passed`);
+  console.log('\n' + checkSummaryText(data.checks, data.metrics?.checks));
 
   console.log('\n--- API Latency ---');
   const latency = data.metrics['api_latency_ms'];
@@ -163,7 +168,7 @@ try {
     }
   }
 
-  process.exit(summary.allPassed ? 0 : 1);
+  process.exit(summary.allPassed && checks.allPassed ? 0 : 1);
 } catch (err) {
   console.error('Failed to parse results:', err.message);
   process.exit(1);

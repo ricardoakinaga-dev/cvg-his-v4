@@ -45,6 +45,18 @@ function mapEncounterPersistenceError(error: unknown, patientId: PatientId): unk
   return error;
 }
 
+function isClinicalEvidenceMutation(error: unknown): boolean {
+  const seen = new Set<object>();
+  let current = error;
+  while (typeof current === 'object' && current !== null && !seen.has(current) && seen.size < 32) {
+    seen.add(current);
+    const failure = current as { code?: unknown; constraint?: unknown; cause?: unknown };
+    if (failure.code === '42501' && failure.constraint === 'clinical_evidence_append_only') return true;
+    current = failure.cause;
+  }
+  return false;
+}
+
 export interface EncounterRepository {
   create(encounter: EncounterSummary): Promise<void>;
   update(encounter: EncounterSummary): Promise<void>;
@@ -244,9 +256,16 @@ export class DatabaseEncounterRepository implements EncounterRepository {
 
   public async delete(id: EncounterId): Promise<void> {
     const accountId = requireAccountId();
-    await this.#db
-      .delete(encounters)
-      .where(and(eq(encounters.id, id), eq(encounters.accountId, accountId)));
+    try {
+      await this.#db
+        .delete(encounters)
+        .where(and(eq(encounters.id, id), eq(encounters.accountId, accountId)));
+    } catch (error) {
+      if (!isClinicalEvidenceMutation(error)) throw error;
+      const conflict = new ConflictError('Encounter with clinical history cannot be deleted', { encounterId: id });
+      Object.defineProperty(conflict, 'cause', { value: error, configurable: true });
+      throw conflict;
+    }
   }
 
   private mapRowToEncounter(row: typeof encounters.$inferSelect): EncounterSummary {

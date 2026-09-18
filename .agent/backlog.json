@@ -1979,20 +1979,42 @@
       "title": "Consolidar branches e reparar o CI atual",
       "stage": "BUILD",
       "priority": "P0",
-      "status": "VERIFY",
+      "status": "DONE",
       "origin": "USER-20260918-MAIN-UNIFICATION",
       "dependencies": [],
       "owner": "lead",
-      "acceptance_summary": "Melhorias importantes preservadas, critérios automatizados verificados, somente main após backup e publicação. Certificação externa permanece vinculada ao quality bar existente.",
+      "acceptance_summary": "Consolidação concluída em b81e8655: somente main, backup verificado e CI35356621431 aprovado17/17. Os106 checks individuais k6 e a certificação externa são tratados em P0-CLOSURE, sem claim Triple-A.",
       "evidence_refs": [
-        ".agent/plans/main-unification-20260918.md"
+        ".agent/plans/main-unification-20260918.md",
+        "docs/triple-a/29-main-unification-20260918.md"
       ],
       "next_action": {
-        "id": "UNIFY-MAIN:VERIFY-CANDIDATE",
+        "id": "UNIFY-MAIN:REOPEN",
+        "kind": "REOPEN",
+        "summary": "Reabrir apenas se houver nova divergência de branches ou regressão da consolidação.",
+        "target": "docs/triple-a/29-main-unification-20260918.md",
+        "completion_signal": "Nova divergência identificada e vinculada a evidência."
+      }
+    },
+    {
+      "id": "P0-CLOSURE",
+      "title": "Resolver P0 e checks individuais k6",
+      "stage": "VERIFY",
+      "priority": "P0",
+      "status": "VERIFY",
+      "origin": "USER-20260918-P0-CLOSURE",
+      "dependencies": [],
+      "owner": "lead",
+      "acceptance_summary": "Checks atribuídos/corrigidos; critérios P0 satisfeitos com evidência e autoridade reais; CI e revisão independentes.",
+      "evidence_refs": [
+        ".agent/plans/p0-closure-20260918.md"
+      ],
+      "next_action": {
+        "id": "P0-CLOSURE:VERIFY-CANDIDATE",
         "kind": "VERIFY",
-        "summary": "Verificar os reparos das falhas atuais do candidato unificado.",
-        "target": ".agent/plans/main-unification-20260918.md",
-        "completion_signal": "Resultados atuais de cobertura, desempenho e regressão registrados."
+        "summary": "Publicar candidato vinculado, verificar CI exato e reconciliar P0 com provas reais.",
+        "target": "docs/triple-a/P0_REGISTRY.json; docs/triple-a/CURRENT_CANDIDATE_IDENTITY.json; .github/workflows/ci.yml",
+        "completion_signal": "CI17/17 e zero checks individuais; critérios externos permanecem explícitos até evidência e autoridade."
       }
     }
   ]

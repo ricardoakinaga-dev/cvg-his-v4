@@ -85,7 +85,7 @@
     "test:db:start": "docker compose -f docker-compose.test.yml up -d --force-recreate postgres-test && node infra/scripts/wait-test-database.mjs",
     "test:db:stop": "docker compose -f docker-compose.test.yml down -v",
     "benchmark:k6:seed": "pnpm exec tsx benchmarks/k6/seed-benchmark-fixtures.ts",
-    "benchmark:k6": "k6 run benchmarks/k6/api-benchmark.js",
+    "benchmark:k6": "k6 run benchmarks/k6/api-benchmark.js && node benchmarks/k6/parse-results.js benchmarks/k6/results/performance-report.json",
     "benchmark:k6:parse": "node benchmarks/k6/parse-results.js benchmarks/k6/results/performance-report.json",
     "release:check": "flock -w 1800 /tmp/cvg-his-v2-release-check.lock -c 'pnpm deploy:check && pnpm build && pnpm test:coverage && pnpm test:e2e:spa:docker'",
     "bootstrap": "node infra/scripts/bootstrap-local.mjs",

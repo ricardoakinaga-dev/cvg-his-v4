@@ -203,3 +203,29 @@ test('DatabaseEncounterRepository maps lifecycle conflicts and timeline persiste
     ]);
   });
 });
+
+test('protected clinical history deletion maps to a safe conflict and retains the database cause', async () => {
+  const cause = { code: '42501', constraint: 'clinical_evidence_append_only', message: 'private database details' };
+  const wrapped = new Error('query failed', { cause });
+  const db = { delete: () => ({ where: async () => { throw wrapped; } }) } as unknown as DatabaseClient;
+  const repository = new DatabaseEncounterRepository(db);
+  await runWithTenantContext(tenant, async () => {
+    await expect(repository.delete(encounterId as never)).rejects.toMatchObject({
+      statusCode: 409, code: 'CONFLICT', message: 'Encounter with clinical history cannot be deleted',
+      details: { encounterId }, cause: wrapped
+    });
+  });
+});
+
+test('unrelated permission errors and cyclic causes retain their original identity', async () => {
+  const cyclic: { cause?: unknown } = {}; cyclic.cause = cyclic;
+  for (const error of [
+    { code: '42501', constraint: 'other_guard' },
+    { code: '23503', constraint: 'clinical_evidence_append_only' },
+    { code: '42501', message: 'Clinical evidence is append-only for runtime roles' },
+    cyclic
+  ]) {
+    const db = { delete: () => ({ where: async () => { throw error; } }) } as unknown as DatabaseClient;
+    await runWithTenantContext(tenant, () => expect(new DatabaseEncounterRepository(db).delete(encounterId as never)).rejects.toBe(error));
+  }
+});

@@ -113,11 +113,12 @@ data:
     FROM (VALUES (:'api_user'), (:'worker_user')) AS runtime_role(role_name)
     WHERE to_regclass('public.laboratory_result_imports') IS NOT NULL\gexec
 
-    -- Clinical workflow lifecycle evidence is append-only. Runtime roles retain
+    -- Clinical timeline and workflow lifecycle evidence is append-only. Runtime roles retain
     -- SELECT/INSERT from the broad tenant grant, but cannot rewrite or remove it.
-    SELECT format('REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I', 'clinical_workflow_task_events', runtime_role.role_name)
+    SELECT format('REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I', evidence.table_name, runtime_role.role_name)
     FROM (VALUES (:'api_user'), (:'worker_user')) AS runtime_role(role_name)
-    WHERE to_regclass('public.clinical_workflow_task_events') IS NOT NULL\gexec
+    CROSS JOIN (VALUES ('clinical_workflow_task_events'), ('clinical_timeline'), ('encounter_timeline')) AS evidence(table_name)
+    WHERE to_regclass(format('public.%I', evidence.table_name)) IS NOT NULL\gexec
 
     SELECT format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I', candidate.table_name, runtime_role.role_name)
     FROM (

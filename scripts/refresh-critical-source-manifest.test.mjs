@@ -22,6 +22,7 @@ function cliFixture() {
     'native-test-inventory.mjs',
     'native-test-evidence-reporter.mjs',
     'root-contained-path.mjs',
+    'sql-migration-evidence.mjs',
     'vitest-test-inventory.mjs',
   ]) {
     copyFileSync(resolve(import.meta.dirname, 'lib', file), join(root, 'scripts/lib', file));
@@ -314,6 +315,7 @@ function vitestCliFixture() {
     'native-test-inventory.mjs',
     'native-test-evidence-reporter.mjs',
     'root-contained-path.mjs',
+    'sql-migration-evidence.mjs',
     'vitest-test-inventory.mjs',
   ]) {
     copyFileSync(resolve(import.meta.dirname, 'lib', file), join(root, 'scripts/lib', file));
@@ -429,6 +431,67 @@ test('public CLI --reconcile-vitest adds discovered tests and inputs atomically'
     const after = runCliCheck(fixture.root);
     assert.equal(after.status, 0, after.stderr + after.stdout);
     assert.match(after.stdout, /"status": "PASS"/);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('SQL expansion preserves the frozen scope and accounts for a new forward migration', () => {
+  const fixture = cliFixture();
+  try {
+    const path = 'packages/db/migrations/0002_evidence_guard.sql';
+    mkdirSync(join(fixture.root, 'packages/db/migrations'), { recursive: true });
+    writeFileSync(join(fixture.root, path), 'SELECT 1;\n');
+    const baselinePath = 'packages/db/migrations/0001_base.sql';
+    writeFileSync(join(fixture.root, baselinePath), 'SELECT 0;\n');
+    fixture.manifest.files.push({ path: baselinePath, components: ['roles-rls'],
+      applicability: 'sql-migration-evidence', justification: 'fixture baseline', review: null,
+      sha256: createHash('sha256').update('SELECT 0;\n').digest('hex') });
+    fixture.manifest.sourceSetSha256 = sourceSetDigest(fixture.manifest.files);
+    fixture.manifest.specializedEvidence = { sql: {
+      schemaVersion: 1, sourceDirectory: 'packages/db/migrations',
+      acceptedArtifactPath: 'artifacts/sql.json', historicalArtifactCount: 0,
+      requiredPhases: ['cleanApply', 'upgrade', 'reexecution', 'failureRecovery', 'invariants'],
+      expectedMigrationCount: 1, expectedArtifactCount: 1,
+      contractualMigrationCount: 1, forwardOnlyAdditions: []
+    } };
+    fixture.manifest.thresholds = { branches: 85, lines: 85, statements: 85, functions: 85 };
+    const before = JSON.stringify(fixture.manifest, null, 2) + '\n';
+    writeFileSync(fixture.manifestPath, before);
+    const args = [join(fixture.root, 'scripts/refresh-critical-source-manifest.mjs'),
+      '--add-sql-migration', path, '--reason', 'new append-only invariant', '--head', 'a'.repeat(40)];
+    const result = spawnSync(process.execPath, args, { cwd: fixture.root, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+    const next = JSON.parse(readFileSync(fixture.manifestPath));
+    assert.deepEqual(next.files.slice(0, -1), fixture.manifest.files);
+    assert.deepEqual(next.thresholds, fixture.manifest.thresholds);
+    assert.equal(next.files.at(-1).path, path);
+    assert.equal(next.files.at(-1).sha256, createHash('sha256').update('SELECT 1;\n').digest('hex'));
+    assert.equal(next.specializedEvidence.sql.expectedMigrationCount, 2);
+    assert.equal(next.specializedEvidence.sql.expectedArtifactCount, 2);
+    assert.equal(next.specializedEvidence.sql.contractualMigrationCount, 1);
+    assert.deepEqual(next.specializedEvidence.sql.forwardOnlyAdditions, [path]);
+    assert.deepEqual(next.scopeHistory.slice(0, -1), fixture.manifest.scopeHistory);
+    assert.deepEqual(next.scopeHistory.at(-1).added, [path]);
+    assert.equal(readFileSync(join(fixture.root, next.scopeHistory.at(-1).preservedManifest), 'utf8'), before);
+    assert.equal(runCliCheck(fixture.root).status, 0);
+    const accepted = readFileSync(fixture.manifestPath, 'utf8');
+    const duplicate = spawnSync(process.execPath, args, { cwd: fixture.root, encoding: 'utf8' });
+    assert.notEqual(duplicate.status, 0);
+    assert.match(duplicate.stderr, /duplicate SQL source/);
+    assert.equal(readFileSync(fixture.manifestPath, 'utf8'), accepted);
+    for (const invalid of ['../escape.sql', 'packages/db/migrations/0177_evidence_guard.revert.sql', 'packages/db/migrations/0999_missing.sql']) {
+      const rejected = spawnSync(process.execPath, [args[0], '--add-sql-migration', invalid, '--reason', 'invalid', '--head', 'a'.repeat(40)], { cwd: fixture.root, encoding: 'utf8' });
+      assert.notEqual(rejected.status, 0);
+      assert.equal(readFileSync(fixture.manifestPath, 'utf8'), accepted);
+    }
+    const prefix = 'packages/db/migrations/0000_non_forward.sql';
+    writeFileSync(join(fixture.root, prefix), 'SELECT -1;\n');
+    const nonForward = spawnSync(process.execPath, [args[0], '--add-sql-migration', prefix,
+      '--reason', 'invalid prefix', '--head', 'a'.repeat(40)], { cwd: fixture.root, encoding: 'utf8' });
+    assert.notEqual(nonForward.status, 0);
+    assert.match(nonForward.stderr, /forwardOnlyAdditions does not match canonical suffix/);
+    assert.equal(readFileSync(fixture.manifestPath, 'utf8'), accepted);
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
   }

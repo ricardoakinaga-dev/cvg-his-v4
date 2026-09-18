@@ -99,6 +99,17 @@ describe('reconcileRuntimeRoles', () => {
     ).toBe(true);
   });
 
+  it('revokes mutation of both clinical timelines for both runtime roles', async () => {
+    const fake = createClient();
+    await reconcileRuntimeRoles(fake.client, { apiRole: 'cvg_api_test', workerRole: 'cvg_worker_test' });
+    for (const table of ['clinical_timeline', 'encounter_timeline']) {
+      expect(fake.calls.some(({ text, values }) =>
+        text.includes('REVOKE UPDATE, DELETE, TRUNCATE') &&
+        JSON.stringify(values) === JSON.stringify([table, ['cvg_api_test', 'cvg_worker_test']])
+      )).toBe(true);
+    }
+  });
+
   it.each([
     ['invalid API role', { apiRole: 'api-role', workerRole: 'worker_role' }, 'valid PostgreSQL'],
     [

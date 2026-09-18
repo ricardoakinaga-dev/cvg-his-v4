@@ -15,6 +15,7 @@ export const REQUIRED_CI_JOB_NAMES = [
   'SAST (Semgrep)',
   'Typecheck',
   'Coverage',
+  'Critical Coverage Gate',
   'Validate OpenAPI',
   'Lint',
   'Repository Guards',

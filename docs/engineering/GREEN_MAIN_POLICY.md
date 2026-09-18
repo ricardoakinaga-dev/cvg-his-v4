@@ -35,7 +35,7 @@
 
 ## Proteções de branch e ownership
 
-O repositório declara esta política, mas a configuração de branch protection do GitHub não é inspecionável pelo checkout. O owner do repositório deve configurar os checks obrigatórios pelo nome real dos jobs, exigir branch atualizada, impedir push direto sem revisão e manter permissões mínimas. Até essa confirmação remota, o critério de branch protection permanece `NOT PROVEN`.
+A configuração efetiva deve ser consultada na API do GitHub, incluindo branch protection e regras aplicáveis a `main`. A lista canônica de checks está em `REQUIRED_CI_JOB_NAMES`, em `scripts/generate-ci-evidence.mjs`, e inclui os 17 jobs, inclusive `Critical Coverage Gate`. A proteção deve exigir esses checks, branch atualizada, uma revisão aprovada e resolução de conversas; rejeitar force push e exclusão; e aplicar as regras também a administradores. Um arquivo de configuração proposto não comprova aplicação remota: preservar o recibo da API antes de declarar o critério atendido.
 
 ## Release e revalidação
 
@@ -43,4 +43,4 @@ O release deve usar o SHA que passou CI, manifest com imagens por digest e SBOM/
 
 ## Current gap
 
-Na fotografia inicial de 2026-09-09, a complexidade excedia o limite; a extração controlada do tema da agenda agora faz `pnpm complexity:check` passar. O gate agregador foi implementado, mas Helm real, browser/DB runtime, evidências externas, branch protection e autoridade de release ainda não estão comprovados no SHA final. Portanto, `main` permanece `NOT PROVEN` para Triple-A.
+O CI de `b81e86550efd14ee5d7c2017b707bb18185d017c` concluiu os 17 jobs, mas registrou 106 checks individuais reprovados no k6. A inspeção remota de 2026-09-18 também encontrou `main` sem proteção. As correções precisam de nova evidência no candidato publicado; homologação operacional, UAT e autoridade de release permanecem requisitos próprios. O resultado automatizado, sozinho, não certifica Triple-A.

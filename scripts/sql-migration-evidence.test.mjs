@@ -19,17 +19,17 @@ const manifestPath = 'docs/engineering/critical-coverage-scope.json';
 const manifestBytes = readFileSync(resolve(root, manifestPath));
 const manifest = JSON.parse(manifestBytes);
 
-test('SQL scope distinguishes the 175 active runner files from all retained historical bytes', () => {
+test('SQL scope distinguishes the 176 active runner files from all retained historical bytes', () => {
   const migrations = discoverSqlMigrations(root);
   const artifacts = discoverSqlArtifacts(root);
   const scope = validateSqlManifest({ root, manifest });
 
-  assert.equal(migrations.length, 175);
-  assert.equal(artifacts.length, 182);
+  assert.equal(migrations.length, 176);
+  assert.equal(artifacts.length, 183);
   assert.equal(artifacts.filter((artifact) => artifact.kind === 'historical-sql-artifact').length, 7);
   assert.equal(scope.errors.length, 0, scope.errors.join('\n'));
-  assert.equal(scope.sqlScope.manifestSqlCount, 182);
-  assert.equal(scope.sqlScope.canonicalActiveCount, 175);
+  assert.equal(scope.sqlScope.manifestSqlCount, 183);
+  assert.equal(scope.sqlScope.canonicalActiveCount, 176);
   assert.deepEqual(
     scope.sqlScope.historicalArtifactPaths,
     [
@@ -42,7 +42,7 @@ test('SQL scope distinguishes the 175 active runner files from all retained hist
       'packages/db/migrations/0017_fiscal_tables.seed.sql'
     ]
   );
-  for (const number of ['0163', '0164', '0165', '0166', '0167', '0168', '0169', '0170', '0171', '0172', '0173', '0174', '0175', '0176']) {
+  for (const number of ['0163', '0164', '0165', '0166', '0167', '0168', '0169', '0170', '0171', '0172', '0173', '0174', '0175', '0176', '0177']) {
     assert.ok(migrations.some((migration) => migration.name.startsWith(number)), `missing active ${number}`);
   }
   assert.equal(manifest.specializedEvidence.sql.contractualMigrationCount, 169);
@@ -52,7 +52,8 @@ test('SQL scope distinguishes the 175 active runner files from all retained hist
     'packages/db/migrations/0173_feature_flag_override_scope_uniqueness.sql',
     'packages/db/migrations/0174_feature_flag_override_tenant_ownership.sql',
     'packages/db/migrations/0175_access_control_change_versions.sql',
-    'packages/db/migrations/0176_access_control_change_version_cleanup.sql'
+    'packages/db/migrations/0176_access_control_change_version_cleanup.sql',
+    'packages/db/migrations/0177_clinical_evidence_cascade_immutability.sql'
   ]);
 });
 
@@ -64,7 +65,7 @@ test('consumer fails closed when the accepted SQL evidence artifact is absent', 
   });
   assert.equal(result.status, 'FAIL');
   assert.match(result.errors.join('\n'), /SQL evidence artifact/);
-  assert.equal(result.migrationCount, 175);
+  assert.equal(result.migrationCount, 176);
 });
 
 test('consumer rejects historical bytes mislabeled as executable evidence', () => {

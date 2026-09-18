@@ -83,6 +83,33 @@ test('accepts a closed P0 only with fresh candidate-bound evidence', () => {
   assert.deepEqual(validateFixture(makeRegistry()), []);
 });
 
+test('a CLOSED item requires every existing dependency to be CLOSED', () => {
+  const registry = makeRegistry();
+  const dependency = structuredClone(registry.items[0]);
+  dependency.id = 'P0-DATA-POSTGRESQL-RUNTIME';
+  dependency.dedupe_key = 'postgres-runtime';
+  registry.items.push(dependency);
+  registry.items[0].dependencies = [dependency.id];
+  registry.summary = { open_p0: 0, closed_p0: 2 };
+  assert.deepEqual(validateFixture(registry), []);
+
+  for (const status of ['NOT_PROVEN', 'TARGET_REQUIRED', 'HUMAN_REQUIRED', 'BLOCKED_BY_DEPENDENCY']) {
+    dependency.status = status;
+    registry.summary = { open_p0: 1, closed_p0: 1 };
+    assert.ok(validateFixture(registry).includes(
+      'items[0] CLOSED requires dependency P0-DATA-POSTGRESQL-RUNTIME to be CLOSED'
+    ), status);
+  }
+});
+
+test('a missing dependency keeps its stable unknown-P0 diagnostic', () => {
+  const registry = makeRegistry();
+  registry.items[0].dependencies = ['P0-MISSING'];
+  assert.deepEqual(validateFixture(registry), [
+    'items[0].dependencies references unknown P0: P0-MISSING',
+  ]);
+});
+
 test('rejects legacy DONE and a closed P0 without mandatory fresh evidence', () => {
   const registry = makeRegistry();
   registry.items[0].status = 'DONE';

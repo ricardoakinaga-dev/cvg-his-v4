@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { basename, relative, resolve, sep } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { REQUIRED_CI_JOB_NAMES } from './generate-ci-evidence.mjs';
+import { verifySecurityReportAttestation } from './lib/security-evidence-attestation.mjs';
 
 const DEFAULT_OUTPUT_DIR = 'artifacts/release';
 const DEFAULT_FINAL_ARTIFACT_DIR = 'artifacts/triple-a';
@@ -269,9 +271,11 @@ const EXECUTABLE_CHECKS = [
 ];
 
 const BUILD_CHECKS = [
+  // Workspace consumers resolve declarations from the packages' build outputs.
+  // Materialize them first so assurance also works on a clean checkout.
+  ['Build', 'pnpm', ['build']],
   ['Typecheck', 'pnpm', ['typecheck']],
   ['Lint', 'pnpm', ['lint']],
-  ['Build', 'pnpm', ['build']],
 ];
 
 function readJson(path) {
@@ -575,24 +579,6 @@ function skippedCheck(area, command, reason) {
 }
 
 const RELEASE_IMAGE_COMPONENTS = ['api', 'worker', 'spa'];
-const REQUIRED_CI_JOB_NAMES = [
-  'Secret Scan',
-  'Dependency Audit (CVE Scan)',
-  'SAST (Semgrep)',
-  'Typecheck',
-  'Coverage',
-  'Validate OpenAPI',
-  'Lint',
-  'Repository Guards',
-  'Build',
-  'E2E Tests (SPA)',
-  'API Contract Tests',
-  'Performance (k6 SLOs)',
-  'Integration Tests',
-  'Critical Process Runner (Windows contract)',
-  'Unit Tests',
-  'Visual Regression',
-];
 
 function imageManifestByComponent(manifest) {
   return new Map(
@@ -2198,7 +2184,11 @@ export function verifySecurityEvidence({ rootDir, outputDir, commitSha }) {
     };
   }
   try {
-    const report = readJson(evidencePath);
+    const reportRelativePath = relative(rootDir, evidencePath);
+    if (!isSafeEvidencePath(rootDir, reportRelativePath)) throw new Error('Unsafe security report path');
+    const reportBytes = readFileSync(evidencePath);
+    const reportSha256 = createHash('sha256').update(reportBytes).digest('hex');
+    const report = JSON.parse(reportBytes.toString('utf8'));
     const freshness = validateEvidenceFreshness({ observedAt: report.generatedAt });
     const semgrepPass = Array.isArray(report.semgrepCi)
       && report.semgrepCi.length > 0
@@ -2219,16 +2209,25 @@ export function verifySecurityEvidence({ rootDir, outputDir, commitSha }) {
       && sbom.valid
       && sbomDigestMatches
       && report.sbom.components === readJson(resolve(rootDir, sbomPath)).components.length;
+    if (!structurallyValid) {
+      return {
+        area: 'Security evidence', status: 'FAIL',
+        evidence: `Security evidence existe, mas não prova checks PASS, frescor, digest/SBOM CycloneDX íntegro (${sbom.reason}) ou vínculo ao commit atual.`,
+        artifacts: [reportRelativePath],
+      };
+    }
+    const authenticity = verifySecurityReportAttestation({
+      rootDir, reportPath: evidencePath, reportSha256, commitSha,
+    });
+    if (!isSafeEvidencePath(rootDir, reportRelativePath)
+        || sha256(evidencePath) !== reportSha256
+        || !isSafeEvidencePath(rootDir, sbomPath)
+        || sha256(resolve(rootDir, sbomPath)) !== report.sbom.sha256.toLowerCase()) {
+      throw new Error('Security report or SBOM changed during attestation verification');
+    }
     return {
-      area: 'Security evidence',
-      // The report is repository-generated and self-declared. Static integrity
-      // is necessary but not a trust root; an independently verified security
-      // attestation must be added before this criterion can become PASS.
-      status: structurallyValid ? 'PARTIAL' : 'FAIL',
-      evidence: structurallyValid
-        ? 'Security audit, SAST/SBOM CycloneDX, frescor, digest do SBOM e commit conferem; proveniência independente ainda é obrigatória para PASS.'
-        : `Security evidence existe, mas não prova checks PASS, frescor, digest/SBOM CycloneDX íntegro (${sbom.reason}) ou vínculo ao commit atual.`,
-      artifacts: [relative(rootDir, evidencePath)],
+      area: 'Security evidence', status: authenticity.status,
+      evidence: authenticity.reason, artifacts: [reportRelativePath],
     };
   } catch (error) {
     return {

@@ -75,6 +75,11 @@ jobs:
           git archive --format=tar.gz --prefix="cvg-his-v4-${RELEASE_SHA}/" --output="artifacts/release/source-${RELEASE_SHA}.tar.gz" "${RELEASE_SHA}"
           SECURITY_EVIDENCE_DIR=artifacts/release pnpm security:evidence
 
+      - name: Attest candidate security evidence
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        with:
+          subject-path: artifacts/release/security-evidence.json
+
       - name: Verify and record the exact CI run
         env:
           CI_EVIDENCE_OUTPUT_DIR: artifacts/release
@@ -91,6 +96,7 @@ jobs:
           TRIPLE_A_CI_EVIDENCE: artifacts/release/ci-evidence.json
           TRIPLE_A_CI_RUN_ID: ${{ github.event.workflow_run.id }}
           TRIPLE_A_VERIFY_CI_EVIDENCE: '1'
+          TRIPLE_A_VERIFY_SECURITY_ATTESTATION: '1'
           TRIPLE_A_RUN_TESTS: '1'
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm release:triple-a
@@ -259,6 +265,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TRIPLE_A_VERIFY_CI_EVIDENCE: '1'
           TRIPLE_A_VERIFY_ATTESTATIONS: '1'
+          TRIPLE_A_VERIFY_SECURITY_ATTESTATION: '1'
         run: pnpm release:triple-a
 
       # Quarantine tags are pullable implementation details, not release pointers.
@@ -280,3 +287,16 @@ jobs:
             artifacts/triple-a/
           if-no-files-found: error
           retention-days: 90
+
+      - name: Preserve failed assurance diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: failed-assurance-${{ env.RELEASE_SHA }}-${{ github.run_id }}
+          path: |
+            artifacts/release/TRIPLE_A_RELEASE_EVIDENCE.json
+            artifacts/release/security-evidence.json
+            artifacts/release/sbom.cyclonedx.json
+            artifacts/release/ci-evidence.json
+          if-no-files-found: warn
+          retention-days: 30

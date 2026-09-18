@@ -21,6 +21,8 @@ import http from 'k6/http';
 import { check, sleep, group } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
 import { evaluateThreshold } from './slo-evaluator.js';
+import { extractChecks, checkSummaryText } from './check-results.js';
+import { createOpenApiPathsCheck } from './response-validation.js';
 
 const SLO_CATALOG = JSON.parse(open('./slos.json'));
 const LOAD_PROFILE_ID = __ENV.LOAD_PROFILE ?? 'operational-minimum-v1';
@@ -68,6 +70,7 @@ export const options = {
   stages: LOAD_PROFILE.stages,
   summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(50)', 'p(90)', 'p(95)', 'p(99)'],
   thresholds: {
+    checks: ['rate==1'],
     api_latency_ms: ['p(95)<200', 'p(99)<500'],
     api_errors: ['rate<0.001'], // SLO: 0.1% error rate
     http_req_failed: ['rate<0.005'], // SLO: availability > 99.5%
@@ -79,16 +82,7 @@ export const options = {
   }
 };
 
-export function hasOpenApiPaths(response) {
-  try {
-    // k6 decodes the complete body natively; the interpreted JSON.parse
-    // hot path can starve its own HTTP timing callbacks under load.
-    const body = response.json();
-    return body.paths && Object.keys(body.paths).length > 0;
-  } catch {
-    return false;
-  }
-}
+export const hasOpenApiPaths = createOpenApiPathsCheck();
 
 export function setup() {
   const loginRes = http.post(
@@ -359,20 +353,24 @@ export default function (data) {
 
 export function handleSummary(data) {
   const sloResults = evaluateSLOs(data);
+  const checks = extractChecks(data.root_group);
   return {
     stdout:
       textSummary(data, { indent: ' ', enableColors: true }) +
       '\n\n### SLO Results\n' +
       sloSummaryText(sloResults) +
+      '\n' +
+      checkSummaryText(checks, data.metrics.checks?.values) +
       '\n',
     'benchmarks/k6/results/performance-report.json': JSON.stringify(
       {
         timestamp: new Date().toISOString(),
-        version: '1.0',
+        version: '1.1',
         baseUrl: BASE_URL,
         profile: LOAD_PROFILE,
         stages: options.stages,
         metrics: extractMetrics(data),
+        checks,
         slo: sloResults,
         thresholds: options.thresholds
       },
@@ -399,7 +397,8 @@ function extractMetrics(data) {
       };
     } else if (value.type === 'rate') {
       metrics[key] = {
-        rate: parseFloat(value.values.rate.toFixed(4)),
+        // Preserve the exact check ratio; rounding can turn a failure into 1.
+        rate: key === 'checks' ? value.values.rate : parseFloat(value.values.rate.toFixed(4)),
         passes: value.values.passes,
         fails: value.values.fails
       };

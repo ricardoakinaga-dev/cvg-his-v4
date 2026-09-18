@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
+import { testBenchmarkCheckGate } from './test-k6-check-gate.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const version = execFileSync('k6', ['version'], { encoding: 'utf8' });
@@ -59,3 +60,5 @@ try {
     server.closeAllConnections();
   });
 }
+
+if (!process.exitCode) await testBenchmarkCheckGate();

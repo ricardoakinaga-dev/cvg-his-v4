@@ -905,3 +905,27 @@ test('EncountersService: in-memory repository accepts opaque runtime identifiers
   assert.equal(encounter.patientId, 'patient_mogeb6qv_5b0gq64z');
   assert.equal(encounter.ownerId, 'owner_ricardo_akinaga');
 });
+
+test('EncountersService restores encounter and timeline after protected history deletion conflicts', async () => {
+  const owners = new OwnersService();
+  const patients = new PatientsService({ owners });
+  const failure = new ConflictError('Encounter with clinical history cannot be deleted');
+  const repository: EncounterRepository = {
+    async create() {}, async update() {}, async findById() { return null; },
+    async findActiveByPatientId() { return null; }, async findAll() { return []; },
+    async findActive() { return []; }, async delete() { throw failure; }
+  };
+  const service = new EncountersService({ owners, patients, encounterRepository: repository });
+  const accountId = '550e8400-e29b-41d4-a716-446655440000' as never;
+  const actorId = '550e8400-e29b-41d4-a716-446655440001' as never;
+  const owner = owners.create(accountId, { fullName: 'Timeline owner', contacts: [{ label: 'Phone', value: '+55 11 99999-0000', type: 'phone', primary: true }], financialResponsible: true });
+  const patient = patients.create(accountId, { name: 'Timeline patient', species: 'canine', sex: 'unknown', primaryOwnerId: owner.id });
+  const encounter = service.openEncounter(accountId, actorId, { patientId: patient.id, ownerId: owner.id, visitType: 'walk_in', origin: 'reception', reason: 'Protected history' });
+  await service.waitForPersistence();
+  const timeline = service.listTimeline(accountId, encounter.id);
+  assert.ok(timeline.length > 0);
+  service.deleteEncounter(accountId, encounter.id);
+  await assert.rejects(() => service.waitForPersistence(), (error) => error === failure);
+  assert.deepEqual(service.getOrThrow(accountId, encounter.id), encounter);
+  assert.deepEqual(service.listTimeline(accountId, encounter.id), timeline);
+});

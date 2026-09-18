@@ -111,14 +111,15 @@ SELECT format(
 WHERE to_regclass('public.laboratory_result_imports') IS NOT NULL;
 \gexec
 
--- Clinical workflow lifecycle evidence is append-only. Runtime roles retain
+-- Clinical timeline and workflow lifecycle evidence is append-only. Runtime roles retain
 -- SELECT/INSERT from the broad tenant grant, but cannot rewrite or remove it.
 SELECT format(
   'REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I',
-  'clinical_workflow_task_events',
+  evidence.table_name,
   :'runtime_user'
 )
-WHERE to_regclass('public.clinical_workflow_task_events') IS NOT NULL;
+FROM (VALUES ('clinical_workflow_task_events'), ('clinical_timeline'), ('encounter_timeline')) AS evidence(table_name)
+WHERE to_regclass(format('public.%I', evidence.table_name)) IS NOT NULL;
 \gexec
 
 -- Remove broad DML from every installer/governance table. The API receives

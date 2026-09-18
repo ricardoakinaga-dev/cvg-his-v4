@@ -27,6 +27,22 @@ const fixtures = [
   ['numeric overflow elsewhere', '{"paths":{"/health":{}},"example":1e400}', false]
 ];
 
+// Exercise the same VU across cache hits, replacements and failures. Every
+// changed body must retain the original whole-document predicate result.
+const sequence = [
+  ['sequence valid', '{"paths":{"/health":{"get":{}}}}', true],
+  ['sequence repeated valid', '{"paths":{"/health":{"get":{}}}}', true],
+  ['sequence invalid suffix', '{"paths":{"/health":{"get":{}}}} invalid', false],
+  ['sequence repeated invalid suffix', '{"paths":{"/health":{"get":{}}}} invalid', false],
+  ['sequence null paths', '{"paths":null}', false],
+  ['sequence repeated null paths', '{"paths":null}', false],
+  ['sequence empty paths', '{"paths":{}}', false],
+  ['sequence empty body', '', false],
+  ['sequence repeated empty body', '', false],
+  ['sequence changed valid', '{"paths":{"/ready":{"get":{}}}}', true],
+  ['sequence valid again', '{"paths":{"/health":{"get":{}}}}', true]
+];
+
 function legacyHasPaths(response) {
   try {
     const body = JSON.parse(response.body);
@@ -36,20 +52,32 @@ function legacyHasPaths(response) {
   }
 }
 
+function uncachedNativeHasPaths(response) {
+  try {
+    const body = response.json();
+    return body.paths && Object.keys(body.paths).length > 0;
+  } catch {
+    return false;
+  }
+}
+
 function verify(name, response, expected) {
   const legacy = Boolean(legacyHasPaths(response));
   const candidate = Boolean(hasOpenApiPaths(response));
+  const uncachedNative = Boolean(uncachedNativeHasPaths(response));
   check(response, {
     [`${name}: fixture served`]: (r) => r.status === 200,
     [`${name}: original predicate`]: () => legacy === expected,
-    [`${name}: native predicate equivalent`]: () => candidate === legacy
+    [`${name}: native predicate equivalent`]: () => candidate === legacy,
+    [`${name}: memoization equivalent to uncached native`]: () => candidate === uncachedNative
   });
 }
 
 export default function () {
   const target = __ENV.FIXTURE_TARGET;
-  for (const [name, body, expected] of fixtures) {
+  for (const [name, body, expected] of [...fixtures, ...sequence]) {
     verify(name, http.post(`${target}/echo`, body), expected);
   }
   verify('complete repository specification', http.get(`${target}/openapi.json`), true);
+  verify('repeated complete repository specification', http.get(`${target}/openapi.json`), true);
 }

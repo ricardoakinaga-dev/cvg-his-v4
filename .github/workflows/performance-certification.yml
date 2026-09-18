@@ -63,6 +63,11 @@ jobs:
           git fetch origin main --depth=1
           git merge-base --is-ancestor "${REQUESTED_SHA}" origin/main
 
+      - name: Setup Node.js for evidence validation
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+
       - name: Require benchmark credentials
         env:
           TEST_USERNAME: ${{ secrets.PERF_USERNAME }}
@@ -94,6 +99,7 @@ jobs:
         run: |
           mkdir -p benchmarks/k6/results
           k6 run benchmarks/k6/api-benchmark.js
+          node benchmarks/k6/parse-results.js benchmarks/k6/results/performance-report.json
 
       - name: Upload performance evidence
         if: always()

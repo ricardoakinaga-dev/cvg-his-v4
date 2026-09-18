@@ -218,7 +218,7 @@ describe('runtime PostgreSQL role grants', () => {
   });
 
   it('removes mutation privileges from immutable workflow lifecycle events after broad RLS grants', () => {
-    expect(RUNTIME_IMMUTABLE_TABLES).toEqual(['clinical_workflow_task_events']);
+    expect(RUNTIME_IMMUTABLE_TABLES).toEqual(['clinical_workflow_task_events', 'clinical_timeline', 'encounter_timeline']);
 
     for (const script of roleScripts) {
       const broadGrant = script.content.indexOf(
@@ -229,7 +229,9 @@ describe('runtime PostgreSQL role grants', () => {
         immutableRevoke,
         `${script.path} must revoke workflow event mutations after broad RLS grants`
       ).toBeGreaterThan(broadGrant);
-      expect(script.content.slice(immutableRevoke)).toContain('clinical_workflow_task_events');
+      for (const table of RUNTIME_IMMUTABLE_TABLES) {
+        expect(script.content.slice(immutableRevoke)).toContain(table);
+      }
       expect(script.content.slice(immutableRevoke)).not.toMatch(
         /GRANT [^\n]*(?:UPDATE|DELETE|TRUNCATE)[^\n]* ON TABLE public\.clinical_workflow_task_events/i
       );

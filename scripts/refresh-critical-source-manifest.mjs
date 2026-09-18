@@ -11,6 +11,8 @@
  *     [--preserve-dir artifacts/remediation/MA-02/attempt-1] [--source <path> ...] [--head <sha>]
  *     Recomputes the recorded identities, preserves the previous manifest
  *     byte-for-byte, appends a scopeHistory entry and rewrites the manifest.
+ *   --add-sql-migration <canonical path> expands the SQL evidence scope only
+ *     after validating the complete inventory and its forward-only suffix.
  *
  * The previous manifest is always preserved before mutation; a refresh never
  * rewrites prior scopeHistory entries and never promotes prior coverage.
@@ -29,6 +31,7 @@ import {
   validateCriticalSourceIdentity,
 } from './lib/critical-source-identity.mjs';
 import { resolveContainedPath } from './lib/root-contained-path.mjs';
+import { validateSqlManifest } from './lib/sql-migration-evidence.mjs';
 import { NATIVE_TEST_SHARDS, discoverNativeTestSources } from './lib/native-test-inventory.mjs';
 import {
   applyVitestInventoryChanges,
@@ -54,12 +57,34 @@ export function applyRefresh({
   inputChanges = { replaced: [], added: [], removed: [] },
   nativeChanges = [],
   vitestChanges = [],
+  sqlAdditions = [],
   observedAt = new Date().toISOString(),
 }) {
   const next = JSON.parse(JSON.stringify(manifest));
   const previousRevision = Number.isInteger(next.manifestRevision) ? next.manifestRevision : 0;
   const previousSourceSetSha256 =
     typeof next.sourceSetSha256 === 'string' ? next.sourceSetSha256 : null;
+  if (sqlAdditions.length) {
+    const sql = next.specializedEvidence?.sql;
+    if (!sql || !Number.isSafeInteger(sql.expectedMigrationCount)
+        || !Number.isSafeInteger(sql.expectedArtifactCount)
+        || !Array.isArray(sql.forwardOnlyAdditions)) {
+      throw new Error('SQL source expansion requires the existing specialized evidence contract');
+    }
+    for (const entry of sqlAdditions) {
+      if (!/^packages\/db\/migrations\/\d{4}_[a-z0-9_]+\.sql$/.test(entry.path ?? '')
+          || !/^[0-9a-f]{64}$/.test(entry.sha256 ?? '')
+          || entry.applicability !== 'sql-migration-evidence'
+          || next.files.some((file) => file.path === entry.path)
+          || sql.forwardOnlyAdditions.includes(entry.path)) {
+        throw new Error(`Invalid or duplicate SQL source addition: ${entry.path}`);
+      }
+      next.files.push(structuredClone(entry));
+      sql.forwardOnlyAdditions.push(entry.path);
+      sql.expectedMigrationCount += 1;
+      sql.expectedArtifactCount += 1;
+    }
+  }
   for (const entry of changed) {
     const file = (next.files ?? []).find((candidate) => candidate.path === entry.path);
     if (!file) throw new Error(`Cannot refresh an unknown source: ${entry.path}`);
@@ -122,7 +147,7 @@ export function applyRefresh({
     previousSourceSetSha256,
     sourceSetSha256: next.sourceSetSha256,
     reason,
-    added: [],
+    added: sqlAdditions.map((entry) => entry.path),
     removed: [],
     changed: changed.map(({ path, before, after }) => ({ path, before, after })),
   };
@@ -164,13 +189,14 @@ export function assertExecutionInputTargets({ root, inputChanges }) {
 }
 
 function parseArgs(argv) {
-  const args = { check: false, reason: null, preserveDir: null, sources: [], head: null, replaced: [], added: [], removed: [], reconcileNative: [], reconcileVitest: false, vitestAdded: [], vitestRemoved: [] };
+  const args = { check: false, reason: null, preserveDir: null, sources: [], head: null, replaced: [], added: [], removed: [], reconcileNative: [], reconcileVitest: false, vitestAdded: [], vitestRemoved: [], sqlAdded: [] };
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === '--check') args.check = true;
     else if (value === '--reason') args.reason = argv[++index] ?? null;
     else if (value === '--preserve-dir') args.preserveDir = argv[++index] ?? null;
     else if (value === '--source') args.sources.push(argv[++index]);
+    else if (value === '--add-sql-migration') args.sqlAdded.push(argv[++index]);
     else if (value === '--head') args.head = argv[++index] ?? null;
     else if (value === '--replace-input') {
       const pair = argv[++index] ?? '';
@@ -216,6 +242,21 @@ function main() {
   }
 
   const previousManifestSha256 = sha256(manifestBytes);
+  const sqlAdditions = args.sqlAdded.map((path) => {
+    if (!/^packages\/db\/migrations\/\d{4}_[a-z0-9_]+\.sql$/.test(path ?? '')) {
+      throw new Error(`Not a canonical forward SQL migration: ${path}`);
+    }
+    const target = resolveContainedPath(root, path);
+    if (!target.ok || !statSync(target.realpath).isFile()) {
+      throw new Error(`SQL migration source unavailable: ${path}`);
+    }
+    return {
+      path, components: ['roles-rls'],
+      justification: 'Forward SQL migration executed and verified by the specialized migration evidence producer.',
+      review: null, sha256: sha256(readFileSync(target.realpath)),
+      applicability: 'sql-migration-evidence',
+    };
+  });
   const selected = new Set(args.sources);
   const files = Array.isArray(manifest.files) ? manifest.files : [];
   const changed = [];
@@ -266,7 +307,7 @@ function main() {
   const hasNativeChanges = nativeChanges.length > 0;
   const hasVitestChanges = vitestChanges.length > 0;
 
-  if (refreshed.length === 0 && !hasInputChanges && !hasNativeChanges && !hasVitestChanges && !args.head) {
+  if (refreshed.length === 0 && !hasInputChanges && !hasNativeChanges && !hasVitestChanges && !sqlAdditions.length && !args.head) {
     const errors = validateCriticalSourceIdentity({ root, manifest });
     report({
       status: errors.length === 0 ? 'PASS' : 'FAIL',
@@ -295,8 +336,10 @@ function main() {
     inputChanges,
     nativeChanges,
     vitestChanges,
+    sqlAdditions,
   });
   const preWriteErrors = validateCriticalSourceIdentity({ root, manifest: nextManifest });
+  if (sqlAdditions.length) preWriteErrors.push(...validateSqlManifest({ root, manifest: nextManifest }).errors);
   if (preWriteErrors.length) {
     throw new Error(`refusing to write an inconsistent manifest: ${preWriteErrors.join('; ')}`);
   }
@@ -312,6 +355,7 @@ function main() {
     collectionCommit: nextManifest.head,
     preservedManifest: relative(root, preservedPath).split('\\').join('/'),
     changed: refreshed,
+    sqlAdditions: sqlAdditions.map((entry) => entry.path),
     inputChanges: hasInputChanges ? inputChanges : undefined,
     nativeChanges: hasNativeChanges ? nativeChanges : undefined,
     vitestChanges: hasVitestChanges ? vitestChanges : undefined,

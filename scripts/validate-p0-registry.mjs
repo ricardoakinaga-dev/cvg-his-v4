@@ -219,6 +219,11 @@ export function validateP0Registry({
     }
 
     if (item.status === 'CLOSED') {
+      for (const dependency of item.dependencies ?? []) {
+        if (itemsById.has(dependency) && itemsById.get(dependency).status !== 'CLOSED') {
+          errors.push(label + ' CLOSED requires dependency ' + dependency + ' to be CLOSED');
+        }
+      }
       if (item.human_required || item.target_required) errors.push(label + ' cannot be CLOSED while human_required or target_required is true');
       if (item.closure_policy !== 'AUTOMATIC') errors.push(label + ' CLOSED items require closure_policy=AUTOMATIC');
       const requiredCriteria = criteria.filter((criterion) => isObject(criterion) && criterion.required);

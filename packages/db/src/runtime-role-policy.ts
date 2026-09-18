@@ -21,7 +21,11 @@ export { DATABASE_RUNTIME_API_FUNCTIONS };
 export const RUNTIME_APPEND_ONLY_TABLES = ['laboratory_result_imports'] as const;
 
 /** Lifecycle evidence is immutable; corrections must be represented as new events. */
-export const RUNTIME_IMMUTABLE_TABLES = ['clinical_workflow_task_events'] as const;
+export const RUNTIME_IMMUTABLE_TABLES = [
+  'clinical_workflow_task_events',
+  'clinical_timeline',
+  'encounter_timeline'
+] as const;
 
 /** Direct DML required by API-owned authentication and user repositories. */
 export const API_SENSITIVE_TABLE_PRIVILEGES = [
