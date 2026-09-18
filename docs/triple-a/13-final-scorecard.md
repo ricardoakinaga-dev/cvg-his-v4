@@ -4,7 +4,7 @@
 
 | Campo | Estado |
 | --- | --- |
-| CURRENT SNAPSHOT | `d8d8b82196be8d29c6a06e7d3c15633bd06b5627` |
+| CURRENT SNAPSHOT | `56b4daf5a939a99dc66f085b9838ec3646d9ab54` |
 | CURRENT VERDICT | **BLOCKED / NOT PROVEN** para certificação Triplo AAA |
 | MAIN / ORIGIN | Somente main; nova fonte descendente de `6e724d07`; CI final pendente |
 | LOCAL VALIDATION | Global 2932/82,03%; API nativa 679/679; k6 9/9, query p95 29ms |
@@ -20,12 +20,15 @@ com quatro CPUs e workload original de até 60 VUs, passou 9/9 SLOs: query p95
 29ms, zero erros HTTP, 4.322 iterações.
 
 [Relatório atual, decisões por branch e limitações](./29-main-unification-20260918.md).
-Manifesto crítico revision83, ancorado no commit funcional acima; escopo,
+Manifesto crítico revision83, ancorado na fonte `d8d8b821`; escopo,
 thresholds e workload preservados. O [CI 35343988828](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35343988828)
 pertence ao predecessor6e724d07 e falhou em performance (query191ms) e na
 identidade do manifesto crítico. Os cinco coletores passaram, porém a promoção
 foi rejeitada. O manifesto foi reancorado após o commit funcional; o resultado
-remoto do novo candidato será observado após publicação.
+remoto do novo candidato será observado após publicação. O CI35347927091 do
+snapshot56b4daf5 detectou que os registros `.agent` posteriores à identidade
+anterior exigiam reancoragem; a identidade agora inclui esse commit e a próxima
+publicação altera somente `docs/triple-a`, conforme o contrato do validador.
 
 Target, UAT, recuperação operacional, attestations e autoridade de release
 continuam sem prova suficiente; não há declaração de certificação Triplo AAA.

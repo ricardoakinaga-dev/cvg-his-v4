@@ -155,6 +155,15 @@ resultado terminal. A união diagnóstica dos cinco relatórios brutos do CI
 anterior mostrou os 40 indicadores acima de 85%, mas não foi promovida nem
 tratada como aceitação: somente a execução com identidade válida fecha o gate.
 
+O [CI 35347927091](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35347927091)
+do snapshot `56b4daf5` detectou uma segunda diferença de contrato: o validador
+da identidade geral considera mudanças em `.agent` como parte do candidato,
+enquanto o binding da cobertura permite esse prefixo como documentação.
+Os registros de execução adicionados junto ao manifesto exigiram reancorar a
+identidade geral em `56b4daf5`. Essa correção altera apenas `docs/triple-a` e
+mantém ambos os validadores intactos; suas verificações serão executadas sobre
+o commit concluído antes da publicação. A fonte da aplicação segue `d8d8b821`.
+
 ## Limites da conclusão
 
 A consolidação do Git não concede certificação operacional. A régua
