@@ -1,5 +1,30 @@
 # Evidência de execução corrente — State of Art
 
+## Recoleta terminal local — 2026-09-18T01:53:20Z
+
+O candidato funcional permanece
+`28043455f12cf2ef076eafcf09516ffd67007c74`; os processos desta recoleta
+executaram no descendente documental `42902e95f696e8c9456cee7c11afa192c149fefd`.
+O binding foi aceito como `DOCUMENTATION_ONLY_DESCENDANT`, sem caminhos de
+fonte/workflow disallowed.
+
+- `pnpm validate:migration-source`: **PASS**;
+- SQL producer `c43c3222-6973-4031-9276-bd33f7e011b3`: **PASS**, 175 migrações
+  ativas e 7 artefatos históricos;
+- integração efêmera `2c101787-344c-40d4-bb3e-d1c00df4f6f8`: **PASS**, 105/105
+  arquivos e 933/933 testes;
+- `node scripts/check-critical-coverage.mjs`: **PASS**, R05-010 sem erros,
+  SQL/Vue **PASS** e todos os componentes acima do threshold congelado;
+- shards promovidos: unit `0e4e7132`, native-api `526e31f5`, native-worker
+  `7c3442b7`, critical-process `ddfb1587` e Vue `6935d8c0`, todos com o
+  manifesto revision 79 e digest
+  `987b3a9c8e8cbbc0670b0ed45b06d00fbaa91676f1b608363effda4a9b7f5dbd1`.
+
+Esta recoleta fecha apenas o P0 local de PostgreSQL/migrações. O CI exato
+`35296518702` ainda estava `in_progress` na observação; RLS no target,
+recovery/RPO-RTO, performance/soak, attestation, UAT e autoridade humana
+continuam `NOT_PROVEN`.
+
 ## Candidato documental observado em 2026-09-18T01:07:08Z
 
 - SHA de código e documentação: `28043455f12cf2ef076eafcf09516ffd67007c74`;

@@ -1,24 +1,28 @@
 # CVG-HIS V4 — Current Assurance Report
 
 **Candidate funcional avaliado:** `28043455f12cf2ef076eafcf09516ffd67007c74`
-(snapshot documental reancorado com o registro P0 candidate-bound, correção do produtor de evidência SQL e cobertura de validação HTTP; manifesto crítico revision 79; typecheck e build do workspace passaram em `68/69` projetos; os contratos novos passaram localmente; o CI #258 do predecessor `8efc250f` não é transferido; esta implementação aguarda CI exato e nenhum threshold foi alterado)
+(snapshot funcional reancorado com o registro P0 candidate-bound, correção do produtor de evidência SQL e cobertura de validação HTTP; manifesto crítico revision 79; a documentação corrente está publicada em descendente documental `42902e95f696e8c9456cee7c11afa192c149fefd`; nenhum threshold foi alterado)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
+
+**Atualização corrente — 2026-09-18:** o produtor SQL aceito cobre `175` migrações
+ativas e `7` artefatos históricos; a integração PostgreSQL efêmera passou
+`105/105` arquivos e `933/933` testes; o gate R05-010 e os shards críticos
+locais estão `PASS`. Isso fecha somente `P0-DATA-POSTGRESQL-RUNTIME` por
+evidência local candidate-bound. O CI exato
+[#35296518702](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35296518702)
+está `in_progress` no snapshot documental observado; há `2` P0 fechados e `12`
+abertos. CI terminal, target, recovery, UAT, attestation, governança e
+autoridade de release continuam sem prova.
 
 ## Executive Summary
 
 O candidato preserva o modular monolith e a reconciliação fail-closed de
-proveniência. A paridade de Patient e o CORS credentialado restrito foram
-validados. No candidato corrente, os contratos alterados passaram, o produtor SQL
-passou com PostgreSQL 16.15 e a conversão V8 do processo aceita somente o par
-autenticado de inicializadores; o manifesto crítico está na revisão 79 e o
-workflow publica evidência SQL antes do checker. O [CI #212](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35198105802)
-passou cobertura crítica, segurança, build, unitários, integração, contratos,
-processo Windows e as duas jornadas clínicas canônicas. O CI #214 confirmou
-E2E SPA `424/424`, Visual `29/29` e Critical Coverage, mas reprovou 2 de 9
-SLOs do k6: query p95 `217ms` e inventory p95 `202,76ms`. A correção visual
-desativa LCD text e incorpora os seis `actual.png` inspecionados; não há target, recovery,
-attestation, UAT, governança, performance certificada ou autoridade de release.
+proveniência. A paridade de Patient, o CORS credentialado restrito e os contratos
+de validação HTTP foram validados. O manifesto crítico está na revisão 79 e o
+workflow publica evidência SQL antes do checker. Os shards locais atuais passam,
+mas essa prova não substitui o CI terminal exato nem os gates de target,
+recovery, attestation, UAT, governança ou autoridade de release.
 O provider raw de feature flags agora respeita kill switch persistido, expiração,
 precedência de escopo e allowlist fail-closed, com cache limitado ao vencimento;
 os limites estão documentados no ADR-014. Nenhum threshold ou baseline visual foi
@@ -27,14 +31,11 @@ release produtivo ou `TRIPLE-A VERIFIED`.
 
 ## Validação local do candidato atual
 
-A cobertura global passou `273` arquivos e `2.907` testes: `87,46%` statements,
-`82,00%` branches, `89,32%` functions e `88,91%` lines. Lint, typecheck,
-`git diff --check` e os 17 arquivos de contrato adicionados/alterados também
-passaram. Isso é evidência local; não substitui CI terminal, target, recovery,
-UAT, attestation ou autoridade de release. O Auth focado passou `54/54`, o
-k6 local limitado a quatro CPUs passou `9/9` SLOs e a suíte visual local passou
-`29/29`; isso não substitui CI terminal, target, recovery, UAT, attestation ou
-autoridade de release.
+A validação local corrente passou a fonte canônica de migrações, o produtor SQL
+com `175` migrações ativas e `7` históricos, a integração efêmera com `105/105`
+arquivos e `933/933` testes, R05-010 e os shards críticos unit/native/process/Vue.
+Isso é evidência local; não substitui CI terminal, target, recovery, UAT,
+attestation ou autoridade de release.
 
 ## Contexto histórico — revisão 59 / snapshot `d9acec6e`
 
@@ -64,8 +65,8 @@ manifesto, o registro P0, a identidade e o harness SPA foram validados localment
 nenhum guard, threshold ou baseline; a falha terminal do #205 está registrada em
 [`20-ci-205-evidence.md`](./20-ci-205-evidence.md).
 
-O registro [`P0_REGISTRY.json`](./P0_REGISTRY.json) contabiliza 14 itens, com 1
-fechado por evidência local fresca e 13 abertos por dependerem de CI remoto,
+O registro [`P0_REGISTRY.json`](./P0_REGISTRY.json) contabiliza 14 itens, com 2
+fechados por evidência local fresca e 12 abertos por dependerem de CI remoto,
 infraestrutura alvo, operação autorizada ou decisão humana. A regra é
 fail-closed: ausência de evidência não vira `PASS`, e o status legado `DONE` é
 inválido.
@@ -89,14 +90,14 @@ remota e pelos gates externos de target e release.
 | Testing              | PARTIAL                      | API `619/619` e integração `16/16` locais passaram; o CI #205 teve `395` testes SPA funcionais passados, mas `29` screenshots falharam; API clínica canônica `2/2` passou |
 | Clinical Safety      | PARTIAL                      | matriz, invariantes e jornadas canônicas                                                                                                |
 | Worker               | LOCAL PASS / target aberto   | retries, lease, fencing e DLQ                                                                                                           |
-| CI/CD                | BLOQUEADO no SHA atual       | #205 foi terminal, mas reprovou E2E/visual/performance; não há `main green` |
+| CI/CD                | BLOQUEADO no SHA atual       | CI exato ainda está `in_progress`; não há `main green` terminal |
 | Observability        | LOCAL PASS / target aberto   | métricas, traces e diagnósticos                                                                                                         |
 | Recovery             | BLOCKED                      | Docker impediu restore drill real                                                                                                       |
-| Frontend             | LOCAL PASS / REMOTE FAIL     | Suíte visual local `29/29`; o #205 registrou `29/29` divergências estáveis, sem baseline promovido |
+| Frontend             | LOCAL PASS / REMOTE PENDING  | Suíte visual local promovida; CI exato ainda não terminou e nenhuma baseline foi promovida |
 | Database             | PARTIAL                      | testes locais; RLS target não provado                                                                                                   |
 | Supply Chain         | PARTIAL                      | pins/guards locais; attestations abertas                                                                                                |
 | Production Readiness | NOT PROVEN                   | deploy, target, UAT e autoridade ausentes                                                                                               |
-| Overall              | `FAIL/BLOCKED`               | CI #205 não foi aprovado; target, recovery, UAT, governança e autoridade continuam abertos |
+| Overall              | `FAIL/BLOCKED`               | CI exato ainda não terminou; target, recovery, UAT, governança e autoridade continuam abertos |
 
 ## P0 Findings
 

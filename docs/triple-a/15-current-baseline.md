@@ -1,13 +1,10 @@
 # Baseline corrente — State of Art
 
-Observado em `2026-09-18T01:07:08Z`, sobre o candidato documental
-`28043455f12cf2ef076eafcf09516ffd67007c74`, que contém a identidade corrente
-e a correção funcional de fail-closed, autoridade request-scoped e ownership composto no commit
-`03e6fac0a2f726698b40adb351298610f9c1f88d`, sobre a otimização do
-roteamento autenticado antes da guarda final e o ciclo de vida de feature flags,
-além do alinhamento do runner
-crítico à versão canônica PostgreSQL 16, a aceitação restrita dos inicializadores
-V8 do Node 22, a produção de evidência SQL e a reancoragem do manifesto crítico.
+Observado em `2026-09-18T01:53:20Z`, sobre o candidato funcional
+`28043455f12cf2ef076eafcf09516ffd67007c74` e seu descendente documental
+`42902e95f696e8c9456cee7c11afa192c149fefd`. A identidade corrente preserva a
+separação entre código/assurance e documentação; a recoleção local fechou o
+P0 de PostgreSQL/migrações sem promover evidência externa.
 A identidade canônica está em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json) e o
 evidence graph corrente é gerado por `pnpm evidence:triple-a:graph`.
@@ -20,23 +17,30 @@ fotografia não promove evidência histórica nem altera thresholds.
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | current_sha     | `28043455f12cf2ef076eafcf09516ffd67007c74` (snapshot; registro P0 e manifesto revision 79; correção do produtor de evidência SQL e cobertura de validação HTTP; importador do evidence graph mantém validação candidate-bound e evidência local sem promoção automática a PASS) |
-| main_sha        | `main` remota em `origin/main@893d6cac0a68` antes deste candidato; publicação deste candidato será sem force-push; as branches de assurance e hardening estão ancestrais integradas |
+| main_sha        | `origin/main@42902e95f696e8c9456cee7c11afa192c149fefd`; o candidato funcional é ancestral e o descendente contém somente documentação; sem force-push |
 | worktree        | Limpo antes da documentação corrente; artefatos gerados locais permanecem fora do commit |
 | rollback        | `origin/main@8bbcba3a6687` (pai publicado); sem force-push |
-| ci_run          | O candidato funcional `0fab9fc1` aguarda execução remota exata; o [CI #251](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35281221617) pertence ao predecessor `8bbcba3a` e não é transferido. |
-| ci_failure      | O predecessor #251 terminou `failure` em Critical Coverage, Coverage, Repository Guards, Performance, Integration e Unit; nenhum resultado ou threshold histórico é transferido para este candidato. |
+| ci_run          | [CI #35296518702](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35296518702) está `in_progress` no descendente documental exato; nenhum job é promovido antes do estado terminal |
+| ci_failure      | Não há falha terminal no candidato atual no momento desta observação; falhas de predecessores permanecem históricas e não são transferidas |
 | overall_score   | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `51`, abaixo do mínimo 97 |
 | critical_score  | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `49`, abaixo do mínimo 95 |
-| open_p0         | Registro P0: `13` itens abertos e `1` fechado; o quality bar de release continua exigindo zero P0 para certificação |
-| local_gate      | `BLOCKED / NOT PROVEN`: o caminho local de ACL, migração, RLS, build e integração completa está verde, mas a execução crítica remota deste candidato e os gates target/humanos ainda não existem; `claim=NOT PROVEN`, `publication_allowed=false` |
+| open_p0         | Registro P0: `12` itens abertos e `2` fechados; o quality bar de release continua exigindo zero P0 para certificação |
+| local_gate      | R05-010 e SQL local `PASS`; release/Triple-A permanece `BLOCKED / NOT PROVEN` porque CI terminal, target, recovery, UAT, attestation e autoridade ainda não foram provados |
 | implemented     | Paridade do contrato Patient; CORS credentialado restrito a origens permitidas; manifest crítico revision 79, ancorado no commit funcional, com thresholds inalterados e inventário Vitest/SQL reconciliado; workflow provisiona PostgreSQL 16, publica evidência SQL antes do checker, valida o registro P0 e executa os gates SPA com API compilada e proxy same-origin; o provider raw de feature flags mantém estado persistido, expiração, precedência, allowlist fail-closed, tenant explícito, cache bounded/invalidação, upsert atômico, autoridade request-scoped e ownership composto; o caminho de frescor de ACL lê uma versão monotônica indexada, incrementada na mesma transação de cada mutação de ACL, com `0176` protegendo cascatas de exclusão e `FORCE RLS`; o JWT inicial só resolve contexto de roteamento e a guarda final mantém revalidação autoritativa, com erros genéricos sanitizados para 503; a telemetria HTTP exclui query strings dos spans e emite `tracestate` W3C válido; o produtor SQL cobre as `175` migrações ativas e artefatos históricos preservados; `server.ts` permanece no orçamento físico de `8.335` linhas; nenhum threshold foi alterado |
-| verified_local  | Typecheck e build do workspace passaram em `68/69` projetos; a suíte PostgreSQL passou `393/394` arquivos e `3930/3933` testes, com `1` arquivo e `3` testes ignorados de forma esperada, após aplicar as `176` migrações em banco efêmero; access-control passou `48/48` e migration-source, RLS `171/172`, namespaces, OpenAPI, docs, identidade, P0 e complexity passaram. A evidência local não substitui CI exato, target externo, recovery, UAT, attestation ou autoridade |
-| verified_remote | O CI #251 do predecessor `8bbcba3a` terminou `failure` em Critical Coverage, Coverage, Repository Guards, Performance, Integration e Unit; os demais jobs passaram. Nenhum resultado é transferido ao candidato `0fab9fc1`, e não há `main green`. Target, recovery, UAT, attestation, governança de branch e autoridade de release seguem ausentes |
+| verified_local  | `pnpm validate:migration-source` PASS; SQL producer PASS (`175` migrações ativas + `7` históricas); integração efêmera PASS (`105/105` arquivos, `933/933` testes); R05-010 PASS com todos os componentes ≥85%; os shards unit/native/process/Vue também estão promovidos e verdes. A evidência local não substitui CI exato, target externo, recovery, UAT, attestation ou autoridade |
+| verified_remote | O CI #35296518702 ainda está `in_progress`; não há `main green` terminal promovido. Target, recovery, UAT, attestation, governança de branch e autoridade de release seguem ausentes |
 | verified_target | `NOT_PROVEN` |
-| blocked         | CI exato do candidato, target, restore/DR, UAT e autoridade humana continuam abertos; os thresholds gerais e snapshots permanecem sem promoção |
+| blocked         | CI terminal do candidato, RLS no target, restore/DR, performance/soak, UAT, attestation, governança e autoridade humana continuam abertos; os thresholds permanecem sem alteração |
 | not_proven      | Qualquer claim de release Triple-A, score ≥97, critical ≥95, zero P0, `main_green` ou `TRIPLE-A VERIFIED` |
 
-## Decisão
+## Reconciliação atual
+
+O fechamento local de `P0-DATA-POSTGRESQL-RUNTIME` está registrado em
+[`24-local-automated-closure-2026-09-18.md`](./24-local-automated-closure-2026-09-18.md).
+O estado global continua **BLOCKED / NOT PROVEN** até o CI exato terminar e
+os gates de target/humanos serem executados por seus responsáveis.
+
+## Decisões históricas preservadas
 
 O snapshot `e4acaf40e399dd29f7c6ec51232dd0ecc92301b7` foi reconciliado;
 o candidato funcional `e4acaf40e399dd29f7c6ec51232dd0ecc92301b7` preserva a

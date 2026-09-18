@@ -1,18 +1,18 @@
 # Triple-A External Assurance — Current Reconciliation
 
-> **Current candidate supersession (2026-09-17):** este arquivo preserva
+> **Current candidate supersession (2026-09-18):** este arquivo preserva
 > snapshots históricos. Para o candidato vigente, use
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
 > [`13-final-scorecard.md`](./13-final-scorecard.md). O snapshot atual é
-> o snapshot anterior `53bbee8057f194b75c0a6a0ed4ad125849eb9c5e`, com código funcional em `578d7271f26f4e41f0d60475c92b9f5da5f0aaf1`, permanece preservado apenas como histórico; a identidade canônica está em
-> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato corrente é `5998287d386559fc3b3ed760a47756e62349f286`; o registro P0 candidate-bound é validado no CI e no gate de release; o evidence graph importa envelopes locais somente como `PARTIAL` após validar schema, SHA, ambiente, frescor, ancestralidade e digests; os CI anteriores não são transferidos. Nenhum resultado parcial é transferido.
+> os snapshots anteriores permanecem preservados apenas como histórico; a identidade canônica está em
+> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato funcional corrente é `28043455f12cf2ef076eafcf09516ffd67007c74`, com descendente documental publicado em `42902e95f696e8c9456cee7c11afa192c149fefd`; o registro P0 candidate-bound é validado no CI e no gate de release; o evidence graph importa envelopes locais somente como `PARTIAL` após validar schema, SHA, ambiente, frescor, ancestralidade e digests; os CI anteriores não são transferidos. Nenhum resultado parcial é transferido.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `28043455f12cf2ef076eafcf09516ffd67007c74` (snapshot reancorado após a correção do produtor de evidência SQL e a cobertura dos contratos de validação HTTP; o evidence graph continua candidate-bound e com status máximo `PARTIAL`; registro P0 com `1` fechado e `13` abertos; provas externas e autoridade de release continuam `NOT PROVEN`).
-**Current CI:** o [CI #252](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35284475981) pertence ao predecessor `893d6cac`; não há resultado transferível para este candidato. Nenhuma threshold foi relaxada.
+**Current snapshot:** `28043455f12cf2ef076eafcf09516ffd67007c74` (snapshot funcional; documentação descendente em `42902e95`; evidence graph continua candidate-bound e com status máximo `PARTIAL`; registro P0 com `2` fechados e `12` abertos; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current CI:** o [CI #35296518702](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35296518702) está `in_progress` no descendente documental exato; nenhum resultado é promovido antes do terminal. Nenhuma threshold foi relaxada.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-18T01:07:08Z
+**Observation:** 2026-09-18T01:53:20Z
 
 **Current candidate delta:** o provider raw consumido pela API agora respeita
 kill switch persistido, expiração, precedência de escopo e allowlist fail-closed;
@@ -21,9 +21,9 @@ focados, com typecheck/lint do workspace em `68/69`; o ADR-014 registra limites
 da evidência. Essas provas não substituem PostgreSQL/RLS em CI, performance,
 target, UAT, attestation ou autoridade de release.
 
-**Current local execution:** cobertura global `273/273` arquivos e `2907/2907` testes, com `3` skips esperados; statements `87,46%`, branches `82,00%`, functions `89,32%`, lines `88,91%`; lint, typecheck e API build passaram. A suíte API passou `619/619`, a integração PostgreSQL descartável passou `16/16`, o runner privado PostgreSQL 16.15 repetiu as `176` migrações e o seed em duas rodadas. k6 local limitado a quatro CPUs passou `9/9` SLOs; a captura visual `29/29` foi a execução anterior à normalização final de rasterização. Target, recovery, UAT e autoridade continuam sem prova aceita. A validação local não substitui CI pinned, target ou UAT.
+**Current local execution:** migration-source PASS; SQL producer PASS com `175` migrações ativas e `7` artefatos históricos; integração PostgreSQL efêmera `105/105` arquivos e `933/933` testes; R05-010 PASS com todos os componentes no threshold congelado; shards unit/native/process/Vue e SQL estão promovidos no manifesto 79. Target, recovery, UAT, attestation e autoridade continuam sem prova aceita. A validação local não substitui CI pinned, target ou UAT.
 
-**Current critical gate:** o #214 terminou com Critical Coverage, E2E SPA e Visual em `PASS`; a única falha do run foi Performance/k6, com query p95 `217ms` e inventory p95 `202,76ms` acima dos limites congelados. Target, recovery, UAT, attestation e autoridade permanecem sem prova. O gate agregado local/Triple-A permanece `BLOCKED / NOT PROVEN` e `publication_allowed=false`.
+**Current critical gate:** `node scripts/check-critical-coverage.mjs` terminou `PASS` no candidato documental, com candidate binding `DOCUMENTATION_ONLY_DESCENDANT`. O CI remoto exato ainda está em execução; target, recovery, UAT, attestation e autoridade permanecem sem prova. O gate agregado local/Triple-A permanece `BLOCKED / NOT PROVEN` e `publication_allowed=false`.
 
 **Current candidate implementation delta:** o workflow de coverage usa
 um índice APT isolado dos archives oficiais assinados do Ubuntu 22.04, pois o

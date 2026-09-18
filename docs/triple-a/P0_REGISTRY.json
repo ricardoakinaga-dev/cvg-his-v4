@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "registry_id": "CVG-HIS-P0-REGISTRY-V1",
-  "generated_at": "2026-09-18T01:07:08.420Z",
+  "generated_at": "2026-09-18T01:53:20.000Z",
   "generated_by": "lead-verification",
   "candidate": {
     "candidate_id": "CVG-HIS-V4-28043455f12c",
@@ -76,7 +76,7 @@
       "id": "P0-DATA-POSTGRESQL-RUNTIME",
       "epic": "DATA",
       "title": "PostgreSQL runtime and migration contracts are current",
-      "status": "NOT_PROVEN",
+      "status": "CLOSED",
       "classification": "LOCAL_INFRA_REQUIRED",
       "closure_policy": "AUTOMATIC",
       "owner": "data-platform",
@@ -84,11 +84,20 @@
       "behavior_sha": "28043455f12cf2ef076eafcf09516ffd67007c74",
       "dependencies": ["P0-CI-CANDIDATE-FREEZE"],
       "acceptance_criteria": [
-        { "id": "P0-DATA-POSTGRESQL-RUNTIME-01", "description": "Migration source and checksums are verified without drift", "status": "NOT_PROVEN", "required": true },
-        { "id": "P0-DATA-POSTGRESQL-RUNTIME-02", "description": "Disposable PostgreSQL executes the critical database suite", "status": "NOT_PROVEN", "required": true }
+        { "id": "P0-DATA-POSTGRESQL-RUNTIME-01", "description": "Migration source and checksums are verified without drift", "status": "PASS", "required": true },
+        { "id": "P0-DATA-POSTGRESQL-RUNTIME-02", "description": "Disposable PostgreSQL executes the critical database suite", "status": "PASS", "required": true }
       ],
       "evidence_nodes": [
-        { "id": "EVD-P0-DATA-POSTGRESQL-RUNTIME", "status": "NOT_PROVEN", "fresh": false, "mandatory": true, "candidate_sha": null, "source": "current candidate database runtime envelope", "artifact": "docs/triple-a/17-current-execution-evidence.md", "observed_at": "2026-09-17T04:38:38.090Z" }
+        {
+          "id": "EVD-P0-DATA-POSTGRESQL-RUNTIME",
+          "status": "PASS",
+          "fresh": true,
+          "mandatory": true,
+          "candidate_sha": "28043455f12cf2ef076eafcf09516ffd67007c74",
+          "source": "pnpm validate:migration-source; SQL producer c43c3222; disposable PostgreSQL integration shard 2c101787",
+          "artifact": "docs/triple-a/24-local-automated-closure-2026-09-18.md",
+          "observed_at": "2026-09-18T01:53:20.000Z"
+        }
       ],
       "human_required": false,
       "target_required": false,
@@ -338,7 +347,7 @@
     }
   ],
   "summary": {
-    "open_p0": 13,
-    "closed_p0": 1
+    "open_p0": 12,
+    "closed_p0": 2
   }
 }

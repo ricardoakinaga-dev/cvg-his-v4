@@ -3,13 +3,13 @@
 | Campo              | Estado                                                                                                                                                                                                                                                    |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | CURRENT SNAPSHOT   | candidato `28043455f12cf2ef076eafcf09516ffd67007c74`; identidade canônica em `CURRENT_CANDIDATE_IDENTITY.json`; registro P0 candidate-bound; importador do evidence graph com validação de envelope, frescor, ancestralidade, ambiente e digest; nenhum envelope local é promovido a PASS; históricos não são transferidos |
-| MAIN / ORIGIN      | `main` remota publicada em `893d6cac0a6842f7f92a362a5cab307fc20d27da`; a branch de hardening `origin/codex/state-of-art-hardening-20260917@4c8200f2` foi integrada por merge sem force-push; este candidato aguarda publicação |
-| CURRENT CI         | O [CI #252](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35284475981) pertence ao predecessor `893d6cac`; não é transferido para este candidato, que aguarda execução exata após a publicação |
-| LOCAL STRICT GATE  | cobertura global local `PASS` no threshold congelado; release/critical externo continuam `NOT_PROVEN`, `claim=NOT PROVEN`, `publication_allowed=false` |
+| MAIN / ORIGIN      | `origin/main@42902e95f696e8c9456cee7c11afa192c149fefd`; o código do candidato é `28043455...` e o descendente publicado contém somente documentação, sem force-push |
+| CURRENT CI         | [CI #35296518702](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35296518702) está `in_progress` no SHA publicado; nenhum job é promovido antes do estado terminal |
+| LOCAL STRICT GATE  | R05-010 e SQL local `PASS`; release/Triple-A continuam `NOT_PROVEN`, `claim=NOT PROVEN`, `publication_allowed=false` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
-| LOCAL VALIDATION   | Neste candidato, typecheck e build completos passaram em `68/69` projetos; os contratos de produção, tracing, eventos e worker passaram, e a ponta do worker passou `64` testes; a validação local não prova CI exato, target, recovery, UAT, attestation ou autoridade |
+| LOCAL VALIDATION   | Migration-source PASS; integração efêmera `105/105` arquivos e `933/933` testes; shards críticos unit/native/process/Vue e SQL PASS; a validação local não prova CI exato, target, recovery, UAT, attestation ou autoridade |
 | VERIFIED TARGET    | `NOT PROVEN`                                                                                                                                                                                                                                              |
-| CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; o CI exato deste candidato ainda não foi executado, o predecessor não é transferível e target, recovery, UAT e autoridade externa continuam sem prova |
+| CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; o CI exato está em execução e target, recovery, UAT, attestation, governança e autoridade externa continuam sem prova |
 
 O snapshot corrente preserva a régua congelada e reancora o manifesto crítico
 na revisão 79. O registro P0 adiciona deduplicação, dependências, classificação

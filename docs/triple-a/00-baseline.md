@@ -1,8 +1,8 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-18T01:07:08Z
+## Snapshot vigente — 2026-09-18T01:53:20Z
 
-O baseline autoritativo do snapshot atual está em: `28043455f12cf2ef076eafcf09516ffd67007c74` (snapshot reancorado após a correção do produtor de evidência SQL e a cobertura dos contratos de validação HTTP; o comportamento ERP anterior permanece preservado).
+O baseline autoritativo do snapshot funcional atual está em: `28043455f12cf2ef076eafcf09516ffd67007c74`, publicado por meio do descendente documental `42902e95f696e8c9456cee7c11afa192c149fefd` (correção do produtor de evidência SQL, cobertura dos contratos de validação HTTP e recoleta local candidate-bound; o comportamento ERP anterior permanece preservado).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
@@ -13,12 +13,21 @@ laboratório, ML e limites operacionais, preservando o runner PostgreSQL 16, os
 checksums de migração e a aceitação restrita do par de inicializadores V8; a
 branch de assurance é ancestral, sem commits exclusivos. O graph e o gate corrente permanecem
 `BLOCKED / NOT PROVEN`. O registro canônico [`P0_REGISTRY.json`](./P0_REGISTRY.json)
-contém 14 itens, dos quais 1 está fechado com evidência fresca e 13 permanecem
+contém 14 itens, dos quais 2 estão fechados com evidência fresca e 12 permanecem
 abertos, sem usar o status legado `DONE`.
 
 Os CI #191/#192 dos ancestrais terminaram `failure` com `13/17` jobs verdes e Critical Coverage Gate aprovado; não são transferidos para o novo candidato. No candidato anterior, a cobertura global passou `273` arquivos, `2.907` testes e o threshold congelado (`87,46%` statements, `82,00%` branches, `89,32%` functions e `88,91%` lines), além de lint e typecheck. A otimização corrente elimina a leitura duplicada de sessão antes da resolução de tenant: o JWT assinado fornece somente contexto de roteamento, enquanto a guarda final continua relendo sessão, usuário, função e permissões de forma autoritativa. A correção `95227098` preserva o mapeamento fail-closed de erros genéricos de sessão para HTTP 503 sem reintroduzir a leitura duplicada e mantém `server.ts` dentro do orçamento de `8.335` linhas; a suíte API passou `618/618` e a integração PostgreSQL descartável passou `16/16`. A captura visual local do candidato anterior passou `29/29` e o benchmark local PostgreSQL passou `9/9` SLOs. O [CI #214](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35204183554), executado no candidato publicado com documentação, passou todos os gates estruturais, críticos, unitários, integração, API, Windows, E2E SPA (`424/424`) e Visual (`29/29`), mas reprovou 2 de 9 SLOs do k6: query p95 `217 ms` e inventory p95 `202,76 ms`. Nenhuma baseline ou threshold foi relaxada. Target, recovery, UAT e autoridade permanecem `NOT PROVEN`. Nenhum resultado
 parcial ou histórico é promovido. Target, recovery, UAT, attestation,
 governança e autoridade de release continuam `NOT PROVEN`.
+
+## Reconciliação local — 2026-09-18
+
+- A recoleta local fechou `P0-DATA-POSTGRESQL-RUNTIME` com migration-source,
+  SQL producer e integração PostgreSQL efêmera candidate-bound; o registro
+  completo está em [`24-local-automated-closure-2026-09-18.md`](./24-local-automated-closure-2026-09-18.md).
+- O CI exato `35296518702` está em execução no candidato publicado; nenhum
+  resultado remoto é promovido antes do estado terminal. O veredicto global
+  continua `BLOCKED / NOT PROVEN` por gates externos e humanos.
 
 ## Reconciliação da correção visual — 2026-09-17
 
