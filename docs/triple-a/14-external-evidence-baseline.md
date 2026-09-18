@@ -1,5 +1,32 @@
 # Triple-A External Assurance — Current Reconciliation
 
+## Consolidação atual — 2026-09-18
+
+**Current snapshot:** `17b584bb6f0288b47d9c89a62fc2246387809f51`
+
+A revisão de todas as branches confirmou que os deltas úteis já estavam na
+main canônica. O candidato corrige os testes de fallback OpenAPI e de assinatura
+WebAuthn, cobre erros/filtros reais e reutiliza a serialização do documento
+OpenAPI. Build, tipos, lint, segredos, 2.965 testes unitários críticos, 679 testes
+nativos da API e os nove SLOs do perfil local de 60 VUs passaram. A confirmação
+sem profiler mediu query p95 de 79ms, abaixo de 150ms. A cobertura global de
+82,01% foi coletada antes da otimização; o CI exato repetirá os gates completos.
+
+[Relatório atual, decisões por branch e limitações](./29-main-unification-20260918.md).
+Manifesto crítico revision82; escopo, thresholds e workload preservados.
+O último CI inspecionado é o [35311529944](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35311529944),
+que pertence à baseline97d22de0 e falhou em cobertura global/crítica e performance.
+O resultado remoto do novo candidato ainda não existe no momento deste registro.
+
+Target, UAT, recuperação operacional, attestations e autoridade de release
+continuam sem prova suficiente; não há declaração de certificação Triplo AAA.
+
+## Registro histórico anterior
+
+As seções abaixo preservam observações de candidatos anteriores. Referências a
+“corrente”, “mais recente” ou “PASS” nessas seções valem para suas datas e SHAs;
+o relatório acima é a fotografia atual.
+
 > **Current candidate supersession (2026-09-18):** este arquivo preserva
 > snapshots históricos. Para o candidato vigente, use
 > [`15-current-baseline.md`](./15-current-baseline.md),

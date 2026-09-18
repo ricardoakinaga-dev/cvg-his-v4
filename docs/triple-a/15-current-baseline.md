@@ -1,5 +1,38 @@
 # Baseline corrente — State of Art
 
+## Consolidação atual — 2026-09-18
+
+| Campo | Evidência atual |
+| --- | --- |
+| current_sha | `17b584bb6f0288b47d9c89a62fc2246387809f51` |
+| main_sha | Descendente de `origin/main@97d22de0`, preparado para publicação sem reescrever histórico |
+| ci_run | CI do candidato será observado após a publicação; baseline35311529944 falhou |
+| local_gate | Unitário crítico2965/2965, API nativa679/679, k6 9/9; agregado crítico completo pendente |
+| open_p0 | 12 abertos, 2 fechados no registro; certificação requer zero |
+
+A revisão de todas as branches confirmou que os deltas úteis já estavam na
+main canônica. O candidato corrige os testes de fallback OpenAPI e de assinatura
+WebAuthn, cobre erros/filtros reais e reutiliza a serialização do documento
+OpenAPI. Build, tipos, lint, segredos, 2.965 testes unitários críticos, 679 testes
+nativos da API e os nove SLOs do perfil local de 60 VUs passaram. A confirmação
+sem profiler mediu query p95 de 79ms, abaixo de 150ms. A cobertura global de
+82,01% foi coletada antes da otimização; o CI exato repetirá os gates completos.
+
+[Relatório atual, decisões por branch e limitações](./29-main-unification-20260918.md).
+Manifesto crítico revision82; escopo, thresholds e workload preservados.
+O último CI inspecionado é o [35311529944](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35311529944),
+que pertence à baseline97d22de0 e falhou em cobertura global/crítica e performance.
+O resultado remoto do novo candidato ainda não existe no momento deste registro.
+
+Target, UAT, recuperação operacional, attestations e autoridade de release
+continuam sem prova suficiente; não há declaração de certificação Triplo AAA.
+
+## Registro histórico anterior
+
+As seções abaixo preservam observações de candidatos anteriores. Referências a
+“corrente”, “mais recente” ou “PASS” nessas seções valem para suas datas e SHAs;
+o relatório acima é a fotografia atual.
+
 Observado em `2026-09-18T05:30:00Z`, sobre o candidato funcional
 `0a2eba022fac4b1100138e1ad17cab87f8d049c8`. A identidade corrente preserva a
 separação entre código/assurance e documentação; a implementação deste
