@@ -1,9 +1,13 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `59bbb1ac1bab7565706178a954cbfeb62c1bd565`
+**Candidate funcional avaliado:** `8098e8be2fbade69f38ed99719b4ef04e78bf240`
 (snapshot documental reancorado com o registro P0 candidate-bound, Noto Sans e rasterização sem LCD determinísticos nos gates E2E/visual, verificação portátil do runner, o harness SPA canônico com proxy same-origin, o endurecimento fail-closed/tenant/cache/upsert, a autoridade request-scoped e o ownership composto no commit `03e6fac0`, sobre a otimização `15ba86a8`, e o ciclo de vida de feature flags; manifesto crítico revision 71; `server.ts` permanece em `8.335` linhas; o teste Node nativo do módulo foi preservado na suíte oficial e excluído da varredura global do Vitest; a branch de assurance é ancestral sem commits exclusivos; typecheck e lint do workspace passaram em `68/68` projetos, module-feature-flags passou `10` testes, os testes focados da API passaram `19` e a cobertura global local passou `274/274` com `82,00%` branches; API `618/618`, integração PostgreSQL `16/16`, complexity `8.335` linhas e k6 local `9/9` SLOs passaram; o CI #217 remoto confirmou os gates funcionais, E2E SPA `424/424`, Visual `29/29` e Critical Coverage, mas k6 falhou em query/inventory; o CI #235 do candidato remoto anterior falhou no orçamento de complexidade antes da correção; o veredito permanece bloqueado e nenhum threshold foi alterado)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
+
+## Atualização do candidato otimizado
+
+O candidato `8098e8be2fbade69f38ed99719b4ef04e78bf240` adiciona a leitura autoritativa combinada de sessão/usuário dentro da transação tenant-scoped e coalesce o probe de saúde Redis com TTL bounded de 250 ms. A suíte focada de Auth passou `72/72`; a execução remota exata ainda é necessária para confirmar CI, k6 e os gates de release.
 
 ## Executive Summary
 
