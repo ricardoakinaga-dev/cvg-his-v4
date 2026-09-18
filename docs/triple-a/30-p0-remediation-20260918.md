@@ -1,6 +1,6 @@
 # Remediação dos P0 e dos checks k6 — 2026-09-18
 
-**Fonte do candidato:** `c065f74013aa3d6cf9d59b97b2328459c61ba1ef`. **CI publicado:** pendente. **Certificação:** BLOCKED / NOT PROVEN.
+**Fonte do candidato:** `b8609d08813a162ea185b884f126408d64cf7eed`. **CI publicado:** pendente. **Certificação:** BLOCKED / NOT PROVEN.
 
 ## Correções
 
@@ -8,7 +8,7 @@
 - Gerador: cache de uma resposta completa e um booleano por VU. Comparação exata do corpo; qualquer alteração exige nova decodificação integral. Carga, requisições, quatro CPUs, GOMAXPROCS=1, nove SLOs e health<50ms preservados.
 - PostgreSQL: migração0177 protege timeline e audit contra UPDATE, DELETE, cascatas e TRUNCATE CASCADE pelo usuário iniciador. Manutenção por owner/superuser continua possível. Exclusão de atendimento com histórico retorna conflito409; rascunhos sem evidência e alterações normais continuam funcionando.
 - Release: build antes de typecheck/lint; atestação verificável do relatório de segurança por repositório/workflow/main/SHA/digest; preservação dos diagnósticos de falhas. Ausência de assinatura continua bloqueando.
-- Governança: fechamento de P0 exige dependências fechadas; consumidores compartilham lista de17 jobs obrigatórios. Manifesto crítico86 preserva555 fontes anteriores e adiciona0177: **556 fontes,176 migrações,183 artefatos SQL**, sem reduzir thresholds.
+- Governança: fechamento de P0 exige dependências fechadas; consumidores compartilham lista de17 jobs obrigatórios. Manifesto crítico87 preserva555 fontes anteriores e adiciona0177: **556 fontes,176 migrações,183 artefatos SQL**, sem reduzir thresholds.
 
 ## Evidência local
 
@@ -31,6 +31,14 @@ Os dois benchmarks utilizaram bancos novos e4.130 hashes idênticos de código/a
 Relatório local corrigido SHA256: `dc294051a939fac0a283b95cec4df8809fa0a4f99e5bdbc9781f26bdce8366b4`.
 Comparação SHA256: `c4325a70cb2326331ad6ca5d0e88d5968a74bb83ff5c295ca6bb3589aa01d70a`.
 Pacote local preservado: `/home/ricardo/cvg-his-v4-backups/20260918-p0-closure/`.
+
+## Primeiro CI da remediação e correções
+
+O [CI35405157837](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35405157837), em `9ee1b66f0e94fcb34aed14ff465047f7a7e500ac`, confirmou **69.536/69.536 checks, zero falhas,16 predicados e nove SLOs**. Health máximo32,17ms contra50ms. Relatório SHA256 `55533def88cc3aba6913e2a25a6aaa522238da9274dd78a3ae770a396a35187d`.
+
+Os percentuais de cobertura global passaram, incluindo82,03% de branches, mas um teste ainda contava três atestações sem distinguir o novo relatório de segurança. Correção revisada exige três imagens, um relatório, digests/flags e ordem: **18/18 testes**. Integração teve619 aprovados e quatro falhas: o fixture dependia de EXECUTE público revogado pela suíte. Inicialização pelo reconciliador real resolveu a reprodução, com **24/24 testes PostgreSQL**, sem mudar grants de produção. Assertivas de imutabilidade agora exigem a constraint exata. Os testes mantêm sua sequência declarada no arquivo.
+
+Esses resultados pertencem ao CI anterior ou à verificação local identificada; a revisão atual exige novo CI completo.
 
 ## Revisão e requisitos pendentes
 

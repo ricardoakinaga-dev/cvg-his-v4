@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "registry_id": "CVG-HIS-P0-REGISTRY-V1",
-  "generated_at": "2026-09-18T23:17:03.604145+00:00",
+  "generated_at": "2026-09-18T23:47:21.488952+00:00",
   "generated_by": "lead-verification",
   "candidate": {
-    "candidate_id": "CVG-HIS-V4-c065f74013aa",
+    "candidate_id": "CVG-HIS-V4-b8609d08813a",
     "identity_path": "docs/triple-a/CURRENT_CANDIDATE_IDENTITY.json",
-    "candidate_head_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
-    "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
-    "assurance_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
-    "documentation_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef"
+    "candidate_head_sha": "b8609d08813a162ea185b884f126408d64cf7eed",
+    "behavior_sha": "b8609d08813a162ea185b884f126408d64cf7eed",
+    "assurance_sha": "b8609d08813a162ea185b884f126408d64cf7eed",
+    "documentation_sha": "b8609d08813a162ea185b884f126408d64cf7eed"
   },
   "closure_policy": {
     "closed_status": "CLOSED",
@@ -28,7 +28,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "release-engineering",
       "dedupe_key": "ci-candidate-identity",
-      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+      "behavior_sha": "b8609d08813a162ea185b884f126408d64cf7eed",
       "dependencies": [],
       "acceptance_criteria": [
         {
@@ -50,10 +50,10 @@
           "status": "PASS",
           "fresh": true,
           "mandatory": true,
-          "candidate_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
-          "source": "Canonical identity and additive critical manifest revision86; source committed before documentation binding",
+          "candidate_sha": "b8609d08813a162ea185b884f126408d64cf7eed",
+          "source": "Canonical identity and preserved critical manifest revision87; reviewed assurance fixture source committed before documentation binding",
           "artifact": "docs/triple-a/30-p0-remediation-20260918.md",
-          "observed_at": "2026-09-18T23:17:03.604145+00:00"
+          "observed_at": "2026-09-18T23:47:21.488952+00:00"
         }
       ],
       "human_required": false,
@@ -72,7 +72,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "release-engineering",
       "dedupe_key": "ci-green-main",
-      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+      "behavior_sha": "b8609d08813a162ea185b884f126408d64cf7eed",
       "dependencies": [
         "P0-CI-CANDIDATE-FREEZE"
       ],
@@ -118,7 +118,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "data-platform",
       "dedupe_key": "data-postgresql-runtime",
-      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+      "behavior_sha": "b8609d08813a162ea185b884f126408d64cf7eed",
       "dependencies": [
         "P0-CI-CANDIDATE-FREEZE"
       ],
@@ -164,7 +164,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "data-platform",
       "dedupe_key": "data-rls-runtime-isolation",
-      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+      "behavior_sha": "b8609d08813a162ea185b884f126408d64cf7eed",
       "dependencies": [
         "P0-DATA-POSTGRESQL-RUNTIME"
       ],
@@ -209,7 +209,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "workflow-platform",
       "dedupe_key": "workflow-lease-fencing",
-      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+      "behavior_sha": "b8609d08813a162ea185b884f126408d64cf7eed",
       "dependencies": [
         "P0-DATA-POSTGRESQL-RUNTIME"
       ],
@@ -256,7 +256,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "worker-platform",
       "dedupe_key": "worker-crash-recovery",
-      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+      "behavior_sha": "b8609d08813a162ea185b884f126408d64cf7eed",
       "dependencies": [
         "P0-WORKFLOW-LEASE-FENCING"
       ],
@@ -303,7 +303,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "clinical-product",
       "dedupe_key": "clinical-golden-path",
-      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+      "behavior_sha": "b8609d08813a162ea185b884f126408d64cf7eed",
       "dependencies": [
         "P0-DATA-RLS-RUNTIME",
         "P0-WORKER-CRASH-RECOVERY"
@@ -351,7 +351,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "clinical-product",
       "dedupe_key": "clinical-audit-financial-invariants",
-      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+      "behavior_sha": "b8609d08813a162ea185b884f126408d64cf7eed",
       "dependencies": [
         "P0-CLINICAL-GOLDEN-PATH"
       ],
@@ -398,7 +398,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "operations",
       "dedupe_key": "recovery-restore-corruption",
-      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+      "behavior_sha": "b8609d08813a162ea185b884f126408d64cf7eed",
       "dependencies": [
         "P0-CLINICAL-AUDIT-INVARIANTS"
       ],
@@ -444,7 +444,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "operations",
       "dedupe_key": "performance-target-certification",
-      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+      "behavior_sha": "b8609d08813a162ea185b884f126408d64cf7eed",
       "dependencies": [
         "P0-DATA-POSTGRESQL-RUNTIME",
         "P0-WORKER-CRASH-RECOVERY"
@@ -491,7 +491,7 @@
       "closure_policy": "HUMAN",
       "owner": "product-quality",
       "dedupe_key": "ux-a11y-hospital-uat",
-      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+      "behavior_sha": "b8609d08813a162ea185b884f126408d64cf7eed",
       "dependencies": [
         "P0-CLINICAL-GOLDEN-PATH"
       ],
@@ -537,7 +537,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "release-engineering",
       "dedupe_key": "supply-attestation-provenance",
-      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+      "behavior_sha": "b8609d08813a162ea185b884f126408d64cf7eed",
       "dependencies": [
         "P0-CI-GREEN-MAIN"
       ],
@@ -583,7 +583,7 @@
       "closure_policy": "HUMAN",
       "owner": "release-authority",
       "dedupe_key": "release-authority-decision",
-      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+      "behavior_sha": "b8609d08813a162ea185b884f126408d64cf7eed",
       "dependencies": [
         "P0-CI-GREEN-MAIN",
         "P0-UX-A11Y-UAT",
@@ -632,7 +632,7 @@
       "closure_policy": "HUMAN",
       "owner": "release-authority",
       "dedupe_key": "final-evidence-graph",
-      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+      "behavior_sha": "b8609d08813a162ea185b884f126408d64cf7eed",
       "dependencies": [
         "P0-RELEASE-AUTHORITY",
         "P0-RECOVERY-RESTORE",

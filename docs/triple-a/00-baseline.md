@@ -2,13 +2,15 @@
 
 ## Remediação atual dos P0 — 2026-09-18
 
-Baseline autoritativo atual: `c065f74013aa3d6cf9d59b97b2328459c61ba1ef`.
+Baseline autoritativo atual: `b8609d08813a162ea185b884f126408d64cf7eed`.
 
 Correções locais aprovadas: **75.168/75.168 checks k6**, nove SLOs, equivalência nativa132/132 e unidades35/35; proteção de timeline/audit PostgreSQL7/7 e contratos32/32; segurança/gate75/75. Build, typecheck e lint passaram. Estes resultados locais não substituem o CI do commit publicado.
 
 O registro tem **13 P0 abertos e um fechado nesta fase de revalidação**: o item de PostgreSQL foi reaberto porque há uma nova migração. Nenhuma evidência antiga foi apenas renomeada para o novo SHA. Os critérios serão reconciliados após a execução remota. Homologação aprovada, orçamentos operacionais, UAT e autoridade humana continuam pendentes.
 
 Detalhes e limites: [remediação dos P0](30-p0-remediation-20260918.md). **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
+
+O CI anterior da remediação confirmou **69.536/69.536 checks k6 e nove SLOs**. Falhas de preparo dos novos testes foram reproduzidas e corrigidas: PostgreSQL24/24 e contratos de atestação18/18; o CI desta revisão está pendente.
 
 ---
 

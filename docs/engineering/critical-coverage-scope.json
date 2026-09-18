@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+  "head": "b8609d08813a162ea185b884f126408d64cf7eed",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -11962,6 +11962,19 @@
         "tests/integration/database/runtime-timeline-immutability.test.ts"
       ],
       "vitestRemoved": []
+    },
+    {
+      "manifestRevision": 87,
+      "observedAt": "2026-09-18T23:46:44.059Z",
+      "collectionCommit": "b8609d08813a162ea185b884f126408d64cf7eed",
+      "previousManifestSha256": "0dcc9707ea753b99bba2c446616f1711e7c4cb45e069e4bd1a38fea2cb41db0b",
+      "preservedManifest": "artifacts/remediation/P0-CLOSURE/critical-scope/critical-scope-before-0dcc9707ea753b99bba2c446616f1711e7c4cb45e069e4bd1a38fea2cb41db0b.json",
+      "previousSourceSetSha256": "ff0875f00939cceecb58d30e17c5b1ca0175b004279f977cb2bbec1053181faa",
+      "sourceSetSha256": "ff0875f00939cceecb58d30e17c5b1ca0175b004279f977cb2bbec1053181faa",
+      "reason": "Bind reviewed CI fixture repairs: runtime ACL initialization and exact ordered release attestations; retain full additive SQL scope",
+      "added": [],
+      "removed": [],
+      "changed": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12895,7 +12908,7 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 86,
+  "manifestRevision": 87,
   "sourceSetSha256": "ff0875f00939cceecb58d30e17c5b1ca0175b004279f977cb2bbec1053181faa",
   "executionInputsSha256": "9cc2349da64e59f9fbc88833baf7f460326dfa384a6fc1440dd6e591230f1b60",
   "specializedEvidence": {
