@@ -7,6 +7,7 @@ import {
   DATABASE_RUNTIME_API_FUNCTIONS,
   RUNTIME_SENSITIVE_TABLES,
   RUNTIME_APPEND_ONLY_TABLES,
+  RUNTIME_INTERNAL_TABLES,
   RUNTIME_IMMUTABLE_TABLES,
   RUNTIME_INSTALLER_MUTATIONS,
   RUNTIME_SETTLEMENT_FUNCTIONS,
@@ -278,6 +279,10 @@ export async function reconcileRuntimeRoles(
          WHERE to_regclass(format('public.%I', $1::text)) IS NOT NULL`,
         [tableName, [apiRole, workerRole]]
       );
+    }
+    for (const tableName of RUNTIME_INTERNAL_TABLES) {
+      await revokeExistingTable(client, tableName, apiRole);
+      await revokeExistingTable(client, tableName, workerRole);
     }
     for (const mutation of RUNTIME_INSTALLER_MUTATIONS) {
       await executeGeneratedStatements(

@@ -69,5 +69,6 @@ export const DATABASE_RUNTIME_INSTALLER_FUNCTIONS: readonly DatabaseRuntimeCapab
 export const DATABASE_RUNTIME_API_FUNCTIONS: readonly DatabaseRuntimeCapability[] = Object.freeze([
   immutableCapability('resolve_active_api_key', 'text, text'),
   immutableCapability('is_pix_transaction_owned_by', 'text, uuid'),
+  immutableCapability('access_control_change_token', 'uuid'),
   immutableCapability('redrive_pix_provider_event_delivery', 'uuid, uuid, uuid, text, text')
 ]);

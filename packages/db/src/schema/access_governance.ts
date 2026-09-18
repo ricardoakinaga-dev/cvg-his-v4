@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   check,
   foreignKey,
@@ -15,6 +16,24 @@ import { sql } from 'drizzle-orm';
 import { accounts } from './accounts.js';
 import { permissions } from './permissions.js';
 import { users } from './users.js';
+
+export const accessControlAccountVersions = pgTable(
+  'access_control_account_versions',
+  {
+    accountId: uuid('account_id')
+      .notNull()
+      .primaryKey()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    version: bigint('version', { mode: 'bigint' }).notNull().default(0n),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+  }
+);
+
+export const accessControlGlobalVersion = pgTable('access_control_global_version', {
+  singletonId: boolean('singleton_id').primaryKey().notNull().default(true),
+  version: bigint('version', { mode: 'bigint' }).notNull().default(0n),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
 
 export const accessTeams = pgTable(
   'access_teams',

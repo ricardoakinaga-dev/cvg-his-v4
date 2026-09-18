@@ -23,6 +23,12 @@ export const RUNTIME_APPEND_ONLY_TABLES = ['laboratory_result_imports'] as const
 /** Lifecycle evidence is immutable; corrections must be represented as new events. */
 export const RUNTIME_IMMUTABLE_TABLES = ['clinical_workflow_task_events'] as const;
 
+/** Internal authorization version rows are reachable only through SECURITY DEFINER functions. */
+export const RUNTIME_INTERNAL_TABLES = [
+  'access_control_account_versions',
+  'access_control_global_version'
+] as const;
+
 /** Direct DML required by API-owned authentication and user repositories. */
 export const API_SENSITIVE_TABLE_PRIVILEGES = [
   { tableName: 'users', privileges: 'SELECT, INSERT, UPDATE' },
