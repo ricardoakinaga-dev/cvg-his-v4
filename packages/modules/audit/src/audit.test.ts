@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   runWithDatabaseTransactionScope,
   type DatabaseTransactionScope
@@ -17,6 +17,83 @@ describe('AuditService', () => {
 
   beforeEach(() => {
     service = new AuditService();
+  });
+
+  it('keeps newest evidence and independent snapshots after repeated reads and removal', async () => {
+    const input = {
+      actorId: 'user_order',
+      accountId: 'acc_order' as AccountId,
+      module: 'owners',
+      action: 'create',
+      entityType: 'owner',
+      entityId: 'owner_order',
+      payloadSummary: 'Order evidence',
+      riskLevel: 'high' as const
+    };
+    const first = service.write(input);
+    const latest = service.write(input);
+    const snapshot = service.list();
+    expect(snapshot).toEqual([latest, first]);
+    expect(service.list()).toEqual(snapshot);
+    const report = await service.getOperationalCoverageReport(input.accountId, [
+      {
+        id: 'owner-create',
+        module: 'owners',
+        action: 'create',
+        minimumRiskLevel: 'high',
+        description: 'Newest evidence'
+      }
+    ]);
+    expect(report.requirements[0].evidenceEventId).toBe(latest.eventId);
+    service.removeFromCache(latest.eventId);
+    expect(service.list()).toEqual([first]);
+    expect(snapshot).toEqual([latest, first]);
+  });
+
+  it('preserves equal-time repository and other-account ordering across cache refreshes', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-18T00:00:00.000Z'));
+    try {
+      const input = {
+        actorId: 'user_order',
+        accountId: 'acc_order' as AccountId,
+        module: 'owners',
+        action: 'create',
+        entityType: 'owner',
+        entityId: 'owner_order',
+        payloadSummary: 'Order evidence',
+        riskLevel: 'high' as const
+      };
+      const firstCommitted = service.write(input);
+      const secondCommitted = service.write(input);
+      const committed = [secondCommitted, firstCommitted];
+      const cached = new AuditService({
+        auditRepository: {
+          async create() {},
+          async list() {
+            return committed;
+          },
+          async findById() {
+            return null;
+          }
+        }
+      });
+      const retainedFirst = cached.write({ ...input, accountId: 'acc_other' as AccountId });
+      const retainedLatest = cached.write({ ...input, accountId: 'acc_other' as AccountId });
+      await cached.waitForPersistence();
+      await cached.refreshFromDatabase(input.accountId);
+      const expected = [...committed, retainedLatest, retainedFirst];
+      expect(cached.list()).toEqual(expected);
+      await cached.refreshFromDatabase(input.accountId);
+      expect(cached.list()).toEqual(expected);
+      const appended = cached.write(input);
+      expect(cached.list()).toEqual([appended, ...expected]);
+      await cached.waitForPersistence();
+      await cached.refreshFromDatabase();
+      expect(cached.list()).toEqual(committed);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('writes an audit event and returns it', () => {

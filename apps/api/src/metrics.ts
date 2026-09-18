@@ -22,6 +22,7 @@ interface RequestSloObservation {
 }
 
 const requestSloObservations: RequestSloObservation[] = [];
+let requestSloObservationStart = 0;
 
 // Collect default Node.js metrics (event loop, GC, handles, etc.)
 collectDefaultMetrics({ register: registry });
@@ -405,16 +406,24 @@ export async function getMetricsText(): Promise<string> {
 
 function pruneSloObservations(now = Date.now()): void {
   const cutoff = now - REQUEST_SLO_OBSERVATION_RETENTION_MS;
-  while (requestSloObservations.length > 0) {
-    const oldest = requestSloObservations[0];
+  while (requestSloObservationStart < requestSloObservations.length) {
+    const oldest = requestSloObservations[requestSloObservationStart];
     if (!oldest || oldest.timestamp >= cutoff) {
       break;
     }
-    requestSloObservations.shift();
+    requestSloObservationStart += 1;
   }
 
-  if (requestSloObservations.length > REQUEST_SLO_OBSERVATION_LIMIT) {
-    requestSloObservations.splice(0, requestSloObservations.length - REQUEST_SLO_OBSERVATION_LIMIT);
+  requestSloObservationStart = Math.max(
+    requestSloObservationStart,
+    requestSloObservations.length - REQUEST_SLO_OBSERVATION_LIMIT
+  );
+  // Advance a cursor on the request path instead of moving up to 20,000
+  // samples per request. Occasional compaction keeps backing storage below
+  // twice the limit while snapshots retain exactly the same active samples.
+  if (requestSloObservationStart > 0 && requestSloObservationStart >= requestSloObservations.length / 2) {
+    requestSloObservations.splice(0, requestSloObservationStart);
+    requestSloObservationStart = 0;
   }
 }
 
@@ -434,6 +443,7 @@ export function recordRequestSloObservation(input: {
 
 export function resetRequestSloObservations(): void {
   requestSloObservations.length = 0;
+  requestSloObservationStart = 0;
 }
 
 function percentile(values: readonly number[], p: number): number {
@@ -462,8 +472,9 @@ export function getCurrentSloSnapshot(now = Date.now()): CurrentSloSnapshot {
   pruneSloObservations(now);
   const last5mCutoff = now - 5 * 60 * 1000;
   const last1hCutoff = now - 60 * 60 * 1000;
-  const last5m = requestSloObservations.filter((sample) => sample.timestamp >= last5mCutoff);
-  const last1h = requestSloObservations.filter((sample) => sample.timestamp >= last1hCutoff);
+  const activeObservations = requestSloObservations.slice(requestSloObservationStart);
+  const last5m = activeObservations.filter((sample) => sample.timestamp >= last5mCutoff);
+  const last1h = activeObservations.filter((sample) => sample.timestamp >= last1hCutoff);
 
   const durations = last5m.map((sample) => sample.durationMs);
   const last1hFailures = last1h.filter((sample) => sample.statusCode >= 500).length;

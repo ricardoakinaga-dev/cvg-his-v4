@@ -267,7 +267,9 @@ export class AuditService {
       riskLevel: input.riskLevel
     };
 
-    this.#events.unshift(event);
+    // Append in constant amortized time; readers materialize newest-first
+    // snapshots without moving the growing cache on every audited request.
+    this.#events.push(event);
 
     // Persist to database if repository is available
     if (this.#auditRepository) {
@@ -352,7 +354,7 @@ export class AuditService {
   }
 
   public list(): readonly AuditEventSummary[] {
-    return [...this.#events];
+    return [...this.#events].reverse();
   }
 
   public async listPage(query: AuditListPageQuery): Promise<AuditListPage> {
@@ -391,10 +393,14 @@ export class AuditService {
     const committed = this.#auditRepository.listForCacheRefresh
       ? await this.#auditRepository.listForCacheRefresh(accountId)
       : await this.#auditRepository.list(accountId);
-    const retained = accountId ? this.#events.filter((event) => event.accountId !== accountId) : [];
-    this.#events = [...committed, ...retained].sort(
-      (left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()
-    );
+    const retained = accountId
+      ? this.#events.filter((event) => event.accountId !== accountId).reverse()
+      : [];
+    this.#events = [...committed, ...retained]
+      .sort(
+        (left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()
+      )
+      .reverse();
   }
 
   public async getOperationalCoverageReport(
@@ -453,7 +459,7 @@ export class AuditService {
 
   private async readCoverageEvents(accountId?: AccountId): Promise<readonly AuditEventSummary[]> {
     if (!this.#auditRepository) {
-      return this.#events.filter((event) => !accountId || event.accountId === accountId);
+      return this.#events.filter((event) => !accountId || event.accountId === accountId).reverse();
     }
 
     if (!this.#auditRepository.listForCacheRefresh) {
