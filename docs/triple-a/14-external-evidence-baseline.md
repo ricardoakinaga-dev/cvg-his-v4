@@ -2,36 +2,38 @@
 
 ## Consolidação atual — 2026-09-18
 
-**Current snapshot:** `96e9a2c46bad4d40be468261fab277f8463190ec`
+**Current snapshot:** `51391915eb165a9b99e33682d0ab557f6263cb2a`
 
 A consolidação Git está concluída: somente main permanece localmente e no
 GitHub, com histórico anterior em bundle verificado. O runtime da aplicação
-segue a fonte `d8d8b821`; os reparos de OpenAPI, WebAuthn, auditoria e métricas
-preservam ordem, retenção, persistência e controles de acesso.
+permanece na fonte `d8d8b821`; a mudança atual corrige a execução do benchmark.
 
-O [CI 35349067677](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35349067677)
-do predecessor `0d0ea920` aprovou performance **9/9 SLOs, query p95 137ms**,
-cobertura global **2.932 testes/82,03% de branches**, build, controles do
-repositório, tipos, lint, segurança, unitários, contratos da API, Windows,
-regressão visual, E2E e cobertura crítica. Integração teve 618 asserções aprovadas,
-mas uma exceção
-PostgreSQL57P01 no encerramento de um banco privado reprovou o job.
+O [CI 35352873670](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35352873670)
+do predecessor `47ba9c54` terminou com **16/17 jobs aprovados**, incluindo
+cobertura crítica, global **2.932 testes/82,03% de branches**, **619 testes de
+integração**, E2E, visual, API, Windows, build, tipos, lint e segurança.
+Performance falhou: query p95 **184,8ms**, API p95 **207,65ms**, contra150/200ms.
+A correção do encerramento de fixtures PostgreSQL foi confirmada no CI.
 
-O candidato atual corrige apenas os fixtures de bootstrap/instalação que
-encerravam conexões à força antes do fechamento real. Os dois arquivos passaram
-18/18 testes com PostgreSQL real. Uma revisão independente reproduziu e corrigiu
-um problema de cleanup na nova regressão; confirmou isolamento, propagação de
-erros e espera por desconexão sem exceções órfãs. A validação local anterior do
-mesmo runtime passou API nativa679/679 e benchmark de quatro CPUs9/9/query29ms;
-essas evidências locais não substituem o CI final.
+O candidato usa `response.json()` nativo do k6 para interpretar o corpo completo
+do OpenAPI, mantendo o mesmo predicado, pedidos, dados, estágios e limites.
+O teste nativo de equivalência passou **63/63 verificações**; os contratos
+passaram **6/6**. A crítica independente aprovou a preservação do instrumento e
+verificou propagação de falhas, encerramento e fingerprints sem alterações.
+
+A reprodução anterior de quatro CPUs usava `GOMAXPROCS=4`; o CI usa1. Na nova
+comparação controlada, ambos os casos usam quatro CPUs, `GOMAXPROCS=1`, seed
+novo e profiler de180s: query p95 **102→20ms**, API **102,79→17,77ms**,
+**3.421→4.516 iterações**, CPU do gerador **116,86→66,06s**. Ambos passaram9/9
+localmente; esses resultados explicam o custo removido, sem provar o CI remoto.
+A configuração do gerador agora consta na proveniência antes/depois. O CI final
+exato e sem profiler permanece pendente na publicação deste registro.
 
 [Relatório atual, decisões por branch e limitações](./29-main-unification-20260918.md).
-Manifesto crítico revision84, ancorado no candidato acima e registrando o novo
-helper de execução dos testes. Os 555 caminhos de fonte, os thresholds e o
-workload permanecem inalterados. Ambas as identidades serão novamente validadas
-sobre o commit documental concluído antes do push; o CI final será observado
-após a publicação. Target, UAT, recuperação operacional, attestations e
-autoridade de release continuam sem prova suficiente; não há certificação AAA.
+Manifesto crítico revision85, ancorado no candidato acima, com os quatro novos
+inputs de execução registrados. Os555 caminhos de fonte e thresholds não
+mudaram. Target, UAT, recuperação, attestations e autoridade de release
+continuam sem prova suficiente; não há certificação AAA.
 
 ## Registro histórico anterior
 

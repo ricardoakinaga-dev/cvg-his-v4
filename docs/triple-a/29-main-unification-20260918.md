@@ -208,6 +208,50 @@ os mesmos555 caminhos de fonte/thresholds. Todos os registros `.agent` foram
 incluídos antes de gerar a identidade; o próximo commit altera somente os
 caminhos documentais permitidos. O CI final exato continua necessário.
 
+## Correção do instrumento de performance
+
+O [CI35352873670](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35352873670)
+no commit `47ba9c54` terminou com16/17 jobs aprovados: cobertura crítica e
+cobertura global82,03%, 619 testes de integração, unitários, E2E, API, visual,
+Windows e todos os controles estruturais passaram. Apenas performance falhou:
+query p95184,8ms/API207,65ms versus150/200ms; zero erros HTTP.
+
+A reprodução anterior tinha quatro CPUs, mas usava `GOMAXPROCS=4`, enquanto o
+CI limita o k6 a1. Essa diferença invalida a comparação como reprodução exata
+da capacidade do gerador. A nova comparação mantém quatro CPUs e1 em ambos os
+casos. O perfil encontrou78,02% do tempo de CPU do k6 em `JSON.parse`.
+
+A mudança usa o decoder nativo `response.json()` sem seletor, interpretando o
+corpo inteiro e preservando `body.paths && Object.keys(body.paths).length > 0`.
+As63 verificações nativas incluem JSON truncado, sufixo inválido, segundo valor,
+chave duplicada, overflow numérico, tipos inesperados e o OpenAPI completo.
+O runner usa a versão0.55.0 fixada, servidor loopback descartável e propaga
+falhas. O CI executa esse contrato antes do benchmark; `GOMAXPROCS=1` permanece
+e agora é registrado na proveniência antes/depois. Nenhum pedido, payload,
+limite, tempo de estágio ou controle de autenticação foi removido.
+
+| Comparação local com profiler180s, quatro CPUs/GOMAXPROCS1 | Original | Nativo |
+| --- | --- | --- |
+| Query p95 |102ms|20ms|
+| API p95 |102,79ms|17,77ms|
+| Health p95 |142,49ms|13,81ms|
+| Iterações completas |3.421|4.516|
+| CPU total do k6 no perfil |116,86s|66,06s|
+| SLOs aprovados |9/9|9/9|
+
+Os dois casos partiram de seed novo, mesmo runtime compilado e mesmas versões.
+A redução de43% de CPU ocorreu apesar de32% mais iterações; não representa
+redução da carga. Ambos passaram localmente, portanto a falha hospedada só pode
+ser considerada encerrada quando o CI exato passar sem profiler. A revisão I1
+independente aprovou os seis arquivos, executou63 verificações e6 contratos,
+testou falhas/cleanup e confirmou fingerprints sem mutação. Serviços próprios
+foram encerrados; dados sintéticos descartáveis foram removidos.
+
+Fonte/controller: `51391915eb165a9b99e33682d0ab557f6263cb2a`. Manifesto revision85,
+mesmo digest de555 fontes, quatro novos inputs registrados. Documentos atuais e
+registro P0 foram reancorados sem fechar pendências externas. CI final pendente
+na publicação; evidências brutas e revisão estão no pacote local de recuperação.
+
 ## Limites da conclusão
 
 A consolidação do Git não concede certificação operacional. A régua

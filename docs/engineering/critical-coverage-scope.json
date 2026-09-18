@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "96e9a2c46bad4d40be468261fab277f8463190ec",
+  "head": "51391915eb165a9b99e33682d0ab557f6263cb2a",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -8407,7 +8407,11 @@
     "tests/unit/api/billing-routes-validation.test.ts",
     "tests/unit/api/security-headers.test.ts",
     "packages/modules/auth/src/database-session.repository.test.ts",
-    "tests/setup/wait-for-database-disconnect.ts"
+    "tests/setup/wait-for-database-disconnect.ts",
+    "benchmarks/k6/response-json-equivalence.js",
+    "scripts/test-k6-response-json.mjs",
+    "scripts/capture-performance-provenance.mjs",
+    "tests/unit/infra/performance-provenance.test.ts"
   ],
   "scopeHistory": [
     {
@@ -11874,6 +11878,29 @@
       "inputsRemoved": [],
       "previousExecutionInputsSha256": "0a6adfa2285dd13ffd912a42c0460f970facb8aadc7c89f0f80cc054c9ae3903",
       "executionInputsSha256": "3bed91a6b0e07b4074282bd554c3ef63534015b17842bf72da6f49eb6a1f164d"
+    },
+    {
+      "manifestRevision": 85,
+      "observedAt": "2026-09-18T14:28:34.214Z",
+      "collectionCommit": "51391915eb165a9b99e33682d0ab557f6263cb2a",
+      "previousManifestSha256": "b2f16f0aaa54a7c4e5bf2537e8918fb16a87dfddcbc9f852f7e793acfcbb5d60",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-b2f16f0aaa54a7c4e5bf2537e8918fb16a87dfddcbc9f852f7e793acfcbb5d60.json",
+      "previousSourceSetSha256": "4d0da3e15f9f67d45dca1105515c1cf104157c003244320ad2eee86813e4fa2d",
+      "sourceSetSha256": "4d0da3e15f9f67d45dca1105515c1cf104157c003244320ad2eee86813e4fa2d",
+      "reason": "Preserve frozen source scope; bind equivalent native k6 full-body validation and unchanged scheduler provenance to reviewed execution inputs",
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "benchmarks/k6/response-json-equivalence.js",
+        "scripts/test-k6-response-json.mjs",
+        "scripts/capture-performance-provenance.mjs",
+        "tests/unit/infra/performance-provenance.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "3bed91a6b0e07b4074282bd554c3ef63534015b17842bf72da6f49eb6a1f164d",
+      "executionInputsSha256": "c744c8befd5a5e78f91c7d14fdae473b436bd2fcbaa4ad2c71edbfcda5d3594b"
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12807,9 +12834,9 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 84,
+  "manifestRevision": 85,
   "sourceSetSha256": "4d0da3e15f9f67d45dca1105515c1cf104157c003244320ad2eee86813e4fa2d",
-  "executionInputsSha256": "3bed91a6b0e07b4074282bd554c3ef63534015b17842bf72da6f49eb6a1f164d",
+  "executionInputsSha256": "c744c8befd5a5e78f91c7d14fdae473b436bd2fcbaa4ad2c71edbfcda5d3594b",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,
