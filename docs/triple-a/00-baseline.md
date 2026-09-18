@@ -1,8 +1,8 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-17T13:28:36Z
+## Snapshot vigente — 2026-09-18T01:00:00Z
 
-O baseline autoritativo do snapshot atual está em: `59bbb1ac1bab7565706178a954cbfeb62c1bd565` (snapshot reancorado após a normalização de rasterização de texto entre runners, a fixação de Noto Sans nos gates visuais, a verificação portátil do runner, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental, a revisão 73 do manifesto crítico, o endurecimento do ciclo de vida de feature flags e a correção do contrato de evidência SQL legado; o orçamento físico de `server.ts` foi restaurado a `8.335` linhas sem alteração de comportamento; o teste Node nativo de feature flags ficou fora da varredura global do Vitest para preservar a cobertura congelada).
+O baseline autoritativo do snapshot atual está em: `8098e8be2fbade69f38ed99719b4ef04e78bf240` (snapshot reancorado após a normalização de rasterização de texto entre runners, a fixação de Noto Sans nos gates visuais, a verificação portátil do runner, o alinhamento dos gates SPA ao runtime canônico, a correção do classificador documental, a revisão 73 do manifesto crítico, o endurecimento do ciclo de vida de feature flags e a correção do contrato de evidência SQL legado; o orçamento físico de `server.ts` foi restaurado a `8.335` linhas sem alteração de comportamento; o teste Node nativo de feature flags ficou fora da varredura global do Vitest para preservar a cobertura congelada).
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em
