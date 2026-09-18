@@ -2,6 +2,11 @@
 
 **Status:** PARTIAL / RELEASE EVIDENCE OPEN
 
+**Candidato corrente:** `cef206bf4600c3fdb1dbf428ef37e407abaf4996`.
+O [CI #35300563062](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563062)
+está em execução; pins, SBOM, provenance e attestation externa continuam
+sem prova de release até o envelope terminal do SHA exato.
+
 ## Problema
 
 Uma release enterprise precisa provar a origem das actions, dependências,

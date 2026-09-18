@@ -1,10 +1,10 @@
 # Baseline corrente — State of Art
 
-Observado em `2026-09-18T01:53:20Z`, sobre o candidato funcional
-`28043455f12cf2ef076eafcf09516ffd67007c74` e seu descendente documental
-`42902e95f696e8c9456cee7c11afa192c149fefd`. A identidade corrente preserva a
-separação entre código/assurance e documentação; a recoleção local fechou o
-P0 de PostgreSQL/migrações sem promover evidência externa.
+Observado em `2026-09-18T02:45:16Z`, sobre o candidato funcional
+`cef206bf4600c3fdb1dbf428ef37e407abaf4996`. A identidade corrente preserva a
+separação entre código/assurance e documentação; a implementação deste
+snapshot fecha localmente a verificação criptográfica WebAuthn, sem promover
+evidência externa.
 A identidade canônica está em
 [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json) e o
 evidence graph corrente é gerado por `pnpm evidence:triple-a:graph`.
@@ -16,19 +16,19 @@ fotografia não promove evidência histórica nem altera thresholds.
 
 | Campo           | Evidência atual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| current_sha     | `28043455f12cf2ef076eafcf09516ffd67007c74` (snapshot; registro P0 e manifesto revision 79; correção do produtor de evidência SQL e cobertura de validação HTTP; importador do evidence graph mantém validação candidate-bound e evidência local sem promoção automática a PASS) |
-| main_sha        | `origin/main@42902e95f696e8c9456cee7c11afa192c149fefd`; o candidato funcional é ancestral e o descendente contém somente documentação; sem force-push |
-| worktree        | Limpo antes da documentação corrente; artefatos gerados locais permanecem fora do commit |
-| rollback        | `origin/main@8bbcba3a6687` (pai publicado); sem force-push |
-| ci_run          | [CI #35296518702](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35296518702) está `in_progress` no descendente documental exato; nenhum job é promovido antes do estado terminal |
-| ci_failure      | Não há falha terminal no candidato atual no momento desta observação; falhas de predecessores permanecem históricas e não são transferidas |
+| current_sha     | `cef206bf4600c3fdb1dbf428ef37e407abaf4996` (snapshot; verificação FIDO2 criptográfica, RP/origens autoritativos, registro P0 e thresholds inalterados) |
+| main_sha        | `origin/main@cef206bf4600c3fdb1dbf428ef37e407abaf4996`; sem force-push |
+| worktree        | Limpo após o commit funcional; artefatos gerados locais permanecem fora do commit |
+| rollback        | `origin/main@0d830f2966b7873cb9dad5fb9006d757c4577221` (pai publicado); sem force-push |
+| ci_run          | [CI #35300563062](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563062) está `in_progress` no SHA exato; [State of Art Closure #35300563044](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563044) terminou `success` |
+| ci_failure      | Nenhuma falha terminal do SHA atual foi observada; o CI exato ainda não terminou e falhas de predecessores não são transferidas |
 | overall_score   | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `51`, abaixo do mínimo 97 |
 | critical_score  | `NOT_EVALUATED` no gate de cobertura corrente; o último gate estrito histórico foi `49`, abaixo do mínimo 95 |
 | open_p0         | Registro P0: `12` itens abertos e `2` fechados; o quality bar de release continua exigindo zero P0 para certificação |
 | local_gate      | R05-010 e SQL local `PASS`; release/Triple-A permanece `BLOCKED / NOT PROVEN` porque CI terminal, target, recovery, UAT, attestation e autoridade ainda não foram provados |
-| implemented     | Paridade do contrato Patient; CORS credentialado restrito a origens permitidas; manifest crítico revision 79, ancorado no commit funcional, com thresholds inalterados e inventário Vitest/SQL reconciliado; workflow provisiona PostgreSQL 16, publica evidência SQL antes do checker, valida o registro P0 e executa os gates SPA com API compilada e proxy same-origin; o provider raw de feature flags mantém estado persistido, expiração, precedência, allowlist fail-closed, tenant explícito, cache bounded/invalidação, upsert atômico, autoridade request-scoped e ownership composto; o caminho de frescor de ACL lê uma versão monotônica indexada, incrementada na mesma transação de cada mutação de ACL, com `0176` protegendo cascatas de exclusão e `FORCE RLS`; o JWT inicial só resolve contexto de roteamento e a guarda final mantém revalidação autoritativa, com erros genéricos sanitizados para 503; a telemetria HTTP exclui query strings dos spans e emite `tracestate` W3C válido; o produtor SQL cobre as `175` migrações ativas e artefatos históricos preservados; `server.ts` permanece no orçamento físico de `8.335` linhas; nenhum threshold foi alterado |
-| verified_local  | `pnpm validate:migration-source` PASS; SQL producer PASS (`175` migrações ativas + `7` históricas); integração efêmera PASS (`105/105` arquivos, `933/933` testes); R05-010 PASS com todos os componentes ≥85%; os shards unit/native/process/Vue também estão promovidos e verdes. A evidência local não substitui CI exato, target externo, recovery, UAT, attestation ou autoridade |
-| verified_remote | O CI #35296518702 ainda está `in_progress`; não há `main green` terminal promovido. Target, recovery, UAT, attestation, governança de branch e autoridade de release seguem ausentes |
+| implemented     | Paridade do contrato Patient; CORS credentialado restrito; manifesto crítico revision 79; workflow PostgreSQL/evidence graph/P0 preservados; feature flags tenant-scoped fail-closed; telemetria HTTP sanitizada; WebAuthn agora usa SimpleWebAuthn para verificar attestation/assertion, persiste credential ID e chave COSE reais, aplica challenge/origem/RP ID/user handle, contador CAS e isolamento de conta/usuário; configuração `WEBAUTHN_RP_ID`/`WEBAUTHN_ORIGINS` é server-owned; nenhum threshold foi alterado |
+| verified_local  | `pnpm validate:migration-source` PASS; SQL producer PASS (`175` migrações ativas + `7` históricas); integração efêmera PASS (`105/105` arquivos, `933/933` testes); WebAuthn FIDO2 `14/14`, config `47/47`, MFA `66/66`, rotas nativas `47/47`, typecheck MFA/API e OpenAPI/runtime/dependency guards PASS. A evidência local não substitui CI exato, target externo, recovery, UAT, attestation de fabricante ou autoridade |
+| verified_remote | O [CI #35300563062](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563062) está `in_progress`; não há `main green` terminal promovido. Target, recovery, UAT, governança de branch e autoridade de release seguem ausentes |
 | verified_target | `NOT_PROVEN` |
 | blocked         | CI terminal do candidato, RLS no target, restore/DR, performance/soak, UAT, attestation, governança e autoridade humana continuam abertos; os thresholds permanecem sem alteração |
 | not_proven      | Qualquer claim de release Triple-A, score ≥97, critical ≥95, zero P0, `main_green` ou `TRIPLE-A VERIFIED` |

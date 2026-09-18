@@ -1,8 +1,15 @@
 # Triple-A — 00 Baseline
 
-## Snapshot vigente — 2026-09-18T01:53:20Z
+## Snapshot vigente — 2026-09-18T02:45:16Z
 
-O baseline autoritativo do snapshot funcional atual está em: `28043455f12cf2ef076eafcf09516ffd67007c74`, publicado por meio do descendente documental `42902e95f696e8c9456cee7c11afa192c149fefd` (correção do produtor de evidência SQL, cobertura dos contratos de validação HTTP e recoleta local candidate-bound; o comportamento ERP anterior permanece preservado).
+O baseline autoritativo do snapshot funcional atual está em: `cef206bf4600c3fdb1dbf428ef37e407abaf4996`, publicado diretamente em `origin/main` (verificação criptográfica WebAuthn/FIDO2, RP ID/origens server-owned, testes criptográficos e thresholds preservados; o comportamento ERP anterior permanece preservado).
+
+O delta de autenticação foi validado localmente com credencial P-256 real,
+attestation `fmt:none`, assertions assinadas, rejeição de replay/origem/RP ID e
+CAS de contador. O [CI #35300563062](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563062)
+continua em execução; a closure do State of Art #35300563044 terminou com
+sucesso, mas não prova target, recovery, UAT, attestation de fabricante ou
+autoridade de release.
 Ele também está indexado em
 [`15-current-baseline.md`](./15-current-baseline.md) e
 [`17-current-execution-evidence.md`](./17-current-execution-evidence.md), com identidade canônica em

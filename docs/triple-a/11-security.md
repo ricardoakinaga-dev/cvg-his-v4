@@ -7,6 +7,12 @@ webhook/idempotência e matriz de testes de segurança estão implementados e
 verificados em escopos locais. Os workflows executam Secret Scan, SAST e
 Dependency Audit.
 
+No candidato `cef206bf4600c3fdb1dbf428ef37e407abaf4996`, WebAuthn passou a
+validar criptograficamente attestation/assertion, challenge, origem, RP ID,
+assinatura e contador; o RP ID não é mais aceito de header do cliente. A prova
+local não substitui RLS no target, attestation de fabricante, CI terminal ou
+revisão humana.
+
 Fontes: [`docs/security/SECURITY_TEST_MATRIX.md`](../security/SECURITY_TEST_MATRIX.md),
 `packages/security`, `packages/tenant-context`, `packages/secrets`,
 `.semgrep.yml` e `.secretlintrc.json`.

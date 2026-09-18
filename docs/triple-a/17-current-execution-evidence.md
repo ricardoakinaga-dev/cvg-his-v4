@@ -1,5 +1,33 @@
 # Evidência de execução corrente — State of Art
 
+## Recoleta local do candidato WebAuthn — 2026-09-18T02:45:16Z
+
+O candidato funcional corrente é
+`cef206bf4600c3fdb1dbf428ef37e407abaf4996`, publicado em `origin/main` sem
+force-push. Esta recoleta cobre somente a mudança de autenticação WebAuthn e
+seus contratos; não transfere evidência de candidatos anteriores nem fecha
+gates externos.
+
+SHA de código e documentação: `cef206bf4600c3fdb1dbf428ef37e407abaf4996`.
+
+- `pnpm --filter @cvg-his-v2/module-mfa typecheck`: **PASS**;
+- `pnpm --filter @cvg-his-v2/shared-config typecheck`: **PASS**;
+- testes FIDO2 com chave P-256, attestation CBOR `fmt:none`, assinatura,
+  challenge, origem, RP ID, user handle e contador: **14/14 PASS**;
+- `pnpm --filter @cvg-his-v2/shared-config test`: **47/47 PASS**;
+- `pnpm --filter @cvg-his-v2/module-mfa test`: **66/66 PASS**;
+- `pnpm --filter @cvg-his-v2/api test:auth-route`: **47/47 PASS**;
+- `pnpm --filter @cvg-his-v2/api typecheck`: **PASS**;
+- OpenAPI, runtime de produção e política de dependências: **PASS**.
+
+A suíte nativa confirma que `x-rp-id: attacker.example` não altera o RP ID
+server-owned `cvg.local`. O ADR-015 registra a decisão e o limite explícito:
+attestation de fabricante/enterprise trust não foi habilitada; o registro usa
+`attestation: none` para o fluxo de passkeys. O [CI #35300563062](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563062)
+está `in_progress`; o [State of Art Closure #35300563044](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563044)
+terminou `success`. Portanto, a conclusão local continua separada de CI
+terminal, target, recovery, UAT, governança e release authority.
+
 ## Recoleta terminal local — 2026-09-18T01:53:20Z
 
 O candidato funcional permanece
@@ -27,7 +55,7 @@ continuam `NOT_PROVEN`.
 
 ## Candidato documental observado em 2026-09-18T01:07:08Z
 
-- SHA de código e documentação: `28043455f12cf2ef076eafcf09516ffd67007c74`;
+- SHA histórico de código e documentação: `28043455f12cf2ef076eafcf09516ffd67007c74`;
   identidade em
   [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). Evidência de candidatos anteriores permanece histórica e não é transferida.
 - O manifesto crítico está na revisão 79, ancorado no commit funcional `28043455f12c` e publicado na identidade do snapshot; a migration `0176` preserva o checksum da `0175`, força RLS na ledger e evita recriação durante cascatas de conta. O produtor de evidência SQL cobre as `175` migrações ativas e preserva os artefatos históricos. O candidato também exige Redis saudável antes de abrir o listener em produção-like, ativa tracing HTTP W3C/OTel com targets sem query strings sensíveis, publica métricas de frescor e modo de persistência do worker, valida o contrato de composição produtiva e a integridade do catálogo de eventos. Rollback preservado em `origin/main@893d6cac` e nas branches ancestrais integradas.

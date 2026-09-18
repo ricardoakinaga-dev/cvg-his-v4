@@ -1,5 +1,10 @@
 # ADR-014 — autoridade de avaliação de feature flags
 
+> Nota de supersessão: a parte deste ADR que descreve WebAuthn como verificador
+> ainda fundacional foi substituída pelo [ADR-015](./ADR-015-WEBAUTHN-FIDO2-VERIFICATION.md).
+> A política fail-closed da flag permanece válida; o estado atual da implementação
+> criptográfica e seus limites estão registrados no ADR-015.
+
 ## Problema e invariantes
 
 O caminho da API usa o provider raw de `module-feature-flags`, enquanto o

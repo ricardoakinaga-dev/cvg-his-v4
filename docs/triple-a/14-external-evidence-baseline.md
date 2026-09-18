@@ -4,21 +4,22 @@
 > snapshots históricos. Para o candidato vigente, use
 > [`15-current-baseline.md`](./15-current-baseline.md),
 > [`17-current-execution-evidence.md`](./17-current-execution-evidence.md) e
-> [`13-final-scorecard.md`](./13-final-scorecard.md). O snapshot atual é
-> os snapshots anteriores permanecem preservados apenas como histórico; a identidade canônica está em
-> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato funcional corrente é `28043455f12cf2ef076eafcf09516ffd67007c74`, com descendente documental publicado em `42902e95f696e8c9456cee7c11afa192c149fefd`; o registro P0 candidate-bound é validado no CI e no gate de release; o evidence graph importa envelopes locais somente como `PARTIAL` após validar schema, SHA, ambiente, frescor, ancestralidade e digests; os CI anteriores não são transferidos. Nenhum resultado parcial é transferido.
+> [`13-final-scorecard.md`](./13-final-scorecard.md). A identidade canônica está em
+> [`CURRENT_CANDIDATE_IDENTITY.json`](./CURRENT_CANDIDATE_IDENTITY.json). O candidato funcional corrente é `cef206bf4600c3fdb1dbf428ef37e407abaf4996`, publicado em `origin/main`; o registro P0 candidate-bound é validado no CI e no gate de release; o evidence graph importa envelopes locais somente como `PARTIAL` após validar schema, SHA, ambiente, frescor, ancestralidade e digests; os CI anteriores não são transferidos. Nenhum resultado parcial é transferido.
 > Nenhum threshold foi relaxado e o veredito geral continua `BLOCKED / NOT PROVEN`.
 
-**Current snapshot:** `28043455f12cf2ef076eafcf09516ffd67007c74` (snapshot funcional; documentação descendente em `42902e95`; evidence graph continua candidate-bound e com status máximo `PARTIAL`; registro P0 com `2` fechados e `12` abertos; provas externas e autoridade de release continuam `NOT PROVEN`).
-**Current CI:** o [CI #35296518702](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35296518702) está `in_progress` no descendente documental exato; nenhum resultado é promovido antes do terminal. Nenhuma threshold foi relaxada.
+**Current snapshot:** `cef206bf4600c3fdb1dbf428ef37e407abaf4996` (verificação WebAuthn/FIDO2, evidence graph candidate-bound e status máximo `PARTIAL`; registro P0 com `2` fechados e `12` abertos; provas externas e autoridade de release continuam `NOT PROVEN`).
+**Current CI:** o [CI #35300563062](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563062) está `in_progress` no SHA exato; nenhum resultado é promovido antes do terminal. Nenhum threshold foi relaxado.
 **Current status:** **BLOCKED / NOT PROVEN**
-**Observation:** 2026-09-18T01:53:20Z
+**Observation:** 2026-09-18T02:45:16Z
 
 **Current candidate delta:** o provider raw consumido pela API agora respeita
 kill switch persistido, expiração, precedência de escopo e allowlist fail-closed;
 seu cache não atravessa `expiresAt`. O boundary foi coberto por cinco testes
 focados, com typecheck/lint do workspace em `68/69`; o ADR-014 registra limites
-da evidência. Essas provas não substituem PostgreSQL/RLS em CI, performance,
+da evidência. O ADR-015 registra a verificação criptográfica WebAuthn/FIDO2,
+o RP ID/origens server-owned, o armazenamento da chave COSE real e a política
+explícita de `attestation: none`; os testes locais passaram `14/14`. Essas provas não substituem PostgreSQL/RLS em CI, performance,
 target, UAT, attestation ou autoridade de release.
 
 **Current local execution:** migration-source PASS; SQL producer PASS com `175` migrações ativas e `7` artefatos históricos; integração PostgreSQL efêmera `105/105` arquivos e `933/933` testes; R05-010 PASS com todos os componentes no threshold congelado; shards unit/native/process/Vue e SQL estão promovidos no manifesto 79. Target, recovery, UAT, attestation e autoridade continuam sem prova aceita. A validação local não substitui CI pinned, target ou UAT.

@@ -1,26 +1,29 @@
 # CVG-HIS V4 — Current Assurance Report
 
-**Candidate funcional avaliado:** `28043455f12cf2ef076eafcf09516ffd67007c74`
-(snapshot funcional reancorado com o registro P0 candidate-bound, correção do produtor de evidência SQL e cobertura de validação HTTP; manifesto crítico revision 79; a documentação corrente está publicada em descendente documental `42902e95f696e8c9456cee7c11afa192c149fefd`; nenhum threshold foi alterado)
+**Candidate funcional avaliado:** `cef206bf4600c3fdb1dbf428ef37e407abaf4996`
+(snapshot com registro P0 candidate-bound, evidence graph, verificação criptográfica WebAuthn/FIDO2, configuração de RP/origens server-owned e thresholds inalterados)
 
 **Verdict:** **BLOCKED / NOT PROVEN**
 
-**Atualização corrente — 2026-09-18:** o produtor SQL aceito cobre `175` migrações
-ativas e `7` artefatos históricos; a integração PostgreSQL efêmera passou
-`105/105` arquivos e `933/933` testes; o gate R05-010 e os shards críticos
-locais estão `PASS`. Isso fecha somente `P0-DATA-POSTGRESQL-RUNTIME` por
-evidência local candidate-bound. O CI exato
-[#35296518702](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35296518702)
-está `in_progress` no snapshot documental observado; há `2` P0 fechados e `12`
-abertos. CI terminal, target, recovery, UAT, attestation, governança e
-autoridade de release continuam sem prova.
+**Atualização corrente — 2026-09-18:** além do baseline PostgreSQL local,
+WebAuthn FIDO2 passou `14/14` testes criptográficos, configuração `47/47`, MFA
+`66/66`, rotas nativas `47/47`, typechecks MFA/API e guards OpenAPI/runtime/
+dependências. O registro persiste o credential ID e a chave pública reais e
+rejeita RP ID vindo de header. O CI exato
+[#35300563062](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563062)
+está `in_progress`; o State of Art Closure
+[#35300563044](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35300563044)
+terminou `success`. Há `2` P0 fechados e `12` abertos; target, recovery, UAT,
+attestation de fabricante, governança e autoridade de release continuam sem
+prova.
 
 ## Executive Summary
 
 O candidato preserva o modular monolith e a reconciliação fail-closed de
-proveniência. A paridade de Patient, o CORS credentialado restrito e os contratos
-de validação HTTP foram validados. O manifesto crítico está na revisão 79 e o
-workflow publica evidência SQL antes do checker. Os shards locais atuais passam,
+proveniência. A paridade de Patient, o CORS credentialado restrito, os contratos
+de validação HTTP e o fluxo WebAuthn criptográfico foram validados. O manifesto
+crítico está na revisão 79 e o workflow publica evidência SQL antes do checker.
+Os shards locais atuais passam,
 mas essa prova não substitui o CI terminal exato nem os gates de target,
 recovery, attestation, UAT, governança ou autoridade de release.
 O provider raw de feature flags agora respeita kill switch persistido, expiração,
@@ -33,9 +36,10 @@ release produtivo ou `TRIPLE-A VERIFIED`.
 
 A validação local corrente passou a fonte canônica de migrações, o produtor SQL
 com `175` migrações ativas e `7` históricos, a integração efêmera com `105/105`
-arquivos e `933/933` testes, R05-010 e os shards críticos unit/native/process/Vue.
-Isso é evidência local; não substitui CI terminal, target, recovery, UAT,
-attestation ou autoridade de release.
+arquivos e `933/933` testes, WebAuthn `14/14`, configuração `47/47`, MFA
+`66/66`, rotas nativas `47/47`, R05-010 e os typechecks da API. Isso é evidência
+local; não substitui CI terminal, target, recovery, UAT, attestation ou
+autoridade de release.
 
 ## Contexto histórico — revisão 59 / snapshot `d9acec6e`
 
