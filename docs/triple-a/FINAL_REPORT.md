@@ -23,7 +23,7 @@ prova.
 O candidato preserva o modular monolith e a reconciliação fail-closed de
 proveniência. A paridade de Patient, o CORS credentialado restrito, os contratos
 de validação HTTP e o fluxo WebAuthn criptográfico foram validados. O manifesto
-crítico está na revisão 79 e o workflow publica evidência SQL antes do checker.
+crítico está na revisão 80 e o workflow publica evidência SQL antes do checker.
 Os shards locais atuais passam,
 mas essa prova não substitui o CI terminal exato nem os gates de target,
 recovery, attestation, UAT, governança ou autoridade de release.

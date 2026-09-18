@@ -10,6 +10,12 @@ transfere evidência de candidatos anteriores nem fecha gates externos.
 
 SHA de código e documentação: `4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d`.
 
+- manifesto de cobertura crítica na revisão `80`, ancorado no candidato
+  funcional, com `node --test scripts/critical-source-manifest.test.mjs`
+  **16/16 PASS** e `refresh-critical-source-manifest.mjs --check` **PASS**;
+- o rebind atualiza seis hashes de fontes modificadas e preserva o manifesto
+  anterior em `artifacts/remediation/MA-02/refresh/`;
+
 - `pnpm --filter @cvg-his-v2/module-mfa typecheck`: **PASS**;
 - `pnpm --filter @cvg-his-v2/shared-config typecheck`: **PASS**;
 - testes FIDO2 com chave P-256, attestation CBOR `fmt:none`, assinatura,

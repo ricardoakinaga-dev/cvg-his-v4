@@ -22,7 +22,7 @@ o RP ID/origens server-owned, o armazenamento da chave COSE real e a política
 explícita de `attestation: none`; os testes locais passaram `14/14`. Essas provas não substituem PostgreSQL/RLS em CI, performance,
 target, UAT, attestation ou autoridade de release.
 
-**Current local execution:** migration-source PASS; SQL producer PASS com `175` migrações ativas e `7` artefatos históricos; integração PostgreSQL efêmera `105/105` arquivos e `933/933` testes; R05-010 PASS com todos os componentes no threshold congelado; shards unit/native/process/Vue e SQL estão promovidos no manifesto 79. Target, recovery, UAT, attestation e autoridade continuam sem prova aceita. A validação local não substitui CI pinned, target ou UAT.
+**Current local execution:** migration-source PASS; SQL producer PASS com `175` migrações ativas e `7` artefatos históricos; integração PostgreSQL efêmera `105/105` arquivos e `933/933` testes; R05-010 PASS com todos os componentes no threshold congelado; shards unit/native/process/Vue e SQL estão referenciados no manifesto 80, sem promoção de nova cobertura. Target, recovery, UAT, attestation e autoridade continuam sem prova aceita. A validação local não substitui CI pinned, target ou UAT.
 
 **Current critical gate:** `node scripts/check-critical-coverage.mjs` terminou `PASS` no candidato documental, com candidate binding `DOCUMENTATION_ONLY_DESCENDANT`. O CI remoto exato ainda está em execução; target, recovery, UAT, attestation e autoridade permanecem sem prova. O gate agregado local/Triple-A permanece `BLOCKED / NOT PROVEN` e `publication_allowed=false`.
 

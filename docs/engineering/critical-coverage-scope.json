@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "28043455f12cf2ef076eafcf09516ffd67007c74",
+  "head": "4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -562,7 +562,7 @@
     },
     {
       "path": "apps/api/src/routes/auth-routes.ts",
-      "sha256": "d76fea83cc0ecfa57bff0a4770a9204de8e318eb8a8d51d34e9f158c0e09ec02",
+      "sha256": "167ff1a3fed483432f6e1b6432f1857eb869766cca2a9fdf460234c3fde90808",
       "components": [
         "auth",
         "http-routes"
@@ -862,7 +862,7 @@
     },
     {
       "path": "apps/api/src/routes/openapi-routes.ts",
-      "sha256": "da2a5f2faabcd69dd16d44130057fa381236a5d6167031696ed64e77ab0303e8",
+      "sha256": "516d1ef0f91d7e2b0d8ce64cd32a05edb48e85934f4244deb3044d3662fd04ac",
       "components": [
         "http-routes"
       ],
@@ -1070,7 +1070,7 @@
     },
     {
       "path": "apps/api/src/server.ts",
-      "sha256": "a50994a8161c5c724c419a61193686e8b64faf5c2f667d484f46e748904959ff",
+      "sha256": "737b9fc32fdaa45939c6d46d43f77df91d9d2465772a18732306a3e693f7f923",
       "components": [
         "http-routes"
       ],
@@ -5185,7 +5185,7 @@
     },
     {
       "path": "packages/modules/mfa/src/index.ts",
-      "sha256": "f5b16a94378481dfcae263827ca2ceabed7ba1a52c9492970d5ced5790d46d8f",
+      "sha256": "d9d7824e077998e56951b4cd97d41b339bf77e4bfbddff9557b69fb4793b77a2",
       "components": [
         "auth"
       ],
@@ -5217,7 +5217,7 @@
     },
     {
       "path": "packages/modules/mfa/src/repositories/database-webauthn.repository.ts",
-      "sha256": "7f551838ea4e7e9eddad49153d077cbe9b5e6c88535be7cb634634c0bc9f2310",
+      "sha256": "23db8f8d71fb915c450fdcbaeea9314c1eea01bf827d48c605032e9f68b3fadc",
       "components": [
         "auth",
         "repositories"
@@ -5270,7 +5270,7 @@
     },
     {
       "path": "packages/modules/mfa/src/webauthn.ts",
-      "sha256": "4590b00b7b6757018191ce612bd3016d7b72701f098cd554b0841b561d133d8c",
+      "sha256": "e55d32d03a934bc3b985ff31a0381fe1ccb7083878d605310a6fe087e0c6bdd1",
       "components": [
         "auth"
       ],
@@ -11730,6 +11730,50 @@
         "tests/unit/api/security-headers.test.ts"
       ],
       "vitestRemoved": []
+    },
+    {
+      "manifestRevision": 80,
+      "observedAt": "2026-09-18T03:39:43.159Z",
+      "collectionCommit": "4e71d3ff9f53a3b24e656ecb09d2f12311fb3a2d",
+      "previousManifestSha256": "987b3a9ce8cbbc0670b0ed45b06d00fbaa91676f1b608363effda4a9b7f5dbd1",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-987b3a9ce8cbbc0670b0ed45b06d00fbaa91676f1b608363effda4a9b7f5dbd1.json",
+      "previousSourceSetSha256": "f38d14580fa8fe25fbf2013008e267a3618a19fbdb2b54745ecca33e3e64657b",
+      "sourceSetSha256": "7b8deaee7ed03df83dbd7e2d61ae5cc749e7484a40ddd8ff6a14217443d37aa9",
+      "reason": "Rebind critical source identity after cryptographic WebAuthn and OpenAPI runtime fixes",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/routes/auth-routes.ts",
+          "before": "d76fea83cc0ecfa57bff0a4770a9204de8e318eb8a8d51d34e9f158c0e09ec02",
+          "after": "167ff1a3fed483432f6e1b6432f1857eb869766cca2a9fdf460234c3fde90808"
+        },
+        {
+          "path": "apps/api/src/routes/openapi-routes.ts",
+          "before": "da2a5f2faabcd69dd16d44130057fa381236a5d6167031696ed64e77ab0303e8",
+          "after": "516d1ef0f91d7e2b0d8ce64cd32a05edb48e85934f4244deb3044d3662fd04ac"
+        },
+        {
+          "path": "apps/api/src/server.ts",
+          "before": "a50994a8161c5c724c419a61193686e8b64faf5c2f667d484f46e748904959ff",
+          "after": "737b9fc32fdaa45939c6d46d43f77df91d9d2465772a18732306a3e693f7f923"
+        },
+        {
+          "path": "packages/modules/mfa/src/index.ts",
+          "before": "f5b16a94378481dfcae263827ca2ceabed7ba1a52c9492970d5ced5790d46d8f",
+          "after": "d9d7824e077998e56951b4cd97d41b339bf77e4bfbddff9557b69fb4793b77a2"
+        },
+        {
+          "path": "packages/modules/mfa/src/repositories/database-webauthn.repository.ts",
+          "before": "7f551838ea4e7e9eddad49153d077cbe9b5e6c88535be7cb634634c0bc9f2310",
+          "after": "23db8f8d71fb915c450fdcbaeea9314c1eea01bf827d48c605032e9f68b3fadc"
+        },
+        {
+          "path": "packages/modules/mfa/src/webauthn.ts",
+          "before": "4590b00b7b6757018191ce612bd3016d7b72701f098cd554b0841b561d133d8c",
+          "after": "e55d32d03a934bc3b985ff31a0381fe1ccb7083878d605310a6fe087e0c6bdd1"
+        }
+      ]
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12663,8 +12707,8 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 79,
-  "sourceSetSha256": "f38d14580fa8fe25fbf2013008e267a3618a19fbdb2b54745ecca33e3e64657b",
+  "manifestRevision": 80,
+  "sourceSetSha256": "7b8deaee7ed03df83dbd7e2d61ae5cc749e7484a40ddd8ff6a14217443d37aa9",
   "executionInputsSha256": "6896d22c77285ff9af7a2934320c88f706e93d7105c5e15fa9b17483d3487560",
   "specializedEvidence": {
     "sql": {

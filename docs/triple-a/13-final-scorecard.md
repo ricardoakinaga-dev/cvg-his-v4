@@ -7,12 +7,12 @@
 | CURRENT CI         | [CI #35302897107](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35302897107) estava `pending` na observação; [State of Art Closure #35302897028](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35302897028) estava em execução, mas não substitui os gates externos |
 | LOCAL STRICT GATE  | R05-010 e SQL local `PASS`; release/Triple-A continuam `NOT_PROVEN`, `claim=NOT PROVEN`, `publication_allowed=false` |
 | FROZEN QUALITY BAR | mínimo `97`, crítico `95`, máximo `0` P0                                                                                                                                                                                                                  |
-| LOCAL VALIDATION   | Migration-source PASS; integração efêmera `105/105` arquivos e `933/933` testes; WebAuthn FIDO2 `14/14`, configuração `47/47`, MFA `66/66`, rotas nativas `47/47` e typechecks MFA/API PASS; a validação local não prova CI exato, target, recovery, UAT, attestation ou autoridade |
+| LOCAL VALIDATION   | Migration-source PASS; integração efêmera `105/105` arquivos e `933/933` testes; WebAuthn FIDO2 `14/14`, configuração `47/47`, MFA `66/66`, rotas nativas `47/47`, OpenAPI `5/5`, manifesto crítico `16/16` e typechecks MFA/API PASS; a validação local não prova CI exato, target, recovery, UAT, attestation ou autoridade |
 | VERIFIED TARGET    | `NOT PROVEN`                                                                                                                                                                                                                                              |
 | CURRENT VERDICT    | **BLOCKED / NOT PROVEN**; o CI exato está em execução e target, recovery, UAT, attestation, governança e autoridade externa continuam sem prova |
 
 O snapshot corrente preserva a régua congelada e reancora o manifesto crítico
-na revisão 79. O registro P0 adiciona deduplicação, dependências, classificação
+na revisão 80. O registro P0 adiciona deduplicação, dependências, classificação
 de execução e fechamento candidate-bound ao gate de release. O CI #190 detectou a rejeição de inicializadores V8 legítimos do
 Node 22 e a ausência do produtor SQL; os CI #191/#192 confirmaram a correção no
 Critical Coverage Gate dos ancestrais. O CI #196 confirmou o Critical Coverage
