@@ -110,6 +110,37 @@ describe('openapi-routes', () => {
     expect(response.body).toBe('OpenAPI spec not available');
   });
 
+  it('reuses the cached YAML and parsed OpenAPI specification', async () => {
+    const { handleOpenApiRoutes } = await import('../../../apps/api/src/routes/openapi-routes.ts');
+    const jsonResponse = new MockResponse();
+
+    expect(
+      handleOpenApiRoutes(
+        { method: 'GET', url: '/openapi.json' } as never,
+        jsonResponse as never
+      )
+    ).toBe(true);
+
+    const cachedJsonResponse = new MockResponse();
+    expect(
+      handleOpenApiRoutes(
+        { method: 'GET', url: '/openapi.json' } as never,
+        cachedJsonResponse as never
+      )
+    ).toBe(true);
+    expect(cachedJsonResponse.bodyJson<{ openapi: string }>().openapi).toBe('3.0.3');
+
+    const yamlResponse = new MockResponse();
+    expect(
+      handleOpenApiRoutes(
+        { method: 'GET', url: '/openapi.yaml' } as never,
+        yamlResponse as never
+      )
+    ).toBe(true);
+    expect(yamlResponse.getHeader('content-type')).toBe('text/yaml');
+    expect(yamlResponse.body).toContain('openapi: 3.0.3');
+  });
+
   it('ignores non-GET requests', async () => {
     const { handleOpenApiRoutes } = await import('../../../apps/api/src/routes/openapi-routes.ts');
     const response = new MockResponse();

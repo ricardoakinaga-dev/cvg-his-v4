@@ -41,7 +41,9 @@ const LEGACY_FORWARD_TARGETS = [
   '0171_outbox_event_envelope_backfill_correction',
   '0172_outbox_event_envelope_full_validity_backfill',
   '0173_feature_flag_override_scope_uniqueness',
-  '0174_feature_flag_override_tenant_ownership'
+  '0174_feature_flag_override_tenant_ownership',
+  '0175_access_control_change_versions',
+  '0176_access_control_change_version_cleanup'
 ];
 const QUERY_TIMEOUT_MS = 30000;
 const MIGRATION_TIMEOUT_MS = 300000;
@@ -717,12 +719,17 @@ export async function produceSqlMigrationEvidence({ root = ROOT, output = null }
           });
           const corruptedMigration = migrations.find((migration) => migration.name === '0000_vengeful_pet_avengers');
           if (!corruptedMigration) throw new Error('corruption target is missing from canonical inventory');
-          const beforeData = await snapshotData(client, catalog);
+          // The checksum-failure scenario intentionally stops at the 0169
+          // prefix. Snapshot that database's own catalog so later migrations
+          // that add tables (for example 0175) do not make the pre-upgrade
+          // fixture unreadable before the failure is exercised.
+          const prefixCatalog = await catalogSnapshot(client);
+          const beforeData = await snapshotData(client, prefixCatalog);
           await client.query('UPDATE drizzle_migrations SET hash = $1 WHERE migration_name = $2', ['0'.repeat(64), corruptedMigration.name]);
           const failed = runMigration(root, urls.failure, null);
           saveLog(outputRoot, 'failure-recovery-corrupted-head', failed);
           const observedRows = await migrationRows(client);
-          const afterFailedData = await snapshotData(client, catalog);
+          const afterFailedData = await snapshotData(client, prefixCatalog);
           assert.notEqual(failed.status, 'passed', 'checksum corruption unexpectedly passed');
           assert.deepEqual(afterFailedData, beforeData, 'failed checksum guard changed data');
           assert.equal(observedRows.length, prefixStep.migrationRows.length, 'failed checksum guard created a migration row');
