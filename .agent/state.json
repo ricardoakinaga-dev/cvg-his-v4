@@ -18,7 +18,7 @@
   "active_execplan": ".agent/plans/main-unification-20260918.md",
   "active_task": "UNIFY-MAIN",
   "verification_state": "PARTIAL",
-  "repository_state": "Integrated source verified locally: critical unit2965/2965, nativeAPI679/679, unprofiled k6 queryp95=79ms and all9SLOs pass. Exact remote CI and post-publication branch cleanup are the next observations; external Triple-A certification remains NOT PROVEN.",
+  "repository_state": "Only main remains locally/remotely; complete backup verified. First exact CI35343988828 failed performance191ms and stale critical manifest binding; all five collectors passed. Final sourced8d8b821 locally passes global2932/82.03%, nativeAPI679/679, build, focused independent review and unchanged4CPU/60VU k6 all9SLOs/query29ms. Manifest83 reanchored after source commit. New exact remote CI remains pending; external Triple-A certification remains NOT PROVEN.",
   "instruction_scope_refs": [
     ".agent/plans/repository-state-of-art-remediation-execplan.md",
     "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
@@ -33,12 +33,12 @@
     "docs/2026-09-13-backlog-prontidao-producao.md"
   ],
   "last_gate_record": ".agent/gates/implementation-ready-unify-main-20260918.json",
-  "last_event_id": "EVT-UNIFY-MAIN-LOCAL-VERIFIED-20260918",
-  "state_revision": 117,
+  "last_event_id": "EVT-UNIFY-MAIN-SECOND-REPAIR-20260918",
+  "state_revision": 118,
   "next_gate": "VERIFIED",
   "active_action_id": "UNIFY-MAIN:VERIFY-CANDIDATE",
   "blocked_by": [
-    "Final remote CI must be inspected after publication; baseline35311529944 failed coverage global/critical and query latency, repaired locally.",
+    "New exact remote CI must pass after source d8d8b821 and manifest83 publication; predecessor failed performance and collection identity.",
     "Matriz visual cross-browser local: Chromium 29/29 PASS, Firefox 0/29 e WebKit 0/29 em comparação contra snapshots Chromium; UAT visual e acessibilidade independente continuam ausentes",
     "Decisao de autoridade sobre a unificacao da identidade dual do process shard e aceite QA/release do instrumento",
     "PROD-004/005/011/012/013 aceitos no escopo seguem BLOCKED ate cadeia bottom-up (002/003 DONE)",
@@ -65,5 +65,5 @@
     "PROD-027 behavioral parity taxonomy, 45-module classification, fixtures and acceptance — Product/QA/domain authority",
     "PROD-062 family verifier trust root, targets, limits, issuer policy and acceptance — Platform/Security/QA authority"
   ],
-  "updated_at": "2026-09-18T12:16:53.152599+00:00"
+  "updated_at": "2026-09-18T13:01:51.903773+00:00"
 }

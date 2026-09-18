@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "97d22de041c6474f8b30ea11264d0576da8a1493",
+  "head": "d8d8b82196be8d29c6a06e7d3c15633bd06b5627",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -11840,6 +11840,19 @@
           "after": "fba6ff07f020649fab093da7386af72fb6b5f8ef99c65b60dbf74bc9ab11884d"
         }
       ]
+    },
+    {
+      "manifestRevision": 83,
+      "observedAt": "2026-09-18T12:59:26.136Z",
+      "collectionCommit": "d8d8b82196be8d29c6a06e7d3c15633bd06b5627",
+      "previousManifestSha256": "55e566a0c15ff95c572f5ab1bf9cf046f9a5af4ddd16d4d27540cc3ef67ead70",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-55e566a0c15ff95c572f5ab1bf9cf046f9a5af4ddd16d4d27540cc3ef67ead70.json",
+      "previousSourceSetSha256": "4d0da3e15f9f67d45dca1105515c1cf104157c003244320ad2eee86813e4fa2d",
+      "sourceSetSha256": "4d0da3e15f9f67d45dca1105515c1cf104157c003244320ad2eee86813e4fa2d",
+      "reason": "Bind unchanged frozen critical scope to committed final unification source after exact CI rejected predecessor collection identity",
+      "added": [],
+      "removed": [],
+      "changed": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12773,7 +12786,7 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 82,
+  "manifestRevision": 83,
   "sourceSetSha256": "4d0da3e15f9f67d45dca1105515c1cf104157c003244320ad2eee86813e4fa2d",
   "executionInputsSha256": "0a6adfa2285dd13ffd912a42c0460f970facb8aadc7c89f0f80cc054c9ae3903",
   "specializedEvidence": {

@@ -13,11 +13,17 @@ Preserve valuable changes from every local and remote branch in one `main`, repa
 - [x] (2026-09-18) Downloaded exact failing-job logs and coverage/performance artifacts.
 - [x] (2026-09-18) Repaired OpenAPI fixtures, gateway branch cases and deterministic WebAuthn signature corruption; cached immutable OpenAPI serialization after CPU profiling.
 - [x] (2026-09-18) Local critical unit 2965/2965, native API 679/679, build/typecheck/lint/secrets and focused independent reviews passed; unchanged unprofiled 60-VU benchmark passed 9/9 SLOs (query p95 79ms).
-- [ ] Inspect exact remote CI and remove reconciled branches after publication.
+- [x] (2026-09-18) Published `6e724d07`; verified only main remains locally/remotely and the complete historical bundle remains valid.
+- [x] (2026-09-18) Exact remote CI 35343988828 passed global coverage (82.02% branches), build, unit tests, repository/security/API guards and visual regression. Performance failed query p95 191ms versus 150ms; remaining jobs were still running at observation.
+- [x] (2026-09-18) Profiled remaining array movement; source `d8d8b821` preserves audit ordering and SLO retention with amortized writes. Focused tests/review, global2932/82.03%, nativeAPI679/679 and four-CPU unprofiled k6 (9/9, query29ms) passed.
+- [x] (2026-09-18) Diagnosed critical CI identity rejection: all five collectors passed, but manifest collection head preceded source changes. Reanchored manifest83 explicitly after final source commit; scope/thresholds/checker unchanged.
+- [ ] Publish the correctly anchored candidate and verify its exact remote CI.
 
 ## Surprises & Discoveries
 
 Local main `b7e10072` diverges by 38 commits from remote main, which has 82 additional commits. Three remote branches are already ancestors. The remaining branch contains alternative ACL migrations as well as changes already imported. CI baseline: global branch coverage 81.97% versus 82%; two OpenAPI fallback tests fail under the critical Node environment; query latency p95 202ms versus 150ms.
+
+The first published repair passed the same local workload but missed the hosted query SLO (191ms). Raw remote artifacts show no substantial database lock/I/O contention; reproduce the four-CPU runner resource budget before selecting another repair. Preserve the failed run and independent FAIL review as evidence; local success does not override the hosted failure.
 
 ## Decision Log
 

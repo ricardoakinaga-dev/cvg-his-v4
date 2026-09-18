@@ -84,6 +84,77 @@ não substituem o job remoto. Fonte, massa de dados, workload, limites e
 autenticação foram mantidos. PostgreSQL/Redis descartáveis foram removidos.
 Varredura de segredos e lint final da API passaram.
 
+## Publicação e segunda rodada de performance
+
+O commit `6e724d07` foi publicado por fast-forward. As quatro branches remotas
+reconciliadas foram removidas atomicamente; as duas branches locais redundantes
+também foram removidas após destacar a worktree limpa. A main local foi
+sincronizada; `git ls-remote --heads origin` e a enumeração local confirmaram
+somente `main`. O bundle anterior foi novamente verificado antes da operação.
+
+O [CI 35343988828](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35343988828)
+confirmou cobertura global de **82,02% de branches**, 2.928 testes aprovados e
+três skips existentes. Segurança, dependências, tipos, lint, build, contratos,
+testes unitários, integração, E2E e regressão visual passaram. O benchmark
+remoto falhou: **query p95 191ms**, limite 150ms; 8/9 SLOs passaram, sem erros
+HTTP. A revisão independente reprovou a aceitação automatizada desse snapshot.
+O resultado local de 79ms não foi usado para sobrepor essa falha.
+
+O mesmo CI terminou com falha no gate crítico: os cinco coletores passaram,
+mas a promoção rejeitou o manifesto ainda ancorado em `97d22de0`, anterior às
+mudanças de código. O refresh antes do commit atualizou hashes, porém não
+poderia conhecer o futuro SHA de fonte. O reparo é executar o refresh canônico
+com `--head` explícito **após** o commit de fonte, seguido por commit somente de
+documentação/manifesto. As verificações de identidade e ancestralidade continuam
+intactas. Nenhum resultado rejeitado foi promovido como cobertura aceita.
+
+O artefato remoto não mostrou contenção relevante por locks ou I/O de banco.
+Uma reprodução com API, PostgreSQL, Redis e k6 nos mesmos quatro CPUs lógicos
+identificou custos de CPU no histórico de auditoria (5,051s em `write`) e na
+retenção de métricas (2,329s em `pruneSloObservations`). O gerador de carga
+também gasta CPU ao interpretar OpenAPI; seu workload permanece intacto.
+
+A auditoria agora acrescenta eventos ao final do armazenamento interno e
+materializa snapshots na ordem pública original, inclusive após refresh por
+account e empates de timestamp. Nenhuma operação de persistência mudou.
+A retenção SLO usa um cursor e compactação amortizada, preservando os últimos
+20 mil registros ativos e as mesmas janelas de 5 minutos/1 hora. O armazenamento
+de apoio fica abaixo de 40 mil posições; registros retirados dos cálculos podem
+permanecer na memória até a próxima compactação. São apenas timestamps, duração
+e status HTTP, sem payload de pacientes.
+
+Manter o deslocamento por requisição preservaria o custo medido. Uma estrutura
+circular introduziria mais estados/índices sem necessidade para esse limite.
+Foi escolhido o cursor local, sem novas dependências, migrations, cache de
+autoridade ou mudança de contrato. A reversão é uma alteração de código normal.
+
+Os 50 testes focados de métricas/SLO e os 32 de auditoria passaram. A crítica
+independente executou 35 testes e aprovou os quatro arquivos com fingerprints
+pré/pós idênticos. A atualização canônica do manifesto crítico retornou `noop`:
+esses dois arquivos não pertencem aos 555 caminhos congelados; o escopo de
+cobertura permanece inalterado.
+
+A cobertura global integrada passou com **2.932 testes, três skips existentes
+e 82,03% de branches**. A nova coleta nativa da API passou **679/679**, sem
+skips, com migrate/seed em PostgreSQL privado; run
+`68e1c454-1843-4df4-b1fb-d3cc2e8cdd91`. O build integrado também passou.
+O perfil seguinte reduziu o tempo próprio de `audit.write` de 5,051s para
+0,536s; `pruneSloObservations` deixou de registrar tempo próprio amostrado.
+A comparação de latência desse perfil teve interferência de carga concorrente
+do host e não é usada como melhoria percentual de latência.
+
+Na confirmação final sem profiler, com novo seed e quatro CPUs, passaram
+**9/9 SLOs**, query p95 **29ms**, API p95 **26,44ms**, zero erros HTTP,
+100% de disponibilidade e **4.322 iterações**. A carga e os limites são os
+originais; o resultado continua sendo local e requer confirmação remota.
+
+Fonte final: `d8d8b82196be8d29c6a06e7d3c15633bd06b5627`. O manifesto foi então
+reancorado nesse SHA pela ferramenta canônica, revision83, sem mudar os hashes
+dos 555 caminhos. O CI do novo candidato permanece pendente até publicação e
+resultado terminal. A união diagnóstica dos cinco relatórios brutos do CI
+anterior mostrou os 40 indicadores acima de 85%, mas não foi promovida nem
+tratada como aceitação: somente a execução com identidade válida fecha o gate.
+
 ## Limites da conclusão
 
 A consolidação do Git não concede certificação operacional. A régua
@@ -93,5 +164,6 @@ enquanto essas exigências não forem satisfeitas. Thresholds, escopo de cobertu
 workload k6 e controles de autenticação permanecem congelados.
 
 Plano e critérios executáveis:
-`.agent/plans/main-unification-20260918.md`. Resultados finais e publicação serão
-registrados após as verificações do candidato.
+`.agent/plans/main-unification-20260918.md`. A consolidação Git está concluída;
+a aceitação automatizada depende do CI final exato, e a certificação operacional
+continua sujeita às evidências externas acima.

@@ -4,24 +4,28 @@
 
 | Campo | Estado |
 | --- | --- |
-| CURRENT SNAPSHOT | `17b584bb6f0288b47d9c89a62fc2246387809f51` |
+| CURRENT SNAPSHOT | `d8d8b82196be8d29c6a06e7d3c15633bd06b5627` |
 | CURRENT VERDICT | **BLOCKED / NOT PROVEN** para certificação Triplo AAA |
-| MAIN / ORIGIN | Candidato descendente de `97d22de0`; publicação e CI remoto pendentes neste registro |
-| LOCAL VALIDATION | Unitário crítico 2965/2965; API nativa 679/679; k6 9/9, query p95 79ms |
+| MAIN / ORIGIN | Somente main; nova fonte descendente de `6e724d07`; CI final pendente |
+| LOCAL VALIDATION | Global 2932/82,03%; API nativa 679/679; k6 9/9, query p95 29ms |
 
-A revisão de todas as branches confirmou que os deltas úteis já estavam na
-main canônica. O candidato corrige os testes de fallback OpenAPI e de assinatura
-WebAuthn, cobre erros/filtros reais e reutiliza a serialização do documento
-OpenAPI. Build, tipos, lint, segredos, 2.965 testes unitários críticos, 679 testes
-nativos da API e os nove SLOs do perfil local de 60 VUs passaram. A confirmação
-sem profiler mediu query p95 de 79ms, abaixo de 150ms. A cobertura global de
-82,01% foi coletada antes da otimização; o CI exato repetirá os gates completos.
+A consolidação Git está concluída: somente main permanece localmente e no
+GitHub, com histórico anterior em bundle verificado. O candidato preserva os
+reparos de OpenAPI, WebAuthn e cobertura e remove o deslocamento de arrays por
+requisição na auditoria e nas métricas, mantendo ordem, retenção e persistência.
+A validação integrada local passou: cobertura global 2.932 testes/82,03% de
+branches, API nativa 679/679 sem skips, build e testes focados. A crítica
+independente aprovou os quatro arquivos alterados. O benchmark sem profiler,
+com quatro CPUs e workload original de até 60 VUs, passou 9/9 SLOs: query p95
+29ms, zero erros HTTP, 4.322 iterações.
 
 [Relatório atual, decisões por branch e limitações](./29-main-unification-20260918.md).
-Manifesto crítico revision82; escopo, thresholds e workload preservados.
-O último CI inspecionado é o [35311529944](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35311529944),
-que pertence à baseline97d22de0 e falhou em cobertura global/crítica e performance.
-O resultado remoto do novo candidato ainda não existe no momento deste registro.
+Manifesto crítico revision83, ancorado no commit funcional acima; escopo,
+thresholds e workload preservados. O [CI 35343988828](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35343988828)
+pertence ao predecessor6e724d07 e falhou em performance (query191ms) e na
+identidade do manifesto crítico. Os cinco coletores passaram, porém a promoção
+foi rejeitada. O manifesto foi reancorado após o commit funcional; o resultado
+remoto do novo candidato será observado após publicação.
 
 Target, UAT, recuperação operacional, attestations e autoridade de release
 continuam sem prova suficiente; não há declaração de certificação Triplo AAA.
