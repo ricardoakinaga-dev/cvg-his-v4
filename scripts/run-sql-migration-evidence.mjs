@@ -41,7 +41,8 @@ const LEGACY_FORWARD_TARGETS = [
   '0171_outbox_event_envelope_backfill_correction',
   '0172_outbox_event_envelope_full_validity_backfill',
   '0173_feature_flag_override_scope_uniqueness',
-  '0174_feature_flag_override_tenant_ownership'
+  '0174_feature_flag_override_tenant_ownership',
+  '0175_access_control_change_versions'
 ];
 const QUERY_TIMEOUT_MS = 30000;
 const MIGRATION_TIMEOUT_MS = 300000;
