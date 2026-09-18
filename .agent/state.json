@@ -18,7 +18,7 @@
   "active_execplan": ".agent/plans/main-unification-20260918.md",
   "active_task": "UNIFY-MAIN",
   "verification_state": "PARTIAL",
-  "repository_state": "Only main remains; history preserved. PredecessorCI35349067677 passed performance9/9/query137ms, global2932/82.03%, repository guards/build/unit/API/visual/Windows. Integration618assertions passed but uncaught57P01 exposed fixture shutdown race. Both affected fixtures repaired with bounded drainage; deterministic real-PG regression and focused18/18 pass; independent critic confirmed error/timeout/isolation and assertion-failure cleanup after repair. Final exactCI pending; runtime source remains d8d8b821.",
+  "repository_state": "Only main remains, complete history bundle verified. ExactCI35352873670@47ba9c54 finished16/17PASS: critical/global82.03%,619integration,unit/E2E/API/visual/security/build/Windows; performanceFAILquery184.8/API207.65. Native full-body k6 JSON decoding preserves requestmix/checks/thresholds/GOMAXPROCS1. Matched4CPU local profiled baseline/native: query102→20ms,9/9PASS,3421→4516iterations,k6CPU116.86→66.06s. Independent I1 approved6files,63nativechecks,6contracts and failurecleanup. Final exactCI pending; runtime source stilld8d8b821.",
   "instruction_scope_refs": [
     ".agent/plans/repository-state-of-art-remediation-execplan.md",
     "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
@@ -33,12 +33,12 @@
     "docs/2026-09-13-backlog-prontidao-producao.md"
   ],
   "last_gate_record": ".agent/gates/implementation-ready-unify-main-20260918.json",
-  "last_event_id": "EVT-UNIFY-MAIN-FIXTURE-VERIFIED-20260918",
-  "state_revision": 119,
+  "last_event_id": "EVT-UNIFY-MAIN-K6-NATIVE-20260918",
+  "state_revision": 120,
   "next_gate": "VERIFIED",
   "active_action_id": "UNIFY-MAIN:VERIFY-CANDIDATE",
   "blocked_by": [
-    "Final exact CI required after repairing owned PostgreSQL fixture shutdown race; preserve prior remote performance/coverage successes as predecessor evidence only.",
+    "Final exact CI required for equivalent native k6 decoder repair; prior matched local experiments support mechanism but do not substitute hosted acceptance.",
     "Matriz visual cross-browser local: Chromium 29/29 PASS, Firefox 0/29 e WebKit 0/29 em comparação contra snapshots Chromium; UAT visual e acessibilidade independente continuam ausentes",
     "Decisao de autoridade sobre a unificacao da identidade dual do process shard e aceite QA/release do instrumento",
     "PROD-004/005/011/012/013 aceitos no escopo seguem BLOCKED ate cadeia bottom-up (002/003 DONE)",
@@ -65,5 +65,5 @@
     "PROD-027 behavioral parity taxonomy, 45-module classification, fixtures and acceptance — Product/QA/domain authority",
     "PROD-062 family verifier trust root, targets, limits, issuer policy and acceptance — Platform/Security/QA authority"
   ],
-  "updated_at": "2026-09-18T13:46:00.183771+00:00"
+  "updated_at": "2026-09-18T14:28:13.938884+00:00"
 }

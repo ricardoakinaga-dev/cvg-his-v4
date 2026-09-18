@@ -16,6 +16,7 @@ describe('performance runner provenance', () => {
       LOAD_PROFILE: 'operational-minimum-v1',
       POSTGRES_POOL_MIN: '8',
       POSTGRES_MAX_CONNECTIONS: '60',
+      GOMAXPROCS: '1',
       GITHUB_SHA: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
       GITHUB_ACTIONS: 'true',
       GITHUB_RUN_ID: '123',
@@ -34,6 +35,8 @@ describe('performance runner provenance', () => {
       expect(report.commit_sha).toHaveLength(40);
       expect(report.identity_matches).toBe(true);
       expect(report.workload.target_origin).toBe('https://example.test:8443');
+      expect(report.workload.generator_gomaxprocs).toBe('1');
+      expect(report.after.workload.generator_gomaxprocs).toBe('1');
       expect(report.after.benchmark.outcome).toBe('failure');
       expect(report.duration_ms).toBeGreaterThanOrEqual(0);
       expect(JSON.stringify(report)).not.toContain('secret');

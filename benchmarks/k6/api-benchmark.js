@@ -79,6 +79,17 @@ export const options = {
   }
 };
 
+export function hasOpenApiPaths(response) {
+  try {
+    // k6 decodes the complete body natively; the interpreted JSON.parse
+    // hot path can starve its own HTTP timing callbacks under load.
+    const body = response.json();
+    return body.paths && Object.keys(body.paths).length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export function setup() {
   const loginRes = http.post(
     `${BASE_URL}/auth/login`,
@@ -337,14 +348,7 @@ export default function (data) {
 
     check(res, {
       'openapi returns 200': (r) => r.status === 200,
-      'openapi has paths': (r) => {
-        try {
-          const body = JSON.parse(r.body);
-          return body.paths && Object.keys(body.paths).length > 0;
-        } catch {
-          return false;
-        }
-      }
+      'openapi has paths': hasOpenApiPaths
     });
   });
 

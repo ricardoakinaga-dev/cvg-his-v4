@@ -115,6 +115,7 @@ export function collectPerformanceProvenance({
       target_origin: safeOrigin(env.TARGET),
       postgres_pool_min: env.POSTGRES_POOL_MIN ?? null,
       postgres_max_connections: env.POSTGRES_MAX_CONNECTIONS ?? null,
+      generator_gomaxprocs: env.GOMAXPROCS ?? null,
     },
     benchmark: {
       outcome: benchmarkOutcome,

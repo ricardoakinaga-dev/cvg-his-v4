@@ -20,7 +20,9 @@ Preserve valuable changes from every local and remote branch in one `main`, repa
 - [x] (2026-09-18) Reanchored general candidate identity after its stricter checker classified `.agent` execution records as candidate inputs. Both identity contracts passed on committed `0d0ea920` before publication.
 - [x] (2026-09-18) CI35349067677 confirmed repository guards, global2932/82.03%, build, unit/API/Windows/visual checks and all9 performance SLOs (query137ms). Integration assertions618/618 passed, but an uncaught PostgreSQL57P01 exposed a fixture teardown race.
 - [x] (2026-09-18) Repaired both fixtures; focused real-PG18/18 passed. Independent adversarial review reproduced and closed a regression cleanup P2, then confirmed timeout, isolation and propagation. New helper must be registered as execution input; application code unchanged.
-- [ ] Publish the correctly anchored candidate and verify its exact remote CI.
+- [x] (2026-09-18) Published47ba9c54; exactCI35352873670 finished16/17PASS, including619integration and criticalcoverage. Performance failedquery184.8/API207.65.
+- [x] (2026-09-18) Corrected generator reproduction to4CPU/GOMAXPROCS1. Full native JSON decoder preserves bodypredicate/workload;63nativeequivalencechecks and6contracts passed, independent I1 approval. Matched profiles: query102→20ms,3421→4516iterations, k6CPU116.86→66.06seconds.
+- [ ] Publish the correctly anchored native-parser candidate and verify its exact remote CI.
 
 ## Surprises & Discoveries
 
@@ -29,6 +31,8 @@ Local main `b7e10072` diverges by 38 commits from remote main, which has 82 addi
 The first published repair passed the same local workload but missed the hosted query SLO (191ms). Raw remote artifacts show no substantial database lock/I/O contention; reproduce the four-CPU runner resource budget before selecting another repair. Preserve the failed run and independent FAIL review as evidence; local success does not override the hosted failure.
 
 Hosted performance subsequently passed at137ms after removing array movement. Integration then exposed a separate cleanup race: `pg-pool.end()` can resolve before client socket termination; immediately calling `pg_terminate_backend` can deliver an uncaught57P01 to the closing client. Fix the owned test fixture lifecycle with bounded connection drainage, retaining failure visibility and ordinary database drop.
+
+The earlier four-CPU local performance experiment used GOMAXPROCS4 while CI used1; its results did not reproduce generator capacity. The matched follow-up holds both4CPU andGOMAXPROCS1, and profiles interpreted JSON.parse at78% of generator CPU. Full-body native response.json preserves the exact predicate and rejects malformed suffixes; this is an equivalent instrument optimization, not a workload or threshold change. Generator setting is now captured in before/after provenance.
 
 ## Decision Log
 
