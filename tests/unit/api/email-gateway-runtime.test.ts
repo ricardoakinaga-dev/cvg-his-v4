@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   LocalEmailGateway,
@@ -10,6 +10,33 @@ describe('email-gateway runtime coverage', () => {
 
   beforeEach(() => {
     globalThis.fetch = originalFetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('forwards the idempotency key and handles a non-Error transport rejection', async () => {
+    const fetchMock = vi.fn().mockRejectedValue('transport unavailable');
+    globalThis.fetch = fetchMock as typeof fetch;
+    const gateway = new ResendEmailGatewayAdapter({
+      apiKey: 're_test_key',
+      from: 'clinic@example.com'
+    });
+
+    await expect(gateway.send({
+      to: 'owner@example.com',
+      subject: 'Resultado',
+      text: 'Seu exame foi liberado.',
+      idempotencyKey: 'laboratory-result-123'
+    })).resolves.toMatchObject({
+      provider: 'resend',
+      status: 'failed',
+      failureReason: 'Resend send failed before receiving response'
+    });
+    expect(fetchMock).toHaveBeenCalledWith('https://api.resend.com/emails', expect.objectContaining({
+      headers: expect.objectContaining({ 'Idempotency-Key': 'laboratory-result-123' })
+    }));
   });
 
   it('sends local email successfully and simulates deterministic local failures', async () => {
@@ -123,4 +150,3 @@ describe('email-gateway runtime coverage', () => {
     );
   });
 });
-

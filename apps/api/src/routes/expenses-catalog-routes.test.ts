@@ -104,6 +104,78 @@ function createAuditCollector() {
   };
 }
 
+test('expenses catalog rejects duplicate centers and missing mutations without recording successful writes', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'expenses-catalog-errors-'));
+  const storagePath = join(tempDir, 'expenses-catalog.json');
+  const { audit, events } = createAuditCollector();
+  const center = { code: 'LAB-OP', name: 'Laboratório', kind: 'Operacional', owner: 'Equipe', description: 'Centro existente' };
+  const expense = { name: 'Energia', kind: 'Fixo', category: 'Infraestrutura', costCenterCode: 'LAB-OP', description: 'Consumo mensal' };
+  const cases = [
+    { method: 'POST', path: '/cost-centers-catalog', body: center, status: 409, code: 'DUPLICATE_COST_CENTER_CODE' },
+    { method: 'PATCH', path: '/cost-centers-catalog/CLI-ATD', body: center, status: 409, code: 'DUPLICATE_COST_CENTER_CODE' },
+    { method: 'PATCH', path: '/cost-centers-catalog/MISSING', body: center, status: 404, code: 'NOT_FOUND' },
+    { method: 'DELETE', path: '/cost-centers-catalog/MISSING', body: undefined, status: 404, code: 'NOT_FOUND' },
+    { method: 'PATCH', path: '/expenses-catalog/DES-999', body: expense, status: 404, code: 'NOT_FOUND' },
+    { method: 'DELETE', path: '/expenses-catalog/DES-999', body: undefined, status: 404, code: 'NOT_FOUND' }
+  ];
+  try {
+    for (const entry of cases) {
+      const response = new MockResponse();
+      assert.equal(await handleExpensesCatalogRoutes(
+        entry.path,
+        createMockRequest(entry.method, entry.path, entry.body) as never,
+        response as never,
+        'corr-catalog-rejected-write',
+        { audit: audit as never, requirePrincipal: () => createPrincipal(), storagePath }
+      ), true);
+      assert.equal(response.statusCode, entry.status, `${entry.method} ${entry.path}`);
+      assert.equal(response.bodyJson<{ code: string }>().code, entry.code);
+      assert.equal(response.bodyJson<{ correlationId: string }>().correlationId, 'corr-catalog-rejected-write');
+    }
+    assert.deepEqual(events, []);
+    const response = new MockResponse();
+    await handleExpensesCatalogRoutes('/cost-centers-catalog', createMockRequest('GET', '/cost-centers-catalog') as never,
+      response as never, 'corr-catalog-after-errors',
+      { audit: audit as never, requirePrincipal: () => createPrincipal(), storagePath });
+    assert.deepEqual(response.bodyJson<{ items: Array<{ code: string }> }>().items.map((item) => item.code).sort(),
+      ['CLI-ATD', 'ESTOQUE', 'LAB-OP']);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('expenses catalog filters by descriptive text and cost-center names and normalizes pagination', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'expenses-catalog-filters-'));
+  const { audit } = createAuditCollector();
+  const storagePath = join(tempDir, 'expenses-catalog.json');
+  try {
+    const cases = [
+      { path: '/expenses-catalog', query: 'search=estrutural&costCenterCode=Suprimentos', ids: ['DES-101'] },
+      { path: '/expenses-catalog', query: 'costCenterCode=LAB-OP', ids: ['DES-318'] },
+      { path: '/expenses-catalog', query: 'search=absent', ids: [] },
+      { path: '/cost-centers-catalog', query: 'search=Backoffice&kind=Administrativo', ids: ['ESTOQUE'] },
+      { path: '/cost-centers-catalog', query: 'search=separar&kind=Operacional', ids: ['LAB-OP'] },
+      { path: '/cost-centers-catalog', query: 'kind=absent', ids: [] }
+    ];
+    for (const entry of cases) {
+      const response = new MockResponse();
+      await handleExpensesCatalogRoutes(entry.path,
+        createMockRequest('GET', `${entry.path}?${entry.query}&page=-1&pageSize=invalid&order=desc`) as never,
+        response as never, 'corr-catalog-filter',
+        { audit: audit as never, requirePrincipal: () => createPrincipal(), storagePath });
+      assert.equal(response.statusCode, 200);
+      const body = response.bodyJson<{ items: Array<{ id?: string; code?: string }>; page: number; pageSize: number; totalItems: number; order: string }>();
+      assert.deepEqual(body.items.map((item) => item.id ?? item.code), entry.ids, entry.query);
+      assert.equal(body.totalItems, entry.ids.length);
+      assert.equal(body.page, 1);
+      assert.equal(body.pageSize, 10);
+      assert.equal(body.order, 'desc');
+    }
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
 test('expenses catalog routes fail fast on default runtime when database mode is not available', async () => {
   const { audit } = createAuditCollector();
   setAppState({

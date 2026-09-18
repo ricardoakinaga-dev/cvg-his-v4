@@ -14,11 +14,11 @@
   "engineering_tier": "T4_CRITICAL",
   "risk_level": "CRITICAL",
   "blast_radius": "CROSS_SYSTEM",
-  "status": "BLOCKED",
-  "active_execplan": ".agent/plans/repository-state-of-art-remediation-execplan.md",
-  "active_task": "TRIPLE-A-RELEASE-CONTROL",
+  "status": "VERIFY",
+  "active_execplan": ".agent/plans/main-unification-20260918.md",
+  "active_task": "UNIFY-MAIN",
   "verification_state": "PARTIAL",
-  "repository_state": "Reconciliado em 2026-09-18: o candidato integrado é 686c47d09adc6b57d624f3ca822ca649710425f6, descendente direto de origin/main@e011cfd2e47a8a8290b26b5c6328750d71586c95. As branches ancestrais não exigiam merge; da branch final-ci divergente foram mantidos somente deltas auth/health/teste verificados. A migration alternativa de ACL, o teste SQL duplicado e docs/CI obsoletos ficaram fora. Build, DB 36/36, auth 72/72, API 620/620, reexport 17/17, SQL 6/6 e validators candidate-bound passaram. O CI #282 terminal continua FAILURE nos gates Critical Coverage e Performance/k6; o novo CI do candidato está pendente. A matriz visual local executou 29/29 no Chromium e falhou 29/29 em Firefox e WebKit contra snapshots Chromium. Thresholds, denominador, escopo e aplicabilidade permanecem intactos; target, UAT, recovery, attestation, autoridade, cross-browser e Triplo AAA continuam NOT PROVEN.",
+  "repository_state": "Integrated source verified locally: critical unit2965/2965, nativeAPI679/679, unprofiled k6 queryp95=79ms and all9SLOs pass. Exact remote CI and post-publication branch cleanup are the next observations; external Triple-A certification remains NOT PROVEN.",
   "instruction_scope_refs": [
     ".agent/plans/repository-state-of-art-remediation-execplan.md",
     "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
@@ -32,13 +32,13 @@
     "docs/2026-09-13-reauditoria-checkpoint-prod-001-005.md",
     "docs/2026-09-13-backlog-prontidao-producao.md"
   ],
-  "last_gate_record": ".agent/gates/implementation-ready-triple-a-release-control-20260912-r3.json",
-  "last_event_id": "EVT-TRIPLE-A-BRANCH-RECONCILIATION-20260918",
-  "state_revision": 115,
+  "last_gate_record": ".agent/gates/implementation-ready-unify-main-20260918.json",
+  "last_event_id": "EVT-UNIFY-MAIN-LOCAL-VERIFIED-20260918",
+  "state_revision": 117,
   "next_gate": "VERIFIED",
-  "active_action_id": "TRIPLE-A-RELEASE-CONTROL:CI-RERUN-INTEGRATED-CANDIDATE",
+  "active_action_id": "UNIFY-MAIN:VERIFY-CANDIDATE",
   "blocked_by": [
-    "CI #282: Critical Coverage Gate terminou FAILURE (exit 1) e Performance/k6 terminou FAILURE (benchmark exit 99; SLO check exit 1); métricas remotas de performance e diagnóstico do checker exigem inspeção autenticada candidate-bound",
+    "Final remote CI must be inspected after publication; baseline35311529944 failed coverage global/critical and query latency, repaired locally.",
     "Matriz visual cross-browser local: Chromium 29/29 PASS, Firefox 0/29 e WebKit 0/29 em comparação contra snapshots Chromium; UAT visual e acessibilidade independente continuam ausentes",
     "Decisao de autoridade sobre a unificacao da identidade dual do process shard e aceite QA/release do instrumento",
     "PROD-004/005/011/012/013 aceitos no escopo seguem BLOCKED ate cadeia bottom-up (002/003 DONE)",
@@ -65,5 +65,5 @@
     "PROD-027 behavioral parity taxonomy, 45-module classification, fixtures and acceptance — Product/QA/domain authority",
     "PROD-062 family verifier trust root, targets, limits, issuer policy and acceptance — Platform/Security/QA authority"
   ],
-  "updated_at": "2026-09-18T05:30:00Z"
+  "updated_at": "2026-09-18T12:16:53.152599+00:00"
 }

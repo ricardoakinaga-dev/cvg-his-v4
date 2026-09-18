@@ -5,6 +5,11 @@ packages, imagens e Compose são identificadores de compatibilidade governados
 por [RELEASE_IDENTITY.md](docs/engineering/RELEASE_IDENTITY.md), não uma
 segunda versão do produto.
 
+As decisões de consolidação das branches, os reparos e as evidências atuais de
+qualidade estão no [relatório de unificação da main](docs/triple-a/29-main-unification-20260918.md).
+A certificação Triplo AAA depende também das evidências operacionais e humanas
+definidas na [régua de qualidade](docs/triple-a/QUALITY_BAR_V1.json).
+
 Este README foi ajustado para que a instalacao, a atualizacao das imagens e o deploy nao usem artefatos errados, trilhas legadas ou sequencias ambiguas.
 
 ## Fonte de verdade para deploy

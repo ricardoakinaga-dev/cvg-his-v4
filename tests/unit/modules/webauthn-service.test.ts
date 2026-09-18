@@ -162,9 +162,11 @@ describe('WebAuthn FIDO2 verification', () => {
       counter: 1,
       userHandle: userHandle(USER_ID)
     });
+    const tamperedSignature = Buffer.from(validAssertion.signature, 'base64url');
+    tamperedSignature[tamperedSignature.length - 1] ^= 1;
     const invalidSignature = {
       ...validAssertion,
-      signature: `${validAssertion.signature.slice(0, -1)}A`
+      signature: tamperedSignature.toString('base64url')
     };
 
     await expect(

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "686c47d09adc6b57d624f3ca822ca649710425f6",
+  "head": "97d22de041c6474f8b30ea11264d0576da8a1493",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -862,7 +862,7 @@
     },
     {
       "path": "apps/api/src/routes/openapi-routes.ts",
-      "sha256": "516d1ef0f91d7e2b0d8ce64cd32a05edb48e85934f4244deb3044d3662fd04ac",
+      "sha256": "fba6ff07f020649fab093da7386af72fb6b5f8ef99c65b60dbf74bc9ab11884d",
       "components": [
         "http-routes"
       ],
@@ -11821,6 +11821,25 @@
         "packages/modules/auth/src/database-session.repository.test.ts"
       ],
       "vitestRemoved": []
+    },
+    {
+      "manifestRevision": 82,
+      "observedAt": "2026-09-18T12:11:44.848Z",
+      "collectionCommit": "97d22de041c6474f8b30ea11264d0576da8a1493",
+      "previousManifestSha256": "6d2d8759a14e05c6a2f36b2fde53a454d9e309caf281d4c82554062254676262",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-6d2d8759a14e05c6a2f36b2fde53a454d9e309caf281d4c82554062254676262.json",
+      "previousSourceSetSha256": "bbc7338025fac688e9313b648126a1d0b7ae2f3d760a9b42e650c5b61ade1d94",
+      "sourceSetSha256": "4d0da3e15f9f67d45dca1105515c1cf104157c003244320ad2eee86813e4fa2d",
+      "reason": "Unify main: serialize immutable OpenAPI response once; preserve source scope and thresholds",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/routes/openapi-routes.ts",
+          "before": "516d1ef0f91d7e2b0d8ce64cd32a05edb48e85934f4244deb3044d3662fd04ac",
+          "after": "fba6ff07f020649fab093da7386af72fb6b5f8ef99c65b60dbf74bc9ab11884d"
+        }
+      ]
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12754,8 +12773,8 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 81,
-  "sourceSetSha256": "bbc7338025fac688e9313b648126a1d0b7ae2f3d760a9b42e650c5b61ade1d94",
+  "manifestRevision": 82,
+  "sourceSetSha256": "4d0da3e15f9f67d45dca1105515c1cf104157c003244320ad2eee86813e4fa2d",
   "executionInputsSha256": "0a6adfa2285dd13ffd912a42c0460f970facb8aadc7c89f0f80cc054c9ae3903",
   "specializedEvidence": {
     "sql": {

@@ -1973,6 +1973,27 @@
         "target": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
         "completion_signal": "Criterios do cartao PROD-065 atendidos com prova e revisao."
       }
+    },
+    {
+      "id": "UNIFY-MAIN",
+      "title": "Consolidar branches e reparar o CI atual",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "VERIFY",
+      "origin": "USER-20260918-MAIN-UNIFICATION",
+      "dependencies": [],
+      "owner": "lead",
+      "acceptance_summary": "Melhorias importantes preservadas, critérios automatizados verificados, somente main após backup e publicação. Certificação externa permanece vinculada ao quality bar existente.",
+      "evidence_refs": [
+        ".agent/plans/main-unification-20260918.md"
+      ],
+      "next_action": {
+        "id": "UNIFY-MAIN:VERIFY-CANDIDATE",
+        "kind": "VERIFY",
+        "summary": "Verificar os reparos das falhas atuais do candidato unificado.",
+        "target": ".agent/plans/main-unification-20260918.md",
+        "completion_signal": "Resultados atuais de cobertura, desempenho e regressão registrados."
+      }
     }
   ]
 }

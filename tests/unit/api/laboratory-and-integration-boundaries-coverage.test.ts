@@ -248,6 +248,31 @@ describe('laboratory provider keyring', () => {
 });
 
 describe('Google Calendar gateways', () => {
+  it('uses a thirty-minute duration when omitted and handles non-Error transport rejection', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'remote-default-duration' }), { status: 200 }))
+      .mockRejectedValueOnce('transport unavailable');
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const gateway = new GoogleCalendarGatewayAdapter({ accessToken: 'token', calendarId: 'calendar' });
+      const input = appointment({ durationMinutes: undefined });
+      await expect(gateway.syncAppointment(input)).resolves.toMatchObject({
+        status: 'synced',
+        externalEventId: 'remote-default-duration'
+      });
+      const body = JSON.parse(fetchMock.mock.calls[0]![1].body);
+      expect(body.start.dateTime).toBe(input.scheduledAt);
+      expect(body.end.dateTime).toBe(new Date(Date.parse(input.scheduledAt) + 30 * 60_000).toISOString());
+
+      await expect(gateway.syncAppointment(input)).resolves.toMatchObject({
+        status: 'failed',
+        failureReason: 'Google Calendar request failed before response'
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('handles local synced, cancelled and simulated failure appointments', async () => {
     const gateway = new LocalGoogleCalendarGateway();
 

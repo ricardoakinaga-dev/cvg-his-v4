@@ -47,6 +47,7 @@ const API_DOCS_RESPONSE = {
 
 let cachedOpenApiYaml: string | undefined;
 let cachedOpenApiSpec: unknown | undefined;
+let cachedOpenApiJson: string | undefined;
 
 function openApiYamlCandidates(): Array<string | URL> {
   const moduleRelativeCandidates = [
@@ -109,7 +110,14 @@ export function handleOpenApiRoutes(
   }
 
   if (request.url === '/openapi.json') {
-    return sendJson(response, 200, loadOpenApiSpec());
+    // The source and parsed specification are immutable for this process.
+    // Serialize once so concurrent documentation reads do not block the
+    // event loop repeatedly while unrelated API requests are waiting.
+    cachedOpenApiJson ??= JSON.stringify(loadOpenApiSpec());
+    response.setHeader('content-type', 'application/json');
+    response.statusCode = 200;
+    response.end(cachedOpenApiJson);
+    return true;
   }
 
   if (request.url === '/openapi.yaml') {

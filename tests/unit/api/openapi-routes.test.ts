@@ -1,6 +1,5 @@
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import fs from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 class MockResponse {
@@ -38,14 +37,20 @@ describe('openapi-routes', () => {
   });
 
   async function withMissingOpenApi<T>(callback: () => Promise<T>): Promise<T> {
-    const isolatedCwd = mkdtempSync(join(tmpdir(), 'cvg-openapi-missing-'));
-    const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(isolatedCwd);
-
+    // Fail every YAML candidate, including module-relative file URLs in Node.
+    const originalReadFileSync = fs.readFileSync;
+    const readSpy = vi.spyOn(fs, 'readFileSync').mockImplementation((...args) => {
+      if (String(args[0]).endsWith('/openapi.yaml')) {
+        throw Object.assign(new Error('OpenAPI fixture file unavailable'), { code: 'ENOENT' });
+      }
+      return originalReadFileSync(...args);
+    });
+    syncBuiltinESMExports();
     try {
       return await callback();
     } finally {
-      cwdSpy.mockRestore();
-      rmSync(isolatedCwd, { recursive: true, force: true });
+      readSpy.mockRestore();
+      syncBuiltinESMExports();
     }
   }
 
@@ -66,8 +71,9 @@ describe('openapi-routes', () => {
     ).toBe('/openapi.json');
   });
 
-  it('reuses the cached YAML and parsed OpenAPI specification', async () => {
+  it('reuses the cached YAML and serialized OpenAPI specification', async () => {
     const { handleOpenApiRoutes } = await import('../../../apps/api/src/routes/openapi-routes.ts');
+    const stringifySpy = vi.spyOn(JSON, 'stringify');
     const jsonResponse = new MockResponse();
 
     expect(
@@ -77,14 +83,23 @@ describe('openapi-routes', () => {
       )
     ).toBe(true);
 
+    const initialSerializationCount = stringifySpy.mock.calls.length;
     const cachedJsonResponse = new MockResponse();
-    expect(
-      handleOpenApiRoutes(
-        { method: 'GET', url: '/openapi.json' } as never,
-        cachedJsonResponse as never
-      )
-    ).toBe(true);
+    const cachedHandled = handleOpenApiRoutes(
+      { method: 'GET', url: '/openapi.json' } as never,
+      cachedJsonResponse as never
+    );
+    const cachedSerializationCount = stringifySpy.mock.calls.length;
+    expect(cachedHandled).toBe(true);
+    expect(initialSerializationCount).toBeGreaterThan(0);
+    expect(cachedSerializationCount).toBe(initialSerializationCount);
+    expect(cachedJsonResponse.body).toBe(jsonResponse.body);
+    expect(cachedJsonResponse.statusCode).toBe(200);
+    expect(cachedJsonResponse.getHeader('content-type')).toBe('application/json');
     expect(cachedJsonResponse.bodyJson<{ openapi: string }>().openapi).toBe('3.0.3');
+    expect(
+      Object.keys(cachedJsonResponse.bodyJson<{ paths: object }>().paths).length
+    ).toBeGreaterThan(0);
 
     const yamlResponse = new MockResponse();
     expect(
@@ -109,6 +124,7 @@ describe('openapi-routes', () => {
 
       expect(handled).toBe(true);
       expect(response.statusCode).toBe(200);
+      expect(response.getHeader('content-type')).toBe('application/json');
       expect(response.bodyJson<{ openapi: string; paths: Record<string, unknown> }>()).toEqual({
         openapi: '3.0.3',
         info: {
@@ -119,6 +135,16 @@ describe('openapi-routes', () => {
         servers: [{ url: '/', description: 'Local development' }],
         paths: {}
       });
+      const stringifySpy = vi.spyOn(JSON, 'stringify');
+      const repeatedResponse = new MockResponse();
+      handleOpenApiRoutes(
+        { method: 'GET', url: '/openapi.json' } as never,
+        repeatedResponse as never
+      );
+      expect(stringifySpy).not.toHaveBeenCalled();
+      expect(repeatedResponse.body).toBe(response.body);
+      expect(repeatedResponse.statusCode).toBe(200);
+      expect(repeatedResponse.getHeader('content-type')).toBe('application/json');
     });
   });
 

@@ -1,0 +1,65 @@
+{
+  "record_id": "GATE-IR-UNIFY-MAIN-20260918",
+  "timestamp": "2026-09-18T11:53:25.224210+00:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "Consolidação das branches e reparo das falhas observadas de CI; publicação Git autorizada pelo usuário.",
+  "scope_ref": "UNIFY-MAIN",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "Escopo e aceite definidos no plano com critérios congelados.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/plans/main-unification-20260918.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Não certifica produção ou decisões externas."
+    },
+    {
+      "id": "IR-002",
+      "description": "Ownership disjunto, backup verificado e limites de publicação definidos.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/plans/main-unification-20260918.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Não certifica produção ou decisões externas."
+    },
+    {
+      "id": "IR-003",
+      "description": "Reproduções, regressão e crítica independente executáveis no candidato.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/plans/main-unification-20260918.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Não certifica produção ou decisões externas."
+    }
+  ],
+  "evidence": [
+    ".agent/plans/main-unification-20260918.md"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "lead executor",
+    "scope": "Consolidação das branches e reparo das falhas observadas de CI; publicação Git autorizada pelo usuário.",
+    "decision": "Prontidão para os reparos definidos no plano.",
+    "evidence_ref": ".agent/plans/main-unification-20260918.md",
+    "expires_or_revalidates": "Revalidar se mudar o escopo, contrato ou critério."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS",
+  "next_action": "UNIFY-MAIN:VERIFY-CANDIDATE",
+  "revalidation_triggers": [
+    "Nova mudança de contrato ou escopo."
+  ],
+  "supersedes": null
+}
