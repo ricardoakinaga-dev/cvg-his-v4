@@ -2,7 +2,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { Pool } from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { bootstrapServices, shutdownServices } from '../../../apps/api/src/bootstrap.js';
 import {
@@ -10,6 +10,7 @@ import {
   shutdownWorkerServices
 } from '../../../apps/worker/src/bootstrap.js';
 import { ADMIN_DB_URL, TEST_DB_URL } from '../../setup/env.js';
+import { waitForDatabaseDisconnect } from '../../setup/wait-for-database-disconnect.js';
 
 const ROOT = resolve(import.meta.dirname, '../../..');
 const suffix = randomUUID().replaceAll('-', '').slice(0, 16);
@@ -172,10 +173,7 @@ describe('production-like bootstrap uses a real restricted role and fails closed
     await shutdownServices();
     await shutdownWorkerServices();
     await scratchAdmin.end();
-    await clusterAdmin.query(
-      'SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1',
-      [scratchDatabase]
-    );
+    await waitForDatabaseDisconnect(clusterAdmin, scratchDatabase);
     await clusterAdmin.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(scratchDatabase)}`);
     await clusterAdmin.query(`DROP ROLE IF EXISTS ${quoteIdentifier(apiRole)}`);
     await clusterAdmin.query(`DROP ROLE IF EXISTS ${quoteIdentifier(workerRole)}`);
@@ -319,3 +317,52 @@ describe('production-like entrypoints do not listen or loop after bootstrap fail
     30_000
   );
 });
+
+it('waits for a real backend disconnect when pool.end resolves before client.end completes', async () => {
+  const databaseName = `${scratchDatabase}_drain`;
+  const admin = new Pool({ connectionString: ADMIN_DB_URL, max: 1 });
+  const pool = new Pool({ connectionString: databaseUrl(databaseName), max: 1 });
+  let releaseClose: (() => void) | undefined;
+  let drain: Promise<void> | undefined;
+  let poolEnded = false;
+  try {
+    await admin.query(`CREATE DATABASE ${quoteIdentifier(databaseName)}`);
+    const client = await pool.connect();
+    const { rows } = await client.query<{ readonly pid: number }>('SELECT pg_backend_pid() AS pid');
+    const originalEnd = client.end.bind(client);
+    const endSpy = vi.spyOn(client, 'end').mockImplementation((callback: () => void) => {
+      releaseClose = () => { void originalEnd(callback); };
+    });
+    client.release();
+    await pool.end();
+    poolEnded = true;
+    endSpy.mockRestore();
+
+    expect(releaseClose).toBeTypeOf('function');
+    const beforeClose = await admin.query<{ readonly pid: number }>(
+      'SELECT pid FROM pg_stat_activity WHERE datname = $1', [databaseName]
+    );
+    expect(beforeClose.rows).toEqual(rows);
+
+    let disconnected = false;
+    drain = waitForDatabaseDisconnect(admin, databaseName).then(() => { disconnected = true; });
+    // The first drain query runs before this query on the single admin connection.
+    await admin.query('SELECT 1');
+    expect(disconnected).toBe(false);
+    releaseClose!();
+    releaseClose = undefined;
+    await drain;
+    expect(disconnected).toBe(true);
+  } finally {
+    try {
+      releaseClose?.();
+      if (!poolEnded) await pool.end();
+      // Join the original polling task before closing the admin connection,
+      // including when an assertion fails while that task is asleep.
+      await (drain ?? waitForDatabaseDisconnect(admin, databaseName));
+      await admin.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(databaseName)}`);
+    } finally {
+      await admin.end();
+    }
+  }
+}, 30_000);

@@ -12,6 +12,7 @@ import {
   INITIAL_ROLE_SEEDS
 } from '../../../apps/api/src/setup-provisioning.js';
 import { TEST_DB_URL } from '../../setup/env.js';
+import { waitForDatabaseDisconnect } from '../../setup/wait-for-database-disconnect.js';
 
 const ROOT = resolve(import.meta.dirname, '../../..');
 const MIGRATION_PATH = resolve(ROOT, 'packages/db/migrations/0103_installation_state.sql');
@@ -168,10 +169,7 @@ describe('durable one-time installation state', () => {
 
   afterAll(async () => {
     await pool?.end();
-    await clusterAdmin.query(
-      `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1`,
-      [scratchDatabase]
-    );
+    await waitForDatabaseDisconnect(clusterAdmin, scratchDatabase);
     await clusterAdmin.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(scratchDatabase)}`);
     await clusterAdmin.query(`REVOKE ${INSTALLER_ROLE} FROM ${runtimeRole}`);
     await clusterAdmin.query(`DROP ROLE IF EXISTS ${runtimeRole}`);

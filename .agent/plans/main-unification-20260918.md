@@ -17,6 +17,9 @@ Preserve valuable changes from every local and remote branch in one `main`, repa
 - [x] (2026-09-18) Exact remote CI 35343988828 passed global coverage (82.02% branches), build, unit tests, repository/security/API guards and visual regression. Performance failed query p95 191ms versus 150ms; remaining jobs were still running at observation.
 - [x] (2026-09-18) Profiled remaining array movement; source `d8d8b821` preserves audit ordering and SLO retention with amortized writes. Focused tests/review, global2932/82.03%, nativeAPI679/679 and four-CPU unprofiled k6 (9/9, query29ms) passed.
 - [x] (2026-09-18) Diagnosed critical CI identity rejection: all five collectors passed, but manifest collection head preceded source changes. Reanchored manifest83 explicitly after final source commit; scope/thresholds/checker unchanged.
+- [x] (2026-09-18) Reanchored general candidate identity after its stricter checker classified `.agent` execution records as candidate inputs. Both identity contracts passed on committed `0d0ea920` before publication.
+- [x] (2026-09-18) CI35349067677 confirmed repository guards, global2932/82.03%, build, unit/API/Windows/visual checks and all9 performance SLOs (query137ms). Integration assertions618/618 passed, but an uncaught PostgreSQL57P01 exposed a fixture teardown race.
+- [x] (2026-09-18) Repaired both fixtures; focused real-PG18/18 passed. Independent adversarial review reproduced and closed a regression cleanup P2, then confirmed timeout, isolation and propagation. New helper must be registered as execution input; application code unchanged.
 - [ ] Publish the correctly anchored candidate and verify its exact remote CI.
 
 ## Surprises & Discoveries
@@ -24,6 +27,8 @@ Preserve valuable changes from every local and remote branch in one `main`, repa
 Local main `b7e10072` diverges by 38 commits from remote main, which has 82 additional commits. Three remote branches are already ancestors. The remaining branch contains alternative ACL migrations as well as changes already imported. CI baseline: global branch coverage 81.97% versus 82%; two OpenAPI fallback tests fail under the critical Node environment; query latency p95 202ms versus 150ms.
 
 The first published repair passed the same local workload but missed the hosted query SLO (191ms). Raw remote artifacts show no substantial database lock/I/O contention; reproduce the four-CPU runner resource budget before selecting another repair. Preserve the failed run and independent FAIL review as evidence; local success does not override the hosted failure.
+
+Hosted performance subsequently passed at137ms after removing array movement. Integration then exposed a separate cleanup race: `pg-pool.end()` can resolve before client socket termination; immediately calling `pg_terminate_backend` can deliver an uncaught57P01 to the closing client. Fix the owned test fixture lifecycle with bounded connection drainage, retaining failure visibility and ordinary database drop.
 
 ## Decision Log
 
