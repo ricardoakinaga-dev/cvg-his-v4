@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "51391915eb165a9b99e33682d0ab557f6263cb2a",
+  "head": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -3587,7 +3587,7 @@
     },
     {
       "path": "packages/db/src/runtime-role-policy.ts",
-      "sha256": "cba055794e74bdcc507ff9b0c2bb8efe6a5960f06cef1a31fcc5481c8f7a2ec9",
+      "sha256": "3895a70753fb698df54e90bf742e281fc00255b600721ad794e834f914387d72",
       "components": [
         "roles-rls"
       ],
@@ -4940,7 +4940,7 @@
     },
     {
       "path": "packages/modules/encounters/src/repositories/database-encounter.repository.ts",
-      "sha256": "9412a3c28c26b0ba0fb536e84f17ed18df773995bcfb46414d2e181e6f8be98d",
+      "sha256": "310fd6aef447037db4f35d39b4aed767b1ea0c230ba0690809e206f0ea3a0534",
       "components": [
         "records",
         "repositories"
@@ -5827,6 +5827,16 @@
       "applicability": "javascript-metrics",
       "justification": null,
       "review": null
+    },
+    {
+      "path": "packages/db/migrations/0177_clinical_evidence_cascade_immutability.sql",
+      "components": [
+        "roles-rls"
+      ],
+      "justification": "Forward SQL migration executed and verified by the specialized migration evidence producer.",
+      "review": null,
+      "sha256": "e39e60a0555e8ab4eb22f4234ff9c269dbd2764fc3af58106687162d37c0ef32",
+      "applicability": "sql-migration-evidence"
     }
   ],
   "vitestTests": [
@@ -6207,7 +6217,8 @@
     "tests/unit/api/api-keys-routes.test.ts",
     "tests/unit/api/billing-routes-validation.test.ts",
     "tests/unit/api/security-headers.test.ts",
-    "packages/modules/auth/src/database-session.repository.test.ts"
+    "packages/modules/auth/src/database-session.repository.test.ts",
+    "tests/integration/database/runtime-timeline-immutability.test.ts"
   ],
   "executionInputs": [
     ".eslintrc.cjs",
@@ -8411,7 +8422,14 @@
     "benchmarks/k6/response-json-equivalence.js",
     "scripts/test-k6-response-json.mjs",
     "scripts/capture-performance-provenance.mjs",
-    "tests/unit/infra/performance-provenance.test.ts"
+    "tests/unit/infra/performance-provenance.test.ts",
+    "benchmarks/k6/check-results.js",
+    "benchmarks/k6/response-validation.js",
+    "scripts/test-k6-check-gate.mjs",
+    "tests/unit/infra/k6-check-results.test.ts",
+    "scripts/lib/security-evidence-attestation.mjs",
+    "tests/unit/infra/security-evidence-attestation.test.ts",
+    "tests/integration/database/runtime-timeline-immutability.test.ts"
   ],
   "scopeHistory": [
     {
@@ -11901,6 +11919,49 @@
       "inputsRemoved": [],
       "previousExecutionInputsSha256": "3bed91a6b0e07b4074282bd554c3ef63534015b17842bf72da6f49eb6a1f164d",
       "executionInputsSha256": "c744c8befd5a5e78f91c7d14fdae473b436bd2fcbaa4ad2c71edbfcda5d3594b"
+    },
+    {
+      "manifestRevision": 86,
+      "observedAt": "2026-09-18T23:14:32.547Z",
+      "collectionCommit": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+      "previousManifestSha256": "d63c5482c9199eb5c3e877153526402091c3cfc7ce30393b28da8da5b396f621",
+      "preservedManifest": "artifacts/remediation/P0-CLOSURE/critical-scope/critical-scope-before-d63c5482c9199eb5c3e877153526402091c3cfc7ce30393b28da8da5b396f621.json",
+      "previousSourceSetSha256": "4d0da3e15f9f67d45dca1105515c1cf104157c003244320ad2eee86813e4fa2d",
+      "sourceSetSha256": "ff0875f00939cceecb58d30e17c5b1ca0175b004279f977cb2bbec1053181faa",
+      "reason": "P0 remediation: forward-only clinical evidence immutability migration, runtime conflict handling, complete check attribution and authenticated assurance; preserve all prior sources and thresholds",
+      "added": [
+        "packages/db/migrations/0177_clinical_evidence_cascade_immutability.sql"
+      ],
+      "removed": [],
+      "changed": [
+        {
+          "path": "packages/db/src/runtime-role-policy.ts",
+          "before": "cba055794e74bdcc507ff9b0c2bb8efe6a5960f06cef1a31fcc5481c8f7a2ec9",
+          "after": "3895a70753fb698df54e90bf742e281fc00255b600721ad794e834f914387d72"
+        },
+        {
+          "path": "packages/modules/encounters/src/repositories/database-encounter.repository.ts",
+          "before": "9412a3c28c26b0ba0fb536e84f17ed18df773995bcfb46414d2e181e6f8be98d",
+          "after": "310fd6aef447037db4f35d39b4aed767b1ea0c230ba0690809e206f0ea3a0534"
+        }
+      ],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "benchmarks/k6/check-results.js",
+        "benchmarks/k6/response-validation.js",
+        "scripts/test-k6-check-gate.mjs",
+        "tests/unit/infra/k6-check-results.test.ts",
+        "scripts/lib/security-evidence-attestation.mjs",
+        "tests/unit/infra/security-evidence-attestation.test.ts",
+        "tests/integration/database/runtime-timeline-immutability.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "c744c8befd5a5e78f91c7d14fdae473b436bd2fcbaa4ad2c71edbfcda5d3594b",
+      "executionInputsSha256": "9cc2349da64e59f9fbc88833baf7f460326dfa384a6fc1440dd6e591230f1b60",
+      "vitestAdded": [
+        "tests/integration/database/runtime-timeline-immutability.test.ts"
+      ],
+      "vitestRemoved": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12834,14 +12895,14 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 85,
-  "sourceSetSha256": "4d0da3e15f9f67d45dca1105515c1cf104157c003244320ad2eee86813e4fa2d",
-  "executionInputsSha256": "c744c8befd5a5e78f91c7d14fdae473b436bd2fcbaa4ad2c71edbfcda5d3594b",
+  "manifestRevision": 86,
+  "sourceSetSha256": "ff0875f00939cceecb58d30e17c5b1ca0175b004279f977cb2bbec1053181faa",
+  "executionInputsSha256": "9cc2349da64e59f9fbc88833baf7f460326dfa384a6fc1440dd6e591230f1b60",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,
       "sourceDirectory": "packages/db/migrations",
-      "expectedMigrationCount": 175,
+      "expectedMigrationCount": 176,
       "contractualMigrationCount": 169,
       "forwardOnlyAdditions": [
         "packages/db/migrations/0171_outbox_event_envelope_backfill_correction.sql",
@@ -12849,9 +12910,10 @@
         "packages/db/migrations/0173_feature_flag_override_scope_uniqueness.sql",
         "packages/db/migrations/0174_feature_flag_override_tenant_ownership.sql",
         "packages/db/migrations/0175_access_control_change_versions.sql",
-        "packages/db/migrations/0176_access_control_change_version_cleanup.sql"
+        "packages/db/migrations/0176_access_control_change_version_cleanup.sql",
+        "packages/db/migrations/0177_clinical_evidence_cascade_immutability.sql"
       ],
-      "expectedArtifactCount": 182,
+      "expectedArtifactCount": 183,
       "historicalArtifactCount": 7,
       "acceptedArtifactPath": "artifacts/remediation/PROD-011/sql-migration-evidence/accepted/evidence.json",
       "requiredPhases": [

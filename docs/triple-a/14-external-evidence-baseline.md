@@ -1,6 +1,18 @@
 # Triple-A External Assurance — Current Reconciliation
 
-## Consolidação atual — 2026-09-18
+## Remediação atual dos P0 — 2026-09-18
+
+**Current snapshot:** `c065f74013aa3d6cf9d59b97b2328459c61ba1ef`.
+
+Correções locais aprovadas: **75.168/75.168 checks k6**, nove SLOs, equivalência nativa132/132 e unidades35/35; proteção de timeline/audit PostgreSQL7/7 e contratos32/32; segurança/gate75/75. Build, typecheck e lint passaram. Estes resultados locais não substituem o CI do commit publicado.
+
+O registro tem **13 P0 abertos e um fechado nesta fase de revalidação**: o item de PostgreSQL foi reaberto porque há uma nova migração. Nenhuma evidência antiga foi apenas renomeada para o novo SHA. Os critérios serão reconciliados após a execução remota. Homologação aprovada, orçamentos operacionais, UAT e autoridade humana continuam pendentes.
+
+Detalhes e limites: [remediação dos P0](30-p0-remediation-20260918.md). **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
+
+---
+
+## Fotografia histórica — consolidação anterior de 2026-09-18
 
 **Current snapshot:** `51391915eb165a9b99e33682d0ab557f6263cb2a`
 

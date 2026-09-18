@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "registry_id": "CVG-HIS-P0-REGISTRY-V1",
-  "generated_at": "2026-09-18T14:29:42.090628+00:00",
+  "generated_at": "2026-09-18T23:17:03.604145+00:00",
   "generated_by": "lead-verification",
   "candidate": {
-    "candidate_id": "CVG-HIS-V4-51391915eb16",
+    "candidate_id": "CVG-HIS-V4-c065f74013aa",
     "identity_path": "docs/triple-a/CURRENT_CANDIDATE_IDENTITY.json",
-    "candidate_head_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
-    "behavior_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
-    "assurance_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
-    "documentation_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a"
+    "candidate_head_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+    "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+    "assurance_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+    "documentation_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef"
   },
   "closure_policy": {
     "closed_status": "CLOSED",
@@ -28,7 +28,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "release-engineering",
       "dedupe_key": "ci-candidate-identity",
-      "behavior_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
+      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
       "dependencies": [],
       "acceptance_criteria": [
         {
@@ -50,10 +50,10 @@
           "status": "PASS",
           "fresh": true,
           "mandatory": true,
-          "candidate_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
-          "source": "pnpm validate:candidate-identity && pnpm docs:validate",
-          "artifact": "docs/triple-a/CURRENT_CANDIDATE_IDENTITY.json",
-          "observed_at": "2026-09-18T13:48:06.141235+00:00"
+          "candidate_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
+          "source": "Canonical identity and additive critical manifest revision86; source committed before documentation binding",
+          "artifact": "docs/triple-a/30-p0-remediation-20260918.md",
+          "observed_at": "2026-09-18T23:17:03.604145+00:00"
         }
       ],
       "human_required": false,
@@ -72,7 +72,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "release-engineering",
       "dedupe_key": "ci-green-main",
-      "behavior_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
+      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
       "dependencies": [
         "P0-CI-CANDIDATE-FREEZE"
       ],
@@ -113,12 +113,12 @@
       "id": "P0-DATA-POSTGRESQL-RUNTIME",
       "epic": "DATA",
       "title": "PostgreSQL runtime and migration contracts are current",
-      "status": "CLOSED",
+      "status": "STALE",
       "classification": "LOCAL_INFRA_REQUIRED",
       "closure_policy": "AUTOMATIC",
       "owner": "data-platform",
       "dedupe_key": "data-postgresql-runtime",
-      "behavior_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
+      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
       "dependencies": [
         "P0-CI-CANDIDATE-FREEZE"
       ],
@@ -126,24 +126,24 @@
         {
           "id": "P0-DATA-POSTGRESQL-RUNTIME-01",
           "description": "Migration source and checksums are verified without drift",
-          "status": "PASS",
+          "status": "NOT_PROVEN",
           "required": true
         },
         {
           "id": "P0-DATA-POSTGRESQL-RUNTIME-02",
           "description": "Disposable PostgreSQL executes the critical database suite",
-          "status": "PASS",
+          "status": "NOT_PROVEN",
           "required": true
         }
       ],
       "evidence_nodes": [
         {
           "id": "EVD-P0-DATA-POSTGRESQL-RUNTIME",
-          "status": "PASS",
-          "fresh": true,
+          "status": "NOT_PROVEN",
+          "fresh": false,
           "mandatory": true,
           "candidate_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
-          "source": "Current source: native-api 679/679 with private PostgreSQL migration/seed and runtime contracts",
+          "source": "Historical database proof retained; new0177 candidate requires current full database CI evidence",
           "artifact": "docs/triple-a/29-main-unification-20260918.md",
           "observed_at": "2026-09-18T13:48:06.141235+00:00"
         }
@@ -164,7 +164,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "data-platform",
       "dedupe_key": "data-rls-runtime-isolation",
-      "behavior_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
+      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
       "dependencies": [
         "P0-DATA-POSTGRESQL-RUNTIME"
       ],
@@ -209,7 +209,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "workflow-platform",
       "dedupe_key": "workflow-lease-fencing",
-      "behavior_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
+      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
       "dependencies": [
         "P0-DATA-POSTGRESQL-RUNTIME"
       ],
@@ -256,7 +256,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "worker-platform",
       "dedupe_key": "worker-crash-recovery",
-      "behavior_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
+      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
       "dependencies": [
         "P0-WORKFLOW-LEASE-FENCING"
       ],
@@ -303,7 +303,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "clinical-product",
       "dedupe_key": "clinical-golden-path",
-      "behavior_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
+      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
       "dependencies": [
         "P0-DATA-RLS-RUNTIME",
         "P0-WORKER-CRASH-RECOVERY"
@@ -351,7 +351,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "clinical-product",
       "dedupe_key": "clinical-audit-financial-invariants",
-      "behavior_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
+      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
       "dependencies": [
         "P0-CLINICAL-GOLDEN-PATH"
       ],
@@ -398,7 +398,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "operations",
       "dedupe_key": "recovery-restore-corruption",
-      "behavior_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
+      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
       "dependencies": [
         "P0-CLINICAL-AUDIT-INVARIANTS"
       ],
@@ -444,7 +444,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "operations",
       "dedupe_key": "performance-target-certification",
-      "behavior_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
+      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
       "dependencies": [
         "P0-DATA-POSTGRESQL-RUNTIME",
         "P0-WORKER-CRASH-RECOVERY"
@@ -491,7 +491,7 @@
       "closure_policy": "HUMAN",
       "owner": "product-quality",
       "dedupe_key": "ux-a11y-hospital-uat",
-      "behavior_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
+      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
       "dependencies": [
         "P0-CLINICAL-GOLDEN-PATH"
       ],
@@ -537,7 +537,7 @@
       "closure_policy": "AUTOMATIC",
       "owner": "release-engineering",
       "dedupe_key": "supply-attestation-provenance",
-      "behavior_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
+      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
       "dependencies": [
         "P0-CI-GREEN-MAIN"
       ],
@@ -583,7 +583,7 @@
       "closure_policy": "HUMAN",
       "owner": "release-authority",
       "dedupe_key": "release-authority-decision",
-      "behavior_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
+      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
       "dependencies": [
         "P0-CI-GREEN-MAIN",
         "P0-UX-A11Y-UAT",
@@ -632,7 +632,7 @@
       "closure_policy": "HUMAN",
       "owner": "release-authority",
       "dedupe_key": "final-evidence-graph",
-      "behavior_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
+      "behavior_sha": "c065f74013aa3d6cf9d59b97b2328459c61ba1ef",
       "dependencies": [
         "P0-RELEASE-AUTHORITY",
         "P0-RECOVERY-RESTORE",
@@ -673,7 +673,7 @@
     }
   ],
   "summary": {
-    "open_p0": 12,
-    "closed_p0": 2
+    "open_p0": 13,
+    "closed_p0": 1
   }
 }
