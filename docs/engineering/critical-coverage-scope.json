@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "b8609d08813a162ea185b884f126408d64cf7eed",
+  "head": "ec092d77b69e97b4c408422ca13cac0c7e525fdf",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -11975,6 +11975,19 @@
       "added": [],
       "removed": [],
       "changed": []
+    },
+    {
+      "manifestRevision": 88,
+      "observedAt": "2026-09-19T00:06:20.147Z",
+      "collectionCommit": "ec092d77b69e97b4c408422ca13cac0c7e525fdf",
+      "previousManifestSha256": "d0ce38097688cda34edbe1a333bdcdf2306941e800230cce6f9261ec7e599214",
+      "preservedManifest": "artifacts/remediation/P0-CLOSURE/critical-scope/critical-scope-before-d0ce38097688cda34edbe1a333bdcdf2306941e800230cce6f9261ec7e599214.json",
+      "previousSourceSetSha256": "ff0875f00939cceecb58d30e17c5b1ca0175b004279f977cb2bbec1053181faa",
+      "sourceSetSha256": "ff0875f00939cceecb58d30e17c5b1ca0175b004279f977cb2bbec1053181faa",
+      "reason": "Bind reviewed V8 fixture single-exit collection repair; retain all authenticated counters and complete source scope",
+      "added": [],
+      "removed": [],
+      "changed": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12908,7 +12921,7 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 87,
+  "manifestRevision": 88,
   "sourceSetSha256": "ff0875f00939cceecb58d30e17c5b1ca0175b004279f977cb2bbec1053181faa",
   "executionInputsSha256": "9cc2349da64e59f9fbc88833baf7f460326dfa384a6fc1440dd6e591230f1b60",
   "specializedEvidence": {

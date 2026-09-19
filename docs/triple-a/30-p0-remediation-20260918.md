@@ -1,6 +1,6 @@
 # Remediação dos P0 e dos checks k6 — 2026-09-18
 
-**Fonte do candidato:** `b8609d08813a162ea185b884f126408d64cf7eed`. **CI publicado:** pendente. **Certificação:** BLOCKED / NOT PROVEN.
+**Fonte do candidato:** `ec092d77b69e97b4c408422ca13cac0c7e525fdf`. **CI publicado:** pendente. **Certificação:** BLOCKED / NOT PROVEN.
 
 ## Correções
 
@@ -8,7 +8,7 @@
 - Gerador: cache de uma resposta completa e um booleano por VU. Comparação exata do corpo; qualquer alteração exige nova decodificação integral. Carga, requisições, quatro CPUs, GOMAXPROCS=1, nove SLOs e health<50ms preservados.
 - PostgreSQL: migração0177 protege timeline e audit contra UPDATE, DELETE, cascatas e TRUNCATE CASCADE pelo usuário iniciador. Manutenção por owner/superuser continua possível. Exclusão de atendimento com histórico retorna conflito409; rascunhos sem evidência e alterações normais continuam funcionando.
 - Release: build antes de typecheck/lint; atestação verificável do relatório de segurança por repositório/workflow/main/SHA/digest; preservação dos diagnósticos de falhas. Ausência de assinatura continua bloqueando.
-- Governança: fechamento de P0 exige dependências fechadas; consumidores compartilham lista de17 jobs obrigatórios. Manifesto crítico87 preserva555 fontes anteriores e adiciona0177: **556 fontes,176 migrações,183 artefatos SQL**, sem reduzir thresholds.
+- Governança: fechamento de P0 exige dependências fechadas; consumidores compartilham lista de17 jobs obrigatórios. Manifesto crítico88 preserva555 fontes anteriores e adiciona0177: **556 fontes,176 migrações,183 artefatos SQL**, sem reduzir thresholds.
 
 ## Evidência local
 
@@ -39,6 +39,12 @@ O [CI35405157837](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/
 Os percentuais de cobertura global passaram, incluindo82,03% de branches, mas um teste ainda contava três atestações sem distinguir o novo relatório de segurança. Correção revisada exige três imagens, um relatório, digests/flags e ordem: **18/18 testes**. Integração teve619 aprovados e quatro falhas: o fixture dependia de EXECUTE público revogado pela suíte. Inicialização pelo reconciliador real resolveu a reprodução, com **24/24 testes PostgreSQL**, sem mudar grants de produção. Assertivas de imutabilidade agora exigem a constraint exata. Os testes mantêm sua sequência declarada no arquivo.
 
 Esses resultados pertencem ao CI anterior ou à verificação local identificada; a revisão atual exige novo CI completo.
+
+## Correção da gravação do fixture V8
+
+O CI35407060110 expôs uma falha intermitente no teste de reexports: o checkpoint explícito de cobertura e a gravação automática na saída podiam compartilhar o nome com resolução de milissegundos. O segundo dump, após o reset dos contadores, sobrescrevia o primeiro. Os registros brutos foram preservados: reprodução29/30, com uma falha; controle corrigido30/30, cada caso com um único dump autenticado.
+
+O fixture usa agora apenas a gravação real na saída. As assertivas de scriptId/URL, fonte, live=1, never=0, métricas vazias e agregação permanecem. Revisão independente PASS, contratos relacionados71/71 e comando exato do CI64/64. Nenhuma mudança no coletor de produção ou em thresholds. A revisão publicada exige novo CI completo.
 
 ## Revisão e requisitos pendentes
 

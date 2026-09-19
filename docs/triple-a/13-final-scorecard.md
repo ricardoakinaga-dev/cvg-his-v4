@@ -4,7 +4,7 @@
 
 | Campo | Estado |
 | --- | --- |
-| CURRENT SNAPSHOT | `b8609d08813a162ea185b884f126408d64cf7eed` |
+| CURRENT SNAPSHOT | `ec092d77b69e97b4c408422ca13cac0c7e525fdf` |
 | CURRENT VERDICT | BLOCKED / NOT PROVEN |
 
 Correções locais aprovadas: **75.168/75.168 checks k6**, nove SLOs, equivalência nativa132/132 e unidades35/35; proteção de timeline/audit PostgreSQL7/7 e contratos32/32; segurança/gate75/75. Build, typecheck e lint passaram. Estes resultados locais não substituem o CI do commit publicado.

@@ -4,7 +4,7 @@
 
 | Campo | Estado atual |
 | --- | --- |
-| current_sha | `b8609d08813a162ea185b884f126408d64cf7eed` |
+| current_sha | `ec092d77b69e97b4c408422ca13cac0c7e525fdf` |
 | CI | Pendente no candidato publicado |
 | open_p0 | 13 em revalidação; nenhum fechamento externo presumido |
 
