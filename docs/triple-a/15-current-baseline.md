@@ -5,16 +5,14 @@
 | Campo | Estado atual |
 | --- | --- |
 | current_sha | `ec092d77b69e97b4c408422ca13cac0c7e525fdf` |
-| CI | Pendente no candidato publicado |
-| open_p0 | 13 em revalidação; nenhum fechamento externo presumido |
+| CI do código | 35408222214: 17/17 jobs aprovados |
+| open_p0 | 11 |
 
-Correções locais aprovadas: **75.168/75.168 checks k6**, nove SLOs, equivalência nativa132/132 e unidades35/35; proteção de timeline/audit PostgreSQL7/7 e contratos32/32; segurança/gate75/75. Build, typecheck e lint passaram. Estes resultados locais não substituem o CI do commit publicado.
+O [CI 35408222214](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35408222214) aprovou **17/17 jobs** no commit `470f87dbee3f0755e0fb740dfa78b113d75d05c9`, descendente apenas documental da fonte congelada acima. **k6: 70.576 checks aprovados, zero falhas e 9/9 SLOs**. Cobertura global: 2.990 testes aprovados e 82,04% de branches; integração: 623 testes e 11 contratos de processos; E2E: 424 testes; cobertura crítica e evidência SQL completas aprovadas.
 
-O registro tem **13 P0 abertos e um fechado nesta fase de revalidação**: o item de PostgreSQL foi reaberto porque há uma nova migração. Nenhuma evidência antiga foi apenas renomeada para o novo SHA. Os critérios serão reconciliados após a execução remota. Homologação aprovada, orçamentos operacionais, UAT e autoridade humana continuam pendentes.
+O registro contém **3 P0 fechados e 11 abertos**. PostgreSQL/migrações foi revalidado com a migração 0177 e concorrência/leases foi encerrado. Os critérios automatizados de fluxo clínico e auditoria passaram, mas os itens permanecem bloqueados pelas dependências externas. Proteção/revisão independente da main, homologação aprovada, recuperação/soak no target, UAT e autoridade de release continuam pendentes.
 
-Detalhes e limites: [remediação dos P0](30-p0-remediation-20260918.md). **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
-
-O CI anterior da remediação confirmou **69.536/69.536 checks k6 e nove SLOs**. Falhas de preparo dos novos testes foram reproduzidas e corrigidas: PostgreSQL24/24 e contratos de atestação18/18; o CI desta revisão está pendente.
+Detalhes, hashes e limites: [remediação dos P0](30-p0-remediation-20260918.md) e [avaliação por critério](evidence/p0-remediation-20260918.json). **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
 
 ---
 

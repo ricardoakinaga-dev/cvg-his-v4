@@ -1,0 +1,758 @@
+{
+  "observed_at": "2026-09-19T00:44:58.264140+00:00",
+  "ci_run": 35408222214,
+  "ci_head": "470f87dbee3f0755e0fb740dfa78b113d75d05c9",
+  "source_anchor": "ec092d77b69e97b4c408422ca13cac0c7e525fdf",
+  "source_binding": "Run metadata exact head; git ancestor confirmed; SQL manifest/evidence head deliberately source anchor, not workflow SHA; native/process invocations headBefore exact CIhead. Canonical SQL validator freshly passed against current source and manifest.",
+  "jobs": [
+    {
+      "id": 105802734148,
+      "name": "Critical Coverage Gate",
+      "conclusion": "success"
+    },
+    {
+      "id": 105804806707,
+      "name": "Integration Tests",
+      "conclusion": "success"
+    },
+    {
+      "id": 105804807502,
+      "name": "E2E Tests (SPA)",
+      "conclusion": "success"
+    }
+  ],
+  "artifact": {
+    "id": 10574475986,
+    "name": "critical-coverage-470f87dbee3f0755e0fb740dfa78b113d75d05c9",
+    "bytes": 235535308,
+    "sha256": "78a110a0562f358d9c6ccc44586ba0dcf14ddf7c2742f25dd9cb8394f431e7b1",
+    "digest_matches_published_upload": true,
+    "url": "https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35408222214/artifacts/10574475986"
+  },
+  "database_summary": {
+    "files": 68,
+    "tests": 623,
+    "process_files": 11,
+    "process_non_skipped_contracts": 11,
+    "summary_lines": [
+      2484,
+      2485,
+      3614
+    ],
+    "migration0177_line": 1212
+  },
+  "sql": {
+    "status": "PASS",
+    "scopeErrors": [],
+    "sqlScope": {
+      "manifestSqlCount": 183,
+      "canonicalActiveCount": 176,
+      "historicalArtifactCount": 7,
+      "historicalArtifactPaths": [
+        "packages/db/migrations/.backup-meta-fix/0014_luxuriant_mantis.sql",
+        "packages/db/migrations/.isolated-drift/0018_outgoing_leopardon.sql",
+        "packages/db/migrations/0003_rls_core_tables.revert.sql",
+        "packages/db/migrations/0006_rls_lgpd_tables.revert.sql",
+        "packages/db/migrations/0007_text_to_uuid_tables.revert.sql",
+        "packages/db/migrations/0008_rls_text_based_tables.revert.sql",
+        "packages/db/migrations/0017_fiscal_tables.seed.sql"
+      ]
+    },
+    "phaseStatuses": {
+      "cleanApply": "passed",
+      "upgrade": "passed",
+      "reexecution": "passed",
+      "failureRecovery": "passed",
+      "invariants": "passed"
+    },
+    "manifestHead": "ec092d77b69e97b4c408422ca13cac0c7e525fdf",
+    "evidenceHead": "ec092d77b69e97b4c408422ca13cac0c7e525fdf",
+    "migration0177": {
+      "order": 176,
+      "name": "0177_clinical_evidence_cascade_immutability",
+      "path": "packages/db/migrations/0177_clinical_evidence_cascade_immutability.sql",
+      "sha256": "e39e60a0555e8ab4eb22f4234ff9c269dbd2764fc3af58106687162d37c0ef32"
+    }
+  },
+  "critical_shards": [
+    {
+      "shard": "vitest-unit",
+      "path": "critical-artifact/consolidacao-2026-09-05/coverage-scope/vitest-unit/e647ffd1-d3d2-4f4d-9060-a31c71f9578a/test-result.json",
+      "status": "passed",
+      "testFiles": 273,
+      "sha256": "5addfc855cd2c69e36996c3c9fc7b2560847da4e4ba9e1b167123d93f75d8a08"
+    },
+    {
+      "shard": "vitest-integration",
+      "path": "critical-artifact/consolidacao-2026-09-05/coverage-scope/vitest-integration/514c4932-90a3-465d-b679-743934b64122/test-result.json",
+      "status": "passed",
+      "testFiles": 106,
+      "sha256": "1cb665f219d513e47797519e09a119dc8c159ae6a0760db29c6af1494b79f1cc"
+    },
+    {
+      "shard": "native-api",
+      "path": "critical-artifact/consolidacao-2026-09-05/coverage-scope/native-api/117c1d76-80cb-4b62-a382-06f15cd7f09b/test-result.json",
+      "status": "passed",
+      "testFiles": null,
+      "sha256": "4b07d636795d8d0a3eacded08b92dcb230bb6dc9fb2e3e5a07284f224e761058"
+    },
+    {
+      "shard": "native-worker",
+      "path": "critical-artifact/consolidacao-2026-09-05/coverage-scope/native-worker/db52aa15-15ea-4659-b82c-bb9b08fcc028/test-result.json",
+      "status": "passed",
+      "testFiles": null,
+      "sha256": "7d93052e75829e8cb49b5167a825babe2aa6b5c38b9136e9db644764760ee057"
+    },
+    {
+      "shard": "critical-process",
+      "path": "critical-artifact/consolidacao-2026-09-05/coverage-scope/critical-process/107d94ca-1ba5-4887-bd92-7cf79dee02f1/test-result.json",
+      "status": "passed",
+      "testFiles": null,
+      "sha256": "c9cc1fbf16363c358fd86c0a923cc5f70bb12ed215d08b587ac5670c6ef0b5c3"
+    }
+  ],
+  "criteria": [
+    {
+      "criterion_id": "P0-DATA-POSTGRESQL-RUNTIME-01",
+      "cases": [
+        {
+          "path": "tests/integration/database/migration-integrity-runtime.test.ts",
+          "test_name": "fails before applying when a database migration checksum was edited",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 2482,
+              "text": "2026-09-19T00:30:00.9652004Z  ✓ tests/integration/database/migration-integrity-runtime.test.ts > fails before applying when a database migration checksum was edited 32ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "3d01bcb6a55169b72c89f333e3ce7b8d2e9112ce5ecce5d99527375d0b5b03b5"
+        },
+        {
+          "path": "packages/db/src/migrate.test.ts",
+          "test_name": "accepts applied migrations whose recorded checksum matches the local file",
+          "status": "NOT_IN_INTEGRATION_LOG",
+          "matches": [],
+          "source_sha256": "f3f89e923062cb2dac417faad6ecc5dfdc73c1239cf68dcd13912087e24a5228"
+        },
+        {
+          "path": "packages/db/src/migrate.test.ts",
+          "test_name": "fails before applying anything when an applied migration was edited",
+          "status": "NOT_IN_INTEGRATION_LOG",
+          "matches": [],
+          "source_sha256": "f3f89e923062cb2dac417faad6ecc5dfdc73c1239cf68dcd13912087e24a5228"
+        },
+        {
+          "path": "packages/db/src/migrate.test.ts",
+          "test_name": "fails when the database contains an applied migration missing from the release",
+          "status": "NOT_IN_INTEGRATION_LOG",
+          "matches": [],
+          "source_sha256": "f3f89e923062cb2dac417faad6ecc5dfdc73c1239cf68dcd13912087e24a5228"
+        }
+      ],
+      "criterion_status": "PASS",
+      "item_closure": "ELIGIBLE_AFTER_CANDIDATE_FREEZE_CLOSED",
+      "primary_proof": "sql-verifier-receipt.json: canonical validator PASS; all5phases,176active/183artifacts; runtime checksum explicitPASS integration.log2482. Three unit case names not individually emitted by downloaded log; no individual unit PASS claimed."
+    },
+    {
+      "criterion_id": "P0-DATA-POSTGRESQL-RUNTIME-02",
+      "cases": [
+        {
+          "path": "tests/integration/database/runtime-timeline-immutability.test.ts",
+          "test_name": "repairs permissive API/worker grants, preserves appended corrections, and permits owner cleanup",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1984,
+              "text": "2026-09-19T00:28:21.2146296Z  ✓ tests/integration/database/runtime-timeline-immutability.test.ts > production runtime reconciliation protects clinical evidence > repairs permissive API/worker grants, preserves appended corrections, and permits owner cleanup 284ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "993026b00e4963fee7eb60ff78b402cc6ebd6415bde0c30de180185bb277e844"
+        },
+        {
+          "path": "tests/integration/database/clinical-workflow-postgres.test.ts",
+          "test_name": "proves the schema readiness contract before serving workflow tasks",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1564,
+              "text": "2026-09-19T00:25:54.8720191Z  ✓ tests/integration/database/clinical-workflow-postgres.test.ts > clinical workflow control plane — PostgreSQL assurance > proves the schema readiness contract before serving workflow tasks 18ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "10b0d672922133e7e94e4b955473bbca750ee32dfb886cea46392974c2535ee2"
+        }
+      ],
+      "criterion_status": "PASS",
+      "item_closure": "ELIGIBLE_AFTER_CANDIDATE_FREEZE_CLOSED"
+    },
+    {
+      "criterion_id": "P0-WORKFLOW-LEASE-FENCING-01",
+      "cases": [
+        {
+          "path": "tests/integration/database/clinical-workflow-postgres.test.ts",
+          "test_name": "allows only one worker to claim a due task under PostgreSQL concurrency",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1569,
+              "text": "2026-09-19T00:25:54.9843067Z  ✓ tests/integration/database/clinical-workflow-postgres.test.ts > clinical workflow control plane — PostgreSQL assurance > allows only one worker to claim a due task under PostgreSQL concurrency 13ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "10b0d672922133e7e94e4b955473bbca750ee32dfb886cea46392974c2535ee2"
+        },
+        {
+          "path": "tests/integration/database/clinical-workflow-postgres.test.ts",
+          "test_name": "fences a stale lease after takeover and permits only the current worker to complete",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1570,
+              "text": "2026-09-19T00:25:54.9844323Z  ✓ tests/integration/database/clinical-workflow-postgres.test.ts > clinical workflow control plane — PostgreSQL assurance > fences a stale lease after takeover and permits only the current worker to complete 15ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "10b0d672922133e7e94e4b955473bbca750ee32dfb886cea46392974c2535ee2"
+        },
+        {
+          "path": "tests/integration/database/clinical-workflow-postgres.test.ts",
+          "test_name": "rejects stale renew after takeover without changing the current lease or event history",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1572,
+              "text": "2026-09-19T00:25:55.0880416Z  ✓ tests/integration/database/clinical-workflow-postgres.test.ts > clinical workflow control plane — PostgreSQL assurance > rejects stale renew after takeover without changing the current lease or event history 17ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "10b0d672922133e7e94e4b955473bbca750ee32dfb886cea46392974c2535ee2"
+        },
+        {
+          "path": "tests/integration/database/clinical-workflow-postgres.test.ts",
+          "test_name": "rejects stale retry after takeover without changing the current lease or event history",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1573,
+              "text": "2026-09-19T00:25:55.0882333Z  ✓ tests/integration/database/clinical-workflow-postgres.test.ts > clinical workflow control plane — PostgreSQL assurance > rejects stale retry after takeover without changing the current lease or event history 17ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "10b0d672922133e7e94e4b955473bbca750ee32dfb886cea46392974c2535ee2"
+        },
+        {
+          "path": "tests/integration/database/clinical-workflow-postgres.test.ts",
+          "test_name": "rejects stale dead-letter after takeover without changing the current lease or event history",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1574,
+              "text": "2026-09-19T00:25:55.0884096Z  ✓ tests/integration/database/clinical-workflow-postgres.test.ts > clinical workflow control plane — PostgreSQL assurance > rejects stale dead-letter after takeover without changing the current lease or event history 15ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "10b0d672922133e7e94e4b955473bbca750ee32dfb886cea46392974c2535ee2"
+        }
+      ],
+      "criterion_status": "PASS",
+      "item_closure": "ELIGIBLE_AFTER_DATA_CLOSED"
+    },
+    {
+      "criterion_id": "P0-WORKFLOW-LEASE-FENCING-02",
+      "cases": [
+        {
+          "path": "tests/integration/database/clinical-workflow-postgres.test.ts",
+          "test_name": "linearizes concurrent creation and rejects idempotency payload drift",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1567,
+              "text": "2026-09-19T00:25:54.9840397Z  ✓ tests/integration/database/clinical-workflow-postgres.test.ts > clinical workflow control plane — PostgreSQL assurance > linearizes concurrent creation and rejects idempotency payload drift 56ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "10b0d672922133e7e94e4b955473bbca750ee32dfb886cea46392974c2535ee2"
+        },
+        {
+          "path": "tests/integration/database/clinical-workflow-postgres.test.ts",
+          "test_name": "linearizes cancel versus complete with a single consistent terminal transition",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1575,
+              "text": "2026-09-19T00:25:55.0885851Z  ✓ tests/integration/database/clinical-workflow-postgres.test.ts > clinical workflow control plane — PostgreSQL assurance > linearizes cancel versus complete with a single consistent terminal transition 30ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "10b0d672922133e7e94e4b955473bbca750ee32dfb886cea46392974c2535ee2"
+        },
+        {
+          "path": "tests/integration/database/clinical-workflow-postgres.test.ts",
+          "test_name": "linearizes concurrent replay and same-key creation while preserving the DLQ history",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1576,
+              "text": "2026-09-19T00:25:55.1944708Z  ✓ tests/integration/database/clinical-workflow-postgres.test.ts > clinical workflow control plane — PostgreSQL assurance > linearizes concurrent replay and same-key creation while preserving the DLQ history 32ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "10b0d672922133e7e94e4b955473bbca750ee32dfb886cea46392974c2535ee2"
+        },
+        {
+          "path": "tests/integration/database/clinical-workflow-postgres.test.ts",
+          "test_name": "serializes competing acknowledgements/completions and keeps lifecycle events append-only",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1578,
+              "text": "2026-09-19T00:25:55.1949144Z  ✓ tests/integration/database/clinical-workflow-postgres.test.ts > clinical workflow control plane — PostgreSQL assurance > serializes competing acknowledgements/completions and keeps lifecycle events append-only 21ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "10b0d672922133e7e94e4b955473bbca750ee32dfb886cea46392974c2535ee2"
+        },
+        {
+          "path": "tests/integration/database/clinical-workflow-postgres.test.ts",
+          "test_name": "does not allow a completed task to be replayed or a cancelled task to complete",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1579,
+              "text": "2026-09-19T00:25:55.1950679Z  ✓ tests/integration/database/clinical-workflow-postgres.test.ts > clinical workflow control plane — PostgreSQL assurance > does not allow a completed task to be replayed or a cancelled task to complete 18ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "10b0d672922133e7e94e4b955473bbca750ee32dfb886cea46392974c2535ee2"
+        }
+      ],
+      "criterion_status": "PASS",
+      "item_closure": "ELIGIBLE_AFTER_DATA_CLOSED"
+    },
+    {
+      "criterion_id": "P0-CLINICAL-GOLDEN-PATH-01",
+      "cases": [
+        {
+          "path": "tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts",
+          "test_name": "carries HTTP-created Owner → Patient → Encounter through inpatient, billing, stock and receipt",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1274,
+              "text": "2026-09-19T00:24:08.7997535Z  ✓ tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts > inpatient clinical-financial vertical HTTP PostgreSQL boundary > carries HTTP-created Owner → Patient → Encounter through inpatient, billing, stock and receipt 2024ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "5db4a376d33ee6a64589b98497e494d94dfe9103877fb89bcf1f1a8a5d6e667f"
+        },
+        {
+          "path": "tests/integration/database/inpatient-clinical-financial-close-receipt-http-postgres.test.ts",
+          "test_name": "closes idempotently and publishes the encounter timeline/audit/outbox graph",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1551,
+              "text": "2026-09-19T00:25:51.4450775Z  ✓ tests/integration/database/inpatient-clinical-financial-close-receipt-http-postgres.test.ts > inpatient clinical-financial close → receipt HTTP PostgreSQL boundary > closes idempotently and publishes the encounter timeline/audit/outbox graph 30ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "bcf0667e94b01e739fcc900cd1d5a07873db2361e184219a517abb5441ebf6b0"
+        },
+        {
+          "path": "e2e/spa/fluxo-critico-spa.spec.ts",
+          "test_name": "cria tutor, paciente, atendimento, entrada clínica, faturamento e fecha atendimento",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 3208,
+              "text": "2026-09-19T00:28:16.1976252Z   ✓   45 [chromium] › e2e/spa/fluxo-critico-spa.spec.ts:23:7 › Fluxo Crítico SPA — Ponta a Ponta › cria tutor, paciente, atendimento, entrada clínica, faturamento e fecha atendimento (9.9s)"
+            }
+          ],
+          "raw_source": "/home/ricardo/cvg-his-v4-backups/20260918-p0-closure/verified-fixture-e2e.log",
+          "source_sha256": "dcd702162a72cb1de7a93e3be7e5d3dad735b9044f25006f99284dee04913f89"
+        },
+        {
+          "path": "e2e/spa/login-owner-patient-ui.spec.ts",
+          "test_name": "faz login real na SPA, cria tutor e paciente pela interface",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 3231,
+              "text": "2026-09-19T00:28:36.8121969Z   ✓   51 [chromium] › e2e/spa/login-owner-patient-ui.spec.ts:21:7 › Login Real + Owner/Patient via UI › faz login real na SPA, cria tutor e paciente pela interface (7.0s)"
+            }
+          ],
+          "raw_source": "/home/ricardo/cvg-his-v4-backups/20260918-p0-closure/verified-fixture-e2e.log",
+          "source_sha256": "d50413ad549062ba2039bb1f14fb1aee12c083df858c384a7d451fd711676e17"
+        },
+        {
+          "path": "e2e/spa/inpatient-flow.spec.ts",
+          "test_name": "navega para internação, valida lista, Bed Board e detalhe",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 3340,
+              "text": "2026-09-19T00:30:32.9016765Z   ✓   76 [chromium] › e2e/spa/inpatient-flow.spec.ts:63:7 › Fluxo de Internação (Inpatient) › navega para internação, valida lista, Bed Board e detalhe (5.0s)"
+            }
+          ],
+          "raw_source": "/home/ricardo/cvg-his-v4-backups/20260918-p0-closure/verified-fixture-e2e.log",
+          "source_sha256": "96241413401f738a03d6d7b48aeb52153ee2c597d154fd4c4406cd8408989ba8"
+        }
+      ],
+      "criterion_status": "PASS",
+      "item_closure": "BLOCKED_BY_DEPENDENCY"
+    },
+    {
+      "criterion_id": "P0-CLINICAL-GOLDEN-PATH-02",
+      "cases": [
+        {
+          "path": "tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts",
+          "test_name": "rejects a shadowed settlement under a runtime role with pg_temp search_path",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1275,
+              "text": "2026-09-19T00:24:09.1140593Z  ✓ tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts > inpatient clinical-financial vertical HTTP PostgreSQL boundary > rejects a shadowed settlement under a runtime role with pg_temp search_path 314ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "5db4a376d33ee6a64589b98497e494d94dfe9103877fb89bcf1f1a8a5d6e667f"
+        },
+        {
+          "path": "tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts",
+          "test_name": "rolls back a close failpoint without leaving audit, outbox or idempotency residue",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1281,
+              "text": "2026-09-19T00:24:09.2492721Z  ✓ tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts > inpatient clinical-financial vertical HTTP PostgreSQL boundary > rolls back a close failpoint without leaving audit, outbox or idempotency residue 25ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "5db4a376d33ee6a64589b98497e494d94dfe9103877fb89bcf1f1a8a5d6e667f"
+        },
+        {
+          "path": "tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts",
+          "test_name": "rolls back a clinical timeline projection failpoint and retries the status command cleanly",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1282,
+              "text": "2026-09-19T00:24:09.2494500Z  ✓ tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts > inpatient clinical-financial vertical HTTP PostgreSQL boundary > rolls back a clinical timeline projection failpoint and retries the status command cleanly 55ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "5db4a376d33ee6a64589b98497e494d94dfe9103877fb89bcf1f1a8a5d6e667f"
+        },
+        {
+          "path": "tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts",
+          "test_name": "rolls back a bed persistence failpoint and retries assignment without occupying a stale bed",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1287,
+              "text": "2026-09-19T00:24:09.3971723Z  ✓ tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts > inpatient clinical-financial vertical HTTP PostgreSQL boundary > rolls back a bed persistence failpoint and retries assignment without occupying a stale bed 88ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "5db4a376d33ee6a64589b98497e494d94dfe9103877fb89bcf1f1a8a5d6e667f"
+        },
+        {
+          "path": "tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts",
+          "test_name": "rolls back a transfer bed failpoint and retries the transition cleanly",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1288,
+              "text": "2026-09-19T00:24:09.3973424Z  ✓ tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts > inpatient clinical-financial vertical HTTP PostgreSQL boundary > rolls back a transfer bed failpoint and retries the transition cleanly 60ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "5db4a376d33ee6a64589b98497e494d94dfe9103877fb89bcf1f1a8a5d6e667f"
+        },
+        {
+          "path": "tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts",
+          "test_name": "rolls back an audit persistence failpoint and retries the status projection cleanly",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1295,
+              "text": "2026-09-19T00:24:09.5384425Z  ✓ tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts > inpatient clinical-financial vertical HTTP PostgreSQL boundary > rolls back an audit persistence failpoint and retries the status projection cleanly 66ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "5db4a376d33ee6a64589b98497e494d94dfe9103877fb89bcf1f1a8a5d6e667f"
+        },
+        {
+          "path": "tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts",
+          "test_name": "does not cross tenant boundaries when bearer A targets tenant B",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1296,
+              "text": "2026-09-19T00:24:09.5385977Z  ✓ tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts > inpatient clinical-financial vertical HTTP PostgreSQL boundary > does not cross tenant boundaries when bearer A targets tenant B 75ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "5db4a376d33ee6a64589b98497e494d94dfe9103877fb89bcf1f1a8a5d6e667f"
+        },
+        {
+          "path": "tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts",
+          "test_name": "fails closed on recovery failure and heals after PostgreSQL recovers",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1302,
+              "text": "2026-09-19T00:24:09.7210347Z  ✓ tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts > inpatient clinical-financial vertical HTTP PostgreSQL boundary > fails closed on recovery failure and heals after PostgreSQL recovers 95ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "5db4a376d33ee6a64589b98497e494d94dfe9103877fb89bcf1f1a8a5d6e667f"
+        },
+        {
+          "path": "tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts",
+          "test_name": "denies a request when revocation commits while its final guard is paused",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1308,
+              "text": "2026-09-19T00:24:09.8309695Z  ✓ tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts > inpatient clinical-financial vertical HTTP PostgreSQL boundary > denies a request when revocation commits while its final guard is paused 45ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "5db4a376d33ee6a64589b98497e494d94dfe9103877fb89bcf1f1a8a5d6e667f"
+        }
+      ],
+      "criterion_status": "PASS",
+      "item_closure": "BLOCKED_BY_DEPENDENCY"
+    },
+    {
+      "criterion_id": "P0-CLINICAL-AUDIT-INVARIANTS-01",
+      "cases": [
+        {
+          "path": "tests/integration/database/runtime-timeline-immutability.test.ts",
+          "test_name": "repairs permissive API/worker grants, preserves appended corrections, and permits owner cleanup",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1984,
+              "text": "2026-09-19T00:28:21.2146296Z  ✓ tests/integration/database/runtime-timeline-immutability.test.ts > production runtime reconciliation protects clinical evidence > repairs permissive API/worker grants, preserves appended corrections, and permits owner cleanup 284ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "993026b00e4963fee7eb60ff78b402cc6ebd6415bde0c30de180185bb277e844"
+        },
+        {
+          "path": "tests/integration/database/runtime-timeline-immutability.test.ts",
+          "test_name": "rejects parent cascades from real LOGIN roles and SET ROLE without rewriting evidence",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1986,
+              "text": "2026-09-19T00:28:21.3149260Z  ✓ tests/integration/database/runtime-timeline-immutability.test.ts > production runtime reconciliation protects clinical evidence > rejects parent cascades from real LOGIN roles and SET ROLE without rewriting evidence 49ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "993026b00e4963fee7eb60ff78b402cc6ebd6415bde0c30de180185bb277e844"
+        },
+        {
+          "path": "tests/integration/database/runtime-timeline-immutability.test.ts",
+          "test_name": "blocks all ancestor deletion attempts, SET NULL audit mutations and privileged TRUNCATE CASCADE",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1987,
+              "text": "2026-09-19T00:28:21.3994020Z  ✓ tests/integration/database/runtime-timeline-immutability.test.ts > production runtime reconciliation protects clinical evidence > blocks all ancestor deletion attempts, SET NULL audit mutations and privileged TRUNCATE CASCADE 77ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "993026b00e4963fee7eb60ff78b402cc6ebd6415bde0c30de180185bb277e844"
+        },
+        {
+          "path": "tests/integration/database/runtime-timeline-immutability.test.ts",
+          "test_name": "permits runtime draft deletion without evidence and ordinary clinical status updates",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1988,
+              "text": "2026-09-19T00:28:21.3996274Z  ✓ tests/integration/database/runtime-timeline-immutability.test.ts > production runtime reconciliation protects clinical evidence > permits runtime draft deletion without evidence and ordinary clinical status updates 9ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "993026b00e4963fee7eb60ff78b402cc6ebd6415bde0c30de180185bb277e844"
+        },
+        {
+          "path": "tests/integration/database/audit-cursor-pagination-postgres.test.ts",
+          "test_name": "filters before limiting and walks the tenant history with a stable cursor",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1981,
+              "text": "2026-09-19T00:28:20.2993370Z  ✓ tests/integration/database/audit-cursor-pagination-postgres.test.ts > audit cursor pagination on PostgreSQL > filters before limiting and walks the tenant history with a stable cursor 21ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "73377a1c98bcb5f1845853bde62c976b6467847fda3c956b35f2537d3705e6ea"
+        },
+        {
+          "path": "tests/integration/database/audit-cursor-pagination-postgres.test.ts",
+          "test_name": "builds coverage from the complete committed snapshot across a fresh service and legacy account rows",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1982,
+              "text": "2026-09-19T00:28:20.2995758Z  ✓ tests/integration/database/audit-cursor-pagination-postgres.test.ts > audit cursor pagination on PostgreSQL > builds coverage from the complete committed snapshot across a fresh service and legacy account rows 22ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "73377a1c98bcb5f1845853bde62c976b6467847fda3c956b35f2537d3705e6ea"
+        },
+        {
+          "path": "tests/integration/database/inpatient-clinical-financial-close-receipt-http-postgres.test.ts",
+          "test_name": "closes idempotently and publishes the encounter timeline/audit/outbox graph",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1551,
+              "text": "2026-09-19T00:25:51.4450775Z  ✓ tests/integration/database/inpatient-clinical-financial-close-receipt-http-postgres.test.ts > inpatient clinical-financial close → receipt HTTP PostgreSQL boundary > closes idempotently and publishes the encounter timeline/audit/outbox graph 30ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "bcf0667e94b01e739fcc900cd1d5a07873db2361e184219a517abb5441ebf6b0"
+        }
+      ],
+      "criterion_status": "PASS",
+      "item_closure": "BLOCKED_BY_DEPENDENCY"
+    },
+    {
+      "criterion_id": "P0-CLINICAL-AUDIT-INVARIANTS-02",
+      "cases": [
+        {
+          "path": "tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts",
+          "test_name": "carries HTTP-created Owner → Patient → Encounter through inpatient, billing, stock and receipt",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1274,
+              "text": "2026-09-19T00:24:08.7997535Z  ✓ tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts > inpatient clinical-financial vertical HTTP PostgreSQL boundary > carries HTTP-created Owner → Patient → Encounter through inpatient, billing, stock and receipt 2024ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "5db4a376d33ee6a64589b98497e494d94dfe9103877fb89bcf1f1a8a5d6e667f"
+        },
+        {
+          "path": "tests/integration/database/inpatient-daily-charge-bill-http-postgres.test.ts",
+          "test_name": "converges same-key concurrent billing into one item and one idempotency row",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1518,
+              "text": "2026-09-19T00:25:41.2614212Z  ✓ tests/integration/database/inpatient-daily-charge-bill-http-postgres.test.ts > inpatient daily-charge HTTP PostgreSQL boundary > converges same-key concurrent billing into one item and one idempotency row 28ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "6f147f8e0bd577e2eafc939bf7c3560a9a5161cf7db95a6bc1377a1d5861bbf5"
+        },
+        {
+          "path": "tests/integration/database/inpatient-daily-charge-bill-http-postgres.test.ts",
+          "test_name": "converges equivalent distinct-key concurrent billing inside the HTTP UoW",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1519,
+              "text": "2026-09-19T00:25:41.7834644Z  ✓ tests/integration/database/inpatient-daily-charge-bill-http-postgres.test.ts > inpatient daily-charge HTTP PostgreSQL boundary > converges equivalent distinct-key concurrent billing inside the HTTP UoW 595ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "6f147f8e0bd577e2eafc939bf7c3560a9a5161cf7db95a6bc1377a1d5861bbf5"
+        },
+        {
+          "path": "tests/integration/database/inpatient-clinical-financial-close-receipt-http-postgres.test.ts",
+          "test_name": "serializes concurrent payments and rejects the second overpayment at the database lock",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1550,
+              "text": "2026-09-19T00:25:51.4449076Z  ✓ tests/integration/database/inpatient-clinical-financial-close-receipt-http-postgres.test.ts > inpatient clinical-financial close → receipt HTTP PostgreSQL boundary > serializes concurrent payments and rejects the second overpayment at the database lock 62ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "bcf0667e94b01e739fcc900cd1d5a07873db2361e184219a517abb5441ebf6b0"
+        },
+        {
+          "path": "tests/integration/database/inpatient-clinical-financial-close-receipt-http-postgres.test.ts",
+          "test_name": "settles the billing generated by the same closed encounter exactly once",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 1552,
+              "text": "2026-09-19T00:25:54.2479302Z  ✓ tests/integration/database/inpatient-clinical-financial-close-receipt-http-postgres.test.ts > inpatient clinical-financial close → receipt HTTP PostgreSQL boundary > settles the billing generated by the same closed encounter exactly once 2803ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "bcf0667e94b01e739fcc900cd1d5a07873db2361e184219a517abb5441ebf6b0"
+        },
+        {
+          "path": "tests/integration/database/inventory-procurement-postgres.test.ts",
+          "test_name": "linearizes concurrent receives of different purchase lines",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 2047,
+              "text": "2026-09-19T00:29:14.6562682Z  ✓ tests/integration/database/inventory-procurement-postgres.test.ts > inventory procurement persistence on PostgreSQL > linearizes concurrent receives of different purchase lines 213ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "0504654aa7f8711f88e0d94d35dcb78e886fe1b63f9701d713b72a7627af24fe"
+        },
+        {
+          "path": "tests/integration/database/inventory-procurement-postgres.test.ts",
+          "test_name": "rejects a concurrent same-line over-receipt without a second movement",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 2048,
+              "text": "2026-09-19T00:29:14.7204433Z  ✓ tests/integration/database/inventory-procurement-postgres.test.ts > inventory procurement persistence on PostgreSQL > rejects a concurrent same-line over-receipt without a second movement 28ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "0504654aa7f8711f88e0d94d35dcb78e886fe1b63f9701d713b72a7627af24fe"
+        },
+        {
+          "path": "tests/integration/database/inpatient-inventory-charge-capture-http-postgres.test.ts",
+          "test_name": "creates one source-idempotent billing item when inpatient stock is consumed",
+          "status": "PASS",
+          "matches": [
+            {
+              "line": 2007,
+              "text": "2026-09-19T00:28:24.7449913Z  ✓ tests/integration/database/inpatient-inventory-charge-capture-http-postgres.test.ts > inpatient inventory charge capture HTTP PostgreSQL boundary > creates one source-idempotent billing item when inpatient stock is consumed 155ms"
+            }
+          ],
+          "raw_source": "integration.log",
+          "source_sha256": "9dff3d5e1a7ca5e50fbe6712fdb403c74aa1656ba4570a2e8286683278eec113"
+        }
+      ],
+      "criterion_status": "PASS",
+      "item_closure": "BLOCKED_BY_DEPENDENCY"
+    }
+  ],
+  "limitations": [
+    "Only criteria PASS; item closure requires registry dependency checks. DATA candidate-freeze; WORKFLOW DATA CLOSED; clinical golden target RLS+worker; audit golden-path.",
+    "Local/CI PostgreSQL evidence is not approved target execution, human certification, or release approval.",
+    "SPA cases compose UI coverage; no single browser-only inpatient-to-billing journey claimed.",
+    "Integration process child stdout was intentionally truncated by runner; all11 validated non-skipped contracts and full completion appear in raw parent log.",
+    "No repository or registry edits performed."
+  ],
+  "raw_hashes": {
+    "integration.log": "63d76806030ce7d14546651961bd3869eb4a028831b77fb40b85d21ab66ab63b",
+    "critical.log": "0ea778f67033df01c989e0a0126b08f2a7c10a19ef60209e090d148de4df501f",
+    "unit.log": "4af8a5f601727378e1cfda9a86fd6d244cc0e414dc53a7633f7aeeef08f2775b",
+    "verified-fixture-e2e.log": "6b380d7b50390ec29ada99a70fa34a63eee2bea57325270dcb69b0b71d7334bc",
+    "jobs.json": "cb408a86710561c15b858e459e69d69d139985e0f247f7b19c0e6c5bc50d2673",
+    "run.json": "deb9adbfe10d0a1f7c3069e6972e4255990abce9230971ec0ba1661e167498ee",
+    "artifacts.json": "85668f89ff07eed50fe602977be9aa8136b1e41e04bc1bba4532b8d6866547f0"
+  },
+  "record_type": "Derived assessment of downloaded GitHub Actions evidence; not a signature or external approval",
+  "ci_url": "https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35408222214"
+}

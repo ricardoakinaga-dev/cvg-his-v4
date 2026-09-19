@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "registry_id": "CVG-HIS-P0-REGISTRY-V1",
-  "generated_at": "2026-09-19T00:06:46.413159+00:00",
+  "generated_at": "2026-09-19T00:45:57.311154+00:00",
   "generated_by": "lead-verification",
   "candidate": {
     "candidate_id": "CVG-HIS-V4-ec092d77b69e",
@@ -80,7 +80,7 @@
         {
           "id": "P0-CI-GREEN-MAIN-01",
           "description": "Every required workflow job passes on the exact candidate",
-          "status": "NOT_PROVEN",
+          "status": "PASS",
           "required": true
         },
         {
@@ -100,6 +100,16 @@
           "source": "GitHub Actions exact-candidate run",
           "artifact": "docs/triple-a/17-current-execution-evidence.md",
           "observed_at": "2026-09-17T04:38:38.090Z"
+        },
+        {
+          "id": "EVD-P0-CI-17-JOBS-35408222214",
+          "status": "PASS",
+          "fresh": true,
+          "mandatory": true,
+          "candidate_sha": "ec092d77b69e97b4c408422ca13cac0c7e525fdf",
+          "source": "CI35408222214 exact published head470f87db, all17 requiredjobs success; branch governance remains unproven in separate criterion.",
+          "artifact": "docs/triple-a/30-p0-remediation-20260918.md",
+          "observed_at": "2026-09-19T00:44:58.264140+00:00"
         }
       ],
       "human_required": false,
@@ -113,7 +123,7 @@
       "id": "P0-DATA-POSTGRESQL-RUNTIME",
       "epic": "DATA",
       "title": "PostgreSQL runtime and migration contracts are current",
-      "status": "STALE",
+      "status": "CLOSED",
       "classification": "LOCAL_INFRA_REQUIRED",
       "closure_policy": "AUTOMATIC",
       "owner": "data-platform",
@@ -126,13 +136,13 @@
         {
           "id": "P0-DATA-POSTGRESQL-RUNTIME-01",
           "description": "Migration source and checksums are verified without drift",
-          "status": "NOT_PROVEN",
+          "status": "PASS",
           "required": true
         },
         {
           "id": "P0-DATA-POSTGRESQL-RUNTIME-02",
           "description": "Disposable PostgreSQL executes the critical database suite",
-          "status": "NOT_PROVEN",
+          "status": "PASS",
           "required": true
         }
       ],
@@ -141,11 +151,21 @@
           "id": "EVD-P0-DATA-POSTGRESQL-RUNTIME",
           "status": "NOT_PROVEN",
           "fresh": false,
-          "mandatory": true,
+          "mandatory": false,
           "candidate_sha": "51391915eb165a9b99e33682d0ab557f6263cb2a",
           "source": "Historical database proof retained; new0177 candidate requires current full database CI evidence",
           "artifact": "docs/triple-a/29-main-unification-20260918.md",
           "observed_at": "2026-09-18T13:48:06.141235+00:00"
+        },
+        {
+          "id": "EVD-P0-DATA-POSTGRESQL-RUNTIME-CI-35408222214",
+          "status": "PASS",
+          "fresh": true,
+          "mandatory": true,
+          "candidate_sha": "ec092d77b69e97b4c408422ca13cac0c7e525fdf",
+          "source": "Exact GitHub CI35408222214 at470f87dbee3f0755e0fb740dfa78b113d75d05c9, documentation-only descendant of frozen source; named cases and SQL evidence independently inspected. Item closure still requires every dependency.",
+          "artifact": "docs/triple-a/evidence/p0-remediation-20260918.json",
+          "observed_at": "2026-09-19T00:44:58.264140+00:00"
         }
       ],
       "human_required": false,
@@ -204,7 +224,7 @@
       "id": "P0-WORKFLOW-LEASE-FENCING",
       "epic": "WORKFLOW",
       "title": "Workflow concurrency, lease and fencing are current",
-      "status": "NOT_PROVEN",
+      "status": "CLOSED",
       "classification": "CI_REQUIRED",
       "closure_policy": "AUTOMATIC",
       "owner": "workflow-platform",
@@ -217,13 +237,13 @@
         {
           "id": "P0-WORKFLOW-LEASE-FENCING-01",
           "description": "Duplicate claims and stale owners are rejected deterministically",
-          "status": "NOT_PROVEN",
+          "status": "PASS",
           "required": true
         },
         {
           "id": "P0-WORKFLOW-LEASE-FENCING-02",
           "description": "Concurrency and cancellation races preserve one material effect",
-          "status": "NOT_PROVEN",
+          "status": "PASS",
           "required": true
         }
       ],
@@ -232,11 +252,21 @@
           "id": "EVD-P0-WORKFLOW-LEASE-FENCING",
           "status": "NOT_PROVEN",
           "fresh": false,
-          "mandatory": true,
+          "mandatory": false,
           "candidate_sha": null,
           "source": "critical workflow PostgreSQL envelope",
           "artifact": "docs/triple-a/05-workflow-engine.md",
           "observed_at": "2026-09-17T04:38:38.090Z"
+        },
+        {
+          "id": "EVD-P0-WORKFLOW-LEASE-FENCING-CI-35408222214",
+          "status": "PASS",
+          "fresh": true,
+          "mandatory": true,
+          "candidate_sha": "ec092d77b69e97b4c408422ca13cac0c7e525fdf",
+          "source": "Exact GitHub CI35408222214 at470f87dbee3f0755e0fb740dfa78b113d75d05c9, documentation-only descendant of frozen source; named cases and SQL evidence independently inspected. Item closure still requires every dependency.",
+          "artifact": "docs/triple-a/evidence/p0-remediation-20260918.json",
+          "observed_at": "2026-09-19T00:44:58.264140+00:00"
         }
       ],
       "human_required": false,
@@ -298,7 +328,7 @@
       "id": "P0-CLINICAL-GOLDEN-PATH",
       "epic": "CLINICAL",
       "title": "Clinical golden path and negative paths are executable",
-      "status": "NOT_PROVEN",
+      "status": "BLOCKED_BY_DEPENDENCY",
       "classification": "AUTOMATABLE_LOCAL",
       "closure_policy": "AUTOMATIC",
       "owner": "clinical-product",
@@ -312,13 +342,13 @@
         {
           "id": "P0-CLINICAL-GOLDEN-PATH-01",
           "description": "Owner to patient to encounter to inpatient to billing closes with audit",
-          "status": "NOT_PROVEN",
+          "status": "PASS",
           "required": true
         },
         {
           "id": "P0-CLINICAL-GOLDEN-PATH-02",
           "description": "Negative clinical paths fail closed without silent corruption",
-          "status": "NOT_PROVEN",
+          "status": "PASS",
           "required": true
         }
       ],
@@ -327,11 +357,21 @@
           "id": "EVD-P0-CLINICAL-GOLDEN-PATH",
           "status": "NOT_PROVEN",
           "fresh": false,
-          "mandatory": true,
+          "mandatory": false,
           "candidate_sha": null,
           "source": "exact-candidate clinical HTTP and browser evidence",
           "artifact": "docs/triple-a/03-clinical-assurance.md",
           "observed_at": "2026-09-17T04:38:38.090Z"
+        },
+        {
+          "id": "EVD-P0-CLINICAL-GOLDEN-PATH-CI-35408222214",
+          "status": "PASS",
+          "fresh": true,
+          "mandatory": true,
+          "candidate_sha": "ec092d77b69e97b4c408422ca13cac0c7e525fdf",
+          "source": "Exact GitHub CI35408222214 at470f87dbee3f0755e0fb740dfa78b113d75d05c9, documentation-only descendant of frozen source; named cases and SQL evidence independently inspected. Item closure still requires every dependency.",
+          "artifact": "docs/triple-a/evidence/p0-remediation-20260918.json",
+          "observed_at": "2026-09-19T00:44:58.264140+00:00"
         }
       ],
       "human_required": false,
@@ -346,7 +386,7 @@
       "id": "P0-CLINICAL-AUDIT-INVARIANTS",
       "epic": "CLINICAL",
       "title": "Clinical safety, audit and financial invariants hold",
-      "status": "NOT_PROVEN",
+      "status": "BLOCKED_BY_DEPENDENCY",
       "classification": "AUTOMATABLE_LOCAL",
       "closure_policy": "AUTOMATIC",
       "owner": "clinical-product",
@@ -359,13 +399,13 @@
         {
           "id": "P0-CLINICAL-AUDIT-INVARIANTS-01",
           "description": "Append-only audit and timeline records are immutable and searchable",
-          "status": "NOT_PROVEN",
+          "status": "PASS",
           "required": true
         },
         {
           "id": "P0-CLINICAL-AUDIT-INVARIANTS-02",
           "description": "Billing and inventory concurrency preserve balanced durable effects",
-          "status": "NOT_PROVEN",
+          "status": "PASS",
           "required": true
         }
       ],
@@ -374,11 +414,21 @@
           "id": "EVD-P0-CLINICAL-AUDIT-INVARIANTS",
           "status": "NOT_PROVEN",
           "fresh": false,
-          "mandatory": true,
+          "mandatory": false,
           "candidate_sha": null,
           "source": "current clinical and financial invariant suite",
           "artifact": "docs/triple-a/07-clinical-timeline.md",
           "observed_at": "2026-09-17T04:38:38.090Z"
+        },
+        {
+          "id": "EVD-P0-CLINICAL-AUDIT-INVARIANTS-CI-35408222214",
+          "status": "PASS",
+          "fresh": true,
+          "mandatory": true,
+          "candidate_sha": "ec092d77b69e97b4c408422ca13cac0c7e525fdf",
+          "source": "Exact GitHub CI35408222214 at470f87dbee3f0755e0fb740dfa78b113d75d05c9, documentation-only descendant of frozen source; named cases and SQL evidence independently inspected. Item closure still requires every dependency.",
+          "artifact": "docs/triple-a/evidence/p0-remediation-20260918.json",
+          "observed_at": "2026-09-19T00:44:58.264140+00:00"
         }
       ],
       "human_required": false,
@@ -673,7 +723,7 @@
     }
   ],
   "summary": {
-    "open_p0": 13,
-    "closed_p0": 1
+    "open_p0": 11,
+    "closed_p0": 3
   }
 }
