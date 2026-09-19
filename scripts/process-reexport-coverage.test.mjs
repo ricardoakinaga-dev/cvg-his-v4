@@ -110,9 +110,12 @@ for (const mode of ['chain', 'single-map', 'original'])
         urls[name] = { original, originalUrl, url };
       }
       const driver = join(root, 'driver.mjs');
+      // Use one genuine exit dump. Node names coverage files by millisecond;
+      // takeCoverage() immediately before exit can be overwritten by the
+      // automatic exit dump after its counters have already been reset.
       writeFileSync(
         driver,
-        `import{takeCoverage}from'node:v8';import{startProcessScriptPersistence}from${JSON.stringify(persistence)};const c=await startProcessScriptPersistence({root:${JSON.stringify(root)}});const b=await import(${JSON.stringify(urls.barrel.url)});if((b.values??b).live()!==7)throw Error('wrong reexport');c.flush();takeCoverage();process.on('exit',()=>c.flush());`
+        `import{startProcessScriptPersistence}from${JSON.stringify(persistence)};const c=await startProcessScriptPersistence({root:${JSON.stringify(root)}});const b=await import(${JSON.stringify(urls.barrel.url)});if((b.values??b).live()!==7)throw Error('wrong reexport');c.flush();process.on('exit',()=>c.flush());`
       );
       const fd = openSync(rawDir, constants.O_RDONLY | constants.O_DIRECTORY);
       let child;
@@ -138,6 +141,8 @@ for (const mode of ['chain', 'single-map', 'original'])
         name,
         text: readFileSync(join(rawDir, name), 'utf8')
       }));
+      assert.equal(records.filter((record) => record.name.startsWith('coverage-')).length, 1,
+        'fixture must retain exactly one genuine process-exit V8 coverage dump');
       const raw = records.map((record) => JSON.parse(record.text));
       const inputs = {};
       for (const [name, identity] of Object.entries(urls)) {
