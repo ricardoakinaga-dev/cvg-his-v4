@@ -10,6 +10,7 @@ const shaRef = /^[0-9a-f]{40}$/;
 const digestRef = /^sha256:[0-9a-f]{64}$/;
 const localComposeImage = /^cvg-his-v[24]-/;
 const opaqueStaticHash = Symbol('opaque-static-hash');
+const filteredStaticArray = Symbol('filtered-static-array');
 const staticDigest = /^[0-9a-f]{64}$/i;
 
 let trackedCheckoutFilesCache;
@@ -22,6 +23,59 @@ function createOpaqueStaticHash() {
   return { [opaqueStaticHash]: true };
 }
 
+function createFilteredStaticArray(values) {
+  const result = [...values];
+  Object.defineProperty(result, filteredStaticArray, { value: true });
+  return result;
+}
+
+function isFilteredStaticArray(value) {
+  return Array.isArray(value) && value[filteredStaticArray] === true;
+}
+
+function githubNumberString(value) {
+  if (Number.isNaN(value)) return 'NaN';
+  if (value === Number.POSITIVE_INFINITY) return 'Infinity';
+  if (value === Number.NEGATIVE_INFINITY) return '-Infinity';
+  if (Object.is(value, -0) || value === 0) return '0';
+  const negative = value < 0;
+  const precise = Math.abs(value).toPrecision(15);
+  const [rawMantissa, rawExponent = '0'] = precise.split(/[eE]/);
+  const decimalIndex = rawMantissa.indexOf('.') < 0 ? rawMantissa.length : rawMantissa.indexOf('.');
+  const digits = rawMantissa.replace('.', '');
+  const firstSignificant = digits.search(/[1-9]/);
+  if (firstSignificant < 0) return '0';
+  const significantDigits = digits.slice(firstSignificant);
+  const scientificExponent =
+    Number(rawExponent) + decimalIndex - firstSignificant - 1;
+  const sign = negative ? '-' : '';
+
+  if (scientificExponent >= -4 && scientificExponent < 15) {
+    const decimalPosition = scientificExponent + 1;
+    let integer;
+    let fraction;
+    if (decimalPosition <= 0) {
+      integer = '0';
+      fraction = `${'0'.repeat(-decimalPosition)}${significantDigits}`;
+    } else if (decimalPosition >= significantDigits.length) {
+      integer = `${significantDigits}${'0'.repeat(decimalPosition - significantDigits.length)}`;
+      fraction = '';
+    } else {
+      integer = significantDigits.slice(0, decimalPosition);
+      fraction = significantDigits.slice(decimalPosition);
+    }
+    fraction = fraction.replace(/0+$/, '');
+    return `${sign}${integer}${fraction ? `.${fraction}` : ''}`;
+  }
+
+  let scientificMantissa = significantDigits[0];
+  const scientificFraction = significantDigits.slice(1).replace(/0+$/, '');
+  if (scientificFraction) scientificMantissa += `.${scientificFraction}`;
+  const exponentSign = scientificExponent >= 0 ? '+' : '-';
+  const exponentDigits = String(Math.abs(scientificExponent)).padStart(2, '0');
+  return `${sign}${scientificMantissa}E${exponentSign}${exponentDigits}`;
+}
+
 function isGithubPrimitive(value) {
   return value === null || ['boolean', 'number', 'string'].includes(typeof value);
 }
@@ -30,7 +84,31 @@ function githubExpressionValueString(value) {
   if (value === null || value === undefined) return '';
   if (Array.isArray(value)) return 'Array';
   if (typeof value === 'object') return 'Object';
+  if (typeof value === 'number') return githubNumberString(value);
   return String(value);
+}
+
+function githubToJson(value, depth = 0) {
+  const indentation = '  '.repeat(depth);
+  const nestedIndentation = '  '.repeat(depth + 1);
+  if (value === null) return 'null';
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (typeof value === 'number') return Number.isFinite(value) ? githubNumberString(value) : 'null';
+  if (typeof value === 'string') return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    if (value.length === 0) return '[]';
+    const items = value.map((item) => `${nestedIndentation}${githubToJson(item, depth + 1)}`);
+    return `[\n${items.join(',\n')}\n${indentation}]`;
+  }
+  if (typeof value === 'object') {
+    const entries = Object.entries(value);
+    if (entries.length === 0) return '{}';
+    const members = entries.map(
+      ([key, item]) => `${nestedIndentation}${JSON.stringify(key)}: ${githubToJson(item, depth + 1)}`
+    );
+    return `{\n${members.join(',\n')}\n${indentation}}`;
+  }
+  return 'null';
 }
 
 function trackedCheckoutFiles() {
@@ -171,13 +249,13 @@ function githubExpressionNumber(value) {
     if (/^[+-]?(?:(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)$/.test(normalized)) {
       return Number(normalized);
     }
-    if (
-      /^0x[0-9a-fA-F]+$/.test(normalized) ||
-      /^0o[0-7]+$/.test(normalized)
-    ) {
-      return normalized.startsWith('0x')
-        ? Number.parseInt(normalized.slice(2), 16)
-        : Number.parseInt(normalized.slice(2), 8);
+    if (/^0x[0-9a-fA-F]+$/.test(normalized)) {
+      const parsed = Number.parseInt(normalized.slice(2), 16);
+      return parsed <= 0x7fffffff ? parsed : Number.NaN;
+    }
+    if (/^0o[0-7]+$/.test(normalized)) {
+      const parsed = Number.parseInt(normalized.slice(2), 8);
+      return parsed <= 0x7fffffff ? parsed : Number.NaN;
     }
     if (normalized === 'Infinity') return Number.POSITIVE_INFINITY;
     if (normalized === '-Infinity') return Number.NEGATIVE_INFINITY;
@@ -195,7 +273,7 @@ function githubExpressionString(value) {
 
 function parseGithubNumericLiteral(literal) {
   const negative = literal.startsWith('-');
-  const unsigned = negative ? literal.slice(1) : literal;
+  const unsigned = /^[+-]/.test(literal) ? literal.slice(1) : literal;
   const value = /^0[xX]/.test(unsigned)
     ? Number.parseInt(unsigned.slice(2), 16)
     : /^0[bB]/.test(unsigned)
@@ -292,7 +370,7 @@ function parseGithubFunctionCall(expression, offset) {
 function githubExpressionTruthy(value) {
   if (value === null) return false;
   if (typeof value === 'boolean') return value;
-  if (typeof value === 'number') return Number.isFinite(value) && value !== 0;
+  if (typeof value === 'number') return !Number.isNaN(value) && value !== 0;
   if (typeof value === 'string') return value.length > 0;
   return true;
 }
@@ -367,7 +445,7 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
   if (call.name === 'tojson' && call.args.length === 1) {
     if (isOpaqueStaticHash(values[0].value)) return null;
     try {
-      return { value: JSON.stringify(values[0].value, null, 2) };
+      return { value: githubToJson(values[0].value) };
     } catch {
       return null;
     }
@@ -425,8 +503,9 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
     }
     return { value: matched.size > 0 ? createOpaqueStaticHash() : '' };
   }
-  if (call.name === 'format' && call.args.length >= 1 && typeof values[0].value === 'string') {
-    const template = values[0].value;
+  if (call.name === 'format' && call.args.length >= 1) {
+    if (isOpaqueStaticHash(values[0].value)) return null;
+    const template = githubExpressionValueString(values[0].value);
     if (values.slice(1).some(({ value }) => isOpaqueStaticHash(value))) return null;
     const replacements = values.slice(1).map(({ value }) => githubExpressionValueString(value));
     let formatted = '';
@@ -531,7 +610,7 @@ function evaluateStaticLiteralComparison(left, right, operator) {
     if (operator === '===') return left === right;
     const leftNumber = githubExpressionNumber(left);
     const rightNumber = githubExpressionNumber(right);
-    return Number.isFinite(leftNumber) && Number.isFinite(rightNumber) && leftNumber === rightNumber;
+    return !Number.isNaN(leftNumber) && !Number.isNaN(rightNumber) && leftNumber === rightNumber;
   }
   if (operator === '!=' || operator === '!==') {
     const equality = evaluateStaticLiteralComparison(left, right, operator === '!=' ? '==' : '===');
@@ -548,7 +627,7 @@ function evaluateStaticLiteralComparison(left, right, operator) {
   }
   const leftNumber = githubExpressionNumber(left);
   const rightNumber = githubExpressionNumber(right);
-  if (!Number.isFinite(leftNumber) || !Number.isFinite(rightNumber)) return false;
+  if (Number.isNaN(leftNumber) || Number.isNaN(rightNumber)) return false;
   if (operator === '<') return leftNumber < rightNumber;
   if (operator === '<=') return leftNumber <= rightNumber;
   if (operator === '>') return leftNumber > rightNumber;
@@ -573,7 +652,7 @@ function evaluateStaticExpressionValueModern(expression, knownValues = {}) {
     const nullLiteral = source.match(/^(?:null|~)(?![A-Za-z0-9_.-])/i);
     if (nullLiteral) return { end: offset + nullLiteral[0].length, value: null };
     const numericLiteral = source.match(
-      /^-?(?:(?:0[xX][0-9a-fA-F]+)|(?:0[bB][01]+)|(?:0[oO][0-7]+)|(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)(?![A-Za-z0-9_.-])/
+      /^[+-]?(?:(?:0[xX][0-9a-fA-F]+)|(?:0[bB][01]+)|(?:0[oO][0-7]+)|(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)(?![A-Za-z0-9_.-])/
     );
     if (numericLiteral) {
       return {
@@ -619,6 +698,30 @@ function evaluateStaticExpressionValueModern(expression, knownValues = {}) {
     if (!base.known) return unknown();
     const value = base.value;
     if (value === null || value === undefined) return { value: null, known: true };
+    if (isFilteredStaticArray(value)) {
+      if (!isGithubPrimitive(selectorValue)) return { value: createFilteredStaticArray([]), known: true };
+      const numericIndex = githubExpressionNumber(selectorValue);
+      if (Number.isFinite(numericIndex) && numericIndex >= 0) {
+        const integerIndex = Math.floor(numericIndex);
+        return {
+          value: createFilteredStaticArray(
+            value
+              .filter((item) => Array.isArray(item) && integerIndex < item.length)
+              .map((item) => item[integerIndex])
+          ),
+          known: true
+        };
+      }
+      const propertyKey = githubExpressionValueString(selectorValue);
+      return {
+        value: createFilteredStaticArray(
+          value
+            .filter((item) => item && typeof item === 'object' && Object.prototype.hasOwnProperty.call(item, propertyKey))
+            .map((item) => item[propertyKey])
+        ),
+        known: true
+      };
+    }
     if (Array.isArray(value)) {
       const indexValue = githubExpressionNumber(selectorValue);
       if (Number.isFinite(indexValue) && indexValue >= 0) {
@@ -647,12 +750,25 @@ function evaluateStaticExpressionValueModern(expression, knownValues = {}) {
           index += 2;
           if (!value.known) {
             value = unknown();
+          } else if (isFilteredStaticArray(value.value)) {
+            value = {
+              value: createFilteredStaticArray(
+                value.value.flatMap((item) =>
+                  Array.isArray(item)
+                    ? item
+                    : item && typeof item === 'object'
+                      ? Object.values(item)
+                      : []
+                )
+              ),
+              known: true
+            };
           } else if (Array.isArray(value.value)) {
-            value = { value: value.value, known: true };
+            value = { value: createFilteredStaticArray(value.value), known: true };
           } else if (value.value && typeof value.value === 'object') {
-            value = { value: Object.values(value.value), known: true };
+            value = { value: createFilteredStaticArray(Object.values(value.value)), known: true };
           } else {
-            value = { value: [], known: true };
+            value = { value: createFilteredStaticArray([]), known: true };
           }
           continue;
         }
