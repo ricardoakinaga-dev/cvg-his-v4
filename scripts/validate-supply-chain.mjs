@@ -19,6 +19,10 @@ const githubStaticUndefined = Symbol('github-static-undefined');
 const githubInvalidStaticJson = Symbol('github-invalid-static-json');
 const githubConstructorNamePattern = /^[\p{L}\p{Nd}]+$/u;
 const staticDigest = /^[0-9a-f]{64}$/i;
+const githubJsonMaxIntegerDigits = 380;
+const githubJsonMaxInt64 = 9223372036854775807n;
+const githubJsonMaxUInt64 = 18446744073709551615n;
+const githubJsonInt64Modulus = 18446744073709551616n;
 
 let trackedCheckoutFilesCache;
 
@@ -184,7 +188,7 @@ function githubExpressionValueString(value) {
 
 function githubToJson(value, depth = 0) {
   if (isGithubInvalidStaticJson(value)) throw new Error('invalid static JSON');
-  if (isGithubStaticUndefined(value)) return 'null';
+  if (isGithubStaticUndefined(value)) return JSON.stringify('');
   const indentation = '  '.repeat(depth);
   const nestedIndentation = '  '.repeat(depth + 1);
   if (value === null) return 'null';
@@ -221,8 +225,7 @@ function decodeGithubJsonString(value) {
       f: '\f',
       n: '\n',
       r: '\r',
-      t: '\t',
-      v: '\v'
+      t: '\t'
     };
     if (Object.prototype.hasOwnProperty.call(escapedCharacters, escape)) {
       result += escapedCharacters[escape];
@@ -233,14 +236,60 @@ function decodeGithubJsonString(value) {
       index += 4;
       continue;
     }
-    if (escape === 'x' && /^[0-9a-fA-F]{2}/.test(value.slice(index + 1, index + 3))) {
-      result += String.fromCharCode(Number.parseInt(value.slice(index + 1, index + 3), 16));
-      index += 2;
+    if (escape === '\\' || escape === '/' || escape === '"' || escape === "'") {
+      result += escape;
       continue;
     }
-    result += escape;
+    throw new Error('invalid JSON string escape');
   }
   return result;
+}
+
+function replaceGithubUnpairedSurrogates(value) {
+  let result = '';
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        result += value[index] + value[index + 1];
+        index += 1;
+      } else {
+        result += '\uFFFD';
+      }
+    } else if (code >= 0xdc00 && code <= 0xdfff) {
+      result += '\uFFFD';
+    } else {
+      result += value[index];
+    }
+  }
+  return result;
+}
+
+function isGithubJsonWhitespace(character) {
+  if (!character || character.length !== 1) return false;
+  const code = character.charCodeAt(0);
+  return (
+    (code >= 0x0009 && code <= 0x000d) ||
+    code === 0x0020 ||
+    code === 0x0085 ||
+    code === 0x00a0 ||
+    code === 0x1680 ||
+    (code >= 0x2000 && code <= 0x200a) ||
+    code === 0x2028 ||
+    code === 0x2029 ||
+    code === 0x202f ||
+    code === 0x205f ||
+    code === 0x3000
+  );
+}
+
+function trimGithubJsonWhitespace(value) {
+  let start = 0;
+  let end = value.length;
+  while (start < end && isGithubJsonWhitespace(value[start])) start += 1;
+  while (end > start && isGithubJsonWhitespace(value[end - 1])) end -= 1;
+  return value.slice(start, end);
 }
 
 function stripGithubJsonComments(source) {
@@ -291,27 +340,29 @@ function githubJsonNetDoubleString(value) {
   const exponential = value.toExponential();
   const match = exponential.match(/^([+-]?\d(?:\.\d+)?)e([+-]?)(\d+)$/i);
   if (!match) return String(value);
-  const mantissa = match[1];
+  const sign = match[1].startsWith('-') ? '-' : '';
+  const mantissa = match[1].replace(/^[+-]/, '');
   const exponent = Number(`${match[2] || '+'}${match[3]}`);
   const digits = mantissa.replace('.', '');
   const decimalPosition = 1 + exponent;
   let formatted;
   if (exponent >= -4 && exponent < 15) {
     if (decimalPosition <= 0) {
-      formatted = `0.${'0'.repeat(-decimalPosition)}${digits}`;
+      formatted = `${sign}0.${'0'.repeat(-decimalPosition)}${digits}`;
     } else if (decimalPosition >= digits.length) {
-      formatted = `${digits}${'0'.repeat(decimalPosition - digits.length)}`;
+      formatted = `${sign}${digits}${'0'.repeat(decimalPosition - digits.length)}`;
     } else {
-      formatted = `${digits.slice(0, decimalPosition)}.${digits.slice(decimalPosition)}`;
+      formatted = `${sign}${digits.slice(0, decimalPosition)}.${digits.slice(decimalPosition)}`;
     }
   } else {
-    formatted = `${mantissa}E${match[2] || '+'}${match[3].padStart(2, '0')}`;
+    formatted = `${sign}${mantissa}E${match[2] || '+'}${match[3].padStart(2, '0')}`;
   }
   if (!/[.eE]/.test(formatted)) formatted += '.0';
   return formatted;
 }
 
 function githubJsonNetNumberString(literal) {
+  validateGithubJsonNumericLiteral(literal);
   const isDouble = /[.eE]/.test(literal);
   if (isDouble) return githubJsonNetDoubleString(Number(literal));
   const negative = literal.startsWith('-');
@@ -325,15 +376,54 @@ function githubJsonNetNumberString(literal) {
   }
   try {
     let integer;
-    if (/^0[xX]/.test(unsigned)) integer = BigInt(unsigned);
+    if (/^0[xX]/.test(unsigned)) integer = githubJsonSignedInt64(BigInt(unsigned));
     else if (!signed && /^0[0-7]+$/.test(unsigned)) {
-      integer = BigInt(`0o${unsigned.replace(/^0[oO]?/, '') || '0'}`);
+      integer = githubJsonSignedInt64(BigInt(`0o${unsigned.replace(/^0[oO]?/, '') || '0'}`));
     } else if (/^\d+$/.test(unsigned)) integer = BigInt(unsigned);
     else return githubJsonNetDoubleString(Number(literal));
     return integer === 0n ? '0' : `${negative ? '-' : ''}${integer}`;
   } catch {
     return githubJsonNetDoubleString(parseGithubJsonNumericLiteral(literal));
   }
+}
+
+function validateGithubJsonNumericLiteral(literal) {
+  const unsigned = literal.startsWith('-') ? literal.slice(1) : literal;
+  if (/^-?\d+$/.test(literal) && literal.length > githubJsonMaxIntegerDigits) {
+    throw new Error('JSON integer exceeds reader precision limit');
+  }
+  if (!literal.startsWith('-') && /^0\d/.test(unsigned) && /[.eE]/.test(literal)) {
+    throw new Error('invalid legacy octal JSON number');
+  }
+  if (
+    !literal.startsWith('-') &&
+    /^0\d/.test(unsigned) &&
+    /^\d+$/.test(unsigned) &&
+    !/^0[0-7]+$/.test(unsigned)
+  ) {
+    throw new Error('invalid legacy octal JSON number');
+  }
+  if (/^0[xX][0-9a-fA-F]+$/.test(unsigned)) {
+    if (BigInt(unsigned) > githubJsonMaxUInt64) {
+      throw new Error('JSON integer exceeds Int64 range');
+    }
+  }
+  if (/^0[oO][0-7]+$/.test(unsigned)) {
+    if (BigInt(unsigned) > githubJsonMaxUInt64) {
+      throw new Error('JSON integer exceeds Int64 range');
+    }
+  }
+  if (/^0[0-7]+$/.test(unsigned) && unsigned.length > 1) {
+    const legacyOctal = BigInt(`0o${unsigned.slice(1)}`);
+    if (legacyOctal > githubJsonMaxUInt64) {
+      throw new Error('JSON integer exceeds Int64 range');
+    }
+  }
+}
+
+function githubJsonSignedInt64(value) {
+  if (value > githubJsonMaxUInt64) throw new Error('JSON integer exceeds Int64 range');
+  return value > githubJsonMaxInt64 ? value - githubJsonInt64Modulus : value;
 }
 
 function matchingGithubConstructorParen(source, opening) {
@@ -359,7 +449,7 @@ function matchingGithubConstructorParen(source, opening) {
 }
 
 function splitGithubConstructorArguments(source) {
-  if (source.trim() === '') return [];
+  if (trimGithubJsonWhitespace(source) === '') return [];
   const argumentsList = [];
   let start = 0;
   let parentheses = 0;
@@ -394,30 +484,51 @@ function splitGithubConstructorArguments(source) {
   return argumentsList;
 }
 
+function readGithubConstructorHeader(value) {
+  const source = trimGithubJsonWhitespace(value);
+  if (!source.startsWith('new')) return null;
+  let cursor = 3;
+  const whitespaceStart = cursor;
+  while (cursor < source.length && isGithubJsonWhitespace(source[cursor])) cursor += 1;
+  if (cursor === whitespaceStart) return null;
+  const nameStart = cursor;
+  while (
+    cursor < source.length &&
+    /^[\p{L}\p{Nd}]$/u.test(source[cursor]) &&
+    !/[\uD800-\uDFFF]/.test(source[cursor])
+  ) {
+    cursor += 1;
+  }
+  const name = source.slice(nameStart, cursor);
+  if (!name || !isGithubConstructorName(name)) return null;
+  while (cursor < source.length && isGithubJsonWhitespace(source[cursor])) cursor += 1;
+  if (source[cursor] !== '(') return null;
+  return { source, name, opening: cursor };
+}
+
 function indentGithubConstructorText(value, depth) {
   const indentation = '  '.repeat(depth);
   return value.replace(/\n/g, `\n${indentation}`);
 }
 
 function formatGithubConstructorExpression(value, depth = 0) {
-  const source = value.trim();
-  const match = source.match(/^new\s+([\p{L}\p{Nd}]+)\s*\(/u);
-  if (!match || !isGithubConstructorName(match[1])) {
+  const header = readGithubConstructorHeader(value);
+  if (!header) {
     throw new Error('invalid JSON constructor name');
   }
-  const opening = match[0].length - 1;
+  const { source, opening } = header;
   const closing = matchingGithubConstructorParen(source, opening);
-  if (closing < 0 || source.slice(closing + 1).trim() !== '') {
+  if (closing < 0 || trimGithubJsonWhitespace(source.slice(closing + 1)) !== '') {
     throw new Error('invalid JSON constructor');
   }
   const argumentsSource = source.slice(opening + 1, closing);
   const argumentsList = splitGithubConstructorArguments(argumentsSource);
-  if (argumentsList.at(-1)?.trim() === '') argumentsList.pop();
+  if (trimGithubJsonWhitespace(argumentsList.at(-1) ?? '') === '') argumentsList.pop();
   if (argumentsList.length === 0) return `${source.slice(0, opening)}()`;
   const renderedArguments = argumentsList.map((argument) => {
-    const trimmed = argument.trim();
+    const trimmed = trimGithubJsonWhitespace(argument);
     if (trimmed === '') return 'undefined';
-    if (/^new\s+[\p{L}\p{Nd}]+\s*\(/u.test(trimmed)) {
+    if (readGithubConstructorHeader(trimmed)) {
       return formatGithubConstructorExpression(trimmed, depth + 1);
     }
     return trimmed;
@@ -429,10 +540,28 @@ function formatGithubConstructorExpression(value, depth = 0) {
     .join(',\n')}\n${indentation})`;
 }
 
-function normalizeGithubConstructor(value) {
-  const constructorMatch = value.trim().match(/^new\s+([^\s(]+)\s*\(/);
-  if (!constructorMatch || !isGithubConstructorName(constructorMatch[1])) {
+function normalizeGithubConstructor(value, depth = 0) {
+  if (depth >= 64) throw new Error('maximum JSON depth exceeded');
+  const header = readGithubConstructorHeader(value);
+  if (!header) {
     throw new Error('invalid JSON constructor name');
+  }
+  const { source: constructorSource, opening } = header;
+  const closing = matchingGithubConstructorParen(constructorSource, opening);
+  if (closing < 0 || trimGithubJsonWhitespace(constructorSource.slice(closing + 1)) !== '') {
+    throw new Error('invalid JSON constructor');
+  }
+  const argumentSources = splitGithubConstructorArguments(
+    constructorSource.slice(opening + 1, closing)
+  );
+  if (trimGithubJsonWhitespace(argumentSources.at(-1) ?? '') === '') argumentSources.pop();
+  for (const argumentSource of argumentSources) {
+    if (trimGithubJsonWhitespace(stripGithubJsonComments(argumentSource)) === '') continue;
+    parseGithubJsonPrefix(argumentSource, {
+      preserveConstructors: true,
+      requireComplete: true,
+      depth: depth + 1
+    });
   }
   let result = '';
   let pendingWhitespace = false;
@@ -472,7 +601,7 @@ function normalizeGithubConstructor(value) {
   };
   const isConstructorArgumentPosition = (offset) => {
     let cursor = offset - 1;
-    while (cursor >= 0 && /\s/.test(value[cursor])) cursor -= 1;
+    while (cursor >= 0 && isGithubJsonWhitespace(value[cursor])) cursor -= 1;
     return value[cursor] === '(' || value[cursor] === ',';
   };
   for (let index = 0; index < value.length; index += 1) {
@@ -497,7 +626,7 @@ function normalizeGithubConstructor(value) {
       const raw = value.slice(start, end);
       let decoded;
       try {
-        decoded = quote === '"' ? JSON.parse(`"${raw}"`) : decodeGithubJsonString(raw);
+        decoded = replaceGithubUnpairedSurrogates(decodeGithubJsonString(raw));
       } catch {
         decoded = raw;
       }
@@ -521,14 +650,17 @@ function normalizeGithubConstructor(value) {
       isConstructorArgumentPosition(index) &&
       !/[A-Za-z0-9_$]/.test(value[index - 1] ?? '')
     ) {
-      const special = value.slice(index).match(/^(?:[+-]?(?:Infinity|NaN))(?![A-Za-z0-9_$])/)?.[0];
+      const special = value.slice(index).match(/^(?:-?Infinity|NaN)(?![A-Za-z0-9_$])/)?.[0];
       if (special) {
         appendToken(githubJsonNetNumberString(special));
         index += special.length - 1;
         continue;
       }
     }
-    if (/[0-9+-]/.test(character)) {
+    if (character === '+' && isConstructorArgumentPosition(index)) {
+      throw new Error('invalid JSON number');
+    }
+    if (/[0-9-]/.test(character)) {
       if (
         isConstructorArgumentPosition(index) &&
         /^[+-]?0[bBoO]/.test(value.slice(index))
@@ -536,7 +668,7 @@ function normalizeGithubConstructor(value) {
         throw new Error('non-decimal JSON numbers are not supported');
       }
       const numeric = value.slice(index).match(
-        /^[+-]?(?:(?:0[xX][0-9a-fA-F]+)|(?:0[oO][0-7]+)|(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)/
+        /^-?(?:(?:0[xX][0-9a-fA-F]+)|(?:0[oO][0-7]+)|(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)/
       )?.[0];
       if (
         numeric &&
@@ -552,12 +684,12 @@ function normalizeGithubConstructor(value) {
         continue;
       }
     }
-    if (/\s/.test(character)) {
+    if (isGithubJsonWhitespace(character)) {
       pendingWhitespace = true;
       continue;
     }
     if (character === '(' || character === ')' || character === ',') {
-      result = result.trimEnd();
+      result = result.replace(/(?:[\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000])+$/u, '');
       result += character;
       pendingWhitespace = false;
       continue;
@@ -568,17 +700,17 @@ function normalizeGithubConstructor(value) {
     pendingWhitespace = false;
     result += character;
   }
-  return formatGithubConstructorExpression(result.trim());
+  return formatGithubConstructorExpression(trimGithubJsonWhitespace(result));
 }
 
 function parseGithubJsonPrefix(
   source,
-  { preserveConstructors = false, requireComplete = false } = {}
+  { preserveConstructors = false, requireComplete = false, depth = 0 } = {}
 ) {
   let index = 0;
 
   const skipWhitespace = () => {
-    while (/\s/.test(source[index] ?? '')) index += 1;
+    while (isGithubJsonWhitespace(source[index] ?? '')) index += 1;
   };
 
   const readComment = () => {
@@ -600,6 +732,23 @@ function parseGithubJsonPrefix(
     return null;
   };
 
+  const assertTokenBoundary = ({ allowClosingParen = false, allowSlash = false } = {}) => {
+    const character = source[index];
+    if (
+      character === undefined ||
+      isGithubJsonWhitespace(character) ||
+      character === ',' ||
+      character === ']' ||
+      character === '}' ||
+      (character === ')' && (allowClosingParen || preserveConstructors)) ||
+      (character === '/' &&
+        (allowSlash || source[index + 1] === '/' || source[index + 1] === '*'))
+    ) {
+      return;
+    }
+    throw new Error('invalid JSON token');
+  };
+
   const skipTrivia = () => {
     while (true) {
       skipWhitespace();
@@ -608,6 +757,23 @@ function parseGithubJsonPrefix(
       if (index === before) return;
     }
   };
+
+  // FromJson calls JToken.ReadFrom without JsonLoadSettings. That API
+  // preserves a leading comment as the first token; comments inside a loaded
+  // object or array are ignored by the default container settings.
+  skipWhitespace();
+  if (
+    !preserveConstructors &&
+    source[index] === '/' &&
+    (source[index + 1] === '/' || source[index + 1] === '*')
+  ) {
+    if (source[index + 1] === '*' && source.indexOf('*/', index + 2) < 0) {
+      throw new Error('invalid JSON comment');
+    }
+    const comment = readComment();
+    if (comment === null) throw new Error('invalid JSON comment');
+    return comment;
+  }
 
   const readString = (quote = '"') => {
     const start = index;
@@ -628,19 +794,30 @@ function parseGithubJsonPrefix(
       if (character === quote) {
         index += 1;
         const raw = source.slice(start, index);
-        if (quote === '"') return JSON.parse(raw);
-        return decodeGithubJsonString(raw.slice(1, -1).replace(/''/g, "'"));
+        if (quote === '"') {
+          return replaceGithubUnpairedSurrogates(decodeGithubJsonString(raw.slice(1, -1)));
+        }
+        return replaceGithubUnpairedSurrogates(
+          decodeGithubJsonString(raw.slice(1, -1).replace(/''/g, "'"))
+        );
       }
       index += 1;
     }
     throw new Error('invalid JSON string');
   };
 
-  const parseValue = () => {
+  const parseValue = (depth = 0) => {
     skipTrivia();
     const character = source[index];
+    if (character === ',') {
+      index += 1;
+      return preserveConstructors
+        ? createConstructorStaticUndefined()
+        : createGithubStaticUndefined();
+    }
     if (character === '"' || character === "'") return readString(character);
     if (character === '{') {
+      if (depth >= 64) throw new Error('maximum JSON depth exceeded');
       index += 1;
       const value = Object.create(null);
       skipTrivia();
@@ -651,11 +828,23 @@ function parseGithubJsonPrefix(
           key = readString(source[index]);
         } else {
           const keyStart = index;
-          while (index < source.length && !/[\s:]/.test(source[index])) index += 1;
+          if (
+            !/^[\p{L}\p{Nd}_$]$/u.test(source[index] ?? '') ||
+            /[\uD800-\uDFFF]/.test(source[index] ?? '')
+          ) {
+            throw new Error('invalid JSON object key');
+          }
+          while (
+            index < source.length &&
+            /^[\p{L}\p{Nd}_$]$/u.test(source[index]) &&
+            !/[\uD800-\uDFFF]/.test(source[index])
+          ) {
+            index += 1;
+          }
           key = source.slice(keyStart, index);
         }
-        if (!key) throw new Error('invalid JSON object key');
-        skipTrivia();
+        if (typeof key !== 'string') throw new Error('invalid JSON object key');
+        skipWhitespace();
         if (source[index] !== ':') throw new Error('invalid JSON object');
         index += 1;
         skipTrivia();
@@ -667,8 +856,10 @@ function parseGithubJsonPrefix(
           throw new Error('invalid JSON object value');
         } else {
           const valueStart = index;
-          const parsedValue = parseValue();
-          const rawValue = stripGithubJsonComments(source.slice(valueStart, index)).trim();
+          const parsedValue = parseValue(depth + 1);
+          const rawValue = trimGithubJsonWhitespace(
+            stripGithubJsonComments(source.slice(valueStart, index))
+          );
           value[key] = !preserveConstructors && rawValue === 'undefined'
             ? createGithubStaticUndefined()
             : parsedValue;
@@ -687,6 +878,7 @@ function parseGithubJsonPrefix(
       return value;
     }
     if (character === '[') {
+      if (depth >= 64) throw new Error('maximum JSON depth exceeded');
       index += 1;
       const value = [];
       skipTrivia();
@@ -701,8 +893,10 @@ function parseGithubJsonPrefix(
           continue;
         }
         const valueStart = index;
-        const parsedValue = parseValue();
-        const rawValue = stripGithubJsonComments(source.slice(valueStart, index)).trim();
+        const parsedValue = parseValue(depth + 1);
+        const rawValue = trimGithubJsonWhitespace(
+          stripGithubJsonComments(source.slice(valueStart, index))
+        );
         value.push(
           !preserveConstructors && rawValue === 'undefined'
             ? createGithubStaticUndefined()
@@ -721,9 +915,10 @@ function parseGithubJsonPrefix(
       index += 1;
       return value;
     }
-    const special = source.slice(index).match(/^[+-]?(?:NaN|Infinity)(?![A-Za-z0-9_])/);
+    const special = source.slice(index).match(/^(?:-?Infinity|NaN)(?![A-Za-z0-9_])/);
     if (special) {
       index += special[0].length;
+      assertTokenBoundary();
       const value = parseGithubJsonNumericLiteral(special[0]);
       return preserveConstructors
         ? createConstructorStaticValue(githubJsonNetNumberString(special[0]))
@@ -732,18 +927,24 @@ function parseGithubJsonPrefix(
     const literal = source.slice(index).match(/^(?:true|false|null)(?![A-Za-z0-9_])/);
     if (literal) {
       index += literal[0].length;
+      assertTokenBoundary();
       return literal[0] === 'true' ? true : literal[0] === 'false' ? false : null;
     }
-    if (/^[+-]?0[bBoO]/.test(source.slice(index)) || /^[+-]0[xX]/.test(source.slice(index))) {
+    if (
+      source[index] === '+' ||
+      /^[+-]?0[bBoO]/.test(source.slice(index)) ||
+      /^-0[xX]/.test(source.slice(index))
+    ) {
       throw new Error('non-decimal JSON numbers are not supported');
     }
     const number = source
       .slice(index)
       .match(
-        /^[+-]?(?:(?:0[xX][0-9a-fA-F]+)|(?:0[oO][0-7]+)|(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)/
+        /^-?(?:(?:0[xX][0-9a-fA-F]+)|(?:0[oO][0-7]+)|(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)/
       );
     if (number) {
       index += number[0].length;
+      assertTokenBoundary({ allowClosingParen: true, allowSlash: true });
       const value = parseGithubJsonNumericLiteral(number[0]);
       return preserveConstructors
         ? createConstructorStaticValue(githubJsonNetNumberString(number[0]))
@@ -755,11 +956,12 @@ function parseGithubJsonPrefix(
     if (simpleFallback && simpleFallback !== 'new') {
       index += simpleFallback.length;
       if (simpleFallback === 'undefined') {
+        assertTokenBoundary();
         return preserveConstructors
           ? createConstructorStaticUndefined()
           : createGithubStaticUndefined();
       }
-      return simpleFallback;
+      throw new Error('invalid JSON value');
     }
     const fallbackStart = index;
     let parenthesisDepth = 0;
@@ -787,6 +989,9 @@ function parseGithubJsonPrefix(
       if (current === ')' && parenthesisDepth > 0) {
         parenthesisDepth -= 1;
         index += 1;
+        if (parenthesisDepth === 0 && readGithubConstructorHeader(source.slice(fallbackStart))) {
+          break;
+        }
         continue;
       }
       if (
@@ -801,18 +1006,20 @@ function parseGithubJsonPrefix(
       }
       index += 1;
     }
-    let fallback = stripGithubJsonComments(source.slice(fallbackStart, index)).trim();
-    if (/^new(?:\s|$)/.test(fallback)) {
-      fallback = normalizeGithubConstructor(fallback);
+    let fallback = trimGithubJsonWhitespace(
+      stripGithubJsonComments(source.slice(fallbackStart, index))
+    );
+    if (readGithubConstructorHeader(fallback)) {
+      fallback = normalizeGithubConstructor(fallback, depth);
     }
-    if (fallback) {
-      return preserveConstructors ? createConstructorStaticToken(fallback) : fallback;
+    if (!fallback || !readGithubConstructorHeader(fallback)) {
+      throw new Error('invalid JSON value');
     }
-    throw new Error('invalid JSON value');
+    return preserveConstructors ? createConstructorStaticToken(fallback) : fallback;
   };
 
   skipTrivia();
-  const value = parseValue();
+  const value = parseValue(depth);
   if (requireComplete) {
     skipTrivia();
     if (index < source.length) throw new Error('additional JSON content');
@@ -1057,16 +1264,16 @@ function parseGithubNumericLiteral(literal) {
 }
 
 function parseGithubJsonNumericLiteral(literal) {
+  validateGithubJsonNumericLiteral(literal);
   const negative = literal.startsWith('-');
   const signed = /^[+-]/.test(literal);
   const unsigned = /^[+-]/.test(literal) ? literal.slice(1) : literal;
   if (/^0[bBoO]/.test(unsigned)) throw new Error('non-decimal JSON numbers are not supported');
   if (!signed && /^0[xX]/.test(unsigned)) {
-    return Number(BigInt(unsigned));
+    return Number(githubJsonSignedInt64(BigInt(unsigned)));
   }
   if (!signed && /^0[0-7]+$/.test(unsigned) && unsigned.length > 1) {
-    const parsed = Number.parseInt(unsigned, 8);
-    return parsed;
+    return Number(githubJsonSignedInt64(BigInt(`0o${unsigned.slice(1)}`)));
   }
   if (!signed && /^0[89]/.test(unsigned)) {
     throw new Error('invalid legacy octal JSON number');
@@ -1233,15 +1440,10 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
   if (call.name === 'fromjson' && call.args.length === 1) {
     if (isOpaqueStaticText(values[0].value)) return null;
     const json = githubExpressionValueString(values[0].value);
-    const normalizedJson = json.trim();
     try {
-      const specialNumber = normalizedJson.match(/^(NaN|Infinity|-Infinity)(?![A-Za-z0-9_])/);
-      if (specialNumber?.[1] === 'NaN') return { value: Number.NaN };
-      if (specialNumber?.[1] === 'Infinity') return { value: Number.POSITIVE_INFINITY };
-      if (specialNumber?.[1] === '-Infinity') return { value: Number.NEGATIVE_INFINITY };
       return {
         value: normalizeGithubJsonValue(
-          parseGithubJsonPrefix(json, { requireComplete: true })
+          parseGithubJsonPrefix(json)
         )
       };
     } catch {
