@@ -233,7 +233,15 @@ function parseGithubFunctionCall(expression, offset) {
   return null;
 }
 
-function evaluateStaticGithubFunction(call) {
+function githubExpressionTruthy(value) {
+  if (value === null) return false;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return Number.isFinite(value) && value !== 0;
+  if (typeof value === 'string') return value.length > 0;
+  return true;
+}
+
+function evaluateStaticGithubFunctionValue(call) {
   const literals = call.args.map((argument) => {
     const parsed = parseGithubStringLiteral(argument, 0);
     return parsed && parsed.end === argument.length ? parsed.value : null;
@@ -242,21 +250,22 @@ function evaluateStaticGithubFunction(call) {
 
   if (call.name === 'fromjson' && call.args.length === 1 && literals[0] !== null) {
     try {
-      const value = JSON.parse(literals[0]);
-      if (value === null || value === false) return false;
-      if (typeof value === 'number') return Number.isFinite(value) && value !== 0;
-      if (typeof value === 'string') return value.length > 0;
-      return true;
+      return { value: JSON.parse(literals[0]) };
     } catch {
       return null;
     }
   }
   if (call.args.length !== 2 || literals.some((value) => value === null)) return null;
   const [left, right] = literals.map((value) => value.toLowerCase());
-  if (call.name === 'contains') return left.includes(right);
-  if (call.name === 'startswith') return left.startsWith(right);
-  if (call.name === 'endswith') return left.endsWith(right);
+  if (call.name === 'contains') return { value: left.includes(right) };
+  if (call.name === 'startswith') return { value: left.startsWith(right) };
+  if (call.name === 'endswith') return { value: left.endsWith(right) };
   return null;
+}
+
+function evaluateStaticGithubFunction(call) {
+  const result = evaluateStaticGithubFunctionValue(call);
+  return result === null ? null : githubExpressionTruthy(result.value);
 }
 
 function evaluateStaticLiteralComparison(left, right, operator) {
@@ -360,6 +369,14 @@ function staticallyEvaluateBooleanExpression(expression, knownValues = {}) {
           index = rightLiteral.end;
           return evaluateStaticLiteralComparison(leftLiteral.value, rightLiteral.value, operator);
         }
+        const rightFunction = parseGithubFunctionCall(expression, comparisonIndex);
+        if (rightFunction) {
+          const rightValue = evaluateStaticGithubFunctionValue(rightFunction);
+          if (rightValue !== null) {
+            index = rightFunction.end;
+            return evaluateStaticLiteralComparison(leftLiteral.value, rightValue.value, operator);
+          }
+        }
       }
     }
 
@@ -397,11 +414,19 @@ function staticallyEvaluateBooleanExpression(expression, knownValues = {}) {
     if (comparison) {
       const comparisonIndex = index + comparison[0].length;
       const rightLiteral = parseStaticLiteral(comparisonIndex);
-      if (!rightLiteral) return null;
-      index = rightLiteral.end;
       const knownValue = knownValues[comparison[1]];
+      if (rightLiteral) {
+        index = rightLiteral.end;
+        if (knownValue === undefined) return null;
+        return evaluateStaticLiteralComparison(knownValue, rightLiteral.value, comparison[2]);
+      }
+      const rightFunction = parseGithubFunctionCall(expression, comparisonIndex);
+      if (!rightFunction) return null;
+      const rightValue = evaluateStaticGithubFunctionValue(rightFunction);
+      if (rightValue === null) return null;
+      index = rightFunction.end;
       if (knownValue === undefined) return null;
-      return evaluateStaticLiteralComparison(knownValue, rightLiteral.value, comparison[2]);
+      return evaluateStaticLiteralComparison(knownValue, rightValue.value, comparison[2]);
     }
 
     let quote = null;
