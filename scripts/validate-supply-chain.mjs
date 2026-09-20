@@ -724,23 +724,22 @@ function evaluateStaticExpressionValueModern(expression, knownValues = {}) {
     if (isFilteredStaticArray(value)) {
       if (!isGithubPrimitive(selectorValue)) return { value: createFilteredStaticArray([]), known: true };
       const numericIndex = githubExpressionNumber(selectorValue);
-      if (Number.isFinite(numericIndex) && numericIndex >= 0) {
-        const integerIndex = Math.floor(numericIndex);
-        return {
-          value: createFilteredStaticArray(
-            value
-              .filter((item) => Array.isArray(item) && integerIndex < item.length)
-              .map((item) => item[integerIndex])
-          ),
-          known: true
-        };
-      }
       const propertyKey = githubExpressionValueString(selectorValue);
+      const hasIntegerIndex =
+        Number.isFinite(numericIndex) && numericIndex >= 0 && numericIndex <= 0x7fffffff;
       return {
         value: createFilteredStaticArray(
-          value
-            .filter((item) => item && typeof item === 'object' && Object.prototype.hasOwnProperty.call(item, propertyKey))
-            .map((item) => item[propertyKey])
+          value.flatMap((item) => {
+            if (Array.isArray(item)) {
+              if (!hasIntegerIndex) return [];
+              const integerIndex = Math.floor(numericIndex);
+              return integerIndex < item.length ? [item[integerIndex]] : [];
+            }
+            if (item && typeof item === 'object' && Object.prototype.hasOwnProperty.call(item, propertyKey)) {
+              return [item[propertyKey]];
+            }
+            return [];
+          })
         ),
         known: true
       };

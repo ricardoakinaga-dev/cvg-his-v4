@@ -545,6 +545,10 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     ),
     workflow.replace(
       '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ !contains(fromJSON('[{\"1\":true}]').*[1], true) }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
       '    if: ${{ failure() }}'
     ),
     workflow.replace(
@@ -884,6 +888,15 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
       workflow.replace(
         '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
         "    if: ${{ format(fromJSON('{}')) == 'Object' }}"
+      )
+    ),
+    []
+  );
+  assert.deepEqual(
+    inspectReleaseWorkflowPolicy(
+      workflow.replace(
+        '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+        "    if: ${{ contains(fromJSON('[[true]]').*[0], true) }}"
       )
     ),
     []
