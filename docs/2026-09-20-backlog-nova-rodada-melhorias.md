@@ -8,7 +8,7 @@ review_cycle: on-task-completion-or-blocker-change
 
 # Backlog executável — nova rodada de melhorias
 
-[Auditoria](2026-09-20-reauditoria-candidato-a9ff1b1a.md) ·
+[Auditoria](2026-09-20-auditoria-scorecard-be2dc76a.md) ·
 [Plano](2026-09-20-plano-executivo-nova-rodada-melhorias.md) ·
 [Roadmap](2026-09-20-roadmap-nova-rodada-melhorias.md)
 
@@ -37,14 +37,26 @@ material; não promove prova local a aceite externo.
 
 | ID | Item | Estado | Dependências | Aceite observável |
 | --- | --- | --- | --- | --- |
+| AUD21-01 | Reconciliar identity, registro P0 e snapshots em um único SHA | OPEN | AUD21-02–04, AUD21-09–10 | cinco divergências zeradas; snapshot atual; estados `NOT_PROVEN` preservados |
+| AUD21-02 | Tornar a mutação 65 hermética à árvore real | OPEN | — | fixture impossível; known-bad falha pelo finding esperado; supply-chain 17/17 |
+| AUD21-03 | Alinhar pnpm e restaurar o gate de segredos | OPEN | — | política e `packageManager` idênticos; secretlint verde; fixture de segredo real ainda falha |
+| AUD21-04 | Reconciliar contrato documental de backup/restore | DOC-FIXED-TARGET-BLOCKED | — | checker 4/4; roadmap/backlog atuais mutáveis pelo teste; drill/RPO/RTO seguem externos |
+| AUD21-09 | Restringir e tornar bounded a superfície `/metrics` | OPEN | — | auth ou rede privada; sem enumeração cross-tenant por scrape; negative ingress test |
+| AUD21-10 | Unificar limite de upload no ingress, API e OpenAPI | OPEN | — | mesmo limite e resposta 413; E2E positivo/negativo através do ingress |
+
+Os itens `AUD21-*` são blockers descobertos nesta auditoria e precedem o
+freeze. Não renumeram os 65 cartões `PROD`.
+
+| ID | Item | Estado | Dependências | Aceite observável |
+| --- | --- | --- | --- | --- |
 | NR-001 | Modelar Vault no chart com `existingSecret` e keys para URL/role/secret/namespace/path | PASS-LOCAL | — | schema aceita configuração; Deployment usa `secretKeyRef`; nenhum segredo em ConfigMap; não é aceite externo |
-| NR-002 | Cobrir prod render/runtime de Vault | PASS-LOCAL | NR-001 | ausência reprova; fixture Vault válida permite startup/readiness; Helm dev/staging/prod real passa; target real permanece ausente |
+| NR-002 | Cobrir prod render/runtime de Vault | STALE-REEXECUTE | NR-001 | ausência reprova; fixture Vault válida permite startup/readiness; Helm 3.15.4 dev/staging/prod passa no novo SHA; target permanece ausente |
 | NR-003 | Migrar/reconciliar `.agent` para o contrato atual | PASS-LOCAL | — | correções append-only; `check_state.py` 11/11; aceitação externa permanece bloqueada |
-| NR-004 | Recriar identidade e snapshots do candidato sem promover prova stale | BLOCKED-CANDIDATE | NR-001–003, NR-006 | guardas recusam worktree sujo; identity/snapshots só podem ser regenerados após fonte/controle congelados |
+| NR-004 | Recriar identidade e snapshots do candidato sem promover prova stale | BLOCKED-CANDIDATE | AUD21-01–04, AUD21-09–10, NR-001–003, NR-006 | guardas recusam worktree sujo; identity/registry/snapshots convergem somente após fonte/controle congelados |
 | NR-005 | Finalizar ou arquivar corretamente a rodada Gauntlet `p0-closure-images-final-20260920` | BLOCKED-EXTERNAL | NR-003, NR-004, NR-008 | final7 ficou stale após NR-013; a rodada candidate-local corrente foi registrada BLOCKED com oito critérios P0 e sentinela fresh; CI/target/UAT/autoridade impedem `STOP`/aceite |
-| NR-006 | Congelar novo SHA e executar regressão local integrada | PASS-LOCAL-CANDIDATE-BLOCKED | NR-001–003 | parser, supply chain, build/typecheck/lint, Helm real e suítes focais passam; não há SHA limpo congelado |
-| NR-007 | Reconstruir API/worker/SPA e provar runtime production-shaped | PASS-LOCAL-CANDIDATE-BLOCKED | NR-004, NR-006 | três OCI distintas, non-root/read-only, Vault e dependências descartáveis, proxy e readiness passam; fonte permanece não congelada |
-| NR-008 | Repetir digest cruzado e Trivy pinado | PASS-LOCAL-CANDIDATE-BLOCKED | NR-007 | digest trocado exit 1; três scans 0 HIGH/CRITICAL; não substitui CI/attestation |
+| NR-006 | Congelar novo SHA e executar regressão local integrada | OPEN | AUD21-02–04, AUD21-09–10, NR-001–003 | todos os gates locais passam no SHA limpo; Helm obrigatório disponível |
+| NR-007 | Reconstruir API/worker/SPA e provar runtime production-shaped | STALE-REEXECUTE | NR-004, NR-006 | três OCI distintas, non-root/read-only, Vault e dependências descartáveis, proxy e readiness passam no SHA congelado |
+| NR-008 | Repetir digest cruzado e Trivy pinado | STALE-REEXECUTE | NR-007 | digest trocado exit 1; três scans 0 HIGH/CRITICAL no mesmo digest candidato |
 | NR-011 | Publicar o SHA autorizado e obter CI 17/17 | EXTERNAL-BLOCKED | NR-004–008 | GitHub CI terminal no SHA exato e artefatos verificados |
 | NR-012 | Executar release encadeado | EXTERNAL-BLOCKED | NR-011, NR-013 | `workflow_run` consome o SHA do CI, sem rebuild, publica quarentena/attestations/manifest/gate |
 | NR-020 | Decisão final de release/Triplo AAA | EXTERNAL-BLOCKED | NR-012, NR-014–019 | zero P0, quality bar completa e go/no-go por autoridades nomeadas |
@@ -53,7 +65,7 @@ material; não promove prova local a aceite externo.
 
 | ID | Item | Dependências | Aceite observável |
 | --- | --- | --- | --- |
-| NR-009 | Fixar regressões 380/381 do parser em job e step | PASS-LOCAL | NR-006 | assertions do finding exato; `toJSON(fromJSON())`; pai conhecido falha; 17/17 testes do parser |
+| NR-009 | Fixar regressões 380/381 e hermeticidade do parser em job e step | OPEN | AUD21-02, NR-006 | assertions do finding exato; `toJSON(fromJSON())`; pai conhecido e fixture impossível falham; 17/17 testes |
 | NR-010 | Separar parser/evaluator do scanner de supply chain | DEFERRED-R5 | NR-009, NR-020 | somente após R0–R4, salvo correção indispensável com novo freeze |
 | NR-013 | Validar contrato de release contra reorder/substituição completo | PASS-LOCAL-CONTROL-BLOCKED | NR-011 | matriz local cobre severidade, `ignore-unfixed`, `exit-code`, scan/imagem substituídos, preparação OCI depois do scanner, reorder e remoção do gate; CI exato ainda é pré-requisito externo |
 | NR-021 | Compactar estado e fingerprint Gauntlet | DEFERRED-R5 | NR-003, NR-020 | estado sem inventário massivo; somente após R0–R4 ou nova indispensabilidade formalizada |
@@ -72,33 +84,36 @@ material; não promove prova local a aceite externo.
 | NR-018 | UAT hospitalar, acessibilidade e fluxos críticos | Product/Clinical/QA | BLOCKED |
 | NR-019 | Branch protection, revisão independente e aceites | Repository owner/Release authority | BLOCKED |
 
+Contrato de recuperação mantido para o validador operacional:
+
+| ID | Controle | Estado | Aceite observável |
+| --- | --- | --- | --- |
+| PROD-037 | Backup, restore, corrupção e mismatch | EXTERNAL-BLOCKED | Aprovar RPO/RTO antes do drill; restaurar globals, banco, storage e configuração representativos, verificar hashes/contagens/RLS e cumprir RPO/RTO aprovados. |
+
 ## Ordem imediata
 
-1. `NR-004` — congelar, por commit autorizado, fonte e controle; então regenerar identidade/snapshots.
-2. `NR-005` — reexecutar o Gauntlet candidate-bound e encerrar apenas se as externalidades forem fornecidas.
-3. `NR-011` — CI remoto no SHA exato, somente após autorização.
-4. `NR-013` — hardening do contrato antes da publicação.
-5. `NR-012` — release encadeado sem rebuild.
-6. `NR-014–019` — target, recuperação, UAT e autoridades nomeadas.
-7. `NR-020` — decisão final; NR-010/021/022/024 continuam fora do candidato enquanto R0–R4 estiverem abertos.
+1. `AUD21-02–04/09–10` — restaurar supply-chain, dependências, segredos, backup/restore, métricas, upload e Helm obrigatório.
+2. `AUD21-01/NR-004` — congelar fonte/controle e reconciliar identity, P0 registry e snapshots.
+3. `NR-006–008` — reexecutar regressão, OCI, digest negativo e Trivy no SHA exato.
+4. `NR-005/011–013` — Gauntlet, CI e release encadeado sem rebuild.
+5. `NR-014–019/PROD-037` — target, recuperação, UAT e autoridades nomeadas.
+6. `NR-020` — decisão final; R5 continua fora do candidato enquanto os P0 estiverem abertos.
 
 ## Evidência local da rodada atual
 
-- `NR-001/002`: `REQUIRE_HELM=1 pnpm validate:helm`, testes Helm e fixture
-  Vault production-shaped; API `/ready`, migrações `0000–0177` e reconciliação
-  de roles passaram em banco descartável.
-- `NR-006/009/023`: typecheck/lint, contrato de supply chain (17/17),
-  semântica build-time da SPA e proxy same-origin passaram localmente.
+- `NR-001/002`: prova histórica de Helm/Vault production-shaped existe, mas o
+  modo atual `REQUIRE_HELM=1` está bloqueado pela ausência do Helm 3.15.4 e deve
+  ser reexecutado no novo SHA.
+- `NR-006/009/023`: typecheck/lint e semântica same-origin passaram; o contrato
+  de supply chain atual regrediu para 16/17 e precisa de nova prova.
 - `NR-007/008`: pacote [OCI/Trivy final4](../.agent/evidence/nr007-nr008-release-oci-trivy-20260920-final4.json)
   registra raízes/configs imutáveis, Trivy 0 HIGH/CRITICAL, AppRole inválido
   403 e digest cruzado rejeitado.
-- `NR-013`: [matriz de mutações do contrato de release](../.agent/evidence/nr013-release-mutation-20260920.json)
-  passou 19/19 contratos do workflow e 17/17 verificações supply-chain, incluindo
-  a rejeição de preparação OCI depois de qualquer scanner; a prova é local e não
-  substitui CI/release encadeado.
-- Gauntlet: a rodada final7 anterior ficou stale após a ampliação NR-013; a
-  rodada corrente foi registrada `BLOCKED` com críticos fresh, oito critérios
-  P0 e `mutation_clean=true`. A decisão local não cobre CI, target, UAT, freeze
-  candidate-bound ou autoridade.
-- O pacote é `PARTIAL/BLOCKED`: os artefatos são locais, a worktree está suja,
-  não há CI exato, attestation encadeada, target aprovado, UAT ou autoridade.
+- `NR-013`: a [matriz histórica de mutações](../.agent/evidence/nr013-release-mutation-20260920.json)
+  registrou 19/19 contratos do workflow e 17/17 verificações, mas ficou stale:
+  o harness atual tem 16/17. Ela não substitui nova prova nem CI/release encadeado.
+- Gauntlet: as rodadas anteriores e `mutation_clean=true` ficaram stale diante
+  das regressões atuais. A decisão `BLOCKED` continua correta, mas precisa de
+  nova rodada após o freeze; não cobre CI, target, UAT ou autoridade.
+- O pacote é `FAIL/BLOCKED`: há gates locais vermelhos, artefatos stale e não há
+  CI exato, attestation encadeada, target aprovado, UAT ou autoridade.

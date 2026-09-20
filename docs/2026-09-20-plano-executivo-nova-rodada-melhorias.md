@@ -8,52 +8,64 @@ review_cycle: on-milestone-or-candidate-change
 
 # Plano executivo — nova rodada de melhorias
 
-[Auditoria vigente](2026-09-20-reauditoria-candidato-a9ff1b1a.md) ·
+[Auditoria vigente](2026-09-20-auditoria-scorecard-be2dc76a.md) ·
 [Roadmap](2026-09-20-roadmap-nova-rodada-melhorias.md) ·
 [Backlog](2026-09-20-backlog-nova-rodada-melhorias.md)
 
 ## Objetivo
 
-Transformar o candidato local `a9ff1b1a` em um candidato publicável e
-auditável, sem promover evidência antiga: primeiro corrigir o runtime de
-produção e a governança; depois executar CI/release no SHA exato; por fim obter
-provas de target e autoridades externas.
+Transformar a árvore auditada em `be2dc76a` em um candidato publicável e
+auditável, sem promover evidência antiga: primeiro restaurar os gates locais;
+depois congelar uma identidade única e executar CI/release no SHA exato; por
+fim obter provas de target e autoridades externas.
 
 ## Estado de entrada
 
-- melhoria `fromJSON`/`toJSON`: aprovada localmente;
+- melhoria `fromJSON`/`toJSON`: aprovada isoladamente, mas o harness completo
+  regrediu porque uma mutação passou a corresponder a arquivo rastreado;
 - runtime Helm de produção: ligação de Vault corrigida e validada localmente;
-- identidade/snapshots: stale;
+- identidade `6e365f4c`; registro P0 e snapshots `ec092d77`: divergentes/stale;
 - controlador `.agent`: migração append-only concluída; `check_state.py` 11/11;
 - Gauntlet: rodada corrente registrada como BLOCKED, sem finalização externa;
-- remoto: 28 commits atrás do candidato;
+- gates internos: dependências, segredos, supply-chain regression e
+  backup/restore documental falham;
+- segurança/runtime: `/metrics` público agrega estado operacional cross-tenant;
+  upload aceita 25 MiB na API, mas o ingress limita a requisição a 10 MiB;
+- remoto: 30 commits atrás do `HEAD` auditado;
 - externalidades: CI/release/target/UAT/autoridade continuam ausentes; 11 P0 do
   registro ainda abertos.
 
 ## Estratégia
 
-1. Fechar defeitos internos que impedem startup e invalidam a prova.
-2. Migrar/reconciliar o controle sem apagar histórico.
-3. Congelar um novo SHA e executar a regressão proporcional.
+1. Restaurar os quatro gates automatizados sem enfraquecer seus known-bads e
+   corrigir `AUD21-09/10` antes do freeze.
+2. Reexecutar regressão local, banco crítico, Helm obrigatório e segurança.
+3. Congelar um novo SHA e reconciliar identity, registro P0 e snapshots.
 4. Publicar somente após revisão independente do diff e autorização do owner.
 5. Exigir CI exato e workflow de release encadeado para o mesmo SHA.
 6. Separar o que é prova local, remota, de target e de autoridade.
 
 ## Milestones
 
-### M0 — runtime e controle confiáveis (PASS-LOCAL)
+### M-1 — gates locais novamente verdes (OPEN)
 
-Saída local: Vault injetável por Secret, Helm executável verde, smoke
+Saída: regressão supply-chain 17/17 com fixture hermética; política de pnpm
+coerente; scanner de segredos verde com known-bad preservado; backup/restore
+reconciliado com roadmap/backlog; métricas protegidas, upload coerente e Helm
+3.15.4 obrigatório disponível.
+
+### M0 — runtime e controle confiáveis (PARTIAL)
+
+Saída local: Vault injetável por Secret, Helm obrigatório verde, smoke
 production-shaped com Vault habilitado, controlador reconciliado e documentos
 atualizados. A saída não é `DONE` enquanto a identidade não estiver congelada e
 os aceites externos não existirem.
 
 ### M1 — candidato local congelado (BLOCKED-CANDIDATE)
 
-Saída parcial: regressões focais, build/typecheck/lint, supply chain, Helm e
-três imagens foram executados após o último byte observado; evidências locais e
-críticos fresh existem. O guard de identidade recusa a worktree suja, portanto
-não há candidato congelado nem fingerprint final candidate-bound.
+Saída parcial: build/typecheck/lint e contratos críticos têm evidência local,
+mas os gates de M-1 não estão verdes. Provas OCI/Trivy anteriores ficaram stale
+após mudanças materiais. Não há fingerprint final candidate-bound.
 
 ### M2 — CI e release candidate-bound
 

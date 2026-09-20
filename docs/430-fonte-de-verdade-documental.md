@@ -12,7 +12,7 @@ Documento nao transforma uma funcionalidade em pronta. O estado real e determina
 
 | Tema                                       | Fonte vigente                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Baseline executiva vigente                 | [`2026-09-20-reauditoria-candidato-a9ff1b1a.md`](./2026-09-20-reauditoria-candidato-a9ff1b1a.md) — parser aprovado localmente; candidato/release FAIL-BLOCKED |
+| Baseline executiva vigente                 | [`2026-09-20-auditoria-scorecard-be2dc76a.md`](./2026-09-20-auditoria-scorecard-be2dc76a.md) — 53/100; candidato/release FAIL-BLOCKED |
 | Plano executivo vigente                    | [`2026-09-20-plano-executivo-nova-rodada-melhorias.md`](./2026-09-20-plano-executivo-nova-rodada-melhorias.md) |
 | Roadmap vigente                            | [`2026-09-20-roadmap-nova-rodada-melhorias.md`](./2026-09-20-roadmap-nova-rodada-melhorias.md) |
 | Backlog vigente                            | [`2026-09-20-backlog-nova-rodada-melhorias.md`](./2026-09-20-backlog-nova-rodada-melhorias.md) |
@@ -40,11 +40,11 @@ posterior os substitui. Nenhuma prova bounded altera sozinha os estados globais
 
 A régua congelada é [QUALITY_BAR_V1.json](triple-a/QUALITY_BAR_V1.json): total ≥97, dimensões críticas ≥95 e zero P0 abertos, além dos gates obrigatórios. Os documentos executivos orientam o programa; o estado operacional continua em `.agent` e deve ser reconciliado em `NR-003` antes da ingestão da nova fila.
 
-A reauditoria de 20/09 confirma `HEAD=a9ff1b1a`, aprova o fix local do parser e
-mantém o release bloqueado por um P0 interno de Vault/Helm, identidade e
-controle stale, CI/release exatos ausentes e dependências externas. Nos 65
-cartões PROD persistem 1 `DONE`, 16 `BLOCKED` e 48 `TODO`. A próxima ação é
-`NR-001`; o plano não autoriza produção.
+A auditoria de 20/09 confirma `HEAD=be2dc76a`, nota o sistema em 53/100 e mantém
+o release bloqueado. Supply-chain regression, dependências, segredos e
+backup/restore falham; identity `6e365f4c`, P0 registry/snapshots `ec092d77` e
+`HEAD` divergem; CI/release, target, UAT e autoridades não existem para o
+candidato. A próxima ação é `AUD21-02–04`; o plano não autoriza produção.
 
 ## Estados permitidos
 
