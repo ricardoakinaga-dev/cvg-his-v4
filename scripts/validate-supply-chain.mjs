@@ -174,7 +174,9 @@ function parseGithubStringLiteral(expression, offset) {
 }
 
 function parseGithubFunctionCall(expression, offset) {
-  const match = expression.slice(offset).match(/^(fromJSON|contains|startsWith|endsWith)\s*\(/i);
+  const match = expression
+    .slice(offset)
+    .match(/^(fromJSON|contains|startsWith|endsWith|format|join)\s*\(/i);
   if (!match) return null;
   const name = match[1].toLowerCase();
   const opening = offset + match[0].length - 1;
@@ -271,6 +273,16 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
   const leftString = String(left ?? '').toLowerCase();
   if (call.name === 'startswith') return { value: leftString.startsWith(rightString) };
   if (call.name === 'endswith') return { value: leftString.endsWith(rightString) };
+  if (call.name === 'join' && Array.isArray(left)) {
+    return { value: left.map((item) => String(item ?? '')).join(String(right ?? '')) };
+  }
+  if (call.name === 'format' && typeof left === 'string') {
+    let formatted = left;
+    for (let index = 1; index < values.length; index += 1) {
+      formatted = formatted.replaceAll(`{${index - 1}}`, String(values[index].value ?? ''));
+    }
+    return { value: formatted.replaceAll('{{', '{').replaceAll('}}', '}') };
+  }
   return null;
 }
 
