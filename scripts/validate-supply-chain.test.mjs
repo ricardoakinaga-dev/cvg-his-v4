@@ -167,6 +167,19 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
   );
   assert.deepEqual(inspectReleaseWorkflowPolicy(parenthesizedKnownValueWorkflow), []);
 
+  const longLegacyOctal = '0'.repeat(380) + '1';
+  const longNegativeLeadingZeroInteger = `-${'0'.repeat(380)}1`;
+  const longLegacyOctalWorkflow = workflow.replace(
+    '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+    "    if: ${{ fromJSON('" + longLegacyOctal + "') == 1 }}"
+  );
+  const longNegativeLeadingZeroIntegerWorkflow = workflow.replace(
+    '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+    "    if: ${{ fromJSON('" + longNegativeLeadingZeroInteger + "') == -1 }}"
+  );
+  assert.deepEqual(inspectReleaseWorkflowPolicy(longLegacyOctalWorkflow), []);
+  assert.deepEqual(inspectReleaseWorkflowPolicy(longNegativeLeadingZeroIntegerWorkflow), []);
+
   const hashFilesCharacterClassWorkflow = workflow.replace(
     '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
     "    if: ${{ false || hashFiles('scripts/validate-supply-chain.test.m[!x]s') }}"

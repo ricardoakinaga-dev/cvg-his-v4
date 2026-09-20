@@ -390,7 +390,16 @@ function githubJsonNetNumberString(literal) {
 function validateGithubJsonNumericLiteral(literal) {
   const unsigned = literal.startsWith('-') ? literal.slice(1) : literal;
   if (/^-?\d+$/.test(literal) && literal.length > githubJsonMaxIntegerDigits) {
-    throw new Error('JSON integer exceeds reader precision limit');
+    const isLegacyOctal = !literal.startsWith('-') && /^0[0-7]+$/.test(unsigned);
+    if (!isLegacyOctal) {
+      const magnitude = BigInt(unsigned);
+      const int64Limit = literal.startsWith('-')
+        ? githubJsonMaxInt64 + 1n
+        : githubJsonMaxInt64;
+      if (magnitude > int64Limit) {
+        throw new Error('JSON integer exceeds reader precision limit');
+      }
+    }
   }
   if (!literal.startsWith('-') && /^0\d/.test(unsigned) && /[.eE]/.test(literal)) {
     throw new Error('invalid legacy octal JSON number');
