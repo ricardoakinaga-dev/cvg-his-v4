@@ -241,31 +241,67 @@ function githubExpressionTruthy(value) {
   return true;
 }
 
-function evaluateStaticGithubFunctionValue(call) {
-  const literals = call.args.map((argument) => {
-    const parsed = parseGithubStringLiteral(argument, 0);
-    return parsed && parsed.end === argument.length ? parsed.value : null;
-  });
-  if (literals.some((value, index) => value === null && call.args[index] !== 'null')) return null;
+function normalizeGithubReference(reference) {
+  const bracket = reference.match(/^([A-Za-z_][A-Za-z0-9_.-]*)\[['"]([A-Za-z_][A-Za-z0-9_]*)['"]\]$/);
+  return bracket ? `${bracket[1]}.${bracket[2]}` : reference;
+}
 
-  if (call.name === 'fromjson' && call.args.length === 1 && literals[0] !== null) {
+function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
+  const values = call.args.map((argument) => parseStaticExpressionValue(argument, knownValues));
+  if (values.some((value) => value === null)) return null;
+
+  if (call.name === 'fromjson' && call.args.length === 1 && typeof values[0].value === 'string') {
     try {
-      return { value: JSON.parse(literals[0]) };
+      return { value: JSON.parse(values[0].value) };
     } catch {
       return null;
     }
   }
-  if (call.args.length !== 2 || literals.some((value) => value === null)) return null;
-  const [left, right] = literals.map((value) => value.toLowerCase());
-  if (call.name === 'contains') return { value: left.includes(right) };
-  if (call.name === 'startswith') return { value: left.startsWith(right) };
-  if (call.name === 'endswith') return { value: left.endsWith(right) };
+  if (call.args.length !== 2) return null;
+  const [left, right] = values.map(({ value }) => value);
+  const rightString = String(right ?? '').toLowerCase();
+  if (call.name === 'contains') {
+    if (Array.isArray(left)) {
+      return {
+        value: left.some((item) => String(item ?? '').toLowerCase() === rightString)
+      };
+    }
+    return { value: String(left ?? '').toLowerCase().includes(rightString) };
+  }
+  const leftString = String(left ?? '').toLowerCase();
+  if (call.name === 'startswith') return { value: leftString.startsWith(rightString) };
+  if (call.name === 'endswith') return { value: leftString.endsWith(rightString) };
   return null;
 }
 
-function evaluateStaticGithubFunction(call) {
-  const result = evaluateStaticGithubFunctionValue(call);
+function evaluateStaticGithubFunction(call, knownValues = {}) {
+  const result = evaluateStaticGithubFunctionValue(call, knownValues);
   return result === null ? null : githubExpressionTruthy(result.value);
+}
+
+function parseStaticExpressionValue(source, knownValues = {}) {
+  const expression = source.trim();
+  const stringLiteral = parseGithubStringLiteral(expression, 0);
+  if (stringLiteral && stringLiteral.end === expression.length) return stringLiteral;
+  if (/^(?:true|false)$/i.test(expression)) return { value: expression.toLowerCase() === 'true' };
+  if (/^(?:null|~)$/i.test(expression)) return { value: null };
+  if (
+    /^-?(?:(?:0[xX][0-9a-fA-F]+)|(?:0[bB][01]+)|(?:0[oO][0-7]+)|(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)$/.test(
+      expression
+    )
+  ) {
+    return { value: parseGithubNumericLiteral(expression) };
+  }
+  const reference = expression.match(/^(?:[A-Za-z_][A-Za-z0-9_.-]*|[A-Za-z_][A-Za-z0-9_.-]*\[['"][A-Za-z_][A-Za-z0-9_]*['"]\])$/);
+  if (reference) {
+    const key = normalizeGithubReference(reference[0]);
+    return Object.prototype.hasOwnProperty.call(knownValues, key)
+      ? { value: knownValues[key] }
+      : null;
+  }
+  const functionCall = parseGithubFunctionCall(expression, 0);
+  if (!functionCall || functionCall.end !== expression.length) return null;
+  return evaluateStaticGithubFunctionValue(functionCall, knownValues);
 }
 
 function evaluateStaticLiteralComparison(left, right, operator) {
@@ -307,6 +343,14 @@ function staticallyEvaluateBooleanExpression(expression, knownValues = {}) {
 
   const parseStaticLiteral = (offset) => {
     const source = expression.slice(offset);
+    if (source.startsWith('(')) {
+      const nested = parseStaticLiteral(offset + 1);
+      if (nested) {
+        let closing = nested.end;
+        while (/\s/.test(expression[closing] ?? '')) closing += 1;
+        if (expression[closing] === ')') return { end: closing + 1, value: nested.value };
+      }
+    }
     const booleanLiteral = source.match(/^(true|false)(?![A-Za-z0-9_.-])/i);
     if (booleanLiteral) {
       return {
@@ -353,7 +397,7 @@ function staticallyEvaluateBooleanExpression(expression, knownValues = {}) {
     const functionCall = parseGithubFunctionCall(expression, index);
     if (functionCall) {
       index = functionCall.end;
-      return evaluateStaticGithubFunction(functionCall);
+      return evaluateStaticGithubFunction(functionCall, knownValues);
     }
 
     const leftLiteral = parseStaticLiteral(index);
@@ -371,7 +415,7 @@ function staticallyEvaluateBooleanExpression(expression, knownValues = {}) {
         }
         const rightFunction = parseGithubFunctionCall(expression, comparisonIndex);
         if (rightFunction) {
-          const rightValue = evaluateStaticGithubFunctionValue(rightFunction);
+          const rightValue = evaluateStaticGithubFunctionValue(rightFunction, knownValues);
           if (rightValue !== null) {
             index = rightFunction.end;
             return evaluateStaticLiteralComparison(leftLiteral.value, rightValue.value, operator);
@@ -410,23 +454,51 @@ function staticallyEvaluateBooleanExpression(expression, knownValues = {}) {
 
     const comparison = expression
       .slice(index)
-      .match(/^([A-Za-z_][A-Za-z0-9_.-]*)\s*(===|==|!==|!=|<=|>=|<|>)\s*/);
+      .match(
+        /^((?:[A-Za-z_][A-Za-z0-9_.-]*|[A-Za-z_][A-Za-z0-9_.-]*\[['"][A-Za-z_][A-Za-z0-9_]*['"]\]))\s*(===|==|!==|!=|<=|>=|<|>)\s*/
+      );
     if (comparison) {
       const comparisonIndex = index + comparison[0].length;
       const rightLiteral = parseStaticLiteral(comparisonIndex);
-      const knownValue = knownValues[comparison[1]];
+      const knownKey = normalizeGithubReference(comparison[1]);
+      const knownValue = knownValues[knownKey];
       if (rightLiteral) {
         index = rightLiteral.end;
         if (knownValue === undefined) return null;
         return evaluateStaticLiteralComparison(knownValue, rightLiteral.value, comparison[2]);
       }
       const rightFunction = parseGithubFunctionCall(expression, comparisonIndex);
-      if (!rightFunction) return null;
-      const rightValue = evaluateStaticGithubFunctionValue(rightFunction);
-      if (rightValue === null) return null;
-      index = rightFunction.end;
-      if (knownValue === undefined) return null;
-      return evaluateStaticLiteralComparison(knownValue, rightValue.value, comparison[2]);
+      if (rightFunction) {
+        const rightValue = evaluateStaticGithubFunctionValue(rightFunction, knownValues);
+        if (rightValue !== null) {
+          index = rightFunction.end;
+          if (knownValue === undefined) return null;
+          return evaluateStaticLiteralComparison(knownValue, rightValue.value, comparison[2]);
+        }
+        index = rightFunction.end;
+        return null;
+      }
+      const rightReference = expression
+        .slice(comparisonIndex)
+        .match(/^(?:[A-Za-z_][A-Za-z0-9_.-]*|[A-Za-z_][A-Za-z0-9_.-]*\[['"][A-Za-z_][A-Za-z0-9_]*['"]\])/);
+      if (!rightReference) return null;
+      index = comparisonIndex + rightReference[0].length;
+      const rightKey = normalizeGithubReference(rightReference[0]);
+      if (knownValue === undefined || !Object.prototype.hasOwnProperty.call(knownValues, rightKey)) {
+        return null;
+      }
+      return evaluateStaticLiteralComparison(knownValue, knownValues[rightKey], comparison[2]);
+    }
+
+    const knownReference = expression
+      .slice(index)
+      .match(/^(?:[A-Za-z_][A-Za-z0-9_.-]*|[A-Za-z_][A-Za-z0-9_.-]*\[['"][A-Za-z_][A-Za-z0-9_]*['"]\])/);
+    if (knownReference) {
+      const knownKey = normalizeGithubReference(knownReference[0]);
+      if (Object.prototype.hasOwnProperty.call(knownValues, knownKey)) {
+        index += knownReference[0].length;
+        return githubExpressionTruthy(knownValues[knownKey]);
+      }
     }
 
     let quote = null;
@@ -655,7 +727,8 @@ export function inspectReleaseWorkflowPolicy(
 ) {
   const findings = [];
   const steps = workflowSteps(content);
-  const knownValues = workflowUsesWorkflowRunTrigger(content)
+  const hasWorkflowRunTrigger = workflowUsesWorkflowRunTrigger(content);
+  const knownValues = hasWorkflowRunTrigger
     ? { 'github.event_name': 'workflow_run' }
     : {};
   const prepublicationGateIndex = content.indexOf('name: Run pre-publication candidate assurance');
@@ -666,6 +739,9 @@ export function inspectReleaseWorkflowPolicy(
   const buildSteps = steps.filter((step) =>
     /uses:\s*docker\/build-push-action@[0-9a-f]{40}\b/.test(step)
   );
+  if (!hasWorkflowRunTrigger) {
+    findings.push(`${path}: release workflow must retain the workflow_run trigger`);
+  }
   if (
     workflowJobHasStaticallyFalseCondition(content, knownValues) ||
     workflowYamlHasStaticallyFalseCondition(content, knownValues)

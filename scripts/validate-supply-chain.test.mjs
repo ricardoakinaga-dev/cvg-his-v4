@@ -297,6 +297,46 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     ),
     workflow.replace(
       '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ !github.event_name }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ github.event_name != github.event_name }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ github['event_name'] == 'push' }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ github.event_name == ('push') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ startsWith(github.event_name, 'push') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(github.event_name, 'push') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ endsWith(github.event_name, 'push') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(null, 'x') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(0, 'x') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('[]'), 'x') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
       '    if: &disabled false'
     ),
     workflow.replace(
@@ -407,6 +447,7 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
         '      - name: Prove the exact OCI candidates at production runtime boundaries',
         "      - if: ${{ github.event_name != 'workflow_run' }}\n        name: Prove the exact OCI candidates at production runtime boundaries"
       ),
+    workflow.replace('\n  workflow_run:', '\n  push:'),
     workflow.replace(
       '      - name: Run blocking Triple-A release gate',
       '      - if: false\n        name: Run blocking Triple-A release gate'
