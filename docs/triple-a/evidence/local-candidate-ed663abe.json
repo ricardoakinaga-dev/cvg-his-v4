@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "candidate_sha": "ed663abeef6eb6fa4317d74270053aee5ca6358a",
+  "observed_at": "2026-09-20T20:31:00-03:00",
+  "environment": "local disposable PostgreSQL/Redis/Docker fixtures; no real credentials",
+  "status": "PASS_LOCAL",
+  "oci_runtime_validation": {
+    "command": "RELEASE_IMAGE_MODE=build RELEASE_IMAGE_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_release_image_test HELM_BIN=/tmp/cvg-helm-3.15.4.gkiYKT/linux-amd64/helm bash scripts/validate-release-images.sh",
+    "result": "PASS",
+    "images": {
+      "api": {
+        "tag": "cvg-his-v2-api:release-validation-local-4001379",
+        "digest": "sha256:eb8f5913e6f8c6f8577b2e2723a22b7bb8a7223a0a770867154ce54547c65d5d",
+        "user": "node"
+      },
+      "worker": {
+        "tag": "cvg-his-v2-worker:release-validation-local-4001379",
+        "digest": "sha256:7e431a4c73172d3546fe2d2b49f7cbf18850c3f608f85e4c081b0917064fcada",
+        "user": "node"
+      },
+      "spa": {
+        "tag": "cvg-his-v2-spa:release-validation-local-4001379",
+        "digest": "sha256:3719a20d146e59dfdc4a8c798def6ffae5da58d65ab239f67697ce0d28341442",
+        "user": "nginx"
+      }
+    },
+    "trivy": "NOT_RUN: trivy is not installed locally; no scan result was promoted"
+  },
+  "commands": [
+    {
+      "command": "node --test scripts/validate-supply-chain.test.mjs",
+      "result": "PASS",
+      "detail": "17/17 mutation and contract tests"
+    },
+    {
+      "command": "pnpm validate:supply-chain && pnpm validate:dependencies && pnpm security:secrets && pnpm security:enterprise",
+      "result": "PASS",
+      "detail": "supply-chain 131/13/15/0/6/4; 69 manifests; secret scan clean; 0 critical/high/moderate advisories"
+    },
+    {
+      "command": "REQUIRE_HELM=1 HELM_BIN=/tmp/cvg-helm-3.15.4.gkiYKT/linux-amd64/helm pnpm validate:helm",
+      "result": "PASS",
+      "detail": "dev, staging and prod renders validated with Helm 3.15.4"
+    },
+    {
+      "command": "pnpm lint && pnpm typecheck && pnpm build && pnpm test",
+      "result": "PASS",
+      "detail": "monorepo quality gates and full suite green"
+    },
+    {
+      "command": "pnpm test:critical:bootstrap",
+      "result": "PASS",
+      "detail": "68 PostgreSQL test files, 623 tests, migrations 0000–0177; 11/11 critical process tests"
+    },
+    {
+      "command": "pnpm validate:rls && pnpm test:production-contract && pnpm test:tracing && pnpm ops:backup:check",
+      "result": "PASS",
+      "detail": "171/172 tenant tables; production 3/3; tracing 3/3; backup/restore contracts 4/4"
+    }
+  ],
+  "limitations": [
+    "No exact-candidate remote CI or branch-protection proof.",
+    "No registry publication, OCI attestation, target deployment, restore/rollback, soak, UAT or release authority.",
+    "Trivy is not installed locally; image scan is NOT_RUN until the pinned scanner is available.",
+    "Helm server-snippet admission and ingress behavior remain target-cluster responsibilities."
+  ]
+}

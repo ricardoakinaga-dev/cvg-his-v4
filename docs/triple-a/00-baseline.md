@@ -1,12 +1,15 @@
 # Triple-A — 00 Baseline
 
-## Remediação atual dos P0 — 2026-09-18
+## Baseline local do candidato — 2026-09-20
 
-Baseline autoritativo atual: `ec092d77b69e97b4c408422ca13cac0c7e525fdf`.
+Baseline autoritativo atual: `ed663abeef6eb6fa4317d74270053aee5ca6358a`.
 
-O [CI 35408222214](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35408222214) aprovou **17/17 jobs** no commit `470f87dbee3f0755e0fb740dfa78b113d75d05c9`, descendente apenas documental da fonte congelada acima. **k6: 70.576 checks aprovados, zero falhas e 9/9 SLOs**. Cobertura global: 2.990 testes aprovados e 82,04% de branches; integração: 623 testes e 11 contratos de processos; E2E: 424 testes; cobertura crítica e evidência SQL completas aprovadas.
+Os gates locais do candidato passam, incluindo supply-chain 17/17,
+dependências/segredos, Helm 3.15.4, qualidade, banco crítico e processos
+11/11. CI/release/target/UAT/autoridade não foram provados.
 
-O registro contém **3 P0 fechados e 11 abertos**. PostgreSQL/migrações foi revalidado com a migração 0177 e concorrência/leases foi encerrado. Os critérios automatizados de fluxo clínico e auditoria passaram, mas os itens permanecem bloqueados pelas dependências externas. Proteção/revisão independente da main, homologação aprovada, recuperação/soak no target, UAT e autoridade de release continuam pendentes.
+O registro mantém **11 P0 abertos** e o Triplo AAA está **BLOCKED / NOT PROVEN**
+até haver CI, target, recuperação, UAT e autoridade.
 
 Detalhes, hashes e limites: [remediação dos P0](30-p0-remediation-20260918.md) e [avaliação por critério](evidence/p0-remediation-20260918.json). **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
 

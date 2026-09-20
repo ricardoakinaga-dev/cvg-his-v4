@@ -1,12 +1,18 @@
 # Evidência de execução corrente — State of Art
 
-## Remediação atual dos P0 — 2026-09-18
+## Evidência local do candidato — 2026-09-20
 
-SHA de código e documentação: `ec092d77b69e97b4c408422ca13cac0c7e525fdf` — campo canônico da **fonte congelada do candidato**. Alterações documentais posteriores são permitidas; este valor não representa o último commit desses documentos.
+SHA de código e documentação: `ed663abeef6eb6fa4317d74270053aee5ca6358a` — campo canônico da **fonte congelada do candidato**. Alterações documentais posteriores são permitidas; este valor não representa o último commit desses documentos.
 
-O [CI 35408222214](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35408222214) aprovou **17/17 jobs** no commit `470f87dbee3f0755e0fb740dfa78b113d75d05c9`, descendente apenas documental da fonte congelada acima. **k6: 70.576 checks aprovados, zero falhas e 9/9 SLOs**. Cobertura global: 2.990 testes aprovados e 82,04% de branches; integração: 623 testes e 11 contratos de processos; E2E: 424 testes; cobertura crítica e evidência SQL completas aprovadas.
+Comandos locais candidate-bound passaram: supply-chain 17/17, policy de
+dependências, secret scan/security enterprise, Helm 3.15.4, lint, typecheck,
+build, suíte monorepo, banco crítico efêmero, RLS/runtime/tracing, backup/restore
+documental e processos críticos 11/11. CI remoto e release continuam
+`NOT_PROVEN`.
 
-O registro contém **3 P0 fechados e 11 abertos**. PostgreSQL/migrações foi revalidado com a migração 0177 e concorrência/leases foi encerrado. Os critérios automatizados de fluxo clínico e auditoria passaram, mas os itens permanecem bloqueados pelas dependências externas. Proteção/revisão independente da main, homologação aprovada, recuperação/soak no target, UAT e autoridade de release continuam pendentes.
+O registro mantém **11 P0 abertos** por dependências externas. Nenhum resultado
+local fecha target, restore aprovado, soak, UAT, revisão independente ou
+autoridade de release; certificação permanece **BLOCKED / NOT PROVEN**.
 
 Detalhes, hashes e limites: [remediação dos P0](30-p0-remediation-20260918.md) e [avaliação por critério](evidence/p0-remediation-20260918.json). **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
 

@@ -1,16 +1,23 @@
 # Baseline corrente — State of Art
 
-## Remediação atual dos P0 — 2026-09-18
+## Remediação local do candidato — 2026-09-20
 
 | Campo | Estado atual |
 | --- | --- |
-| current_sha | `ec092d77b69e97b4c408422ca13cac0c7e525fdf` |
-| CI do código | 35408222214: 17/17 jobs aprovados |
-| open_p0 | 11 |
+| current_sha | `ed663abeef6eb6fa4317d74270053aee5ca6358a` |
+| CI do código | `NOT_PROVEN` para este SHA; CI remoto não executado |
+| local_gate | PASS: supply-chain 17/17, dependências, segredos, backup/restore, Helm 3.15.4, qualidade, banco crítico e 11/11 processos |
+| open_p0 | 11; externos/target preservados |
 
-O [CI 35408222214](https://github.com/ricardoakinaga-dev/cvg-his-v4/actions/runs/35408222214) aprovou **17/17 jobs** no commit `470f87dbee3f0755e0fb740dfa78b113d75d05c9`, descendente apenas documental da fonte congelada acima. **k6: 70.576 checks aprovados, zero falhas e 9/9 SLOs**. Cobertura global: 2.990 testes aprovados e 82,04% de branches; integração: 623 testes e 11 contratos de processos; E2E: 424 testes; cobertura crítica e evidência SQL completas aprovadas.
+Os gates locais foram reexecutados no candidato: lint, typecheck e build;
+suíte monorepo; supply-chain, dependências, segredos e segurança; Helm 3.15.4;
+RLS/runtime/tracing; backup/restore documental; banco PostgreSQL efêmero com
+migrações 0000–0177; e os 11 processos críticos. Isso não substitui CI remoto,
+OCI/attestation, target, restore aprovado, soak, UAT ou autoridade.
 
-O registro contém **3 P0 fechados e 11 abertos**. PostgreSQL/migrações foi revalidado com a migração 0177 e concorrência/leases foi encerrado. Os critérios automatizados de fluxo clínico e auditoria passaram, mas os itens permanecem bloqueados pelas dependências externas. Proteção/revisão independente da main, homologação aprovada, recuperação/soak no target, UAT e autoridade de release continuam pendentes.
+O registro mantém **11 P0 abertos** porque CI, target, recuperação, UAT e
+autoridade não foram provados. A certificação Triplo AAA permanece **BLOCKED /
+NOT PROVEN**.
 
 Detalhes, hashes e limites: [remediação dos P0](30-p0-remediation-20260918.md) e [avaliação por critério](evidence/p0-remediation-20260918.json). **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
 

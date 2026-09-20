@@ -8,7 +8,7 @@ review_cycle: on-milestone-or-candidate-change
 
 # Roadmap — nova rodada de melhorias
 
-[Auditoria](2026-09-20-auditoria-scorecard-be2dc76a.md) ·
+[Auditoria](2026-09-20-auditoria-scorecard-ed663abe.md) ·
 [Plano](2026-09-20-plano-executivo-nova-rodada-melhorias.md) ·
 [Backlog](2026-09-20-backlog-nova-rodada-melhorias.md)
 
@@ -16,9 +16,9 @@ review_cycle: on-milestone-or-candidate-change
 
 | Onda | Resultado | Itens | Gate de saída |
 | --- | --- | --- | --- |
-| R-1 — reparar gates locais | Remover regressões encontradas pela auditoria | AUD21-01–04, AUD21-09–10 | supply-chain 17/17, dependências, segredos, backup/restore, métricas, upload e Helm obrigatório verdes |
-| R0 — verdade operacional | Remover blockers internos de runtime e controle | NR-001–003 | PARTIAL: Vault e controlador passam localmente; Helm obrigatório e target ainda não provados |
-| R1 — candidato local | Congelar, identificar e provar o último SHA | NR-004–009 | BLOCKED: identity, P0 registry, snapshots, OCI/Trivy e críticos vinculados ao mesmo SHA limpo |
+| R-1 — reparar gates locais | Remover regressões encontradas pela auditoria | AUD21-01–04, AUD21-09–10 | PASS-LOCAL: supply-chain 17/17, dependências, segredos, backup/restore, métricas, upload e Helm obrigatório verdes |
+| R0 — verdade operacional | Remover blockers internos de runtime e controle | NR-001–003 | PASS-LOCAL / TARGET-BLOCKED: Vault, controlador e Helm passam localmente; target ainda não provado |
+| R1 — candidato local | Congelar, identificar e provar o último SHA | NR-004–009 | PASS-LOCAL / EXTERNAL-BLOCKED: identity, P0 registry, snapshots e críticos vinculados; OCI/Trivy candidate-bound dependem de reconstrução/ferramenta |
 | R2 — CI/release | Provar a cadeia remota sem rebuild | NR-011–013 | CI 17/17; release encadeado; manifest/attestations/artefatos bound ao mesmo SHA |
 | R3 — target | Provar operação e recuperação | NR-014–017 | deploy, RLS/migração, restore/rollback, soak/SLO e segurança no alvo aprovado |
 | R4 — aceite | Fechar produto e autoridades | NR-018–020 | UAT, decisões formais, zero P0 e go/no-go |
@@ -48,8 +48,8 @@ AUD21-01–04/09–10 gates locais
 
 - `NR-001/002` e o desenho de migração `NR-003` têm prova local histórica;
   novas mudanças em controles compartilhados continuam append-only.
-- `NR-009` voltou a `OPEN`: o harness atual tem 16/17 porque uma fixture depende
-  da árvore rastreada. Qualquer correção material exige novo candidato.
+- `NR-009` está `PASS-LOCAL`: a fixture impossível é hermética, o known-bad
+  exige o finding exato e o harness fecha 17/17 no candidato.
 - Trabalho externo `NR-014–019` pode preparar agendas e ambientes, mas nenhuma
   evidência é aceita antes do SHA de R2.
 - Refatorações R5 não entram no candidato de release enquanto R0–R4 estiverem

@@ -8,7 +8,7 @@ review_cycle: on-milestone-or-candidate-change
 
 # Plano executivo — nova rodada de melhorias
 
-[Auditoria vigente](2026-09-20-auditoria-scorecard-be2dc76a.md) ·
+[Auditoria vigente](2026-09-20-auditoria-scorecard-ed663abe.md) ·
 [Roadmap](2026-09-20-roadmap-nova-rodada-melhorias.md) ·
 [Backlog](2026-09-20-backlog-nova-rodada-melhorias.md)
 
@@ -19,21 +19,18 @@ auditável, sem promover evidência antiga: primeiro restaurar os gates locais;
 depois congelar uma identidade única e executar CI/release no SHA exato; por
 fim obter provas de target e autoridades externas.
 
-## Estado de entrada
+## Estado atual após a rodada local
 
-- melhoria `fromJSON`/`toJSON`: aprovada isoladamente, mas o harness completo
-  regrediu porque uma mutação passou a corresponder a arquivo rastreado;
-- runtime Helm de produção: ligação de Vault corrigida e validada localmente;
-- identidade `6e365f4c`; registro P0 e snapshots `ec092d77`: divergentes/stale;
-- controlador `.agent`: migração append-only concluída; `check_state.py` 11/11;
-- Gauntlet: rodada corrente registrada como BLOCKED, sem finalização externa;
-- gates internos: dependências, segredos, supply-chain regression e
-  backup/restore documental falham;
-- segurança/runtime: `/metrics` público agrega estado operacional cross-tenant;
-  upload aceita 25 MiB na API, mas o ingress limita a requisição a 10 MiB;
-- remoto: 30 commits atrás do `HEAD` auditado;
-- externalidades: CI/release/target/UAT/autoridade continuam ausentes; 11 P0 do
-  registro ainda abertos.
+- candidato de fonte congelada: `ed663abeef6eb6fa4317d74270053aee5ca6358a`;
+- supply-chain 17/17, dependências, segredos, segurança enterprise e
+  backup/restore documental passam localmente;
+- `/metrics` exige token dedicado e cache bounded; upload usa 25 MiB/413 em
+  API, OpenAPI e ingress;
+- Helm oficial 3.15.4, RLS, runtime, tracing, lint, typecheck, build, suíte
+  monorepo e processos críticos passam localmente;
+- identidade e controles documentais estão sendo reconciliados ao candidato;
+- Trivy não está instalado e não há CI/release/target/UAT/autoridade externos;
+  o estado global permanece `LOCAL_COMPLETE / EXTERNAL_BLOCKED`.
 
 ## Estratégia
 
@@ -47,25 +44,25 @@ fim obter provas de target e autoridades externas.
 
 ## Milestones
 
-### M-1 — gates locais novamente verdes (OPEN)
+### M-1 — gates locais novamente verdes (PASS-LOCAL)
 
 Saída: regressão supply-chain 17/17 com fixture hermética; política de pnpm
 coerente; scanner de segredos verde com known-bad preservado; backup/restore
 reconciliado com roadmap/backlog; métricas protegidas, upload coerente e Helm
 3.15.4 obrigatório disponível.
 
-### M0 — runtime e controle confiáveis (PARTIAL)
+### M0 — runtime e controle confiáveis (PASS-LOCAL / TARGET-BLOCKED)
 
 Saída local: Vault injetável por Secret, Helm obrigatório verde, smoke
 production-shaped com Vault habilitado, controlador reconciliado e documentos
 atualizados. A saída não é `DONE` enquanto a identidade não estiver congelada e
 os aceites externos não existirem.
 
-### M1 — candidato local congelado (BLOCKED-CANDIDATE)
+### M1 — candidato local congelado (PASS-LOCAL / EXTERNAL-BLOCKED)
 
-Saída parcial: build/typecheck/lint e contratos críticos têm evidência local,
-mas os gates de M-1 não estão verdes. Provas OCI/Trivy anteriores ficaram stale
-após mudanças materiais. Não há fingerprint final candidate-bound.
+Saída local: fonte congelada em `ed663abe`, identidade/P0/snapshots
+candidate-bound e gates locais reexecutados. OCI/Trivy candidate-bound ainda
+dependem de reconstrução local e da ferramenta Trivy; não há prova remota.
 
 ### M2 — CI e release candidate-bound
 

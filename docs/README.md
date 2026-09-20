@@ -1,6 +1,6 @@
 # CVG-HIS V4 - Documentacao ativa
 
-**Atualizado em:** 2026-09-20 (auditoria e scorecard do `HEAD be2dc76a`)
+**Atualizado em:** 2026-09-20 (candidato local `ed663abe`)
 
 Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afirmacao de funcionalidade so e considerada valida quando estiver sustentada por codigo executavel e teste comportamental.
 
@@ -12,14 +12,14 @@ Esta é a fonte ativa para decisão, execução e acompanhamento do programa. O
 objetivo é elevar o ERP de uma base extensa em construção para um candidato
 reproduzível, integrado, seguro, acessível e operável com régua Triplo AAA.
 
-**Auditoria de 20/09/2026:** nota ponderada **53/100**, veredito
-`FAIL / BLOCKED`. Backend, build e banco têm evidência local forte, mas falham
-os gates de regressão supply-chain, dependências, segredos e backup/restore.
-Identidade, registro P0 e snapshots divergem; `main` local está 30 commits à
-frente do remoto; CI/release exatos, target, UAT e autoridade estão ausentes.
-Uma nota não substitui P0 nem autoriza produção.
+**Auditoria de 20/09/2026:** nota ponderada **68/100** (entrada 53/100), estado
+`LOCAL_COMPLETE / EXTERNAL_BLOCKED`. Os gates locais de supply-chain,
+dependências, segredos, backup/restore documental, métricas, upload, Helm,
+qualidade e banco passam no candidato `ed663abe`; CI/release exatos, target,
+restore aprovado, UAT e autoridade continuam ausentes. Uma nota não substitui
+P0 nem autoriza produção.
 
-1. [Auditoria e scorecard do sistema `be2dc76a`](2026-09-20-auditoria-scorecard-be2dc76a.md) — notas 0–100, veredito, provas e blockers.
+1. [Auditoria e scorecard do candidato `ed663abe`](2026-09-20-auditoria-scorecard-ed663abe.md) — notas 0–100, veredito, provas e blockers.
 2. [Plano executivo da nova rodada](2026-09-20-plano-executivo-nova-rodada-melhorias.md) — estratégia, milestones, gates e autoridade.
 3. [Roadmap da nova rodada](2026-09-20-roadmap-nova-rodada-melhorias.md) — sequência runtime → controle → candidato → CI/release → target.
 4. [Backlog executável](2026-09-20-backlog-nova-rodada-melhorias.md) — P0/P1 e dependências externas; os [contratos detalhados de 14/09](2026-09-14-backlog-state-of-art-triplo-aaa.md) permanecem referência normativa dos cartões PROD.
@@ -30,9 +30,9 @@ Uma nota não substitui P0 nem autoriza produção.
 5. [Quality Bar](engineering/QUALITY_BAR.md) e [matriz de evidências](engineering/REQUIREMENT_EVIDENCE_MATRIX.md) — gates que impedem que uma nota ou um arquivo substitua prova.
 6. [Evidência do critical gate de 07/09](engineering/CRITICAL_GATE_2026-09-07.md) — `PASS_BOUNDED` local: 65/65 arquivos, 594/594 testes e 10/10 processos; limites de target e recertificação preservados.
 7. [Evidência E2E SPA de 07/09](engineering/E2E_SPA_2026-09-07.md) — `PASS_BOUNDED` scoped: 9/9 jornadas contra PostgreSQL/Redis reais, com cleanup sem erro.
-8. [Snapshot Triple-A anterior](triple-a/15-current-baseline.md) e [evidência associada](triple-a/17-current-execution-evidence.md) — ainda vinculados a `ec092d77`; são stale para a identidade `6e365f4c` e para o `HEAD be2dc76a`.
+8. [Snapshot Triple-A corrente](triple-a/15-current-baseline.md) e [evidência associada](triple-a/17-current-execution-evidence.md) — vinculados à fonte congelada `ed663abe`; CI/target/UAT continuam `NOT_PROVEN`.
 9. [Crosswalk do prompt congelado](triple-a/18-master-prompt-crosswalk.md) — estrutura de 61 fases e 76 linhas; os hashes e aceites registrados pertencem ao snapshot anterior.
-10. [Relatório final de assurance](triple-a/FINAL_REPORT.md), [scorecard](triple-a/13-final-scorecard.md) e [execution log](triple-a/EXECUTION_LOG.md) — todos stale para o `HEAD`, preservados apenas como histórico da rodada `ec092d77`.
+10. [Relatório final de assurance](triple-a/FINAL_REPORT.md), [scorecard](triple-a/13-final-scorecard.md) e [execution log](triple-a/EXECUTION_LOG.md) — snapshot corrente `ed663abe`, com limitações externas explícitas.
 
 As entradas numeradas de [`triple-a/MASTER_PROMPT.md`](triple-a/MASTER_PROMPT.md) seguem as fases do prompt
 preservado; o [crosswalk](triple-a/18-master-prompt-crosswalk.md) é a referência
@@ -136,8 +136,7 @@ substituir requisito aprovado. Para decidir o comportamento esperado, consultar
 contratos, ADRs e autoridades vigentes; divergências devem ser registradas e
 resolvidas explicitamente. O estado operacional em `.agent` passa
 estruturalmente, mas não torna a evidência atual. A próxima ação técnica é
-`AUD21-02–04`: restaurar os gates locais; depois `AUD21-01/NR-004` congela um
-SHA e reconcilia identidade, registro P0 e snapshots antes de qualquer
-CI/release candidate-bound.
+revisão independente fresh; depois, mediante autorização, CI/release
+candidate-bound e target.
 
 Relatorios antigos com notas de 85-96/100 foram arquivados porque mediam presenca de arquivos, planos ou implementacoes parciais e nao comprovavam a jornada completa.

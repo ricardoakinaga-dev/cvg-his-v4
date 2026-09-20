@@ -1,5 +1,5 @@
 ---
-document_status: current
+document_status: historical
 document_kind: baseline
 effective_date: 2026-09-20
 owner: Engenharia e Liderança técnica CVG-HIS
@@ -7,6 +7,7 @@ review_cycle: on-candidate-change-or-material-evidence
 candidate_sha: be2dc76a765438aedbc3aa31138905b8f3e78e46
 overall_score: 53
 verdict: FAIL_BLOCKED
+superseded_by: docs/2026-09-20-auditoria-scorecard-ed663abe.md
 ---
 
 # Auditoria e scorecard do sistema — `be2dc76a`

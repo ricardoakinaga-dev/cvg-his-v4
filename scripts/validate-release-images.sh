@@ -39,6 +39,7 @@ postgres_network_connected=0
 release_database='cvg_his_v2_release_image_test'
 expected_release_database_url="postgres://postgres:postgres@127.0.0.1:5433/${release_database}"
 vault_fixture_database_url="postgres://cvg_api:release_api_runtime_password_2026@postgres:5432/${release_database}"
+metrics_auth_token="release-validation-metrics-${run_id}"
 helm_bin="${HELM_BIN:-helm}"
 spa_proxy_config_dir=''
 attachment_fixture_tls_dir=''
@@ -695,6 +696,7 @@ OPENSSL_CONFIG
     --env DATABASE_REQUIRE_RLS_ROLE=1 \
     --env REDIS_URL=redis://redis:6379 \
     --env RUNTIME_DISTRIBUTED_STATE_ENABLED=1 \
+    --env METRICS_AUTH_TOKEN="${metrics_auth_token}" \
     --env VAULT_ENABLED=true \
     --env VAULT_URL=http://vault-fixture:8200 \
     --env VAULT_ROLE_ID=release-fixture-role-id \
