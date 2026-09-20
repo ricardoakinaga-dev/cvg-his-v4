@@ -93,7 +93,7 @@ function githubToJson(value, depth = 0) {
   const nestedIndentation = '  '.repeat(depth + 1);
   if (value === null) return 'null';
   if (typeof value === 'boolean') return value ? 'true' : 'false';
-  if (typeof value === 'number') return Number.isFinite(value) ? githubNumberString(value) : 'null';
+  if (typeof value === 'number') return githubNumberString(value);
   if (typeof value === 'string') return JSON.stringify(value);
   if (Array.isArray(value)) {
     if (value.length === 0) return '[]';
@@ -413,10 +413,10 @@ function parseGithubReferenceExpression(expression, offset, knownValues = {}) {
     }
     if (closing < 0) return null;
     const selector = parseStaticExpressionValue(expression.slice(index + 1, closing), knownValues);
-    if (selector === null || typeof selector.value !== 'string') {
+    if (selector === null || !isGithubPrimitive(selector.value)) {
       return { end: closing + 1, key: null, value: undefined };
     }
-    key = `${key}.${selector.value}`;
+    key = `${key}.${githubExpressionValueString(selector.value)}`;
     index = closing + 1;
   }
   return {

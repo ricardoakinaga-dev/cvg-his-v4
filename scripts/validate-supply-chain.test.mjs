@@ -901,6 +901,15 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     ),
     []
   );
+  assert.deepEqual(
+    inspectReleaseWorkflowPolicy(
+      workflow.replace(
+        '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+        "    if: ${{ toJSON(1e309) == 'Infinity' }}"
+      )
+    ),
+    []
+  );
 });
 
 test('production runtime policy accepts minimal non-root deploy closures', () => {
