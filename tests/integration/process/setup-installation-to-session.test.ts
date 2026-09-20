@@ -23,6 +23,7 @@ const apiRole = `cvg_test_setup_http_api_${suffix}`;
 const workerRole = `cvg_test_setup_http_worker_${suffix}`;
 const rolePassword = `setup-http-${suffix}`;
 const authSecret = `setup-http-auth-${suffix}-shared-secret-with-strong-entropy`;
+const metricsAuthToken = `setup-http-metrics-${suffix}-dedicated-collector-token`;
 const bootstrapToken = `setup-http-bootstrap-${suffix}-secret-with-strong-entropy`;
 const adminUsername = `setup_admin_${suffix.slice(0, 12)}`;
 const adminEmail = `${adminUsername}@example.test`;
@@ -392,6 +393,7 @@ function startApi(port: number, instance: 'a' | 'b'): ApiProcess {
       POSTGRES_API_USER: apiRole,
       POSTGRES_WORKER_USER: workerRole,
       AUTH_SECRET: authSecret,
+      METRICS_AUTH_TOKEN: metricsAuthToken,
       SETUP_BOOTSTRAP_TOKEN: bootstrapToken,
       REDIS_URL: redisUrl,
       RUNTIME_DISTRIBUTED_STATE_ENABLED: 'true',
@@ -552,6 +554,10 @@ function bearerHeaders(accessToken: string): HeadersInit {
     authorization: `Bearer ${accessToken}`,
     'content-type': 'application/json'
   };
+}
+
+function metricsHeaders(): HeadersInit {
+  return { authorization: `Bearer ${metricsAuthToken}` };
 }
 
 function expectRedisDependency(
@@ -985,7 +991,9 @@ describe.skipIf(!canRunDisposableDistributedFixture && !requireDisposableDistrib
         redisHealthy: false,
         rateLimiterMode: 'fail-closed'
       });
-      const outageMetrics = await requestJson<unknown>(apiA, '/metrics');
+      const outageMetrics = await requestJson<unknown>(apiA, '/metrics', {
+        headers: metricsHeaders()
+      });
       expect(outageMetrics.status).toBe(200);
       expect(outageMetrics.text).toContain('app_redis_healthy 0');
       expect(outageMetrics.text).toContain('app_rate_limiter_mode{mode="fail-closed"} 1');
@@ -1061,7 +1069,9 @@ describe.skipIf(!canRunDisposableDistributedFixture && !requireDisposableDistrib
         redisHealthy: true,
         rateLimiterMode: 'redis'
       });
-      const restoredMetrics = await requestJson<unknown>(apiB, '/metrics');
+      const restoredMetrics = await requestJson<unknown>(apiB, '/metrics', {
+        headers: metricsHeaders()
+      });
       expect(restoredMetrics.status).toBe(200);
       expect(restoredMetrics.text).toContain('app_redis_healthy 1');
       expect(restoredMetrics.text).toContain('app_rate_limiter_mode{mode="redis"} 1');
