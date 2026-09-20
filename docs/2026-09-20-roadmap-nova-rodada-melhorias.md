@@ -8,7 +8,7 @@ review_cycle: on-milestone-or-candidate-change
 
 # Roadmap — nova rodada de melhorias
 
-[Auditoria](2026-09-20-auditoria-scorecard-8c1feddb.md) ·
+[Auditoria](2026-09-20-auditoria-scorecard-fc636c3f.md) ·
 [Plano](2026-09-20-plano-executivo-nova-rodada-melhorias.md) ·
 [Backlog](2026-09-20-backlog-nova-rodada-melhorias.md)
 

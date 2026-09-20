@@ -4,7 +4,7 @@
 
 | Campo | Estado atual |
 | --- | --- |
-| current_sha | `8c1feddbe4e3191f75dea2f290ba8618f3ee6937` |
+| current_sha | `fc636c3fa16bfc56fef710b4baf4ba289a42da3a` |
 | CI do código | `NOT_PROVEN` para este SHA; CI remoto não executado |
 | local_gate | PASS: supply-chain 17/17, dependências, segredos, backup/restore, Helm 3.15.4, qualidade, banco crítico e 11/11 processos |
 | open_p0 | 11; externos/target preservados |

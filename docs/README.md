@@ -1,6 +1,6 @@
 # CVG-HIS V4 - Documentacao ativa
 
-**Atualizado em:** 2026-09-20 (candidato local `8c1feddb`)
+**Atualizado em:** 2026-09-20 (candidato local `fc636c3f`)
 
 Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afirmacao de funcionalidade so e considerada valida quando estiver sustentada por codigo executavel e teste comportamental.
 
@@ -15,11 +15,11 @@ reproduzível, integrado, seguro, acessível e operável com régua Triplo AAA.
 **Auditoria de 20/09/2026:** nota ponderada **68/100** (entrada 53/100), estado
 `LOCAL_COMPLETE / EXTERNAL_BLOCKED`. Os gates locais de supply-chain,
 dependências, segredos, backup/restore documental, métricas, upload, Helm,
-qualidade e banco passam no candidato `8c1feddb`; CI/release exatos, target,
+qualidade e banco passam no candidato `fc636c3f`; CI/release exatos, target,
 restore aprovado, UAT e autoridade continuam ausentes. Uma nota não substitui
 P0 nem autoriza produção.
 
-1. [Auditoria e scorecard do candidato `8c1feddb`](2026-09-20-auditoria-scorecard-8c1feddb.md) — notas 0–100, veredito, provas e blockers.
+1. [Auditoria e scorecard do candidato `fc636c3f`](2026-09-20-auditoria-scorecard-fc636c3f.md) — notas 0–100, veredito, provas e blockers.
 2. [Plano executivo da nova rodada](2026-09-20-plano-executivo-nova-rodada-melhorias.md) — estratégia, milestones, gates e autoridade.
 3. [Roadmap da nova rodada](2026-09-20-roadmap-nova-rodada-melhorias.md) — sequência runtime → controle → candidato → CI/release → target.
 4. [Backlog executável](2026-09-20-backlog-nova-rodada-melhorias.md) — P0/P1 e dependências externas; os [contratos detalhados de 14/09](2026-09-14-backlog-state-of-art-triplo-aaa.md) permanecem referência normativa dos cartões PROD.
@@ -30,9 +30,9 @@ P0 nem autoriza produção.
 5. [Quality Bar](engineering/QUALITY_BAR.md) e [matriz de evidências](engineering/REQUIREMENT_EVIDENCE_MATRIX.md) — gates que impedem que uma nota ou um arquivo substitua prova.
 6. [Evidência do critical gate de 07/09](engineering/CRITICAL_GATE_2026-09-07.md) — `PASS_BOUNDED` local: 65/65 arquivos, 594/594 testes e 10/10 processos; limites de target e recertificação preservados.
 7. [Evidência E2E SPA de 07/09](engineering/E2E_SPA_2026-09-07.md) — `PASS_BOUNDED` scoped: 9/9 jornadas contra PostgreSQL/Redis reais, com cleanup sem erro.
-8. [Snapshot Triple-A corrente](triple-a/15-current-baseline.md) e [evidência associada](triple-a/17-current-execution-evidence.md) — vinculados à fonte congelada `8c1feddb`; CI/target/UAT continuam `NOT_PROVEN`.
+8. [Snapshot Triple-A corrente](triple-a/15-current-baseline.md) e [evidência associada](triple-a/17-current-execution-evidence.md) — vinculados à fonte congelada `fc636c3f`; CI/target/UAT continuam `NOT_PROVEN`.
 9. [Crosswalk do prompt congelado](triple-a/18-master-prompt-crosswalk.md) — estrutura de 61 fases e 76 linhas; os hashes e aceites registrados pertencem ao snapshot anterior.
-10. [Relatório final de assurance](triple-a/FINAL_REPORT.md), [scorecard](triple-a/13-final-scorecard.md) e [execution log](triple-a/EXECUTION_LOG.md) — snapshot corrente `8c1feddb`, com limitações externas explícitas.
+10. [Relatório final de assurance](triple-a/FINAL_REPORT.md), [scorecard](triple-a/13-final-scorecard.md) e [execution log](triple-a/EXECUTION_LOG.md) — snapshot corrente `fc636c3f`, com limitações externas explícitas.
 
 As entradas numeradas de [`triple-a/MASTER_PROMPT.md`](triple-a/MASTER_PROMPT.md) seguem as fases do prompt
 preservado; o [crosswalk](triple-a/18-master-prompt-crosswalk.md) é a referência
