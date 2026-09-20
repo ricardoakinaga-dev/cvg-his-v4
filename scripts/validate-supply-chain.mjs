@@ -9,8 +9,29 @@ const root = process.cwd();
 const shaRef = /^[0-9a-f]{40}$/;
 const digestRef = /^sha256:[0-9a-f]{64}$/;
 const localComposeImage = /^cvg-his-v[24]-/;
+const opaqueStaticHash = Symbol('opaque-static-hash');
+const staticDigest = /^[0-9a-f]{64}$/i;
 
 let trackedCheckoutFilesCache;
+
+function isOpaqueStaticHash(value) {
+  return Boolean(value && typeof value === 'object' && value[opaqueStaticHash] === true);
+}
+
+function createOpaqueStaticHash() {
+  return { [opaqueStaticHash]: true };
+}
+
+function isGithubPrimitive(value) {
+  return value === null || ['boolean', 'number', 'string'].includes(typeof value);
+}
+
+function githubExpressionValueString(value) {
+  if (value === null || value === undefined) return '';
+  if (Array.isArray(value)) return 'Array';
+  if (typeof value === 'object') return 'Object';
+  return String(value);
+}
 
 function trackedCheckoutFiles() {
   if (trackedCheckoutFilesCache !== undefined) return trackedCheckoutFilesCache;
@@ -147,10 +168,20 @@ function githubExpressionNumber(value) {
   if (typeof value === 'string') {
     const normalized = value.trim();
     if (normalized === '') return 0;
-    if (!/^-?(?:(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)$/.test(normalized)) {
-      return Number.NaN;
+    if (/^[+-]?(?:(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)$/.test(normalized)) {
+      return Number(normalized);
     }
-    return Number(normalized);
+    if (
+      /^0x[0-9a-fA-F]+$/.test(normalized) ||
+      /^0o[0-7]+$/.test(normalized)
+    ) {
+      return normalized.startsWith('0x')
+        ? Number.parseInt(normalized.slice(2), 16)
+        : Number.parseInt(normalized.slice(2), 8);
+    }
+    if (normalized === 'Infinity') return Number.POSITIVE_INFINITY;
+    if (normalized === '-Infinity') return Number.NEGATIVE_INFINITY;
+    return Number.NaN;
   }
   if (Array.isArray(value) || (value !== null && typeof value === 'object')) {
     return Number.NaN;
@@ -334,6 +365,7 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
     }
   }
   if (call.name === 'tojson' && call.args.length === 1) {
+    if (isOpaqueStaticHash(values[0].value)) return null;
     try {
       return { value: JSON.stringify(values[0].value, null, 2) };
     } catch {
@@ -391,17 +423,12 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
         }
       }
     }
-    return { value: matched.size > 0 ? 'static-hash' : '' };
+    return { value: matched.size > 0 ? createOpaqueStaticHash() : '' };
   }
   if (call.name === 'format' && call.args.length >= 1 && typeof values[0].value === 'string') {
     const template = values[0].value;
-    const githubFormatString = (value) => {
-      if (value === null || value === undefined) return '';
-      if (Array.isArray(value)) return 'Array';
-      if (typeof value === 'object') return 'Object';
-      return String(value);
-    };
-    const replacements = values.slice(1).map(({ value }) => githubFormatString(value));
+    if (values.slice(1).some(({ value }) => isOpaqueStaticHash(value))) return null;
+    const replacements = values.slice(1).map(({ value }) => githubExpressionValueString(value));
     let formatted = '';
     for (let index = 0; index < template.length; index += 1) {
       const character = template[index];
@@ -416,40 +443,60 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
         continue;
       }
       if (character === '{') {
-        const placeholder = template.slice(index).match(/^\{(\d+)\}/);
+        const placeholder = template.slice(index).match(/^\{(\d+)(?::([^{}]*))?\}/);
         if (placeholder) {
           const replacementIndex = Number(placeholder[1]);
-          if (replacementIndex < replacements.length) {
-            formatted += replacements[replacementIndex];
-            index += placeholder[0].length - 1;
-            continue;
-          }
+          if (replacementIndex > 255 || replacementIndex >= replacements.length) return null;
+          if (placeholder[2] !== undefined && placeholder[2] !== '') return null;
+          formatted += replacements[replacementIndex];
+          index += placeholder[0].length - 1;
+          continue;
         }
+        return null;
       }
+      if (character === '}') return null;
       formatted += character;
     }
     return { value: formatted };
   }
   if (call.name === 'join' && (call.args.length === 1 || call.args.length === 2)) {
     const left = values[0].value;
-    const separator = call.args.length === 2 ? String(values[1].value ?? '') : ',';
-    if (Array.isArray(left)) {
-      return { value: left.map((item) => String(item ?? '')).join(separator) };
+    if (isOpaqueStaticHash(left) || (call.args.length === 2 && isOpaqueStaticHash(values[1].value))) {
+      return null;
     }
-    return { value: String(left ?? '') };
+    const separator =
+      call.args.length === 2 && isGithubPrimitive(values[1].value)
+        ? githubExpressionValueString(values[1].value)
+        : ',';
+    if (Array.isArray(left)) {
+      if (left.some((item) => isOpaqueStaticHash(item))) return null;
+      return { value: left.map((item) => githubExpressionValueString(item)).join(separator) };
+    }
+    return { value: isGithubPrimitive(left) ? githubExpressionValueString(left) : '' };
   }
   if (call.args.length !== 2) return null;
   const [left, right] = values.map(({ value }) => value);
-  const rightString = String(right ?? '').toLowerCase();
+  if (isOpaqueStaticHash(left) || isOpaqueStaticHash(right)) return null;
   if (call.name === 'contains') {
     if (Array.isArray(left)) {
-      return {
-        value: left.some((item) => String(item ?? '').toLowerCase() === rightString)
-      };
+      if (left.length === 0 || !isGithubPrimitive(right)) return { value: false };
+      for (const item of left) {
+        if (!isGithubPrimitive(item)) continue;
+        const equal = evaluateStaticLiteralComparison(item, right, '==');
+        if (equal === true) return { value: true };
+      }
+      return { value: false };
     }
-    return { value: String(left ?? '').toLowerCase().includes(rightString) };
+    if (!isGithubPrimitive(left) || !isGithubPrimitive(right)) return { value: false };
+    return {
+      value: githubExpressionValueString(left)
+        .toLowerCase()
+        .includes(githubExpressionValueString(right).toLowerCase())
+    };
   }
-  const leftString = String(left ?? '').toLowerCase();
+  if (!isGithubPrimitive(left) || !isGithubPrimitive(right)) return { value: false };
+  const leftString = githubExpressionValueString(left).toLowerCase();
+  const rightString = githubExpressionValueString(right).toLowerCase();
   if (call.name === 'startswith') return { value: leftString.startsWith(rightString) };
   if (call.name === 'endswith') return { value: leftString.endsWith(rightString) };
   return null;
@@ -461,6 +508,21 @@ function parseStaticExpressionValue(source, knownValues = {}) {
 }
 
 function evaluateStaticLiteralComparison(left, right, operator) {
+  const leftHash = isOpaqueStaticHash(left);
+  const rightHash = isOpaqueStaticHash(right);
+  if (leftHash || rightHash) {
+    const other = leftHash ? right : left;
+    if (isOpaqueStaticHash(other)) return null;
+    if (typeof other === 'string') {
+      const couldBeHash = staticDigest.test(other);
+      if (operator === '==' || operator === '===') return couldBeHash ? null : false;
+      if (operator === '!=' || operator === '!==') return couldBeHash ? null : true;
+      return null;
+    }
+    if (operator === '==' || operator === '===') return false;
+    if (operator === '!=' || operator === '!==') return true;
+    return null;
+  }
   if (operator === '==' || operator === '===') {
     if (operator === '===' && typeof left !== typeof right) return false;
     if (typeof left === 'string' && typeof right === 'string') {
@@ -472,7 +534,8 @@ function evaluateStaticLiteralComparison(left, right, operator) {
     return Number.isFinite(leftNumber) && Number.isFinite(rightNumber) && leftNumber === rightNumber;
   }
   if (operator === '!=' || operator === '!==') {
-    return !evaluateStaticLiteralComparison(left, right, operator === '!=' ? '==' : '===');
+    const equality = evaluateStaticLiteralComparison(left, right, operator === '!=' ? '==' : '===');
+    return equality === null ? null : !equality;
   }
   if (typeof left === 'string' && typeof right === 'string') {
     const leftString = githubExpressionString(left);
@@ -552,26 +615,25 @@ function evaluateStaticExpressionValueModern(expression, knownValues = {}) {
     }
   };
 
-  const applyStaticProperty = (base, property) => {
+  const applyStaticProperty = (base, property, selectorValue = property) => {
     if (!base.known) return unknown();
     const value = base.value;
     if (value === null || value === undefined) return { value: null, known: true };
     if (Array.isArray(value)) {
-      if (property === 'length') return { value: value.length, known: true };
-      if (/^\d+$/.test(property)) {
-        const indexValue = Number(property);
-        return { value: value[indexValue] ?? null, known: true };
+      const indexValue = githubExpressionNumber(selectorValue);
+      if (Number.isFinite(indexValue) && indexValue >= 0) {
+        const integerIndex = Math.floor(indexValue);
+        return { value: value[integerIndex] ?? null, known: true };
       }
       return { value: null, known: true };
     }
     if (typeof value === 'object') {
+      if (!isGithubPrimitive(selectorValue)) return { value: null, known: true };
+      const propertyKey = githubExpressionValueString(selectorValue);
       return {
-        value: Object.prototype.hasOwnProperty.call(value, property) ? value[property] : null,
+        value: Object.prototype.hasOwnProperty.call(value, propertyKey) ? value[propertyKey] : null,
         known: true
       };
-    }
-    if (typeof value === 'string' && property === 'length') {
-      return { value: value.length, known: true };
     }
     return { value: null, known: true };
   };
@@ -581,6 +643,19 @@ function evaluateStaticExpressionValueModern(expression, knownValues = {}) {
     while (value) {
       skipWhitespace();
       if (expression[index] === '.') {
+        if (expression[index + 1] === '*') {
+          index += 2;
+          if (!value.known) {
+            value = unknown();
+          } else if (Array.isArray(value.value)) {
+            value = { value: value.value, known: true };
+          } else if (value.value && typeof value.value === 'object') {
+            value = { value: Object.values(value.value), known: true };
+          } else {
+            value = { value: [], known: true };
+          }
+          continue;
+        }
         const property = expression.slice(index + 1).match(/^[A-Za-z_][A-Za-z0-9_-]*/)?.[0];
         if (!property) return value;
         index += property.length + 1;
@@ -622,7 +697,7 @@ function evaluateStaticExpressionValueModern(expression, knownValues = {}) {
         value = unknown();
         continue;
       }
-      value = applyStaticProperty(value, String(selector.value));
+      value = applyStaticProperty(value, String(selector.value), selector.value);
     }
     return value;
   };
@@ -682,7 +757,8 @@ function evaluateStaticExpressionValueModern(expression, knownValues = {}) {
     index += operator.length;
     const right = parseUnary();
     if (!right || !left.known || !right.known) return unknown();
-    return { value: evaluateStaticLiteralComparison(left.value, right.value, operator), known: true };
+    const comparison = evaluateStaticLiteralComparison(left.value, right.value, operator);
+    return comparison === null ? unknown() : { value: comparison, known: true };
   };
 
   function parseAnd() {
