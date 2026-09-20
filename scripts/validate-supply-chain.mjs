@@ -455,7 +455,11 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
   if (call.name === 'fromjson' && call.args.length === 1) {
     if (isOpaqueStaticText(values[0].value)) return null;
     try {
-      return { value: JSON.parse(githubExpressionValueString(values[0].value)) };
+      const json = githubExpressionValueString(values[0].value);
+      if (json === 'NaN') return { value: Number.NaN };
+      if (json === 'Infinity') return { value: Number.POSITIVE_INFINITY };
+      if (json === '-Infinity') return { value: Number.NEGATIVE_INFINITY };
+      return { value: JSON.parse(json) };
     } catch {
       return null;
     }
@@ -513,8 +517,12 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
     };
     const matched = new Set();
     for (const value of patterns) {
-      const negative = value.startsWith('!');
-      const pattern = negative ? value.slice(1) : value;
+      let pattern = value;
+      let negative = false;
+      while (pattern.startsWith('!')) {
+        negative = !negative;
+        pattern = pattern.slice(1);
+      }
       if (pattern.startsWith('#')) continue;
       const matcher = globToRegExp(pattern);
       if (!matcher) return null;
