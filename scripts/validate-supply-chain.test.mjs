@@ -178,7 +178,7 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     "    if: ${{ fromJSON('" + longNegativeLeadingZeroInteger + "') == -1 }}"
   );
   assert.deepEqual(inspectReleaseWorkflowPolicy(longLegacyOctalWorkflow), []);
-  assert.deepEqual(inspectReleaseWorkflowPolicy(longNegativeLeadingZeroIntegerWorkflow), []);
+  assert.notDeepEqual(inspectReleaseWorkflowPolicy(longNegativeLeadingZeroIntegerWorkflow), []);
 
   const hashFilesCharacterClassWorkflow = workflow.replace(
     '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',

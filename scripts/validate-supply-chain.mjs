@@ -392,11 +392,10 @@ function validateGithubJsonNumericLiteral(literal) {
   if (/^-?\d+$/.test(literal) && literal.length > githubJsonMaxIntegerDigits) {
     const isLegacyOctal = !literal.startsWith('-') && /^0[0-7]+$/.test(unsigned);
     if (!isLegacyOctal) {
-      const magnitude = BigInt(unsigned);
-      const int64Limit = literal.startsWith('-')
-        ? githubJsonMaxInt64 + 1n
-        : githubJsonMaxInt64;
-      if (magnitude > int64Limit) {
+      if (
+        literal.startsWith('-') ||
+        BigInt(unsigned) > githubJsonMaxInt64
+      ) {
         throw new Error('JSON integer exceeds reader precision limit');
       }
     }
