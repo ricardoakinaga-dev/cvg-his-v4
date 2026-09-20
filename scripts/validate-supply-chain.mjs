@@ -309,7 +309,6 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
     if (values.some(({ value }) => typeof value !== 'string')) return null;
     const files = filesUnder(root, () => true).map((path) => relative(root, path).split('\\').join('/'));
     const globToRegExp = (pattern) => {
-      if (pattern.startsWith('!')) return null;
       let source = '^';
       for (let index = 0; index < pattern.length; index += 1) {
         const character = pattern[index];
@@ -326,11 +325,19 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
       }
       return new RegExp(`${source}$`);
     };
-    const matched = values.some(({ value }) => {
-      const matcher = globToRegExp(value);
-      return matcher ? files.some((file) => matcher.test(file)) : false;
-    });
-    return { value: matched ? 'static-hash' : '' };
+    const matched = new Set();
+    for (const { value } of values) {
+      const negative = value.startsWith('!');
+      const matcher = globToRegExp(negative ? value.slice(1) : value);
+      if (!matcher) return null;
+      for (const file of files) {
+        if (matcher.test(file)) {
+          if (negative) matched.delete(file);
+          else matched.add(file);
+        }
+      }
+    }
+    return { value: matched.size > 0 ? 'static-hash' : '' };
   }
   if (call.name === 'format' && call.args.length >= 1 && typeof values[0].value === 'string') {
     const left = values[0].value;
@@ -372,6 +379,33 @@ function evaluateStaticGithubFunction(call, knownValues = {}) {
 
 function parseStaticExpressionValue(source, knownValues = {}) {
   const expression = source.trim();
+  if (expression.startsWith('(') && expression.endsWith(')')) {
+    let quote = null;
+    let depth = 0;
+    let closesAtEnd = false;
+    for (let index = 0; index < expression.length; index += 1) {
+      const character = expression[index];
+      if (quote) {
+        if (character === quote) {
+          if (expression[index + 1] === quote) index += 1;
+          else quote = null;
+        }
+        continue;
+      }
+      if (character === "'" || character === '"') {
+        quote = character;
+        continue;
+      }
+      if (character === '(') depth += 1;
+      if (character !== ')') continue;
+      depth -= 1;
+      if (depth === 0) {
+        closesAtEnd = index === expression.length - 1;
+        break;
+      }
+    }
+    if (closesAtEnd) return parseStaticExpressionValue(expression.slice(1, -1), knownValues);
+  }
   const stringLiteral = parseGithubStringLiteral(expression, 0);
   if (stringLiteral && stringLiteral.end === expression.length) return stringLiteral;
   if (/^(?:true|false)$/i.test(expression)) return { value: expression.toLowerCase() === 'true' };
@@ -502,6 +536,26 @@ function staticallyEvaluateBooleanExpression(expression, knownValues = {}) {
       skipWhitespace();
       if (expression[index] !== ')') return null;
       index += 1;
+      let comparisonIndex = index;
+      while (/\s/.test(expression[comparisonIndex] ?? '')) comparisonIndex += 1;
+      const operator = expression.slice(comparisonIndex).match(/^(===|!==|==|!=|<=|>=|<|>)/)?.[1];
+      if (operator) {
+        comparisonIndex += operator.length;
+        while (/\s/.test(expression[comparisonIndex] ?? '')) comparisonIndex += 1;
+        const rightLiteral = parseStaticLiteral(comparisonIndex);
+        if (rightLiteral) {
+          index = rightLiteral.end;
+          if (value === null) return null;
+          return evaluateStaticLiteralComparison(value, rightLiteral.value, operator);
+        }
+        const rightFunction = parseGithubFunctionCall(expression, comparisonIndex);
+        if (rightFunction) {
+          const rightValue = evaluateStaticGithubFunctionValue(rightFunction, knownValues);
+          index = rightFunction.end;
+          if (value === null || rightValue === null) return null;
+          return evaluateStaticLiteralComparison(value, rightValue.value, operator);
+        }
+      }
       return value;
     }
 
