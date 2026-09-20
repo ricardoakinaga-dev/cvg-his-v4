@@ -177,6 +177,14 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     ),
     workflow.replace(
       '      - name: Scan API image candidate for vulnerabilities',
+      '      - "if": false\n        name: Scan API image candidate for vulnerabilities'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    "if": false'
+    ),
+    workflow.replace(
+      '      - name: Scan API image candidate for vulnerabilities',
       "      - if: ${{ false && github.ref == 'refs/heads/main' }}\n        name: Scan API image candidate for vulnerabilities"
     ),
     workflow.replace(
@@ -471,6 +479,7 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
       '      - name: Publish vetted image candidates to quarantine without rebuilding',
       "      - if: ${{ false && github.ref == 'refs/heads/main' }}\n        name: Publish vetted image candidates to quarantine without rebuilding"
     ),
+    workflow.replace('        if: failure()', '        "if": false'),
     workflow.replace(
       'docker load --platform linux/amd64 --input /tmp/api-image.tar',
       'docker load --input /tmp/api-image.tar'

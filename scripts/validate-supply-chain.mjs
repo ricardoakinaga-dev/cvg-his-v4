@@ -435,8 +435,8 @@ function normalizeWorkflowCondition(condition) {
 
 function workflowStepHasStaticallyFalseCondition(step, knownValues = {}) {
   const condition = extractYamlCondition(step, [
-    /^ {6}-\s+if:\s*(.*?)\s*$/,
-    /^ {8}if:\s*(.*?)\s*$/
+    /^ {6}-\s+(?:if|['"]if['"])\s*:\s*(.*?)\s*$/,
+    /^ {8}(?:if|['"]if['"])\s*:\s*(.*?)\s*$/
   ]);
   if (condition === null) return false;
 
@@ -446,7 +446,9 @@ function workflowStepHasStaticallyFalseCondition(step, knownValues = {}) {
 }
 
 function workflowJobHasStaticallyFalseCondition(content, knownValues = {}) {
-  const condition = extractYamlCondition(content, [/^ {4}if:\s*(.*?)\s*$/]);
+  const condition = extractYamlCondition(content, [
+    /^ {4}(?:if|['"]if['"])\s*:\s*(.*?)\s*$/
+  ]);
   if (condition === null) return false;
   const normalized = normalizeWorkflowCondition(condition);
   const expression = normalized.match(/^\$\{\{([\s\S]*)\}\}$/)?.[1]?.trim() ?? normalized;
