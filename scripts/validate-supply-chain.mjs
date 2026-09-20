@@ -522,16 +522,39 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
         continue;
       }
       if (character === '{') {
-        const placeholder = template.slice(index).match(/^\{(\d+)(?::([^{}]*))?\}/);
-        if (placeholder) {
-          const replacementIndex = Number(placeholder[1]);
-          if (replacementIndex > 255 || replacementIndex >= replacements.length) return null;
-          if (placeholder[2] !== undefined && placeholder[2] !== '') return null;
-          formatted += replacements[replacementIndex];
-          index += placeholder[0].length - 1;
-          continue;
+        let cursor = index + 1;
+        const digitStart = cursor;
+        while (/\d/.test(template[cursor] ?? '')) cursor += 1;
+        if (cursor === digitStart) return null;
+        const replacementIndex = Number(template.slice(digitStart, cursor));
+        if (replacementIndex > 255 || replacementIndex >= replacements.length) return null;
+
+        let formatSpecifiers = '';
+        if (template[cursor] === '}') {
+          // No format specifiers.
+        } else if (template[cursor] === ':') {
+          cursor += 1;
+          let closed = false;
+          while (cursor < template.length) {
+            if (template[cursor] !== '}') {
+              formatSpecifiers += template[cursor];
+              cursor += 1;
+            } else if (template[cursor + 1] === '}') {
+              formatSpecifiers += '}';
+              cursor += 2;
+            } else {
+              closed = true;
+              break;
+            }
+          }
+          if (!closed) return null;
+        } else {
+          return null;
         }
-        return null;
+        if (formatSpecifiers !== '') return null;
+        formatted += replacements[replacementIndex];
+        index = cursor;
+        continue;
       }
       if (character === '}') return null;
       formatted += character;
