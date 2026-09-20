@@ -140,17 +140,6 @@ function parseWorkflowYaml(content) {
   }
 }
 
-function combineStaticBooleanValues(left, right, operator) {
-  if (operator === '&&') {
-    if (left === false || right === false) return false;
-    if (left === true && right === true) return true;
-    return null;
-  }
-  if (left === true || right === true) return true;
-  if (left === false && right === false) return false;
-  return null;
-}
-
 function githubExpressionNumber(value) {
   if (value === null) return 0;
   if (typeof value === 'boolean') return value ? 1 : 0;
@@ -395,14 +384,35 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
     return { value: matched.size > 0 ? 'static-hash' : '' };
   }
   if (call.name === 'format' && call.args.length >= 1 && typeof values[0].value === 'string') {
-    const left = values[0].value;
-    const escapedOpen = '\u0000github-format-open\u0000';
-    const escapedClose = '\u0000github-format-close\u0000';
-    let formatted = left.replaceAll('{{', escapedOpen).replaceAll('}}', escapedClose);
-    for (let index = 1; index < values.length; index += 1) {
-      formatted = formatted.replaceAll(`{${index - 1}}`, String(values[index].value ?? ''));
+    const template = values[0].value;
+    const replacements = values.slice(1).map(({ value }) => String(value ?? ''));
+    let formatted = '';
+    for (let index = 0; index < template.length; index += 1) {
+      const character = template[index];
+      if (character === '{' && template[index + 1] === '{') {
+        formatted += '{';
+        index += 1;
+        continue;
+      }
+      if (character === '}' && template[index + 1] === '}') {
+        formatted += '}';
+        index += 1;
+        continue;
+      }
+      if (character === '{') {
+        const placeholder = template.slice(index).match(/^\{(\d+)\}/);
+        if (placeholder) {
+          const replacementIndex = Number(placeholder[1]);
+          if (replacementIndex < replacements.length) {
+            formatted += replacements[replacementIndex];
+            index += placeholder[0].length - 1;
+            continue;
+          }
+        }
+      }
+      formatted += character;
     }
-    return { value: formatted.replaceAll(escapedOpen, '{').replaceAll(escapedClose, '}') };
+    return { value: formatted };
   }
   if (call.name === 'join' && (call.args.length === 1 || call.args.length === 2)) {
     const left = values[0].value;
@@ -429,62 +439,9 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
   return null;
 }
 
-function evaluateStaticGithubFunction(call, knownValues = {}) {
-  const result = evaluateStaticGithubFunctionValue(call, knownValues);
-  return result === null ? null : githubExpressionTruthy(result.value);
-}
-
 function parseStaticExpressionValue(source, knownValues = {}) {
-  const expression = source.trim();
-  if (expression.startsWith('!')) {
-    const nested = parseStaticExpressionValue(expression.slice(1), knownValues);
-    if (nested !== null) return { value: !githubExpressionTruthy(nested.value) };
-  }
-  if (expression.startsWith('(') && expression.endsWith(')')) {
-    let quote = null;
-    let depth = 0;
-    let closesAtEnd = false;
-    for (let index = 0; index < expression.length; index += 1) {
-      const character = expression[index];
-      if (quote) {
-        if (character === quote) {
-          if (expression[index + 1] === quote) index += 1;
-          else quote = null;
-        }
-        continue;
-      }
-      if (character === "'" || character === '"') {
-        quote = character;
-        continue;
-      }
-      if (character === '(') depth += 1;
-      if (character !== ')') continue;
-      depth -= 1;
-      if (depth === 0) {
-        closesAtEnd = index === expression.length - 1;
-        break;
-      }
-    }
-    if (closesAtEnd) return parseStaticExpressionValue(expression.slice(1, -1), knownValues);
-  }
-  const stringLiteral = parseGithubStringLiteral(expression, 0);
-  if (stringLiteral && stringLiteral.end === expression.length) return stringLiteral;
-  if (/^(?:true|false)$/i.test(expression)) return { value: expression.toLowerCase() === 'true' };
-  if (/^(?:null|~)$/i.test(expression)) return { value: null };
-  if (
-    /^-?(?:(?:0[xX][0-9a-fA-F]+)|(?:0[bB][01]+)|(?:0[oO][0-7]+)|(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)$/.test(
-      expression
-    )
-  ) {
-    return { value: parseGithubNumericLiteral(expression) };
-  }
-  const reference = parseGithubReferenceExpression(expression, 0, knownValues);
-  if (reference?.end === expression.length && reference.value !== undefined) {
-    return { value: reference.value };
-  }
-  const functionCall = parseGithubFunctionCall(expression, 0);
-  if (!functionCall || functionCall.end !== expression.length) return null;
-  return evaluateStaticGithubFunctionValue(functionCall, knownValues);
+  const result = evaluateStaticExpressionValueModern(source, knownValues);
+  return result?.known ? { value: result.value } : null;
 }
 
 function evaluateStaticLiteralComparison(left, right, operator) {
@@ -520,9 +477,10 @@ function evaluateStaticLiteralComparison(left, right, operator) {
   return null;
 }
 
-function evaluateStaticBooleanExpressionModern(expression, knownValues = {}) {
-  if (expression.trim() === '') return false;
+function evaluateStaticExpressionValueModern(expression, knownValues = {}) {
+  if (expression.trim() === '') return null;
   let index = 0;
+  const unknown = () => ({ value: undefined, known: false });
 
   const parseLiteral = (offset) => {
     const source = expression.slice(offset);
@@ -551,57 +509,49 @@ function evaluateStaticBooleanExpressionModern(expression, knownValues = {}) {
     while (/\s/.test(expression[index] ?? '')) index += 1;
   };
 
+  const consumeUnknownCall = () => {
+    if (expression[index] !== '(') return;
+    let quote = null;
+    let depth = 0;
+    for (let cursor = index; cursor < expression.length; cursor += 1) {
+      const character = expression[cursor];
+      if (quote) {
+        if (character === quote) {
+          if (expression[cursor + 1] === quote) cursor += 1;
+          else quote = null;
+        }
+        continue;
+      }
+      if (character === "'" || character === '"') {
+        quote = character;
+        continue;
+      }
+      if (character === '(') depth += 1;
+      if (character !== ')') continue;
+      depth -= 1;
+      if (depth === 0) {
+        index = cursor + 1;
+        return;
+      }
+    }
+  };
+
   const parseOperand = () => {
     skipWhitespace();
     if (expression[index] === '(') {
-      const opening = index;
-      let quote = null;
-      let depth = 0;
-      let closing = -1;
-      for (let cursor = opening; cursor < expression.length; cursor += 1) {
-        const character = expression[cursor];
-        if (quote) {
-          if (character === quote) {
-            if (expression[cursor + 1] === quote) cursor += 1;
-            else quote = null;
-          }
-          continue;
-        }
-        if (character === "'" || character === '"') {
-          quote = character;
-          continue;
-        }
-        if (character === '(') depth += 1;
-        if (character !== ')') continue;
-        depth -= 1;
-        if (depth === 0) {
-          closing = cursor;
-          break;
-        }
-      }
-      if (closing >= 0) {
-        const staticValue = parseStaticExpressionValue(
-          expression.slice(opening + 1, closing),
-          knownValues
-        );
-        if (staticValue !== null) {
-          index = closing + 1;
-          return { value: staticValue.value, known: true };
-        }
-      }
-      index = opening + 1;
+      index += 1;
       const nested = parseOr();
       skipWhitespace();
       if (expression[index] !== ')') return null;
       index += 1;
-      return { value: nested, known: nested !== null };
+      return nested ?? unknown();
     }
 
     const functionCall = parseGithubFunctionCall(expression, index);
     if (functionCall) {
       index = functionCall.end;
       const value = evaluateStaticGithubFunctionValue(functionCall, knownValues);
-      return { value: value?.value, known: value !== null };
+      return value === null ? unknown() : { value: value.value, known: true };
     }
 
     const literal = parseLiteral(index);
@@ -611,36 +561,12 @@ function evaluateStaticBooleanExpressionModern(expression, knownValues = {}) {
     }
 
     const reference = parseGithubReferenceExpression(expression, index, knownValues);
-    if (reference) {
-      index = reference.end;
-      if (expression[index] === '(') {
-        let quote = null;
-        let depth = 0;
-        for (let cursor = index; cursor < expression.length; cursor += 1) {
-          const character = expression[cursor];
-          if (quote) {
-            if (character === quote) {
-              if (expression[cursor + 1] === quote) cursor += 1;
-              else quote = null;
-            }
-            continue;
-          }
-          if (character === "'" || character === '"') {
-            quote = character;
-            continue;
-          }
-          if (character === '(') depth += 1;
-          if (character !== ')') continue;
-          depth -= 1;
-          if (depth === 0) {
-            index = cursor + 1;
-            break;
-          }
-        }
-      }
-      return { value: reference.value, known: reference.value !== undefined };
-    }
-    return null;
+    if (!reference) return null;
+    index = reference.end;
+    if (expression[index] === '(') consumeUnknownCall();
+    return reference.value === undefined
+      ? unknown()
+      : { value: reference.value, known: true };
   };
 
   const parseUnary = () => {
@@ -648,7 +574,7 @@ function evaluateStaticBooleanExpressionModern(expression, knownValues = {}) {
     if (expression[index] !== '!') return parseOperand();
     index += 1;
     const operand = parseUnary();
-    if (!operand || !operand.known) return { value: undefined, known: false };
+    if (!operand || !operand.known) return unknown();
     return { value: !githubExpressionTruthy(operand.value), known: true };
   };
 
@@ -657,31 +583,47 @@ function evaluateStaticBooleanExpressionModern(expression, knownValues = {}) {
     if (!left) return null;
     skipWhitespace();
     const operator = expression.slice(index).match(/^(===|!==|==|!=|<=|>=|<|>)/)?.[1];
-    if (!operator) return left.known ? githubExpressionTruthy(left.value) : null;
+    if (!operator) return left;
     index += operator.length;
     const right = parseUnary();
-    if (!right || !left.known || !right.known) return null;
-    return evaluateStaticLiteralComparison(left.value, right.value, operator);
+    if (!right || !left.known || !right.known) return unknown();
+    return { value: evaluateStaticLiteralComparison(left.value, right.value, operator), known: true };
   };
 
   function parseAnd() {
     let value = parseComparison();
-    while (index < expression.length) {
+    while (value && index < expression.length) {
       skipWhitespace();
       if (!expression.startsWith('&&', index)) return value;
       index += 2;
-      value = combineStaticBooleanValues(value, parseComparison(), '&&');
+      const right = parseComparison();
+      if (!right) return null;
+      if (!value.known) {
+        value = right.known && !githubExpressionTruthy(right.value) ? right : unknown();
+      } else if (!githubExpressionTruthy(value.value)) {
+        // GitHub's logical operators return operands, so preserve a known falsey left value.
+      } else {
+        value = right;
+      }
     }
     return value;
   }
 
   function parseOr() {
     let value = parseAnd();
-    while (index < expression.length) {
+    while (value && index < expression.length) {
       skipWhitespace();
       if (!expression.startsWith('||', index)) return value;
       index += 2;
-      value = combineStaticBooleanValues(value, parseAnd(), '||');
+      const right = parseAnd();
+      if (!right) return null;
+      if (!value.known) {
+        value = right.known && githubExpressionTruthy(right.value) ? right : unknown();
+      } else if (githubExpressionTruthy(value.value)) {
+        // GitHub's logical operators return operands, so preserve a known truthy left value.
+      } else {
+        value = right;
+      }
     }
     return value;
   }
@@ -691,9 +633,13 @@ function evaluateStaticBooleanExpressionModern(expression, knownValues = {}) {
   return index === expression.length ? value : null;
 }
 
+function evaluateStaticBooleanExpressionModern(expression, knownValues = {}) {
+  const result = evaluateStaticExpressionValueModern(expression, knownValues);
+  return result?.known ? githubExpressionTruthy(result.value) : null;
+}
+
 function staticallyEvaluateBooleanExpression(expression, knownValues = {}) {
   return evaluateStaticBooleanExpressionModern(expression, knownValues);
-
 }
 
 function extractYamlCondition(content, patterns) {
