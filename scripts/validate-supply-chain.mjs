@@ -336,7 +336,7 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
   }
   if (call.name === 'tojson' && call.args.length === 1) {
     try {
-      return { value: JSON.stringify(values[0].value) };
+      return { value: JSON.stringify(values[0].value, null, 2) };
     } catch {
       return null;
     }
@@ -360,6 +360,18 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
           source += '[^/]*';
         } else if (character === '?') {
           source += '[^/]';
+        } else if (character === '[') {
+          const closing = pattern.indexOf(']', index + 1);
+          if (closing < 0) {
+            source += '\\[';
+          } else {
+            let characterClass = pattern.slice(index + 1, closing);
+            const negated = characterClass.startsWith('!') || characterClass.startsWith('^');
+            if (negated) characterClass = characterClass.slice(1);
+            characterClass = characterClass.replace(/[\\\[]/g, '\\$&').replace(/\]/g, '\\]');
+            source += `[${negated ? '^' : ''}${characterClass}]`;
+            index = closing;
+          }
         } else {
           source += character.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         }
@@ -369,7 +381,9 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
     const matched = new Set();
     for (const { value } of values) {
       const negative = value.startsWith('!');
-      const matcher = globToRegExp(negative ? value.slice(1) : value);
+      const pattern = negative ? value.slice(1) : value;
+      if (pattern.startsWith('#')) continue;
+      const matcher = globToRegExp(pattern);
       if (!matcher) return null;
       for (const file of files) {
         if (matcher.test(file)) {
@@ -382,11 +396,13 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
   }
   if (call.name === 'format' && call.args.length >= 1 && typeof values[0].value === 'string') {
     const left = values[0].value;
-    let formatted = left;
+    const escapedOpen = '\u0000github-format-open\u0000';
+    const escapedClose = '\u0000github-format-close\u0000';
+    let formatted = left.replaceAll('{{', escapedOpen).replaceAll('}}', escapedClose);
     for (let index = 1; index < values.length; index += 1) {
       formatted = formatted.replaceAll(`{${index - 1}}`, String(values[index].value ?? ''));
     }
-    return { value: formatted.replaceAll('{{', '{').replaceAll('}}', '}') };
+    return { value: formatted.replaceAll(escapedOpen, '{').replaceAll(escapedClose, '}') };
   }
   if (call.name === 'join' && (call.args.length === 1 || call.args.length === 2)) {
     const left = values[0].value;

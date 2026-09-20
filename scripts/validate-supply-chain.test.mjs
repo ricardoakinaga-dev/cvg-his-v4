@@ -167,6 +167,12 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
   );
   assert.deepEqual(inspectReleaseWorkflowPolicy(parenthesizedKnownValueWorkflow), []);
 
+  const hashFilesCharacterClassWorkflow = workflow.replace(
+    '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+    "    if: ${{ false || hashFiles('scripts/validate-supply-chain.test.m[!x]s') }}"
+  );
+  assert.deepEqual(inspectReleaseWorkflowPolicy(hashFilesCharacterClassWorkflow), []);
+
   const runtimeStep = 'Prove the exact OCI candidates at production runtime boundaries';
   const publicationStep = 'Publish vetted image candidates to quarantine without rebuilding';
   const uploadStep = 'Publish certified release manifest and evidence';
@@ -376,6 +382,18 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     workflow.replace(
       '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
       "    if: ${{ format('{0}', '') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ format('{{0}}', 'x') == '{x}' }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ toJSON(fromJSON('[1,2]')) == '[1,2]' }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ hashFiles('#scripts/validate-supply-chain.mjs') }}"
     ),
     workflow.replace(
       '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
