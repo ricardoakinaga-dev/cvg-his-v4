@@ -597,6 +597,31 @@ function evaluateStaticBooleanExpressionModern(expression, knownValues = {}) {
     const reference = parseGithubReferenceExpression(expression, index, knownValues);
     if (reference) {
       index = reference.end;
+      if (expression[index] === '(') {
+        let quote = null;
+        let depth = 0;
+        for (let cursor = index; cursor < expression.length; cursor += 1) {
+          const character = expression[cursor];
+          if (quote) {
+            if (character === quote) {
+              if (expression[cursor + 1] === quote) cursor += 1;
+              else quote = null;
+            }
+            continue;
+          }
+          if (character === "'" || character === '"') {
+            quote = character;
+            continue;
+          }
+          if (character === '(') depth += 1;
+          if (character !== ')') continue;
+          depth -= 1;
+          if (depth === 0) {
+            index = cursor + 1;
+            break;
+          }
+        }
+      }
       return { value: reference.value, known: reference.value !== undefined };
     }
     return null;
