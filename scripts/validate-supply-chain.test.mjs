@@ -597,6 +597,226 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     ),
     workflow.replace(
       '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ hashFiles('scripts/validate-supply-chain.mjs', '! scripts/validate-supply-chain.mjs') != '' }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ fromJSON('false, true') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ fromJSON('false /*x*/') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ !fromJSON('[Infinity]')[0] }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ fromJSON('0x10') != 16 }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ fromJSON('0xFFFFFFFF') == -1 }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ fromJSON('undefined') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ fromJSON('[undefined]')[0] }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ !contains(fromJSON('[undefined]'), '') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ fromJSON('undefined, false') != 'undefined' }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Date(0) /*x*/'), '/*x*/') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Date(/*x*/0)'), '/*x*/') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Date(/*x*/0)'), ' 0 ') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Date( 0 )'), ' 0 ') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Foo(\"a  b\")'), 'a b') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Foo(''x'')'), '''') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Foo(0x10)'), '0x') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Foo0x10(0)'), 'new Foo16') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Foo(1.0)'), 'new Foo(1)') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Foo(NaN)'), 'new Foo(NaN)') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Foo({\"a\":1})'), 'new Foo({\"a\":1})') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Infinity(0)'), 'new \"Infinity\"(0)') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Foo(1e0)'), 'new Foo(1e0)') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Foo([new Bar(1)])'), '\"new Bar(1)\"') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: >-\n      contains(fromJSON(\'new Foo({"x":NaN})\'), \'"x": NaN\')'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Foo(1.00)'), 'new Foo(1.00)') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Foo(1e309)'), 'new Foo(Infinity)') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: >-\n      contains(fromJSON(\'new Foo({"x":undefined})\'), \'"x": "undefined"\')'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: >-\n      contains(fromJSON(\'new Foo({"x":1.0,"y":0})\'), \'"x": 1,\')'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Foo(new Bar(1))'), 'new Bar(1)') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Foo(,1)'), 'new Foo(,1)') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: >-\n      contains(fromJSON(\'new Foo({"x":1.2345678901234567,"y":0})\'), \'"x": 1.23456789012346,\')'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: >-\n      contains(fromJSON(\'new Foo({"x":9007199254740993,"y":0})\'), \'"x": 9.00719925474099E+15,\')'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Foo([,1])'), '[,1]') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ fromJSON('new Foo.Bar(0)') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Foo(1,)'), 'undefined') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: >-\n      !contains(fromJSON(\'new Foo({"a":1,"A":2})\'), \'"a": 1\')'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ !fromJSON('new Foo.Bar(0)') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ fromJSON('new Foo(0b10)') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ !fromJSON('0b10') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ fromJSON('new Foo(0o10)') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ !contains(fromJSON('new 1(0)'), 'new 1') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ fromJSON('new 𐐀(0)') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Foo(1e-6)'), '0.000001') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: >-\n      contains(fromJSON(\'new Foo({"x":,})\'), \'"x":,\')'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: >-\n      contains(fromJSON(\'new Foo({"x":-0.0})\'), \'"x": 0.0\')'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('new Foo(-0)'), '-0') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ fromJSON('new Foo({\"x\":})') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ !fromJSON('false, true') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ fromJSON('/*x*/false') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ fromJSON('012') == 12 }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains(fromJSON('{a:''\\n''}').a, 'n') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ fromJSON('{a:false}').a }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ !fromJSON(\'{"a":false,"A":true}\').a }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ toJSON(fromJSON(\'{"a":1,"A":2}\')) != toJSON(fromJSON(\'{"a":2}\')) }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
       "    if: ${{ format(hashFiles('scripts/validate-supply-chain.mjs')) == '' }}"
     ),
     workflow.replace(
@@ -1005,7 +1225,42 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     "!fromJSON(' NaN ')",
     "fromJSON('{\"Enabled\":true}').enabled",
     "github.Event_Name == 'workflow_run'",
-    "hashFiles('scripts/validate-supply-chain.mjs', '!!scripts/validate-supply-chain.mjs ') != ''"
+    "hashFiles('scripts/validate-supply-chain.mjs', '!!scripts/validate-supply-chain.mjs ') != ''",
+    "!fromJSON('false /*x*/')",
+    "!fromJSON('/*x*/false')",
+    "!fromJSON('undefined')",
+    "fromJSON('{\"a\":false,\"A\":true}').a",
+    "fromJSON('[Infinity]')[0]",
+    "fromJSON('0x10') == 16",
+    "fromJSON('0xFFFFFFFF') == 4294967295",
+    "!fromJSON('[undefined]')[0]",
+    "contains(fromJSON('[undefined]'), '')",
+    "fromJSON('undefined /*x*/') != 'undefined'",
+    "fromJSON('012') == 10",
+    "!contains(fromJSON('new Date(0) /*x*/'), '/*x*/')",
+    "!contains(fromJSON('new Date(/*x*/0)'), '/*x*/')",
+    "!contains(fromJSON('new Date(/*x*/0)'), ' 0 ')",
+    "!contains(fromJSON('new Date( 0 )'), ' 0 ')",
+    "!contains(fromJSON('new Foo(\"a  b\")'), 'a b')",
+    "!contains(fromJSON('new Foo(''x'')'), '''')",
+    "!contains(fromJSON('new Foo(0x10)'), '0x')",
+    "!contains(fromJSON('new Foo0x10(0)'), 'new Foo16')",
+    "!contains(fromJSON('new Foo(1.0)'), 'new Foo(1)')",
+    "!contains(fromJSON('new Foo(NaN)'), 'new Foo(NaN)')",
+    "!contains(fromJSON('new Foo({\"a\":1})'), 'new Foo({\"a\":1})')",
+    "!contains(fromJSON('new Infinity(0)'), 'new \"Infinity\"(0)')",
+    "!contains(fromJSON('new Foo(1e0)'), 'new Foo(1e0)')",
+    "!contains(fromJSON('new Foo([new Bar(1)])'), '\"new Bar(1)\"')",
+    "!contains(fromJSON('new Foo(1.00)'), 'new Foo(1.00)')",
+    "!contains(fromJSON('new Foo(1e309)'), 'new Foo(Infinity)')",
+    "!contains(fromJSON('new Foo(new Bar(1))'), 'new Bar(1)')",
+    "!contains(fromJSON('new Foo(,1)'), 'new Foo(,1)')",
+    "!contains(fromJSON('new Foo([,1])'), '[,1]')",
+    "!contains(fromJSON('new Foo(1,)'), 'undefined')",
+    "!contains(fromJSON('new Foo(1e-6)'), '0.000001')",
+    "!contains(fromJSON('{a:''\\n''}').a, 'n')",
+    "!fromJSON('{a:false}').a",
+    "toJSON(fromJSON('{\"a\":1,\"A\":2}')) == toJSON(fromJSON('{\"a\":2}'))"
   ]) {
     assert.deepEqual(
       inspectReleaseWorkflowPolicy(
@@ -1017,6 +1272,54 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
       []
     );
   }
+  assert.deepEqual(
+    inspectReleaseWorkflowPolicy(
+      workflow.replace(
+        '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+        '    if: >-\n      !contains(fromJSON(\'new Foo({"x":NaN})\'), \'"x": NaN\')'
+      )
+    ),
+    []
+  );
+  for (const expression of [
+    "!contains(fromJSON('new Foo({\"x\":undefined})'), '\"x\": \"undefined\"')",
+    "!contains(fromJSON('new Foo({\"x\":1.0,\"y\":0})'), '\"x\": 1,')",
+    "!contains(fromJSON('new Foo({\"x\":1.2345678901234567,\"y\":0})'), '\"x\": 1.23456789012346,')",
+    "!contains(fromJSON('new Foo({\"x\":9007199254740993,\"y\":0})'), '\"x\": 9.00719925474099E+15,')"
+  ]) {
+    assert.deepEqual(
+      inspectReleaseWorkflowPolicy(
+        workflow.replace(
+          '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+          `    if: >-\n      ${expression}`
+        )
+      ),
+      []
+    );
+  }
+  for (const expression of [
+    "!contains(fromJSON('new Foo({\"x\":,})'), '\"x\":,')",
+    "!contains(fromJSON('new Foo({\"x\":-0.0})'), '\"x\": 0.0')"
+  ]) {
+    assert.deepEqual(
+      inspectReleaseWorkflowPolicy(
+        workflow.replace(
+          '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+          `    if: >-\n      ${expression}`
+        )
+      ),
+      []
+    );
+  }
+  assert.deepEqual(
+    inspectReleaseWorkflowPolicy(
+      workflow.replace(
+        '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+        '    if: >-\n      contains(fromJSON(\'new Foo({"a":1,"A":2})\'), \'"a": 1\')'
+      )
+    ),
+    []
+  );
 });
 
 test('production runtime policy accepts minimal non-root deploy closures', () => {
