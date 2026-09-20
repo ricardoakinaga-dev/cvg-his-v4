@@ -91,7 +91,7 @@ test('candidate binding accepts exact or documented descendants only', () => {
     classifyCandidateBinding({
       collectionHead,
       candidateHead,
-      changedPaths: ['.agent/state.json', 'docs/triple-a/FINAL_REPORT.md'],
+      changedPaths: ['.agent/state.json', 'docs/triple-a/FINAL_REPORT.md', '.gauntlet/state.json'],
     }).status,
     'DOCUMENTATION_ONLY_DESCENDANT'
   );

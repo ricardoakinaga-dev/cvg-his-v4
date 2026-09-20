@@ -40,13 +40,14 @@ const SNAPSHOT_DOCUMENTS = [
   }
 ];
 
-// Current snapshots are documentation/control artifacts. A docs-only
-// descendant may update the narrative without making the frozen runtime
-// candidate stale; executable, workflow and package changes still invalidate it.
-const DOCUMENTATION_ONLY_PREFIX = 'docs/';
+// Current snapshots and Gauntlet audit state are control artifacts. A
+// documentation/control-only descendant may update assurance records without
+// making the frozen runtime candidate stale; executable, workflow and package
+// changes still invalidate it.
+const DOCUMENTATION_ONLY_PREFIXES = ['docs/', '.gauntlet/'];
 
 function isDocumentationOnlyPath(path) {
-  return path.startsWith(DOCUMENTATION_ONLY_PREFIX);
+  return DOCUMENTATION_ONLY_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
 function git(args, rootDir = root) {

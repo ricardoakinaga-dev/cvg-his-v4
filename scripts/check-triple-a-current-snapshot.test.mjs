@@ -86,6 +86,19 @@ test('accepts root documentation and governance reconciliation', () => {
   );
 });
 
+test('accepts Gauntlet audit-state reconciliation', () => {
+  assert.deepEqual(
+    validateCurrentSnapshot({
+      headSha: head,
+      candidateSha: parent,
+      candidateIsAncestor: true,
+      changedPathsSinceCandidate: ['.gauntlet/state.json', '.gauntlet/history.jsonl'],
+      documents: documents(parent)
+    }),
+    []
+  );
+});
+
 test('rejects a code commit whose current snapshot still points to its parent', () => {
   const errors = validateCurrentSnapshot({
     headSha: head,

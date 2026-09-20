@@ -73,6 +73,21 @@ test('accepts root documentation reconciliation as documentation-only', () => {
   );
 });
 
+test('accepts Gauntlet audit-state reconciliation as documentation-only', () => {
+  assert.deepEqual(
+    validateIdentityDocument({
+      identity,
+      currentHead: 'd'.repeat(40),
+      candidateIsAncestor: true,
+      changedPathsSinceCandidate: ['.gauntlet/state.json', '.gauntlet/history.jsonl'],
+      qualityBarSha256: digest,
+      promptSha256: digest,
+      archivedPromptSha256: digest
+    }),
+    []
+  );
+});
+
 test('rejects source changes after the candidate without regeneration', () => {
   const errors = validateIdentityDocument({
     identity,

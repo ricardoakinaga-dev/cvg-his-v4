@@ -12,11 +12,11 @@ export const ARCHIVED_PROMPT_PATH = 'docs/triple-a/MASTER_EXECUTION_PROMPT_2026-
 
 const SHA_PATTERN = /^[0-9a-f]{40}$/i;
 const DIGEST_PATTERN = /^[0-9a-f]{64}$/i;
-// Documentation descendants may be reconciled after a source freeze without
-// changing runtime behavior. Keep the source-candidate guard focused on
-// executable/configuration paths while allowing the complete documentation
-// tree to bind the same candidate to its latest narrative/control snapshot.
-const DOCUMENTATION_ONLY_PREFIX = 'docs/';
+// Documentation and Gauntlet audit-state descendants may be reconciled after
+// a source freeze without changing runtime behavior. Keep the source-candidate
+// guard focused on executable/configuration paths while allowing these control
+// trees to bind the same candidate to their latest snapshot.
+const DOCUMENTATION_ONLY_PREFIXES = ['docs/', '.gauntlet/'];
 
 function git(rootDir, args, { allowFailure = false } = {}) {
   const result = spawnSync('git', args, {
@@ -38,7 +38,7 @@ function sha256(rootDir, relativePath) {
 }
 
 function isDocumentationOnlyPath(path) {
-  return path.startsWith(DOCUMENTATION_ONLY_PREFIX);
+  return DOCUMENTATION_ONLY_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
 export function validateIdentityDocument({
