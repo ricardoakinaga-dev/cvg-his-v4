@@ -10,6 +10,7 @@ const shaRef = /^[0-9a-f]{40}$/;
 const digestRef = /^sha256:[0-9a-f]{64}$/;
 const localComposeImage = /^cvg-his-v[24]-/;
 const opaqueStaticHash = Symbol('opaque-static-hash');
+const opaqueStaticString = Symbol('opaque-static-string');
 const filteredStaticArray = Symbol('filtered-static-array');
 const staticDigest = /^[0-9a-f]{64}$/i;
 
@@ -21,6 +22,18 @@ function isOpaqueStaticHash(value) {
 
 function createOpaqueStaticHash() {
   return { [opaqueStaticHash]: true };
+}
+
+function isOpaqueStaticString(value) {
+  return Boolean(value && typeof value === 'object' && value[opaqueStaticString] === true);
+}
+
+function createOpaqueStaticString() {
+  return { [opaqueStaticString]: true };
+}
+
+function isOpaqueStaticText(value) {
+  return isOpaqueStaticHash(value) || isOpaqueStaticString(value);
 }
 
 function createFilteredStaticArray(values) {
@@ -440,7 +453,7 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
   }
 
   if (call.name === 'fromjson' && call.args.length === 1) {
-    if (isOpaqueStaticHash(values[0].value)) return null;
+    if (isOpaqueStaticText(values[0].value)) return null;
     try {
       return { value: JSON.parse(githubExpressionValueString(values[0].value)) };
     } catch {
@@ -448,7 +461,7 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
     }
   }
   if (call.name === 'tojson' && call.args.length === 1) {
-    if (isOpaqueStaticHash(values[0].value)) return null;
+    if (isOpaqueStaticText(values[0].value)) return null;
     try {
       return { value: githubToJson(values[0].value) };
     } catch {
@@ -456,7 +469,8 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
     }
   }
   if (call.name === 'hashfiles' && call.args.length > 0) {
-    if (values.some(({ value }) => typeof value !== 'string')) return null;
+    if (values.some(({ value }) => isOpaqueStaticText(value))) return null;
+    const patterns = values.map(({ value }) => githubExpressionValueString(value));
     const files = trackedCheckoutFiles();
     const globToRegExp = (pattern) => {
       let source = '^';
@@ -498,7 +512,7 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
       return new RegExp(`${source}$`);
     };
     const matched = new Set();
-    for (const { value } of values) {
+    for (const value of patterns) {
       const negative = value.startsWith('!');
       const pattern = negative ? value.slice(1) : value;
       if (pattern.startsWith('#')) continue;
@@ -515,14 +529,10 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
   }
   if (call.name === 'format' && call.args.length >= 1) {
     if (isOpaqueStaticHash(values[0].value)) return { value: createOpaqueStaticHash() };
+    if (isOpaqueStaticString(values[0].value)) return { value: createOpaqueStaticString() };
     const template = githubExpressionValueString(values[0].value);
-    if (values.slice(1).some(({ value }) => isOpaqueStaticHash(value))) {
-      if (template === '{0}' && isOpaqueStaticHash(values[1].value)) {
-        return { value: createOpaqueStaticHash() };
-      }
-      return null;
-    }
-    const replacements = values.slice(1).map(({ value }) => githubExpressionValueString(value));
+    const replacementValues = values.slice(1).map(({ value }) => value);
+    let hasOpaqueReplacement = false;
     let formatted = '';
     for (let index = 0; index < template.length; index += 1) {
       const character = template[index];
@@ -542,7 +552,7 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
         while (/\d/.test(template[cursor] ?? '')) cursor += 1;
         if (cursor === digitStart) return null;
         const replacementIndex = Number(template.slice(digitStart, cursor));
-        if (replacementIndex > 255 || replacementIndex >= replacements.length) return null;
+        if (replacementIndex > 255 || replacementIndex >= replacementValues.length) return null;
 
         let formatSpecifiers = '';
         if (template[cursor] === '}') {
@@ -567,34 +577,46 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
           return null;
         }
         if (formatSpecifiers !== '') return null;
-        formatted += replacements[replacementIndex];
+        const replacement = replacementValues[replacementIndex];
+        if (isOpaqueStaticText(replacement)) hasOpaqueReplacement = true;
+        else formatted += githubExpressionValueString(replacement);
         index = cursor;
         continue;
       }
       if (character === '}') return null;
       formatted += character;
     }
-    return { value: formatted };
+    return { value: hasOpaqueReplacement ? createOpaqueStaticString() : formatted };
   }
   if (call.name === 'join' && (call.args.length === 1 || call.args.length === 2)) {
     const left = values[0].value;
-    if (isOpaqueStaticHash(left) || (call.args.length === 2 && isOpaqueStaticHash(values[1].value))) {
-      return null;
-    }
+    if (isOpaqueStaticText(left)) return { value: left };
     const separator =
       call.args.length === 2 && isGithubPrimitive(values[1].value)
         ? githubExpressionValueString(values[1].value)
         : ',';
     if (Array.isArray(left)) {
-      if (left.some((item) => isOpaqueStaticHash(item))) return null;
+      if (left.some((item) => isOpaqueStaticText(item))) return { value: createOpaqueStaticString() };
+      if (call.args.length === 2 && isOpaqueStaticText(values[1].value)) {
+        if (left.length === 0) return { value: '' };
+        if (left.length === 1) return { value: githubExpressionValueString(left[0]) };
+        return { value: createOpaqueStaticString() };
+      }
       return { value: left.map((item) => githubExpressionValueString(item)).join(separator) };
     }
     return { value: isGithubPrimitive(left) ? githubExpressionValueString(left) : '' };
   }
   if (call.args.length !== 2) return null;
   const [left, right] = values.map(({ value }) => value);
-  if (isOpaqueStaticHash(left) || isOpaqueStaticHash(right)) return null;
   if (call.name === 'contains') {
+    if (isOpaqueStaticText(left)) {
+      if (isGithubPrimitive(right) && githubExpressionValueString(right) === '') return { value: true };
+      return null;
+    }
+    if (isOpaqueStaticText(right)) {
+      if (isGithubPrimitive(left) && githubExpressionValueString(left) === '') return { value: false };
+      return null;
+    }
     if (Array.isArray(left)) {
       if (left.length === 0 || !isGithubPrimitive(right)) return { value: false };
       for (const item of left) {
@@ -610,6 +632,14 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
         .toLowerCase()
         .includes(githubExpressionValueString(right).toLowerCase())
     };
+  }
+  if (isOpaqueStaticText(left)) {
+    if (isGithubPrimitive(right) && githubExpressionValueString(right) === '') return { value: true };
+    return null;
+  }
+  if (isOpaqueStaticText(right)) {
+    if (isGithubPrimitive(left) && githubExpressionValueString(left) === '') return { value: false };
+    return null;
   }
   if (!isGithubPrimitive(left) || !isGithubPrimitive(right)) return { value: false };
   const leftString = githubExpressionValueString(left).toLowerCase();
@@ -627,15 +657,23 @@ function parseStaticExpressionValue(source, knownValues = {}) {
 function evaluateStaticLiteralComparison(left, right, operator) {
   const leftHash = isOpaqueStaticHash(left);
   const rightHash = isOpaqueStaticHash(right);
-  if (leftHash || rightHash) {
-    const other = leftHash ? right : left;
-    if (isOpaqueStaticHash(other)) return null;
+  const leftOpaqueString = isOpaqueStaticString(left);
+  const rightOpaqueString = isOpaqueStaticString(right);
+  if (leftHash || rightHash || leftOpaqueString || rightOpaqueString) {
+    if ((leftHash || leftOpaqueString) && (rightHash || rightOpaqueString)) return null;
+    const other = leftHash || leftOpaqueString ? right : left;
     if (typeof other === 'string') {
+      if (leftOpaqueString || rightOpaqueString) {
+        if (operator === '==' || operator === '===') return other === '' ? false : null;
+        if (operator === '!=' || operator === '!==') return other === '' ? true : null;
+        return null;
+      }
       const couldBeHash = staticDigest.test(other);
       if (operator === '==' || operator === '===') return couldBeHash ? null : false;
       if (operator === '!=' || operator === '!==') return couldBeHash ? null : true;
       return null;
     }
+    if (leftOpaqueString || rightOpaqueString) return null;
     if (operator === '==' || operator === '===') return false;
     if (operator === '!=' || operator === '!==') return true;
     return null;
