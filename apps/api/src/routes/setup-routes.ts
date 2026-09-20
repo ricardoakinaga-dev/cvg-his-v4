@@ -8,7 +8,7 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-import { ValidationError } from '@cvg-his-v2/shared-errors';
+import { PayloadTooLargeError, ValidationError } from '@cvg-his-v2/shared-errors';
 
 import { readJsonBody } from '../helpers/common.js';
 import { getClientIp } from './auth-routes.js';
@@ -225,11 +225,16 @@ export async function handleSetupRoutes(
   try {
     rawPayload = await readJsonBody(request, SETUP_MAX_BODY_BYTES);
   } catch (error) {
+    if (error instanceof PayloadTooLargeError) {
+      return sendJson(response, 413, {
+        code: 'SETUP_PAYLOAD_TOO_LARGE',
+        message: 'Setup payload is too large.'
+      });
+    }
     if (error instanceof ValidationError) {
-      const tooLarge = error.message === 'Request body is too large';
-      return sendJson(response, tooLarge ? 413 : 400, {
-        code: tooLarge ? 'SETUP_PAYLOAD_TOO_LARGE' : 'INVALID_JSON_BODY',
-        message: tooLarge ? 'Setup payload is too large.' : error.message
+      return sendJson(response, 400, {
+        code: 'INVALID_JSON_BODY',
+        message: error.message
       });
     }
     throw error;

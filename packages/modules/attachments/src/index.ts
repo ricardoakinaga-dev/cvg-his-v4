@@ -3,7 +3,10 @@ import { Socket } from 'node:net';
 import { EncountersService } from '@cvg-his-v2/module-encounters';
 import { DiagnosticsService } from '@cvg-his-v2/module-diagnostics';
 import { MedicalRecordsService } from '@cvg-his-v2/module-medical-records';
-import type { CreateAttachmentRequest } from '@cvg-his-v2/shared-contracts';
+import {
+  MAX_ATTACHMENT_FILE_SIZE_BYTES,
+  type CreateAttachmentRequest
+} from '@cvg-his-v2/shared-contracts';
 import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, AttachmentId, AttachmentSummary, UserId } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
@@ -266,7 +269,7 @@ export class ClamAvAttachmentSecurityScanner implements AttachmentSecurityScanne
   }
 }
 
-const DEFAULT_MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
+const DEFAULT_MAX_FILE_SIZE_BYTES = MAX_ATTACHMENT_FILE_SIZE_BYTES;
 const BLOCKED_MIME_TYPES = new Set([
   'text/html',
   'application/xhtml+xml',

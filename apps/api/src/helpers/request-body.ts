@@ -1,10 +1,19 @@
 import type { IncomingMessage } from 'node:http';
 
-import { ValidationError } from '@cvg-his-v2/shared-errors';
+import { PayloadTooLargeError, ValidationError } from '@cvg-his-v2/shared-errors';
 
 const bodyCache = new WeakMap<IncomingMessage, unknown>();
 const emptyBodyCache = new WeakMap<IncomingMessage, boolean>();
 const DEFAULT_MAX_BODY_BYTES = 1_048_576;
+
+function declaredContentLength(request: IncomingMessage): number | null {
+  const value = request.headers?.['content-length'];
+  if (value === undefined || Array.isArray(value) || !/^\d+$/.test(value)) return null;
+  const parsed = Number(value);
+  // Treat an unrepresentable positive declaration as oversized rather than
+  // falling through to an unbounded stream read.
+  return Number.isSafeInteger(parsed) ? parsed : Number.POSITIVE_INFINITY;
+}
 
 /**
  * Reads a JSON request body once and replays the parsed value to every route
@@ -20,13 +29,18 @@ export async function readJsonBody(
     throw new ValidationError('Request body is required');
   }
 
+  const declaredLength = declaredContentLength(request);
+  if (declaredLength !== null && declaredLength > maxBodyBytes) {
+    throw new PayloadTooLargeError('Request body is too large', { maxBodyBytes });
+  }
+
   const chunks: Buffer[] = [];
   let sizeBytes = 0;
   for await (const chunk of request) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     sizeBytes += buffer.length;
     if (sizeBytes > maxBodyBytes) {
-      throw new ValidationError('Request body is too large', { maxBodyBytes });
+      throw new PayloadTooLargeError('Request body is too large', { maxBodyBytes });
     }
     chunks.push(buffer);
   }

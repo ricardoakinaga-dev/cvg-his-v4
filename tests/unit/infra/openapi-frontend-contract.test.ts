@@ -8,6 +8,11 @@ import { handleAgendaConfigRoutes } from '../../../apps/api/src/routes/agenda-co
 import { normalizeLaboratoryResultValues } from '../../../packages/modules/diagnostics/src/laboratory-result-values';
 import { handleLaboratoryRoutes } from '../../../apps/api/src/routes/laboratory-routes';
 import { handleMarketingRoutes } from '../../../apps/api/src/routes/marketing-routes';
+import {
+  MAX_ATTACHMENT_BASE64_LENGTH,
+  MAX_ATTACHMENT_FILE_SIZE_BYTES,
+  MAX_ATTACHMENT_JSON_BODY_BYTES
+} from '../../../packages/shared/contracts/src/upload-limits';
 
 const document = parse(readFileSync(resolve('apps/api/src/openapi.yaml'), 'utf8'));
 type Schema = {
@@ -94,6 +99,24 @@ const principal = { user: { id: '33333333-3333-4333-8333-333333333333', accountI
 const audit = { write() {} };
 
 describe('documented frontend operations agree with actual handler envelopes', () => {
+  it('documents the canonical attachment encoded limit and 413 response', () => {
+    const upload = document.paths['/attachments'].post;
+    const schema = upload.requestBody.content['application/json'].schema;
+    const attachmentSchema = document.components.schemas.CreateAttachmentRequest;
+
+    expect(schema.$ref).toBe('#/components/schemas/CreateAttachmentRequest');
+    expect(attachmentSchema.properties.contentBase64.maxLength).toBe(
+      MAX_ATTACHMENT_BASE64_LENGTH
+    );
+    expect(MAX_ATTACHMENT_FILE_SIZE_BYTES).toBe(25 * 1024 * 1024);
+    expect(upload.description.replaceAll(',', '')).toContain(
+      String(MAX_ATTACHMENT_JSON_BODY_BYTES)
+    );
+    expect(upload.responses['413'].content['application/json'].schema.$ref).toBe(
+      '#/components/schemas/ErrorResponse'
+    );
+  });
+
   it('documents actual deliver/recollect handler envelopes and mandatory idempotency', async () => {
     for (const action of ['deliver', 'recollect']) {
       const path = `/laboratory/orders/order-1/${action}`;

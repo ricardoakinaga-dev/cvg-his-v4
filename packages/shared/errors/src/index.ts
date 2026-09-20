@@ -52,6 +52,13 @@ export class ConflictError extends AppError {
   }
 }
 
+export class PayloadTooLargeError extends AppError {
+  public constructor(message = 'Request body is too large', details?: unknown) {
+    super('PAYLOAD_TOO_LARGE', message, 413, details);
+    this.name = 'PayloadTooLargeError';
+  }
+}
+
 export function toErrorResponse(error: unknown, correlationId: string) {
   if (error instanceof AppError) {
     return {

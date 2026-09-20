@@ -1,4 +1,5 @@
 import type { DatabaseStatus } from '@cvg-his-v2/shared-database';
+export * from './upload-limits.js';
 import type {
   AccessProfile,
   AttachmentSummary,

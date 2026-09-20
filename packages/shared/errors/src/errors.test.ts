@@ -6,6 +6,7 @@ import {
   ForbiddenError,
   NotFoundError,
   ConflictError,
+  PayloadTooLargeError,
   toErrorResponse,
 } from './index.js';
 
@@ -105,6 +106,17 @@ describe('errors module', () => {
     it('is instanceof AppError', () => {
       const error = new ConflictError();
       expect(error instanceof AppError).toBe(true);
+    });
+  });
+
+  describe('PayloadTooLargeError', () => {
+    it('uses the canonical 413 contract', () => {
+      const error = new PayloadTooLargeError('Attachment exceeds the limit', {
+        maxFileSizeBytes: 25 * 1024 * 1024
+      });
+      expect(error.code).toBe('PAYLOAD_TOO_LARGE');
+      expect(error.statusCode).toBe(413);
+      expect(error.name).toBe('PayloadTooLargeError');
     });
   });
 
