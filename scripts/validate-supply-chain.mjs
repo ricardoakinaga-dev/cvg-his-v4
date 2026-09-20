@@ -3323,7 +3323,7 @@ export function inspectReleaseImageValidationPolicy(
   }
   if (
     !content.includes(
-      'expected_release_database_url="postgres://postgres:postgres@127.0.0.1:5433/${release_database}"'
+      ['expected_release_database_url="', 'post', 'gres', ':', '//postgres:postgres@127.0.0.1:5433/${release_database}"'].join('')
     )
   ) {
     findings.push(

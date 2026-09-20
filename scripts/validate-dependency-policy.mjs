@@ -4,6 +4,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
+export const CANONICAL_PACKAGE_MANAGER = 'pnpm@10.33.0';
 const dependencyFields = [
   'dependencies',
   'devDependencies',
@@ -32,8 +33,10 @@ export function inspectDependencyPolicy({ rootDirectory = root } = {}) {
   const failures = [];
   const rootPackagePath = resolve(rootDirectory, 'package.json');
   const rootPackage = JSON.parse(readFileSync(rootPackagePath, 'utf8'));
-  if (rootPackage.packageManager !== 'pnpm@10.0.0') {
-    failures.push(`packageManager must be pnpm@10.0.0 (found ${rootPackage.packageManager ?? 'missing'})`);
+  if (rootPackage.packageManager !== CANONICAL_PACKAGE_MANAGER) {
+    failures.push(
+      `packageManager must be ${CANONICAL_PACKAGE_MANAGER} (found ${rootPackage.packageManager ?? 'missing'})`
+    );
   }
 
   const lockfile = resolve(rootDirectory, 'pnpm-lock.yaml');

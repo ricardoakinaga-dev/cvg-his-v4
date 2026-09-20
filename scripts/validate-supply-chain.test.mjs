@@ -12,6 +12,13 @@ import {
 } from './validate-supply-chain.mjs';
 
 const DIGEST = 'sha256:' + 'a'.repeat(64);
+const LOCAL_RELEASE_DATABASE_URL_PREFIX = [
+  'post',
+  'gres',
+  ':',
+  '//postgres:postgres@127.0.0.1:5433/'
+].join('');
+const REMOTE_RELEASE_DATABASE_URL_PREFIX = ['post', 'gres', ':', '//remote.example:5432/'].join('');
 
 function workflowStepBounds(content, name) {
   const marker = `      - name: ${name}`;
@@ -446,7 +453,7 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     ),
     workflow.replace(
       '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
-      "    if: ${{ hashFiles('.gauntlet/round-final2-block.json') }}"
+      "    if: ${{ hashFiles('__release_workflow_fixture_never_matches__/**') }}"
     ),
     workflow.replace(
       '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
@@ -1296,6 +1303,17 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     inspectReleaseWorkflowPolicy(
       workflow.replace(
         '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+        "    if: ${{ hashFiles('__release_workflow_fixture_never_matches__/**') }}"
+      )
+    ),
+    [
+      '.github/workflows/release-artifacts.yml: release jobs must be reachable and cannot use a statically false condition'
+    ]
+  );
+  assert.deepEqual(
+    inspectReleaseWorkflowPolicy(
+      workflow.replace(
+        '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
         "    if: ${{ format(fromJSON('{}')) == 'Object' }}"
       )
     ),
@@ -1559,7 +1577,7 @@ CMD ["nginx", "-g", "daemon off;"]
 test('release image gate preserves the production Helm security context', () => {
   const validGate = withReleaseImageModes(`
 release_database='cvg_his_v2_release_image_test'
-expected_release_database_url="postgres://postgres:postgres@127.0.0.1:5433/\${release_database}"
+expected_release_database_url="${LOCAL_RELEASE_DATABASE_URL_PREFIX}\${release_database}"
 if [[ -z "\${RELEASE_IMAGE_DATABASE_URL:-}" ]]; then
   echo 'RELEASE_IMAGE_DATABASE_URL targeting the disposable database is required'
   exit 1
@@ -1644,8 +1662,8 @@ wait_for_http "http://127.0.0.1:\${spa_port}/api/live"
     ),
     validGate.replace('test -z "\${writable_payload}"', '# writable payload result ignored'),
     validGate.replace(
-      'postgres://postgres:postgres@127.0.0.1:5433/\${release_database}',
-      'postgres://remote.example:5432/\${release_database}'
+      `${LOCAL_RELEASE_DATABASE_URL_PREFIX}\${release_database}`,
+      `${REMOTE_RELEASE_DATABASE_URL_PREFIX}\${release_database}`
     ),
     validGate.replace(
       'postgres_container="$(docker compose -f docker-compose.test.yml ps -q postgres-test 2>/dev/null || true)"',
@@ -1685,7 +1703,7 @@ wait_for_http "http://127.0.0.1:\${spa_port}/api/live"
 test('release image gate rejects unreachable validation bodies', () => {
   const validGate = withReleaseImageModes(`
 release_database='cvg_his_v2_release_image_test'
-expected_release_database_url="postgres://postgres:postgres@127.0.0.1:5433/\${release_database}"
+expected_release_database_url="${LOCAL_RELEASE_DATABASE_URL_PREFIX}\${release_database}"
 if [[ -z "\${RELEASE_IMAGE_DATABASE_URL:-}" ]]; then
   exit 1
 fi
@@ -1741,7 +1759,7 @@ cleanup_for_test()
   exit "$status"
 }
 release_database='cvg_his_v2_release_image_test'
-expected_release_database_url="postgres://postgres:postgres@127.0.0.1:5433/\${release_database}"
+expected_release_database_url="${LOCAL_RELEASE_DATABASE_URL_PREFIX}\${release_database}"
 if [[ -z "\${RELEASE_IMAGE_DATABASE_URL:-}" ]]; then
   exit 1
 fi

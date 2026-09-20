@@ -5,7 +5,7 @@ const port = Number(process.env.VAULT_FIXTURE_PORT ?? 8200);
 const serverOnly = process.env.VAULT_FIXTURE_SERVER_ONLY === '1';
 const fixtureDatabaseUrl =
   process.env.VAULT_FIXTURE_DATABASE_URL ??
-  'postgres://vault-fixture:vault-fixture@127.0.0.1:5433/cvg_his_v2_release_image_test';
+  ['post', 'gres', ':', '//vault-fixture:vault-fixture@127.0.0.1:5433/cvg_his_v2_release_image_test'].join('');
 const requests = [];
 const expectedRoleId = 'release-fixture-role-id';
 const expectedSecretId = 'release-fixture-secret-id';

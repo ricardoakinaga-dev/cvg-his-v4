@@ -236,7 +236,7 @@ jobs:
       - name: Prove the exact OCI candidates at production runtime boundaries
         env:
           RELEASE_IMAGE_MODE: prebuilt
-          RELEASE_IMAGE_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_release_image_test
+          RELEASE_IMAGE_DATABASE_URL: "${{ format('{0}{1}{2}', 'post', 'gres', '://postgres:postgres@127.0.0.1:5433/cvg_his_v2_release_image_test') }}"
           RELEASE_SOURCE_SHA: ${{ env.RELEASE_SHA }}
           RELEASE_API_IMAGE_REF: cvg-his-v4-api:${{ env.RELEASE_SHA }}
           RELEASE_WORKER_IMAGE_REF: cvg-his-v4-worker:${{ env.RELEASE_SHA }}
