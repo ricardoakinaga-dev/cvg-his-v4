@@ -93,6 +93,35 @@ function isGithubPrimitive(value) {
   return value === null || ['boolean', 'number', 'string'].includes(typeof value);
 }
 
+function lookupGithubObjectProperty(value, property) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return { found: false, value: undefined };
+  }
+  if (Object.prototype.hasOwnProperty.call(value, property)) {
+    return { found: true, value: value[property] };
+  }
+  const normalizedProperty = String(property).toLowerCase();
+  const matchingKey = Object.keys(value).find(
+    (key) => key.toLowerCase() === normalizedProperty
+  );
+  return matchingKey === undefined
+    ? { found: false, value: undefined }
+    : { found: true, value: value[matchingKey] };
+}
+
+function lookupCaseInsensitiveValue(values, key) {
+  if (Object.prototype.hasOwnProperty.call(values, key)) {
+    return { found: true, value: values[key] };
+  }
+  const normalizedKey = String(key).toLowerCase();
+  const matchingKey = Object.keys(values).find(
+    (candidate) => candidate.toLowerCase() === normalizedKey
+  );
+  return matchingKey === undefined
+    ? { found: false, value: undefined }
+    : { found: true, value: values[matchingKey] };
+}
+
 function githubExpressionValueString(value) {
   if (value === null || value === undefined) return '';
   if (Array.isArray(value)) return 'Array';
@@ -439,7 +468,7 @@ function parseGithubReferenceExpression(expression, offset, knownValues = {}) {
   return {
     end: index,
     key,
-    value: Object.prototype.hasOwnProperty.call(knownValues, key) ? knownValues[key] : undefined
+    value: lookupCaseInsensitiveValue(knownValues, key).value
   };
 }
 
@@ -456,9 +485,10 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
     if (isOpaqueStaticText(values[0].value)) return null;
     try {
       const json = githubExpressionValueString(values[0].value);
-      if (json === 'NaN') return { value: Number.NaN };
-      if (json === 'Infinity') return { value: Number.POSITIVE_INFINITY };
-      if (json === '-Infinity') return { value: Number.NEGATIVE_INFINITY };
+      const normalizedJson = json.trim();
+      if (normalizedJson === 'NaN') return { value: Number.NaN };
+      if (normalizedJson === 'Infinity') return { value: Number.POSITIVE_INFINITY };
+      if (normalizedJson === '-Infinity') return { value: Number.NEGATIVE_INFINITY };
       return { value: JSON.parse(json) };
     } catch {
       return null;
@@ -474,7 +504,7 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
   }
   if (call.name === 'hashfiles' && call.args.length > 0) {
     if (values.some(({ value }) => isOpaqueStaticText(value))) return null;
-    const patterns = values.map(({ value }) => githubExpressionValueString(value));
+    const patterns = values.map(({ value }) => githubExpressionValueString(value).trim());
     const files = trackedCheckoutFiles();
     const globToRegExp = (pattern) => {
       let source = '^';
@@ -803,8 +833,9 @@ function evaluateStaticExpressionValueModern(expression, knownValues = {}) {
               const integerIndex = Math.floor(numericIndex);
               return integerIndex < item.length ? [item[integerIndex]] : [];
             }
-            if (item && typeof item === 'object' && Object.prototype.hasOwnProperty.call(item, propertyKey)) {
-              return [item[propertyKey]];
+            if (item && typeof item === 'object') {
+              const property = lookupGithubObjectProperty(item, propertyKey);
+              return property.found ? [property.value] : [];
             }
             return [];
           })
@@ -823,8 +854,9 @@ function evaluateStaticExpressionValueModern(expression, knownValues = {}) {
     if (typeof value === 'object') {
       if (!isGithubPrimitive(selectorValue)) return { value: null, known: true };
       const propertyKey = githubExpressionValueString(selectorValue);
+      const property = lookupGithubObjectProperty(value, propertyKey);
       return {
-        value: Object.prototype.hasOwnProperty.call(value, propertyKey) ? value[propertyKey] : null,
+        value: property.found ? property.value : null,
         known: true
       };
     }

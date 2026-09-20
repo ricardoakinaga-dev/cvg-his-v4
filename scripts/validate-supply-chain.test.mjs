@@ -577,7 +577,23 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     ),
     workflow.replace(
       '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ fromJSON(' NaN ') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ !fromJSON(\'{"Enabled":true}\').enabled }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ github.Event_Name != 'workflow_run' }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
       "    if: ${{ hashFiles('scripts/validate-supply-chain.mjs', '!!!scripts/validate-supply-chain.mjs') != '' }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ hashFiles('scripts/validate-supply-chain.mjs', '!scripts/validate-supply-chain.mjs ') != '' }}"
     ),
     workflow.replace(
       '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
@@ -985,7 +1001,11 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     "format('{0}', hashFiles('scripts/validate-supply-chain.mjs')) != ''",
     "fromJSON('Infinity')",
     "!fromJSON('NaN')",
-    "hashFiles('scripts/validate-supply-chain.mjs', '!!scripts/validate-supply-chain.mjs') != ''"
+    "hashFiles('scripts/validate-supply-chain.mjs', '!!scripts/validate-supply-chain.mjs') != ''",
+    "!fromJSON(' NaN ')",
+    "fromJSON('{\"Enabled\":true}').enabled",
+    "github.Event_Name == 'workflow_run'",
+    "hashFiles('scripts/validate-supply-chain.mjs', '!!scripts/validate-supply-chain.mjs ') != ''"
   ]) {
     assert.deepEqual(
       inspectReleaseWorkflowPolicy(
