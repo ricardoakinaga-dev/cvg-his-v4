@@ -461,7 +461,7 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
     }
   }
   if (call.name === 'tojson' && call.args.length === 1) {
-    if (isOpaqueStaticText(values[0].value)) return null;
+    if (isOpaqueStaticText(values[0].value)) return { value: createOpaqueStaticString() };
     try {
       return { value: githubToJson(values[0].value) };
     } catch {
