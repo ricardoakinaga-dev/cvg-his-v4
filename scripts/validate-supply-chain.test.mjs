@@ -180,8 +180,16 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
       '      - "if": false\n        name: Scan API image candidate for vulnerabilities'
     ),
     workflow.replace(
+      '      - name: Scan API image candidate for vulnerabilities',
+      '      - "i\\u0066": false\n        name: Scan API image candidate for vulnerabilities'
+    ),
+    workflow.replace(
       '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
       '    "if": false'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    "i\\u0066": false'
     ),
     workflow.replace(
       '      - name: Scan API image candidate for vulnerabilities',
@@ -265,6 +273,42 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     ),
     workflow.replace(
       '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ github.event_name == 0 }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ github.event_name == null }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ github.event_name == false }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ github.event_name < 0 }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ github.event_name > 0 }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: &disabled false'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ fromJSON('false') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ contains('', 'x') }}"
+    ),
+    workflow.replace(
+      '      - name: Run blocking Triple-A release gate',
+      '      - if: &disabled false\n        name: Run blocking Triple-A release gate'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
       '    if: ${{ 0x0 }}'
     ),
     workflow.replace(
@@ -343,6 +387,18 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     ),
     workflow
       .replace('\n  workflow_run:', "\n    'workflow_run':")
+      .replace(
+        '      - name: Prove the exact OCI candidates at production runtime boundaries',
+        "      - if: ${{ github.event_name != 'workflow_run' }}\n        name: Prove the exact OCI candidates at production runtime boundaries"
+      ),
+    workflow
+      .replace('\n  workflow_run:', '\n  "workflow_\\u0072un":')
+      .replace(
+        '      - name: Prove the exact OCI candidates at production runtime boundaries',
+        "      - if: ${{ github.event_name == 'push' }}\n        name: Prove the exact OCI candidates at production runtime boundaries"
+      ),
+    workflow
+      .replace('\n  workflow_run:', '\n  "workflow_\\u0072un":')
       .replace(
         '      - name: Prove the exact OCI candidates at production runtime boundaries',
         "      - if: ${{ github.event_name != 'workflow_run' }}\n        name: Prove the exact OCI candidates at production runtime boundaries"

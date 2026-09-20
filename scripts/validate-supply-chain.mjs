@@ -2,6 +2,7 @@
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
+import { parseDocument } from 'yaml';
 
 const root = process.cwd();
 const shaRef = /^[0-9a-f]{40}$/;
@@ -103,6 +104,20 @@ function workflowSteps(content) {
   return content.split(/(?=^ {6}-\s)/m).filter((section) => /^ {6}-\s/.test(section));
 }
 
+function parseWorkflowYaml(content) {
+  try {
+    const document = parseDocument(content, {
+      maxAliasCount: 1000,
+      merge: true,
+      version: '1.2'
+    });
+    if (document.errors.length > 0) return null;
+    return document.toJS({ maxAliasCount: 1000 });
+  } catch {
+    return null;
+  }
+}
+
 function combineStaticBooleanValues(left, right, operator) {
   if (operator === '&&') {
     if (left === false || right === false) return false;
@@ -155,6 +170,92 @@ function parseGithubStringLiteral(expression, offset) {
     }
     return { end: index + 1, value };
   }
+  return null;
+}
+
+function parseGithubFunctionCall(expression, offset) {
+  const match = expression.slice(offset).match(/^(fromJSON|contains|startsWith|endsWith)\s*\(/i);
+  if (!match) return null;
+  const name = match[1].toLowerCase();
+  const opening = offset + match[0].length - 1;
+  let quote = null;
+  let depth = 0;
+  for (let index = opening; index < expression.length; index += 1) {
+    const character = expression[index];
+    if (quote) {
+      if (character === quote) {
+        if (expression[index + 1] === quote) {
+          index += 1;
+        } else {
+          quote = null;
+        }
+      }
+      continue;
+    }
+    if (character === "'" || character === '"') {
+      quote = character;
+      continue;
+    }
+    if (character === '(') depth += 1;
+    if (character !== ')') continue;
+    depth -= 1;
+    if (depth !== 0) continue;
+    const source = expression.slice(opening + 1, index);
+    const args = [];
+    let argumentStart = 0;
+    quote = null;
+    depth = 0;
+    for (let argumentIndex = 0; argumentIndex <= source.length; argumentIndex += 1) {
+      const argumentCharacter = source[argumentIndex];
+      if (quote) {
+        if (argumentCharacter === quote) {
+          if (source[argumentIndex + 1] === quote) {
+            argumentIndex += 1;
+          } else {
+            quote = null;
+          }
+        }
+        continue;
+      }
+      if (argumentCharacter === "'" || argumentCharacter === '"') {
+        quote = argumentCharacter;
+        continue;
+      }
+      if (argumentCharacter === '(') depth += 1;
+      if (argumentCharacter === ')') depth -= 1;
+      if (argumentCharacter !== ',' || depth !== 0) continue;
+      args.push(source.slice(argumentStart, argumentIndex).trim());
+      argumentStart = argumentIndex + 1;
+    }
+    if (source.trim() || args.length > 0) args.push(source.slice(argumentStart).trim());
+    return { args, end: index + 1, name };
+  }
+  return null;
+}
+
+function evaluateStaticGithubFunction(call) {
+  const literals = call.args.map((argument) => {
+    const parsed = parseGithubStringLiteral(argument, 0);
+    return parsed && parsed.end === argument.length ? parsed.value : null;
+  });
+  if (literals.some((value, index) => value === null && call.args[index] !== 'null')) return null;
+
+  if (call.name === 'fromjson' && call.args.length === 1 && literals[0] !== null) {
+    try {
+      const value = JSON.parse(literals[0]);
+      if (value === null || value === false) return false;
+      if (typeof value === 'number') return Number.isFinite(value) && value !== 0;
+      if (typeof value === 'string') return value.length > 0;
+      return true;
+    } catch {
+      return null;
+    }
+  }
+  if (call.args.length !== 2 || literals.some((value) => value === null)) return null;
+  const [left, right] = literals.map((value) => value.toLowerCase());
+  if (call.name === 'contains') return left.includes(right);
+  if (call.name === 'startswith') return left.startsWith(right);
+  if (call.name === 'endswith') return left.endsWith(right);
   return null;
 }
 
@@ -240,6 +341,12 @@ function staticallyEvaluateBooleanExpression(expression, knownValues = {}) {
       return value;
     }
 
+    const functionCall = parseGithubFunctionCall(expression, index);
+    if (functionCall) {
+      index = functionCall.end;
+      return evaluateStaticGithubFunction(functionCall);
+    }
+
     const leftLiteral = parseStaticLiteral(index);
     if (leftLiteral) {
       let comparisonIndex = leftLiteral.end;
@@ -286,10 +393,10 @@ function staticallyEvaluateBooleanExpression(expression, knownValues = {}) {
 
     const comparison = expression
       .slice(index)
-      .match(/^([A-Za-z_][A-Za-z0-9_.-]*)\s*(===|==|!==|!=)\s*/);
+      .match(/^([A-Za-z_][A-Za-z0-9_.-]*)\s*(===|==|!==|!=|<=|>=|<|>)\s*/);
     if (comparison) {
       const comparisonIndex = index + comparison[0].length;
-      const rightLiteral = parseGithubStringLiteral(expression, comparisonIndex);
+      const rightLiteral = parseStaticLiteral(comparisonIndex);
       if (!rightLiteral) return null;
       index = rightLiteral.end;
       const knownValue = knownValues[comparison[1]];
@@ -380,6 +487,17 @@ function extractYamlCondition(content, patterns) {
 }
 
 function workflowUsesWorkflowRunTrigger(content) {
+  const parsed = parseWorkflowYaml(content);
+  if (parsed && Object.prototype.hasOwnProperty.call(parsed, 'on')) {
+    const trigger = parsed.on;
+    if (trigger === 'workflow_run') return true;
+    if (Array.isArray(trigger)) return trigger.includes('workflow_run');
+    if (trigger && typeof trigger === 'object') {
+      return Object.prototype.hasOwnProperty.call(trigger, 'workflow_run');
+    }
+    return false;
+  }
+
   const lines = content.split(/\r?\n/);
   let onIndent = null;
   for (const line of lines) {
@@ -398,6 +516,48 @@ function workflowUsesWorkflowRunTrigger(content) {
       continue;
     }
     if (/^(?:\s*)(?:workflow_run|['"]workflow_run['"])\s*:/.test(line)) return true;
+  }
+  return false;
+}
+
+function evaluateYamlConditionValue(value, knownValues) {
+  if (value === null) return false;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return Number.isFinite(value) && value !== 0;
+  if (typeof value !== 'string') return null;
+  const normalized = normalizeWorkflowCondition(value);
+  const expression = normalized.match(/^\$\{\{([\s\S]*)\}\}$/)?.[1]?.trim() ?? normalized;
+  return staticallyEvaluateBooleanExpression(expression, knownValues);
+}
+
+function workflowYamlHasStaticallyFalseCondition(content, knownValues = {}) {
+  const parsed = parseWorkflowYaml(content);
+  if (!parsed || !parsed.jobs || typeof parsed.jobs !== 'object') return false;
+
+  const stepsHaveFalseCondition = (steps) => {
+    if (!Array.isArray(steps)) return false;
+    for (const step of steps) {
+      if (!step || typeof step !== 'object') continue;
+      if (
+        Object.prototype.hasOwnProperty.call(step, 'if') &&
+        evaluateYamlConditionValue(step.if, knownValues) === false
+      ) {
+        return true;
+      }
+      if (stepsHaveFalseCondition(step.steps)) return true;
+    }
+    return false;
+  };
+
+  for (const job of Object.values(parsed.jobs)) {
+    if (!job || typeof job !== 'object') continue;
+    if (
+      Object.prototype.hasOwnProperty.call(job, 'if') &&
+      evaluateYamlConditionValue(job.if, knownValues) === false
+    ) {
+      return true;
+    }
+    if (stepsHaveFalseCondition(job.steps)) return true;
   }
   return false;
 }
@@ -481,7 +641,10 @@ export function inspectReleaseWorkflowPolicy(
   const buildSteps = steps.filter((step) =>
     /uses:\s*docker\/build-push-action@[0-9a-f]{40}\b/.test(step)
   );
-  if (workflowJobHasStaticallyFalseCondition(content, knownValues)) {
+  if (
+    workflowJobHasStaticallyFalseCondition(content, knownValues) ||
+    workflowYamlHasStaticallyFalseCondition(content, knownValues)
+  ) {
     findings.push(`${path}: release jobs must be reachable and cannot use a statically false condition`);
   }
   if (steps.some((step) => workflowStepHasStaticallyFalseCondition(step, knownValues))) {
