@@ -6,7 +6,7 @@ owner: Engenharia CVG-HIS
 review_cycle: on-candidate-change
 candidate_sha: 324099e5a54537ca1349f3310639c3a12afbae36
 verdict: NOT_PROVEN
-superseded_by: docs/2026-09-20-auditoria-scorecard-ed663abe.md
+superseded_by: docs/2026-09-20-auditoria-scorecard-8c1feddb.md
 ---
 
 # Estado de construção do CVG-HIS V4 — 14/09/2026

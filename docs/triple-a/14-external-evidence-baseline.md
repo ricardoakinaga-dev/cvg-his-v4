@@ -2,7 +2,7 @@
 
 ## Reconciliação externa do candidato — 2026-09-20
 
-**Current snapshot:** `ed663abeef6eb6fa4317d74270053aee5ca6358a`.
+**Current snapshot:** `8c1feddbe4e3191f75dea2f290ba8618f3ee6937`.
 
 Não há evidência externa candidate-bound para este SHA. Os gates locais
 passam, mas CI, release, registry/attestation, target, restore, soak, UAT e

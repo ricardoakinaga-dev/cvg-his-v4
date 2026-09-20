@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "candidate_sha": "ed663abeef6eb6fa4317d74270053aee5ca6358a",
+  "candidate_sha": "8c1feddbe4e3191f75dea2f290ba8618f3ee6937",
   "observed_at": "2026-09-20T20:31:00-03:00",
   "environment": "local disposable PostgreSQL/Redis/Docker fixtures; no real credentials",
   "status": "PASS_LOCAL",

@@ -4,7 +4,7 @@ document_kind: baseline
 effective_date: 2026-09-13
 owner: Engenharia CVG-HIS
 review_cycle: archived
-superseded_by: docs/2026-09-20-auditoria-scorecard-ed663abe.md
+superseded_by: docs/2026-09-20-auditoria-scorecard-8c1feddb.md
 candidate_sha: 324099e5a54537ca1349f3310639c3a12afbae36
 score: 63
 verdict: BLOCKED
