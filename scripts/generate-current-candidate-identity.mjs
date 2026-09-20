@@ -12,12 +12,11 @@ export const ARCHIVED_PROMPT_PATH = 'docs/triple-a/MASTER_EXECUTION_PROMPT_2026-
 
 const SHA_PATTERN = /^[0-9a-f]{40}$/i;
 const DIGEST_PATTERN = /^[0-9a-f]{64}$/i;
-const DOCUMENTATION_ONLY_PREFIX = 'docs/triple-a/';
-const DOCUMENTATION_ONLY_PATHS = new Set([
-  'docs/README.md',
-  'docs/engineering/TRIPLE_A_BASELINE.md',
-  'docs/engineering/critical-coverage-scope.json'
-]);
+// Documentation descendants may be reconciled after a source freeze without
+// changing runtime behavior. Keep the source-candidate guard focused on
+// executable/configuration paths while allowing the complete documentation
+// tree to bind the same candidate to its latest narrative/control snapshot.
+const DOCUMENTATION_ONLY_PREFIX = 'docs/';
 
 function git(rootDir, args, { allowFailure = false } = {}) {
   const result = spawnSync('git', args, {
@@ -39,7 +38,7 @@ function sha256(rootDir, relativePath) {
 }
 
 function isDocumentationOnlyPath(path) {
-  return path.startsWith(DOCUMENTATION_ONLY_PREFIX) || DOCUMENTATION_ONLY_PATHS.has(path);
+  return path.startsWith(DOCUMENTATION_ONLY_PREFIX);
 }
 
 export function validateIdentityDocument({

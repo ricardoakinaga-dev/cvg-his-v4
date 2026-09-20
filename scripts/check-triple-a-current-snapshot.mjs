@@ -40,15 +40,13 @@ const SNAPSHOT_DOCUMENTS = [
   }
 ];
 
-const DOCUMENTATION_ONLY_PREFIX = 'docs/triple-a/';
-const DOCUMENTATION_ONLY_PATHS = new Set([
-  'docs/README.md',
-  'docs/engineering/TRIPLE_A_BASELINE.md',
-  'docs/engineering/critical-coverage-scope.json'
-]);
+// Current snapshots are documentation/control artifacts. A docs-only
+// descendant may update the narrative without making the frozen runtime
+// candidate stale; executable, workflow and package changes still invalidate it.
+const DOCUMENTATION_ONLY_PREFIX = 'docs/';
 
 function isDocumentationOnlyPath(path) {
-  return path.startsWith(DOCUMENTATION_ONLY_PREFIX) || DOCUMENTATION_ONLY_PATHS.has(path);
+  return path.startsWith(DOCUMENTATION_ONLY_PREFIX);
 }
 
 function git(args, rootDir = root) {

@@ -73,6 +73,19 @@ test('accepts the documentation index reconciliation path', () => {
   );
 });
 
+test('accepts root documentation and governance reconciliation', () => {
+  assert.deepEqual(
+    validateCurrentSnapshot({
+      headSha: head,
+      candidateSha: parent,
+      candidateIsAncestor: true,
+      changedPathsSinceCandidate: ['docs/2026-09-20-auditoria-scorecard.md', 'docs/document-governance.json'],
+      documents: documents(parent)
+    }),
+    []
+  );
+});
+
 test('rejects a code commit whose current snapshot still points to its parent', () => {
   const errors = validateCurrentSnapshot({
     headSha: head,

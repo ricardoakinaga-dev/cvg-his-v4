@@ -5,15 +5,13 @@ const SHA_PATTERN = /^[0-9a-f]{40}$/i;
 /**
  * Paths that may advance repository HEAD without changing the runtime
  * candidate represented by a critical coverage artifact. The list is
- * intentionally narrow: source, tests, workflows, package metadata and
- * assurance contracts remain behavior-affecting and make evidence stale.
+ * intentionally limited to the documentation tree: source, tests, workflows,
+ * package metadata and runtime contracts remain behavior-affecting and make
+ * evidence stale.
  */
 export const DOCUMENTATION_ONLY_CANDIDATE_PATHS = Object.freeze([
   '.agent/',
-  'docs/triple-a/',
-  'docs/README.md',
-  'docs/engineering/TRIPLE_A_BASELINE.md',
-  'docs/engineering/critical-coverage-scope.json',
+  'docs/',
 ]);
 
 export function isDocumentationOnlyCandidatePath(path) {

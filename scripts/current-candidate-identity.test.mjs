@@ -58,6 +58,21 @@ test('accepts critical coverage manifest bookkeeping as documentation-only', () 
   );
 });
 
+test('accepts root documentation reconciliation as documentation-only', () => {
+  assert.deepEqual(
+    validateIdentityDocument({
+      identity,
+      currentHead: 'd'.repeat(40),
+      candidateIsAncestor: true,
+      changedPathsSinceCandidate: ['docs/2026-09-20-auditoria-scorecard.md', 'docs/document-governance.json'],
+      qualityBarSha256: digest,
+      promptSha256: digest,
+      archivedPromptSha256: digest
+    }),
+    []
+  );
+});
+
 test('rejects source changes after the candidate without regeneration', () => {
   const errors = validateIdentityDocument({
     identity,
