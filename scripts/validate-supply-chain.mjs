@@ -250,12 +250,10 @@ function githubExpressionNumber(value) {
       return Number(normalized);
     }
     if (/^0x[0-9a-fA-F]+$/.test(normalized)) {
-      const parsed = Number.parseInt(normalized.slice(2), 16);
-      return parsed <= 0x7fffffff ? parsed : Number.NaN;
+      return parseGithubRadixInteger(normalized.slice(2), 16);
     }
     if (/^0o[0-7]+$/.test(normalized)) {
-      const parsed = Number.parseInt(normalized.slice(2), 8);
-      return parsed <= 0x7fffffff ? parsed : Number.NaN;
+      return parseGithubRadixInteger(normalized.slice(2), 8);
     }
     if (normalized === 'Infinity') return Number.POSITIVE_INFINITY;
     if (normalized === '-Infinity') return Number.NEGATIVE_INFINITY;
@@ -267,6 +265,12 @@ function githubExpressionNumber(value) {
   return Number.NaN;
 }
 
+function parseGithubRadixInteger(digits, radix) {
+  const parsed = Number.parseInt(digits, radix);
+  if (!Number.isFinite(parsed) || parsed > 0xffffffff) return Number.NaN;
+  return parsed > 0x7fffffff ? parsed - 0x100000000 : parsed;
+}
+
 function githubExpressionString(value) {
   return value.toLowerCase();
 }
@@ -275,11 +279,11 @@ function parseGithubNumericLiteral(literal) {
   const negative = literal.startsWith('-');
   const unsigned = /^[+-]/.test(literal) ? literal.slice(1) : literal;
   const value = /^0[xX]/.test(unsigned)
-    ? Number.parseInt(unsigned.slice(2), 16)
+    ? parseGithubRadixInteger(unsigned.slice(2), 16)
     : /^0[bB]/.test(unsigned)
-      ? Number.parseInt(unsigned.slice(2), 2)
+      ? parseGithubRadixInteger(unsigned.slice(2), 2)
       : /^0[oO]/.test(unsigned)
-        ? Number.parseInt(unsigned.slice(2), 8)
+        ? parseGithubRadixInteger(unsigned.slice(2), 8)
         : Number(unsigned);
   return negative ? -value : value;
 }
@@ -435,9 +439,10 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
     if (call.name === 'failure' || call.name === 'cancelled') return { value: false };
   }
 
-  if (call.name === 'fromjson' && call.args.length === 1 && typeof values[0].value === 'string') {
+  if (call.name === 'fromjson' && call.args.length === 1) {
+    if (isOpaqueStaticHash(values[0].value)) return null;
     try {
-      return { value: JSON.parse(values[0].value) };
+      return { value: JSON.parse(githubExpressionValueString(values[0].value)) };
     } catch {
       return null;
     }
@@ -458,11 +463,16 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
       for (let index = 0; index < pattern.length; index += 1) {
         const character = pattern[index];
         if (character === '*' && pattern[index + 1] === '*') {
-          if (pattern[index + 2] === '/') {
+          const atSegmentStart = index === 0 || pattern[index - 1] === '/';
+          const atSegmentEnd = index + 2 === pattern.length || pattern[index + 2] === '/';
+          if (atSegmentStart && pattern[index + 2] === '/') {
             source += '(?:.*/)?';
             index += 2;
-          } else {
+          } else if (atSegmentStart && atSegmentEnd) {
             source += '.*';
+            index += 1;
+          } else {
+            source += '[^/]*';
             index += 1;
           }
         } else if (character === '*') {
@@ -504,9 +514,14 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
     return { value: matched.size > 0 ? createOpaqueStaticHash() : '' };
   }
   if (call.name === 'format' && call.args.length >= 1) {
-    if (isOpaqueStaticHash(values[0].value)) return null;
+    if (isOpaqueStaticHash(values[0].value)) return { value: createOpaqueStaticHash() };
     const template = githubExpressionValueString(values[0].value);
-    if (values.slice(1).some(({ value }) => isOpaqueStaticHash(value))) return null;
+    if (values.slice(1).some(({ value }) => isOpaqueStaticHash(value))) {
+      if (template === '{0}' && isOpaqueStaticHash(values[1].value)) {
+        return { value: createOpaqueStaticHash() };
+      }
+      return null;
+    }
     const replacements = values.slice(1).map(({ value }) => githubExpressionValueString(value));
     let formatted = '';
     for (let index = 0; index < template.length; index += 1) {
@@ -674,6 +689,13 @@ function evaluateStaticExpressionValueModern(expression, knownValues = {}) {
     }
     const nullLiteral = source.match(/^(?:null|~)(?![A-Za-z0-9_.-])/i);
     if (nullLiteral) return { end: offset + nullLiteral[0].length, value: null };
+    const specialNumberLiteral = source.match(/^(?:[+-]?Infinity|NaN)(?![A-Za-z0-9_.-])/);
+    if (specialNumberLiteral) {
+      return {
+        end: offset + specialNumberLiteral[0].length,
+        value: parseGithubNumericLiteral(specialNumberLiteral[0])
+      };
+    }
     const numericLiteral = source.match(
       /^[+-]?(?:(?:0[xX][0-9a-fA-F]+)|(?:0[bB][01]+)|(?:0[oO][0-7]+)|(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)(?![A-Za-z0-9_.-])/
     );

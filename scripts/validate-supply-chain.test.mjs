@@ -529,6 +529,14 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     ),
     workflow.replace(
       '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ 0xFFFFFFFF != -1 }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ '0xFFFFFFFF' != -1 }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
       '    if: ${{ 1e309 != 1e309 }}'
     ),
     workflow.replace(
@@ -542,6 +550,30 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     workflow.replace(
       '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
       "    if: ${{ !contains(fromJSON('[{\"enabled\":true}]').*.enabled, true) }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ !Infinity }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ NaN }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ fromJSON(false) }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ fromJSON(0) }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ format(hashFiles('scripts/validate-supply-chain.mjs')) == '' }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ hashFiles('scripts/**-parity-audit.mjs') }}"
     ),
     workflow.replace(
       '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
@@ -910,6 +942,22 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     ),
     []
   );
+  for (const expression of [
+    '0xFFFFFFFF == -1',
+    "'0xFFFFFFFF' == -1",
+    'fromJSON(true)',
+    "format('{0}', hashFiles('scripts/validate-supply-chain.mjs')) != ''"
+  ]) {
+    assert.deepEqual(
+      inspectReleaseWorkflowPolicy(
+        workflow.replace(
+          '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+          `    if: \${{ ${expression} }}`
+        )
+      ),
+      []
+    );
+  }
 });
 
 test('production runtime policy accepts minimal non-root deploy closures', () => {
