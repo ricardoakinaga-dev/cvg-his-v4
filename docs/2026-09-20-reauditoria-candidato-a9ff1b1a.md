@@ -6,7 +6,7 @@ owner: Engenharia e Liderança técnica CVG-HIS
 review_cycle: on-candidate-change-or-material-evidence
 candidate_sha: a9ff1b1aeec393084cea2405eafc0c4bbe403437
 verdict: FAIL_BLOCKED
-superseded_by: docs/2026-09-20-auditoria-scorecard-fc636c3f.md
+superseded_by: docs/2026-09-20-auditoria-scorecard-dba93eef.md
 ---
 
 # Reauditoria do candidato `a9ff1b1a` — 20/09/2026

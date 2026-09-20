@@ -8,7 +8,7 @@ review_cycle: on-milestone-or-candidate-change
 
 # Plano executivo — nova rodada de melhorias
 
-[Auditoria vigente](2026-09-20-auditoria-scorecard-fc636c3f.md) ·
+[Auditoria vigente](2026-09-20-auditoria-scorecard-dba93eef.md) ·
 [Roadmap](2026-09-20-roadmap-nova-rodada-melhorias.md) ·
 [Backlog](2026-09-20-backlog-nova-rodada-melhorias.md)
 
@@ -21,7 +21,7 @@ fim obter provas de target e autoridades externas.
 
 ## Estado atual após a rodada local
 
-- candidato de fonte congelada: `fc636c3fa16bfc56fef710b4baf4ba289a42da3a`;
+- candidato de fonte congelada: `dba93eefbe52bcfef5b07e43a8702614cc8f9b65`;
 - supply-chain 17/17, dependências, segredos, segurança enterprise e
   backup/restore documental passam localmente;
 - `/metrics` exige token dedicado e cache bounded; upload usa 25 MiB/413 em
@@ -60,7 +60,7 @@ os aceites externos não existirem.
 
 ### M1 — candidato local congelado (PASS-LOCAL / EXTERNAL-BLOCKED)
 
-Saída local: fonte congelada em `fc636c3f`, identidade/P0/snapshots
+Saída local: fonte congelada em `dba93eef`, identidade/P0/snapshots
 candidate-bound e gates locais reexecutados. OCI/Trivy candidate-bound ainda
 dependem de reconstrução local e da ferramenta Trivy; não há prova remota.
 
