@@ -161,6 +161,12 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
   );
   assert.deepEqual(inspectReleaseWorkflowPolicy(dynamicConditionWorkflow), []);
 
+  const parenthesizedKnownValueWorkflow = workflow.replace(
+    '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+    "    if: ${{ false || ('workflow_run' == github.event_name) }}"
+  );
+  assert.deepEqual(inspectReleaseWorkflowPolicy(parenthesizedKnownValueWorkflow), []);
+
   const runtimeStep = 'Prove the exact OCI candidates at production runtime boundaries';
   const publicationStep = 'Publish vetted image candidates to quarantine without rebuilding';
   const uploadStep = 'Publish certified release manifest and evidence';
@@ -277,6 +283,30 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     ),
     workflow.replace(
       '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ false == github.event_name }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ fromJSON('false') == github.event_name }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ (fromJSON('false')) == github.event_name }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ github.event_name == !false }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ false == !false }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ !true == github.event_name }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
       '    if: ${{ github.event_name == null }}'
     ),
     workflow.replace(
@@ -353,6 +383,10 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     ),
     workflow.replace(
       '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ hashFiles('.gauntlet/round-final2-block.json') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
       "    if: ${{ hashFiles('**/*', '!**/*') }}"
     ),
     workflow.replace(
@@ -374,6 +408,42 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     workflow.replace(
       '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
       "    if: ${{ contains('', 'x') }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ fromJSON(toJSON(false)) }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ toJSON(false) == 'true' }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ fromJSON(toJSON(true)) == false }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      "    if: ${{ toJSON(fromJSON('false')) == 'true' }}"
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ failure() }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ cancelled() }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ !success() }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ success() == false }}'
+    ),
+    workflow.replace(
+      '    if: >-\n      github.event.workflow_run.conclusion == \'success\' &&\n      github.event.workflow_run.head_branch == \'main\' &&\n      github.event.workflow_run.event == \'push\'',
+      '    if: ${{ always() == false }}'
     ),
     workflow.replace(
       '      - name: Run blocking Triple-A release gate',
@@ -476,6 +546,13 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
         "      - if: ${{ github.event_name != 'workflow_run' }}\n        name: Prove the exact OCI candidates at production runtime boundaries"
       ),
     workflow.replace('\n  workflow_run:', '\n  push:'),
+    workflow.replace('    workflows: [CI]', '    workflows: [OTHER]'),
+    workflow.replace('    types: [completed]', '    types: [requested]'),
+    workflow.replace('    types: [completed]', '    types: [completed]\n  push:'),
+    workflow.replace(
+      'on:\n  workflow_run:\n    workflows: [CI]\n    types: [completed]',
+      'on: [workflow_run]'
+    ),
     workflow.replace(
       '      - name: Run blocking Triple-A release gate',
       '      - if: false\n        name: Run blocking Triple-A release gate'

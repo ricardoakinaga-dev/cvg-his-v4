@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { parseDocument } from 'yaml';
@@ -8,6 +9,27 @@ const root = process.cwd();
 const shaRef = /^[0-9a-f]{40}$/;
 const digestRef = /^sha256:[0-9a-f]{64}$/;
 const localComposeImage = /^cvg-his-v[24]-/;
+
+let trackedCheckoutFilesCache;
+
+function trackedCheckoutFiles() {
+  if (trackedCheckoutFilesCache !== undefined) return trackedCheckoutFilesCache;
+  try {
+    const output = execFileSync('git', ['ls-files', '-z'], {
+      cwd: root,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    });
+    trackedCheckoutFilesCache = output
+      .split('\0')
+      .filter(Boolean)
+      .filter((path) => existsSync(join(root, path)))
+      .map((path) => path.split('\\').join('/'));
+  } catch {
+    trackedCheckoutFilesCache = [];
+  }
+  return trackedCheckoutFilesCache;
+}
 
 function filesUnder(directory, predicate) {
   if (!existsSync(directory)) return [];
@@ -176,7 +198,9 @@ function parseGithubStringLiteral(expression, offset) {
 function parseGithubFunctionCall(expression, offset) {
   const match = expression
     .slice(offset)
-    .match(/^(fromJSON|contains|startsWith|endsWith|format|join|hashFiles)\s*\(/i);
+    .match(
+      /^(fromJSON|toJSON|contains|startsWith|endsWith|format|join|hashFiles|success|failure|cancelled|always)\s*\(/i
+    );
   if (!match) return null;
   const name = match[1].toLowerCase();
   const opening = offset + match[0].length - 1;
@@ -298,6 +322,11 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
   const values = call.args.map((argument) => parseStaticExpressionValue(argument, knownValues));
   if (values.some((value) => value === null)) return null;
 
+  if (call.args.length === 0) {
+    if (call.name === 'success' || call.name === 'always') return { value: true };
+    if (call.name === 'failure' || call.name === 'cancelled') return { value: false };
+  }
+
   if (call.name === 'fromjson' && call.args.length === 1 && typeof values[0].value === 'string') {
     try {
       return { value: JSON.parse(values[0].value) };
@@ -305,16 +334,28 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
       return null;
     }
   }
+  if (call.name === 'tojson' && call.args.length === 1) {
+    try {
+      return { value: JSON.stringify(values[0].value) };
+    } catch {
+      return null;
+    }
+  }
   if (call.name === 'hashfiles' && call.args.length > 0) {
     if (values.some(({ value }) => typeof value !== 'string')) return null;
-    const files = filesUnder(root, () => true).map((path) => relative(root, path).split('\\').join('/'));
+    const files = trackedCheckoutFiles();
     const globToRegExp = (pattern) => {
       let source = '^';
       for (let index = 0; index < pattern.length; index += 1) {
         const character = pattern[index];
         if (character === '*' && pattern[index + 1] === '*') {
-          source += '.*';
-          index += 1;
+          if (pattern[index + 2] === '/') {
+            source += '(?:.*/)?';
+            index += 2;
+          } else {
+            source += '.*';
+            index += 1;
+          }
         } else if (character === '*') {
           source += '[^/]*';
         } else if (character === '?') {
@@ -379,6 +420,10 @@ function evaluateStaticGithubFunction(call, knownValues = {}) {
 
 function parseStaticExpressionValue(source, knownValues = {}) {
   const expression = source.trim();
+  if (expression.startsWith('!')) {
+    const nested = parseStaticExpressionValue(expression.slice(1), knownValues);
+    if (nested !== null) return { value: !githubExpressionTruthy(nested.value) };
+  }
   if (expression.startsWith('(') && expression.endsWith(')')) {
     let quote = null;
     let depth = 0;
@@ -459,43 +504,12 @@ function evaluateStaticLiteralComparison(left, right, operator) {
   return null;
 }
 
-function staticallyEvaluateBooleanExpression(expression, knownValues = {}) {
+function evaluateStaticBooleanExpressionModern(expression, knownValues = {}) {
   if (expression.trim() === '') return false;
   let index = 0;
 
-  const parseStaticLiteral = (offset) => {
+  const parseLiteral = (offset) => {
     const source = expression.slice(offset);
-    if (source.startsWith('(')) {
-      const nested = parseStaticLiteral(offset + 1);
-      if (nested) {
-        let closing = nested.end;
-        while (/\s/.test(expression[closing] ?? '')) closing += 1;
-        if (expression[closing] === ')') return { end: closing + 1, value: nested.value };
-      }
-      let quote = null;
-      let depth = 0;
-      for (let cursor = offset; cursor < expression.length; cursor += 1) {
-        const character = expression[cursor];
-        if (quote) {
-          if (character === quote) {
-            if (expression[cursor + 1] === quote) cursor += 1;
-            else quote = null;
-          }
-          continue;
-        }
-        if (character === "'" || character === '"') {
-          quote = character;
-          continue;
-        }
-        if (character === '(') depth += 1;
-        if (character !== ')') continue;
-        depth -= 1;
-        if (depth !== 0) continue;
-        const value = parseStaticExpressionValue(expression.slice(offset + 1, cursor), knownValues);
-        if (value !== null) return { end: cursor + 1, value: value.value };
-        break;
-      }
-    }
     const booleanLiteral = source.match(/^(true|false)(?![A-Za-z0-9_.-])/i);
     if (booleanLiteral) {
       return {
@@ -514,251 +528,108 @@ function staticallyEvaluateBooleanExpression(expression, knownValues = {}) {
         value: parseGithubNumericLiteral(numericLiteral[0])
       };
     }
-    const stringLiteral = parseGithubStringLiteral(expression, offset);
-    if (stringLiteral) return stringLiteral;
-    return null;
+    return parseGithubStringLiteral(expression, offset);
   };
 
   const skipWhitespace = () => {
     while (/\s/.test(expression[index] ?? '')) index += 1;
   };
 
-  const parsePrimary = () => {
+  const parseOperand = () => {
     skipWhitespace();
-    if (expression[index] === '!') {
-      index += 1;
-      const value = parsePrimary();
-      return value === null ? null : !value;
-    }
     if (expression[index] === '(') {
-      index += 1;
-      const value = parseOr();
+      const opening = index;
+      let quote = null;
+      let depth = 0;
+      let closing = -1;
+      for (let cursor = opening; cursor < expression.length; cursor += 1) {
+        const character = expression[cursor];
+        if (quote) {
+          if (character === quote) {
+            if (expression[cursor + 1] === quote) cursor += 1;
+            else quote = null;
+          }
+          continue;
+        }
+        if (character === "'" || character === '"') {
+          quote = character;
+          continue;
+        }
+        if (character === '(') depth += 1;
+        if (character !== ')') continue;
+        depth -= 1;
+        if (depth === 0) {
+          closing = cursor;
+          break;
+        }
+      }
+      if (closing >= 0) {
+        const staticValue = parseStaticExpressionValue(
+          expression.slice(opening + 1, closing),
+          knownValues
+        );
+        if (staticValue !== null) {
+          index = closing + 1;
+          return { value: staticValue.value, known: true };
+        }
+      }
+      index = opening + 1;
+      const nested = parseOr();
       skipWhitespace();
       if (expression[index] !== ')') return null;
       index += 1;
-      let comparisonIndex = index;
-      while (/\s/.test(expression[comparisonIndex] ?? '')) comparisonIndex += 1;
-      const operator = expression.slice(comparisonIndex).match(/^(===|!==|==|!=|<=|>=|<|>)/)?.[1];
-      if (operator) {
-        comparisonIndex += operator.length;
-        while (/\s/.test(expression[comparisonIndex] ?? '')) comparisonIndex += 1;
-        const rightLiteral = parseStaticLiteral(comparisonIndex);
-        if (rightLiteral) {
-          index = rightLiteral.end;
-          if (value === null) return null;
-          return evaluateStaticLiteralComparison(value, rightLiteral.value, operator);
-        }
-        const rightFunction = parseGithubFunctionCall(expression, comparisonIndex);
-        if (rightFunction) {
-          const rightValue = evaluateStaticGithubFunctionValue(rightFunction, knownValues);
-          index = rightFunction.end;
-          if (value === null || rightValue === null) return null;
-          return evaluateStaticLiteralComparison(value, rightValue.value, operator);
-        }
-      }
-      return value;
+      return { value: nested, known: nested !== null };
     }
 
     const functionCall = parseGithubFunctionCall(expression, index);
     if (functionCall) {
       index = functionCall.end;
-      const functionValue = evaluateStaticGithubFunctionValue(functionCall, knownValues);
-      if (functionValue === null) return null;
-      let comparisonIndex = functionCall.end;
-      while (/\s/.test(expression[comparisonIndex] ?? '')) comparisonIndex += 1;
-      const operator = expression.slice(comparisonIndex).match(/^(===|!==|==|!=|<=|>=|<|>)/)?.[1];
-      if (!operator) return githubExpressionTruthy(functionValue.value);
-      comparisonIndex += operator.length;
-      while (/\s/.test(expression[comparisonIndex] ?? '')) comparisonIndex += 1;
-      const rightLiteral = parseStaticLiteral(comparisonIndex);
-      if (rightLiteral) {
-        index = rightLiteral.end;
-        return evaluateStaticLiteralComparison(functionValue.value, rightLiteral.value, operator);
-      }
-      const rightFunction = parseGithubFunctionCall(expression, comparisonIndex);
-      if (rightFunction) {
-        const rightValue = evaluateStaticGithubFunctionValue(rightFunction, knownValues);
-        if (rightValue === null) {
-          index = rightFunction.end;
-          return null;
-        }
-        index = rightFunction.end;
-        return evaluateStaticLiteralComparison(functionValue.value, rightValue.value, operator);
-      }
-      return null;
+      const value = evaluateStaticGithubFunctionValue(functionCall, knownValues);
+      return { value: value?.value, known: value !== null };
     }
 
-    const leftLiteral = parseStaticLiteral(index);
-    if (leftLiteral) {
-      let comparisonIndex = leftLiteral.end;
-      while (/\s/.test(expression[comparisonIndex] ?? '')) comparisonIndex += 1;
-      const operator = expression.slice(comparisonIndex).match(/^(===|!==|==|!=|<=|>=|<|>)/)?.[1];
-      if (operator) {
-        comparisonIndex += operator.length;
-        while (/\s/.test(expression[comparisonIndex] ?? '')) comparisonIndex += 1;
-        const rightLiteral = parseStaticLiteral(comparisonIndex);
-        if (rightLiteral) {
-          index = rightLiteral.end;
-          return evaluateStaticLiteralComparison(leftLiteral.value, rightLiteral.value, operator);
-        }
-        const rightFunction = parseGithubFunctionCall(expression, comparisonIndex);
-        if (rightFunction) {
-          const rightValue = evaluateStaticGithubFunctionValue(rightFunction, knownValues);
-          if (rightValue !== null) {
-            index = rightFunction.end;
-            return evaluateStaticLiteralComparison(leftLiteral.value, rightValue.value, operator);
-          }
-        }
-      }
-    }
-
-    const literal = expression.slice(index).match(/^(true|false)(?![A-Za-z0-9_.-])/i);
+    const literal = parseLiteral(index);
     if (literal) {
-      index += literal[0].length;
-      return literal[1].toLowerCase() === 'true';
+      index = literal.end;
+      return { value: literal.value, known: true };
     }
 
-    const nullLiteral = expression.slice(index).match(/^(?:null|~)(?![A-Za-z0-9_.-])/i);
-    if (nullLiteral) {
-      index += nullLiteral[0].length;
-      return false;
-    }
-
-    const numericLiteral = expression
-      .slice(index)
-      .match(
-        /^-?(?:(?:0[xX][0-9a-fA-F]+)|(?:0[bB][01]+)|(?:0[oO][0-7]+)|(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)(?![A-Za-z0-9_.-])/
-      );
-    if (numericLiteral) {
-      index += numericLiteral[0].length;
-      return parseGithubNumericLiteral(numericLiteral[0]) !== 0;
-    }
-
-    const stringLiteral = parseGithubStringLiteral(expression, index);
-    if (stringLiteral) {
-      index = stringLiteral.end;
-      return stringLiteral.value.length > 0;
-    }
-
-    const leftReference = parseGithubReferenceExpression(expression, index, knownValues);
-    if (leftReference) {
-      let comparisonIndex = leftReference.end;
-      while (/\s/.test(expression[comparisonIndex] ?? '')) comparisonIndex += 1;
-      const operator = expression.slice(comparisonIndex).match(/^(===|!==|==|!=|<=|>=|<|>)/)?.[1];
-      if (!operator) {
-        index = leftReference.end;
-        return leftReference.value === undefined ? null : githubExpressionTruthy(leftReference.value);
-      }
-      comparisonIndex += operator.length;
-      while (/\s/.test(expression[comparisonIndex] ?? '')) comparisonIndex += 1;
-      const rightLiteral = parseStaticLiteral(comparisonIndex);
-      if (rightLiteral) {
-        index = rightLiteral.end;
-        if (leftReference.value === undefined) return null;
-        return evaluateStaticLiteralComparison(leftReference.value, rightLiteral.value, operator);
-      }
-      const rightFunction = parseGithubFunctionCall(expression, comparisonIndex);
-      if (rightFunction) {
-        const rightValue = evaluateStaticGithubFunctionValue(rightFunction, knownValues);
-        index = rightFunction.end;
-        if (rightValue === null || leftReference.value === undefined) return null;
-        return evaluateStaticLiteralComparison(leftReference.value, rightValue.value, operator);
-      }
-      const rightReference = parseGithubReferenceExpression(expression, comparisonIndex, knownValues);
-      if (rightReference) {
-        index = rightReference.end;
-        if (leftReference.value === undefined || rightReference.value === undefined) return null;
-        return evaluateStaticLiteralComparison(leftReference.value, rightReference.value, operator);
-      }
-      return null;
-    }
-
-    const comparison = expression
-      .slice(index)
-      .match(
-        /^((?:[A-Za-z_][A-Za-z0-9_.-]*|[A-Za-z_][A-Za-z0-9_.-]*\[['"][A-Za-z_][A-Za-z0-9_]*['"]\]))\s*(===|==|!==|!=|<=|>=|<|>)\s*/
-      );
-    if (comparison) {
-      const comparisonIndex = index + comparison[0].length;
-      const rightLiteral = parseStaticLiteral(comparisonIndex);
-      const knownKey = normalizeGithubReference(comparison[1]);
-      const knownValue = knownValues[knownKey];
-      if (rightLiteral) {
-        index = rightLiteral.end;
-        if (knownValue === undefined) return null;
-        return evaluateStaticLiteralComparison(knownValue, rightLiteral.value, comparison[2]);
-      }
-      const rightFunction = parseGithubFunctionCall(expression, comparisonIndex);
-      if (rightFunction) {
-        const rightValue = evaluateStaticGithubFunctionValue(rightFunction, knownValues);
-        if (rightValue !== null) {
-          index = rightFunction.end;
-          if (knownValue === undefined) return null;
-          return evaluateStaticLiteralComparison(knownValue, rightValue.value, comparison[2]);
-        }
-        index = rightFunction.end;
-        return null;
-      }
-      const rightReference = expression
-        .slice(comparisonIndex)
-        .match(/^(?:[A-Za-z_][A-Za-z0-9_.-]*|[A-Za-z_][A-Za-z0-9_.-]*\[['"][A-Za-z_][A-Za-z0-9_]*['"]\])/);
-      if (!rightReference) return null;
-      index = comparisonIndex + rightReference[0].length;
-      const rightKey = normalizeGithubReference(rightReference[0]);
-      if (knownValue === undefined || !Object.prototype.hasOwnProperty.call(knownValues, rightKey)) {
-        return null;
-      }
-      return evaluateStaticLiteralComparison(knownValue, knownValues[rightKey], comparison[2]);
-    }
-
-    const knownReference = expression
-      .slice(index)
-      .match(/^(?:[A-Za-z_][A-Za-z0-9_.-]*|[A-Za-z_][A-Za-z0-9_.-]*\[['"][A-Za-z_][A-Za-z0-9_]*['"]\])/);
-    if (knownReference) {
-      const knownKey = normalizeGithubReference(knownReference[0]);
-      if (Object.prototype.hasOwnProperty.call(knownValues, knownKey)) {
-        index += knownReference[0].length;
-        return githubExpressionTruthy(knownValues[knownKey]);
-      }
-    }
-
-    let quote = null;
-    let nestedParentheses = 0;
-    while (index < expression.length) {
-      const character = expression[index];
-      if (quote) {
-        if (character === quote && expression[index - 1] !== '\\') quote = null;
-        index += 1;
-        continue;
-      }
-      if (character === "'" || character === '"') {
-        quote = character;
-        index += 1;
-        continue;
-      }
-      if (character === '(') nestedParentheses += 1;
-      if (character === ')') {
-        if (nestedParentheses === 0) break;
-        nestedParentheses -= 1;
-      }
-      if (
-        nestedParentheses === 0 &&
-        (expression.startsWith('&&', index) || expression.startsWith('||', index))
-      ) {
-        break;
-      }
-      index += 1;
+    const reference = parseGithubReferenceExpression(expression, index, knownValues);
+    if (reference) {
+      index = reference.end;
+      return { value: reference.value, known: reference.value !== undefined };
     }
     return null;
   };
 
+  const parseUnary = () => {
+    skipWhitespace();
+    if (expression[index] !== '!') return parseOperand();
+    index += 1;
+    const operand = parseUnary();
+    if (!operand || !operand.known) return { value: undefined, known: false };
+    return { value: !githubExpressionTruthy(operand.value), known: true };
+  };
+
+  const parseComparison = () => {
+    const left = parseUnary();
+    if (!left) return null;
+    skipWhitespace();
+    const operator = expression.slice(index).match(/^(===|!==|==|!=|<=|>=|<|>)/)?.[1];
+    if (!operator) return left.known ? githubExpressionTruthy(left.value) : null;
+    index += operator.length;
+    const right = parseUnary();
+    if (!right || !left.known || !right.known) return null;
+    return evaluateStaticLiteralComparison(left.value, right.value, operator);
+  };
+
   function parseAnd() {
-    let value = parsePrimary();
+    let value = parseComparison();
     while (index < expression.length) {
       skipWhitespace();
       if (!expression.startsWith('&&', index)) return value;
       index += 2;
-      value = combineStaticBooleanValues(value, parsePrimary(), '&&');
+      value = combineStaticBooleanValues(value, parseComparison(), '&&');
     }
     return value;
   }
@@ -777,6 +648,11 @@ function staticallyEvaluateBooleanExpression(expression, knownValues = {}) {
   const value = parseOr();
   skipWhitespace();
   return index === expression.length ? value : null;
+}
+
+function staticallyEvaluateBooleanExpression(expression, knownValues = {}) {
+  return evaluateStaticBooleanExpressionModern(expression, knownValues);
+
 }
 
 function extractYamlCondition(content, patterns) {
@@ -838,6 +714,35 @@ function workflowUsesWorkflowRunTrigger(content) {
   return false;
 }
 
+function inspectReleaseWorkflowTriggerPolicy(content, path) {
+  const expectedMessage = `${path}: release workflow trigger must be exactly workflow_run with workflows [CI] and types [completed]`;
+  const parsed = parseWorkflowYaml(content);
+  if (!parsed || !parsed.on || typeof parsed.on !== 'object' || Array.isArray(parsed.on)) {
+    return [expectedMessage];
+  }
+
+  const triggerNames = Object.keys(parsed.on);
+  if (triggerNames.length !== 1 || triggerNames[0] !== 'workflow_run') {
+    return [expectedMessage];
+  }
+
+  const workflowRun = parsed.on.workflow_run;
+  const isObject = workflowRun && typeof workflowRun === 'object' && !Array.isArray(workflowRun);
+  const hasExactList = (value, expected) =>
+    Array.isArray(value) &&
+    value.length === expected.length &&
+    value.every((item, index) => item === expected[index]);
+  if (
+    !isObject ||
+    Object.keys(workflowRun).length !== 2 ||
+    !hasExactList(workflowRun.workflows, ['CI']) ||
+    !hasExactList(workflowRun.types, ['completed'])
+  ) {
+    return [expectedMessage];
+  }
+  return [];
+}
+
 function evaluateYamlConditionValue(value, knownValues) {
   if (value === null) return false;
   if (typeof value === 'boolean') return value;
@@ -846,6 +751,23 @@ function evaluateYamlConditionValue(value, knownValues) {
   const normalized = normalizeWorkflowCondition(value);
   const expression = normalized.match(/^\$\{\{([\s\S]*)\}\}$/)?.[1]?.trim() ?? normalized;
   return staticallyEvaluateBooleanExpression(expression, knownValues);
+}
+
+function isFailureDiagnosticsStep(step) {
+  return (
+    step &&
+    typeof step === 'object' &&
+    step.name === 'Preserve failed assurance diagnostics' &&
+    typeof step.uses === 'string' &&
+    step.uses.startsWith('actions/upload-artifact@')
+  );
+}
+
+function isFailureDiagnosticsCondition(value) {
+  if (typeof value !== 'string') return false;
+  const normalized = normalizeWorkflowCondition(value);
+  const expression = normalized.match(/^\$\{\{([\s\S]*)\}\}$/)?.[1]?.trim() ?? normalized;
+  return /^failure\(\)$/i.test(expression);
 }
 
 function workflowYamlHasStaticallyFalseCondition(content, knownValues = {}) {
@@ -858,7 +780,8 @@ function workflowYamlHasStaticallyFalseCondition(content, knownValues = {}) {
       if (!step || typeof step !== 'object') continue;
       if (
         Object.prototype.hasOwnProperty.call(step, 'if') &&
-        evaluateYamlConditionValue(step.if, knownValues) === false
+        evaluateYamlConditionValue(step.if, knownValues) === false &&
+        !(isFailureDiagnosticsStep(step) && isFailureDiagnosticsCondition(step.if))
       ) {
         return true;
       }
@@ -920,6 +843,13 @@ function workflowStepHasStaticallyFalseCondition(step, knownValues = {}) {
 
   const normalized = normalizeWorkflowCondition(condition);
   const expression = normalized.match(/^\$\{\{([\s\S]*)\}\}$/)?.[1]?.trim() ?? normalized;
+  if (
+    /^failure\(\)$/i.test(expression) &&
+    /name:\s*Preserve failed assurance diagnostics\b/.test(step) &&
+    /uses:\s*actions\/upload-artifact@/.test(step)
+  ) {
+    return false;
+  }
   return staticallyEvaluateBooleanExpression(expression, knownValues) === false;
 }
 
@@ -952,6 +882,7 @@ export function inspectReleaseWorkflowPolicy(
   const knownValues = hasWorkflowRunTrigger
     ? { 'github.event_name': 'workflow_run' }
     : {};
+  findings.push(...inspectReleaseWorkflowTriggerPolicy(content, path));
   const prepublicationGateIndex = content.indexOf('name: Run pre-publication candidate assurance');
   const blockingGateIndex = content.indexOf('name: Run blocking Triple-A release gate');
   const scannerSteps = steps.filter((step) =>
@@ -960,9 +891,6 @@ export function inspectReleaseWorkflowPolicy(
   const buildSteps = steps.filter((step) =>
     /uses:\s*docker\/build-push-action@[0-9a-f]{40}\b/.test(step)
   );
-  if (!hasWorkflowRunTrigger) {
-    findings.push(`${path}: release workflow must retain the workflow_run trigger`);
-  }
   if (
     workflowJobHasStaticallyFalseCondition(content, knownValues) ||
     workflowYamlHasStaticallyFalseCondition(content, knownValues)
