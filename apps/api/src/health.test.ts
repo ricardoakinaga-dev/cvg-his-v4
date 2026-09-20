@@ -11,7 +11,10 @@ import {
   resolveProductionReadiness
 } from './bootstrap.js';
 import { createHealthResponse, createLivenessResponse, createReadinessResponse } from './health.js';
-import { resolveRedisHealthStatus } from './routes/health-routes.js';
+import {
+  resolveAttachmentDependencyReadiness,
+  resolveRedisHealthStatus
+} from './routes/health-routes.js';
 import type { RateLimiterHealth } from '@cvg-his-v2/shared-rate-limiter';
 import type { RuntimeRepositories } from './runtime.js';
 
@@ -300,6 +303,103 @@ test('createReadinessResponse returns  not ready when worker dependency is degra
 
   assert.equal(response.readiness.ready, false);
   assert.equal(response.dependencies.worker.state, 'degraded');
+});
+
+test('createReadinessResponse fails closed when an attachment provider probe fails', () => {
+  const response = createReadinessResponse(
+    'cvg-his-v2-api',
+    'production',
+    '0.1.0',
+    { headers: {} } as never,
+    createDeps({
+      databaseHealthy: true,
+      databaseConfigured: true,
+      persistenceMode: 'database',
+      workerReady: true,
+      productionReady: true,
+      attachmentScannerHealthy: true,
+      attachmentScannerDetail: 'scanner ok',
+      attachmentStorageHealthy: false,
+      attachmentStorageDetail: 'sanitized storage failure'
+    })
+  );
+
+  assert.equal(response.ok, false);
+  assert.equal(response.readiness.ready, false);
+  assert.equal(response.dependencies.attachmentScanner?.state, 'healthy');
+  assert.equal(response.dependencies.attachmentStorage?.state, 'unhealthy');
+  assert.equal(response.dependencies.attachmentStorage?.detail, 'sanitized storage failure');
+});
+
+test('production attachment readiness probes both runtime providers', async () => {
+  let scannerProbes = 0;
+  let storageProbes = 0;
+  const result = await resolveAttachmentDependencyReadiness({
+    environment: 'production',
+    attachmentScanner: {
+      productionReady: true,
+      healthCheck: async () => {
+        scannerProbes += 1;
+        return { healthy: true, provider: 'clamav', detail: 'private' };
+      },
+      scan: async () => ({ status: 'available', provider: 'clamav' })
+    },
+    fileStorage: {
+      productionReady: true,
+      healthCheck: async () => {
+        storageProbes += 1;
+        return { healthy: true, provider: 's3', detail: 'private' };
+      },
+      store: async () => ({ storageKey: '', checksum: '', sizeBytes: 0 }),
+      retrieve: async () => null,
+      delete: async () => false,
+      exists: async () => false
+    }
+  });
+
+  assert.equal(result.ready, true);
+  assert.equal(scannerProbes, 1);
+  assert.equal(storageProbes, 1);
+  assert.equal(result.scanner.detail, 'ClamAV attachment scanner is reachable.');
+  assert.equal(result.storage.detail, 'Private attachment bucket is reachable.');
+});
+
+test('production attachment readiness is bounded and sanitizes failures', async () => {
+  let scannerProbeCancelled = false;
+  const result = await resolveAttachmentDependencyReadiness({
+    environment: 'production',
+    attachmentScanner: {
+      productionReady: true,
+      healthCheck: async (probeOptions: { readonly signal?: AbortSignal } = {}) =>
+        new Promise((resolve) => {
+          probeOptions.signal?.addEventListener(
+            'abort',
+            () => {
+              scannerProbeCancelled = true;
+              resolve({ healthy: false, provider: 'clamav', detail: 'cancelled' });
+            },
+            { once: true }
+          );
+        }),
+      scan: async () => ({ status: 'available', provider: 'clamav' })
+    },
+    fileStorage: {
+      productionReady: true,
+      healthCheck: async () => {
+        throw new Error('secret-access-key at s3.internal');
+      },
+      store: async () => ({ storageKey: '', checksum: '', sizeBytes: 0 }),
+      retrieve: async () => null,
+      delete: async () => false,
+      exists: async () => false
+    }
+  });
+
+  assert.equal(result.ready, false);
+  assert.equal(scannerProbeCancelled, true);
+  assert.equal(result.scanner.healthy, false);
+  assert.equal(result.storage.healthy, false);
+  assert.doesNotMatch(result.storage.detail, /secret-access-key|s3\.internal/);
 });
 
 test('resolveProductionReadiness accepts derived owner-patient link fallback with twelve repositories', () => {

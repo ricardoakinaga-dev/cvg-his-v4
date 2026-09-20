@@ -35,3 +35,6 @@ docs/frontend/implementation/evidence/
 docs/auditorias/evidencias-*/secrets.log
 .cvg-*.png
 tmp/
+
+# Generated Gauntlet state is externalized and must not enter publishable history.
+.gauntlet/state.json

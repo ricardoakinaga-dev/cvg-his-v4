@@ -1,7 +1,8 @@
 {{- /*
-Shared storage PVC for API + worker local file storage
+Optional local attachment storage for the API. Multi-replica installations
+must use an operator-provided storage class that supports ReadWriteMany.
 */ -}}
-{{- if .Values.persistence.enabled }}
+{{- if and .Values.persistence.enabled (not .Values.api.attachmentStorage.existingSecret) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -10,7 +11,7 @@ metadata:
     {{- include "cvg-his-v2.labels" . | nindent 4 }}
 spec:
   accessModes:
-    - ReadWriteOnce
+    - {{ .Values.persistence.accessMode }}
   {{- if .Values.persistence.storageClass }}
   storageClassName: {{ .Values.persistence.storageClass }}
   {{- end }}

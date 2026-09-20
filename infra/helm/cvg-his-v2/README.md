@@ -13,6 +13,8 @@ Este chart agora segue uma trilha multiambiente explícita:
 - `ServiceAccount` explícito com `automountServiceAccountToken=false` por padrão.
 - `PodDisruptionBudget` explícito para `api`, `worker` e `spa`.
 - `ConfigMap` por serviço para reduzir drift entre valores, templates e runtime.
+- O pod template da SPA inclui `checksum/nginx-config`; mudanças no proxy nginx
+  disparam rollout mesmo quando a imagem permanece igual.
 - `worker` expõe `Service` de health/metrics e usa probes HTTP (`/live`, `/ready`, `/health`) em vez de `exec`.
 - `pnpm validate:helm` executa `helm lint` e `helm template` para `dev`, `staging` e `prod`, validando também:
   - presença de `Deployment`, `Service` e `PodDisruptionBudget` por serviço
@@ -24,6 +26,16 @@ Este chart agora segue uma trilha multiambiente explícita:
   `pre-install`/`pre-upgrade`. No PostgreSQL embutido, init containers da API e
   do worker concluem as duas etapas antes dos containers da aplicação; o runner
   de migration usa advisory lock para serializar réplicas concorrentes.
+- O worker não usa filesystem de anexos e não monta o volume da API. Em
+  staging/produção, anexos usam o backend S3-compatible configurado por
+  `api.attachmentStorage.existingSecret`, e `persistence.enabled=false` evita
+  anunciar HA sobre um PVC `ReadWriteOnce`.
+- O modo local por PVC continua disponível para instalações sem S3. Com mais
+  de uma réplica da API, `persistence.enabled=false` também falha fechado para
+  impedir `emptyDir` divergente por réplica. O chart só aceita HA local quando
+  `persistence.accessMode=ReadWriteMany`; nesse caso o operador também deve
+  fornecer um `storageClass` realmente compatível com RWX. O chart não escolhe
+  nem instala provisioner.
 
 ## Render por ambiente
 
@@ -51,18 +63,23 @@ helm template cvg-his-v2-staging infra/helm/cvg-his-v2 \
 Produção:
 
 ```bash
-RELEASE_IMAGE_SHA='sha256:<digest-publicado-pelo-release>'
+RELEASE_MANIFEST='artifacts/release/release-manifest.json'
+API_IMAGE_SHA="$(jq -er '.images[] | select(.component == "api") | .digest' "$RELEASE_MANIFEST")"
+WORKER_IMAGE_SHA="$(jq -er '.images[] | select(.component == "worker") | .digest' "$RELEASE_MANIFEST")"
+SPA_IMAGE_SHA="$(jq -er '.images[] | select(.component == "spa") | .digest' "$RELEASE_MANIFEST")"
 helm template cvg-his-v2-prod infra/helm/cvg-his-v2 \
   -f infra/helm/cvg-his-v2/values.yaml \
   -f infra/helm/cvg-his-v2/values.prod.yaml \
-  --set-string api.image.sha="$RELEASE_IMAGE_SHA" \
-  --set-string worker.image.sha="$RELEASE_IMAGE_SHA" \
-  --set-string spa.image.sha="$RELEASE_IMAGE_SHA"
+  --set-string api.image.sha="$API_IMAGE_SHA" \
+  --set-string worker.image.sha="$WORKER_IMAGE_SHA" \
+  --set-string spa.image.sha="$SPA_IMAGE_SHA"
 ```
 
 Em produção, os três `image.sha` são obrigatórios. O chart falha fechado se
 qualquer digest não for injetado pelo release, evitando fallback para uma tag
-mutável.
+mutável. Cada valor deve vir da entrada do componente correspondente em
+`release-manifest.json`; digests de repositórios diferentes não são
+intercambiáveis.
 
 Validação de guardrails:
 
@@ -94,9 +111,9 @@ helm upgrade --install cvg-his-v2-prod infra/helm/cvg-his-v2 \
   -n cvg-his \
   -f infra/helm/cvg-his-v2/values.yaml \
   -f infra/helm/cvg-his-v2/values.prod.yaml \
-  --set-string api.image.sha="$RELEASE_IMAGE_SHA" \
-  --set-string worker.image.sha="$RELEASE_IMAGE_SHA" \
-  --set-string spa.image.sha="$RELEASE_IMAGE_SHA" \
+  --set-string api.image.sha="$API_IMAGE_SHA" \
+  --set-string worker.image.sha="$WORKER_IMAGE_SHA" \
+  --set-string spa.image.sha="$SPA_IMAGE_SHA" \
   --wait \
   --atomic
 ```

@@ -110,6 +110,7 @@ jobs:
         with:
           context: .
           file: apps/api/Dockerfile
+          platforms: linux/amd64
           push: false
           tags: cvg-his-v4-api:${{ env.RELEASE_SHA }}
           outputs: type=oci,dest=/tmp/api-image.tar
@@ -123,6 +124,7 @@ jobs:
         with:
           context: .
           file: apps/worker/Dockerfile
+          platforms: linux/amd64
           push: false
           tags: cvg-his-v4-worker:${{ env.RELEASE_SHA }}
           outputs: type=oci,dest=/tmp/worker-image.tar
@@ -136,6 +138,7 @@ jobs:
         with:
           context: .
           file: apps/spa/Dockerfile
+          platforms: linux/amd64
           push: false
           tags: cvg-his-v4-spa:${{ env.RELEASE_SHA }}
           outputs: type=oci,dest=/tmp/spa-image.tar
@@ -176,6 +179,65 @@ jobs:
           exit-code: '1'
           format: table
 
+      - name: Install pinned Helm for exact-image runtime validation
+        env:
+          CVG_HELM_VERSION: v3.15.4
+          CVG_HELM_SHA256: 11400fecfc07fd6f034863e4e0c4c4445594673fd2a129e701fe41f31170cfa9
+          CVG_HELM_IMAGE: alpine/helm@sha256:105741fa6621ed9a3ea944066de78bb27d4b9bb93a56ce8e7cb4d621e1e4bbf2
+          CVG_HELM_BINARY_SHA256: f07f23e8048f704294a670378d5bd36e9f84c1552eb844af82dcd82a17883647
+        run: |
+          set -euo pipefail
+          helm_archive="helm-${CVG_HELM_VERSION#v}-linux-amd64.tar.gz"
+          helm_url="https://get.helm.sh/${helm_archive}"
+          helm_fallback_url="https://get-helm-front-door-cdn-c9drhfggd8ewfzck.z03.azurefd.net/${helm_archive}"
+          if curl --fail --silent --show-error --location --retry 5 --retry-delay 2 --retry-all-errors "${helm_url}" --output "/tmp/${helm_archive}" || \
+            curl --fail --silent --show-error --location --retry 5 --retry-delay 2 --retry-all-errors "${helm_fallback_url}" --output "/tmp/${helm_archive}"; then
+            echo "${CVG_HELM_SHA256}  /tmp/${helm_archive}" | sha256sum --check -
+            tar -xzf "/tmp/${helm_archive}" -C /tmp
+            sudo install "/tmp/linux-amd64/helm" /usr/local/bin/helm
+          else
+            echo "Helm archive endpoints unavailable; using the immutable official Helm image fallback."
+            docker pull --quiet "${CVG_HELM_IMAGE}"
+            helm_container="$(docker create "${CVG_HELM_IMAGE}")"
+            trap 'docker rm --force "${helm_container}" >/dev/null' EXIT
+            docker cp "${helm_container}:/usr/bin/helm" /tmp/helm
+            echo "${CVG_HELM_BINARY_SHA256}  /tmp/helm" | sha256sum --check -
+            sudo install /tmp/helm /usr/local/bin/helm
+          fi
+          test -x /usr/local/bin/helm
+          test "$(command -v helm)" = "/usr/local/bin/helm"
+          helm version --short
+
+      - name: Load the exact scanned OCI candidates without rebuilding
+        run: |
+          set -euo pipefail
+          docker load --platform linux/amd64 --input /tmp/api-image.tar
+          docker load --platform linux/amd64 --input /tmp/worker-image.tar
+          docker load --platform linux/amd64 --input /tmp/spa-image.tar
+          docker image inspect "cvg-his-v4-api:${RELEASE_SHA}" >/dev/null
+          docker image inspect "cvg-his-v4-worker:${RELEASE_SHA}" >/dev/null
+          docker image inspect "cvg-his-v4-spa:${RELEASE_SHA}" >/dev/null
+
+      - name: Start isolated PostgreSQL for exact-image validation
+        run: pnpm test:db:start
+
+      - name: Prove the exact OCI candidates at production runtime boundaries
+        env:
+          RELEASE_IMAGE_MODE: prebuilt
+          RELEASE_IMAGE_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_release_image_test
+          RELEASE_SOURCE_SHA: ${{ env.RELEASE_SHA }}
+          RELEASE_API_IMAGE_REF: cvg-his-v4-api:${{ env.RELEASE_SHA }}
+          RELEASE_WORKER_IMAGE_REF: cvg-his-v4-worker:${{ env.RELEASE_SHA }}
+          RELEASE_SPA_IMAGE_REF: cvg-his-v4-spa:${{ env.RELEASE_SHA }}
+          RELEASE_API_OCI_DIGEST: ${{ steps.api.outputs.digest }}
+          RELEASE_WORKER_OCI_DIGEST: ${{ steps.worker.outputs.digest }}
+          RELEASE_SPA_OCI_DIGEST: ${{ steps.spa.outputs.digest }}
+          RELEASE_API_OCI_ARCHIVE: /tmp/api-image.tar
+          RELEASE_WORKER_OCI_ARCHIVE: /tmp/worker-image.tar
+          RELEASE_SPA_OCI_ARCHIVE: /tmp/spa-image.tar
+          RELEASE_IMAGE_EVIDENCE_OUTPUT: artifacts/release/runtime-image-validation.json
+        run: pnpm validate:release-images
+
       - name: Setup ORAS
         uses: oras-project/setup-oras@22ce207df3b08e061f537244349aac6ae1d214f6 # v1.2.4
         with:
@@ -189,6 +251,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish vetted image candidates to quarantine without rebuilding
+        env:
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          WORKER_DIGEST: ${{ steps.worker.outputs.digest }}
+          SPA_DIGEST: ${{ steps.spa.outputs.digest }}
         run: |
           set -euo pipefail
           mkdir -p /tmp/api-image /tmp/worker-image /tmp/spa-image
@@ -198,6 +264,9 @@ jobs:
           oras copy --recursive --from-oci-layout "/tmp/api-image:${RELEASE_SHA}" "${API_CANDIDATE_IMAGE}"
           oras copy --recursive --from-oci-layout "/tmp/worker-image:${RELEASE_SHA}" "${WORKER_CANDIDATE_IMAGE}"
           oras copy --recursive --from-oci-layout "/tmp/spa-image:${RELEASE_SHA}" "${SPA_CANDIDATE_IMAGE}"
+          test "$(oras resolve "${API_CANDIDATE_IMAGE}")" = "${API_DIGEST}"
+          test "$(oras resolve "${WORKER_CANDIDATE_IMAGE}")" = "${WORKER_DIGEST}"
+          test "$(oras resolve "${SPA_CANDIDATE_IMAGE}")" = "${SPA_DIGEST}"
 
       - name: Attest API image
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
@@ -230,9 +299,9 @@ jobs:
         run: |
           set -euo pipefail
           SIGNER_WORKFLOW="${GITHUB_REPOSITORY}/.github/workflows/release-artifacts.yml"
-          gh attestation verify "oci://ghcr.io/${{ github.repository_owner }}/cvg-his-v4-api@${API_DIGEST}" --repo "${GITHUB_REPOSITORY}" --signer-workflow "${SIGNER_WORKFLOW}" --source-ref main --source-digest "${RELEASE_SHA}" --format json > artifacts/release/api-attestation-verification.json
-          gh attestation verify "oci://ghcr.io/${{ github.repository_owner }}/cvg-his-v4-worker@${WORKER_DIGEST}" --repo "${GITHUB_REPOSITORY}" --signer-workflow "${SIGNER_WORKFLOW}" --source-ref main --source-digest "${RELEASE_SHA}" --format json > artifacts/release/worker-attestation-verification.json
-          gh attestation verify "oci://ghcr.io/${{ github.repository_owner }}/cvg-his-v4-spa@${SPA_DIGEST}" --repo "${GITHUB_REPOSITORY}" --signer-workflow "${SIGNER_WORKFLOW}" --source-ref main --source-digest "${RELEASE_SHA}" --format json > artifacts/release/spa-attestation-verification.json
+          gh attestation verify "oci://ghcr.io/${{ github.repository_owner }}/cvg-his-v4-api@${API_DIGEST}" --repo "${GITHUB_REPOSITORY}" --signer-workflow "${SIGNER_WORKFLOW}" --source-ref refs/heads/main --source-digest "${RELEASE_SHA}" --format json > artifacts/release/api-attestation-verification.json
+          gh attestation verify "oci://ghcr.io/${{ github.repository_owner }}/cvg-his-v4-worker@${WORKER_DIGEST}" --repo "${GITHUB_REPOSITORY}" --signer-workflow "${SIGNER_WORKFLOW}" --source-ref refs/heads/main --source-digest "${RELEASE_SHA}" --format json > artifacts/release/worker-attestation-verification.json
+          gh attestation verify "oci://ghcr.io/${{ github.repository_owner }}/cvg-his-v4-spa@${SPA_DIGEST}" --repo "${GITHUB_REPOSITORY}" --signer-workflow "${SIGNER_WORKFLOW}" --source-ref refs/heads/main --source-digest "${RELEASE_SHA}" --format json > artifacts/release/spa-attestation-verification.json
 
       - name: Generate digest-bound release-set manifest for the gate
         env:

@@ -21,7 +21,8 @@ const environments = [
     values: path.join(chartDir, 'values.dev.yaml'),
     expectManagedSecrets: true,
     expectEmbeddedDatastores: true,
-    expectApiProbes: false
+    expectApiProbes: false,
+    expectLocalAttachmentStorage: true
   },
   {
     name: 'staging',
@@ -29,7 +30,8 @@ const environments = [
     values: path.join(chartDir, 'values.staging.yaml'),
     expectManagedSecrets: false,
     expectEmbeddedDatastores: false,
-    expectApiProbes: true
+    expectApiProbes: true,
+    expectLocalAttachmentStorage: false
   },
   {
     name: 'prod',
@@ -37,10 +39,15 @@ const environments = [
     values: path.join(chartDir, 'values.prod.yaml'),
     expectManagedSecrets: false,
     expectEmbeddedDatastores: false,
-    expectApiProbes: true
+    expectApiProbes: true,
+    expectLocalAttachmentStorage: false
   }
 ];
-const validationImageDigest = `sha256:${'a'.repeat(64)}`;
+const validationImageDigests = {
+  api: `sha256:${'a'.repeat(64)}`,
+  worker: `sha256:${'b'.repeat(64)}`,
+  spa: `sha256:${'c'.repeat(64)}`
+};
 
 function runHelm(args) {
   return execFileSync(helmExecutable, args, {
@@ -48,6 +55,20 @@ function runHelm(args) {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe']
   });
+}
+
+function assertHelmFailure(args, expectedMessage) {
+  const result = spawnSync(helmExecutable, args, {
+    cwd: rootDir,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
+  assert(result.status !== 0, `Helm command unexpectedly succeeded: ${args.join(' ')}`);
+  assert(
+    output.includes(expectedMessage),
+    `Helm failure did not include the expected guardrail: ${expectedMessage}`
+  );
 }
 
 function getHelmVersion() {
@@ -103,6 +124,15 @@ function validateStaticChart() {
     'values.prod.yaml must declare the production environment'
   );
   assert(
+    production.persistence?.enabled === false &&
+      Boolean(production.api?.attachmentStorage?.existingSecret),
+    'Production must use S3-compatible attachment storage without a shared local PVC'
+  );
+  assert(
+    base.persistence?.accessMode === 'ReadWriteOnce',
+    'Single-replica local attachment storage must declare its access mode explicitly'
+  );
+  assert(
     helmHelpers.includes('api.image.sha is required for production image immutability') &&
       helmHelpers.includes('worker.image.sha is required for production image immutability') &&
       helmHelpers.includes('spa.image.sha is required for production image immutability') &&
@@ -145,11 +175,21 @@ function validateStaticChart() {
     path.join(chartDir, 'templates', 'worker-deployment.yaml'),
     'utf8'
   );
+  const spaDeploymentTemplate = fs.readFileSync(
+    path.join(chartDir, 'templates', 'spa-deployment.yaml'),
+    'utf8'
+  );
+  const configMapTemplate = fs.readFileSync(
+    path.join(chartDir, 'templates', 'configmap.yaml'),
+    'utf8'
+  );
+  const spaNginxTemplate = fs.readFileSync(path.join(chartDir, 'files', 'spa-nginx.conf'), 'utf8');
   const dockerCompose = fs.readFileSync(path.join(rootDir, 'docker-compose.v2.yml'), 'utf8');
   const databaseMaintenanceJobs = fs.readFileSync(
     path.join(chartDir, 'templates', 'database-maintenance-jobs.yaml'),
     'utf8'
   );
+  const chartReadme = fs.readFileSync(path.join(chartDir, 'README.md'), 'utf8');
   assert(
     apiDeploymentTemplate.includes('name: SETUP_BOOTSTRAP_TOKEN') &&
       apiDeploymentTemplate.includes('cvg-his-v2.api.setupSecretName'),
@@ -171,6 +211,16 @@ function validateStaticChart() {
     'Helm must run canonical database migrations before runtime-role reconciliation'
   );
   assert(
+    chartReadme.includes('API_IMAGE_SHA=') &&
+      chartReadme.includes('WORKER_IMAGE_SHA=') &&
+      chartReadme.includes('SPA_IMAGE_SHA=') &&
+      chartReadme.includes('--set-string api.image.sha="$API_IMAGE_SHA"') &&
+      chartReadme.includes('--set-string worker.image.sha="$WORKER_IMAGE_SHA"') &&
+      chartReadme.includes('--set-string spa.image.sha="$SPA_IMAGE_SHA"') &&
+      !chartReadme.includes('RELEASE_IMAGE_SHA'),
+    'Production runbook must bind API, worker, and SPA to their component-specific release digests'
+  );
+  assert(
     helmHelpers.includes('cvg-his-v2.databaseMaintenance.initContainers') &&
       helmHelpers.includes('packages/db/dist/migrate.js') &&
       helmHelpers.includes('packages/db/dist/reconcile-runtime-roles.js'),
@@ -188,6 +238,49 @@ function validateStaticChart() {
       workerDeploymentTemplate.includes('worker.reportsUser.existingSecret') &&
       workerDeploymentTemplate.includes('optional: false'),
     'Production-like worker must load WORKER_REPORTS_USER_ID from a required Secret key'
+  );
+  assert(
+    spaDeploymentTemplate.includes('mountPath: /tmp') &&
+      spaDeploymentTemplate.includes('mountPath: /var/cache/nginx') &&
+      spaDeploymentTemplate.includes('mountPath: /etc/nginx/conf.d/default.conf') &&
+      spaDeploymentTemplate.includes('subPath: default.conf') &&
+      spaDeploymentTemplate.includes('name: nginx-config') &&
+      spaDeploymentTemplate.includes('name: nginx-runtime') &&
+      spaDeploymentTemplate.includes('name: nginx-cache'),
+    'SPA deployment must mount writable nginx runtime paths for a read-only root filesystem'
+  );
+  assert(
+    spaNginxTemplate.includes('server __API_UPSTREAM__;') &&
+      spaNginxTemplate.includes('__API_RESOLVER__') &&
+      configMapTemplate.includes('.Files.Get "files/spa-nginx.conf"') &&
+      configMapTemplate.includes('include "cvg-his-v2.api.fullname"') &&
+      configMapTemplate.includes('replace "__API_UPSTREAM__"'),
+    'SPA nginx template must render the release-scoped Helm API Service'
+  );
+  assert(
+    apiDeploymentTemplate.includes('persistence.accessMode=ReadWriteMany') &&
+      apiDeploymentTemplate.includes('persistence.enabled=true') &&
+      apiDeploymentTemplate.includes('per-replica emptyDir storage is not safe for HA') &&
+      apiDeploymentTemplate.includes('operator-provided RWX storageClass') &&
+      apiDeploymentTemplate.includes('(empty .Values.persistence.storageClass)'),
+    'Multi-replica local attachment storage must fail closed unless persistence and RWX are explicit'
+  );
+  assert(
+    !workerDeploymentTemplate.includes('mountPath: /srv/cvg-his-v2/storage') &&
+      !workerDeploymentTemplate.includes('claimName:') &&
+      !workerDeploymentTemplate.includes('name: storage'),
+    'Worker must not mount the API attachment filesystem'
+  );
+  const composeConfig = YAML.parse(dockerCompose);
+  const composeWorkerVolumes = composeConfig?.services?.['cvg-his-v2-worker']?.volumes ?? [];
+  assert(
+    !composeWorkerVolumes.some((volume) => String(volume).includes('/srv/cvg-his-v2/storage')),
+    'Compose worker must not mount the API attachment filesystem'
+  );
+  assert(
+    spaDeploymentTemplate.includes('checksum/nginx-config:') &&
+      spaDeploymentTemplate.includes('sha256sum'),
+    'SPA pod template must checksum nginx configuration to trigger rollouts'
   );
 
   for (const environment of environments) {
@@ -277,17 +370,82 @@ if (requireExecutableHelm && !isRequiredHelmVersion(helmVersion)) {
   );
 }
 
+assertHelmFailure(
+  [
+    'template',
+    'cvg-his-v2-local-ha-invalid',
+    chartDir,
+    '-f',
+    baseValues,
+    '-f',
+    path.join(chartDir, 'values.dev.yaml'),
+    '--set',
+    'api.replicaCount=2'
+  ],
+  'api.replicaCount > 1 with local attachment storage requires persistence.accessMode=ReadWriteMany'
+);
+
+assertHelmFailure(
+  [
+    'template',
+    'cvg-his-v2-local-ha-ephemeral-invalid',
+    chartDir,
+    '-f',
+    baseValues,
+    '-f',
+    path.join(chartDir, 'values.dev.yaml'),
+    '--set',
+    'api.replicaCount=2',
+    '--set',
+    'persistence.enabled=false'
+  ],
+  'per-replica emptyDir storage is not safe for HA'
+);
+
+assertHelmFailure(
+  [
+    'template',
+    'cvg-his-v2-local-ha-missing-class',
+    chartDir,
+    '-f',
+    baseValues,
+    '-f',
+    path.join(chartDir, 'values.dev.yaml'),
+    '--set',
+    'api.replicaCount=2',
+    '--set-string',
+    'persistence.accessMode=ReadWriteMany'
+  ],
+  'operator-provided RWX storageClass'
+);
+
+runHelm([
+  'template',
+  'cvg-his-v2-local-ha-rwx',
+  chartDir,
+  '-f',
+  baseValues,
+  '-f',
+  path.join(chartDir, 'values.dev.yaml'),
+  '--set',
+  'api.replicaCount=2',
+  '--set-string',
+  'persistence.accessMode=ReadWriteMany',
+  '--set-string',
+  'persistence.storageClass=operator-rwx-class'
+]);
+
 for (const environment of environments) {
   const values = readYamlFile(environment.values);
   const imageOverrideArgs =
     environment.name === 'prod'
       ? [
           '--set-string',
-          `api.image.sha=${validationImageDigest}`,
+          `api.image.sha=${validationImageDigests.api}`,
           '--set-string',
-          `worker.image.sha=${validationImageDigest}`,
+          `worker.image.sha=${validationImageDigests.worker}`,
           '--set-string',
-          `spa.image.sha=${validationImageDigest}`
+          `spa.image.sha=${validationImageDigests.spa}`
         ]
       : [];
   const lintArgs = [
@@ -323,6 +481,8 @@ for (const environment of environments) {
   const apiPdb = findDoc(docs, 'PodDisruptionBudget', `${prefix}-api`);
   const workerPdb = findDoc(docs, 'PodDisruptionBudget', `${prefix}-worker`);
   const spaPdb = findDoc(docs, 'PodDisruptionBudget', `${prefix}-spa`);
+  const spaNginxConfig = findDoc(docs, 'ConfigMap', `${prefix}-spa-config-nginx`);
+  const attachmentStoragePvc = findDoc(docs, 'PersistentVolumeClaim', `${prefix}-storage`);
 
   assert(apiDeployment, `${environment.name}: API deployment not rendered`);
   assert(workerDeployment, `${environment.name}: worker deployment not rendered`);
@@ -333,10 +493,87 @@ for (const environment of environments) {
   assert(apiPdb, `${environment.name}: API PodDisruptionBudget not rendered`);
   assert(workerPdb, `${environment.name}: worker PodDisruptionBudget not rendered`);
   assert(spaPdb, `${environment.name}: SPA PodDisruptionBudget not rendered`);
+  assert(spaNginxConfig, `${environment.name}: SPA nginx ConfigMap not rendered`);
 
   const apiContainer = apiDeployment.spec.template.spec.containers[0];
   const workerContainer = workerDeployment.spec.template.spec.containers[0];
+  const spaContainer = spaDeployment.spec.template.spec.containers[0];
   const setupTokenEnv = apiContainer.env?.find((entry) => entry.name === 'SETUP_BOOTSTRAP_TOKEN');
+  const renderedSpaNginx = spaNginxConfig.data?.['default.conf'] ?? '';
+
+  for (const [label, deployment] of [
+    ['API', apiDeployment],
+    ['worker', workerDeployment],
+    ['SPA', spaDeployment]
+  ]) {
+    assert(
+      deployment.spec.template.spec.securityContext?.seccompProfile?.type === 'RuntimeDefault',
+      `${environment.name}: ${label} pod must use the RuntimeDefault seccomp profile`
+    );
+  }
+
+  assert(
+    renderedSpaNginx.includes(`server ${prefix}-api:3001;`) &&
+      !renderedSpaNginx.includes('__API_UPSTREAM__') &&
+      !renderedSpaNginx.includes('__API_RESOLVER__') &&
+      !renderedSpaNginx.includes('127.0.0.11'),
+    `${environment.name}: SPA nginx must proxy to the release-scoped API Service without Docker DNS`
+  );
+  assert(
+    /^[a-f0-9]{64}$/.test(
+      spaDeployment.spec.template.metadata?.annotations?.['checksum/nginx-config'] ?? ''
+    ),
+    `${environment.name}: SPA pod template must contain a rendered nginx ConfigMap checksum`
+  );
+
+  const apiStorageMount = apiContainer.volumeMounts?.find(
+    (mount) => mount.name === 'storage' && mount.mountPath === '/srv/cvg-his-v2/storage'
+  );
+  const apiStorageVolume = apiDeployment.spec.template.spec.volumes?.find(
+    (volume) => volume.name === 'storage'
+  );
+  const workerStorageMount = workerContainer.volumeMounts?.find(
+    (mount) => mount.name === 'storage' || mount.mountPath === '/srv/cvg-his-v2/storage'
+  );
+  assert(!workerStorageMount, `${environment.name}: worker must not mount attachment storage`);
+  if (environment.expectLocalAttachmentStorage) {
+    assert(attachmentStoragePvc, `${environment.name}: local attachment PVC must be rendered`);
+    assert(apiStorageMount, `${environment.name}: API must mount local attachment storage`);
+    assert(
+      apiStorageVolume?.persistentVolumeClaim?.claimName === `${prefix}-storage`,
+      `${environment.name}: API must reference its release-scoped attachment PVC`
+    );
+    assert(
+      attachmentStoragePvc.spec.accessModes?.[0] ===
+        (values.persistence?.accessMode ?? readYamlFile(baseValues).persistence.accessMode),
+      `${environment.name}: attachment PVC must render the configured access mode`
+    );
+  } else {
+    assert(!attachmentStoragePvc, `${environment.name}: S3 attachment mode must not render a PVC`);
+    assert(
+      !apiStorageMount,
+      `${environment.name}: S3 attachment mode must not mount local storage`
+    );
+    assert(
+      !apiStorageVolume,
+      `${environment.name}: S3 attachment mode must not define local storage`
+    );
+  }
+
+  if (environment.name === 'prod') {
+    assert(
+      apiContainer.image.endsWith(`@${validationImageDigests.api}`),
+      'prod: API image must use the API digest override'
+    );
+    assert(
+      workerContainer.image.endsWith(`@${validationImageDigests.worker}`),
+      'prod: worker image must use the worker digest override'
+    );
+    assert(
+      spaContainer.image.endsWith(`@${validationImageDigests.spa}`),
+      'prod: SPA image must use the SPA digest override'
+    );
+  }
 
   if (environment.name === 'dev') {
     assert(
@@ -376,6 +613,40 @@ for (const environment of environments) {
   assert(
     workerContainer.readinessProbe?.httpGet?.path === '/ready',
     `${environment.name}: worker readiness probe must target /ready`
+  );
+  for (const [volumeName, mountPath] of [
+    ['nginx-runtime', '/tmp'],
+    ['nginx-cache', '/var/cache/nginx']
+  ]) {
+    assert(
+      spaContainer.volumeMounts?.some(
+        (mount) => mount.name === volumeName && mount.mountPath === mountPath
+      ),
+      `${environment.name}: SPA must mount ${mountPath} from ${volumeName}`
+    );
+    assert(
+      spaDeployment.spec.template.spec.volumes?.some(
+        (volume) => volume.name === volumeName && volume.emptyDir
+      ),
+      `${environment.name}: SPA ${volumeName} must be an emptyDir volume`
+    );
+  }
+  assert(
+    spaContainer.volumeMounts?.some(
+      (mount) =>
+        mount.name === 'nginx-config' &&
+        mount.mountPath === '/etc/nginx/conf.d/default.conf' &&
+        mount.subPath === 'default.conf' &&
+        mount.readOnly === true
+    ),
+    `${environment.name}: SPA must mount the rendered nginx configuration read-only`
+  );
+  assert(
+    spaDeployment.spec.template.spec.volumes?.some(
+      (volume) =>
+        volume.name === 'nginx-config' && volume.configMap?.name === `${prefix}-spa-config-nginx`
+    ),
+    `${environment.name}: SPA nginx volume must reference its release-scoped ConfigMap`
   );
   assert(
     workerContainer.envFrom?.some(

@@ -1,6 +1,13 @@
 {{- /*
 API Deployment + Service
 */ -}}
+{{- if and (not .Values.api.attachmentStorage.existingSecret) (gt (int .Values.api.replicaCount) 1) -}}
+{{- if not .Values.persistence.enabled -}}
+{{- fail "api.replicaCount > 1 without S3 attachment storage requires persistence.enabled=true; per-replica emptyDir storage is not safe for HA" -}}
+{{- else if or (ne .Values.persistence.accessMode "ReadWriteMany") (empty .Values.persistence.storageClass) -}}
+{{- fail "api.replicaCount > 1 with local attachment storage requires persistence.accessMode=ReadWriteMany and an operator-provided RWX storageClass; prefer S3-compatible attachmentStorage for HA" -}}
+{{- end -}}
+{{- end -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -160,9 +167,12 @@ spec:
             {{- toYaml .Values.api.resources | nindent 12 }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- if not .Values.api.attachmentStorage.existingSecret }}
           volumeMounts:
             - name: storage
               mountPath: /srv/cvg-his-v2/storage
+          {{- end }}
+      {{- if not .Values.api.attachmentStorage.existingSecret }}
       volumes:
         - name: storage
           {{- if .Values.persistence.enabled }}
@@ -171,6 +181,7 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service

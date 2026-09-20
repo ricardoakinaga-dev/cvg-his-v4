@@ -5,6 +5,7 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { ChaosEngine, DATABASE_FAILURE_ID } from '@cvg-his-v2/chaos';
+import { isProductionLikeEnvironment } from '@cvg-his-v2/shared-config';
 import type { RateLimiterHealth } from '@cvg-his-v2/shared-rate-limiter';
 import type { ApiServerOptions } from '../server.js';
 import { createReadinessResponse, createLivenessResponse } from '../health.js';
@@ -19,11 +20,27 @@ const REDIS_HEALTH_PROBE_TIMEOUT_MS = 1_000;
 // Redis workload while keeping dependency state bounded to 250 ms of age.
 const REDIS_HEALTH_CACHE_TTL_MS = 250;
 const redisHealthCache = new WeakMap<object, RedisHealthCacheEntry>();
+const ATTACHMENT_HEALTH_PROBE_TIMEOUT_MS = 1_000;
+const ATTACHMENT_HEALTH_CACHE_TTL_MS = 250;
+const attachmentHealthCache = new WeakMap<object, AttachmentHealthCacheEntry>();
 
 interface RedisHealthCacheEntry {
   expiresAt: number;
   result?: RateLimiterHealth;
   inFlight?: Promise<RateLimiterHealth>;
+}
+
+export interface AttachmentDependencyReadiness {
+  readonly required: boolean;
+  readonly ready: boolean;
+  readonly scanner: { readonly healthy: boolean; readonly detail: string };
+  readonly storage: { readonly healthy: boolean; readonly detail: string };
+}
+
+interface AttachmentHealthCacheEntry {
+  expiresAt: number;
+  result?: AttachmentDependencyReadiness;
+  inFlight?: Promise<AttachmentDependencyReadiness>;
 }
 
 /**
@@ -69,9 +86,12 @@ export async function handleHealthRoutes(
     options.featureFlags?.runtimeDistributedStateEnabled ??
     false;
   const operationalEndpoint = url === '/health' || url === '/ready' || url === '/health/ready';
-  const redisHealth = operationalEndpoint
-    ? await resolveRedisHealthStatus(options, runtimeDistributedStateEnabled)
-    : undefined;
+  const [redisHealth, attachmentHealth] = operationalEndpoint
+    ? await Promise.all([
+        resolveRedisHealthStatus(options, runtimeDistributedStateEnabled),
+        resolveAttachmentDependencyReadiness(options)
+      ])
+    : [undefined, undefined];
   const operationalState = resolveOperationalRuntimeState({
     appState,
     activeExperimentIds,
@@ -91,7 +111,7 @@ export async function handleHealthRoutes(
       !operationalState.runtimeDistributedStateEnabled ||
       (operationalState.redisConfigured && operationalState.redisHealthy);
     const payload = {
-      ok: persistenceHealthy && distributedStateHealthy,
+      ok: persistenceHealthy && distributedStateHealthy && (attachmentHealth?.ready ?? true),
       service: options.appName,
       version: options.version,
       environment: options.environment,
@@ -101,6 +121,8 @@ export async function handleHealthRoutes(
       persistenceMode: operationalState.persistenceMode,
       activeChaosExperiments: operationalState.activeExperimentIds,
       redisHealthy: operationalState.redisHealthy,
+      attachmentScannerHealthy: attachmentHealth?.scanner.healthy,
+      attachmentStorageHealthy: attachmentHealth?.storage.healthy,
       rateLimiterMode: operationalState.rateLimiterMode
     };
     response.setHeader('content-type', 'application/json');
@@ -134,7 +156,11 @@ export async function handleHealthRoutes(
         redisHealthy: operationalState.redisHealthy,
         redisDetail: operationalState.redisDetail,
         runtimeDistributedStateEnabled: operationalState.runtimeDistributedStateEnabled,
-        rateLimiterMode: operationalState.rateLimiterMode
+        rateLimiterMode: operationalState.rateLimiterMode,
+        attachmentScannerHealthy: attachmentHealth?.scanner.healthy,
+        attachmentScannerDetail: attachmentHealth?.scanner.detail,
+        attachmentStorageHealthy: attachmentHealth?.storage.healthy,
+        attachmentStorageDetail: attachmentHealth?.storage.detail
       }
     );
     response.setHeader('content-type', 'application/json');
@@ -168,7 +194,11 @@ export async function handleHealthRoutes(
         redisHealthy: operationalState.redisHealthy,
         redisDetail: operationalState.redisDetail,
         runtimeDistributedStateEnabled: operationalState.runtimeDistributedStateEnabled,
-        rateLimiterMode: operationalState.rateLimiterMode
+        rateLimiterMode: operationalState.rateLimiterMode,
+        attachmentScannerHealthy: attachmentHealth?.scanner.healthy,
+        attachmentScannerDetail: attachmentHealth?.scanner.detail,
+        attachmentStorageHealthy: attachmentHealth?.storage.healthy,
+        attachmentStorageDetail: attachmentHealth?.storage.detail
       }
     );
     response.setHeader('content-type', 'application/json');
@@ -210,6 +240,114 @@ export async function handleHealthRoutes(
   }
 
   return false;
+}
+
+/**
+ * Probes the exact scanner and storage instances used by upload requests.
+ * Production-like environments fail closed on a missing probe, wrong adapter,
+ * provider error, or deadline exhaustion. Local/test runtimes do not acquire
+ * external dependencies merely to answer readiness.
+ */
+export async function resolveAttachmentDependencyReadiness(
+  options: Pick<ApiServerOptions, 'environment' | 'attachmentScanner' | 'fileStorage'>
+): Promise<AttachmentDependencyReadiness> {
+  if (!isProductionLikeEnvironment(options.environment)) {
+    return {
+      required: false,
+      ready: true,
+      scanner: { healthy: true, detail: 'External attachment scanner is not required.' },
+      storage: { healthy: true, detail: 'External attachment storage is not required.' }
+    };
+  }
+
+  const cached = attachmentHealthCache.get(options);
+  const now = Date.now();
+  if (cached?.result && cached.expiresAt > now) return cached.result;
+  if (cached?.inFlight) return cached.inFlight;
+
+  const inFlight = probeAttachmentDependencies(options);
+  const entry: AttachmentHealthCacheEntry = { expiresAt: 0, inFlight };
+  attachmentHealthCache.set(options, entry);
+  void inFlight.then(
+    (result) => {
+      entry.result = result;
+      entry.expiresAt = Date.now() + ATTACHMENT_HEALTH_CACHE_TTL_MS;
+      entry.inFlight = undefined;
+    },
+    () => attachmentHealthCache.delete(options)
+  );
+  return inFlight;
+}
+
+async function probeAttachmentDependencies(
+  options: Pick<ApiServerOptions, 'attachmentScanner' | 'fileStorage'>
+): Promise<AttachmentDependencyReadiness> {
+  const [scanner, storage] = await Promise.all([
+    runAttachmentProbe(
+      options.attachmentScanner,
+      'ClamAV attachment scanner is reachable.',
+      'ClamAV attachment scanner is unavailable.'
+    ),
+    runAttachmentProbe(
+      options.fileStorage,
+      'Private attachment bucket is reachable.',
+      'Private attachment bucket is unavailable.'
+    )
+  ]);
+  return {
+    required: true,
+    ready: scanner.healthy && storage.healthy,
+    scanner,
+    storage
+  };
+}
+
+async function runAttachmentProbe(
+  dependency:
+    | {
+        readonly productionReady?: boolean;
+        healthCheck?(options?: {
+          readonly signal?: AbortSignal;
+        }): Promise<{ readonly healthy: boolean }>;
+      }
+    | undefined,
+  healthyDetail: string,
+  unhealthyDetail: string
+): Promise<{ readonly healthy: boolean; readonly detail: string }> {
+  if (dependency?.productionReady !== true || !dependency.healthCheck) {
+    return { healthy: false, detail: unhealthyDetail };
+  }
+
+  try {
+    const result = await withAttachmentHealthDeadline(
+      (signal) =>
+        dependency.healthCheck?.({ signal }) ?? Promise.reject(new Error('Missing health probe'))
+    );
+    return result.healthy
+      ? { healthy: true, detail: healthyDetail }
+      : { healthy: false, detail: unhealthyDetail };
+  } catch {
+    return { healthy: false, detail: unhealthyDetail };
+  }
+}
+
+async function withAttachmentHealthDeadline<T>(
+  operation: (signal: AbortSignal) => Promise<T>
+): Promise<T> {
+  const controller = new AbortController();
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      controller.abort(new Error('Attachment dependency health probe timed out'));
+      reject(new Error('Attachment dependency health probe timed out'));
+    }, ATTACHMENT_HEALTH_PROBE_TIMEOUT_MS);
+    timeoutHandle.unref?.();
+  });
+  try {
+    return await Promise.race([operation(controller.signal), timeout]);
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+  }
 }
 
 /**

@@ -209,7 +209,7 @@ jobs:
   repository-guards:
     name: Repository Guards
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
+    timeout-minutes: 45
     needs: [typecheck]
     steps:
       - name: Checkout
@@ -282,6 +282,11 @@ jobs:
       - name: Start isolated PostgreSQL
         run: pnpm test:db:start
 
+      - name: Build and smoke-test release images
+        env:
+          RELEASE_IMAGE_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_release_image_test
+        run: pnpm validate:release-images
+
       - name: Validate repository source contracts
         run: |
           pnpm validate:openapi
@@ -298,6 +303,7 @@ jobs:
           pnpm validate:loyalty-expiration-contract
           pnpm validate:behavioral-parity-contract
           pnpm validate:dependencies
+          pnpm validate:supply-chain
           pnpm docs:validate
           pnpm evidence:triple-a:graph
           pnpm complexity:check

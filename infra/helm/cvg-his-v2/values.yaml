@@ -367,9 +367,12 @@ ingress:
 # Common
 # ──────────────────────────────────────────────
 persistence:
+  # Local attachment storage is intended for single-replica/dev installs.
+  # Multi-replica local storage must use an operator-provided RWX class.
   enabled: true
   size: 1Gi
   storageClass: ""
+  accessMode: ReadWriteOnce
 
 serviceAccount:
   create: true
@@ -385,6 +388,8 @@ deploymentDefaults:
 podSecurityContext:
   runAsNonRoot: true
   runAsUser: 10000
+  seccompProfile:
+    type: RuntimeDefault
   runAsGroup: 10000
   fsGroup: 10000
 

@@ -1,5 +1,5 @@
 {{- /*
-Worker Deployment (no Service — runs as singleton process loop)
+Worker Deployment + internal health Service
 */ -}}
 apiVersion: apps/v1
 kind: Deployment
@@ -117,17 +117,6 @@ spec:
             {{- toYaml .Values.worker.resources | nindent 12 }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          volumeMounts:
-            - name: storage
-              mountPath: /srv/cvg-his-v2/storage
-      volumes:
-        - name: storage
-          {{- if .Values.persistence.enabled }}
-          persistentVolumeClaim:
-            claimName: {{ include "cvg-his-v2.fullname" . }}-storage
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
 ---
 apiVersion: v1
 kind: Service

@@ -87,6 +87,14 @@ export interface HealthResponse extends HealthStatus {
       readonly state: 'healthy' | 'unhealthy' | 'not-configured' | 'disabled';
       readonly detail: string;
     };
+    readonly attachmentScanner?: {
+      readonly state: 'healthy' | 'unhealthy' | 'not-configured' | 'disabled';
+      readonly detail: string;
+    };
+    readonly attachmentStorage?: {
+      readonly state: 'healthy' | 'unhealthy' | 'not-configured' | 'disabled';
+      readonly detail: string;
+    };
     readonly secretsManager?: {
       readonly state: 'configured' | 'not-configured';
       readonly detail: string;

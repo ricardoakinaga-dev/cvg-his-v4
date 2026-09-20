@@ -32,6 +32,19 @@
         "topologySpreadConstraints": { "type": "array" }
       }
     },
+    "persistence": {
+      "type": "object",
+      "required": ["enabled", "size", "storageClass", "accessMode"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "size": { "type": "string", "minLength": 1 },
+        "storageClass": { "type": "string" },
+        "accessMode": {
+          "type": "string",
+          "enum": ["ReadWriteOnce", "ReadWriteMany"]
+        }
+      }
+    },
     "api": {
       "type": "object",
       "required": ["service", "probes", "env", "auth", "setup"],
@@ -201,9 +214,16 @@
     },
     "podSecurityContext": {
       "type": "object",
-      "required": ["runAsNonRoot"],
+      "required": ["runAsNonRoot", "seccompProfile"],
       "properties": {
-        "runAsNonRoot": { "type": "boolean" }
+        "runAsNonRoot": { "type": "boolean" },
+        "seccompProfile": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "RuntimeDefault" }
+          }
+        }
       }
     },
     "securityContext": {

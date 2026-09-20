@@ -82,6 +82,11 @@ redis:
   enabled: false   # prod uses ElastiCache / Memorystore
   existingSecret: cvg-his-v2-prod-redis
 
+# Production attachments use the configured S3-compatible backend. Keeping
+# this disabled avoids coupling the HA API topology to a shared filesystem.
+persistence:
+  enabled: false
+
 ingress:
   enabled: true
   className: "nginx"

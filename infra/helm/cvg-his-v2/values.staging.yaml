@@ -61,6 +61,11 @@ redis:
   enabled: false   # staging uses external Redis
   existingSecret: cvg-his-v2-staging-redis
 
+# Attachments use the configured S3-compatible backend. Do not provision or
+# mount a node-local/RWO filesystem across API replicas.
+persistence:
+  enabled: false
+
 ingress:
   enabled: true
   className: "nginx"

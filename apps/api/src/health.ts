@@ -28,6 +28,11 @@ export interface HealthDependencies {
   redisDetail?: string;
   runtimeDistributedStateEnabled?: boolean;
   rateLimiterMode?: RateLimiterMode;
+  /** Explicit only when attachment providers were probed at the request boundary. */
+  attachmentScannerHealthy?: boolean;
+  attachmentScannerDetail?: string;
+  attachmentStorageHealthy?: boolean;
+  attachmentStorageDetail?: string;
 }
 
 export function createHealthResponse(
@@ -97,7 +102,12 @@ export function createHealthResponse(
     ok = false;
   }
 
-  const readinessReady = deps.productionReady && deps.workerReady && redisReady;
+  const attachmentScannerReady = deps.attachmentScannerHealthy !== false;
+  const attachmentStorageReady = deps.attachmentStorageHealthy !== false;
+  const attachmentsReady = attachmentScannerReady && attachmentStorageReady;
+  if (!attachmentsReady) ok = false;
+
+  const readinessReady = deps.productionReady && deps.workerReady && redisReady && attachmentsReady;
 
   return {
     ok,
@@ -135,6 +145,24 @@ export function createHealthResponse(
       redis: {
         state: redisState,
         detail: redisDetail
+      },
+      attachmentScanner: {
+        state:
+          deps.attachmentScannerHealthy === undefined
+            ? 'not-configured'
+            : deps.attachmentScannerHealthy
+              ? 'healthy'
+              : 'unhealthy',
+        detail: deps.attachmentScannerDetail ?? 'Attachment scanner was not probed.'
+      },
+      attachmentStorage: {
+        state:
+          deps.attachmentStorageHealthy === undefined
+            ? 'not-configured'
+            : deps.attachmentStorageHealthy
+              ? 'healthy'
+              : 'unhealthy',
+        detail: deps.attachmentStorageDetail ?? 'Attachment storage was not probed.'
       },
       secretsManager: {
         state: deps.secretsManagerProvider ? 'configured' : 'not-configured',
@@ -197,6 +225,14 @@ export function createLivenessResponse(
       worker: {
         state: 'not-configured',
         detail: 'Liveness probe does not validate worker dependency'
+      },
+      attachmentScanner: {
+        state: 'disabled',
+        detail: 'Liveness probe does not validate attachment scanner'
+      },
+      attachmentStorage: {
+        state: 'disabled',
+        detail: 'Liveness probe does not validate attachment storage'
       },
       secretsManager: {
         state: 'not-configured',

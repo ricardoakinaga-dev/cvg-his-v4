@@ -140,6 +140,32 @@ describe('config module', () => {
       expect(config.emailMockMode).toBe(false);
     });
 
+    it('requires TLS for S3 in production-like environments', () => {
+      const env = cleanApiEnv();
+      env.NODE_ENV = 'production';
+      env.DATABASE_URL = 'postgres://localhost/db';
+      env.ATTACHMENT_STORAGE_S3_ENDPOINT = 'http://minio.internal:9000';
+
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow(
+        /ATTACHMENT_STORAGE_S3_ENDPOINT must use https/
+      );
+    });
+
+    it('allows plain HTTP S3 only through the explicit development/test exception', () => {
+      const env = cleanApiEnv();
+      env.ATTACHMENT_STORAGE_S3_ENDPOINT = 'http://127.0.0.1:9000';
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow(
+        /ATTACHMENT_STORAGE_S3_ALLOW_INSECURE=true/
+      );
+
+      env.ATTACHMENT_STORAGE_S3_ALLOW_INSECURE = 'true';
+      expect(loadApiConfig(env as NodeJS.ProcessEnv).attachmentStorageS3AllowInsecure).toBe(true);
+
+      env.NODE_ENV = 'staging';
+      env.DATABASE_URL = 'postgres://localhost/db';
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow(/must use https|must be false/);
+    });
+
     it('parses CORS_ALLOWED_ORIGINS correctly', () => {
       const env = cleanApiEnv();
       env.CORS_ALLOWED_ORIGINS = 'http://localhost:3000,http://localhost:3001';

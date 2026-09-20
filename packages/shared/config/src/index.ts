@@ -259,6 +259,14 @@ export const API_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
   },
   {
     app: 'api',
+    key: 'ATTACHMENT_STORAGE_S3_ALLOW_INSECURE',
+    required: false,
+    defaultValue: 'false',
+    description:
+      'Explicit development/test-only exception allowing a plain HTTP S3-compatible endpoint.'
+  },
+  {
+    app: 'api',
     key: 'ENABLE_MFA',
     required: false,
     defaultValue: 'false',
@@ -701,6 +709,7 @@ export interface ApiAppConfig {
   readonly attachmentStorageS3SecretKey?: string;
   readonly attachmentStorageS3Region: string;
   readonly attachmentStorageS3PathStyle: boolean;
+  readonly attachmentStorageS3AllowInsecure: boolean;
   readonly enableMfa: boolean;
   readonly mfaEncryptionKey?: string;
   readonly mfaEncryptionKeyVersion?: string;
@@ -1064,6 +1073,7 @@ const apiEnvSchema = z
     ATTACHMENT_STORAGE_S3_SECRET_KEY: optionalNonEmptyStringSchema,
     ATTACHMENT_STORAGE_S3_REGION: nonEmptyStringSchema.default('us-east-1'),
     ATTACHMENT_STORAGE_S3_PATH_STYLE: booleanStringSchema.default(true),
+    ATTACHMENT_STORAGE_S3_ALLOW_INSECURE: booleanStringSchema.default(false),
     ENABLE_MFA: booleanStringSchema.default(false),
     MFA_SECRET_ENCRYPTION_KEY: optionalNonEmptyStringSchema,
     MFA_SECRET_ENCRYPTION_KEY_VERSION: optionalNonEmptyStringSchema,
@@ -1150,6 +1160,35 @@ const apiEnvSchema = z
         code: z.ZodIssueCode.custom,
         path: ['LABORATORY_PROVIDER_KEYRING_JSON'],
         message: 'LABORATORY_PROVIDER_KEYRING_JSON must be unset in production-like environments'
+      });
+    }
+
+    if (value.ATTACHMENT_STORAGE_S3_ENDPOINT) {
+      const endpoint = new URL(value.ATTACHMENT_STORAGE_S3_ENDPOINT);
+      if (endpoint.protocol !== 'https:') {
+        if (isProductionEnvironment(value.NODE_ENV)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['ATTACHMENT_STORAGE_S3_ENDPOINT'],
+            message: 'ATTACHMENT_STORAGE_S3_ENDPOINT must use https in production-like environments'
+          });
+        } else if (!value.ATTACHMENT_STORAGE_S3_ALLOW_INSECURE) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['ATTACHMENT_STORAGE_S3_ALLOW_INSECURE'],
+            message:
+              'ATTACHMENT_STORAGE_S3_ALLOW_INSECURE=true is required for an http S3 endpoint in development/test'
+          });
+        }
+      }
+    }
+
+    if (isProductionEnvironment(value.NODE_ENV) && value.ATTACHMENT_STORAGE_S3_ALLOW_INSECURE) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['ATTACHMENT_STORAGE_S3_ALLOW_INSECURE'],
+        message:
+          'ATTACHMENT_STORAGE_S3_ALLOW_INSECURE must be false in production-like environments'
       });
     }
   });
@@ -1259,6 +1298,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv): ApiAppConfig {
     attachmentStorageS3SecretKey: parsed.ATTACHMENT_STORAGE_S3_SECRET_KEY,
     attachmentStorageS3Region: parsed.ATTACHMENT_STORAGE_S3_REGION,
     attachmentStorageS3PathStyle: parsed.ATTACHMENT_STORAGE_S3_PATH_STYLE,
+    attachmentStorageS3AllowInsecure: parsed.ATTACHMENT_STORAGE_S3_ALLOW_INSECURE,
     enableMfa: parsed.ENABLE_MFA,
     mfaEncryptionKey: parsed.MFA_SECRET_ENCRYPTION_KEY,
     mfaEncryptionKeyVersion: parsed.MFA_SECRET_ENCRYPTION_KEY_VERSION,

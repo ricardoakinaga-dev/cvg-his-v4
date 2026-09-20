@@ -171,7 +171,7 @@ services:
     ports:
       - '127.0.0.1:3003:3001'
     healthcheck:
-      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:3001/ready >/dev/null || exit 1']
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3001/ready >/dev/null || exit 1']
       interval: 10s
       timeout: 3s
       retries: 20
@@ -204,8 +204,6 @@ services:
       otel-collector:
         condition: service_started
         required: false
-    volumes:
-      - cvg_his_v2_storage:/srv/cvg-his-v2/storage
     healthcheck:
       test:
         [

@@ -8,18 +8,52 @@ export interface FileStorageResult {
   readonly sizeBytes: number;
 }
 
+export interface AttachmentDependencyHealth {
+  readonly healthy: boolean;
+  readonly provider: string;
+  readonly detail: string;
+}
+
+export interface AttachmentDependencyHealthCheckOptions {
+  readonly signal?: AbortSignal;
+}
+
+export interface FileStorageOperationOptions {
+  /** Cancels the provider request when the enclosing operation is abandoned. */
+  readonly signal?: AbortSignal;
+  /** Per-operation deadline. Defaults to the adapter request timeout. */
+  readonly timeoutMs?: number;
+}
+
 export interface FileStorage {
   /** True only for private, externally durable storage suitable for production. */
   readonly productionReady?: boolean;
+  /** Safe, read-only reachability probe used by production readiness. */
+  healthCheck?(
+    options?: AttachmentDependencyHealthCheckOptions
+  ): Promise<AttachmentDependencyHealth>;
   store(
     accountId: string,
     linkedEntityId: string,
     fileName: string,
-    content: Buffer
+    content: Buffer,
+    options?: FileStorageOperationOptions
   ): Promise<FileStorageResult>;
-  retrieve(accountId: string, storageKey: string): Promise<Buffer | null>;
-  delete(accountId: string, storageKey: string): Promise<boolean>;
-  exists(accountId: string, storageKey: string): Promise<boolean>;
+  retrieve(
+    accountId: string,
+    storageKey: string,
+    options?: FileStorageOperationOptions
+  ): Promise<Buffer | null>;
+  delete(
+    accountId: string,
+    storageKey: string,
+    options?: FileStorageOperationOptions
+  ): Promise<boolean>;
+  exists(
+    accountId: string,
+    storageKey: string,
+    options?: FileStorageOperationOptions
+  ): Promise<boolean>;
 }
 
 const SAFE_STORAGE_SEGMENT = /^[A-Za-z0-9_-]+$/;
@@ -79,6 +113,14 @@ export class LocalFileStorage implements FileStorage {
 
   public constructor(options: LocalFileStorageOptions) {
     this.#basePath = resolve(options.basePath);
+  }
+
+  public async healthCheck(): Promise<AttachmentDependencyHealth> {
+    return {
+      healthy: true,
+      provider: 'local-filesystem',
+      detail: 'Local attachment storage is reachable.'
+    };
   }
 
   #safePath(storageKey: string): string | null {
@@ -159,6 +201,63 @@ export interface S3CompatibleFileStorageOptions {
   readonly secretAccessKey: string;
   readonly region?: string;
   readonly pathStyle?: boolean;
+  readonly healthCheckTimeoutMs?: number;
+  readonly requestTimeoutMs?: number;
+}
+
+interface S3Response {
+  readonly ok: boolean;
+  readonly status: number;
+  readonly body?: Buffer;
+}
+
+function requirePositiveTimeout(value: number, fieldName: string): number {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new Error(`${fieldName} must be a positive integer`);
+  }
+  return value;
+}
+
+function createAbortDeadline(
+  timeoutMs: number,
+  parentSignal?: AbortSignal
+): {
+  readonly signal: AbortSignal;
+  readonly elapsed: Promise<never>;
+  cleanup(): void;
+} {
+  const controller = new AbortController();
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  let rejectElapsed!: (reason: Error) => void;
+  let aborted = false;
+  const elapsed = new Promise<never>((_resolve, reject) => {
+    rejectElapsed = reject;
+  });
+  const abort = (message: string): void => {
+    if (aborted) return;
+    aborted = true;
+    const error = new Error(message);
+    controller.abort(error);
+    rejectElapsed(error);
+  };
+  const onParentAbort = (): void => abort('S3 request cancelled');
+
+  if (parentSignal?.aborted) {
+    abort('S3 request cancelled');
+  } else {
+    parentSignal?.addEventListener('abort', onParentAbort, { once: true });
+    timeoutHandle = setTimeout(() => abort('S3 request timed out'), timeoutMs);
+    timeoutHandle.unref?.();
+  }
+
+  return {
+    signal: controller.signal,
+    elapsed,
+    cleanup() {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+      parentSignal?.removeEventListener('abort', onParentAbort);
+    }
+  };
 }
 
 function hmac(key: Buffer | string, value: string): Buffer {
@@ -187,6 +286,8 @@ export class S3CompatibleFileStorage implements FileStorage {
   readonly #secretAccessKey: string;
   readonly #region: string;
   readonly #pathStyle: boolean;
+  readonly #healthCheckTimeoutMs: number;
+  readonly #requestTimeoutMs: number;
 
   public constructor(options: S3CompatibleFileStorageOptions) {
     this.#endpoint = new URL(options.endpoint);
@@ -198,8 +299,55 @@ export class S3CompatibleFileStorage implements FileStorage {
     this.#secretAccessKey = options.secretAccessKey;
     this.#region = options.region?.trim() || 'us-east-1';
     this.#pathStyle = options.pathStyle ?? true;
+    this.#healthCheckTimeoutMs = requirePositiveTimeout(
+      options.healthCheckTimeoutMs ?? 1_000,
+      'S3 health check timeout'
+    );
+    this.#requestTimeoutMs = requirePositiveTimeout(
+      options.requestTimeoutMs ?? 30_000,
+      'S3 request timeout'
+    );
     if (!this.#bucket || !this.#accessKeyId || !this.#secretAccessKey) {
       throw new Error('S3 bucket and credentials are required');
+    }
+  }
+
+  /**
+   * Verifies authenticated bucket reachability without creating, listing, or
+   * deleting any object. HEAD bucket is supported by S3 and MinIO and is safe
+   * to execute on every readiness poll.
+   */
+  public async healthCheck(
+    options: AttachmentDependencyHealthCheckOptions = {}
+  ): Promise<AttachmentDependencyHealth> {
+    try {
+      const response = await this.#request(
+        'HEAD',
+        undefined,
+        undefined,
+        {},
+        {
+          signal: options.signal,
+          timeoutMs: this.#healthCheckTimeoutMs
+        }
+      );
+      return response.ok
+        ? {
+            healthy: true,
+            provider: 's3',
+            detail: 'Private attachment bucket is reachable.'
+          }
+        : {
+            healthy: false,
+            provider: 's3',
+            detail: 'Private attachment bucket is unavailable.'
+          };
+    } catch {
+      return {
+        healthy: false,
+        provider: 's3',
+        detail: 'Private attachment bucket is unavailable.'
+      };
     }
   }
 
@@ -207,7 +355,8 @@ export class S3CompatibleFileStorage implements FileStorage {
     accountId: string,
     linkedEntityId: string,
     fileName: string,
-    content: Buffer
+    content: Buffer,
+    options: FileStorageOperationOptions = {}
   ): Promise<FileStorageResult> {
     const checksum = sha256(content);
     const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 180) || 'unnamed';
@@ -217,34 +366,52 @@ export class S3CompatibleFileStorage implements FileStorage {
     if (!isTenantScopedStorageKey(accountId, storageKey)) {
       throw new Error('Invalid attachment storage key');
     }
-    const response = await this.#request('PUT', storageKey, content, {
-      'content-type': 'application/octet-stream'
-    });
+    const response = await this.#request(
+      'PUT',
+      storageKey,
+      content,
+      {
+        'content-type': 'application/octet-stream'
+      },
+      options
+    );
     if (!response.ok) {
       throw new Error(`S3 object upload failed with status ${response.status}`);
     }
     return { storageKey, checksum, sizeBytes: content.length };
   }
 
-  public async retrieve(accountId: string, storageKey: string): Promise<Buffer | null> {
+  public async retrieve(
+    accountId: string,
+    storageKey: string,
+    options: FileStorageOperationOptions = {}
+  ): Promise<Buffer | null> {
     if (!isTenantScopedStorageKey(accountId, storageKey)) return null;
-    const response = await this.#request('GET', storageKey);
+    const response = await this.#request('GET', storageKey, undefined, {}, options, true);
     if (response.status === 404) return null;
     if (!response.ok) throw new Error(`S3 object download failed with status ${response.status}`);
-    return Buffer.from(await response.arrayBuffer());
+    return response.body ?? Buffer.alloc(0);
   }
 
-  public async delete(accountId: string, storageKey: string): Promise<boolean> {
+  public async delete(
+    accountId: string,
+    storageKey: string,
+    options: FileStorageOperationOptions = {}
+  ): Promise<boolean> {
     if (!isTenantScopedStorageKey(accountId, storageKey)) return false;
-    const response = await this.#request('DELETE', storageKey);
+    const response = await this.#request('DELETE', storageKey, undefined, {}, options);
     if (response.status === 404) return false;
     if (!response.ok) throw new Error(`S3 object deletion failed with status ${response.status}`);
     return true;
   }
 
-  public async exists(accountId: string, storageKey: string): Promise<boolean> {
+  public async exists(
+    accountId: string,
+    storageKey: string,
+    options: FileStorageOperationOptions = {}
+  ): Promise<boolean> {
     if (!isTenantScopedStorageKey(accountId, storageKey)) return false;
-    const response = await this.#request('HEAD', storageKey);
+    const response = await this.#request('HEAD', storageKey, undefined, {}, options);
     if (response.status === 404) return false;
     if (!response.ok) throw new Error(`S3 object check failed with status ${response.status}`);
     return true;
@@ -252,10 +419,12 @@ export class S3CompatibleFileStorage implements FileStorage {
 
   async #request(
     method: 'GET' | 'PUT' | 'DELETE' | 'HEAD',
-    storageKey: string,
+    storageKey?: string,
     body?: Buffer,
-    extraHeaders: Record<string, string> = {}
-  ): Promise<Response> {
+    extraHeaders: Record<string, string> = {},
+    options: FileStorageOperationOptions = {},
+    consumeBody = false
+  ): Promise<S3Response> {
     const now = new Date();
     const amzDate = now
       .toISOString()
@@ -264,10 +433,11 @@ export class S3CompatibleFileStorage implements FileStorage {
     const shortDate = amzDate.slice(0, 8);
     const payloadHash = sha256(body ?? Buffer.alloc(0));
     const host = this.#endpoint.host;
-    const encodedKey = storageKey.split('/').map(awsEncode).join('/');
+    const encodedKey = storageKey?.split('/').map(awsEncode).join('/');
+    const endpointPath = this.#endpoint.pathname.replace(/\/$/, '');
     const path = this.#pathStyle
-      ? `${this.#endpoint.pathname.replace(/\/$/, '')}/${awsEncode(this.#bucket)}/${encodedKey}`
-      : `${this.#endpoint.pathname.replace(/\/$/, '')}/${encodedKey}`;
+      ? `${endpointPath}/${awsEncode(this.#bucket)}${encodedKey ? `/${encodedKey}` : ''}`
+      : `${endpointPath}${encodedKey ? `/${encodedKey}` : ''}`;
     const url = new URL(this.#endpoint.toString());
     if (!this.#pathStyle) url.hostname = `${this.#bucket}.${url.hostname}`;
     url.pathname = path || '/';
@@ -306,11 +476,32 @@ export class S3CompatibleFileStorage implements FileStorage {
       `AWS4-HMAC-SHA256 Credential=${this.#accessKeyId}/${scope}, ` +
       `SignedHeaders=${signedHeaders}, Signature=${signature}`;
 
-    return fetch(url, {
-      method,
-      headers,
-      body: body ?? undefined
-    });
+    const timeoutMs = requirePositiveTimeout(
+      options.timeoutMs ?? this.#requestTimeoutMs,
+      'S3 operation timeout'
+    );
+    const deadline = createAbortDeadline(timeoutMs, options.signal);
+    let response: Response | undefined;
+    const operation = (async (): Promise<S3Response> => {
+      response = await fetch(url, {
+        method,
+        headers,
+        body: body ?? undefined,
+        signal: deadline.signal
+      });
+      const responseBody =
+        consumeBody && response.ok ? Buffer.from(await response.arrayBuffer()) : undefined;
+      return { ok: response.ok, status: response.status, body: responseBody };
+    })();
+
+    try {
+      return await Promise.race([operation, deadline.elapsed]);
+    } finally {
+      deadline.cleanup();
+      if (response?.body && !response.bodyUsed) {
+        void response.body.cancel().catch(() => undefined);
+      }
+    }
   }
 }
 
@@ -319,6 +510,13 @@ export function createMemoryFileStorage(): FileStorage {
 
   return {
     productionReady: false,
+    async healthCheck() {
+      return {
+        healthy: true,
+        provider: 'memory',
+        detail: 'In-memory attachment storage is reachable.'
+      };
+    },
     async store(accountId, linkedEntityId, fileName, content) {
       const checksum = createHash('sha256').update(content).digest('hex');
       const sizeBytes = content.length;

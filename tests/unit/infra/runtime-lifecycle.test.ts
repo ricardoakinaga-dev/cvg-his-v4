@@ -17,7 +17,7 @@ describe('canonical runtime lifecycle contract', () => {
     };
     expect(compose.services?.['cvg-his-v2-api']?.healthcheck?.test).toEqual([
       'CMD-SHELL',
-      'curl -fsS http://127.0.0.1:3001/ready >/dev/null || exit 1'
+      'wget -qO- http://127.0.0.1:3001/ready >/dev/null || exit 1'
     ]);
   });
 

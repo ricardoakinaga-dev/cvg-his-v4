@@ -20,6 +20,13 @@ import { DatabasePixProviderEventIngressRepository } from './pix-provider-event-
 import { parsePixProviderWebhookKeyring } from './pix-provider-webhook-keyring.js';
 import { parseLaboratoryProviderKeyring } from './laboratory-provider-keyring.js';
 import {
+  createFatalRuntimeHandler,
+  createRuntimeExitCodeController,
+  createStartupFailureHandler,
+  forceExitProcess,
+  type FatalRuntimeEvent
+} from './fatal-runtime.js';
+import {
   ClamAvAttachmentSecurityScanner,
   LocalAttachmentSecurityScanner,
   S3CompatibleFileStorage
@@ -34,7 +41,9 @@ let apiShutdownPromise: Promise<void> | undefined;
 let apiShutdownLogger = runtimeLogger;
 let apiShutdownObservability: () => Promise<void> = async () => {};
 let apiObservabilityShutdownStarted = false;
-let apiStartupFailed = false;
+const runtimeExitCode = createRuntimeExitCodeController((exitCode) => {
+  process.exitCode = exitCode;
+});
 
 const NFSE_PROVIDERS: readonly NfseProvider[] = ['abrasf', 'iss_sp', 'iss_net', 'nota_rio'];
 
@@ -50,7 +59,9 @@ async function closeApiServer(): Promise<void> {
   await server.closeDependencies();
 }
 
-async function gracefulShutdown(signal: NodeJS.Signals): Promise<void> {
+type ApiShutdownReason = NodeJS.Signals | FatalRuntimeEvent;
+
+async function gracefulShutdown(signal: ApiShutdownReason): Promise<void> {
   apiShutdownRequested = true;
   apiShutdownPromise ??= (async () => {
     const failures: unknown[] = [];
@@ -80,14 +91,14 @@ async function gracefulShutdown(signal: NodeJS.Signals): Promise<void> {
 function requestShutdown(signal: NodeJS.Signals): void {
   void gracefulShutdown(signal).then(
     () => {
-      if (!apiStartupFailed) process.exitCode = 0;
+      runtimeExitCode.completeSignalShutdown();
     },
     (error: unknown) => {
       apiShutdownLogger.error('api graceful shutdown failed', {
         signal,
         error: error instanceof Error ? error.message : String(error)
       });
-      process.exitCode = 1;
+      runtimeExitCode.markProcessFailed();
     }
   );
 }
@@ -100,6 +111,27 @@ async function stopStartupIfRequested(): Promise<boolean> {
 
 process.on('SIGTERM', () => requestShutdown('SIGTERM'));
 process.on('SIGINT', () => requestShutdown('SIGINT'));
+
+const handleFatalRuntimeError = createFatalRuntimeHandler({
+  logger: () => runtimeLogger,
+  markNotReady: (event) => {
+    setAppState({
+      productionReady: false,
+      workerReady: false,
+      workerDetail: `API is draining after ${event}`
+    });
+  },
+  shutdown: gracefulShutdown,
+  markProcessFailed: runtimeExitCode.markProcessFailed,
+  onShutdownDeadline: () => {
+    apiServer?.closeAllConnections();
+  },
+  forceExit: forceExitProcess
+});
+const handleStartupFailure = createStartupFailureHandler({
+  logger: () => runtimeLogger,
+  handleFatalRuntimeError
+});
 
 function parseNfseProvider(value: string | undefined): NfseProvider | undefined {
   if (!value) return undefined;
@@ -143,15 +175,11 @@ function parseNfseCertificate(value: string | undefined): Buffer | undefined {
 }
 
 process.on('uncaughtException', (error) => {
-  runtimeLogger.error('uncaught exception in api runtime', {
-    error: error instanceof Error ? error.message : String(error)
-  });
+  void handleFatalRuntimeError('uncaughtException', error);
 });
 
 process.on('unhandledRejection', (error) => {
-  runtimeLogger.error('unhandled rejection in api runtime', {
-    error: error instanceof Error ? error.message : String(error)
-  });
+  void handleFatalRuntimeError('unhandledRejection', error);
 });
 
 async function main() {
@@ -472,7 +500,7 @@ async function main() {
         apiShutdownLogger.error('api listener close after late signal failed', {
           error: error instanceof Error ? error.message : String(error)
         });
-        process.exitCode = 1;
+        runtimeExitCode.markProcessFailed();
       });
       return;
     }
@@ -487,16 +515,4 @@ async function main() {
   });
 }
 
-void main().catch(async (error) => {
-  apiStartupFailed = true;
-  runtimeLogger.error('failed to start api server', {
-    error: error instanceof Error ? error.message : String(error)
-  });
-  process.exitCode = 1;
-  await gracefulShutdown('SIGTERM').catch((shutdownError: unknown) => {
-    runtimeLogger.error('api startup cleanup failed', {
-      error: shutdownError instanceof Error ? shutdownError.message : String(shutdownError)
-    });
-    process.exitCode = 1;
-  });
-});
+void main().catch(handleStartupFailure);

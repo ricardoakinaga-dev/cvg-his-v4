@@ -1,7 +1,7 @@
 import { loadWorkerConfig } from '@cvg-his-v2/shared-config';
 import { createLogger } from '@cvg-his-v2/shared-logging';
 import { runWithTenantContext } from '@cvg-his-v2/tenant-context';
-import { createCorrelationId, sleep } from '@cvg-his-v2/shared-utils';
+import { createCorrelationId } from '@cvg-his-v2/shared-utils';
 import { PRODUCTION_EVENT_CONSUMERS } from '@cvg-his-v2/module-event-bus';
 import { createServer } from 'node:http';
 
@@ -37,16 +37,30 @@ import {
 } from './worker-report-identity.js';
 import { WorkflowTaskService } from '@cvg-his-v2/module-workflows';
 import { runWorkflowTaskTick, type WorkflowTaskHandler } from './workflow-task-runner.js';
+import {
+  createFatalRuntimeHandler,
+  createRuntimeExitCodeController,
+  createStartupFailureHandler,
+  forceExitProcess,
+  type FatalRuntimeEvent,
+  type FatalRuntimeHandler
+} from './fatal-runtime.js';
+import { createWorkerLoopWakeController } from './runtime-lifecycle.js';
 
-const config = loadWorkerConfig(process.env);
-const logger = createLogger(config.appName);
+let config: ReturnType<typeof loadWorkerConfig>;
+let logger = createLogger('cvg-his-v2-worker');
 let workerObservabilityShutdown: (() => Promise<void>) | null = null;
 let workerHealthServer: ReturnType<typeof createServer> | undefined;
 let workerShutdownRequested = false;
 let workerShutdownPromise: Promise<void> | undefined;
+const workerLoopWake = createWorkerLoopWakeController();
+const runtimeExitCode = createRuntimeExitCodeController((exitCode) => {
+  process.exitCode = exitCode;
+});
 const configuredWorkerAccountId = process.env.WORKER_ACCOUNT_ID?.trim();
 const ACCOUNT_REFRESH_INTERVAL_MS = 60_000;
 const PIX_SETTLEMENT_DLQ_REFRESH_INTERVAL_MS = 15_000;
+const WORKER_DRAIN_READINESS_GRACE_MS = 50;
 const webhookWorkerId = process.env.WORKER_INSTANCE_ID?.trim() || `webhook-worker-${process.pid}`;
 const workflowWorkerId = process.env.WORKER_INSTANCE_ID?.trim() || `workflow-worker-${process.pid}`;
 
@@ -70,27 +84,95 @@ async function closeWorkerHealthServer(): Promise<void> {
   });
 }
 
-async function shutdownWorkerRuntime(): Promise<void> {
+type WorkerShutdownReason = NodeJS.Signals | FatalRuntimeEvent | 'worker-complete';
+
+async function shutdownWorkerRuntime(reason: WorkerShutdownReason = 'worker-complete'): Promise<void> {
   workerShutdownPromise ??= (async () => {
-    await closeWorkerHealthServer();
-    if (workerObservabilityShutdown) {
-      await workerObservabilityShutdown();
+    const failures: unknown[] = [];
+    const attempt = async (operation: () => Promise<void>): Promise<void> => {
+      try {
+        await operation();
+      } catch (error: unknown) {
+        failures.push(error);
+        logger.error('worker shutdown operation failed', {
+          reason,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    };
+
+    logger.info('draining worker runtime', { reason });
+    // Give an already-started readiness request a short window to observe the
+    // synchronous draining transition before the listener is closed. This is
+    // intentionally bounded and independent of WORKER_INTERVAL_MS.
+    await attempt(
+      () =>
+        new Promise<void>((resolve) => {
+          setTimeout(resolve, WORKER_DRAIN_READINESS_GRACE_MS);
+        }).then(closeWorkerHealthServer)
+    );
+    await attempt(async () => {
+      if (workerObservabilityShutdown) {
+        await workerObservabilityShutdown();
+      }
+    });
+    await attempt(shutdownWorkerServices);
+    if (failures.length > 0) {
+      throw failures[0];
     }
-    await shutdownWorkerServices();
     logger.info('worker runtime shutdown complete');
   })();
   await workerShutdownPromise;
 }
 
-function requestWorkerShutdown(signal: NodeJS.Signals): void {
+function markWorkerDraining(): void {
   workerShutdownRequested = true;
+  workerLoopWake.wake();
+}
+
+function requestWorkerShutdown(signal: NodeJS.Signals): void {
+  markWorkerDraining();
   logger.info('worker shutdown requested; finishing current tick', { signal });
 }
 
 process.on('SIGTERM', () => requestWorkerShutdown('SIGTERM'));
 process.on('SIGINT', () => requestWorkerShutdown('SIGINT'));
 
+const fatalRuntimeHandler = createFatalRuntimeHandler({
+  logger: () => logger,
+  markNotReady: (event) => {
+    markWorkerDraining();
+    workerState.lastError = `Worker is shutting down after ${event}`;
+  },
+  shutdown: shutdownWorkerRuntime,
+  markProcessFailed: runtimeExitCode.markProcessFailed,
+  onShutdownDeadline: () => {
+    workerHealthServer?.closeAllConnections();
+  },
+  forceExit: forceExitProcess
+});
+let fatalRuntimeDrain: Promise<void> | undefined;
+const handleFatalRuntimeError: FatalRuntimeHandler = (event, error) => {
+  const drain = fatalRuntimeHandler(event, error);
+  fatalRuntimeDrain ??= drain;
+  return drain;
+};
+const handleStartupFailure = createStartupFailureHandler({
+  logger: () => logger,
+  handleFatalRuntimeError
+});
+
+process.on('uncaughtException', (error) => {
+  void handleFatalRuntimeError('uncaughtException', error);
+});
+
+process.on('unhandledRejection', (error) => {
+  void handleFatalRuntimeError('unhandledRejection', error);
+});
+
 async function main() {
+  config = loadWorkerConfig(process.env);
+  logger = createLogger(config.appName);
   const configuredWorkerReportsUserId = resolveWorkerReportsUserId(config.workerReportsUserId);
   const observability = await startWorkerObservability({
     enabled: config.otelEnabled,
@@ -354,9 +436,15 @@ async function main() {
     }
   });
 
-  workerHealthServer.listen(config.healthPort, () => {
-    logger.info('worker health endpoint listening', { port: config.healthPort });
+  await new Promise<void>((resolve, reject) => {
+    workerHealthServer?.once('error', reject);
+    workerHealthServer?.listen(config.healthPort, () => {
+      workerHealthServer?.removeListener('error', reject);
+      logger.info('worker health endpoint listening', { port: config.healthPort });
+      resolve();
+    });
   });
+  if (workerShutdownRequested) return;
 
   while (!workerShutdownRequested) {
     const correlationId = createCorrelationId('worker');
@@ -649,20 +737,28 @@ async function main() {
       logger.error('worker tick failed', { error: workerState.lastError });
     }
     if (!workerShutdownRequested) {
-      await sleep(config.intervalMs);
+      await workerLoopWake.wait(config.intervalMs);
     }
   }
 }
 
-main()
-  .catch((error) => {
-    logger.error('worker crashed', {
-      service: config.appName,
-      error: error.message,
-      stack: error.stack
-    });
-    process.exitCode = 1;
-  })
+void main()
+  .catch(handleStartupFailure)
   .finally(async () => {
-    await shutdownWorkerRuntime();
+    try {
+      // Fatal runtime handling already owns a bounded race. Re-await that
+      // bounded promise after a startup/runtime failure instead of awaiting
+      // the underlying drain a second time after its deadline has fired.
+      if (fatalRuntimeDrain) {
+        await fatalRuntimeDrain;
+      } else {
+        await shutdownWorkerRuntime();
+      }
+      runtimeExitCode.completeSignalShutdown();
+    } catch (error: unknown) {
+      runtimeExitCode.markProcessFailed();
+      logger.error('worker runtime shutdown failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
   });

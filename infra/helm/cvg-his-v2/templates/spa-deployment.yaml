@@ -19,8 +19,9 @@ spec:
     metadata:
       labels:
         {{- include "cvg-his-v2.spa.selectorLabels" . | nindent 8 }}
-      {{- with .Values.spa.podAnnotations }}
       annotations:
+        checksum/nginx-config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      {{- with .Values.spa.podAnnotations }}
         {{- toYaml . | nindent 8 }}
       {{- end }}
     spec:
@@ -86,6 +87,23 @@ spec:
             {{- toYaml .Values.spa.resources | nindent 12 }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+              readOnly: true
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-runtime
+              mountPath: /tmp
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: {{ include "cvg-his-v2.spa.configmapName" . }}-nginx
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-runtime
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

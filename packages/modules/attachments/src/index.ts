@@ -9,7 +9,12 @@ import type { AccountId, AttachmentId, AttachmentSummary, UserId } from '@cvg-hi
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 import type { AttachmentRepository } from './attachment-repository.js';
-import { isTenantScopedStorageKey, type FileStorage } from './file-storage.js';
+import {
+  isTenantScopedStorageKey,
+  type AttachmentDependencyHealth,
+  type AttachmentDependencyHealthCheckOptions,
+  type FileStorage
+} from './file-storage.js';
 
 export {
   DatabaseAttachmentRepository,
@@ -21,6 +26,9 @@ export {
   createMemoryFileStorage,
   type FileStorage,
   type FileStorageResult,
+  type AttachmentDependencyHealth,
+  type AttachmentDependencyHealthCheckOptions,
+  type FileStorageOperationOptions,
   type S3CompatibleFileStorageOptions
 } from './file-storage.js';
 
@@ -44,6 +52,10 @@ export interface AttachmentScanResult {
 export interface AttachmentSecurityScanner {
   /** True only for an externally backed production scanner. */
   readonly productionReady?: boolean;
+  /** Safe provider reachability probe used by production readiness. */
+  healthCheck?(
+    options?: AttachmentDependencyHealthCheckOptions
+  ): Promise<AttachmentDependencyHealth>;
   scan(input: {
     readonly fileName: string;
     readonly mimeType: string;
@@ -58,6 +70,14 @@ export interface AttachmentSecurityScanner {
  */
 export class LocalAttachmentSecurityScanner implements AttachmentSecurityScanner {
   public readonly productionReady = false;
+
+  public async healthCheck(): Promise<AttachmentDependencyHealth> {
+    return {
+      healthy: true,
+      provider: 'local-heuristic',
+      detail: 'Local attachment scanner is reachable.'
+    };
+  }
 
   public async scan(input: {
     readonly fileName: string;
@@ -104,6 +124,58 @@ export class ClamAvAttachmentSecurityScanner implements AttachmentSecurityScanne
     this.#host = options.host.trim();
     this.#port = options.port ?? 3310;
     this.#timeoutMs = options.timeoutMs ?? 5_000;
+    if (!Number.isSafeInteger(this.#timeoutMs) || this.#timeoutMs <= 0) {
+      throw new ValidationError('ClamAV timeout must be a positive integer');
+    }
+  }
+
+  /**
+   * Uses ClamAV's side-effect-free PING command. The socket is always closed
+   * and the result is sanitized so connection details never reach health
+   * responses.
+   */
+  public async healthCheck(
+    options: AttachmentDependencyHealthCheckOptions = {}
+  ): Promise<AttachmentDependencyHealth> {
+    const socket = new Socket();
+
+    return new Promise<AttachmentDependencyHealth>((resolve) => {
+      let settled = false;
+      let response = '';
+      let deadline: ReturnType<typeof setTimeout> | undefined;
+      const onAbort = (): void => finish(false);
+      const finish = (healthy: boolean): void => {
+        if (settled) return;
+        settled = true;
+        if (deadline) clearTimeout(deadline);
+        options.signal?.removeEventListener('abort', onAbort);
+        socket.removeAllListeners();
+        if (!socket.destroyed) socket.destroy();
+        resolve({
+          healthy,
+          provider: 'clamav',
+          detail: healthy
+            ? 'ClamAV attachment scanner is reachable.'
+            : 'ClamAV attachment scanner is unavailable.'
+        });
+      };
+
+      socket.once('error', () => finish(false));
+      socket.on('data', (chunk: Buffer) => {
+        response += chunk.toString('utf8');
+        if (response.length > 64) finish(false);
+      });
+      socket.once('close', () => finish(response.replaceAll('\0', '').trim() === 'PONG'));
+      socket.once('connect', () => socket.end(Buffer.from('zPING\0', 'ascii')));
+      if (options.signal?.aborted) {
+        finish(false);
+        return;
+      }
+      options.signal?.addEventListener('abort', onAbort, { once: true });
+      deadline = setTimeout(() => finish(false), this.#timeoutMs);
+      deadline.unref?.();
+      socket.connect(this.#port, this.#host);
+    });
   }
 
   public async scan(input: {
@@ -112,59 +184,85 @@ export class ClamAvAttachmentSecurityScanner implements AttachmentSecurityScanne
     readonly content: Buffer;
   }): Promise<AttachmentScanResult> {
     const socket = new Socket();
-    socket.setTimeout(this.#timeoutMs);
-    const closeSocket = (): void => {
-      if (!socket.destroyed) socket.destroy();
-    };
+    const fileName = input.fileName;
+    let content: Buffer | undefined = input.content;
 
-    try {
-      await new Promise<void>((resolve, reject) => {
-        const onError = (error: Error) => reject(error);
-        socket.once('error', onError);
-        socket.once('timeout', () => reject(new Error('ClamAV scanner timed out')));
-        socket.once('connect', () => {
-          socket.removeListener('error', onError);
-          resolve();
-        });
-        socket.connect(this.#port, this.#host);
-      });
+    return new Promise<AttachmentScanResult>((resolve, reject) => {
+      const maximumVerdictBytes = 4_096;
+      const chunkSize = 1024 * 1024;
+      let offset = 0;
+      let settled = false;
+      let verdict = '';
+      let deadline: ReturnType<typeof setTimeout> | undefined;
 
-      const verdict = await new Promise<string>((resolve, reject) => {
-        const chunks: Buffer[] = [];
-        const onError = (error: Error) => reject(error);
-        socket.once('error', onError);
-        socket.on('data', (chunk: Buffer) => chunks.push(chunk));
-        socket.once('close', () => {
-          socket.removeListener('error', onError);
-          resolve(Buffer.concat(chunks).toString('utf8').trim());
-        });
-
-        socket.write(Buffer.from('zINSTREAM\0', 'ascii'));
-        const chunkSize = 1024 * 1024;
-        for (let offset = 0; offset < input.content.length; offset += chunkSize) {
-          const chunk = input.content.subarray(offset, offset + chunkSize);
-          const size = Buffer.allocUnsafe(4);
-          size.writeUInt32BE(chunk.length, 0);
-          socket.write(size);
-          socket.write(chunk);
-        }
-        socket.write(Buffer.alloc(4));
-        socket.end();
-      });
-      return /FOUND/i.test(verdict)
-        ? {
+      const cleanup = (): void => {
+        if (deadline) clearTimeout(deadline);
+        socket.removeAllListeners();
+        if (!socket.destroyed) socket.destroy();
+        content = undefined;
+        verdict = '';
+      };
+      const fail = (error: Error): void => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(error);
+      };
+      const finish = (): void => {
+        if (settled) return;
+        const normalizedVerdict = verdict.replaceAll('\0', '').trim();
+        let result: AttachmentScanResult;
+        if (/FOUND/i.test(normalizedVerdict)) {
+          result = {
             status: 'rejected',
             provider: 'clamav',
-            reason: verdict.slice(0, 500)
-          }
-        : /OK/i.test(verdict)
-          ? { status: 'available', provider: 'clamav' }
-          : (() => {
-              throw new Error(`ClamAV scanner returned an invalid verdict for ${input.fileName}`);
-            })();
-    } finally {
-      closeSocket();
-    }
+            reason: normalizedVerdict.slice(0, 500)
+          };
+        } else if (/OK/i.test(normalizedVerdict)) {
+          result = { status: 'available', provider: 'clamav' };
+        } else {
+          fail(new Error(`ClamAV scanner returned an invalid verdict for ${fileName}`));
+          return;
+        }
+        settled = true;
+        cleanup();
+        resolve(result);
+      };
+      const writeNextChunk = (): void => {
+        if (settled || !content) return;
+        if (offset >= content.length) {
+          socket.end(Buffer.alloc(4));
+          return;
+        }
+        const chunk = content.subarray(offset, Math.min(offset + chunkSize, content.length));
+        offset += chunk.length;
+        const size = Buffer.allocUnsafe(4);
+        size.writeUInt32BE(chunk.length, 0);
+        socket.write(size, () => {
+          if (settled) return;
+          socket.write(chunk, writeNextChunk);
+        });
+      };
+
+      socket.once('error', (error) => fail(error));
+      socket.on('data', (chunk: Buffer) => {
+        if (Buffer.byteLength(verdict) + chunk.length > maximumVerdictBytes) {
+          fail(new Error('ClamAV scanner returned an oversized verdict'));
+          return;
+        }
+        verdict += chunk.toString('utf8');
+      });
+      socket.once('end', finish);
+      socket.once('close', () => {
+        if (!settled) finish();
+      });
+      socket.once('connect', () => {
+        socket.write(Buffer.from('zINSTREAM\0', 'ascii'), writeNextChunk);
+      });
+      deadline = setTimeout(() => fail(new Error('ClamAV scanner timed out')), this.#timeoutMs);
+      deadline.unref?.();
+      socket.connect(this.#port, this.#host);
+    });
   }
 }
 

@@ -190,9 +190,12 @@ describe('immutable release workflow contract', () => {
       workflow.match(/--format json > artifacts\/release\/[a-z]+-attestation-verification\.json/g)
     ).toHaveLength(3);
     expect(workflow.match(/--signer-workflow "\$\{SIGNER_WORKFLOW\}"/g)).toHaveLength(3);
-    expect(workflow.match(/--source-ref main --source-digest "\$\{RELEASE_SHA\}"/g)).toHaveLength(
+    expect(
+      workflow.match(/--source-ref refs\/heads\/main --source-digest "\$\{RELEASE_SHA\}"/g)
+    ).toHaveLength(
       3
     );
+    expect(workflow).not.toContain('--source-ref main --source-digest');
     expect(workflow).toContain('GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}');
   });
 
