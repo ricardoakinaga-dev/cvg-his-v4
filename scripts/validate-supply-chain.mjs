@@ -144,7 +144,17 @@ function githubExpressionNumber(value) {
   if (value === null) return 0;
   if (typeof value === 'boolean') return value ? 1 : 0;
   if (typeof value === 'number') return value;
-  if (typeof value === 'string') return value.trim() === '' ? 0 : Number(value);
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+    if (normalized === '') return 0;
+    if (!/^-?(?:(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)$/.test(normalized)) {
+      return Number.NaN;
+    }
+    return Number(normalized);
+  }
+  if (Array.isArray(value) || (value !== null && typeof value === 'object')) {
+    return Number.NaN;
+  }
   return Number.NaN;
 }
 
@@ -385,7 +395,13 @@ function evaluateStaticGithubFunctionValue(call, knownValues = {}) {
   }
   if (call.name === 'format' && call.args.length >= 1 && typeof values[0].value === 'string') {
     const template = values[0].value;
-    const replacements = values.slice(1).map(({ value }) => String(value ?? ''));
+    const githubFormatString = (value) => {
+      if (value === null || value === undefined) return '';
+      if (Array.isArray(value)) return 'Array';
+      if (typeof value === 'object') return 'Object';
+      return String(value);
+    };
+    const replacements = values.slice(1).map(({ value }) => githubFormatString(value));
     let formatted = '';
     for (let index = 0; index < template.length; index += 1) {
       const character = template[index];
@@ -536,6 +552,81 @@ function evaluateStaticExpressionValueModern(expression, knownValues = {}) {
     }
   };
 
+  const applyStaticProperty = (base, property) => {
+    if (!base.known) return unknown();
+    const value = base.value;
+    if (value === null || value === undefined) return { value: null, known: true };
+    if (Array.isArray(value)) {
+      if (property === 'length') return { value: value.length, known: true };
+      if (/^\d+$/.test(property)) {
+        const indexValue = Number(property);
+        return { value: value[indexValue] ?? null, known: true };
+      }
+      return { value: null, known: true };
+    }
+    if (typeof value === 'object') {
+      return {
+        value: Object.prototype.hasOwnProperty.call(value, property) ? value[property] : null,
+        known: true
+      };
+    }
+    if (typeof value === 'string' && property === 'length') {
+      return { value: value.length, known: true };
+    }
+    return { value: null, known: true };
+  };
+
+  const applyStaticPostfixes = (base) => {
+    let value = base;
+    while (value) {
+      skipWhitespace();
+      if (expression[index] === '.') {
+        const property = expression.slice(index + 1).match(/^[A-Za-z_][A-Za-z0-9_-]*/)?.[0];
+        if (!property) return value;
+        index += property.length + 1;
+        value = applyStaticProperty(value, property);
+        continue;
+      }
+      if (expression[index] !== '[') return value;
+      let quote = null;
+      let depth = 0;
+      let closing = -1;
+      for (let cursor = index; cursor < expression.length; cursor += 1) {
+        const character = expression[cursor];
+        if (quote) {
+          if (character === quote) {
+            if (expression[cursor + 1] === quote) cursor += 1;
+            else quote = null;
+          }
+          continue;
+        }
+        if (character === "'" || character === '"') {
+          quote = character;
+          continue;
+        }
+        if (character === '[' || character === '(') depth += 1;
+        if (character !== ']' && character !== ')') continue;
+        depth -= 1;
+        if (character === ']' && depth === 0) {
+          closing = cursor;
+          break;
+        }
+      }
+      if (closing < 0) return value;
+      const selector = parseStaticExpressionValue(
+        expression.slice(index + 1, closing),
+        knownValues
+      );
+      index = closing + 1;
+      if (selector === null) {
+        value = unknown();
+        continue;
+      }
+      value = applyStaticProperty(value, String(selector.value));
+    }
+    return value;
+  };
+
   const parseOperand = () => {
     skipWhitespace();
     if (expression[index] === '(') {
@@ -544,29 +635,33 @@ function evaluateStaticExpressionValueModern(expression, knownValues = {}) {
       skipWhitespace();
       if (expression[index] !== ')') return null;
       index += 1;
-      return nested ?? unknown();
+      return applyStaticPostfixes(nested ?? unknown());
     }
 
     const functionCall = parseGithubFunctionCall(expression, index);
     if (functionCall) {
       index = functionCall.end;
       const value = evaluateStaticGithubFunctionValue(functionCall, knownValues);
-      return value === null ? unknown() : { value: value.value, known: true };
+      return applyStaticPostfixes(
+        value === null ? unknown() : { value: value.value, known: true }
+      );
     }
 
     const literal = parseLiteral(index);
     if (literal) {
       index = literal.end;
-      return { value: literal.value, known: true };
+      return applyStaticPostfixes({ value: literal.value, known: true });
     }
 
     const reference = parseGithubReferenceExpression(expression, index, knownValues);
     if (!reference) return null;
     index = reference.end;
     if (expression[index] === '(') consumeUnknownCall();
-    return reference.value === undefined
-      ? unknown()
-      : { value: reference.value, known: true };
+    return applyStaticPostfixes(
+      reference.value === undefined
+        ? unknown()
+        : { value: reference.value, known: true }
+    );
   };
 
   const parseUnary = () => {
