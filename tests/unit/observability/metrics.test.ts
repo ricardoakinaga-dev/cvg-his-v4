@@ -10,8 +10,30 @@ import {
   getCurrentSloSnapshot,
   resetRequestSloObservations,
   recordSmartSchedulingRecommendation,
-  recordSmartSchedulingRecommendationApplied
+  recordSmartSchedulingRecommendationApplied,
+  isMetricsRequestAuthorized
 } from '../../../apps/api/src/metrics.js';
+
+describe('Metrics — Collector Authorization', () => {
+  it('accepts only the configured dedicated bearer or scrape token', () => {
+    expect(
+      isMetricsRequestAuthorized({ authorization: 'Bearer collector-secret' }, 'collector-secret')
+    ).toBe(true);
+    expect(
+      isMetricsRequestAuthorized({ 'x-metrics-token': 'collector-secret' }, 'collector-secret')
+    ).toBe(true);
+    expect(
+      isMetricsRequestAuthorized(
+        { authorization: 'Bearer browser-session-token' },
+        'collector-secret'
+      )
+    ).toBe(false);
+    expect(isMetricsRequestAuthorized({}, 'collector-secret')).toBe(false);
+    expect(
+      isMetricsRequestAuthorized({ authorization: 'Bearer collector-secret' }, undefined)
+    ).toBe(false);
+  });
+});
 
 describe('Metrics — Route Normalization', () => {
   it('should return exact match for known routes', () => {
@@ -41,8 +63,8 @@ describe('Metrics — Route Normalization', () => {
   });
 
   it('should limit cardinality for unknown routes', () => {
-    expect(normalizeRoute('/unknown/path/here')).toBe('/unknown');
-    expect(normalizeRoute('/foo/bar/baz/qux')).toBe('/foo');
+    expect(normalizeRoute('/unknown/path/here')).toBe('/{unknown}');
+    expect(normalizeRoute('/foo/bar/baz/qux')).toBe('/{unknown}');
   });
 
   it('should handle root path', () => {
@@ -198,5 +220,19 @@ describe('Metrics — App Metrics', () => {
     expect(metrics).toContain(
       'smart_scheduling_recommendation_applies_total{visit_type="scheduled"} 1'
     );
+  });
+
+  it('collapses unrecognized smart scheduling labels', async () => {
+    recordSmartSchedulingRecommendation({ visitType: 'patient-identifier', confidence: 0.4 });
+    recordSmartSchedulingRecommendationApplied({ visitType: 'patient-identifier' });
+
+    const metrics = await getMetricsText();
+    expect(metrics).toContain(
+      'smart_scheduling_recommendations_total{visit_type="other",confidence_band="low"} 1'
+    );
+    expect(metrics).toContain(
+      'smart_scheduling_recommendation_applies_total{visit_type="other"} 1'
+    );
+    expect(metrics).not.toContain('patient-identifier');
   });
 });

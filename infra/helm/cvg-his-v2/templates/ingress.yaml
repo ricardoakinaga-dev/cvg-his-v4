@@ -2,6 +2,7 @@
 Ingress — routes API and SPA traffic
 */ -}}
 {{- if .Values.ingress.enabled }}
+{{ include "cvg-his-v2.ingress.validateUploadBodySize" . }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

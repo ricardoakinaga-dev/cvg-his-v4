@@ -34,6 +34,7 @@ info:
     - `403` Forbidden - Insufficient permissions for this operation
     - `404` Not Found - Resource does not exist
     - `409` Conflict - Resource conflict (e.g., duplicate entry)
+    - `413` Payload Too Large - Request exceeds the upload transport limit
     - `502` Bad Gateway - External service unavailable
     - `503` Service Unavailable - API is not ready to receive traffic
     - `500` Internal Server Error - Unexpected server error
@@ -525,11 +526,15 @@ paths:
       operationId: getMetrics
       summary: Prometheus metrics
       description: |
-        Returns application metrics in Prometheus exposition format.
+        Returns application metrics in Prometheus exposition format. This is
+        a private collector surface and is never routed through the public
+        ingress. Send the dedicated `METRICS_AUTH_TOKEN` as a Bearer token (or
+        `X-Metrics-Token`); browser/session credentials are not accepted.
         Includes HTTP request counts, latency histograms, error rates,
         active requests, database health, and default Node.js VM metrics.
       tags: [Health]
-      security: []
+      security:
+        - MetricsAuth: []
       responses:
         '200':
           description: Metrics in Prometheus text format
@@ -541,6 +546,26 @@ paths:
                   # HELP http_requests_total Total HTTP requests
                   # TYPE http_requests_total counter
                   http_requests_total{method="GET",route="/health",status_code="200"} 42
+        '401':
+          description: Dedicated collector authentication is required
+
+  /internal/metrics:
+    get:
+      operationId: getInternalMetrics
+      summary: Private Prometheus metrics alias
+      description: Alias for `/metrics`; available only to an authorized internal collector.
+      tags: [Health]
+      security:
+        - MetricsAuth: []
+      responses:
+        '200':
+          description: Metrics in Prometheus text format
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: Dedicated collector authentication is required
 
   /slos:
     get:
@@ -548,10 +573,13 @@ paths:
       summary: SLO compliance report
       description: |
         Returns the current API SLO snapshot, compliance report, error budget,
-        burn rate and runbook links. Use this endpoint for executive operation
-        dashboards and incident readiness reviews.
+        burn rate and runbook links. This is a private operator surface and is
+        never routed through the public ingress. Collectors use the dedicated
+        token; the operator UI may use an authenticated session with audit.read.
       tags: [Health]
-      security: []
+      security:
+        - MetricsAuth: []
+        - BearerAuth: []
       responses:
         '200':
           description: Current SLO report
@@ -559,6 +587,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SloReportResponse'
+        '401':
+          description: Dedicated collector authentication is required
 
   /health/slos:
     get:
@@ -566,7 +596,9 @@ paths:
       summary: Health SLO report alias
       description: Alias for `/slos`.
       tags: [Health]
-      security: []
+      security:
+        - MetricsAuth: []
+        - BearerAuth: []
       responses:
         '200':
           description: Current SLO report
@@ -574,6 +606,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SloReportResponse'
+        '401':
+          description: Dedicated collector authentication is required
 
   /flags:
     get:
@@ -3584,7 +3618,14 @@ paths:
     post:
       operationId: uploadAttachment
       summary: Upload attachment
-      description: Uploads a file attachment linked to an entity.
+      description: |
+        Uploads a file attachment linked to an entity. JSON clients send the
+        binary content as base64. The decoded file limit is 25 MiB; the
+        `contentBase64` field is limited to 34,952,536 characters (the exact
+        base64 representation of 25 MiB). The complete JSON request body is
+        bounded at 36,001,112 bytes to allow 1 MiB of metadata and framing.
+        Requests over either transport limit are rejected with 413 and
+        `PAYLOAD_TOO_LARGE`.
       tags: [Medical Records]
       requestBody:
         required: true
@@ -3595,6 +3636,22 @@ paths:
       responses:
         '201':
           description: Attachment uploaded
+        '400':
+          description: Invalid attachment metadata or base64 content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+        '403':
+          description: Attachment management permission required
+        '413':
+          description: Attachment request or decoded binary exceeds the supported limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /attachments/{attachmentId}/download-url:
     post:
@@ -17252,6 +17309,13 @@ components:
       name: X-API-Key
       description: |
         API key issued by the /api-keys endpoint for third-party access.
+    MetricsAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+      description: |
+        Dedicated collector token from METRICS_AUTH_TOKEN. Browser/session
+        access tokens are intentionally not accepted for metrics or SLO data.
 
   parameters:
     FeatureFlagKey:
@@ -22834,7 +22898,8 @@ components:
         contentBase64:
           type: string
           format: byte
-          description: Optional base64-encoded binary content for JSON clients
+          maxLength: 34952536
+          description: Optional base64-encoded binary content for JSON clients; maximum decoded size is 25 MiB
 
     Attachment:
       type: object

@@ -16,6 +16,12 @@ import {
 import { createRateLimiter } from '@cvg-his-v2/shared-rate-limiter';
 import { getTenantContext } from '@cvg-his-v2/tenant-context';
 import {
+  MAX_ATTACHMENT_BASE64_LENGTH,
+  MAX_ATTACHMENT_FILE_SIZE_BYTES,
+  MAX_ATTACHMENT_JSON_BODY_BYTES
+} from '@cvg-his-v2/shared-contracts';
+import { PayloadTooLargeError } from '@cvg-his-v2/shared-errors';
+import {
   ClamAvAttachmentSecurityScanner,
   S3CompatibleFileStorage
 } from '@cvg-his-v2/module-attachments';
@@ -34,7 +40,8 @@ import {
   assertDistributedStateReadiness,
   assertProductionProviderReadiness,
   buildAuthenticatedActorAttributes,
-  createApiServer
+  createApiServer,
+  decodeAttachmentContent
 } from './server.js';
 import { applySecurityHeaders, isSecureRequest } from './http/security-headers.js';
 import { bootstrapServices } from './bootstrap.js';
@@ -190,6 +197,7 @@ function createServerUnderTest(overrides: Partial<Parameters<typeof createApiSer
     environment: 'test',
     version: '0.1.0',
     authSecret: 'test-secret',
+    metricsAuthToken: 'test-metrics-token',
     accessTokenTtlSeconds: 900,
     refreshTokenTtlSeconds: 604800,
     workflowTaskService: new WorkflowTaskService(),
@@ -1990,7 +1998,10 @@ test('operational metrics classify forbidden responses and downloads by normaliz
   const metricsResponse = await performRequest(server, {
     method: 'GET',
     url: '/metrics',
-    headers: { host: 'localhost' }
+    headers: {
+      authorization: 'Bearer test-metrics-token',
+      host: 'localhost'
+    }
   });
   const metricsText = metricsResponse.bodyText();
   assert.match(
@@ -2020,7 +2031,10 @@ test('clinical operational metrics use an authoritative unlabeled snapshot', asy
   const response = await performRequest(server, {
     method: 'GET',
     url: '/metrics',
-    headers: { host: 'localhost' }
+    headers: {
+      authorization: 'Bearer test-metrics-token',
+      host: 'localhost'
+    }
   });
   assert.equal(response.statusCode, 200);
   const metrics = response.bodyText();
@@ -2033,6 +2047,64 @@ test('clinical operational metrics use an authoritative unlabeled snapshot', asy
   assert.match(metrics, /^cvg_handover_pending 1$/m);
   assert.doesNotMatch(metrics, /^cvg_[^\n]+\{[^\n]+\}/m);
   resetClinicalOperationalMetrics();
+});
+
+test('collector surfaces fail closed before auth and reuse one bounded refresh across repeated scrapes', async () => {
+  let refreshCalls = 0;
+  const server = createServerUnderTest({
+    clinicalOperationalMetricsProvider: async () => {
+      refreshCalls += 1;
+      return {
+        activeInpatients: 1,
+        openEncounters: 2,
+        pendingWorkflowTasks: 3,
+        overdueWorkflowTasks: 0,
+        medicationOverdue: 0,
+        pendingDiagnostics: 0,
+        handoverPending: 0
+      };
+    }
+  });
+
+  for (const url of ['/metrics', '/internal/metrics', '/slos', '/health/slos']) {
+    const denied = await performRequest(server, {
+      method: 'GET',
+      url,
+      headers: { host: 'localhost' }
+    });
+    assert.equal(denied.statusCode, 401, `${url} must be collector-authenticated`);
+    assert.equal(denied.bodyJson<{ code: string }>().code, 'METRICS_AUTH_REQUIRED');
+  }
+  assert.equal(refreshCalls, 0, 'unauthorized scrapes must not fan out to tenant sources');
+
+  const first = await performRequest(server, {
+    method: 'GET',
+    url: '/metrics',
+    headers: { authorization: 'Bearer test-metrics-token', host: 'localhost' }
+  });
+  const second = await performRequest(server, {
+    method: 'GET',
+    url: '/metrics',
+    headers: { 'x-metrics-token': 'test-metrics-token', host: 'localhost' }
+  });
+  assert.equal(first.statusCode, 200);
+  assert.equal(second.statusCode, 200);
+  assert.equal(refreshCalls, 1, 'repeated scrapes must use the bounded clinical snapshot cache');
+  assert.match(second.bodyText(), /^cvg_active_inpatients 1$/m);
+
+  const live = await performRequest(server, {
+    method: 'GET',
+    url: '/live',
+    headers: { host: 'localhost' }
+  });
+  assert.equal(live.statusCode, 200, 'probe-only liveness remains public');
+});
+
+test('production-like API refuses to start without a dedicated metrics collector token', () => {
+  assert.throws(
+    () => createServerUnderTest({ environment: 'production', metricsAuthToken: undefined }),
+    /METRICS_AUTH_TOKEN/
+  );
 });
 
 test('database pool metrics expose bounded connection pressure without tenant labels', async () => {
@@ -2064,6 +2136,7 @@ test('SLO endpoint exposes compliance, error budget and Prometheus gauges', asyn
     method: 'GET',
     url: '/slos',
     headers: {
+      authorization: 'Bearer test-metrics-token',
       host: 'localhost'
     }
   });
@@ -2107,6 +2180,7 @@ test('SLO endpoint exposes compliance, error budget and Prometheus gauges', asyn
     method: 'GET',
     url: '/health/slos',
     headers: {
+      authorization: 'Bearer test-metrics-token',
       host: 'localhost'
     }
   });
@@ -2117,6 +2191,7 @@ test('SLO endpoint exposes compliance, error budget and Prometheus gauges', asyn
     method: 'GET',
     url: '/metrics',
     headers: {
+      authorization: 'Bearer test-metrics-token',
       host: 'localhost'
     }
   });
@@ -2324,6 +2399,7 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
       method: 'GET',
       url: '/metrics',
       headers: {
+        authorization: 'Bearer test-metrics-token',
         host: 'localhost'
       }
     });
@@ -2875,6 +2951,45 @@ test('bootstrap deletes encounters over HTTP semantics', async () => {
     }
   });
   assert.equal(getResponse.statusCode, 404);
+});
+
+test('attachment base64 accepts the exact decoded frontier and returns canonical 413 above it', () => {
+  const exact = Buffer.alloc(MAX_ATTACHMENT_FILE_SIZE_BYTES).toString('base64');
+  const decoded = decodeAttachmentContent(exact);
+  assert.equal(decoded?.length, MAX_ATTACHMENT_FILE_SIZE_BYTES);
+  assert.equal(exact.length, MAX_ATTACHMENT_BASE64_LENGTH);
+
+  const oversized = Buffer.alloc(MAX_ATTACHMENT_FILE_SIZE_BYTES + 1).toString('base64');
+  assert.throws(
+    () => decodeAttachmentContent(oversized),
+    (error) =>
+      error instanceof PayloadTooLargeError &&
+      error.statusCode === 413 &&
+      error.code === 'PAYLOAD_TOO_LARGE'
+  );
+  assert.throws(
+    () => decodeAttachmentContent('not-base64'),
+    (error) => error instanceof Error && (error as { statusCode?: number }).statusCode === 400
+  );
+});
+
+test('attachment HTTP boundary returns canonical 413 for a declared oversized body', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+  const response = await performRequest(server, {
+    method: 'POST',
+    url: '/attachments',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      'content-length': String(MAX_ATTACHMENT_JSON_BODY_BYTES + 1),
+      host: 'localhost'
+    },
+    body: {}
+  });
+
+  assert.equal(response.statusCode, 413);
+  assert.equal(response.bodyJson<{ code: string }>().code, 'PAYLOAD_TOO_LARGE');
 });
 
 test('diagnostic summaries and attachments preserve the authenticated account over HTTP', async () => {

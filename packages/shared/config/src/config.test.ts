@@ -130,6 +130,7 @@ describe('config module', () => {
       env.RESEND_API_KEY = 're_test_key';
       env.EMAIL_FROM = 'clinic@example.com';
       env.EMAIL_MOCK_MODE = 'false';
+      env.METRICS_AUTH_TOKEN = 'collector-secret';
       const config = loadApiConfig(env as NodeJS.ProcessEnv);
       expect(config.appName).toBe('test-api');
       expect(config.port).toBe(3001);
@@ -138,6 +139,7 @@ describe('config module', () => {
       expect(config.resendApiKey).toBe('re_test_key');
       expect(config.emailFrom).toBe('clinic@example.com');
       expect(config.emailMockMode).toBe(false);
+      expect(config.metricsAuthToken).toBe('collector-secret');
     });
 
     it('requires TLS for S3 in production-like environments', () => {

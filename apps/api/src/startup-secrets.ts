@@ -28,6 +28,7 @@ const API_SECRET_PATHS: Readonly<Record<string, string>> = {
   AUTH_SECRET: 'api',
   AUTH_SECRET_PREVIOUS: 'api_previous',
   AUTH_SECRET_VERSION: 'api_version',
+  METRICS_AUTH_TOKEN: 'metrics',
   MFA_SECRET_ENCRYPTION_KEY: 'mfa',
   MFA_SECRET_ENCRYPTION_KEY_VERSION: 'mfa_version',
   MFA_SECRET_ENCRYPTION_KEYRING_JSON: 'mfa_keyring',

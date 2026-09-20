@@ -146,6 +146,47 @@ test('Helm-present validation runs static chart checks before rendering', () => 
   );
 });
 
+test('upload ingress values preserve the base64-derived 35m ceiling', () => {
+  const chartRoot = resolve(repositoryRoot, 'infra/helm/cvg-his-v2');
+  const baseValues = YAML.parse(readFileSync(resolve(chartRoot, 'values.yaml'), 'utf8'));
+  const stagingValues = YAML.parse(
+    readFileSync(resolve(chartRoot, 'values.staging.yaml'), 'utf8')
+  );
+  const productionValues = YAML.parse(
+    readFileSync(resolve(chartRoot, 'values.prod.yaml'), 'utf8')
+  );
+  const limitsSource = readFileSync(
+    resolve(repositoryRoot, 'packages/shared/contracts/src/upload-limits.ts'),
+    'utf8'
+  );
+  const ingress = 'nginx.ingress.kubernetes.io/proxy-body-size';
+  const decodedBytes = 25 * 1024 * 1024;
+  const encodedBytes = Math.ceil(decodedBytes / 3) * 4;
+  const expectedIngressMiB = Math.ceil((encodedBytes + 1024 * 1024) / (1024 * 1024));
+
+  assert.match(limitsSource, /MAX_ATTACHMENT_FILE_SIZE_BYTES\s*=\s*25\s*\*\s*1024\s*\*\s*1024/);
+  assert.match(limitsSource, /MAX_ATTACHMENT_BASE64_LENGTH/);
+  assert.equal(expectedIngressMiB, 35);
+  assert.equal(baseValues.api.ingress.annotations[ingress], `${expectedIngressMiB}m`);
+  assert.equal(baseValues.spa.ingress.annotations[ingress], `${expectedIngressMiB}m`);
+  assert.equal(baseValues.ingress.annotations[ingress], `${expectedIngressMiB}m`);
+  assert.equal(stagingValues.ingress.annotations[ingress], `${expectedIngressMiB}m`);
+  assert.equal(productionValues.ingress.annotations[ingress], `${expectedIngressMiB}m`);
+
+  const helpers = readFileSync(resolve(chartRoot, 'templates/_helpers.tpl'), 'utf8');
+  assert.match(helpers, /validateUploadBodySize/);
+  assert.match(helpers, /proxy-body-size must remain 35m/);
+  assert.match(helpers, /public ingress must reject private collector endpoint/);
+  assert.match(helpers, /list "\/metrics" "\/internal\/metrics" "\/slos" "\/health\/slos"/);
+});
+
+test('Helm gate pins the exact executable version required by render validation', () => {
+  const source = readFileSync(validatorPath, 'utf8');
+  assert.match(source, /REQUIRED_HELM_VERSION\s*=\s*'v3\.15\.4'/);
+  assert.match(source, /REQUIRED_HELM_VERSION_PATTERN\s*=\s*\/\^v3\\\.15\\\.4/);
+  assert.match(source, /REQUIRE_HELM === '1'/);
+});
+
 test('production-like worker identity is wired as a required Secret value', () => {
   const deployment = readFileSync(
     resolve(repositoryRoot, 'infra/helm/cvg-his-v2/templates/worker-deployment.yaml'),

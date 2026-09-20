@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 
 import test from 'node:test';
 
-import { createClinicalOperationalMetricsProvider } from './clinical-operational-metrics.js';
+import {
+  CLINICAL_OPERATIONAL_METRICS_CONCURRENCY,
+  CLINICAL_OPERATIONAL_METRICS_MAX_ACCOUNTS,
+  createClinicalOperationalMetricsProvider
+} from './clinical-operational-metrics.js';
 
 const ACCOUNT_A = 'account-a';
 const ACCOUNT_B = 'account-b';
@@ -91,4 +95,58 @@ test('clinical operational metrics remain empty when no account identity is avai
     pendingDiagnostics: 0,
     handoverPending: 0
   });
+});
+
+test('clinical operational metrics fail closed before bounded fan-out', async () => {
+  const accountIds = Array.from(
+    { length: CLINICAL_OPERATIONAL_METRICS_MAX_ACCOUNTS + 1 },
+    (_, index) => `account-${index}`
+  );
+  let workflowReads = 0;
+  const provider = createClinicalOperationalMetricsProvider({
+    users: { list: () => accountIds.map((accountId) => ({ accountId })) },
+    inpatient: { list: () => [] },
+    encounters: { listActive: () => [] },
+    workflowTasks: {
+      list: async () => {
+        workflowReads += 1;
+        return [];
+      }
+    },
+    prescriptionExecutions: { list: () => [] },
+    diagnostics: { list: () => [] },
+    clinicalHandoffs: { list: () => [] }
+  });
+
+  await assert.rejects(provider(), /exceeds 1000 accounts/);
+  assert.equal(workflowReads, 0);
+});
+
+test('clinical operational metrics keep per-scrape account reads within the concurrency bound', async () => {
+  const accountIds = Array.from(
+    { length: CLINICAL_OPERATIONAL_METRICS_CONCURRENCY * 2 + 1 },
+    (_, index) => `account-${index}`
+  );
+  let activeWorkflowReads = 0;
+  let maximumWorkflowReads = 0;
+  const provider = createClinicalOperationalMetricsProvider({
+    users: { list: () => accountIds.map((accountId) => ({ accountId })) },
+    inpatient: { list: () => [] },
+    encounters: { listActive: () => [] },
+    workflowTasks: {
+      list: async () => {
+        activeWorkflowReads += 1;
+        maximumWorkflowReads = Math.max(maximumWorkflowReads, activeWorkflowReads);
+        await Promise.resolve();
+        activeWorkflowReads -= 1;
+        return [];
+      }
+    },
+    prescriptionExecutions: { list: () => [] },
+    diagnostics: { list: () => [] },
+    clinicalHandoffs: { list: () => [] }
+  });
+
+  await provider();
+  assert.equal(maximumWorkflowReads, CLINICAL_OPERATIONAL_METRICS_CONCURRENCY);
 });

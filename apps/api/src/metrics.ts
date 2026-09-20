@@ -1,3 +1,5 @@
+import type { IncomingHttpHeaders } from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
 import { Registry, Counter, Histogram, Gauge, collectDefaultMetrics } from 'prom-client';
 import type {
   FeatureFlagMetricsCollector,
@@ -14,6 +16,24 @@ import type { Logger } from '@cvg-his-v2/shared-logging';
 const registry = new Registry();
 const REQUEST_SLO_OBSERVATION_LIMIT = 20_000;
 const REQUEST_SLO_OBSERVATION_RETENTION_MS = 60 * 60 * 1000;
+/**
+ * Clinical gauges are eventually consistent by design. A scrape must never
+ * turn into a fresh tenant fan-out, so the composition root refreshes them at
+ * most once per interval and shares an in-flight refresh with concurrent
+ * collectors.
+ */
+export const CLINICAL_OPERATIONAL_METRICS_CACHE_TTL_MS = 15_000;
+const CLINICAL_OPERATIONAL_METRICS_FAILURE_RETRY_MS = 1_000;
+
+interface ClinicalOperationalMetricsRefreshState {
+  expiresAt: number;
+  inFlight?: Promise<void>;
+}
+
+let clinicalOperationalMetricsRefreshCache = new WeakMap<
+  () => Promise<ClinicalOperationalMetricsSnapshot>,
+  ClinicalOperationalMetricsRefreshState
+>();
 
 interface RequestSloObservation {
   readonly timestamp: number;
@@ -260,16 +280,43 @@ export async function refreshClinicalOperationalMetrics(
   logger: Logger
 ): Promise<void> {
   if (!provider) return;
-  try {
-    updateClinicalOperationalMetrics(await provider());
-  } catch (error: unknown) {
-    logger.warn('Clinical operational metrics refresh failed', {
-      error: error instanceof Error ? error.message : String(error)
+
+  const now = Date.now();
+  const cached = clinicalOperationalMetricsRefreshCache.get(provider);
+  if (cached && cached.expiresAt > now) return;
+  if (cached?.inFlight) return cached.inFlight;
+
+  const state: ClinicalOperationalMetricsRefreshState = {
+    expiresAt: now + CLINICAL_OPERATIONAL_METRICS_FAILURE_RETRY_MS
+  };
+  const refresh = provider()
+    .then((snapshot) => {
+      updateClinicalOperationalMetrics(snapshot);
+      state.expiresAt = Date.now() + CLINICAL_OPERATIONAL_METRICS_CACHE_TTL_MS;
+    })
+    .catch((error: unknown) => {
+      // Keep the last known-good gauges instead of publishing a partial
+      // tenant aggregate. The short retry window prevents a broken provider
+      // from becoming a scrape amplification loop.
+      state.expiresAt = Date.now() + CLINICAL_OPERATIONAL_METRICS_FAILURE_RETRY_MS;
+      logger.warn('Clinical operational metrics refresh failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    })
+    .finally(() => {
+      state.inFlight = undefined;
     });
-  }
+
+  state.inFlight = refresh;
+  clinicalOperationalMetricsRefreshCache.set(provider, state);
+  await refresh;
 }
 
 export function resetClinicalOperationalMetrics(): void {
+  // Tests and controlled runtime resets must invalidate the refresh state as
+  // well as the gauges; otherwise a reset followed by a scrape could keep
+  // serving the prior provider's cached window.
+  clinicalOperationalMetricsRefreshCache = new WeakMap();
   cvgActiveInpatients.reset();
   cvgOpenEncounters.reset();
   cvgPendingWorkflowTasks.reset();
@@ -319,6 +366,13 @@ export const smartSchedulingRecommendationAppliesTotal = new Counter({
   labelNames: ['visit_type'] as const,
   registers: [registry]
 });
+
+const SMART_SCHEDULING_VISIT_TYPES = new Set(['scheduled', 'urgent', 'follow_up', 'consultation']);
+
+function normalizeMetricLabel(value: string, allowed: ReadonlySet<string>): string {
+  const normalized = value.trim().toLowerCase();
+  return normalized.length > 0 && allowed.has(normalized) ? normalized : 'other';
+}
 
 // ============================================================================
 // Feature Flag Metrics (PR-FF-13)
@@ -402,6 +456,38 @@ export function getMetricsRegistry(): Registry {
 
 export async function getMetricsText(): Promise<string> {
   return registry.metrics();
+}
+
+/**
+ * Metrics are an operator/collector surface, not a browser surface. Keep the
+ * credential comparison constant-time and accept only an explicit bearer
+ * credential (or the equivalent scrape-oriented header); no user/session
+ * token is treated as metrics authorization.
+ */
+export function isMetricsRequestAuthorized(
+  headers: IncomingHttpHeaders,
+  configuredToken: string | undefined
+): boolean {
+  const expected = configuredToken?.trim();
+  if (!expected) return false;
+
+  const authorization = headerValue(headers.authorization);
+  const bearer = authorization?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+  const explicit = headerValue(headers['x-metrics-token'])?.trim();
+  return [bearer, explicit].some((candidate) =>
+    candidate ? constantTimeTokenEqual(candidate, expected) : false
+  );
+}
+
+function headerValue(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function constantTimeTokenEqual(candidate: string, expected: string): boolean {
+  const candidateBytes = Buffer.from(candidate, 'utf8');
+  const expectedBytes = Buffer.from(expected, 'utf8');
+  if (candidateBytes.length !== expectedBytes.length) return false;
+  return timingSafeEqual(candidateBytes, expectedBytes);
 }
 
 function pruneSloObservations(now = Date.now()): void {
@@ -586,7 +672,7 @@ export function recordSmartSchedulingRecommendation(input: {
   const confidenceBand =
     input.confidence >= 0.85 ? 'high' : input.confidence >= 0.7 ? 'medium' : 'low';
   smartSchedulingRecommendationsTotal.inc({
-    visit_type: input.visitType,
+    visit_type: normalizeMetricLabel(input.visitType, SMART_SCHEDULING_VISIT_TYPES),
     confidence_band: confidenceBand
   });
 }
@@ -595,7 +681,7 @@ export function recordSmartSchedulingRecommendationApplied(input: {
   readonly visitType: string;
 }): void {
   smartSchedulingRecommendationAppliesTotal.inc({
-    visit_type: input.visitType
+    visit_type: normalizeMetricLabel(input.visitType, SMART_SCHEDULING_VISIT_TYPES)
   });
 }
 
@@ -647,11 +733,8 @@ export function normalizeRoute(pathname: string): string {
     }
   }
 
-  // For unmatched routes, return the first segment only to limit cardinality
-  const segments = pathname.split('/').filter(Boolean);
-  if (segments.length > 0) {
-    return '/' + segments[0];
-  }
-
-  return pathname || '/';
+  // Do not reflect attacker-controlled path segments into metric labels. The
+  // route registry above is intentionally explicit; everything else shares a
+  // single bounded bucket.
+  return pathname === '' || pathname === '/' ? '/' : '/{unknown}';
 }

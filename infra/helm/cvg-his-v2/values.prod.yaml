@@ -33,6 +33,9 @@ api:
     VAULT_ENABLED: "true"
   auth:
     existingSecret: cvg-his-v2-prod-api-secrets
+  metrics:
+    existingSecret: cvg-his-v2-prod-api-secrets
+    secretKey: METRICS_AUTH_TOKEN
   setup:
     existingSecret: cvg-his-v2-prod-api-secrets
   vault:
@@ -96,9 +99,14 @@ ingress:
   enabled: true
   className: "nginx"
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-body-size: "35m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
     nginx.ingress.kubernetes.io/client-body-buffer-size: "512k"
+    nginx.ingress.kubernetes.io/server-snippet: |
+      location = /metrics { return 404; }
+      location = /internal/metrics { return 404; }
+      location = /slos { return 404; }
+      location = /health/slos { return 404; }
   hosts:
     - host: api.cvg-his-v2.com
       paths:

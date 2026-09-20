@@ -227,6 +227,26 @@ wait_for_http() {
   return 1
 }
 
+wait_for_metrics_http() {
+  local url="$1"
+  local expected="${2:-200}"
+  local attempts="${3:-60}"
+  local sleep_s="${4:-2}"
+  local token="${API_METRICS_TOKEN:-${METRICS_AUTH_TOKEN:-}}"
+  [[ -n "$token" ]] || die "API_METRICS_TOKEN or METRICS_AUTH_TOKEN is required for the private metrics check"
+
+  for _ in $(seq 1 "$attempts"); do
+    local code
+    code="$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" "$url" || true)"
+    if [[ "$code" == "$expected" ]]; then
+      return 0
+    fi
+    sleep "$sleep_s"
+  done
+
+  return 1
+}
+
 validate_v2_stack() {
   log "validating API /health (external port 3003)"
   wait_for_http "${API_HEALTH_URL:-http://127.0.0.1:3003/health}" 200 || die "API health check failed"
@@ -235,7 +255,7 @@ validate_v2_stack() {
   wait_for_http "${API_READY_URL:-http://127.0.0.1:3003/ready}" 200 || die "API readiness check failed"
 
   log "validating API /metrics (external port 3003)"
-  wait_for_http "${API_METRICS_URL:-http://127.0.0.1:3003/metrics}" 200 || die "API metrics check failed"
+  wait_for_metrics_http "${API_METRICS_URL:-http://127.0.0.1:3003/metrics}" 200 || die "API metrics check failed"
 
   log "validating SPA root (external port 3002)"
   local spa_code
@@ -332,7 +352,7 @@ Env file:
   Validated endpoints:
     curl http://127.0.0.1:3003/health
     curl http://127.0.0.1:3003/ready
-    curl http://127.0.0.1:3003/metrics
+    curl -H 'Authorization: Bearer $API_METRICS_TOKEN' http://127.0.0.1:3003/metrics
     curl -I http://127.0.0.1:3002/
 
 Worker:

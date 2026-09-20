@@ -16,7 +16,7 @@
 └─────────────────────┬───────────────────────────────────────┘
                       │ Prometheus scraping
 ┌─────────────────────▼───────────────────────────────────────┐
-│  Prometheus         │ Scrapes /metrics from API + Worker      │
+│  Prometheus         │ Scrapes private API /metrics + Worker   │
 │  prometheus.yml     │                                        │
 │  prometheus-alerts.yml│ Alerts: API Down, HighError,         │
 │                      │ HighLatency, DB Unhealthy, etc.        │
@@ -146,8 +146,11 @@ vazio em `.env.v2` e só então suba o perfil:
 
 ```bash
 cp .env.v2.example .env.v2
-# Edite .env.v2 e preencha GRAFANA_ADMIN_PASSWORD com um segredo local único.
- docker compose --env-file .env.v2 -f docker-compose.v2.yml --profile observability up -d otel-collector prometheus grafana
+# Edite .env.v2 e preencha GRAFANA_ADMIN_PASSWORD e METRICS_AUTH_TOKEN com
+# segredos locais únicos; o valor do token deve ser salvo também no arquivo
+# indicado por METRICS_AUTH_TOKEN_FILE, com permissões 0600.
+mkdir -p .secrets && umask 077 && printf '%s\n' "$METRICS_AUTH_TOKEN" > .secrets/api-metrics-token
+docker compose --env-file .env.v2 -f docker-compose.v2.yml --profile observability up -d otel-collector prometheus grafana
 ```
 
 Portas:
@@ -176,6 +179,9 @@ Arquivo: `infra/observability/prometheus.yml`
 scrape_configs:
   - job_name: 'cvg-api'
     metrics_path: '/metrics'
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/secrets/api-metrics-token
     static_configs:
       - targets: ['cvg-his-v2-api:3001']
         labels:
@@ -271,7 +277,8 @@ fallback em memória nem `UPDATE` direto da API na tabela de deliveries.
 ### 9.1 Verificar se API está expondo métricas
 
 ```bash
-curl -s http://localhost:3003/metrics | head -50
+curl -s -H "Authorization: Bearer ${METRICS_AUTH_TOKEN:?set METRICS_AUTH_TOKEN}" \
+  http://localhost:3003/metrics | head -50
 ```
 
 ### 9.2 Verificar traces estão sendo exportados
@@ -281,7 +288,8 @@ Verificar logs da API procurando por `span` exportado ou erros de conexão OTLP.
 ### 9.3 Validar SLOs
 
 ```bash
-curl -s http://localhost:3003/slos | jq .
+curl -s -H "Authorization: Bearer ${METRICS_AUTH_TOKEN:?set METRICS_AUTH_TOKEN}" \
+  http://localhost:3003/slos | jq .
 ```
 
 ---

@@ -10,6 +10,13 @@ const chartDir = path.join(rootDir, 'infra', 'helm', 'cvg-his-v2');
 const baseValues = path.join(chartDir, 'values.yaml');
 export const REQUIRED_HELM_VERSION = 'v3.15.4';
 const REQUIRED_HELM_VERSION_PATTERN = /^v3\.15\.4(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
+export const EXPECTED_ATTACHMENT_INGRESS_BODY_SIZE = '35m';
+export const PRIVATE_COLLECTOR_INGRESS_PATHS = [
+  '/metrics',
+  '/internal/metrics',
+  '/slos',
+  '/health/slos'
+];
 
 export const isRequiredHelmVersion = (version) => REQUIRED_HELM_VERSION_PATTERN.test(version);
 const helmExecutable = process.env.HELM_BIN || 'helm';
@@ -22,6 +29,7 @@ const environments = [
     expectManagedSecrets: true,
     expectEmbeddedDatastores: true,
     expectApiProbes: false,
+    expectIngress: false,
     expectLocalAttachmentStorage: true
   },
   {
@@ -31,6 +39,7 @@ const environments = [
     expectManagedSecrets: false,
     expectEmbeddedDatastores: false,
     expectApiProbes: true,
+    expectIngress: true,
     expectLocalAttachmentStorage: false
   },
   {
@@ -40,6 +49,7 @@ const environments = [
     expectManagedSecrets: false,
     expectEmbeddedDatastores: false,
     expectApiProbes: true,
+    expectIngress: true,
     expectLocalAttachmentStorage: false
   }
 ];
@@ -108,6 +118,15 @@ function validateStaticChart() {
   assert(chart.name === 'cvg-his-v2', 'Chart.yaml name must be cvg-his-v2');
   assert(base.api?.image?.repository, 'values.yaml must define api.image.repository');
   assert(base.api?.setup?.secretKey, 'values.yaml must define the setup bootstrap secret key');
+  assert(
+    base.api?.ingress?.annotations?.['nginx.ingress.kubernetes.io/proxy-body-size'] ===
+        EXPECTED_ATTACHMENT_INGRESS_BODY_SIZE &&
+      base.spa?.ingress?.annotations?.['nginx.ingress.kubernetes.io/proxy-body-size'] ===
+        EXPECTED_ATTACHMENT_INGRESS_BODY_SIZE &&
+      base.ingress?.annotations?.['nginx.ingress.kubernetes.io/proxy-body-size'] ===
+        EXPECTED_ATTACHMENT_INGRESS_BODY_SIZE,
+    `values.yaml attachment ingress limits must remain ${EXPECTED_ATTACHMENT_INGRESS_BODY_SIZE}`
+  );
   assert(base.worker?.image?.repository, 'values.yaml must define worker.image.repository');
   assert(
     base.worker?.accountIds?.secretKey,
@@ -275,6 +294,20 @@ function validateStaticChart() {
     'Embedded PostgreSQL must migrate and reconcile roles before application containers start'
   );
   assert(
+    helmHelpers.includes('cvg-his-v2.ingress.validateUploadBodySize') &&
+      helmHelpers.includes(
+        `ingress proxy-body-size must remain ${EXPECTED_ATTACHMENT_INGRESS_BODY_SIZE}`
+      ),
+    'Ingress must fail closed when the attachment body limit diverges from the API contract'
+  );
+  for (const endpoint of PRIVATE_COLLECTOR_INGRESS_PATHS) {
+    assert(
+      helmHelpers.includes('public ingress must reject private collector endpoint') &&
+        helmHelpers.includes(endpoint),
+      `Ingress must reject private collector endpoint ${endpoint}`
+    );
+  }
+  assert(
     workerDeploymentTemplate.includes('name: WORKER_ACCOUNT_IDS') &&
       workerDeploymentTemplate.includes('worker.accountIds.secretKey') &&
       workerDeploymentTemplate.includes('optional: false'),
@@ -379,6 +412,14 @@ function validateStaticChart() {
         `${environment.name}: worker.accountIds.secretKey is required for production-like startup`
       );
     }
+
+    if (environment.expectIngress) {
+      assert(
+        values.ingress?.annotations?.['nginx.ingress.kubernetes.io/proxy-body-size'] ===
+          EXPECTED_ATTACHMENT_INGRESS_BODY_SIZE,
+        `${environment.name}: ingress attachment body size must remain ${EXPECTED_ATTACHMENT_INGRESS_BODY_SIZE}`
+      );
+    }
   }
 }
 
@@ -469,6 +510,36 @@ assertHelmFailure(
     'persistence.accessMode=ReadWriteMany'
   ],
   'operator-provided RWX storageClass'
+);
+
+assertHelmFailure(
+  [
+    'template',
+    'cvg-his-v2-staging-upload-limit-invalid',
+    chartDir,
+    '-f',
+    baseValues,
+    '-f',
+    path.join(chartDir, 'values.staging.yaml'),
+    '--set-string',
+    'ingress.annotations.nginx\\.ingress\\.kubernetes\\.io/proxy-body-size=10m'
+  ],
+  'ingress proxy-body-size must remain 35m'
+);
+
+assertHelmFailure(
+  [
+    'template',
+    'cvg-his-v2-private-collector-ingress-invalid',
+    chartDir,
+    '-f',
+    baseValues,
+    '-f',
+    path.join(chartDir, 'values.staging.yaml'),
+    '--set-string',
+    'ingress.annotations.nginx\\.ingress\\.kubernetes\\.io/server-snippet=location = /metrics { return 200; }'
+  ],
+  'public ingress must reject private collector endpoint /metrics'
 );
 
 assertHelmFailure(
@@ -578,6 +649,7 @@ for (const environment of environments) {
   const apiConfigMap = findDoc(docs, 'ConfigMap', `${prefix}-api-config`);
   const spaNginxConfig = findDoc(docs, 'ConfigMap', `${prefix}-spa-config-nginx`);
   const attachmentStoragePvc = findDoc(docs, 'PersistentVolumeClaim', `${prefix}-storage`);
+  const ingress = findDoc(docs, 'Ingress', prefix);
 
   assert(apiDeployment, `${environment.name}: API deployment not rendered`);
   assert(workerDeployment, `${environment.name}: worker deployment not rendered`);
@@ -590,6 +662,25 @@ for (const environment of environments) {
   assert(spaPdb, `${environment.name}: SPA PodDisruptionBudget not rendered`);
   assert(apiConfigMap, `${environment.name}: API ConfigMap not rendered`);
   assert(spaNginxConfig, `${environment.name}: SPA nginx ConfigMap not rendered`);
+  if (environment.expectIngress) {
+    assert(ingress, `${environment.name}: shared ingress not rendered`);
+    assert(
+      ingress.metadata?.annotations?.['nginx.ingress.kubernetes.io/proxy-body-size'] ===
+        EXPECTED_ATTACHMENT_INGRESS_BODY_SIZE,
+      `${environment.name}: rendered ingress attachment body size must remain ${EXPECTED_ATTACHMENT_INGRESS_BODY_SIZE}`
+    );
+    const serverSnippet = String(
+      ingress.metadata?.annotations?.['nginx.ingress.kubernetes.io/server-snippet'] ?? ''
+    );
+    for (const endpoint of PRIVATE_COLLECTOR_INGRESS_PATHS) {
+      assert(
+        serverSnippet.includes(`location = ${endpoint} { return 404; }`),
+        `${environment.name}: public ingress must reject private collector endpoint ${endpoint}`
+      );
+    }
+  } else {
+    assert(!ingress, `${environment.name}: ingress must remain disabled in local development`);
+  }
 
   const apiContainer = apiDeployment.spec.template.spec.containers[0];
   const workerContainer = workerDeployment.spec.template.spec.containers[0];

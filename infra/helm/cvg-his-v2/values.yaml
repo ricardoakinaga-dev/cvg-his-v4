@@ -37,6 +37,13 @@ api:
     secretKey: AUTH_SECRET
     value: ""
 
+  # Prometheus/SLO scraping is a private operator surface. The token belongs
+  # in the operator-managed API Secret; it is never rendered into a ConfigMap
+  # or committed values file.
+  metrics:
+    existingSecret: ""
+    secretKey: METRICS_AUTH_TOKEN
+
   setup:
     existingSecret: ""
     secretKey: SETUP_BOOTSTRAP_TOKEN
@@ -80,7 +87,7 @@ api:
     path: /
     pathType: Prefix
     annotations:
-      nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+      nginx.ingress.kubernetes.io/proxy-body-size: "35m"
       nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
 
   probes:
@@ -238,7 +245,7 @@ spa:
     path: /
     pathType: Prefix
     annotations:
-      nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+      nginx.ingress.kubernetes.io/proxy-body-size: "35m"
 
   probes:
     enabled: true
@@ -353,8 +360,15 @@ ingress:
   className: "nginx"
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-body-size: "35m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    # Collector endpoints are served only through the private API service;
+    # the public NGINX host must never forward them to the API pods.
+    nginx.ingress.kubernetes.io/server-snippet: |
+      location = /metrics { return 404; }
+      location = /internal/metrics { return 404; }
+      location = /slos { return 404; }
+      location = /health/slos { return 404; }
   hosts:
     - host: api.cvg-his-v2.local
       paths:

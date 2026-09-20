@@ -123,6 +123,14 @@ export const API_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
   },
   {
     app: 'api',
+    key: 'METRICS_AUTH_TOKEN',
+    required: false,
+    sensitive: true,
+    description:
+      'Dedicated bearer token for the private Prometheus/SLO collector surface. Never reuse browser or session credentials.'
+  },
+  {
+    app: 'api',
     key: 'AUTH_ACCESS_TOKEN_TTL_SECONDS',
     required: false,
     defaultValue: String(DEFAULT_ACCESS_TOKEN_TTL_SECONDS),
@@ -689,6 +697,7 @@ export interface ApiAppConfig {
   readonly authSecret: string;
   readonly authVerifierSecrets: readonly string[];
   readonly authSecretVersion?: string;
+  readonly metricsAuthToken?: string;
   readonly accessTokenTtlSeconds: number;
   readonly refreshTokenTtlSeconds: number;
   readonly authRateLimitMaxRequests: number;
@@ -1053,6 +1062,7 @@ const apiEnvSchema = z
     AUTH_SECRET: nonEmptyStringSchema.default(INSECURE_DEFAULT_SECRET),
     AUTH_SECRET_PREVIOUS: optionalNonEmptyStringSchema,
     AUTH_SECRET_VERSION: optionalNonEmptyStringSchema,
+    METRICS_AUTH_TOKEN: optionalNonEmptyStringSchema,
     AUTH_ACCESS_TOKEN_TTL_SECONDS: positiveNumberSchema.default(DEFAULT_ACCESS_TOKEN_TTL_SECONDS),
     AUTH_REFRESH_TOKEN_TTL_SECONDS: positiveNumberSchema.default(DEFAULT_REFRESH_TOKEN_TTL_SECONDS),
     AUTH_RATE_LIMIT_MAX_REQUESTS: positiveNumberSchema.default(10),
@@ -1278,6 +1288,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv): ApiAppConfig {
     authSecret: parsed.AUTH_SECRET,
     authVerifierSecrets: parseSecretList(parsed.AUTH_SECRET_PREVIOUS),
     authSecretVersion: parsed.AUTH_SECRET_VERSION,
+    metricsAuthToken: parsed.METRICS_AUTH_TOKEN,
     accessTokenTtlSeconds: parsed.AUTH_ACCESS_TOKEN_TTL_SECONDS,
     refreshTokenTtlSeconds: parsed.AUTH_REFRESH_TOKEN_TTL_SECONDS,
     authRateLimitMaxRequests: parsed.AUTH_RATE_LIMIT_MAX_REQUESTS,

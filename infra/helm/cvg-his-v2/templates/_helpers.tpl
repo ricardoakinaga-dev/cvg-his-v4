@@ -120,6 +120,20 @@ app.kubernetes.io/component: spa
 {{- end -}}
 {{- end }}
 
+{{- define "cvg-his-v2.ingress.validateUploadBodySize" -}}
+{{- $annotations := default (dict) .Values.ingress.annotations -}}
+{{- $bodySize := default "" (index $annotations "nginx.ingress.kubernetes.io/proxy-body-size") -}}
+{{- if ne (toString $bodySize) "35m" -}}
+{{- fail "ingress proxy-body-size must remain 35m for the 25 MiB decoded attachment contract" -}}
+{{- end -}}
+{{- $privateCollectorBlock := default "" (index $annotations "nginx.ingress.kubernetes.io/server-snippet") -}}
+{{- range (list "/metrics" "/internal/metrics" "/slos" "/health/slos") -}}
+{{- if not (contains (printf "location = %s { return 404; }" .) $privateCollectorBlock) -}}
+{{- fail (printf "public ingress must reject private collector endpoint %s" .) -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
 {{- define "cvg-his-v2.api.configmapName" -}}
 {{- printf "%s-api-config" (include "cvg-his-v2.fullname" .) }}
 {{- end }}

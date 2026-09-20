@@ -84,6 +84,7 @@ test('buildApiManagedSecretDescriptors maps API secrets to environment-scoped Va
       ['AUTH_SECRET', 'production/api', true],
       ['AUTH_SECRET_PREVIOUS', 'production/api_previous', false],
       ['AUTH_SECRET_VERSION', 'production/api_version', false],
+      ['METRICS_AUTH_TOKEN', 'production/metrics', false],
       ['MFA_SECRET_ENCRYPTION_KEY', 'production/mfa', true],
       ['MFA_SECRET_ENCRYPTION_KEY_VERSION', 'production/mfa_version', false],
       ['MFA_SECRET_ENCRYPTION_KEYRING_JSON', 'production/mfa_keyring', false],

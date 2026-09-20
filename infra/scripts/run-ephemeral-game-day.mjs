@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 const apiUrl = (process.env.GAME_DAY_API_URL ?? 'http://127.0.0.1:3111').replace(/\/$/, '');
 const username = process.env.GAME_DAY_ADMIN_USERNAME ?? 'admin';
 const password = process.env.GAME_DAY_ADMIN_PASSWORD;
+const metricsToken = process.env.GAME_DAY_METRICS_TOKEN ?? process.env.METRICS_AUTH_TOKEN;
 const confirmation = process.env.GAME_DAY_CONFIRMATION;
 const allowRemote = process.env.GAME_DAY_ALLOW_REMOTE === '1';
 const outputDir = resolve(process.env.GAME_DAY_OUTPUT_DIR ?? 'artifacts/game-day');
@@ -47,6 +48,9 @@ function assertSafeTarget() {
 async function request(path, { token, method = 'GET', body, expected = [200] } = {}) {
   const headers = new Headers();
   if (token) headers.set('authorization', `Bearer ${token}`);
+  if (path === '/metrics' && metricsToken) {
+    headers.set('authorization', `Bearer ${metricsToken}`);
+  }
   if (body !== undefined) headers.set('content-type', 'application/json');
 
   const startedAt = Date.now();

@@ -79,6 +79,14 @@ spec:
                 secretKeyRef:
                   name: {{ include "cvg-his-v2.api.secretName" . }}
                   key: {{ .Values.api.auth.secretKey }}
+            {{- if .Values.api.metrics.existingSecret }}
+            - name: METRICS_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.metrics.existingSecret }}
+                  key: {{ .Values.api.metrics.secretKey }}
+                  optional: false
+            {{- end }}
             {{- if or .Values.api.setup.existingSecret .Values.api.setup.value }}
             - name: SETUP_BOOTSTRAP_TOKEN
               valueFrom:

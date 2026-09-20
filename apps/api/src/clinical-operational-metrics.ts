@@ -39,6 +39,14 @@ export interface ClinicalOperationalMetricsSources {
 const TERMINAL_WORKFLOW_STATES = new Set(['completed', 'cancelled', 'dlq']);
 const TERMINAL_DIAGNOSTIC_STATES = new Set(['delivered', 'cancelled']);
 const RESOLVED_HANDOFF_STATES = new Set(['acknowledged_by_reception', 'sent_to_finance']);
+/**
+ * A metrics scrape is a low-priority observer. Bound both the number of
+ * tenant scopes it can enumerate and the number of scopes queried at once so
+ * a large tenant catalog cannot amplify Prometheus polling into a database or
+ * event-loop incident.
+ */
+export const CLINICAL_OPERATIONAL_METRICS_MAX_ACCOUNTS = 1_000;
+export const CLINICAL_OPERATIONAL_METRICS_CONCURRENCY = 8;
 
 function isBeforeNow(value: string, nowMs: number): boolean {
   const timestamp = Date.parse(value);
@@ -63,6 +71,11 @@ export function createClinicalOperationalMetricsProvider(
           .filter((accountId): accountId is string => accountId.trim().length > 0)
       )
     ];
+    if (accountIds.length > CLINICAL_OPERATIONAL_METRICS_MAX_ACCOUNTS) {
+      throw new Error(
+        `Clinical operational metrics scope exceeds ${CLINICAL_OPERATIONAL_METRICS_MAX_ACCOUNTS} accounts`
+      );
+    }
     const nowMs = now();
 
     const totals = {
@@ -75,43 +88,53 @@ export function createClinicalOperationalMetricsProvider(
       handoverPending: 0
     };
 
-    const accountSnapshots = await Promise.all(
-      accountIds.map(async (accountId) => {
-        const scopedAccountId = accountId as AccountId;
-        const workflowTasks = await sources.workflowTasks.list(scopedAccountId);
-        const activeTasks = workflowTasks.filter(
-          (task) => !TERMINAL_WORKFLOW_STATES.has(task.status)
-        );
+    const accountSnapshots: ClinicalOperationalMetricsSnapshot[] = [];
+    for (
+      let offset = 0;
+      offset < accountIds.length;
+      offset += CLINICAL_OPERATIONAL_METRICS_CONCURRENCY
+    ) {
+      const batch = accountIds.slice(offset, offset + CLINICAL_OPERATIONAL_METRICS_CONCURRENCY);
+      const snapshots = await Promise.all(
+        batch.map(async (accountId) => {
+          const scopedAccountId = accountId as AccountId;
+          const workflowTasks = await sources.workflowTasks.list(scopedAccountId);
+          const activeTasks = workflowTasks.filter(
+            (task) => !TERMINAL_WORKFLOW_STATES.has(task.status)
+          );
 
-        return {
-          activeInpatients: sources.inpatient.list(scopedAccountId).length,
-          openEncounters: sources.encounters.listActive(scopedAccountId).length,
-          pendingWorkflowTasks: activeTasks.length,
-          overdueWorkflowTasks: activeTasks.filter((task) => isBeforeNow(task.dueAt, nowMs)).length,
-          medicationOverdue: sources.prescriptionExecutions
-            .list(scopedAccountId)
-            .filter(
-              (execution) =>
-                execution.status === 'pending' &&
-                typeof execution.scheduledAt === 'string' &&
-                isBeforeNow(execution.scheduledAt, nowMs)
-            ).length,
-          pendingDiagnostics: sources.diagnostics
-            .list(scopedAccountId)
-            .filter(
-              (order) =>
-                typeof order.status !== 'string' || !TERMINAL_DIAGNOSTIC_STATES.has(order.status)
-            ).length,
-          handoverPending: sources.clinicalHandoffs
-            .list(scopedAccountId)
-            .filter(
-              (handoff) =>
-                typeof handoff.handoffStatus !== 'string' ||
-                !RESOLVED_HANDOFF_STATES.has(handoff.handoffStatus)
-            ).length
-        } satisfies ClinicalOperationalMetricsSnapshot;
-      })
-    );
+          return {
+            activeInpatients: sources.inpatient.list(scopedAccountId).length,
+            openEncounters: sources.encounters.listActive(scopedAccountId).length,
+            pendingWorkflowTasks: activeTasks.length,
+            overdueWorkflowTasks: activeTasks.filter((task) => isBeforeNow(task.dueAt, nowMs))
+              .length,
+            medicationOverdue: sources.prescriptionExecutions
+              .list(scopedAccountId)
+              .filter(
+                (execution) =>
+                  execution.status === 'pending' &&
+                  typeof execution.scheduledAt === 'string' &&
+                  isBeforeNow(execution.scheduledAt, nowMs)
+              ).length,
+            pendingDiagnostics: sources.diagnostics
+              .list(scopedAccountId)
+              .filter(
+                (order) =>
+                  typeof order.status !== 'string' || !TERMINAL_DIAGNOSTIC_STATES.has(order.status)
+              ).length,
+            handoverPending: sources.clinicalHandoffs
+              .list(scopedAccountId)
+              .filter(
+                (handoff) =>
+                  typeof handoff.handoffStatus !== 'string' ||
+                  !RESOLVED_HANDOFF_STATES.has(handoff.handoffStatus)
+              ).length
+          } satisfies ClinicalOperationalMetricsSnapshot;
+        })
+      );
+      accountSnapshots.push(...snapshots);
+    }
 
     for (const snapshot of accountSnapshots) {
       totals.activeInpatients += snapshot.activeInpatients;

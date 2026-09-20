@@ -27,6 +27,11 @@ import {
   type LaboratoryProviderKey
 } from './laboratory-provider-ingress.js';
 import type { SecretsManager } from '@cvg-his-v2/secrets';
+import {
+  MAX_ATTACHMENT_BASE64_LENGTH,
+  MAX_ATTACHMENT_FILE_SIZE_BYTES,
+  MAX_ATTACHMENT_JSON_BODY_BYTES
+} from '@cvg-his-v2/shared-contracts';
 import type {
   AddInpatientProgressRequest,
   ArchiveClinicalEntryRequest,
@@ -74,6 +79,7 @@ import {
   AuthenticationError,
   ConflictError,
   NotFoundError,
+  PayloadTooLargeError,
   ValidationError,
   toErrorResponse
 } from '@cvg-his-v2/shared-errors';
@@ -233,7 +239,8 @@ import {
   updateDatabasePoolMetrics,
   refreshClinicalOperationalMetrics,
   type ClinicalOperationalMetricsSnapshot,
-  createFeatureFlagMetricsCollector
+  createFeatureFlagMetricsCollector,
+  isMetricsRequestAuthorized
 } from './metrics.js';
 import {
   describeChaosExperiment,
@@ -331,6 +338,10 @@ export interface ApiServerOptions {
   readonly corsAllowedOrigins?: readonly string[];
   readonly authSecret: string;
   readonly authVerifierSecrets?: readonly string[];
+  /** Dedicated collector credential. Browser/session tokens never authorize metrics. */
+  readonly metricsAuthToken?: string;
+  /** Optional authenticated operator access for the SLO report UI surface. */
+  readonly authorizeSlo?: (request: IncomingMessage) => Promise<void>;
   readonly accessTokenTtlSeconds: number;
   readonly refreshTokenTtlSeconds: number;
   readonly authRateLimitMaxRequests?: number;
@@ -446,6 +457,25 @@ const DEFAULT_CORS_EXPOSE_HEADERS =
   'x-correlation-id, x-request-id, x-trace-id, traceparent, tracestate';
 const WEBAUTHN_CHALLENGE_TTL_MS = 5 * 60 * 1000;
 const OIDC_STATE_TTL_MS = 10 * 60 * 1000;
+const METRICS_PATHS = new Set(['/metrics', '/internal/metrics']);
+
+function configuredMetricsAuthToken(
+  options: Pick<ApiServerOptions, 'metricsAuthToken'>
+): string | undefined {
+  return options.metricsAuthToken?.trim() || process.env['METRICS_AUTH_TOKEN']?.trim() || undefined;
+}
+
+function sendMetricsAuthorizationRequired(response: ServerResponse): void {
+  response.setHeader('www-authenticate', 'Bearer realm="metrics"');
+  response.statusCode = 401;
+  response.end(
+    JSON.stringify({
+      code: 'METRICS_AUTH_REQUIRED',
+      message: 'Metrics are available only to an authorized collector.'
+    })
+  );
+}
+
 function registerChaosExperimentOnce(chaos: ChaosEngine, experiment: { id: string }): void {
   const alreadyRegistered = chaos.listExperiments().some((item) => item.id === experiment.id);
   if (!alreadyRegistered) {
@@ -557,7 +587,7 @@ export function assertProductionProviderReadiness(
   }
 }
 
-function decodeAttachmentContent(contentBase64: unknown): Buffer | undefined {
+export function decodeAttachmentContent(contentBase64: unknown): Buffer | undefined {
   if (contentBase64 === undefined) return undefined;
   if (typeof contentBase64 !== 'string') {
     throw new ValidationError('contentBase64 must be a base64 string', { field: 'contentBase64' });
@@ -565,15 +595,27 @@ function decodeAttachmentContent(contentBase64: unknown): Buffer | undefined {
   const normalized = contentBase64.trim();
   if (
     normalized.length === 0 ||
-    normalized.length > 36_000_000 ||
+    normalized.length > MAX_ATTACHMENT_BASE64_LENGTH ||
     normalized.length % 4 !== 0 ||
     !/^[A-Za-z0-9+/]+={0,2}$/.test(normalized)
   ) {
+    if (normalized.length > MAX_ATTACHMENT_BASE64_LENGTH) {
+      throw new PayloadTooLargeError('Attachment content exceeds the maximum allowed size', {
+        maxBase64Length: MAX_ATTACHMENT_BASE64_LENGTH,
+        maxFileSizeBytes: MAX_ATTACHMENT_FILE_SIZE_BYTES
+      });
+    }
     throw new ValidationError('contentBase64 is invalid', { field: 'contentBase64' });
   }
   const content = Buffer.from(normalized, 'base64');
-  if (content.length > 25 * 1024 * 1024 || content.toString('base64') !== normalized) {
-    throw new ValidationError('contentBase64 is invalid or exceeds the upload limit', {
+  if (content.length > MAX_ATTACHMENT_FILE_SIZE_BYTES) {
+    throw new PayloadTooLargeError('Attachment content exceeds the maximum allowed size', {
+      maxBase64Length: MAX_ATTACHMENT_BASE64_LENGTH,
+      maxFileSizeBytes: MAX_ATTACHMENT_FILE_SIZE_BYTES
+    });
+  }
+  if (content.toString('base64') !== normalized) {
+    throw new ValidationError('contentBase64 is invalid', {
       field: 'contentBase64'
     });
   }
@@ -3665,7 +3707,7 @@ function derivePixPaymentAttemptLedgerKey(requestKey: string): string {
 async function readTenantCommandPayload(request: IncomingMessage, url: URL): Promise<JsonValue> {
   const body = await readJsonBodyOrEmpty(
     request,
-    url.pathname === '/attachments' ? 32 * 1024 * 1024 : 1_048_576
+    url.pathname === '/attachments' ? MAX_ATTACHMENT_JSON_BODY_BYTES : 1_048_576
   );
   const commandBody =
     url.pathname === '/attachments' &&
@@ -3693,6 +3735,12 @@ async function readTenantCommandPayload(request: IncomingMessage, url: URL): Pro
 
 export function createApiServer(options: ApiServerOptions): ApiServer {
   const logger = createLogger(options.appName);
+  const metricsAuthToken = configuredMetricsAuthToken(options);
+  if (isProductionLikeEnvironment(options.environment) && !metricsAuthToken) {
+    throw new Error(
+      'Production-like API requires METRICS_AUTH_TOKEN; refusing to expose an unauthenticated collector surface'
+    );
+  }
   const agendaConfigRepository =
     options.repositories?.agendaConfig ?? new InMemoryAgendaConfigRepository();
   const corsAllowedOrigins = options.corsAllowedOrigins ?? DEFAULT_CORS_ALLOWED_ORIGINS;
@@ -3988,6 +4036,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   // state when Redis is configured but unreachable.
   const healthRouteOptions: ApiServerOptions = {
     ...options,
+    metricsAuthToken,
+    authorizeSlo: (request) => requirePrincipal(request, 'audit.read').then(() => undefined),
     authRateLimiter,
     pixPaymentAttemptRateLimiter,
     pixProviderWebhookRateLimiter
@@ -4309,7 +4359,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         return;
       }
 
-      // Public operational endpoints must work without tenant or auth headers.
+      // Probe endpoints remain callable without tenant or session headers;
+      // collector and operator SLO surfaces enforce their own credentials.
       if (await handleHealthRoutes(request, response, healthRouteOptions)) {
         return;
       }
@@ -4333,7 +4384,11 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       ) {
         return;
       }
-      if (request.url === '/metrics' && request.method === 'GET') {
+      if (METRICS_PATHS.has(pathname) && request.method === 'GET') {
+        if (!isMetricsRequestAuthorized(request.headers, metricsAuthToken)) {
+          sendMetricsAuthorizationRequired(response);
+          return;
+        }
         await refreshClinicalOperationalMetrics(clinicalOperationalMetricsProvider, logger);
         updateDatabasePoolMetrics(getInitializedDatabasePool());
         const appState = getAppState();
@@ -5194,7 +5249,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               const principal = await requirePrincipal(request, 'attachments.manage');
               const payload = (await readJsonBody(
                 request,
-                32 * 1024 * 1024
+                MAX_ATTACHMENT_JSON_BODY_BYTES
               )) as CreateAttachmentRequest;
               await requireAttachmentTargetForAccount(
                 payload.linkedEntityType,

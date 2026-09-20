@@ -104,6 +104,14 @@
             "value": { "type": "string" }
           }
         },
+        "metrics": {
+          "type": "object",
+          "required": ["secretKey"],
+          "properties": {
+            "existingSecret": { "type": "string" },
+            "secretKey": { "type": "string", "minLength": 1 }
+          }
+        },
         "setup": {
           "type": "object",
           "required": ["secretKey"],

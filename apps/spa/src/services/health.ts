@@ -42,6 +42,6 @@ export const healthService = {
   },
 
   async getSloReport(): Promise<SloReportResponse> {
-    return apiRequest<SloReportResponse>('/slos', { skipAuth: true });
+    return apiRequest<SloReportResponse>('/slos');
   }
 };

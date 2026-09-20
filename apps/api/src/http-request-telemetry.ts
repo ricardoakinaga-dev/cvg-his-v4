@@ -43,7 +43,7 @@ export function attachHttpRequestTelemetry(options: {
       httpErrorsTotal.inc({ status_category: statusCode >= 500 ? '5xx' : '4xx' });
     }
 
-    const role = options.requestRoles.get(options.request)?.slice().sort().join('+') || 'anonymous';
+    const role = normalizeMetricRole(options.requestRoles.get(options.request));
     const isDownload =
       route === '/reports/executions/:id/export' || route === '/attachments/:id/download';
     const operation = statusCode === 403 ? 'forbidden' : isDownload ? 'download' : 'route_error';
@@ -73,4 +73,29 @@ export function attachHttpRequestTelemetry(options: {
 
   options.response.once('finish', finalize);
   options.response.once('close', finalize);
+}
+
+// Role codes are operator-controlled but still untrusted input at the metrics
+// boundary. Preserve a small known vocabulary and collapse custom/oversized
+// combinations so an authorization change cannot create an unbounded label
+// set or leak identifiers.
+const KNOWN_METRIC_ROLES = new Set([
+  'admin',
+  'finance',
+  'doctor',
+  'nurse',
+  'reception',
+  'inventory',
+  'laboratory',
+  'audit',
+  'ops',
+  'api-key'
+]);
+
+function normalizeMetricRole(roles: readonly string[] | undefined): string {
+  if (!roles || roles.length === 0) return 'anonymous';
+  const normalized = [...new Set(roles.map((role) => role.trim().toLowerCase()))].filter(Boolean);
+  if (normalized.some((role) => !KNOWN_METRIC_ROLES.has(role))) return 'other';
+  if (normalized.length > 3) return 'multi';
+  return normalized.sort().join('+') || 'anonymous';
 }

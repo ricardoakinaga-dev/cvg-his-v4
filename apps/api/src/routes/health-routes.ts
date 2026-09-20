@@ -12,7 +12,7 @@ import { createReadinessResponse, createLivenessResponse } from '../health.js';
 import { getAppState } from '../app-state.js';
 import { resolveOperationalRuntimeState } from '../chaos-operational-state.js';
 import { generateSLOReport, getSLOConfigs } from '../slos.js';
-import { getCurrentSloSnapshot, updateSloMetrics } from '../metrics.js';
+import { getCurrentSloSnapshot, isMetricsRequestAuthorized, updateSloMetrics } from '../metrics.js';
 
 const REDIS_HEALTH_PROBE_TIMEOUT_MS = 1_000;
 // Readiness is polled by load balancers and orchestration agents. A short
@@ -56,6 +56,33 @@ export async function handleHealthRoutes(
   const method = request.method ?? 'GET';
 
   if (method !== 'GET') return false;
+
+  // SLO reports include operational error/latency data. Collector requests
+  // use the dedicated token; the authenticated operator UI may use a normal
+  // session with the audit.read permission. Probe-only health routes remain
+  // public and never enter either authorization branch.
+  if (url === '/slos' || url === '/health/slos') {
+    const collectorAuthorized = isMetricsRequestAuthorized(
+      request.headers,
+      options.metricsAuthToken
+    );
+    if (!collectorAuthorized) {
+      try {
+        if (!options.authorizeSlo) throw new Error('SLO authorization is not configured');
+        await options.authorizeSlo(request);
+      } catch {
+        response.setHeader('www-authenticate', 'Bearer realm="metrics"');
+        response.statusCode = 401;
+        response.end(
+          JSON.stringify({
+            code: 'METRICS_AUTH_REQUIRED',
+            message: 'SLO reports require an authorized operator or collector.'
+          })
+        );
+        return true;
+      }
+    }
+  }
 
   // Liveness must remain independent from Redis, the database, and every
   // other dependency so an orchestrator can restart a degraded instance.

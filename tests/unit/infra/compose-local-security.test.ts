@@ -19,6 +19,7 @@ type ComposeService = {
   readonly environment?: Record<string, string>;
   readonly healthcheck?: { readonly test?: unknown[] };
   readonly ports?: unknown[];
+  readonly volumes?: unknown[];
 };
 
 type ComposeDocument = {
@@ -27,6 +28,7 @@ type ComposeDocument = {
 
 type PrometheusJob = {
   readonly job_name?: string;
+  readonly authorization?: { readonly type?: string; readonly credentials_file?: string };
   readonly static_configs?: Array<{ readonly targets?: string[] }>;
 };
 
@@ -164,6 +166,14 @@ describe('canonical local Compose security and observability contracts', () => {
     expect(service('prometheus')).not.toHaveProperty('extra_hosts');
     expect(prometheusText).not.toContain('host.docker.internal');
     expect(prometheus.scrape_configs).toHaveLength(3);
+    const apiJob = prometheus.scrape_configs?.find((job) => job.job_name === 'cvg-api');
+    expect(apiJob?.authorization).toEqual({
+      type: 'Bearer',
+      credentials_file: '/etc/prometheus/secrets/api-metrics-token'
+    });
+    expect(service('prometheus').volumes).toContain(
+      '${METRICS_AUTH_TOKEN_FILE:-./.secrets/api-metrics-token}:/etc/prometheus/secrets/api-metrics-token:ro'
+    );
   });
 
   it('keeps the active observability README consistent with Compose networking', () => {
@@ -174,6 +184,8 @@ describe('canonical local Compose security and observability contracts', () => {
     expect(observabilityReadme).toMatch(/valor não\s+vazio em `\.env\.v2`/);
     expect(observabilityReadme).toContain("targets: ['cvg-his-v2-api:3001']");
     expect(observabilityReadme).toContain("targets: ['cvg-his-v2-worker:3002']");
+    expect(observabilityReadme).toContain('METRICS_AUTH_TOKEN_FILE');
+    expect(observabilityReadme).toContain('credentials_file: /etc/prometheus/secrets/api-metrics-token');
     expect(observabilityReadme).not.toContain('host.docker.internal');
   });
 

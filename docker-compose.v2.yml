@@ -108,6 +108,7 @@ services:
     volumes:
       - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./infra/observability/prometheus-alerts.yml:/etc/prometheus/prometheus-alerts.yml:ro
+      - ${METRICS_AUTH_TOKEN_FILE:-./.secrets/api-metrics-token}:/etc/prometheus/secrets/api-metrics-token:ro
     ports:
       - '127.0.0.1:9090:9090'
 
@@ -138,6 +139,7 @@ services:
       REDIS_URL: redis://redis:6379
       RUNTIME_DISTRIBUTED_STATE_ENABLED: ${RUNTIME_DISTRIBUTED_STATE_ENABLED:-1}
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
+      METRICS_AUTH_TOKEN: ${METRICS_AUTH_TOKEN:-}
       SETUP_BOOTSTRAP_TOKEN: ${SETUP_BOOTSTRAP_TOKEN:-}
       WHATSAPP_WEBHOOK_SECRET: ${WHATSAPP_WEBHOOK_SECRET:?WHATSAPP_WEBHOOK_SECRET is required}
       FILE_STORAGE_PATH: /srv/cvg-his-v2/storage
