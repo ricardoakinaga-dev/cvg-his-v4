@@ -438,6 +438,29 @@ function staticallyEvaluateBooleanExpression(expression, knownValues = {}) {
         while (/\s/.test(expression[closing] ?? '')) closing += 1;
         if (expression[closing] === ')') return { end: closing + 1, value: nested.value };
       }
+      let quote = null;
+      let depth = 0;
+      for (let cursor = offset; cursor < expression.length; cursor += 1) {
+        const character = expression[cursor];
+        if (quote) {
+          if (character === quote) {
+            if (expression[cursor + 1] === quote) cursor += 1;
+            else quote = null;
+          }
+          continue;
+        }
+        if (character === "'" || character === '"') {
+          quote = character;
+          continue;
+        }
+        if (character === '(') depth += 1;
+        if (character !== ')') continue;
+        depth -= 1;
+        if (depth !== 0) continue;
+        const value = parseStaticExpressionValue(expression.slice(offset + 1, cursor), knownValues);
+        if (value !== null) return { end: cursor + 1, value: value.value };
+        break;
+      }
     }
     const booleanLiteral = source.match(/^(true|false)(?![A-Za-z0-9_.-])/i);
     if (booleanLiteral) {
