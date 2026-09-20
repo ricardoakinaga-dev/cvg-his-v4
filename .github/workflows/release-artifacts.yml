@@ -146,10 +146,22 @@ jobs:
           provenance: mode=max
           sbom: true
 
+      - name: Prepare OCI layouts for vulnerability scanning
+        run: |
+          set -euo pipefail
+          for component in api worker spa; do
+            layout="/tmp/${component}-image"
+            rm -rf "${layout}"
+            mkdir -p "${layout}"
+            tar -xf "/tmp/${component}-image.tar" -C "${layout}"
+            test -f "${layout}/index.json"
+            test -f "${layout}/oci-layout"
+          done
+
       - name: Scan API image candidate for vulnerabilities
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
         with:
-          input: /tmp/api-image.tar
+          input: /tmp/api-image
           scanners: vuln
           vuln-type: os,library
           severity: HIGH,CRITICAL
@@ -160,7 +172,7 @@ jobs:
       - name: Scan worker image candidate for vulnerabilities
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
         with:
-          input: /tmp/worker-image.tar
+          input: /tmp/worker-image
           scanners: vuln
           vuln-type: os,library
           severity: HIGH,CRITICAL
@@ -171,7 +183,7 @@ jobs:
       - name: Scan SPA image candidate for vulnerabilities
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
         with:
-          input: /tmp/spa-image.tar
+          input: /tmp/spa-image
           scanners: vuln
           vuln-type: os,library
           severity: HIGH,CRITICAL

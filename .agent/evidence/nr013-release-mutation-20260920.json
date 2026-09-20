@@ -1,0 +1,50 @@
+{
+  "generated_at": "2026-09-20T20:18:00.000000+00:00",
+  "source_sha": "a9ff1b1aeec393084cea2405eafc0c4bbe403437",
+  "worktree_state": "dirty; source/control freeze intentionally unavailable",
+  "status": "PASS-LOCAL-CONTROL-BLOCKED-EXTERNAL",
+  "scope": "NR-013 release transition mutation contract",
+  "artifacts": {
+    "workflow": {
+      "path": ".github/workflows/release-artifacts.yml",
+      "sha256": "ca15246912f83edc6023ac18073fc9bee67c6d2ad9146a1f35d9ad93b5b426d1"
+    },
+    "workflow_contract_test": {
+      "path": "tests/unit/infra/release-workflow-contract.test.ts",
+      "sha256": "6c25347810398a88f30ce200a2d374d3b465c3c2383dc14bafd78447b3726e7"
+    },
+    "supply_chain_validator": {
+      "path": "scripts/validate-supply-chain.mjs",
+      "sha256": "6fd6bc6185a304e0703a1dd7ae2f5b1f83dde9d09ccc60c24ccaf64f9f94f6f6"
+    }
+  },
+  "checks": [
+    {
+      "command": "XDG_CACHE_HOME=<external-temp> pnpm exec vitest run tests/unit/infra/release-workflow-contract.test.ts --reporter=verbose",
+      "environment": "Node 22/pnpm 10.33.0; repository-local Vitest setup; cache outside repository",
+      "exit_code": 0,
+      "tests_passed": 19,
+      "log_path": "/tmp/cvg-nr013-mutation-v2-20260920.log",
+      "log_sha256": "1e05c016ec3754cce5c6834360aced0a8742c7d6eae49b49b2ea5cb221b3c95d"
+    },
+    {
+      "command": "XDG_CACHE_HOME=<external-temp> node --test scripts/validate-supply-chain.test.mjs",
+      "environment": "Node 22; cache outside repository",
+      "exit_code": 0,
+      "tests_passed": 17,
+      "log_path": "/tmp/cvg-supply-chain-mutation-v2-20260920.log",
+      "log_sha256": "26c21ffd0e0a6e1494fced35aa4bdef6face37e6f598570244144f728fe3bbc5"
+    }
+  ],
+  "mutations": [
+    "HIGH/CRITICAL severity weakened",
+    "ignore-unfixed enabled",
+    "scanner exit-code made non-blocking",
+    "scanned image input substituted",
+    "scanner input ignored",
+    "OCI layout preparation reordered after a scanner",
+    "pre-publication gate reordered after quarantine publication",
+    "final blocking gate removed"
+  ],
+  "limitations": "This proves the local fail-closed contract only. NR-011 exact CI and NR-012 chained release remain externally blocked; no publication, attestation, target, UAT or authority acceptance is claimed. The new control test invalidates prior candidate-bound OCI/scan freshness until an authorized clean freeze and rerun."
+}

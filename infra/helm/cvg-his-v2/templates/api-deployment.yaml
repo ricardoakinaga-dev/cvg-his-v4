@@ -1,6 +1,7 @@
 {{- /*
 API Deployment + Service
 */ -}}
+{{- include "cvg-his-v2.api.vault.validate" . -}}
 {{- if and (not .Values.api.attachmentStorage.existingSecret) (gt (int .Values.api.replicaCount) 1) -}}
 {{- if not .Values.persistence.enabled -}}
 {{- fail "api.replicaCount > 1 without S3 attachment storage requires persistence.enabled=true; per-replica emptyDir storage is not safe for HA" -}}
@@ -92,6 +93,38 @@ spec:
                 secretKeyRef:
                   name: {{ include "cvg-his-v2.postgres.secretName" . }}
                   key: {{ .Values.postgresql.secretKeys.apiUrl }}
+            {{- if eq (include "cvg-his-v2.api.vault.enabled" .) "true" }}
+            - name: VAULT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cvg-his-v2.api.vault.secretName" . }}
+                  key: {{ .Values.api.vault.secretKeys.url }}
+                  optional: false
+            - name: VAULT_ROLE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cvg-his-v2.api.vault.secretName" . }}
+                  key: {{ .Values.api.vault.secretKeys.roleId }}
+                  optional: false
+            - name: VAULT_SECRET_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cvg-his-v2.api.vault.secretName" . }}
+                  key: {{ .Values.api.vault.secretKeys.secretId }}
+                  optional: false
+            - name: VAULT_NAMESPACE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cvg-his-v2.api.vault.secretName" . }}
+                  key: {{ .Values.api.vault.secretKeys.namespace }}
+                  optional: true
+            - name: VAULT_SECRET_PATH_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cvg-his-v2.api.vault.secretName" . }}
+                  key: {{ .Values.api.vault.secretKeys.path }}
+                  optional: true
+            {{- end }}
             {{- if .Values.api.attachmentStorage.existingSecret }}
             - name: ATTACHMENT_STORAGE_S3_ENDPOINT
               valueFrom:

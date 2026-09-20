@@ -31,26 +31,29 @@ worker_container="cvg-release-worker-${run_id}"
 spa_container="cvg-release-spa-${run_id}"
 redis_container="cvg-release-redis-${run_id}"
 attachment_fixture_container="cvg-release-attachment-fixture-${run_id}"
+vault_fixture_container="cvg-release-vault-fixture-${run_id}"
 validation_network="cvg-release-${run_id}"
 postgres_container=''
 postgres_health=''
 postgres_network_connected=0
 release_database='cvg_his_v2_release_image_test'
 expected_release_database_url="postgres://postgres:postgres@127.0.0.1:5433/${release_database}"
+vault_fixture_database_url="postgres://cvg_api:release_api_runtime_password_2026@postgres:5432/${release_database}"
 helm_bin="${HELM_BIN:-helm}"
 spa_proxy_config_dir=''
 attachment_fixture_tls_dir=''
+vault_fixture_port=''
 
 cleanup() {
   local status=$?
   if [[ ${status} -ne 0 ]]; then
-    for container in "${api_container}" "${worker_container}" "${spa_container}" "${redis_container}" "${attachment_fixture_container}"; do
+    for container in "${api_container}" "${worker_container}" "${spa_container}" "${redis_container}" "${attachment_fixture_container}" "${vault_fixture_container}"; do
       docker logs "${container}" 2>/dev/null || true
     done
   fi
   docker rm --force \
     "${api_container}" "${worker_container}" "${spa_container}" "${redis_container}" \
-    "${attachment_fixture_container}" \
+    "${attachment_fixture_container}" "${vault_fixture_container}" \
     >/dev/null 2>&1 || true
   if [[ ${postgres_network_connected} -eq 1 && -n "${postgres_container}" ]]; then
     docker network disconnect --force "${validation_network}" "${postgres_container}" \
@@ -461,6 +464,15 @@ docker run --rm --cap-drop ALL --security-opt no-new-privileges --entrypoint sh 
 '
 assert_node_image "${worker_image}" /app/dist/index.js
 
+docker run --rm --network host \
+  --read-only \
+  --user 10000:10000 \
+  --cap-drop ALL \
+  --security-opt no-new-privileges \
+  --volume "${repo_root}/scripts/release-vault-readiness-fixture.mjs:/fixture.mjs:ro" \
+  --entrypoint node \
+  "${api_image}" /fixture.mjs
+
 test "$(docker image inspect --format '{{.Config.User}}' "${spa_image}")" = 'nginx'
 docker run --rm --cap-drop ALL --security-opt no-new-privileges --entrypoint sh "${spa_image}" -ec '
   test "$(id -u)" -ne 0
@@ -595,6 +607,22 @@ SQL
   docker network create "${validation_network}" >/dev/null
   docker network connect --alias postgres "${validation_network}" "${postgres_container}"
   postgres_network_connected=1
+  docker run --detach --name "${vault_fixture_container}" \
+    --network "${validation_network}" \
+    --network-alias vault-fixture \
+    --publish 127.0.0.1::8200 \
+    --read-only \
+    --user 10000:10000 \
+    --cap-drop ALL \
+    --security-opt no-new-privileges \
+    --volume "${repo_root}/scripts/release-vault-readiness-fixture.mjs:/fixture.mjs:ro" \
+    --env VAULT_FIXTURE_SERVER_ONLY=1 \
+    --env VAULT_FIXTURE_HOST=0.0.0.0 \
+    --env VAULT_FIXTURE_DATABASE_URL="${vault_fixture_database_url}" \
+    --entrypoint node \
+    "${api_image}" /fixture.mjs >/dev/null
+  vault_fixture_port="$(published_port "${vault_fixture_container}" 8200)"
+  wait_for_http "http://127.0.0.1:${vault_fixture_port}/ready" 30 "${vault_fixture_container}"
   attachment_fixture_tls_dir="$(mktemp -d /tmp/cvg-release-attachment-tls.XXXXXX)"
   chmod 0755 "${attachment_fixture_tls_dir}"
   tee "${attachment_fixture_tls_dir}/openssl.cnf" >/dev/null <<'OPENSSL_CONFIG'
@@ -664,11 +692,14 @@ OPENSSL_CONFIG
     --env NODE_ENV=production \
     --env HOST=0.0.0.0 \
     --env CORS_ALLOWED_ORIGINS=https://release-validation.invalid \
-    --env DATABASE_URL="${api_database_url}" \
     --env DATABASE_REQUIRE_RLS_ROLE=1 \
     --env REDIS_URL=redis://redis:6379 \
     --env RUNTIME_DISTRIBUTED_STATE_ENABLED=1 \
-    --env AUTH_SECRET=9d6188296fa64aac571ce96b8a3f102d631f5a8c2774e50b \
+    --env VAULT_ENABLED=true \
+    --env VAULT_URL=http://vault-fixture:8200 \
+    --env VAULT_ROLE_ID=release-fixture-role-id \
+    --env VAULT_SECRET_ID=release-fixture-secret-id \
+    --env VAULT_SECRET_PATH_PREFIX=secret/data/cvg-his-v2 \
     --env PAGARME_API_KEY=pagarme_release_validation_key \
     --env PAGARME_PIX_KEY=release-validation-pix-key \
     --env NFSE_API_URL=https://nfse.release-validation.invalid \

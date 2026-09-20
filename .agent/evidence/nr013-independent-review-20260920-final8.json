@@ -1,0 +1,59 @@
+{
+  "generated_at": "2026-09-20T20:33:00.000000+00:00",
+  "source_sha": "a9ff1b1aeec393084cea2405eafc0c4bbe403437",
+  "status": "PASS-LOCAL-CONTROL-BLOCKED-EXTERNAL",
+  "scope": "Fresh bounded read-only review of the NR-013 release-transition controls, current controller gate and documentation packet.",
+  "reviewers": [
+    {
+      "role": "code",
+      "agent": "/root/fresh_code_critic",
+      "decision": "APPROVE",
+      "p0_findings": 0,
+      "p1_findings": 0,
+      "mutation_clean": true,
+      "bounded_sentinel": "4dd2af4a104a41b5825245e65aa8949c1b54ae88480014ca1f3ee29aea9269f9",
+      "notes": "Validator requires OCI preparation before every scanner; NR-013 mutation matrix is complete; current ledger and gate references reconcile."
+    },
+    {
+      "role": "integration",
+      "agent": "/root/fresh_integration_critic",
+      "decision": "APPROVE",
+      "p0_findings": 0,
+      "p1_findings": 0,
+      "mutation_clean": true,
+      "bounded_sentinel": "8123aa40fa5a24dfa4073e0a2aee19f43cfdf6f127697a02b7d212d8b8f2e928",
+      "notes": "Workflow ordering, NR-013 evidence hashes, controller pointers and external-only limitations are coherent; historical OCI/Trivy/Vault packets are not promoted."
+    },
+    {
+      "role": "documentation-control",
+      "agent": "/root/nr003_controller_scout",
+      "decision": "APPROVE",
+      "p0_findings": 0,
+      "p1_findings": 1,
+      "mutation_clean": true,
+      "bounded_sentinel": "4c9c9a60c5a2939946788a31639a012b468ad781ef5a035c65a714aa203846db",
+      "notes": "check_state.py 11/11, documentation structure, P0 registry and gate/event bindings pass. The only P1 is the intentionally stale generated Gauntlet progress view, which is regenerated after the current blocked round."
+    }
+  ],
+  "local_controls": {
+    "workflow_contract_tests": "19/19",
+    "supply_chain_mutation_tests": "17/17",
+    "controller_check": "11/11",
+    "documentation_structure": "PASS",
+    "p0_registry": "14 items; 11 open; 3 closed",
+    "git_diff_check": "PASS"
+  },
+  "decision": "APPROVE local controls only; global state remains BLOCKED and no release-ready or Triple-A acceptance is claimed.",
+  "external_blockers": [
+    "Authorized clean source/control freeze and candidate identity regeneration",
+    "Exact candidate CI17/17 and chained release attestations",
+    "Approved target, real credentials, runtime/recovery observations and named UAT",
+    "External attestation and Product/Clinical/Security/Operations release authority",
+    "pnpm docs:validate remains blocked by stale Triple-A snapshot ec092d77"
+  ],
+  "limitations": [
+    "Reviewers did not run long builds, Docker, Helm, CI or external release commands; recorded local evidence is referenced instead.",
+    "Each reviewer used a bounded sentinel scope; the Gauntlet full artifact fingerprint is captured separately during rebaseline.",
+    "The current gate was issued before this supplemental review and remains BLOCKED by design."
+  ]
+}

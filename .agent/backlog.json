@@ -1986,7 +1986,8 @@
       "acceptance_summary": "Consolidação concluída em b81e8655: somente main, backup verificado e CI35356621431 aprovado17/17. Os106 checks individuais k6 e a certificação externa são tratados em P0-CLOSURE, sem claim Triple-A.",
       "evidence_refs": [
         ".agent/plans/main-unification-20260918.md",
-        "docs/triple-a/29-main-unification-20260918.md"
+        "docs/triple-a/29-main-unification-20260918.md",
+        ".agent/verification.jsonl#VER-UNIFY-PUBLISHED-CI-20260918"
       ],
       "next_action": {
         "id": "UNIFY-MAIN:REOPEN",
@@ -1999,15 +2000,25 @@
     {
       "id": "P0-CLOSURE",
       "title": "Resolver P0 e checks individuais k6",
-      "stage": "VERIFY",
+      "stage": "AUDIT",
       "priority": "P0",
-      "status": "VERIFY",
+      "status": "BLOCKED",
       "origin": "USER-20260918-P0-CLOSURE",
       "dependencies": [],
       "owner": "lead",
       "acceptance_summary": "Checks atribuídos/corrigidos; critérios P0 satisfeitos com evidência e autoridade reais; CI e revisão independentes.",
       "evidence_refs": [
-        ".agent/plans/p0-closure-20260918.md"
+        ".agent/plans/p0-closure-20260918.md",
+        ".agent/verification.jsonl#VER-NR004-NR009-WORKTREE-FINAL4-20260920",
+        ".agent/verification.jsonl#VER-NR013-WORKTREE-MUTATION-CLOSURE-20260920",
+        ".agent/verification.jsonl#VER-NR013-CURRENT-PACKET-20260920",
+        ".agent/evidence/nr007-nr008-release-oci-trivy-20260920-final4.json",
+        ".agent/evidence/nr007-nr008-vault-negative-login-20260920-final4.json",
+        ".agent/evidence/nr013-release-mutation-20260920.json",
+        ".agent/evidence/nr004-candidate-identity-blocked-20260920.json",
+        ".agent/evidence/nr007-nr008-independent-review-20260920-final4.json",
+        ".agent/gates/nr004-nr009-local-blocked-20260920.json"
+        ,".agent/gates/nr013-local-blocked-20260920.json"
       ],
       "next_action": {
         "id": "P0-CLOSURE:VERIFY-CANDIDATE",

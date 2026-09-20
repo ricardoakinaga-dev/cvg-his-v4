@@ -99,6 +99,9 @@ function validateStaticChart() {
   const chart = readYamlFile(path.join(chartDir, 'Chart.yaml'));
   const base = readYamlFile(baseValues);
   const production = readYamlFile(path.join(chartDir, 'values.prod.yaml'));
+  const schema = JSON.parse(
+    fs.readFileSync(path.join(chartDir, 'values.schema.json'), 'utf8')
+  );
   const helmHelpers = fs.readFileSync(path.join(chartDir, 'templates', '_helpers.tpl'), 'utf8');
 
   assert(chart.apiVersion === 'v2', 'Chart.yaml must use apiVersion v2');
@@ -122,6 +125,28 @@ function validateStaticChart() {
   assert(
     production.global?.environment === 'production',
     'values.prod.yaml must declare the production environment'
+  );
+  assert(
+    production.api?.env?.VAULT_ENABLED === 'true' &&
+      production.api?.vault?.existingSecret &&
+      production.api?.vault?.secretKeys?.url === 'VAULT_URL' &&
+      production.api?.vault?.secretKeys?.roleId === 'VAULT_ROLE_ID' &&
+      production.api?.vault?.secretKeys?.secretId === 'VAULT_SECRET_ID' &&
+      production.api?.vault?.secretKeys?.namespace === 'VAULT_NAMESPACE' &&
+      production.api?.vault?.secretKeys?.path === 'VAULT_SECRET_PATH_PREFIX',
+    'Production Vault must bind VAULT_ENABLED and all operator Secret key mappings'
+  );
+  assert(
+    base.api?.vault?.secretKeys &&
+      schema.properties?.api?.required?.includes('vault') &&
+      schema.properties.api.properties.vault.required.includes('existingSecret') &&
+      schema.properties.api.properties.vault.properties.secretKeys.required.join(',') ===
+        'url,roleId,secretId,namespace,path' &&
+      schema.properties.api.allOf?.some(
+        (rule) =>
+          rule.then?.properties?.vault?.properties?.existingSecret?.minLength === 1
+      ),
+    'Vault schema must require a complete operator Secret binding when enabled'
   );
   assert(
     production.persistence?.enabled === false &&
@@ -194,6 +219,29 @@ function validateStaticChart() {
     apiDeploymentTemplate.includes('name: SETUP_BOOTSTRAP_TOKEN') &&
       apiDeploymentTemplate.includes('cvg-his-v2.api.setupSecretName'),
     'API deployment must load SETUP_BOOTSTRAP_TOKEN from the configured setup Secret'
+  );
+  assert(
+    apiDeploymentTemplate.includes('name: VAULT_URL') &&
+      apiDeploymentTemplate.includes('name: VAULT_ROLE_ID') &&
+      apiDeploymentTemplate.includes('name: VAULT_SECRET_ID') &&
+      apiDeploymentTemplate.includes('name: VAULT_NAMESPACE') &&
+      apiDeploymentTemplate.includes('name: VAULT_SECRET_PATH_PREFIX') &&
+      apiDeploymentTemplate.includes('cvg-his-v2.api.vault.secretName') &&
+      helmHelpers.includes('api.vault.existingSecret is required'),
+    'Production Vault credentials must be loaded from the configured Secret and fail closed when absent'
+  );
+  assert(
+    !configMapTemplate.includes('VAULT_URL') &&
+      !configMapTemplate.includes('VAULT_ROLE_ID') &&
+      !configMapTemplate.includes('VAULT_SECRET_ID') &&
+      !configMapTemplate.includes('VAULT_NAMESPACE') &&
+      !configMapTemplate.includes('VAULT_SECRET_PATH_PREFIX'),
+    'Vault credentials must not be copied into the API ConfigMap'
+  );
+  assert(
+    !configMapTemplate.includes('VITE_API_BASE_URL') &&
+      !Object.prototype.hasOwnProperty.call(production.spa?.env ?? {}, 'VITE_API_BASE_URL'),
+    'SPA API base URL is build-time only; Helm must not advertise an ineffective runtime value'
   );
   assert(
     apiSecretsTemplate.includes('.Values.api.setup.value') &&
@@ -285,6 +333,10 @@ function validateStaticChart() {
 
   for (const environment of environments) {
     const values = readYamlFile(environment.values);
+    assert(
+      !Object.prototype.hasOwnProperty.call(values.spa?.env ?? {}, 'VITE_API_BASE_URL'),
+      `${environment.name}: SPA API base URL must not be injected through the runtime ConfigMap`
+    );
     if (environment.expectManagedSecrets) {
       assert(
         values.api?.auth?.value,
@@ -419,6 +471,48 @@ assertHelmFailure(
   'operator-provided RWX storageClass'
 );
 
+assertHelmFailure(
+  [
+    'template',
+    'cvg-his-v2-prod-vault-missing',
+    chartDir,
+    '-f',
+    baseValues,
+    '-f',
+    path.join(chartDir, 'values.prod.yaml'),
+    '--set-string',
+    `api.image.sha=${validationImageDigests.api}`,
+    '--set-string',
+    `worker.image.sha=${validationImageDigests.worker}`,
+    '--set-string',
+    `spa.image.sha=${validationImageDigests.spa}`,
+    '--set-string',
+    'api.vault.existingSecret='
+  ],
+  'api.vault.existingSecret'
+);
+
+assertHelmFailure(
+  [
+    'template',
+    'cvg-his-v2-prod-vault-malformed-key',
+    chartDir,
+    '-f',
+    baseValues,
+    '-f',
+    path.join(chartDir, 'values.prod.yaml'),
+    '--set-string',
+    `api.image.sha=${validationImageDigests.api}`,
+    '--set-string',
+    `worker.image.sha=${validationImageDigests.worker}`,
+    '--set-string',
+    `spa.image.sha=${validationImageDigests.spa}`,
+    '--set-string',
+    'api.vault.secretKeys.roleId=role-id'
+  ],
+  'api.vault.secretKeys.roleId'
+);
+
 runHelm([
   'template',
   'cvg-his-v2-local-ha-rwx',
@@ -481,6 +575,7 @@ for (const environment of environments) {
   const apiPdb = findDoc(docs, 'PodDisruptionBudget', `${prefix}-api`);
   const workerPdb = findDoc(docs, 'PodDisruptionBudget', `${prefix}-worker`);
   const spaPdb = findDoc(docs, 'PodDisruptionBudget', `${prefix}-spa`);
+  const apiConfigMap = findDoc(docs, 'ConfigMap', `${prefix}-api-config`);
   const spaNginxConfig = findDoc(docs, 'ConfigMap', `${prefix}-spa-config-nginx`);
   const attachmentStoragePvc = findDoc(docs, 'PersistentVolumeClaim', `${prefix}-storage`);
 
@@ -493,12 +588,14 @@ for (const environment of environments) {
   assert(apiPdb, `${environment.name}: API PodDisruptionBudget not rendered`);
   assert(workerPdb, `${environment.name}: worker PodDisruptionBudget not rendered`);
   assert(spaPdb, `${environment.name}: SPA PodDisruptionBudget not rendered`);
+  assert(apiConfigMap, `${environment.name}: API ConfigMap not rendered`);
   assert(spaNginxConfig, `${environment.name}: SPA nginx ConfigMap not rendered`);
 
   const apiContainer = apiDeployment.spec.template.spec.containers[0];
   const workerContainer = workerDeployment.spec.template.spec.containers[0];
   const spaContainer = spaDeployment.spec.template.spec.containers[0];
   const setupTokenEnv = apiContainer.env?.find((entry) => entry.name === 'SETUP_BOOTSTRAP_TOKEN');
+  const vaultEnvs = apiContainer.env?.filter((entry) => entry.name.startsWith('VAULT_')) ?? [];
   const renderedSpaNginx = spaNginxConfig.data?.['default.conf'] ?? '';
 
   for (const [label, deployment] of [
@@ -572,6 +669,39 @@ for (const environment of environments) {
     assert(
       spaContainer.image.endsWith(`@${validationImageDigests.spa}`),
       'prod: SPA image must use the SPA digest override'
+    );
+    assert(
+      vaultEnvs.length === 5,
+      'prod: API must expose all Vault AppRole and optional namespace/path Secret references'
+    );
+    for (const key of Object.values(values.api.vault.secretKeys)) {
+      const vaultEnv = vaultEnvs.find((entry) => entry.name === key);
+      assert(vaultEnv, `prod: API Vault env ${key} must be rendered`);
+      const required = new Set([
+        values.api.vault.secretKeys.url,
+        values.api.vault.secretKeys.roleId,
+        values.api.vault.secretKeys.secretId
+      ]);
+      assert(
+        vaultEnv.valueFrom?.secretKeyRef?.name === values.api.vault.existingSecret &&
+          vaultEnv.valueFrom.secretKeyRef.key === key,
+        `prod: ${key} must use the configured Vault Secret and key`
+      );
+      assert(
+        vaultEnv.valueFrom.secretKeyRef.optional === !required.has(key),
+        `prod: ${key} must preserve its required/optional SecretRef contract`
+      );
+    }
+    assert(
+      !Object.keys(apiConfigMap.data ?? {}).some(
+        (key) => key.startsWith('VAULT_') && key !== 'VAULT_ENABLED'
+      ),
+      'prod: API ConfigMap must contain only the non-secret Vault enabled flag'
+    );
+  } else {
+    assert(
+      vaultEnvs.length === 0,
+      `${environment.name}: disabled Vault must not render Secret references`
     );
   }
 

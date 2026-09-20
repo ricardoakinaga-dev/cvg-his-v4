@@ -2257,6 +2257,9 @@ export function inspectReleaseWorkflowPolicy(
   const scannerSteps = steps.filter((step) =>
     /uses:\s*aquasecurity\/trivy-action@[0-9a-f]{40}\b/.test(step)
   );
+  const ociLayoutPreparationStep = steps.find((step) =>
+    /name:\s*Prepare OCI layouts for vulnerability scanning\b/.test(step)
+  );
   const buildSteps = steps.filter((step) =>
     /uses:\s*docker\/build-push-action@[0-9a-f]{40}\b/.test(step)
   );
@@ -2315,6 +2318,7 @@ export function inspectReleaseWorkflowPolicy(
   const imageFlowSteps = [];
   const matchedScannerSteps = [];
   for (const image of releaseImages) {
+    const scanInput = image.archive.replace(/\.tar$/, '');
     const buildStep = buildSteps.find(
       (step) =>
         workflowHasExactLine(step, `id: ${image.id}`) &&
@@ -2330,21 +2334,31 @@ export function inspectReleaseWorkflowPolicy(
         `${path}: ${image.name} candidate must be built once as a non-pushed linux/amd64 OCI archive`
       );
     }
-    const scannerStep = scannerSteps.find((step) =>
-      workflowHasExactLine(step, `input: ${image.archive}`)
-    );
+    const scannerStep = scannerSteps.find((step) => workflowHasExactLine(step, `input: ${scanInput}`));
     if (!scannerStep) {
       findings.push(
-        `${path}: release image candidate ${image.archive} is not scanned before publication`
+        `${path}: release image candidate ${image.archive} is not scanned from its extracted OCI layout before publication`
       );
       continue;
     }
     matchedScannerSteps.push(scannerStep);
-    imageFlowSteps.push(buildStep, scannerStep);
-    if (
-      buildStep &&
-      workflowStepIndex(content, buildStep) >= workflowStepIndex(content, scannerStep)
+    imageFlowSteps.push(buildStep, ociLayoutPreparationStep, scannerStep);
+    const scannerIndex = workflowStepIndex(content, scannerStep);
+    if (!ociLayoutPreparationStep) {
+      findings.push(`${path}: OCI layouts must be extracted before vulnerability scanning`);
+    } else if (
+      !/for component in api worker spa;/.test(ociLayoutPreparationStep) ||
+      !/tar -xf\s+"\/tmp\/\$\{component\}-image\.tar"\s+-C\s+"\$\{layout\}"/.test(
+        ociLayoutPreparationStep
+      ) ||
+      !/test -f\s+"\$\{layout\}\/index\.json"/.test(ociLayoutPreparationStep) ||
+      !/test -f\s+"\$\{layout\}\/oci-layout"/.test(ociLayoutPreparationStep)
     ) {
+      findings.push(`${path}: OCI archives must be prepared as validated layouts before scanning`);
+    } else if (workflowStepIndex(content, ociLayoutPreparationStep) >= scannerIndex) {
+      findings.push(`${path}: OCI layouts must be prepared before every vulnerability scan`);
+    }
+    if (buildStep && workflowStepIndex(content, buildStep) >= scannerIndex) {
       findings.push(`${path}: ${image.name} OCI archive is scanned before it is built`);
     }
     if (!/^\s*scanners:\s*vuln\s*$/m.test(scannerStep)) {

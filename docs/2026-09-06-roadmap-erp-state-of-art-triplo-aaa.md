@@ -4,7 +4,7 @@ document_kind: roadmap
 effective_date: 2026-09-07
 owner: PMO e Liderança técnica CVG-HIS
 review_cycle: weekly
-superseded_by: docs/2026-09-15-roadmap-pos-checkpoint-state-of-art-triplo-aaa.md
+superseded_by: docs/2026-09-20-roadmap-nova-rodada-melhorias.md
 ---
 
 # Roadmap — ERP State of Art / Triplo AAA

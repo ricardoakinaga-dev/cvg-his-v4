@@ -35,6 +35,14 @@ api:
     existingSecret: cvg-his-v2-prod-api-secrets
   setup:
     existingSecret: cvg-his-v2-prod-api-secrets
+  vault:
+    existingSecret: cvg-his-v2-prod-vault
+    secretKeys:
+      url: VAULT_URL
+      roleId: VAULT_ROLE_ID
+      secretId: VAULT_SECRET_ID
+      namespace: VAULT_NAMESPACE
+      path: VAULT_SECRET_PATH_PREFIX
   attachmentStorage:
     existingSecret: cvg-his-v2-prod-attachment-storage
   attachmentScanner:
@@ -67,9 +75,6 @@ spa:
     pullPolicy: Always
     tag: ""
     sha: ""   # release authority injects the immutable manifest digest
-  env:
-    VITE_API_BASE_URL: https://api.cvg-his-v2.com
-
 postgresql:
   enabled: false   # prod uses RDS / Cloud SQL
   existingSecret: cvg-his-v2-prod-postgres

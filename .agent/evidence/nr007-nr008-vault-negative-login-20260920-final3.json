@@ -1,0 +1,18 @@
+{
+  "generated_at": "2026-09-20T19:17:02.000Z",
+  "image": "cvg-his-v2-api:oci-final3-20260920",
+  "image_root_digest": "sha256:92ab914123899dd722818d5770e9f1c10a6a0558df9a2cc9da68f60e864ea265",
+  "fixture": "scripts/release-vault-readiness-fixture.mjs",
+  "mode": "direct-production-like",
+  "request": {
+    "method": "POST",
+    "path": "/v1/auth/approle/login",
+    "body": { "role_id": "wrong-role", "secret_id": "wrong-secret" }
+  },
+  "response_status": 403,
+  "response_body": { "errors": ["invalid AppRole credentials"] },
+  "positive_contract": "The same final3 API image resolved Vault-backed AUTH_SECRET and DATABASE_URL, exercised health and production secret paths, and exited 0.",
+  "stdout_sha256": "90e9ba05600388994e791318b832658a8d7722f96b4a4eac301d3f9dde5cb309",
+  "container_security": ["read-only", "non-root uid 10000", "cap-drop ALL", "no-new-privileges"],
+  "limitations": "Disposable one-shot fixture check; it does not attest an external Vault deployment or real credentials."
+}

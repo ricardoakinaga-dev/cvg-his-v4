@@ -1,0 +1,71 @@
+{
+  "generated_at": "2026-09-20T18:04:40.928Z",
+  "candidate": {
+    "worktree": "current-uncommitted",
+    "source_sha_field": "a9ff1b1aeec393084cea2405eafc0c4bbe403437",
+    "source_sha_note": "HEAD field is recorded for the prebuilt gate; source and control changes remain uncommitted, so candidate identity is not frozen.",
+    "release_gate_log": "/tmp/cvg-release-prebuilt-final3-20260920.log",
+    "release_gate_log_sha256": "673c80eff48eb5f4df44de5af030ba1cdc390fa9244d64a068da552a57d4ca7a",
+    "release_gate_evidence": "/tmp/cvg-release-prebuilt-final3-evidence.json",
+    "release_gate_evidence_sha256": "63a9f054ee9def7e3ed6c7a22cd191b5e52a3c84b8ebec5f2ee5c392e7eac0a5",
+    "release_gate_status": "passed"
+  },
+  "images": {
+    "api": {
+      "reference": "cvg-his-v2-api:oci-final2-20260920",
+      "oci_archive": "/tmp/cvg-oci-final2-k8RAla/api.oci",
+      "oci_archive_sha256": "936c293ac4b182aae2ba0eefa614f9c81652b8f41cb1d26daa7f7bf53c62f26f",
+      "root_digest": "sha256:6cea38cfb2c5c69e8e1a82d7f8bfd7ea0672e498472c2eca64620b284d58e4af",
+      "config_digest": "sha256:8747adec28039eade643c07124bd271d95739977ca08dfcfad1c05d47f309238",
+      "trivy_report": "/tmp/cvg-oci-final2-k8RAla/trivy-out/api.json",
+      "trivy_report_sha256": "297e21fe287fb783cf5ee1126863ec55fe61395f3c41e96092c2983b9bbceeda",
+      "vulnerability_counts": {"total": 0, "high": 0, "critical": 0}
+    },
+    "worker": {
+      "reference": "cvg-his-v2-worker:oci-final2-20260920",
+      "oci_archive": "/tmp/cvg-oci-final2-k8RAla/worker.oci",
+      "oci_archive_sha256": "bb5dddd0b3a7fb4a7b141a445440e60f3a49fcaac92815c9e5b17172e923e6e1",
+      "root_digest": "sha256:b0dd6077607a35dfa65ca0f43fc2ee9ad28f0334eda71f3274a1cf099fb1dd17",
+      "config_digest": "sha256:fd146b8a317748871ded2f4dc1af551e1db219e929a980dd8dcf7d5c15c509c1",
+      "trivy_report": "/tmp/cvg-oci-final2-k8RAla/trivy-out/worker.json",
+      "trivy_report_sha256": "80df93463b2cc314940bccc2f999bfb1ed4951fafc2d99c4bf6d6660a890e7e7",
+      "vulnerability_counts": {"total": 0, "high": 0, "critical": 0}
+    },
+    "spa": {
+      "reference": "cvg-his-v2-spa:oci-final2-20260920",
+      "oci_archive": "/tmp/cvg-oci-final2-k8RAla/spa.oci",
+      "oci_archive_sha256": "5bfb6a18da54d61a79c9b4434501706d83669b548d3ae73c505ee4d3d500cb45",
+      "root_digest": "sha256:86363b1deea134db2aa86b8ea7491cb4a28e1155ca3a18f9c1f2024eb9eedc7b",
+      "config_digest": "sha256:4a36e70142cbcc8c0fbd722ebcb06dd5c5a28d174b6a8ed75ace21c83c96c1c1",
+      "trivy_report": "/tmp/cvg-oci-final2-k8RAla/trivy-out/spa.json",
+      "trivy_report_sha256": "4a1e44016ef24d5be98fadcb2b1b1f6446eef804cba8b2c6c841cd1109629944",
+      "vulnerability_counts": {"total": 0, "high": 0, "critical": 0}
+    }
+  },
+  "trivy": {
+    "tool": "aquasec/trivy:0.65.0",
+    "tool_digest": "sha256:a22415a38938a56c379387a8163fcb0ce38b10ace73e593475d3658d578b2436",
+    "scanners": ["vuln"],
+    "severity": ["HIGH", "CRITICAL"],
+    "ignore_unfixed": false,
+    "exit_code": 1,
+    "layouts_are_extracted_from_oci_archives": true
+  },
+  "vault_fixture": {
+    "fixture": "scripts/release-vault-readiness-fixture.mjs",
+    "mode": "server-only",
+    "app_role_negative_login": {
+      "status": "passed",
+      "evidence": ".agent/evidence/nr007-nr008-vault-negative-login-20260920.json"
+    },
+    "gate_network": "same disposable validation network as API, PostgreSQL, Redis and attachment fixture",
+    "api_secret_source": "VAULT_* only; static DATABASE_URL and AUTH_SECRET omitted",
+    "validated_contract": "API /ready passed after Vault AppRole resolution and disposable PostgreSQL migrations/role reconciliation"
+  },
+  "cross_digest_test": {
+    "command": "verify_prebuilt_image_binding(CROSS_DIGEST, API image with worker root, API OCI archive)",
+    "status": 1,
+    "expected_fail": true,
+    "stderr_sha256": "7c2c23288f6ec6995cccf316406012e169fdd7173b8596be6424e5691d9c447e"
+  }
+}

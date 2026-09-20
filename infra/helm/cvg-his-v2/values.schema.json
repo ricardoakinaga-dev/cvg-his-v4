@@ -47,7 +47,7 @@
     },
     "api": {
       "type": "object",
-      "required": ["service", "probes", "env", "auth", "setup"],
+      "required": ["service", "probes", "env", "auth", "setup", "vault"],
       "properties": {
         "replicaCount": { "type": "integer", "minimum": 1 },
         "service": {
@@ -91,6 +91,7 @@
             "HOST": { "type": "string" },
             "APP_NAME": { "type": "string" },
             "CORS_ALLOWED_ORIGINS": { "type": "string" },
+            "VAULT_ENABLED": { "type": "string", "enum": ["true", "false", "1", "0"] },
             "OTEL_EXPORTER_OTLP_PROTOCOL": { "type": "string", "enum": ["http/protobuf"] }
           }
         },
@@ -111,8 +112,75 @@
             "secretKey": { "type": "string", "minLength": 1 },
             "value": { "type": "string" }
           }
+        },
+        "vault": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["existingSecret", "secretKeys"],
+          "properties": {
+            "existingSecret": {
+              "type": "string",
+              "minLength": 0,
+              "pattern": "^(|[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*)$"
+            },
+            "secretKeys": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["url", "roleId", "secretId", "namespace", "path"],
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[A-Z][A-Z0-9_]*$"
+                },
+                "roleId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[A-Z][A-Z0-9_]*$"
+                },
+                "secretId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[A-Z][A-Z0-9_]*$"
+                },
+                "namespace": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[A-Z][A-Z0-9_]*$"
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[A-Z][A-Z0-9_]*$"
+                }
+              }
+            }
+          }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "env": {
+                "required": ["VAULT_ENABLED"],
+                "properties": {
+                  "VAULT_ENABLED": { "enum": ["true", "1"] }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "vault": {
+                "properties": {
+                  "existingSecret": { "minLength": 1 }
+                }
+              }
+            }
+          }
+        }
+      ]
     },
     "databaseMaintenance": {
       "type": "object",

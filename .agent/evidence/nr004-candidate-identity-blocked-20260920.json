@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-09-20T19:05:00.000000+00:00",
+  "command": "pnpm validate:candidate-identity",
+  "status": 1,
+  "expected": true,
+  "log": "/tmp/cvg-candidate-identity-blocked-20260920.log",
+  "log_sha256": "a31978314d1208bf728d5ba5e4984fd049c6a215d36ac30b01a5038f29914b52",
+  "findings": [
+    "candidate identity requires a clean worktree; freeze source and control bytes before validation",
+    "candidate identity source/control snapshot is stale relative to the current source"
+  ],
+  "focused_tests": "scripts/current-candidate-identity.test.mjs: 10/10",
+  "decision": "BLOCKED-CANDIDATE",
+  "limitations": "No source commit or authorized freeze was performed; identity and Triple-A snapshots remain stale by design."
+}

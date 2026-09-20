@@ -4,7 +4,7 @@ document_kind: plan
 effective_date: 2026-09-13
 owner: Liderança técnica, Produto e Operações CVG-HIS
 review_cycle: archived
-superseded_by: docs/2026-09-14-plano-executivo-state-of-art-triplo-aaa.md
+superseded_by: docs/2026-09-20-plano-executivo-nova-rodada-melhorias.md
 ---
 
 [Relatório atual](2026-09-13-relatorio-estado-atual-erp-cvg-his-v4.md) · [Plano executivo](2026-09-13-plano-executivo-prontidao-producao.md) · [Roadmap](2026-09-13-roadmap-prontidao-producao.md) · [Backlog executável](2026-09-13-backlog-prontidao-producao.md)

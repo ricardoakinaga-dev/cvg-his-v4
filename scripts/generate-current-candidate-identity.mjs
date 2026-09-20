@@ -47,6 +47,7 @@ export function validateIdentityDocument({
   currentHead,
   candidateIsAncestor = true,
   changedPathsSinceCandidate = [],
+  worktreeClean,
   qualityBarSha256,
   promptSha256,
   archivedPromptSha256
@@ -105,6 +106,9 @@ export function validateIdentityDocument({
   if (!candidateIsAncestor) {
     errors.push(`head_sha ${identity.head_sha} is not an ancestor of current HEAD ${currentHead}`);
   }
+  if (worktreeClean === false) {
+    errors.push('candidate identity requires a clean worktree; freeze source and control bytes before validation');
+  }
 
   const sourceChanges = [...new Set(changedPathsSinceCandidate.filter(Boolean))]
     .filter((path) => !isDocumentationOnlyPath(path));
@@ -129,6 +133,7 @@ export function validateCurrentCandidateIdentity({ rootDir = process.cwd() } = {
   }
 
   const currentHead = git(rootDir, ['rev-parse', 'HEAD']);
+  const worktreeStatus = git(rootDir, ['status', '--porcelain=v1', '--untracked-files=normal']);
   const candidateIsAncestor = identity?.head_sha
     ? git(rootDir, ['merge-base', '--is-ancestor', identity.head_sha, currentHead], { allowFailure: true }) !== null
     : false;
@@ -142,6 +147,7 @@ export function validateCurrentCandidateIdentity({ rootDir = process.cwd() } = {
     identity,
     currentHead,
     candidateIsAncestor,
+    worktreeClean: worktreeStatus === '',
     changedPathsSinceCandidate,
     qualityBarSha256: existsSync(resolve(rootDir, QUALITY_BAR_PATH)) ? sha256(rootDir, QUALITY_BAR_PATH) : null,
     promptSha256: existsSync(resolve(rootDir, PROMPT_PATH)) ? sha256(rootDir, PROMPT_PATH) : null,
@@ -152,6 +158,12 @@ export function validateCurrentCandidateIdentity({ rootDir = process.cwd() } = {
 }
 
 export function generateCurrentCandidateIdentity({ rootDir = process.cwd() } = {}) {
+  const worktreeStatus = git(rootDir, ['status', '--porcelain=v1', '--untracked-files=normal']);
+  if (worktreeStatus !== '') {
+    throw new Error(
+      'candidate identity requires a clean worktree; commit or otherwise freeze source and control bytes first'
+    );
+  }
   const headSha = git(rootDir, ['rev-parse', 'HEAD']);
   const originMainSha = git(rootDir, ['rev-parse', 'origin/main'], { allowFailure: true });
   const identity = {

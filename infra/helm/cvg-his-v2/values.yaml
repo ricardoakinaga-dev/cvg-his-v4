@@ -42,6 +42,17 @@ api:
     secretKey: SETUP_BOOTSTRAP_TOKEN
     value: ""
 
+  # Vault AppRole bootstrap is operator-managed. The chart only stores the
+  # Secret name and data-key mapping; Vault credentials never belong in values.
+  vault:
+    existingSecret: ""
+    secretKeys:
+      url: VAULT_URL
+      roleId: VAULT_ROLE_ID
+      secretId: VAULT_SECRET_ID
+      namespace: VAULT_NAMESPACE
+      path: VAULT_SECRET_PATH_PREFIX
+
   attachmentStorage:
     existingSecret: ""
     secretKeys:

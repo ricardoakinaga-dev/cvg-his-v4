@@ -1,6 +1,6 @@
 # CVG-HIS V4 - Documentacao ativa
 
-**Atualizado em:** 2026-09-15 (auditoria do checkpoint State of Art / Triplo AAA)
+**Atualizado em:** 2026-09-20 (reauditoria do candidato `a9ff1b1a`)
 
 Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afirmacao de funcionalidade so e considerada valida quando estiver sustentada por codigo executavel e teste comportamental.
 
@@ -12,12 +12,17 @@ Esta é a fonte ativa para decisão, execução e acompanhamento do programa. O
 objetivo é elevar o ERP de uma base extensa em construção para um candidato
 reproduzível, integrado, seguro, acessível e operável com régua Triplo AAA.
 
-**Checkpoint auditado em 15/09/2026:** a nota editorial 73/100 não foi recalculada; checker crítico segue FAIL21; produção/Triplo AAA NOT PROVEN. Entre os 65 cartões PROD há 1 DONE de controle, 15 BLOCKED, 0 IN_PROGRESS e 49 TODO. PROD-014 continua bloqueado por D1/S3; PROD-019, PROD-027, PROD-048, PROD-049 e PROD-052 estão bloqueados por seus gates externos ou dependências integrais; não há frente integral independente em execução até que as autoridades respondam pelos contratos pendentes.
+**Reauditoria de 20/09/2026:** o fix do parser, o binding de Vault, o proxy
+same-origin da SPA e as provas locais de OCI/Trivy foram aprovados, mas o
+candidato integrado continua `PARTIAL / BLOCKED`. Identidade/snapshots estão
+stale; a worktree não está congelada; `main` local está 28 commits à frente do
+remoto; CI/release exatos, target, UAT e autoridade permanecem ausentes. Nos 65
+cartões PROD o estado persistido continua **1 DONE, 16 BLOCKED e 48 TODO**.
 
-1. [Auditoria do checkpoint](2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md) — veredito, correções, provas e limites; a [baseline integral de 14/09](2026-09-14-relatorio-completo-estado-construcao.md) permanece histórica.
-2. [Plano executivo State of Art / Triplo AAA](2026-09-14-plano-executivo-state-of-art-triplo-aaa.md) — objetivos, responsabilidades, decisões e gates.
-3. [Roadmap pós-checkpoint](2026-09-15-roadmap-pos-checkpoint-state-of-art-triplo-aaa.md) — caminho crítico do FAIL21 à recertificação e operação.
-4. [Backlog executável pós-checkpoint](2026-09-15-backlog-pos-checkpoint-state-of-art-triplo-aaa.md) — fila P0, estado dos 65 contratos e gates; os [contratos detalhados de 14/09](2026-09-14-backlog-state-of-art-triplo-aaa.md) permanecem referência normativa.
+1. [Reauditoria do candidato `a9ff1b1a`](2026-09-20-reauditoria-candidato-a9ff1b1a.md) — veredito, provas, achados e limites.
+2. [Plano executivo da nova rodada](2026-09-20-plano-executivo-nova-rodada-melhorias.md) — estratégia, milestones, gates e autoridade.
+3. [Roadmap da nova rodada](2026-09-20-roadmap-nova-rodada-melhorias.md) — sequência runtime → controle → candidato → CI/release → target.
+4. [Backlog executável](2026-09-20-backlog-nova-rodada-melhorias.md) — P0/P1 e dependências externas; os [contratos detalhados de 14/09](2026-09-14-backlog-state-of-art-triplo-aaa.md) permanecem referência normativa dos cartões PROD.
 - [Matriz de ambiente e runtime](049-matriz-ambiente-runtime.md) — precedência Compose/Helm por ambiente, alvos e owners pendentes.
 - [Contrato de identidade corporativa PROD-019](019-contrato-identidade-corporativa.md) — opções C1-C6, requisitos R1-R6 e gate de autoridade; provider e integração permanecem pendentes.
 - [Contrato de expiração de pontos PROD-052](052-contrato-expiracao-pontos.md) — opções C1-C6, requisitos R1-R6 e gate Product/Financeiro; nenhum saldo é alterado.
@@ -25,9 +30,9 @@ reproduzível, integrado, seguro, acessível e operável com régua Triplo AAA.
 5. [Quality Bar](engineering/QUALITY_BAR.md) e [matriz de evidências](engineering/REQUIREMENT_EVIDENCE_MATRIX.md) — gates que impedem que uma nota ou um arquivo substitua prova.
 6. [Evidência do critical gate de 07/09](engineering/CRITICAL_GATE_2026-09-07.md) — `PASS_BOUNDED` local: 65/65 arquivos, 594/594 testes e 10/10 processos; limites de target e recertificação preservados.
 7. [Evidência E2E SPA de 07/09](engineering/E2E_SPA_2026-09-07.md) — `PASS_BOUNDED` scoped: 9/9 jornadas contra PostgreSQL/Redis reais, com cleanup sem erro.
-8. [Baseline técnica histórica](triple-a/15-current-baseline.md) e [evidência histórica](triple-a/17-current-execution-evidence.md) — candidato `e605597c`, envelope de eventos, crosswalk e pins de supply chain validados, com limitações explícitas.
-9. [Crosswalk do prompt congelado](triple-a/18-master-prompt-crosswalk.md) — 61 fases do prompt, 76 linhas da matriz, hashes e aceitação executável.
-10. [Relatório final de assurance](triple-a/FINAL_REPORT.md), [scorecard](triple-a/13-final-scorecard.md) e [execution log](triple-a/EXECUTION_LOG.md).
+8. [Snapshot Triple-A anterior](triple-a/15-current-baseline.md) e [evidência associada](triple-a/17-current-execution-evidence.md) — ainda vinculados a `ec092d77`; são stale para `a9ff1b1a` e não comprovam o candidato atual.
+9. [Crosswalk do prompt congelado](triple-a/18-master-prompt-crosswalk.md) — estrutura de 61 fases e 76 linhas; os hashes e aceites registrados pertencem ao snapshot anterior.
+10. [Relatório final de assurance](triple-a/FINAL_REPORT.md), [scorecard](triple-a/13-final-scorecard.md) e [execution log](triple-a/EXECUTION_LOG.md) — todos stale para `a9ff1b1a`, preservados apenas como histórico da rodada `ec092d77`.
 
 As entradas numeradas de [`triple-a/MASTER_PROMPT.md`](triple-a/MASTER_PROMPT.md) seguem as fases do prompt
 preservado; o [crosswalk](triple-a/18-master-prompt-crosswalk.md) é a referência
@@ -59,8 +64,10 @@ Este subprograma detalha o frontend; não substitui a governança nem encerra os
 - Execução da consolidação (histórico arquivado: `legado/docs/2026-09-05-execucao-consolidacao-cvg-his-v4.md`): evidências e pendências da implementação anterior.
 - [Manifesto de migração](phase-9-migration-manifest.json): planejamento das ondas, sem comprovação de execução.
 
-Os planos e relatórios executivos superados foram arquivados em `legado/docs/`.
-O manifesto `legado/manifest.json` registra origem, destino e integridade dos arquivos.
+Os planos e relatórios já migrados foram arquivados em `legado/docs/`, com
+origem, destino e integridade em `legado/manifest.json`. Os predecessores
+executivos recentes permanecem na raiz como `historical` até migração
+autorizada e são governados por `document-governance.json`.
 
 ### Certificação de uso
 
@@ -75,6 +82,7 @@ O manifesto `legado/manifest.json` registra origem, destino e integridade dos ar
 - `114-frontend-architecture.md`
 - `115-backend-architecture.md`
 - `116-worker-architecture.md`
+- [`architecture/spa-api-base-url.md`](architecture/spa-api-base-url.md) — contrato build-time da URL da API e proxy same-origin.
 - `adr/`
 
 ### Operacao e qualidade
@@ -127,7 +135,9 @@ Essa ordem identifica evidência do comportamento atual, não autoriza um bug a
 substituir requisito aprovado. Para decidir o comportamento esperado, consultar
 contratos, ADRs e autoridades vigentes; divergências devem ser registradas e
 resolvidas explicitamente. O estado operacional em `.agent` requer
-reconciliação antes de cada retomada; o checkpoint de 15/09 agora aponta
-`PROD-019`, mantendo PROD-014, PROD-048 e PROD-049 bloqueados por seus gates próprios.
+migração/reconciliação antes de nova mutação de backlog. A próxima ação técnica
+é `NR-004`: obter um commit/freeze autorizado dos bytes de fonte e controle,
+então regenerar a identidade e os snapshots antes de qualquer CI/release
+candidate-bound.
 
 Relatorios antigos com notas de 85-96/100 foram arquivados porque mediam presenca de arquivos, planos ou implementacoes parciais e nao comprovavam a jornada completa.

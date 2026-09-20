@@ -1,0 +1,83 @@
+{
+  "record_id": "GATE-NR013-LOCAL-BLOCKED-20260920",
+  "timestamp": "2026-09-20T20:27:02.000000+00:00",
+  "gate_id": "AUDIT_RESOLVED",
+  "scope": "NR-003 controller migration and reconciliation for the active P0 closure audit; external acceptance remains unresolved.",
+  "scope_ref": "P0-CLOSURE",
+  "version": 3,
+  "criteria": [
+    {
+      "id": "AR-001-BASELINE-GAPS",
+      "description": "The preserved controller baseline and current NR-013 closure packet explicitly record local controls and all remaining candidate/external gaps.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/archive/20260920-controller-migration/manifest.json",
+        ".agent/evidence/nr013-release-mutation-20260920.json",
+        ".agent/evidence/nr004-candidate-identity-blocked-20260920.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This records the local packet and its limitations; it does not establish candidate or release acceptance."
+    },
+    {
+      "id": "AR-002-RESOLUTION-EVIDENCE",
+      "description": "The current controller, backlog, ledgers and NR-013 local mutation evidence reconcile; fresh post-correction independent review and candidate-bound release evidence are still required.",
+      "required": true,
+      "status": "BLOCKED",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-NR013-CURRENT-PACKET-20260920",
+        ".agent/evidence/nr013-release-mutation-20260920.json",
+        ".agent/state.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The current packet is local and the source/control worktree is uncommitted; post-correction fresh review, full docs validation, exact CI/release and candidate-bound OCI/runtime evidence are not yet available."
+    },
+    {
+      "id": "AR-003-ACCEPTANCE-OR-ROUTING",
+      "description": "Unresolved candidate and external acceptance is routed to active P0-CLOSURE without claiming completion or release readiness.",
+      "required": true,
+      "status": "BLOCKED",
+      "evidence_refs": [
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".gauntlet/state.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Exact candidate CI/chained release, source freeze, approved target and credentials, UAT, external attestation and release authority remain unavailable."
+    }
+  ],
+  "evidence": [
+    ".agent/archive/20260920-controller-migration/manifest.json",
+    ".agent/verification.jsonl#VER-NR013-CURRENT-PACKET-20260920",
+    ".agent/evidence/nr013-release-mutation-20260920.json",
+    ".agent/evidence/nr004-candidate-identity-blocked-20260920.json",
+    ".agent/state.json",
+    ".gauntlet/state.json"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Fresh post-correction independent review and an eight-criterion current Gauntlet round are pending.",
+    "Exact candidate CI17/17, chained release and attestations are unavailable.",
+    "Source and control bytes remain uncommitted; candidate identity and Triple-A snapshots are stale by design.",
+    "Approved target, real credentials, named UAT and release authority remain unavailable."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local verification executor",
+    "scope": "NR-003 controller migration and reconciliation for the active P0 closure audit; external acceptance remains unresolved.",
+    "decision": "Local evidence is recorded without promoting it to external acceptance or release readiness.",
+    "evidence_ref": ".agent/state.json",
+    "expires_or_revalidates": "Revalidate after source freeze, exact CI/release, target/UAT or authority evidence."
+  },
+  "residual_risk": "CRITICAL",
+  "decision": "BLOCKED",
+  "next_action": "P0-CLOSURE:VERIFY-CANDIDATE",
+  "revalidation_triggers": [
+    "An authorized source/control freeze and candidate identity package becomes available.",
+    "Candidate-bound CI/release, approved target, credentials, named UAT and release authority are supplied.",
+    "A new source, control-plane or evidence mutation changes the current worktree."
+  ],
+  "supersedes": "GATE-NR004-NR009-LOCAL-BLOCKED-20260920"
+}

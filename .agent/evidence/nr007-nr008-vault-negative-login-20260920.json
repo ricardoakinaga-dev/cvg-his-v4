@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-09-20T18:13:00Z",
+  "image": "cvg-his-v2-api:oci-final2-20260920",
+  "fixture": "scripts/release-vault-readiness-fixture.mjs",
+  "mode": "server-only",
+  "request": {
+    "method": "POST",
+    "path": "/v1/auth/approle/login",
+    "body": { "role_id": "wrong-role", "secret_id": "wrong-secret" }
+  },
+  "response_status": 403,
+  "response_body": { "errors": ["invalid AppRole credentials"] },
+  "container_security": ["read-only", "non-root uid 10000", "cap-drop ALL", "no-new-privileges"],
+  "limitations": "Disposable one-shot fixture check; it does not attest an external Vault deployment."
+}

@@ -1,0 +1,73 @@
+{
+  "record_id": "GATE-AR-P0-CLOSURE-NR003-20260920",
+  "timestamp": "2026-09-20T16:19:58.000000+00:00",
+  "gate_id": "AUDIT_RESOLVED",
+  "scope": "NR-003 controller migration and reconciliation for the active P0 closure audit; external acceptance remains unresolved.",
+  "scope_ref": "P0-CLOSURE",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "AR-001-BASELINE-GAPS",
+      "description": "The pre-migration controller and its known contract gaps are archived with byte-level hashes.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/archive/20260920-controller-migration/manifest.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This proves preservation and mapping, not product or release acceptance."
+    },
+    {
+      "id": "AR-002-RESOLUTION-EVIDENCE",
+      "description": "Canonical state, backlog, plan and ledgers satisfy the current structural contract after projection.",
+      "required": true,
+      "status": "BLOCKED",
+      "evidence_refs": [
+        ".agent/archive/20260920-controller-migration/manifest.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The official checker is the required verification boundary; external acceptance is outside this migration."
+    },
+    {
+      "id": "AR-003-ACCEPTANCE-OR-ROUTING",
+      "description": "Unresolved external acceptance is routed to the active P0-CLOSURE task without claiming completion.",
+      "required": true,
+      "status": "BLOCKED",
+      "evidence_refs": [
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Exact CI/chained release, target, credentials, UAT and release authority remain external blockers."
+    }
+  ],
+  "evidence": [
+    ".agent/archive/20260920-controller-migration/manifest.json",
+    ".agent/state.json",
+    ".agent/backlog.json"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Exact candidate CI and chained release artifact verification remain pending.",
+    "Approved target, credentials, UAT participants and release authority remain unavailable.",
+    "The canonical audit-fingerprint rebaseline and external attestation remain outstanding."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "controller migration executor",
+    "scope": "NR-003 controller migration and reconciliation for the active P0 closure audit; external acceptance remains unresolved.",
+    "decision": "No product or release authority is inferred by this control-plane migration.",
+    "evidence_ref": ".agent/archive/20260920-controller-migration/manifest.json",
+    "expires_or_revalidates": "Revalidate after any controller mutation, new candidate identity, or external acceptance decision."
+  },
+  "residual_risk": "CRITICAL",
+  "decision": "BLOCKED",
+  "next_action": "P0-CLOSURE:VERIFY-CANDIDATE",
+  "revalidation_triggers": [
+    "A fresh checker run or control-plane mutation changes the canonical mapping.",
+    "Exact CI/chained release, target, UAT or release-authority evidence becomes available."
+  ],
+  "supersedes": null
+}

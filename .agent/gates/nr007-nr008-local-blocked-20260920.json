@@ -1,0 +1,79 @@
+{
+  "record_id": "GATE-NR007-NR008-P0-CLOSURE-20260920",
+  "timestamp": "2026-09-20T18:25:03.000000+00:00",
+  "gate_id": "AUDIT_RESOLVED",
+  "scope": "NR-003 controller migration and reconciliation for the active P0 closure audit; external acceptance remains unresolved.",
+  "scope_ref": "P0-CLOSURE",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "AR-001-BASELINE-GAPS",
+      "description": "The current NR-007/NR-008 validation packet and its remaining external gaps are explicitly recorded against the preserved controller baseline.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/archive/20260920-controller-migration/manifest.json",
+        ".agent/evidence/nr007-nr008-release-oci-trivy-20260920-final.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This proves packet preservation and local scope, not candidate or release acceptance."
+    },
+    {
+      "id": "AR-002-RESOLUTION-EVIDENCE",
+      "description": "Canonical state, backlog, ledgers and current worktree checks reconcile, with local Helm/runtime/OCI/Trivy/Vault evidence and fresh read-only review recorded.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-NR007-NR008-WORKTREE-20260920",
+        ".agent/evidence/nr007-nr008-independent-review-20260920.json",
+        ".agent/state.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "All evidence is local and the source/control worktree is uncommitted."
+    },
+    {
+      "id": "AR-003-ACCEPTANCE-OR-ROUTING",
+      "description": "Unresolved external acceptance is routed to active P0-CLOSURE without claiming completion or release readiness.",
+      "required": true,
+      "status": "BLOCKED",
+      "evidence_refs": [
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Exact candidate CI/chained release, source freeze, approved target and credentials, UAT, external attestation and release authority remain unavailable."
+    }
+  ],
+  "evidence": [
+    ".agent/archive/20260920-controller-migration/manifest.json",
+    ".agent/verification.jsonl#VER-NR007-NR008-WORKTREE-20260920",
+    ".agent/evidence/nr007-nr008-release-oci-trivy-20260920-final.json",
+    ".agent/evidence/nr007-nr008-vault-negative-login-20260920.json",
+    ".agent/evidence/nr007-nr008-independent-review-20260920.json"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Exact candidate CI/chained release and attestation are unavailable.",
+    "Source/control bytes remain uncommitted and no candidate SHA freeze exists.",
+    "Approved target, real credentials, named UAT and release authority remain unavailable."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local verification executor",
+    "scope": "NR-003 controller migration and reconciliation for the active P0 closure audit; external acceptance remains unresolved.",
+    "decision": "Local evidence is recorded without promoting it to external acceptance or release readiness.",
+    "evidence_ref": ".agent/state.json",
+    "expires_or_revalidates": "Revalidate after source freeze, exact CI/release, target/UAT or authority evidence."
+  },
+  "residual_risk": "CRITICAL",
+  "decision": "BLOCKED",
+  "next_action": "P0-CLOSURE:VERIFY-CANDIDATE",
+  "revalidation_triggers": [
+    "A source SHA freeze or candidate-bound CI/release artifact package becomes available.",
+    "Approved target, credentials, named UAT and release authority are supplied.",
+    "A new source, control-plane or evidence mutation changes the current worktree."
+  ],
+  "supersedes": "GATE-AR-P0-CLOSURE-NR003-20260920"
+}

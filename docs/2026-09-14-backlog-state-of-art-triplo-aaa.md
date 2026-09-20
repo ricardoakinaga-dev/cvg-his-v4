@@ -4,7 +4,7 @@ document_kind: backlog
 effective_date: 2026-09-14
 owner: Liderança técnica, Produto e Operações CVG-HIS
 review_cycle: on-task-completion
-superseded_by: docs/2026-09-15-backlog-pos-checkpoint-state-of-art-triplo-aaa.md
+superseded_by: docs/2026-09-20-backlog-nova-rodada-melhorias.md
 ---
 
 # Backlog executável — melhorias integrais State of Art / Triplo AAA

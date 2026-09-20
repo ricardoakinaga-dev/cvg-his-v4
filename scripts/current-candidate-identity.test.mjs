@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import test from 'node:test';
 
 import { buildCurrentEvidenceGraph, importLocalEvidence } from './generate-current-evidence-graph.mjs';
-import { validateIdentityDocument } from './generate-current-candidate-identity.mjs';
+import { validateCurrentCandidateIdentity, validateIdentityDocument } from './generate-current-candidate-identity.mjs';
 
 const head = 'a'.repeat(40);
 const digest = 'b'.repeat(64);
@@ -71,6 +71,70 @@ test('rejects source changes after the candidate without regeneration', () => {
   assert.ok(errors.some((error) => error.includes('source changes')));
 });
 
+test('rejects a candidate identity check when the worktree is dirty', () => {
+  const errors = validateIdentityDocument({
+    identity,
+    currentHead: head,
+    candidateIsAncestor: true,
+    changedPathsSinceCandidate: [],
+    worktreeClean: false,
+    qualityBarSha256: digest,
+    promptSha256: digest,
+    archivedPromptSha256: digest
+  });
+  assert.deepEqual(errors, [
+    'candidate identity requires a clean worktree; freeze source and control bytes before validation'
+  ]);
+});
+
+test('repository identity validation fails closed on a dirty integration fixture', () => {
+  const dirtyRepo = mkdtempSync('/tmp/cvg-identity-dirty-');
+  try {
+    mkdirSync(`${dirtyRepo}/docs/triple-a`, { recursive: true });
+    const sha = 'a'.repeat(40);
+    const digest = 'b'.repeat(64);
+    writeFileSync(`${dirtyRepo}/docs/triple-a/QUALITY_BAR_V1.json`, '{}\n');
+    writeFileSync(`${dirtyRepo}/docs/triple-a/MASTER_PROMPT.md`, '# prompt\n');
+    writeFileSync(`${dirtyRepo}/docs/triple-a/MASTER_EXECUTION_PROMPT_2026-09-15.md`, '# archived\n');
+    writeFileSync(
+      `${dirtyRepo}/docs/triple-a/CURRENT_CANDIDATE_IDENTITY.json`,
+      `${JSON.stringify({
+        schema_version: 1,
+        candidate_id: 'CVG-HIS-V4-dirtyfixture',
+        behavior_sha: sha,
+        assurance_sha: sha,
+        documentation_sha: sha,
+        head_sha: sha,
+        origin_main_sha: null,
+        ci_sha: null,
+        release_sha: null,
+        merge_sha: sha,
+        status: 'BLOCKED / NOT PROVEN',
+        release_state: 'BLOCKED / NOT PROVEN',
+        quality_bar_sha256: digest,
+        prompt_source_sha256: digest,
+        archived_prompt_sha256: digest
+      }, null, 2)}\n`
+    );
+    execFileSync('git', ['init', '-q'], { cwd: dirtyRepo });
+    execFileSync('git', ['config', 'user.email', 'fixture@example.invalid'], { cwd: dirtyRepo });
+    execFileSync('git', ['config', 'user.name', 'identity fixture'], { cwd: dirtyRepo });
+    execFileSync('git', ['add', '.'], { cwd: dirtyRepo });
+    execFileSync('git', ['commit', '-qm', 'fixture'], { cwd: dirtyRepo });
+    writeFileSync(`${dirtyRepo}/dirty.txt`, 'uncommitted\n');
+
+    const errors = validateCurrentCandidateIdentity({ rootDir: dirtyRepo });
+    assert.ok(
+      errors.includes(
+        'candidate identity requires a clean worktree; freeze source and control bytes before validation'
+      ),
+      errors.join('; ')
+    );
+  } finally {
+    rmSync(dirtyRepo, { recursive: true, force: true });
+  }
+});
+
 test('evidence graph remains blocked when external evidence is absent', () => {
   const graph = buildCurrentEvidenceGraph({
     identity,
@@ -86,16 +150,28 @@ test('evidence graph remains blocked when external evidence is absent', () => {
 const root = process.cwd();
 const currentIdentity = JSON.parse(readFileSync(resolve(root, 'docs/triple-a/CURRENT_CANDIDATE_IDENTITY.json'), 'utf8'));
 const repositoryHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
-const expectedRepositoryBinding = repositoryHead === currentIdentity.head_sha
-  ? 'EXACT'
-  : 'DOCUMENTATION_ONLY_DESCENDANT';
+// Evidence-import fixtures are deliberately rebound to the immutable repository
+// HEAD used by this test run. The checked-in identity may be stale while a
+// candidate is being assembled; those stale-candidate failure paths are tested
+// separately by the validation contract and must not make the happy-path
+// importer assertions depend on an unrelated worktree history.
+const evidenceIdentity = {
+  ...currentIdentity,
+  candidate_id: `CVG-HIS-V4-${repositoryHead.slice(0, 12)}`,
+  behavior_sha: repositoryHead,
+  assurance_sha: repositoryHead,
+  documentation_sha: repositoryHead,
+  head_sha: repositoryHead,
+  merge_sha: repositoryHead,
+};
+const expectedRepositoryBinding = 'EXACT';
 const temporaryEvidenceDirectories = [];
 
 test.afterEach(() => {
   for (const directory of temporaryEvidenceDirectories.splice(0)) rmSync(directory, { recursive: true, force: true });
 });
 
-function createEvidenceFixture({ commitSha = currentIdentity.head_sha, observedAt = new Date().toISOString(), tamper = false, environment = 'test-disposable-postgres' } = {}) {
+function createEvidenceFixture({ commitSha = evidenceIdentity.head_sha, observedAt = new Date().toISOString(), tamper = false, environment = 'test-disposable-postgres' } = {}) {
   const directory = mkdtempSync(resolve(root, 'artifacts/triple-a/graph-import-test-'));
   temporaryEvidenceDirectories.push(directory);
   const fixturePath = resolve(directory, 'proof.log');
@@ -130,14 +206,14 @@ function createEvidenceFixture({ commitSha = currentIdentity.head_sha, observedA
 
 test('imports fresh local evidence as PARTIAL and keeps the graph blocked', () => {
   const evidenceDir = createEvidenceFixture();
-  const imported = importLocalEvidence({ rootDir: root, identity: currentIdentity, evidenceDir, now: new Date() });
+  const imported = importLocalEvidence({ rootDir: root, identity: evidenceIdentity, evidenceDir, now: new Date() });
   assert.equal(imported.nodes.workflow_postgres.status, 'PARTIAL');
   assert.equal(imported.nodes.workflow_postgres.candidate_binding, 'EXACT');
   assert.equal(imported.nodes.workflow_postgres.repository_binding, expectedRepositoryBinding);
 
   const graph = buildCurrentEvidenceGraph({
     rootDir: root,
-    identity: currentIdentity,
+    identity: evidenceIdentity,
     evidenceDir,
     observedAt: new Date().toISOString(),
   });
@@ -146,9 +222,9 @@ test('imports fresh local evidence as PARTIAL and keeps the graph blocked', () =
   assert.equal(graph.imported_evidence[0].status, 'PARTIAL');
 });
 
-test('accepts evidence collected on the documentation-only descendant but preserves functional candidate binding', () => {
+test('accepts evidence collected on the current repository head with functional candidate binding', () => {
   const evidenceDir = createEvidenceFixture({ commitSha: repositoryHead });
-  const imported = importLocalEvidence({ rootDir: root, identity: currentIdentity, evidenceDir, now: new Date() });
+  const imported = importLocalEvidence({ rootDir: root, identity: evidenceIdentity, evidenceDir, now: new Date() });
   assert.equal(imported.nodes.workflow_postgres.status, 'PARTIAL');
   assert.equal(imported.nodes.workflow_postgres.evidence_sha, repositoryHead);
   assert.equal(imported.nodes.workflow_postgres.candidate_binding, expectedRepositoryBinding);
@@ -156,12 +232,12 @@ test('accepts evidence collected on the documentation-only descendant but preser
 
 test('rejects stale or tampered evidence instead of silently ignoring it', () => {
   const staleDir = createEvidenceFixture({ observedAt: new Date(Date.now() - 169 * 60 * 60 * 1000).toISOString() });
-  const stale = importLocalEvidence({ rootDir: root, identity: currentIdentity, evidenceDir: staleDir, now: new Date() });
+  const stale = importLocalEvidence({ rootDir: root, identity: evidenceIdentity, evidenceDir: staleDir, now: new Date() });
   assert.equal(stale.nodes.workflow_postgres.status, 'FAIL');
   assert.match(stale.nodes.workflow_postgres.reason, /stale|clock|old/i);
 
   const tamperedDir = createEvidenceFixture({ tamper: true });
-  const tampered = importLocalEvidence({ rootDir: root, identity: currentIdentity, evidenceDir: tamperedDir, now: new Date() });
+  const tampered = importLocalEvidence({ rootDir: root, identity: evidenceIdentity, evidenceDir: tamperedDir, now: new Date() });
   assert.equal(tampered.nodes.workflow_postgres.status, 'FAIL');
   assert.match(tampered.nodes.workflow_postgres.reason, /Digest/i);
 });
@@ -173,7 +249,7 @@ test('rejects a symlinked evidence envelope instead of treating it as absent', (
   const targetPath = resolve(directory, 'proof.log');
   unlinkSync(evidencePath);
   symlinkSync(targetPath, evidencePath);
-  const imported = importLocalEvidence({ rootDir: root, identity: currentIdentity, evidenceDir, now: new Date() });
+  const imported = importLocalEvidence({ rootDir: root, identity: evidenceIdentity, evidenceDir, now: new Date() });
   assert.equal(imported.nodes.workflow_postgres.status, 'FAIL');
   assert.match(imported.nodes.workflow_postgres.reason, /regular non-symlink/i);
 });

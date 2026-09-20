@@ -67,6 +67,13 @@ services:
       timeout: 5s
       retries: 30
       start_period: 30s
+    # The SPA image carries the same-origin nginx upstream used by the
+    # production-shaped Docker path. Keep the E2E service name explicit while
+    # providing the canonical upstream alias expected by that image.
+    networks:
+      default:
+        aliases:
+          - cvg-his-v2-api
     restart: 'no'
 
   spa-e2e:

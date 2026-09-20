@@ -195,7 +195,7 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
       'outputs: type=oci,dest=/tmp/api-image.tar',
       'outputs: type=docker,dest=/tmp/api-image.tar'
     ),
-    workflow.replace('input: /tmp/api-image.tar', 'input: /tmp/unscanned-api-image.tar'),
+    workflow.replace('input: /tmp/api-image', 'input: /tmp/unscanned-api-image'),
     workflow.replace(
       '      - name: Scan API image candidate for vulnerabilities',
       '      - if: false\n        name: Scan API image candidate for vulnerabilities'
@@ -1450,6 +1450,67 @@ test('release workflow preserves the exact scanned OCI candidate chain', () => {
     ),
     []
   );
+});
+
+test('pins GitHub expression parser boundaries and reports the exact parent finding', () => {
+  const workflow = readFileSync(
+    join(process.cwd(), '.github/workflows/release-artifacts.yml'),
+    'utf8'
+  );
+  const triggerCondition =
+    "    if: >-\n      github.event.workflow_run.conclusion == 'success' &&\n      github.event.workflow_run.head_branch == 'main' &&\n      github.event.workflow_run.event == 'push'";
+  const longDecimal380 = `1${'0'.repeat(379)}`;
+  const longDecimal381 = `1${'0'.repeat(380)}`;
+  const longLegacyOctal381 = `0${'0'.repeat(379)}1`;
+
+  assert.deepEqual(
+    inspectReleaseWorkflowPolicy(
+      workflow.replace(triggerCondition, `    if: \${{ fromJSON('${longDecimal380}') }}`)
+    ),
+    []
+  );
+  assert.deepEqual(
+    inspectReleaseWorkflowPolicy(
+      workflow.replace(triggerCondition, `    if: \${{ fromJSON('${longLegacyOctal381}') }}`)
+    ),
+    []
+  );
+
+  const tooLong = inspectReleaseWorkflowPolicy(
+    workflow.replace(triggerCondition, `    if: \${{ fromJSON('${longDecimal381}') }}`)
+  );
+  assert.deepEqual(tooLong, [
+    '.github/workflows/release-artifacts.yml: release jobs must be reachable and cannot use a statically false condition'
+  ]);
+
+  assert.deepEqual(
+    inspectReleaseWorkflowPolicy(
+      workflow.replace(triggerCondition, "    if: ${{ toJSON(fromJSON('false')) == 'false' }}")
+    ),
+    []
+  );
+  assert.deepEqual(
+    inspectReleaseWorkflowPolicy(
+      workflow.replace(triggerCondition, "    if: ${{ github.event.workflow_run.conclusion == 'success' }}")
+    ),
+    []
+  );
+
+  const requiredStep = workflow.replace(
+    '      - name: Scan API image candidate for vulnerabilities',
+    '      - if: ${{ false }}\n        name: Scan API image candidate for vulnerabilities'
+  );
+  assert.deepEqual(inspectReleaseWorkflowPolicy(requiredStep), [
+    '.github/workflows/release-artifacts.yml: release jobs must be reachable and cannot use a statically false condition',
+    '.github/workflows/release-artifacts.yml: release-path steps must be reachable and cannot use a statically false condition'
+  ]);
+  const requiredJob = workflow.replace(
+    triggerCondition,
+    '    if: ${{ false }}'
+  );
+  assert.deepEqual(inspectReleaseWorkflowPolicy(requiredJob), [
+    '.github/workflows/release-artifacts.yml: release jobs must be reachable and cannot use a statically false condition'
+  ]);
 });
 
 test('production runtime policy accepts minimal non-root deploy closures', () => {

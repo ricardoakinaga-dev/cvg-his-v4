@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "migration_id": "CTRL-MIGRATION-20260920-NR003",
+  "mapping_version": "NR-003/controller-v1",
+  "observed_at": "2026-09-20T16:17:37.000000+00:00",
+  "reason": "The current controller contains 30 checker failures spanning a non-canonical lifecycle stage, an invalid active plan, stale DONE proof, malformed and invalid transitions, an unscoped action, non-canonical verification kind, absolute artifact paths, and an active gate scoped to the wrong task. The original controller is preserved byte-for-byte; the active files are a documented canonical projection.",
+  "archived": [
+    {
+      "source": ".agent/state.json",
+      "archive": ".agent/archive/20260920-controller-migration/state.before.json",
+      "sha256": "d37275b29f9d2cb57b37e2b720bb15138705b433790143c8688579099f341e33"
+    },
+    {
+      "source": ".agent/backlog.json",
+      "archive": ".agent/archive/20260920-controller-migration/backlog.before.json",
+      "sha256": "0dd4b69c7530b9215a577a5d37839b58fc2d5f8c11fe5283fb2b1e347490c716"
+    },
+    {
+      "source": ".agent/execution-log.jsonl",
+      "archive": ".agent/archive/20260920-controller-migration/execution-log.before.jsonl",
+      "sha256": "e0ec6a3a11c9dbe0e5d7552dff8c081149b604d7cd1d2b464bd7e2260327b75d"
+    },
+    {
+      "source": ".agent/verification.jsonl",
+      "archive": ".agent/archive/20260920-controller-migration/verification.before.jsonl",
+      "sha256": "0ffdb27004f6ad4964ec5472735bb0dc69b7a6d3262c17676a66a2f97c523250"
+    },
+    {
+      "source": ".agent/plans/p0-closure-20260918.md",
+      "archive": ".agent/archive/20260920-controller-migration/p0-closure-20260918.before.md",
+      "sha256": "f64d15dd487041526fa3e7616a3e7a6b63f1c7741f107b1ec9be2cb632025662"
+    }
+  ],
+  "canonical_projection": {
+    "state": ".agent/state.json",
+    "backlog": ".agent/backlog.json",
+    "execution_log": ".agent/execution-log.jsonl",
+    "verification_ledger": ".agent/verification.jsonl",
+    "active_execplan": ".agent/plans/p0-closure-20260918.md",
+    "gate": ".agent/gates/audit-resolved-p0-closure-20260920.json"
+  },
+  "mappings": [
+    {
+      "id": "MAP-001",
+      "finding": "state.lifecycle_stage VERIFY is not canonical",
+      "action": "Project state and active P0-CLOSURE stage to AUDIT; append a valid BUILD-to-AUDIT lifecycle transition in the migration gate event.",
+      "preserved_in": "state.before.json"
+    },
+    {
+      "id": "MAP-002",
+      "finding": "active ExecPlan lacked a visible named milestone and contained literal template-token braces",
+      "action": "Add a visible NR-003 level-three milestone and replace brace-shaped prose examples with plain-language descriptions.",
+      "preserved_in": "p0-closure-20260918.before.md"
+    },
+    {
+      "id": "MAP-003",
+      "finding": "UNIFY-MAIN DONE lacked a cited current verification and COMPLETE transition",
+      "action": "Cite VER-UNIFY-PUBLISHED-CI-20260918, normalize the terminal event to COMPLETE, and retain its PASS scope and limitations.",
+      "preserved_in": "backlog.before.json; execution-log.before.jsonl"
+    },
+    {
+      "id": "MAP-004",
+      "finding": "malformed records 170/171 and invalid VERIFY-to-VERIFY declarations",
+      "action": "Restore required fields and event types; omit same-state status declarations from the canonical projection while preserving the original lines in the archive.",
+      "preserved_in": "execution-log.before.jsonl"
+    },
+    {
+      "id": "MAP-005",
+      "finding": "historical active_action mismatch, non-canonical verification kind, and absolute artifact paths",
+      "action": "Bind historical UNIFY-MAIN action text to its task, map INDEPENDENT_REVIEW to STATIC_INSPECTION, and represent external artifacts as file URIs.",
+      "preserved_in": "execution-log.before.jsonl; verification.before.jsonl"
+    },
+    {
+      "id": "MAP-006",
+      "finding": "current gate scope_ref UNIFY-MAIN did not bind active P0-CLOSURE",
+      "action": "Create a versioned BLOCKED AUDIT_RESOLVED gate scoped to P0-CLOSURE and bind its GATE_FAILED event as the current pointer.",
+      "preserved_in": "state.before.json; .agent/gates/implementation-ready-unify-main-20260918.json"
+    }
+  ],
+  "exceptions": [
+    {
+      "id": "EXC-001",
+      "status": "OPEN",
+      "scope": "P0-CLOSURE",
+      "reason": "Exact candidate CI/chained release verification, target credentials, named UAT, external attestation, and release authority remain unavailable.",
+      "next_action": "P0-CLOSURE:VERIFY-CANDIDATE"
+    },
+    {
+      "id": "EXC-002",
+      "status": "OPEN",
+      "scope": "P0-CLOSURE",
+      "reason": "The sealed audit-fingerprint rebaseline is not proven; no local result is promoted to a complete Gauntlet or release claim.",
+      "next_action": "Rebaseline the candidate-bound audit packet with independent external attestation."
+    }
+  ],
+  "preserved_claims": "No historical result was promoted by this migration. Local code/runtime results remain scoped evidence; release, target, UAT, authority and complete Gauntlet acceptance remain BLOCKED.",
+  "canonical_records": [
+    ".agent/gates/audit-resolved-p0-closure-20260920.json",
+    ".agent/archive/20260920-controller-migration/manifest.json"
+  ]
+}

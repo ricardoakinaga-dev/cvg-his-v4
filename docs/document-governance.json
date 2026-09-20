@@ -2,66 +2,82 @@
   "schema_version": 1,
   "current_documents": {
     "baseline": {
-      "path": "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
-      "effective_date": "2026-09-15"
+      "path": "docs/2026-09-20-reauditoria-candidato-a9ff1b1a.md",
+      "effective_date": "2026-09-20"
     },
     "plan": {
-      "path": "docs/2026-09-14-plano-executivo-state-of-art-triplo-aaa.md",
-      "effective_date": "2026-09-14"
+      "path": "docs/2026-09-20-plano-executivo-nova-rodada-melhorias.md",
+      "effective_date": "2026-09-20"
     },
     "roadmap": {
-      "path": "docs/2026-09-15-roadmap-pos-checkpoint-state-of-art-triplo-aaa.md",
-      "effective_date": "2026-09-15"
+      "path": "docs/2026-09-20-roadmap-nova-rodada-melhorias.md",
+      "effective_date": "2026-09-20"
     },
     "backlog": {
-      "path": "docs/2026-09-15-backlog-pos-checkpoint-state-of-art-triplo-aaa.md",
-      "effective_date": "2026-09-15"
+      "path": "docs/2026-09-20-backlog-nova-rodada-melhorias.md",
+      "effective_date": "2026-09-20"
     }
   },
   "historical_documents": [
     {
+      "path": "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
+      "superseded_by": "docs/2026-09-20-reauditoria-candidato-a9ff1b1a.md"
+    },
+    {
+      "path": "docs/2026-09-14-plano-executivo-state-of-art-triplo-aaa.md",
+      "superseded_by": "docs/2026-09-20-plano-executivo-nova-rodada-melhorias.md"
+    },
+    {
+      "path": "docs/2026-09-15-roadmap-pos-checkpoint-state-of-art-triplo-aaa.md",
+      "superseded_by": "docs/2026-09-20-roadmap-nova-rodada-melhorias.md"
+    },
+    {
+      "path": "docs/2026-09-15-backlog-pos-checkpoint-state-of-art-triplo-aaa.md",
+      "superseded_by": "docs/2026-09-20-backlog-nova-rodada-melhorias.md"
+    },
+    {
       "path": "docs/2026-09-14-relatorio-completo-estado-construcao.md",
-      "superseded_by": "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md"
+      "superseded_by": "docs/2026-09-20-reauditoria-candidato-a9ff1b1a.md"
     },
     {
       "path": "docs/2026-09-14-roadmap-state-of-art-triplo-aaa.md",
-      "superseded_by": "docs/2026-09-15-roadmap-pos-checkpoint-state-of-art-triplo-aaa.md"
+      "superseded_by": "docs/2026-09-20-roadmap-nova-rodada-melhorias.md"
     },
     {
       "path": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
-      "superseded_by": "docs/2026-09-15-backlog-pos-checkpoint-state-of-art-triplo-aaa.md"
+      "superseded_by": "docs/2026-09-20-backlog-nova-rodada-melhorias.md"
     },
     {
       "path": "docs/2026-09-06-relatorio-estado-atual-erp-cvg-his-v4.md",
-      "superseded_by": "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md"
+      "superseded_by": "docs/2026-09-20-reauditoria-candidato-a9ff1b1a.md"
     },
     {
       "path": "docs/2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md",
-      "superseded_by": "docs/2026-09-14-plano-executivo-state-of-art-triplo-aaa.md"
+      "superseded_by": "docs/2026-09-20-plano-executivo-nova-rodada-melhorias.md"
     },
     {
       "path": "docs/2026-09-06-roadmap-erp-state-of-art-triplo-aaa.md",
-      "superseded_by": "docs/2026-09-15-roadmap-pos-checkpoint-state-of-art-triplo-aaa.md"
+      "superseded_by": "docs/2026-09-20-roadmap-nova-rodada-melhorias.md"
     },
     {
       "path": "docs/2026-09-06-backlog-erp-state-of-art-triplo-aaa.md",
-      "superseded_by": "docs/2026-09-15-backlog-pos-checkpoint-state-of-art-triplo-aaa.md"
+      "superseded_by": "docs/2026-09-20-backlog-nova-rodada-melhorias.md"
     },
     {
       "path": "docs/2026-09-13-relatorio-estado-atual-erp-cvg-his-v4.md",
-      "superseded_by": "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md"
+      "superseded_by": "docs/2026-09-20-reauditoria-candidato-a9ff1b1a.md"
     },
     {
       "path": "docs/2026-09-13-plano-executivo-prontidao-producao.md",
-      "superseded_by": "docs/2026-09-14-plano-executivo-state-of-art-triplo-aaa.md"
+      "superseded_by": "docs/2026-09-20-plano-executivo-nova-rodada-melhorias.md"
     },
     {
       "path": "docs/2026-09-13-roadmap-prontidao-producao.md",
-      "superseded_by": "docs/2026-09-15-roadmap-pos-checkpoint-state-of-art-triplo-aaa.md"
+      "superseded_by": "docs/2026-09-20-roadmap-nova-rodada-melhorias.md"
     },
     {
       "path": "docs/2026-09-13-backlog-prontidao-producao.md",
-      "superseded_by": "docs/2026-09-15-backlog-pos-checkpoint-state-of-art-triplo-aaa.md"
+      "superseded_by": "docs/2026-09-20-backlog-nova-rodada-melhorias.md"
     }
   ],
   "linked_indexes": [

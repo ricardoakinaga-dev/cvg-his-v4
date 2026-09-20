@@ -92,6 +92,34 @@ app.kubernetes.io/component: spa
 {{- default (printf "%s-api-setup" (include "cvg-his-v2.fullname" .)) .Values.api.setup.existingSecret }}
 {{- end }}
 
+{{- define "cvg-his-v2.api.vault.enabled" -}}
+{{- $enabled := lower (toString .Values.api.env.VAULT_ENABLED) -}}
+{{- if or (eq $enabled "true") (eq $enabled "1") -}}true{{- else -}}false{{- end -}}
+{{- end }}
+
+{{- define "cvg-his-v2.api.vault.secretName" -}}
+{{- required "api.vault.existingSecret is required when api.env.VAULT_ENABLED=true" .Values.api.vault.existingSecret }}
+{{- end }}
+
+{{- define "cvg-his-v2.api.vault.validate" -}}
+{{- if eq (include "cvg-his-v2.api.vault.enabled" .) "true" -}}
+{{- $vaultSecret := required "api.vault.existingSecret is required when api.env.VAULT_ENABLED=true" .Values.api.vault.existingSecret -}}
+{{- if not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$" $vaultSecret) -}}
+{{- fail "api.vault.existingSecret must be a valid Kubernetes Secret name" -}}
+{{- end -}}
+{{- $urlKey := required "api.vault.secretKeys.url is required when api.env.VAULT_ENABLED=true" .Values.api.vault.secretKeys.url -}}
+{{- $roleIdKey := required "api.vault.secretKeys.roleId is required when api.env.VAULT_ENABLED=true" .Values.api.vault.secretKeys.roleId -}}
+{{- $secretIdKey := required "api.vault.secretKeys.secretId is required when api.env.VAULT_ENABLED=true" .Values.api.vault.secretKeys.secretId -}}
+{{- $namespaceKey := required "api.vault.secretKeys.namespace is required when api.env.VAULT_ENABLED=true" .Values.api.vault.secretKeys.namespace -}}
+{{- $pathKey := required "api.vault.secretKeys.path is required when api.env.VAULT_ENABLED=true" .Values.api.vault.secretKeys.path -}}
+{{- if not (regexMatch "^[A-Z][A-Z0-9_]*$" $urlKey) -}}{{- fail "api.vault.secretKeys.url must be an environment variable name" -}}{{- end -}}
+{{- if not (regexMatch "^[A-Z][A-Z0-9_]*$" $roleIdKey) -}}{{- fail "api.vault.secretKeys.roleId must be an environment variable name" -}}{{- end -}}
+{{- if not (regexMatch "^[A-Z][A-Z0-9_]*$" $secretIdKey) -}}{{- fail "api.vault.secretKeys.secretId must be an environment variable name" -}}{{- end -}}
+{{- if not (regexMatch "^[A-Z][A-Z0-9_]*$" $namespaceKey) -}}{{- fail "api.vault.secretKeys.namespace must be an environment variable name" -}}{{- end -}}
+{{- if not (regexMatch "^[A-Z][A-Z0-9_]*$" $pathKey) -}}{{- fail "api.vault.secretKeys.path must be an environment variable name" -}}{{- end -}}
+{{- end -}}
+{{- end }}
+
 {{- define "cvg-his-v2.api.configmapName" -}}
 {{- printf "%s-api-config" (include "cvg-his-v2.fullname" .) }}
 {{- end }}

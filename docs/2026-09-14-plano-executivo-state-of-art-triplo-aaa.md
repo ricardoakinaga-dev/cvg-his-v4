@@ -1,9 +1,10 @@
 ---
-document_status: current
+document_status: historical
 document_kind: plan
 effective_date: 2026-09-14
 owner: Liderança técnica, Produto e Operações CVG-HIS
 review_cycle: on-milestone-or-candidate-change
+superseded_by: docs/2026-09-20-plano-executivo-nova-rodada-melhorias.md
 ---
 
 # Plano executivo — CVG-HIS State of Art / Triplo AAA

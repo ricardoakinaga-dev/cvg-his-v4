@@ -1,0 +1,52 @@
+{
+  "generated_at": "2026-09-20T17:41:16.385Z",
+  "candidate": {
+    "worktree": "current-uncommitted",
+    "release_gate_log": "/tmp/cvg-release-gate-current4-20260920.log",
+    "release_gate_log_sha256": "2b0840bcc166727c50fa843354b2bb076e4f119124ee46df132242b771503dc3"
+  },
+  "images": {
+    "api": {
+      "oci_archive": "/tmp/cvg-oci-final-J8xTVv/api.oci",
+      "oci_archive_sha256": "9b232410794d06dd7a8ef4350cfef88333d2faa509d884d288bf66bbed825358",
+      "root_digest": "sha256:a575bef40f1e077f5e022014f24df3d8022e484dcc6d74ff24c51fd07cd253e1",
+      "config_digest": "sha256:5edeb97161c58141a19f1bcf0f9585703863b3b2057ed8decc34e6867a472065",
+      "trivy_report": "/tmp/cvg-oci-final-J8xTVv/trivy-out/api.json",
+      "trivy_report_sha256": "11b4b6dad00450093ced0efe52aee2f804b80d05f1a3c218855f632c1f9c6d2b",
+      "vulnerability_counts": {"total": 0, "high": 0, "critical": 0}
+    },
+    "worker": {
+      "oci_archive": "/tmp/cvg-oci-final-J8xTVv/worker.oci",
+      "oci_archive_sha256": "8d57325b4bbc9319dbe072a129214c730dfd318dcae3f2b99d5ca0bffa548673",
+      "root_digest": "sha256:05bc256d7e0b32780b8575f0c332d8612d9caf984698f3e45d9eb0e1776741b8",
+      "config_digest": "sha256:39376349fe4625036ccd33606d3c8f1882579552e9f2e87e5a718ac7053ec68e",
+      "trivy_report": "/tmp/cvg-oci-final-J8xTVv/trivy-out/worker.json",
+      "trivy_report_sha256": "656bc1ceec977d995a1439f9045f0b6de0f5818146174a163ca0ec7f491fea98",
+      "vulnerability_counts": {"total": 0, "high": 0, "critical": 0}
+    },
+    "spa": {
+      "oci_archive": "/tmp/cvg-oci-final-J8xTVv/spa.oci",
+      "oci_archive_sha256": "8d0a78b1647f8163f8fd0b66f9f0049a5f79cfa1ff57a662f3e83ca3ded9d4bc",
+      "root_digest": "sha256:86363b1deea134db2aa86b8ea7491cb4a28e1155ca3a18f9c1f2024eb9eedc7b",
+      "config_digest": "sha256:4a36e70142cbcc8c0fbd722ebcb06dd5c5a28d174b6a8ed75ace21c83c96c1c1",
+      "trivy_report": "/tmp/cvg-oci-final-J8xTVv/trivy-out/spa.json",
+      "trivy_report_sha256": "152d1f64f3762329395c5bf292327868550fb85be78066cb04f817624f6bf30b",
+      "vulnerability_counts": {"total": 0, "high": 0, "critical": 0}
+    }
+  },
+  "trivy": {
+    "tool": "aquasec/trivy:0.65.0",
+    "tool_digest": "sha256:a22415a38938a56c379387a8163fcb0ce38b10ace73e593475d3658d578b2436",
+    "scanners": ["vuln"],
+    "severity": ["HIGH", "CRITICAL"],
+    "ignore_unfixed": false,
+    "exit_code": 1,
+    "layouts_are_extracted_from_oci_archives": true
+  },
+  "cross_digest_test": {
+    "command": "verify_prebuilt_image_binding(CROSS_DIGEST, api release-validation-local-1885034, worker root, api OCI archive)",
+    "status": 1,
+    "expected_fail": true,
+    "stderr_sha256": "f6a842e5d3880dd580aaf204e580515add3599b1b12bb2f114ee1f58187426d9"
+  }
+}

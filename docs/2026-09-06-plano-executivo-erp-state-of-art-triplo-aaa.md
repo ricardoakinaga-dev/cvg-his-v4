@@ -4,7 +4,7 @@ document_kind: plan
 effective_date: 2026-09-07
 owner: Comitê executivo CVG-HIS
 review_cycle: weekly
-superseded_by: docs/2026-09-14-plano-executivo-state-of-art-triplo-aaa.md
+superseded_by: docs/2026-09-20-plano-executivo-nova-rodada-melhorias.md
 ---
 
 # Plano executivo — ERP State of Art / Triplo AAA

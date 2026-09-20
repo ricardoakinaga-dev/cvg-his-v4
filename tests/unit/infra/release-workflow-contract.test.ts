@@ -19,6 +19,27 @@ interface WorkflowStep {
 const releaseSteps = (): WorkflowStep[] =>
   parse(workflow).jobs['publish-sha-artifacts'].steps;
 
+function workflowStepBounds(content: string, name: string) {
+  const marker = `      - name: ${name}`;
+  const start = content.indexOf(marker);
+  if (start < 0) throw new Error(`missing workflow step: ${name}`);
+  const next = content.indexOf('\n      - name:', start + marker.length);
+  return { start, end: next < 0 ? content.length : next };
+}
+
+function removeWorkflowStep(content: string, name: string) {
+  const { start, end } = workflowStepBounds(content, name);
+  return `${content.slice(0, start)}${content.slice(end)}`;
+}
+
+function moveWorkflowStepAfter(content: string, sourceName: string, destinationName: string) {
+  const source = workflowStepBounds(content, sourceName);
+  const step = content.slice(source.start, source.end);
+  const withoutSource = `${content.slice(0, source.start)}${content.slice(source.end)}`;
+  const destination = workflowStepBounds(withoutSource, destinationName);
+  return `${withoutSource.slice(0, destination.end)}\n${step}${withoutSource.slice(destination.end)}`;
+}
+
 function expectAttestationContract(steps: WorkflowStep[]) {
   const attestations = steps.filter((step) => step.uses?.startsWith('actions/attest-build-provenance@'));
   expect(attestations).toHaveLength(4);
@@ -103,6 +124,20 @@ describe('immutable release workflow contract', () => {
   it('scans every exact OCI candidate fail-closed before publishing without a rebuild', () => {
     expect(inspectReleaseWorkflowPolicy(workflow)).toEqual([]);
     expect(workflow.match(/aquasecurity\/trivy-action@[0-9a-f]{40}/g)).toHaveLength(3);
+    const prepareIndex = workflow.indexOf('name: Prepare OCI layouts for vulnerability scanning');
+    const firstScanIndex = workflow.indexOf('name: Scan API image candidate for vulnerabilities');
+    expect(prepareIndex).toBeGreaterThan(-1);
+    expect(prepareIndex).toBeLessThan(firstScanIndex);
+    expect(workflow).toContain('for component in api worker spa;');
+    expect(workflow).toContain('tar -xf "/tmp/${component}-image.tar" -C "${layout}"');
+    expect(workflow).toContain('test -f "${layout}/index.json"');
+    expect(workflow).toContain('test -f "${layout}/oci-layout"');
+    expect(workflow).toContain('input: /tmp/api-image');
+    expect(workflow).toContain('input: /tmp/worker-image');
+    expect(workflow).toContain('input: /tmp/spa-image');
+    expect(workflow).not.toContain('input: /tmp/api-image.tar');
+    expect(workflow).not.toContain('input: /tmp/worker-image.tar');
+    expect(workflow).not.toContain('input: /tmp/spa-image.tar');
     expect(workflow.match(/severity: HIGH,CRITICAL/g)).toHaveLength(3);
     expect(workflow.match(/exit-code: '1'/g)).toHaveLength(3);
     expect(workflow.match(/push: false/g)).toHaveLength(3);
@@ -158,6 +193,37 @@ describe('immutable release workflow contract', () => {
         finding.includes('must never be published as mutable tags')
       )
     ).toBe(true);
+  });
+
+  it('rejects named NR-013 release transition mutations before publication', () => {
+    const mutations: Array<[string, string]> = [
+      ['weaken HIGH/CRITICAL severity', workflow.replace('severity: HIGH,CRITICAL', 'severity: LOW,CRITICAL')],
+      ['ignore unfixed vulnerabilities', workflow.replace('ignore-unfixed: false', 'ignore-unfixed: true')],
+      ['make the scanner non-blocking', workflow.replace("exit-code: '1'", "exit-code: '0'")],
+      ['substitute a scanned image', workflow.replace('input: /tmp/api-image', 'input: /tmp/worker-image')],
+      ['ignore the scan input', workflow.replace('input: /tmp/api-image', 'input: /tmp/missing-api-image')],
+      [
+        'scan before OCI layout preparation',
+        moveWorkflowStepAfter(
+          workflow,
+          'Prepare OCI layouts for vulnerability scanning',
+          'Scan API image candidate for vulnerabilities'
+        )
+      ],
+      [
+        'publish before the pre-publication gate',
+        moveWorkflowStepAfter(
+          workflow,
+          'Run pre-publication candidate assurance',
+          'Publish vetted image candidates to quarantine without rebuilding'
+        )
+      ],
+      ['remove the final blocking gate', removeWorkflowStep(workflow, 'Run blocking Triple-A release gate')]
+    ];
+
+    for (const [mutation, content] of mutations) {
+      expect(inspectReleaseWorkflowPolicy(content), mutation).not.toEqual([]);
+    }
   });
 
   it('emits an auditable bundle, manifest and checksums', () => {

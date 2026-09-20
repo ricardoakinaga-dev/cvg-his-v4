@@ -5,6 +5,8 @@ RUN npm install -g pnpm@10.33.0
 WORKDIR /app
 
 ARG VITE_DISABLE_PWA=1
+# VITE_API_BASE_URL is a build-time override for local/direct API builds.
+# Production images leave it empty and use the same-origin nginx /api proxy.
 ARG VITE_API_BASE_URL=
 ARG VITE_APP_NAME="CVG HIS V2"
 ENV VITE_DISABLE_PWA=${VITE_DISABLE_PWA}

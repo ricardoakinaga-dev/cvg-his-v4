@@ -4,7 +4,7 @@ document_kind: roadmap
 effective_date: 2026-09-14
 owner: Liderança técnica, Produto e Operações CVG-HIS
 review_cycle: on-milestone-or-candidate-change
-superseded_by: docs/2026-09-15-roadmap-pos-checkpoint-state-of-art-triplo-aaa.md
+superseded_by: docs/2026-09-20-roadmap-nova-rodada-melhorias.md
 ---
 
 # Roadmap — do candidato atual à operação Triplo AAA

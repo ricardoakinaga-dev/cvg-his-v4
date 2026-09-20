@@ -4,9 +4,118 @@ import { spawnSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import YAML from 'yaml';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const validatorPath = resolve(repositoryRoot, 'infra/scripts/validate-helm.mjs');
+
+test('production Vault wiring uses an operator Secret and never exposes credential values', () => {
+  const chartRoot = resolve(repositoryRoot, 'infra/helm/cvg-his-v2');
+  const baseValues = YAML.parse(readFileSync(resolve(chartRoot, 'values.yaml'), 'utf8'));
+  const productionValues = YAML.parse(
+    readFileSync(resolve(chartRoot, 'values.prod.yaml'), 'utf8')
+  );
+  const schema = JSON.parse(readFileSync(resolve(chartRoot, 'values.schema.json'), 'utf8'));
+  const deployment = readFileSync(resolve(chartRoot, 'templates/api-deployment.yaml'), 'utf8');
+  const configMap = readFileSync(resolve(chartRoot, 'templates/configmap.yaml'), 'utf8');
+  const helpers = readFileSync(resolve(chartRoot, 'templates/_helpers.tpl'), 'utf8');
+
+  assert.equal(baseValues.api.vault.existingSecret, '');
+  assert.deepEqual(baseValues.api.vault.secretKeys, {
+    url: 'VAULT_URL',
+    roleId: 'VAULT_ROLE_ID',
+    secretId: 'VAULT_SECRET_ID',
+    namespace: 'VAULT_NAMESPACE',
+    path: 'VAULT_SECRET_PATH_PREFIX'
+  });
+  assert.equal(productionValues.api.env.VAULT_ENABLED, 'true');
+  assert.equal(productionValues.api.vault.existingSecret, 'cvg-his-v2-prod-vault');
+  assert.deepEqual(productionValues.api.vault.secretKeys, baseValues.api.vault.secretKeys);
+
+  const vaultSchema = schema.properties.api.properties.vault;
+  assert.deepEqual(vaultSchema.required, ['existingSecret', 'secretKeys']);
+  assert.deepEqual(vaultSchema.properties.secretKeys.required, [
+    'url',
+    'roleId',
+    'secretId',
+    'namespace',
+    'path'
+  ]);
+  assert.equal(
+    schema.properties.api.allOf[0].then.properties.vault.properties.existingSecret.minLength,
+    1,
+    'enabled Vault must require an existing Secret before rollout'
+  );
+
+  const requiredVaultEnvNames = ['VAULT_URL', 'VAULT_ROLE_ID', 'VAULT_SECRET_ID'];
+  const optionalVaultEnvNames = ['VAULT_NAMESPACE', 'VAULT_SECRET_PATH_PREFIX'];
+  const vaultKeyFields = {
+    VAULT_URL: 'url',
+    VAULT_ROLE_ID: 'roleId',
+    VAULT_SECRET_ID: 'secretId',
+    VAULT_NAMESPACE: 'namespace',
+    VAULT_SECRET_PATH_PREFIX: 'path'
+  };
+  for (const envName of [...requiredVaultEnvNames, ...optionalVaultEnvNames]) {
+    const envBlock = deployment.match(
+      new RegExp(`- name: ${envName}\\b([\\s\\S]*?)(?=\\n\\s*- name:|\\n\\s*envFrom:|$)`)
+    )?.[0];
+    assert.ok(envBlock, `${envName} must be rendered in the API environment list`);
+    assert.match(envBlock, /valueFrom:\s*secretKeyRef:/);
+    assert.match(envBlock, new RegExp(`api\\.vault\\.secretKeys\\.${vaultKeyFields[envName]}`));
+    assert.match(
+      envBlock,
+      new RegExp(`optional:\\s+${requiredVaultEnvNames.includes(envName) ? 'false' : 'true'}`),
+      `${envName} must preserve its required/optional SecretRef contract`
+    );
+  }
+  assert.match(
+    helpers,
+    /\^\[a-z0-9\]\(\[-a-z0-9\]\*\[a-z0-9\]\)\?\(\[\.\]\[a-z0-9\]\(\[-a-z0-9\]\*\[a-z0-9\]\)\?\)\*\$/,
+    'Secret names must accept valid DNS-subdomain dots consistently with the schema'
+  );
+  assert.match(helpers, /api\.vault\.existingSecret is required/);
+  assert.match(deployment, /optional: false/);
+  assert.doesNotMatch(
+    configMap,
+    /VAULT_URL|VAULT_ROLE_ID|VAULT_SECRET_ID|VAULT_NAMESPACE|VAULT_SECRET_PATH_PREFIX/,
+    'Vault credentials must not be copied into the API ConfigMap'
+  );
+  assert.match(helpers, /api\.vault\.secretKeys\.path/);
+});
+
+test('SPA API base URL is a build-time override and production keeps same-origin proxying', () => {
+  const chartRoot = resolve(repositoryRoot, 'infra/helm/cvg-his-v2');
+  const productionValues = YAML.parse(
+    readFileSync(resolve(chartRoot, 'values.prod.yaml'), 'utf8')
+  );
+  const stagingValues = YAML.parse(
+    readFileSync(resolve(chartRoot, 'values.staging.yaml'), 'utf8')
+  );
+  const dockerfile = readFileSync(resolve(repositoryRoot, 'apps/spa/Dockerfile'), 'utf8');
+  const nginxTemplate = readFileSync(resolve(chartRoot, 'files/spa-nginx.conf'), 'utf8');
+  const configMap = readFileSync(resolve(chartRoot, 'templates/configmap.yaml'), 'utf8');
+
+  assert.equal(productionValues.spa?.env?.VITE_API_BASE_URL, undefined);
+  assert.equal(stagingValues.spa?.env?.VITE_API_BASE_URL, undefined);
+  assert.match(dockerfile, /ARG VITE_API_BASE_URL=/);
+  assert.match(dockerfile, /build-time override/);
+  assert.match(nginxTemplate, /location \/api\//);
+  assert.match(nginxTemplate, /proxy_pass http:\/\/api_backend;/);
+  assert.doesNotMatch(configMap, /VITE_API_BASE_URL/);
+});
+
+test('Docker E2E exposes the canonical API alias consumed by the SPA image proxy', () => {
+  const compose = readFileSync(resolve(repositoryRoot, 'docker-compose.e2e.yml'), 'utf8');
+  const dockerfile = readFileSync(resolve(repositoryRoot, 'apps/spa/Dockerfile'), 'utf8');
+
+  assert.match(dockerfile, /__API_UPSTREAM__!cvg-his-v2-api:3001 resolve!/);
+  assert.match(
+    compose,
+    /api-e2e:[\s\S]*?networks:\s+default:\s+aliases:\s+- cvg-his-v2-api/,
+    'E2E API must publish the canonical hostname baked into the SPA nginx image'
+  );
+});
 
 test('Helm render validation loads overlay values inside the render loop', () => {
   const source = readFileSync(validatorPath, 'utf8');

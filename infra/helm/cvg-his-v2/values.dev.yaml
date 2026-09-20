@@ -21,6 +21,9 @@ api:
     CORS_ALLOWED_ORIGINS: "*"
     RUNTIME_DISTRIBUTED_STATE_ENABLED: "false"
     VAULT_ENABLED: "false"
+  # Local development keeps the explicit env provider fallback.
+  vault:
+    existingSecret: ""
   auth:
     value: cvg-his-v2-development-auth-secret-1234567890
 

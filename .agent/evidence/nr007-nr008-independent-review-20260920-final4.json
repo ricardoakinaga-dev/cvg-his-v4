@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-09-20T19:48:00.000000+00:00",
+  "source_sha": "a9ff1b1aeec393084cea2405eafc0c4bbe403437",
+  "review_kind": "fresh-read-only-current-worktree",
+  "sentinel": {
+    "algorithm": "sha256 of sorted path/hash lines; path bytes are included",
+    "digest": "f9833fee502e06c2506fcdec23b73709c1bfbf59a0983b0b8dfcebb1a5d43a54",
+    "file_count": 33,
+    "scope_note": "Explicit bounded source, Helm, Compose, tests, current docs, final4 evidence and canonical controller files; the review file itself and mutable Gauntlet runtime state are outside this sentinel scope."
+  },
+  "reviewers": [
+    {
+      "scope": "current NR-001/NR-004/NR-009/NR-023 implementation and tests",
+      "verdict": "APPROVE",
+      "p0": 0,
+      "p1": 0,
+      "mutation_clean": true,
+      "review_fingerprint": "072eef67c0012f9ed5979efdb2c19ddeaa508b991b44b28fc56480321c8255bf",
+      "notes": "Compose alias, dirty Git identity fixture, same-image Vault 403 evidence, Helm SecretRef/no leakage, SPA build-time/same-origin semantics and parser/workflow contracts are coherent."
+    },
+    {
+      "scope": "current NR-007/NR-008 release integration/runtime",
+      "verdict": "APPROVE",
+      "p0": 0,
+      "p1": 0,
+      "mutation_clean": true,
+      "review_fingerprint": "9d2d48946b9e55c44819106e0292f827976f7b72d62f26907d272c5460238bcf",
+      "notes": "Final4 archive/root/runtime/config and Trivy bindings match; final5 gate, invalid AppRole 403 and crossed-digest rejection match; no unsupported release claim."
+    }
+  ],
+  "decision": "APPROVE-LOCAL-BLOCKED-EXTERNAL",
+  "limitations": "Read-only local reviews of an uncommitted worktree; they do not substitute for candidate-bound CI17/17, chained release attestations, approved target/credentials, named UAT or release authority."
+}

@@ -303,6 +303,24 @@ describe('startup-secrets runtime coverage', () => {
     expect(loadApiConfigMock).not.toHaveBeenCalled();
   });
 
+  it('does not fall back to static env secrets when Vault is enabled but incomplete', async () => {
+    const startupError = new Error(
+      'Vault configuration incomplete; refusing env fallback in production-like environment'
+    );
+    createSecretsManagerMock.mockRejectedValue(startupError);
+
+    await expect(
+      resolveApiStartup({
+        NODE_ENV: 'production',
+        VAULT_ENABLED: 'true',
+        AUTH_SECRET: 'synthetic-env-auth-secret',
+        DATABASE_URL: 'postgres://synthetic-env-db'
+      })
+    ).rejects.toThrow(startupError.message);
+
+    expect(loadApiConfigMock).not.toHaveBeenCalled();
+  });
+
   it('reports rotation as not ready without secret version metadata in production', () => {
     const report = buildSecretRotationStatusReport({
       provider: 'env',

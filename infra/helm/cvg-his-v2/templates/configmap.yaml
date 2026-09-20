@@ -60,9 +60,6 @@ data:
   NODE_ENV: {{ .Values.spa.env.NODE_ENV | quote }}
   VITE_APP_NAME: {{ .Values.spa.env.VITE_APP_NAME | quote }}
   VITE_DISABLE_PWA: {{ .Values.spa.env.VITE_DISABLE_PWA | quote }}
-{{- if .Values.spa.env.VITE_API_BASE_URL }}
-  VITE_API_BASE_URL: {{ .Values.spa.env.VITE_API_BASE_URL | quote }}
-{{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap
