@@ -341,12 +341,14 @@ describe('config module', () => {
         APP_NAME: 'my-worker',
         WORKER_INTERVAL_MS: '10000',
         WORKER_HEALTH_PORT: '4000',
-        WORKER_REPORTS_USER_ID: '11111111-1111-4111-8111-111111111111'
+        WORKER_REPORTS_USER_ID: '11111111-1111-4111-8111-111111111111',
+        METRICS_AUTH_TOKEN: 'worker-collector-secret'
       };
       const config = loadWorkerConfig(env as NodeJS.ProcessEnv);
       expect(config.appName).toBe('my-worker');
       expect(config.intervalMs).toBe(10000);
       expect(config.healthPort).toBe(4000);
+      expect(config.metricsAuthToken).toBe('worker-collector-secret');
       expect(config.workerReportsUserId).toBe('11111111-1111-4111-8111-111111111111');
     });
 

@@ -46,6 +46,10 @@ import {
   type FatalRuntimeHandler
 } from './fatal-runtime.js';
 import { createWorkerLoopWakeController } from './runtime-lifecycle.js';
+import {
+  assertWorkerMetricsAuthConfigured,
+  isWorkerMetricsRequestAuthorized
+} from './metrics-auth.js';
 
 let config: ReturnType<typeof loadWorkerConfig>;
 let logger = createLogger('cvg-his-v2-worker');
@@ -172,6 +176,7 @@ process.on('unhandledRejection', (error) => {
 
 async function main() {
   config = loadWorkerConfig(process.env);
+  assertWorkerMetricsAuthConfigured(config.environment, config.metricsAuthToken);
   logger = createLogger(config.appName);
   const configuredWorkerReportsUserId = resolveWorkerReportsUserId(config.workerReportsUserId);
   const observability = await startWorkerObservability({
@@ -403,6 +408,18 @@ async function main() {
       res.writeHead(payload.readiness.ready ? 200 : 503);
       res.end(JSON.stringify(payload));
     } else if (req.url === '/metrics') {
+      if (!isWorkerMetricsRequestAuthorized(req.headers, config.metricsAuthToken)) {
+        res.setHeader('www-authenticate', 'Bearer realm="metrics"');
+        res.setHeader('content-type', 'application/json');
+        res.writeHead(401);
+        res.end(
+          JSON.stringify({
+            code: 'METRICS_AUTH_REQUIRED',
+            message: 'Metrics are available only to an authorized collector.'
+          })
+        );
+        return;
+      }
       // Return Prometheus text format for scraping
       const acceptHeader = req.headers.accept ?? '';
       if (acceptHeader.includes('text/plain')) {

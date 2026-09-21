@@ -111,6 +111,16 @@ export function inspectObservabilityContract({ rootDirectory = process.cwd() } =
   if (!worker.includes('recordWorkerTickMetric(')) {
     findings.push('worker loop does not publish tick freshness metrics');
   }
+  if (!worker.includes('isWorkerMetricsRequestAuthorized(')) {
+    findings.push('worker metrics endpoint does not enforce collector authorization');
+  }
+  if (!worker.includes('assertWorkerMetricsAuthConfigured(')) {
+    findings.push('worker production-like startup does not fail closed without metrics auth');
+  }
+  const workerScrape = prometheus.slice(prometheus.indexOf("job_name: 'cvg-worker'"));
+  if (!workerScrape.includes('authorization:') || !workerScrape.includes('credentials_file: /etc/prometheus/secrets/api-metrics-token')) {
+    findings.push('Prometheus worker scrape is missing collector authorization');
+  }
   for (const marker of [
     "job_name: 'cvg-api'",
     "job_name: 'cvg-worker'",

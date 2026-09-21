@@ -190,6 +190,9 @@ scrape_configs:
 
   - job_name: 'cvg-worker'
     metrics_path: '/metrics'
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/secrets/api-metrics-token
     static_configs:
       - targets: ['cvg-his-v2-worker:3002']
         labels:
@@ -274,11 +277,15 @@ lista e o redrive são tenant-scoped e documentados no
 [runbook de PIX settlement](../../docs/runbooks/pix-settlement-dlq.md). Não há
 fallback em memória nem `UPDATE` direto da API na tabela de deliveries.
 
-### 9.1 Verificar se API está expondo métricas
+### 9.1 Verificar se API ou worker está expondo métricas
 
 ```bash
 curl -s -H "Authorization: Bearer ${METRICS_AUTH_TOKEN:?set METRICS_AUTH_TOKEN}" \
   http://localhost:3003/metrics | head -50
+
+# O worker usa a mesma credencial do collector na rede interna.
+curl -s -H "Authorization: Bearer ${METRICS_AUTH_TOKEN:?set METRICS_AUTH_TOKEN}" \
+  http://localhost:3002/metrics | head -50
 ```
 
 ### 9.2 Verificar traces estão sendo exportados

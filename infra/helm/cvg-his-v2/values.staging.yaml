@@ -49,6 +49,9 @@ worker:
   reportsUser:
     existingSecret: cvg-his-v2-staging-worker-secrets
     secretKey: WORKER_REPORTS_USER_ID
+  metrics:
+    existingSecret: cvg-his-v2-staging-api-secrets
+    secretKey: METRICS_AUTH_TOKEN
   env:
     NODE_ENV: staging
 

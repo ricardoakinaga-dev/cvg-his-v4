@@ -206,6 +206,20 @@ test('production-like worker identity is wired as a required Secret value', () =
   assert.match(values, /secretKey: WORKER_REPORTS_USER_ID/);
 });
 
+test('production-like worker metrics use the operator-managed collector Secret', () => {
+  const deployment = readFileSync(
+    resolve(repositoryRoot, 'infra/helm/cvg-his-v2/templates/worker-deployment.yaml'),
+    'utf8'
+  );
+  const values = readFileSync(resolve(repositoryRoot, 'infra/helm/cvg-his-v2/values.yaml'), 'utf8');
+
+  assert.match(deployment, /name: METRICS_AUTH_TOKEN/);
+  assert.match(deployment, /worker\.metrics\.existingSecret/);
+  assert.match(deployment, /worker\.metrics\.secretKey/);
+  assert.match(deployment, /optional: false/);
+  assert.match(values, /metrics:\n\s+existingSecret: ""\n\s+secretKey: METRICS_AUTH_TOKEN/);
+});
+
 test('production image helpers require immutable digests instead of tag fallback', () => {
   const helpers = readFileSync(
     resolve(repositoryRoot, 'infra/helm/cvg-his-v2/templates/_helpers.tpl'),

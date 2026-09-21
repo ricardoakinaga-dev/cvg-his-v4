@@ -66,6 +66,14 @@ spec:
           env:
             - name: DATABASE_REQUIRE_RLS_ROLE
               value: "1"
+            {{- if .Values.worker.metrics.existingSecret }}
+            - name: METRICS_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.worker.metrics.existingSecret }}
+                  key: {{ .Values.worker.metrics.secretKey }}
+                  optional: false
+            {{- end }}
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:

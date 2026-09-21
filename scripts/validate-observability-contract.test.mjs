@@ -20,6 +20,17 @@ test('accepts the connected metrics, alerts, dashboard and runbook contract', ()
   assert.deepEqual(inspectObservabilityContract({ rootDirectory }), []);
 });
 
+test('worker scrape and runtime are bound to the collector credential', () => {
+  const root = process.cwd();
+  const worker = readFileSync(join(root, 'apps/worker/src/index.ts'), 'utf8');
+  const prometheus = readFileSync(join(root, 'infra/observability/prometheus.yml'), 'utf8');
+  const workerScrape = prometheus.slice(prometheus.indexOf("job_name: 'cvg-worker'"));
+  assert.match(worker, /isWorkerMetricsRequestAuthorized/);
+  assert.match(worker, /assertWorkerMetricsAuthConfigured/);
+  assert.match(workerScrape, /authorization:/);
+  assert.match(workerScrape, /credentials_file: \/etc\/prometheus\/secrets\/api-metrics-token/);
+});
+
 test('fails closed when an alert loses its runbook reference', () => {
   const fixtureDirectory = mkdtempSync(join(tmpdir(), 'cvg-observability-'));
   try {

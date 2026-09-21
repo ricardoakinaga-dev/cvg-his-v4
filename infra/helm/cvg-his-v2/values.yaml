@@ -161,6 +161,12 @@ worker:
     pullPolicy: IfNotPresent
     sha: ""
 
+  # Prometheus uses the same operator-managed collector credential for the
+  # worker and API metrics surfaces; never render it into a ConfigMap.
+  metrics:
+    existingSecret: ""
+    secretKey: METRICS_AUTH_TOKEN
+
   # Production-like workers must be scoped to explicit accounts. The Secret is
   # operator-managed; account IDs never belong in this repository.
   accountIds:

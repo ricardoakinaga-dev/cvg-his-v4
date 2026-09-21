@@ -19,6 +19,9 @@ scrape_configs:
 
   - job_name: 'cvg-worker'
     metrics_path: '/metrics'
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/secrets/api-metrics-token
     static_configs:
       - targets: ['cvg-his-v2-worker:3002']
         labels:

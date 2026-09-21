@@ -578,6 +578,14 @@ export const WORKER_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
   },
   {
     app: 'worker',
+    key: 'METRICS_AUTH_TOKEN',
+    required: false,
+    sensitive: true,
+    description:
+      'Dedicated bearer token for the private Prometheus worker metrics surface; required in production-like environments.'
+  },
+  {
+    app: 'worker',
     key: 'OTEL_ENABLED',
     required: false,
     defaultValue: 'false',
@@ -775,6 +783,7 @@ export interface WorkerAppConfig {
   readonly environment: string;
   readonly intervalMs: number;
   readonly healthPort: number;
+  readonly metricsAuthToken?: string;
   readonly otelEnabled: boolean;
   readonly otelServiceName: string;
   readonly otlpProtocol: string;
@@ -1209,6 +1218,7 @@ const workerEnvSchema = z
     APP_NAME: nonEmptyStringSchema.default(DEFAULT_WORKER_APP_NAME),
     WORKER_INTERVAL_MS: positiveNumberSchema.default(DEFAULT_WORKER_INTERVAL_MS),
     WORKER_HEALTH_PORT: portSchema.default(DEFAULT_WORKER_HEALTH_PORT),
+    METRICS_AUTH_TOKEN: optionalNonEmptyStringSchema,
     OTEL_ENABLED: booleanStringSchema.default(false),
     OTEL_SERVICE_NAME: optionalNonEmptyStringSchema,
     OTEL_EXPORTER_OTLP_PROTOCOL: nonEmptyStringSchema.default(DEFAULT_OTLP_PROTOCOL),
@@ -1411,6 +1421,7 @@ export function loadWorkerConfig(env: NodeJS.ProcessEnv): WorkerAppConfig {
     environment: parsed.NODE_ENV,
     intervalMs: parsed.WORKER_INTERVAL_MS,
     healthPort: parsed.WORKER_HEALTH_PORT,
+    metricsAuthToken: parsed.METRICS_AUTH_TOKEN,
     otelEnabled: parsed.OTEL_ENABLED,
     otelServiceName: parsed.OTEL_SERVICE_NAME ?? parsed.APP_NAME,
     otlpProtocol: parsed.OTEL_EXPORTER_OTLP_PROTOCOL,

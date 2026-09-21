@@ -6,6 +6,46 @@ import {
   recordWorkerTickMetric,
   updateWorkerRuntimeMetrics
 } from './worker-metrics.js';
+import {
+  assertWorkerMetricsAuthConfigured,
+  isWorkerMetricsRequestAuthorized
+} from './metrics-auth.js';
+
+test('worker metrics require a collector credential', () => {
+  assert.equal(
+    isWorkerMetricsRequestAuthorized(
+      { authorization: 'Bearer worker-metrics-secret' },
+      'worker-metrics-secret'
+    ),
+    true
+  );
+  assert.equal(isWorkerMetricsRequestAuthorized({}, 'worker-metrics-secret'), false);
+  assert.equal(
+    isWorkerMetricsRequestAuthorized(
+      { authorization: 'Bearer wrong-secret' },
+      'worker-metrics-secret'
+    ),
+    false
+  );
+  assert.equal(
+    isWorkerMetricsRequestAuthorized(
+      { 'x-metrics-token': 'worker-metrics-secret' },
+      'worker-metrics-secret'
+    ),
+    true
+  );
+});
+
+test('production-like worker startup fails closed without a metrics token', () => {
+  assert.throws(
+    () => assertWorkerMetricsAuthConfigured('production', undefined),
+    /METRICS_AUTH_TOKEN/
+  );
+  assert.doesNotThrow(() =>
+    assertWorkerMetricsAuthConfigured('production', 'worker-metrics-secret')
+  );
+  assert.doesNotThrow(() => assertWorkerMetricsAuthConfigured('development', undefined));
+});
 
 test('worker runtime metrics expose durable state and processing freshness', async () => {
   updateWorkerRuntimeMetrics({ databaseHealthy: true, persistenceMode: 'database' });
