@@ -45,7 +45,7 @@ A auditoria corrente de 21/09 registra o runtime `29b03941`, nota conservadora
 backup/restore documental, métricas, upload, worker-health sanitizado, workspace,
 imagens production-shaped e Helm passam localmente; CI/release, target, restore
 aprovado, UAT e autoridades não existem para o candidato. A identidade canônica
-é regenerada apenas no freeze limpo; o plano não autoriza produção.
+está congelada em `8b85e3a9`; o plano não autoriza produção.
 
 ## Estados permitidos
 

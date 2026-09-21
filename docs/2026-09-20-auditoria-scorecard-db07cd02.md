@@ -4,19 +4,19 @@ document_kind: baseline
 effective_date: 2026-09-21
 owner: Liderança técnica, Plataforma, Segurança, QA e Operações CVG-HIS
 review_cycle: on-candidate-change-or-material-evidence
-candidate_sha: 29b03941c5d46a4598c11f27bbb7125d1d205f0f
+candidate_sha: 8b85e3a92b68c0a5d0c5e0bb7c5656142ee131ed
 overall_score: 72
 verdict: LOCAL_COMPLETE / EXTERNAL_BLOCKED
 ---
 
-# Auditoria e scorecard do candidato local — runtime `29b03941`
+# Auditoria e scorecard do candidato local — identidade `8b85e3a9`
 
 ## Veredito executivo
 
 **Nota ponderada: 72/100 (53/100 na entrada; delta +19). Estado: `LOCAL_COMPLETE / EXTERNAL_BLOCKED`.**
 
-Os gates locais da rodada foram reexecutados no runtime `29b03941` (a identidade
-canônica será regenerada após o freeze limpo): supply-chain 17/17, política de
+Os gates locais da rodada foram reexecutados no runtime `29b03941`, sob a
+identidade canônica `8b85e3a92b68c0a5d0c5e0bb7c5656142ee131ed`: supply-chain 17/17, política de
 dependências, scanner de segredos, segurança enterprise, backup/restore
 documental 4/4, upload/observabilidade, RLS, Helm 3.15.4, lint, typecheck,
 build, suíte monorepo, PostgreSQL crítico 623/623, processos 11/11, SPA E2E

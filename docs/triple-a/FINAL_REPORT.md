@@ -2,7 +2,7 @@
 
 ## Relatório local do candidato — 2026-09-21
 
-**Candidate funcional avaliado:** `29b03941c5d46a4598c11f27bbb7125d1d205f0f` (runtime sob freeze; a identidade canônica será regenerada no commit limpo final).
+**Candidate funcional avaliado:** `8b85e3a92b68c0a5d0c5e0bb7c5656142ee131ed` (fonte/runtime `29b03941c5d46a4598c11f27bbb7125d1d205f0f`).
 
 Os gates locais passam: supply-chain 17/17, dependências, segredos,
 backup/restore documental, métricas/upload, sanitização do health do worker,
