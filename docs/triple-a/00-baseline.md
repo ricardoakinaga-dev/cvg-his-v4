@@ -2,7 +2,7 @@
 
 ## Baseline local do candidato — 2026-09-21
 
-Baseline autoritativo atual: `6a6aeaf5b8bce239c2c456c508bfda963c5fca28` (identidade do candidato; fonte/runtime `51982f4848a72f36b9645f5aab32cc84a531b423`).
+Baseline autoritativo atual: `29b03941c5d46a4598c11f27bbb7125d1d205f0f` (runtime sob freeze; identidade formal será regenerada no commit limpo final).
 
 Os gates locais do candidato passam, incluindo supply-chain 17/17,
 dependências/segredos, Helm 3.15.4, qualidade, banco crítico 623/623,

@@ -18,7 +18,7 @@
   "active_execplan": ".agent/plans/p0-closure-20260918.md",
   "active_task": "P0-CLOSURE",
   "verification_state": "BLOCKED",
-  "repository_state": "Source candidate 51982f4848a72f36b9645f5aab32cc84a531b423 contains the worker metrics-token fixture correction; current documentation and P0 controls reconcile to its local evidence packet. Critical PostgreSQL migrations 0000–0177 (623 tests), 11/11 serial process tests, full SPA E2E 424/424 with zero skips, production-shaped API/worker/SPA image validation, supply-chain mutation 17/17, Helm 3.15.4 and docs/state validators pass locally. The full critical/process and SPA E2E runtime executions are retained from parent runtime 80b0e39f; the candidate-only delta is the release-validator fixture environment injection. Exact candidate CI/release/OCI/Trivy/attestation, approved target/RLS/restore/soak/UAT, named authority and final Gauntlet acceptance remain open; no push/deploy/real credentials were used.",
+  "repository_state": "Runtime 29b03941c5d46a4598c11f27bbb7125d1d205f0f contains the worker metrics-token fixture correction plus correlation-safe worker health diagnostics and its contract test; current documentation and P0 controls are being rebound through the final clean identity freeze. Critical PostgreSQL migrations 0000–0177 (623 tests), 11/11 serial process tests, full SPA E2E 424/424 with zero skips, production-shaped API/worker/SPA image validation, supply-chain mutation 17/17, Helm 3.15.4 and workspace quality gates pass locally. The full critical/process and SPA E2E runtime executions are retained from parent runtime 80b0e39f; the current worker delta is covered by focused worker tests and the rebuilt release-image gate. Exact candidate CI/release/OCI/Trivy/attestation, approved target/RLS/restore/soak/UAT, named authority and final Gauntlet acceptance remain open; no push/deploy/real credentials were used.",
   "instruction_scope_refs": [
     ".agent/plans/repository-state-of-art-remediation-execplan.md",
     "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
@@ -32,9 +32,9 @@
     "docs/2026-09-13-reauditoria-checkpoint-prod-001-005.md",
     "docs/2026-09-13-backlog-prontidao-producao.md"
   ],
-  "last_gate_record": ".agent/gates/p0-closure-local-blocked-20260921.json",
-  "last_event_id": "EVT-P0-CLOSURE-LOCAL-GATE-BLOCKED-20260921",
-  "state_revision": 154,
+  "last_gate_record": ".agent/gates/p0-closure-local-blocked-20260921-r2.json",
+  "last_event_id": "EVT-P0-CLOSURE-LOCAL-GATE-BLOCKED-20260921-R2",
+  "state_revision": 155,
   "next_gate": "AUDIT_RESOLVED",
   "active_action_id": "P0-CLOSURE:VERIFY-CANDIDATE",
   "blocked_by": [
@@ -60,5 +60,5 @@
     "PROD-027 behavioral parity taxonomy, 45-module classification, fixtures and acceptance — Product/QA/domain authority",
     "PROD-062 family verifier trust root, targets, limits, issuer policy and acceptance — Platform/Security/QA authority"
   ],
-  "updated_at": "2026-09-21T03:20:09.000000+00:00"
+  "updated_at": "2026-09-21T05:05:01.000000+00:00"
 }

@@ -4,7 +4,7 @@
 
 | Campo | Estado |
 | --- | --- |
-| CURRENT SNAPSHOT | `6a6aeaf5b8bce239c2c456c508bfda963c5fca28` |
+| CURRENT SNAPSHOT | `29b03941c5d46a4598c11f27bbb7125d1d205f0f` |
 | CURRENT VERDICT | LOCAL_COMPLETE / EXTERNAL_BLOCKED; Triplo AAA BLOCKED / NOT PROVEN |
 | SCORE | 72/100 (entrada 53/100; delta +19) |
 | P0 | 11 abertos; nenhum aceite externo presumido |

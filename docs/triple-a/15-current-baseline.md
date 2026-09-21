@@ -4,12 +4,12 @@
 
 | Campo | Estado atual |
 | --- | --- |
-| current_sha | `6a6aeaf5b8bce239c2c456c508bfda963c5fca28` |
+| current_sha | `29b03941c5d46a4598c11f27bbb7125d1d205f0f` |
 | CI do código | `NOT_PROVEN` para este SHA; CI remoto não executado |
 | local_gate | PASS: supply-chain 17/17, dependências, segredos, backup/restore, Helm 3.15.4, qualidade, banco crítico 623/623, processos 11/11, SPA E2E 424/424 e imagens production-shaped |
 | open_p0 | 11; externos/target preservados |
 
-Os gates locais foram reexecutados no candidato: lint, typecheck e build;
+Os gates locais foram reexecutados no runtime `29b03941`: lint, typecheck e build;
 suíte monorepo; supply-chain, dependências, segredos e segurança; Helm 3.15.4;
 RLS/runtime/tracing; backup/restore documental; banco PostgreSQL efêmero com
 migrações 0000–0177; 11 processos críticos; E2E SPA `424/424` sem falhas ou
@@ -21,7 +21,7 @@ O registro mantém **11 P0 abertos** porque CI, target, recuperação, UAT e
 autoridade não foram provados. A certificação Triplo AAA permanece **BLOCKED /
 NOT PROVEN**.
 
-Detalhes, hashes e limites: [remediação dos P0](30-p0-remediation-20260918.md) e [avaliação por critério](evidence/p0-remediation-20260918.json). **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
+Detalhes, hashes e limites: [evidência local](evidence/local-candidate-51982f48.json), [remediação dos P0](30-p0-remediation-20260918.md) e [avaliação por critério](evidence/p0-remediation-20260918.json). **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
 
 ---
 

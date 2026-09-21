@@ -2,12 +2,12 @@
 
 ## Relatório local do candidato — 2026-09-21
 
-**Candidate funcional avaliado:** `6a6aeaf5b8bce239c2c456c508bfda963c5fca28` (fonte/runtime `51982f4848a72f36b9645f5aab32cc84a531b423`).
+**Candidate funcional avaliado:** `29b03941c5d46a4598c11f27bbb7125d1d205f0f` (runtime sob freeze; a identidade canônica será regenerada no commit limpo final).
 
 Os gates locais passam: supply-chain 17/17, dependências, segredos,
-backup/restore documental, métricas/upload, Helm 3.15.4, lint, typecheck,
-build, suíte monorepo, PostgreSQL crítico 623/623, processos 11/11, SPA E2E
-424/424 e imagens production-shaped. Não há CI/release candidate-bound,
+backup/restore documental, métricas/upload, sanitização do health do worker,
+Helm 3.15.4, lint, typecheck, build, suíte monorepo, PostgreSQL crítico
+623/623, processos 11/11, SPA E2E 424/424 e imagens production-shaped. Não há CI/release candidate-bound,
 registry/attestation, target, UAT ou autoridade.
 
 O registro mantém **11 P0 abertos** e o veredito é **LOCAL_COMPLETE /

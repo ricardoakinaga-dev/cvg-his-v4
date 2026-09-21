@@ -1,7 +1,7 @@
 # Fonte de verdade documental
 
 **Status:** vigente
-**Validado em:** 2026-09-20
+**Validado em:** 2026-09-21
 **Owner:** engenharia e produto CVG-HIS
 
 ## Regra central
@@ -12,7 +12,7 @@ Documento nao transforma uma funcionalidade em pronta. O estado real e determina
 
 | Tema                                       | Fonte vigente                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Baseline executiva vigente                 | [`2026-09-20-auditoria-scorecard-db07cd02.md`](./2026-09-20-auditoria-scorecard-db07cd02.md) — 68/100; local complete / external blocked |
+| Baseline executiva vigente                 | [`2026-09-20-auditoria-scorecard-db07cd02.md`](./2026-09-20-auditoria-scorecard-db07cd02.md) — 72/100; local complete / external blocked |
 | Plano executivo vigente                    | [`2026-09-20-plano-executivo-nova-rodada-melhorias.md`](./2026-09-20-plano-executivo-nova-rodada-melhorias.md) |
 | Roadmap vigente                            | [`2026-09-20-roadmap-nova-rodada-melhorias.md`](./2026-09-20-roadmap-nova-rodada-melhorias.md) |
 | Backlog vigente                            | [`2026-09-20-backlog-nova-rodada-melhorias.md`](./2026-09-20-backlog-nova-rodada-melhorias.md) |
@@ -40,12 +40,12 @@ posterior os substitui. Nenhuma prova bounded altera sozinha os estados globais
 
 A régua congelada é [QUALITY_BAR_V1.json](triple-a/QUALITY_BAR_V1.json): total ≥97, dimensões críticas ≥95 e zero P0 abertos, além dos gates obrigatórios. Os documentos executivos orientam o programa; o estado operacional continua em `.agent` e deve ser reconciliado em `NR-003` antes da ingestão da nova fila.
 
-A auditoria de 20/09 confirma o candidato de fonte congelada
-`db07cd025b639a17a3666baa49f6c1252031d5b9`, nota conservadora 68/100 e mantém
-o release bloqueado. Supply-chain, dependências, segredos, backup/restore
-documental, métricas, upload e Helm passam localmente; CI/release, target,
-restore aprovado, UAT e autoridades não existem para o candidato. A próxima
-ação é revisão independente fresh; o plano não autoriza produção.
+A auditoria corrente de 21/09 registra o runtime `29b03941`, nota conservadora
+72/100 e mantém o release bloqueado. Supply-chain, dependências, segredos,
+backup/restore documental, métricas, upload, worker-health sanitizado, workspace,
+imagens production-shaped e Helm passam localmente; CI/release, target, restore
+aprovado, UAT e autoridades não existem para o candidato. A identidade canônica
+é regenerada apenas no freeze limpo; o plano não autoriza produção.
 
 ## Estados permitidos
 

@@ -2,20 +2,20 @@
 
 ## Evidência local do candidato — 2026-09-21
 
-SHA de código e documentação: `6a6aeaf5b8bce239c2c456c508bfda963c5fca28` — campo canônico da **identidade congelada do candidato**. A fonte/runtime permanece `51982f4848a72f36b9645f5aab32cc84a531b423`; alterações documentais e de controle posteriores são permitidas; este valor não representa o último commit desses documentos.
+SHA de código e documentação: `29b03941c5d46a4598c11f27bbb7125d1d205f0f` — runtime corrente sob freeze; a identidade formal será regenerada no commit limpo final.
 
-Comandos locais candidate-bound passaram: supply-chain 17/17, policy de
-dependências, secret scan/security enterprise, Helm 3.15.4, lint, typecheck,
-build, suíte monorepo, banco crítico efêmero 623/623, RLS/runtime/tracing,
-backup/restore documental, processos críticos 11/11, E2E SPA 424/424 e gate de
-imagens production-shaped. CI remoto, registry/attestation e release externo continuam
-`NOT_PROVEN`.
+Comandos locais passam: supply-chain 17/17, policy de dependências, secret
+scan/security enterprise, Helm 3.15.4, lint, typecheck, build, suíte do worker
+com sanitização de diagnóstico, banco crítico efêmero 623/623, RLS/runtime/
+tracing, backup/restore documental, processos críticos 11/11, E2E SPA 424/424
+e gate de imagens production-shaped no runtime `29b03941`. CI remoto,
+registry/attestation e release externo continuam `NOT_PROVEN`.
 
 O registro mantém **11 P0 abertos** por dependências externas. Nenhum resultado
 local fecha target, restore aprovado, soak, UAT, revisão independente ou
 autoridade de release; certificação permanece **BLOCKED / NOT PROVEN**.
 
-Detalhes, hashes e limites: [evidência local candidate-bound](evidence/local-candidate-51982f48.json), [remediação dos P0](30-p0-remediation-20260918.md) e [avaliação por critério](evidence/p0-remediation-20260918.json). Os testes críticos e E2E foram executados no runtime pai inalterado `80b0e39f`; a mudança exclusiva do novo HEAD é o fixture de release que injeta o token obrigatório do worker. **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
+Detalhes, hashes e limites: [evidência local candidate-bound](evidence/local-candidate-51982f48.json), [remediação dos P0](30-p0-remediation-20260918.md) e [avaliação por critério](evidence/p0-remediation-20260918.json). Os testes críticos e E2E foram executados no runtime pai inalterado `80b0e39f`; a mudança corrente também sanitiza o detalhe de erro do health do worker e foi coberta por teste focado e pelo gate de imagens. **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
 
 ---
 
