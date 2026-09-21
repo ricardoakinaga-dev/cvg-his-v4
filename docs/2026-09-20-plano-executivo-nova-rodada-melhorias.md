@@ -21,7 +21,7 @@ fim obter provas de target e autoridades externas.
 
 ## Estado atual após a rodada local
 
-- candidato congelado: identidade `e052667526cc86c6b460afda3affdab54936684a`, sobre o runtime `29b03941c5d46a4598c11f27bbb7125d1d205f0f`;
+- candidato congelado: identidade `2ccfe231a6490b2afef6c42442cdb37da550b194`, sobre o runtime `29b03941c5d46a4598c11f27bbb7125d1d205f0f`;
 - supply-chain 17/17, dependências, segredos, segurança enterprise e
   backup/restore documental passam localmente;
 - `/metrics` exige token dedicado e cache bounded; upload usa 25 MiB/413 em
@@ -61,7 +61,7 @@ os aceites externos não existirem.
 
 ### M1 — candidato local congelado (PASS-LOCAL / EXTERNAL-BLOCKED)
 
-Saída local: runtime `29b03941`, identidade `e0526675`, P0 e snapshots vinculados no freeze limpo
+Saída local: runtime `29b03941`, identidade `2ccfe231`, P0 e snapshots vinculados no freeze limpo
 candidate-bound e gates locais reexecutados. As imagens locais passaram o gate
 production-shaped e têm raízes por digest; Trivy segue `NOT_RUN` por ausência da
 ferramenta e não há prova remota.
