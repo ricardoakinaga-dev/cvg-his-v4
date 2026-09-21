@@ -18,7 +18,7 @@ review_cycle: on-milestone-or-candidate-change
 | --- | --- | --- | --- |
 | R-1 — reparar gates locais | Remover regressões encontradas pela auditoria | AUD21-01–04, AUD21-09–10 | PASS-LOCAL: supply-chain 17/17, dependências, segredos, backup/restore, métricas, upload e Helm obrigatório verdes |
 | R0 — verdade operacional | Remover blockers internos de runtime e controle | NR-001–003 | PASS-LOCAL / TARGET-BLOCKED: Vault, controlador e Helm passam localmente; target ainda não provado |
-| R1 — candidato local | Congelar, identificar e provar o último SHA | NR-004–009 | PASS-LOCAL / EXTERNAL-BLOCKED: identidade `8b85e3a9` sobre runtime `29b03941`, P0 registry e snapshots vinculados; Trivy permanece NOT_RUN |
+| R1 — candidato local | Congelar, identificar e provar o último SHA | NR-004–009 | PASS-LOCAL / EXTERNAL-BLOCKED: identidade `e0526675` sobre runtime `29b03941`, P0 registry e snapshots vinculados; Trivy permanece NOT_RUN |
 | R2 — CI/release | Provar a cadeia remota sem rebuild | NR-011–013 | CI 17/17; release encadeado; manifest/attestations/artefatos bound ao mesmo SHA |
 | R3 — target | Provar operação e recuperação | NR-014–017 | deploy, RLS/migração, restore/rollback, soak/SLO e segurança no alvo aprovado |
 | R4 — aceite | Fechar produto e autoridades | NR-018–020 | UAT, decisões formais, zero P0 e go/no-go |

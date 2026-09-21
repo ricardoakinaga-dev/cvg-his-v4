@@ -2,7 +2,7 @@
 
 ## Reconciliação externa do candidato — 2026-09-21
 
-**Current snapshot:** `8b85e3a92b68c0a5d0c5e0bb7c5656142ee131ed`.
+**Current snapshot:** `e052667526cc86c6b460afda3affdab54936684a`.
 
 Não há evidência externa candidate-bound para este SHA. Os gates locais
 passam, incluindo PostgreSQL/processos 11/11, E2E SPA 424/424 e o gate de

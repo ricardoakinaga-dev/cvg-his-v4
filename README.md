@@ -10,8 +10,8 @@ qualidade estão no [relatório de unificação da main](docs/triple-a/29-main-u
 A certificação Triplo AAA depende também das evidências operacionais e humanas
 definidas na [régua de qualidade](docs/triple-a/QUALITY_BAR_V1.json).
 
-O candidato local corrente é a identidade `8b85e3a92b68c0a5d0c5e0bb7c5656142ee131ed`
-(`8b85e3a9`), sobre a fonte/runtime `29b03941c5d46a4598c11f27bbb7125d1d205f0f`. Gates locais, PostgreSQL/processos 11/11, SPA E2E 424/424 e
+O candidato local corrente é a identidade `e052667526cc86c6b460afda3affdab54936684a`
+(`e0526675`), sobre a fonte/runtime `29b03941c5d46a4598c11f27bbb7125d1d205f0f`. Gates locais, PostgreSQL/processos 11/11, SPA E2E 424/424 e
 imagens production-shaped passam. CI remoto, registry/attestation, target,
 UAT e autoridade de release continuam `BLOCKED / NOT PROVEN`; consulte a
 [documentação ativa](docs/README.md) antes de qualquer publicação.

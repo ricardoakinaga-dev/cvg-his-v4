@@ -2,7 +2,7 @@
 
 ## Relatório local do candidato — 2026-09-21
 
-**Candidate funcional avaliado:** `8b85e3a92b68c0a5d0c5e0bb7c5656142ee131ed` (fonte/runtime `29b03941c5d46a4598c11f27bbb7125d1d205f0f`).
+**Candidate funcional avaliado:** `e052667526cc86c6b460afda3affdab54936684a` (fonte/runtime `29b03941c5d46a4598c11f27bbb7125d1d205f0f`).
 
 Os gates locais passam: supply-chain 17/17, dependências, segredos,
 backup/restore documental, métricas/upload, sanitização do health do worker,

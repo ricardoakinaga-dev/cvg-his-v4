@@ -2,7 +2,7 @@
 
 ## Evidência local do candidato — 2026-09-21
 
-SHA de código e documentação: `8b85e3a92b68c0a5d0c5e0bb7c5656142ee131ed` — campo canônico da identidade congelada; a fonte/runtime é `29b03941c5d46a4598c11f27bbb7125d1d205f0f`.
+SHA de código e documentação: `e052667526cc86c6b460afda3affdab54936684a` — campo canônico da identidade congelada; a fonte/runtime é `29b03941c5d46a4598c11f27bbb7125d1d205f0f`.
 
 Comandos locais passam: supply-chain 17/17, policy de dependências, secret
 scan/security enterprise, Helm 3.15.4, lint, typecheck, build, suíte do worker
