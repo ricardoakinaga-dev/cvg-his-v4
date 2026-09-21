@@ -2211,6 +2211,22 @@ test('SLO endpoint exposes compliance, error budget and Prometheus gauges', asyn
   resetRequestSloObservations();
 });
 
+test('SLO endpoint accepts an authenticated operator session without collector credentials', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+  const response = await performRequest(server, {
+    method: 'GET',
+    url: '/slos',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.bodyJson<{ report: { overallStatus: string } }>().report.overallStatus, 'healthy');
+});
+
 test('chaos operations expose effective runtime state, runbooks and metrics', async () => {
   setAppState({
     persistenceMode: 'database',

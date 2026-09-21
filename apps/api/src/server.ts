@@ -4037,7 +4037,30 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   const healthRouteOptions: ApiServerOptions = {
     ...options,
     metricsAuthToken,
-    authorizeSlo: (request) => requirePrincipal(request, 'audit.read').then(() => undefined),
+    authorizeSlo: async (request) => {
+      // Health routes execute before the normal tenant-resolution phase. A
+      // session-backed SLO request still needs the same authoritative ACL
+      // read as any other protected route, so establish the verified token
+      // context before invoking the final guard. Without this, the database
+      // session repository cannot bind its tenant transaction and the browser
+      // receives a misleading metrics 401 after login.
+      const accessToken = extractBearerToken(readHeader(request, 'authorization'));
+      if (!accessToken) {
+        await requirePrincipal(request, 'audit.read');
+        return;
+      }
+      const tokenContext = auth.getVerifiedAccessTokenContext(accessToken);
+      const correlationId = requestCorrelationIds.get(request) ?? createCorrelationId('slo');
+      await runWithTenantContext(
+        {
+          tenantId: '00000000-0000-0000-0000-000000000001',
+          accountId: tokenContext.accountId,
+          userId: tokenContext.userId,
+          correlationId
+        },
+        () => requirePrincipal(request, 'audit.read')
+      );
+    },
     authRateLimiter,
     pixPaymentAttemptRateLimiter,
     pixProviderWebhookRateLimiter
