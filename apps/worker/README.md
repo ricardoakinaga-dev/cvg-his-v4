@@ -51,6 +51,9 @@ NODE_ENV=production node apps/worker/dist/index.js
 - `WORKER_INTERVAL_MS` — intervalo entre ticks (default: 5000)
 - `WORKER_HEALTH_PORT` — porta do servidor HTTP operacional (default: 3002)
 - `APP_NAME` — nome do servico (default: cvg-his-v2-worker)
+- `METRICS_AUTH_TOKEN` — credencial obrigatória para o collector acessar `/metrics`
+  em ambientes de produção; o processo recusa iniciar sem ela e nunca registra o
+  valor nos logs ou em ConfigMaps.
 - `OTEL_ENABLED`, `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` — trilha de observabilidade distribuida
 - `WORKER_FEATURE_FLAGS` — lista bootstrap de flags explicitas para o worker
 
@@ -76,4 +79,6 @@ O worker executa em loop continuo:
 - `GET /health` — payload estruturado com `liveness`, `readiness`, dependencias e estatisticas do loop
 - `GET /ready` e `GET /health/ready` — pronto para trafego operacional e scraping
 - `GET /live` e `GET /health/live` — processo vivo sem validar dependencias
-- `GET /metrics` — Prometheus exposition format quando `Accept: text/plain`
+- `GET /metrics` — Prometheus exposition format quando `Accept: text/plain`; exige
+  `Authorization: Bearer <METRICS_AUTH_TOKEN>` (ou `X-Metrics-Token`) e retorna
+  `401` sem a credencial correta.
