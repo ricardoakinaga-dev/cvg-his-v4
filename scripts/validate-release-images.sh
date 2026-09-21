@@ -743,6 +743,7 @@ OPENSSL_CONFIG
     --cap-drop ALL \
     --security-opt no-new-privileges \
     --env NODE_ENV=production \
+    --env METRICS_AUTH_TOKEN="${metrics_auth_token}" \
     --env DATABASE_URL="${worker_database_url}" \
     --env DATABASE_REQUIRE_RLS_ROLE=1 \
     --env WORKER_ACCOUNT_IDS="${account_id}" \
