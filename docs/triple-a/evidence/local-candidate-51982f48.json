@@ -1,10 +1,11 @@
 {
   "schema_version": 1,
-  "candidate_sha": "51982f4848a72f36b9645f5aab32cc84a531b423",
+  "candidate_sha": "956be45d36d1cc6ac18ca53cbc84cbada23c7b5c",
   "observed_at": "2026-09-21T03:12:06Z",
   "environment": "local disposable PostgreSQL/Redis/Docker fixtures; synthetic credentials only; no push, deploy or real credentials",
   "status": "PASS_LOCAL",
   "candidate_delta": {
+    "runtime_source_sha": "51982f4848a72f36b9645f5aab32cc84a531b423",
     "parent_runtime_sha": "80b0e39f741ac132a3c9a2d95766b6b9ec62c457",
     "current_sha_change": "release-validation worker fixture now supplies the mandatory METRICS_AUTH_TOKEN; runtime application sources are unchanged from the parent",
     "runtime_parent_results": "Critical PostgreSQL/process and full SPA E2E were executed on the parent runtime SHA and are retained with that limitation; the current candidate reran the release-image gate and current control validators."
