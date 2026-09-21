@@ -43,7 +43,7 @@
     }
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": "22.23.2"
   },
   "scripts": {
     "dev": "pnpm -r --parallel --filter @cvg-his-v2/api --filter @cvg-his-v2/spa --filter @cvg-his-v2/worker run dev",
