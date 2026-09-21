@@ -1,18 +1,20 @@
 # Baseline corrente — State of Art
 
-## Remediação local do candidato — 2026-09-20
+## Remediação local do candidato — 2026-09-21
 
 | Campo | Estado atual |
 | --- | --- |
-| current_sha | `db07cd025b639a17a3666baa49f6c1252031d5b9` |
+| current_sha | `51982f4848a72f36b9645f5aab32cc84a531b423` |
 | CI do código | `NOT_PROVEN` para este SHA; CI remoto não executado |
-| local_gate | PASS: supply-chain 17/17, dependências, segredos, backup/restore, Helm 3.15.4, qualidade, banco crítico e 11/11 processos |
+| local_gate | PASS: supply-chain 17/17, dependências, segredos, backup/restore, Helm 3.15.4, qualidade, banco crítico 623/623, processos 11/11, SPA E2E 424/424 e imagens production-shaped |
 | open_p0 | 11; externos/target preservados |
 
 Os gates locais foram reexecutados no candidato: lint, typecheck e build;
 suíte monorepo; supply-chain, dependências, segredos e segurança; Helm 3.15.4;
 RLS/runtime/tracing; backup/restore documental; banco PostgreSQL efêmero com
-migrações 0000–0177; e os 11 processos críticos. Isso não substitui CI remoto,
+migrações 0000–0177; 11 processos críticos; E2E SPA `424/424` sem falhas ou
+skips; e o gate de imagens com runtime não-root/read-only, Vault fixture, roles,
+readiness e proxy Helm. Isso não substitui CI remoto,
 OCI/attestation, target, restore aprovado, soak, UAT ou autoridade.
 
 O registro mantém **11 P0 abertos** porque CI, target, recuperação, UAT e

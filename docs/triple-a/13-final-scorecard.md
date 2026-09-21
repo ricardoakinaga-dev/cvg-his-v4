@@ -1,23 +1,24 @@
 # Triple-A — Current Scorecard
 
-## Scorecard local do candidato — 2026-09-20
+## Scorecard local do candidato — 2026-09-21
 
 | Campo | Estado |
 | --- | --- |
-| CURRENT SNAPSHOT | `db07cd025b639a17a3666baa49f6c1252031d5b9` |
+| CURRENT SNAPSHOT | `51982f4848a72f36b9645f5aab32cc84a531b423` |
 | CURRENT VERDICT | LOCAL_COMPLETE / EXTERNAL_BLOCKED; Triplo AAA BLOCKED / NOT PROVEN |
-| SCORE | 68/100 (entrada 53/100; delta +15) |
+| SCORE | 72/100 (entrada 53/100; delta +19) |
 | P0 | 11 abertos; nenhum aceite externo presumido |
 
 Gates locais: supply-chain 17/17, dependências, segredos, segurança,
 backup/restore documental, upload/observabilidade, Helm 3.15.4, qualidade,
-PostgreSQL crítico e 11/11 processos passam no candidato. CI/release/target/UAT
-continuam `NOT_PROVEN`.
+PostgreSQL crítico 623/623, 11/11 processos, SPA E2E 424/424 e imagens
+production-shaped passam no candidato. CI/release externo, registry/attestation,
+target, UAT e autoridade continuam `NOT_PROVEN`.
 
 O registro mantém **11 P0 abertos** e a certificação permanece **BLOCKED / NOT
 PROVEN** por CI exato, target, recuperação, UAT e autoridade.
 
-Detalhes, hashes e limites: [remediação dos P0](30-p0-remediation-20260918.md) e [avaliação por critério](evidence/p0-remediation-20260918.json). **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
+Detalhes, hashes e limites: [evidência local](evidence/local-candidate-51982f48.json), [remediação dos P0](30-p0-remediation-20260918.md) e [avaliação por critério](evidence/p0-remediation-20260918.json). **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
 
 ---
 

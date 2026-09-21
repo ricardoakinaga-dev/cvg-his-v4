@@ -1,11 +1,12 @@
 # Triple-A External Assurance — Current Reconciliation
 
-## Reconciliação externa do candidato — 2026-09-20
+## Reconciliação externa do candidato — 2026-09-21
 
-**Current snapshot:** `db07cd025b639a17a3666baa49f6c1252031d5b9`.
+**Current snapshot:** `51982f4848a72f36b9645f5aab32cc84a531b423`.
 
 Não há evidência externa candidate-bound para este SHA. Os gates locais
-passam, mas CI, release, registry/attestation, target, restore, soak, UAT e
+passam, incluindo PostgreSQL/processos 11/11, E2E SPA 424/424 e o gate de
+imagens production-shaped, mas CI, release, registry/attestation, target, restore, soak, UAT e
 autoridade permanecem `NOT_PROVEN`.
 
 O registro mantém **11 P0 abertos**; a reconciliação não promove provas antigas

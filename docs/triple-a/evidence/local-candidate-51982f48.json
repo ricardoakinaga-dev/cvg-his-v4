@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "candidate_sha": "51982f4848a72f36b9645f5aab32cc84a531b423",
+  "observed_at": "2026-09-21T03:12:06Z",
+  "environment": "local disposable PostgreSQL/Redis/Docker fixtures; synthetic credentials only; no push, deploy or real credentials",
+  "status": "PASS_LOCAL",
+  "candidate_delta": {
+    "parent_runtime_sha": "80b0e39f741ac132a3c9a2d95766b6b9ec62c457",
+    "current_sha_change": "release-validation worker fixture now supplies the mandatory METRICS_AUTH_TOKEN; runtime application sources are unchanged from the parent",
+    "runtime_parent_results": "Critical PostgreSQL/process and full SPA E2E were executed on the parent runtime SHA and are retained with that limitation; the current candidate reran the release-image gate and current control validators."
+  },
+  "gates": {
+    "critical_postgres_process": {
+      "result": "PASS",
+      "detail": "pnpm test:critical:bootstrap; migrations 0000–0177; 68 PostgreSQL files/623 tests; 11/11 serial process tests; exit 0",
+      "log": "/tmp/cvg-critical-bootstrap-final-slo-fix.log"
+    },
+    "spa_e2e": {
+      "result": "PASS",
+      "detail": "424 passed, 0 failed, 0 skipped; 150 routes, 300 navigations",
+      "runtime_sha": "80b0e39f741ac132a3c9a2d95766b6b9ec62c457",
+      "archive": "artifacts/playwright/80b0e39f741ac132a3c9a2d95766b6b9ec62c457/2026-09-21T02-46-39-234Z",
+      "inventory_digest": "sha256:d7bf86947b1dcce5b5d62f4072c0971448274dd96ad4826898964532b41bc511"
+    },
+    "release_images": {
+      "result": "PASS",
+      "command": "RELEASE_IMAGE_MODE=build RELEASE_IMAGE_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_release_image_test HELM_BIN=<pinned Helm 3.15.4> bash scripts/validate-release-images.sh",
+      "log": "/tmp/cvg-release-images-final-51982f48.log",
+      "images": {
+        "api": {
+          "tag": "cvg-his-v2-api:release-validation-final-51982f48-972351",
+          "digest": "sha256:0f4babc243c504f457f93d690567bb0fbfb07f4e7a2b6ce358255d621cc73b3c",
+          "user": "node"
+        },
+        "worker": {
+          "tag": "cvg-his-v2-worker:release-validation-final-51982f48-972351",
+          "digest": "sha256:c6bd90123c25eada9abc64a939964e42d4c71e0059a0d4cbc674a9c6b20d732f",
+          "user": "node"
+        },
+        "spa": {
+          "tag": "cvg-his-v2-spa:release-validation-final-51982f48-972351",
+          "digest": "sha256:90a086723b1f8a40e1bfb0c8778ca1680aeaa841d8ba306e9ded7fc885c903b5",
+          "user": "nginx"
+        }
+      },
+      "trivy": "NOT_RUN: trivy is not installed locally; no scan result was promoted"
+    }
+  },
+  "control_validations": [
+    {
+      "command": "node --test scripts/validate-supply-chain.test.mjs",
+      "result": "PASS",
+      "detail": "17/17 mutation and contract tests"
+    },
+    {
+      "command": "pnpm validate:supply-chain",
+      "result": "PASS",
+      "detail": "131 external actions, 13 workflow images, 15 Compose images, 0 Helm static images, 6 Docker bases and 4 runtime script images immutable"
+    },
+    {
+      "command": "pnpm validate:helm",
+      "result": "PASS",
+      "detail": "dev, staging and prod renders with pinned Helm 3.15.4"
+    },
+    {
+      "command": "pnpm lint && pnpm typecheck && pnpm build && pnpm test",
+      "result": "PASS",
+      "detail": "workspace quality gates and full suite green; API targeted post-SLO fix 75/75"
+    }
+  ],
+  "limitations": [
+    "Exact-candidate remote CI, branch protection, OCI registry publication and attestation remain NOT_PROVEN.",
+    "Approved target, runtime RLS probe, restore/rollback, soak/SLO, UAT and release authority remain external blockers.",
+    "Trivy is not installed locally; image scan is NOT_RUN.",
+    "The critical/process and full E2E runtime executions were recorded on the unchanged runtime parent 80b0e39f; the candidate-only change is the release validator fixture environment injection and its release-image gate was rerun on 51982f48."
+  ]
+}

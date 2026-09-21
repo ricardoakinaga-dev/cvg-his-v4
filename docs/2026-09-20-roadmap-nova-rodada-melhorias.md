@@ -1,7 +1,7 @@
 ---
 document_status: current
 document_kind: roadmap
-effective_date: 2026-09-20
+effective_date: 2026-09-21
 owner: Liderança técnica, Plataforma, Segurança, QA e Operações CVG-HIS
 review_cycle: on-milestone-or-candidate-change
 ---
@@ -18,7 +18,7 @@ review_cycle: on-milestone-or-candidate-change
 | --- | --- | --- | --- |
 | R-1 — reparar gates locais | Remover regressões encontradas pela auditoria | AUD21-01–04, AUD21-09–10 | PASS-LOCAL: supply-chain 17/17, dependências, segredos, backup/restore, métricas, upload e Helm obrigatório verdes |
 | R0 — verdade operacional | Remover blockers internos de runtime e controle | NR-001–003 | PASS-LOCAL / TARGET-BLOCKED: Vault, controlador e Helm passam localmente; target ainda não provado |
-| R1 — candidato local | Congelar, identificar e provar o último SHA | NR-004–009 | PASS-LOCAL / EXTERNAL-BLOCKED: identity, P0 registry, snapshots e críticos vinculados; OCI/Trivy candidate-bound dependem de reconstrução/ferramenta |
+| R1 — candidato local | Congelar, identificar e provar o último SHA | NR-004–009 | PASS-LOCAL / EXTERNAL-BLOCKED: `51982f48`, identity, P0 registry, snapshots, críticos 11/11, E2E 424/424 e imagens locais vinculados; Trivy candidate-bound permanece NOT_RUN |
 | R2 — CI/release | Provar a cadeia remota sem rebuild | NR-011–013 | CI 17/17; release encadeado; manifest/attestations/artefatos bound ao mesmo SHA |
 | R3 — target | Provar operação e recuperação | NR-014–017 | deploy, RLS/migração, restore/rollback, soak/SLO e segurança no alvo aprovado |
 | R4 — aceite | Fechar produto e autoridades | NR-018–020 | UAT, decisões formais, zero P0 e go/no-go |
@@ -34,7 +34,7 @@ AUD21-01–04/09–10 gates locais
   → NR-003 reconciliação do controlador
   → NR-006 regressão local
   → NR-004 freeze autorizado, identidade e snapshots
-  → NR-007/008 OCI, runtime e scans do SHA congelado
+  → NR-007/008 OCI, runtime e scans do SHA congelado (runtime PASS; Trivy NOT_RUN)
   → NR-005 encerramento Gauntlet
   → NR-011 push + CI exato
   → NR-013 mutações do contrato de release

@@ -1,7 +1,7 @@
 ---
 document_status: current
 document_kind: plan
-effective_date: 2026-09-20
+effective_date: 2026-09-21
 owner: Liderança técnica, Plataforma, Segurança, QA e Operações CVG-HIS
 review_cycle: on-milestone-or-candidate-change
 ---
@@ -21,13 +21,14 @@ fim obter provas de target e autoridades externas.
 
 ## Estado atual após a rodada local
 
-- candidato de fonte congelada: `db07cd025b639a17a3666baa49f6c1252031d5b9`;
+- candidato de fonte congelada: `51982f4848a72f36b9645f5aab32cc84a531b423`;
 - supply-chain 17/17, dependências, segredos, segurança enterprise e
   backup/restore documental passam localmente;
 - `/metrics` exige token dedicado e cache bounded; upload usa 25 MiB/413 em
   API, OpenAPI e ingress;
 - Helm oficial 3.15.4, RLS, runtime, tracing, lint, typecheck, build, suíte
-  monorepo e processos críticos passam localmente;
+  monorepo, PostgreSQL crítico 623/623, processos críticos 11/11, SPA E2E
+  424/424 e imagens production-shaped passam localmente;
 - identidade e controles documentais estão sendo reconciliados ao candidato;
 - Trivy não está instalado e não há CI/release/target/UAT/autoridade externos;
   o estado global permanece `LOCAL_COMPLETE / EXTERNAL_BLOCKED`.
@@ -60,9 +61,10 @@ os aceites externos não existirem.
 
 ### M1 — candidato local congelado (PASS-LOCAL / EXTERNAL-BLOCKED)
 
-Saída local: fonte congelada em `db07cd02`, identidade/P0/snapshots
-candidate-bound e gates locais reexecutados. OCI/Trivy candidate-bound ainda
-dependem de reconstrução local e da ferramenta Trivy; não há prova remota.
+Saída local: fonte congelada em `51982f48`, identidade/P0/snapshots
+candidate-bound e gates locais reexecutados. As imagens locais passaram o gate
+production-shaped e têm raízes por digest; Trivy segue `NOT_RUN` por ausência da
+ferramenta e não há prova remota.
 
 ### M2 — CI e release candidate-bound
 

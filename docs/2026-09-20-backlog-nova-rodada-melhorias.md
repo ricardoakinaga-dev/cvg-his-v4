@@ -1,7 +1,7 @@
 ---
 document_status: current
 document_kind: backlog
-effective_date: 2026-09-20
+effective_date: 2026-09-21
 owner: Liderança técnica, Plataforma, Segurança, QA e Operações CVG-HIS
 review_cycle: on-task-completion-or-blocker-change
 ---
@@ -37,7 +37,7 @@ material; não promove prova local a aceite externo.
 
 | ID | Item | Estado | Dependências | Aceite observável |
 | --- | --- | --- | --- | --- |
-| AUD21-01 | Reconciliar identity, registro P0 e snapshots em um único SHA | PASS-LOCAL | AUD21-02–04, AUD21-09–10 | identity/P0/snapshots vinculados ao SHA `db07cd02`; estados `NOT_PROVEN` preservados |
+| AUD21-01 | Reconciliar identity, registro P0 e snapshots em um único SHA | PASS-LOCAL | AUD21-02–04, AUD21-09–10 | identity/P0/snapshots vinculados ao SHA `51982f48`; estados `NOT_PROVEN` preservados |
 | AUD21-02 | Tornar a mutação 65 hermética à árvore real | PASS-LOCAL | — | fixture impossível; known-bad falha pelo finding esperado; supply-chain 17/17 |
 | AUD21-03 | Alinhar pnpm e restaurar o gate de segredos | PASS-LOCAL | — | política e `packageManager` idênticos; secretlint e security enterprise verdes |
 | AUD21-04 | Reconciliar contrato documental de backup/restore | DOC-FIXED-TARGET-BLOCKED | — | checker 4/4; roadmap/backlog atuais mutáveis pelo teste; drill/RPO/RTO seguem externos |
@@ -52,11 +52,11 @@ freeze. Não renumeram os 65 cartões `PROD`.
 | NR-001 | Modelar Vault no chart com `existingSecret` e keys para URL/role/secret/namespace/path | PASS-LOCAL | — | schema aceita configuração; Deployment usa `secretKeyRef`; nenhum segredo em ConfigMap; não é aceite externo |
 | NR-002 | Cobrir prod render/runtime de Vault | PASS-LOCAL / TARGET-BLOCKED | NR-001 | fixture Vault e Helm 3.15.4 dev/staging/prod passam; target permanece ausente |
 | NR-003 | Migrar/reconciliar `.agent` para o contrato atual | PASS-LOCAL | — | correções append-only; `check_state.py` 11/11; aceitação externa permanece bloqueada |
-| NR-004 | Recriar identidade e snapshots do candidato sem promover prova stale | PASS-LOCAL | AUD21-01–04, AUD21-09–10, NR-001–003, NR-006 | guardas recusam worktree sujo; identity/registry/snapshots convergem no SHA `db07cd02` |
+| NR-004 | Recriar identidade e snapshots do candidato sem promover prova stale | PASS-LOCAL | AUD21-01–04, AUD21-09–10, NR-001–003, NR-006 | guardas recusam worktree sujo; identity/registry/snapshots convergem no SHA `51982f48` |
 | NR-005 | Finalizar ou arquivar corretamente a rodada Gauntlet `p0-closure-images-final-20260920` | BLOCKED-EXTERNAL | NR-003, NR-004, NR-008 | rodada local registrada; CI/target/UAT/autoridade impedem `STOP`/aceite |
-| NR-006 | Congelar novo SHA e executar regressão local integrada | PASS-LOCAL | AUD21-02–04, AUD21-09–10, NR-001–003 | gates locais passam no SHA limpo; Helm obrigatório disponível |
-| NR-007 | Reconstruir API/worker/SPA e provar runtime production-shaped | PASS-LOCAL | NR-004, NR-006 | três OCI locais distintas, non-root/read-only, Vault e dependências descartáveis, proxy e readiness passam; sem publicação |
-| NR-008 | Repetir digest cruzado e Trivy pinado | NOT_RUN / EXTERNAL-BLOCKED | NR-007 | Trivy não instalado; digest local/runtime verificado, scan e attestation permanecem pendentes |
+| NR-006 | Congelar novo SHA e executar regressão local integrada | PASS-LOCAL | AUD21-02–04, AUD21-09–10, NR-001–003 | gates locais passam no SHA `51982f48`; Helm obrigatório disponível; críticos 11/11 e E2E 424/424 |
+| NR-007 | Reconstruir API/worker/SPA e provar runtime production-shaped | PASS-LOCAL | NR-004, NR-006 | três OCI locais distintas, non-root/read-only, Vault e dependências descartáveis, proxy e readiness passam no SHA `51982f48`; sem publicação |
+| NR-008 | Repetir digest cruzado e Trivy pinado | NOT_RUN / EXTERNAL-BLOCKED | NR-007 | raízes por digest local verificadas; Trivy não instalado, scan/attestation de registry permanecem pendentes |
 | NR-011 | Publicar o SHA autorizado e obter CI 17/17 | EXTERNAL-BLOCKED | NR-004–008 | GitHub CI terminal no SHA exato e artefatos verificados |
 | NR-012 | Executar release encadeado | EXTERNAL-BLOCKED | NR-011, NR-013 | `workflow_run` consome o SHA do CI, sem rebuild, publica quarentena/attestations/manifest/gate |
 | NR-020 | Decisão final de release/Triplo AAA | EXTERNAL-BLOCKED | NR-012, NR-014–019 | zero P0, quality bar completa e go/no-go por autoridades nomeadas |
@@ -92,20 +92,20 @@ Contrato de recuperação mantido para o validador operacional:
 
 ## Ordem imediata
 
-1. `NR-007/NR-008` — reconstruir OCI localmente e executar Trivy quando a ferramenta estiver disponível; registrar ausência como `NOT_RUN` sem promover o resultado.
-2. `NR-005/011–013` — Gauntlet, CI e release encadeado sem rebuild, mediante autorização externa.
-3. `NR-014–019/PROD-037` — target, recuperação, UAT e autoridades nomeadas.
-4. `NR-020` — decisão final; R5 continua fora do candidato enquanto os P0 estiverem abertos.
+1. `NR-005/011–013` — concluir revisão fresh/Gauntlet e, mediante autorização, CI/release candidate-bound sem rebuild; preservar Trivy como `NOT_RUN` até ferramenta disponível.
+2. `NR-014–019/PROD-037` — target, recuperação, UAT e autoridades nomeadas.
+3. `NR-020` — decisão final; R5 continua fora do candidato enquanto os P0 estiverem abertos.
 
 ## Evidência local da rodada atual
 
 - `NR-001/002`: Helm oficial 3.15.4, Vault production-shaped e runtime
   negativo/positivo passam localmente; admissão/target continuam externos.
 - `NR-006/009/023`: typecheck/lint, semântica same-origin e supply-chain 17/17
-  passaram no candidato `db07cd02`.
-- `NR-007/008`: pacote [OCI/Trivy final4](../.agent/evidence/nr007-nr008-release-oci-trivy-20260920-final4.json)
-  registra raízes/configs imutáveis, Trivy 0 HIGH/CRITICAL, AppRole inválido
-  403 e digest cruzado rejeitado.
+  passaram no candidato `51982f48`; críticos 11/11 e E2E 424/424 têm escopo local
+  explícito.
+- `NR-007/008`: o [pacote local candidate-bound](triple-a/evidence/local-candidate-51982f48.json)
+  registra raízes/configs imutáveis, usuários não-root, Vault/readiness/proxy e
+  digest local; Trivy permanece `NOT_RUN` porque não está instalado.
 - `NR-013`: a matriz local de mutações permanece controle histórico; não
   substitui CI/release encadeado no SHA candidato.
 - Gauntlet: a rodada local deve ser reaberta em contexto fresh; a decisão

@@ -1,12 +1,13 @@
 # Triple-A — 00 Baseline
 
-## Baseline local do candidato — 2026-09-20
+## Baseline local do candidato — 2026-09-21
 
-Baseline autoritativo atual: `db07cd025b639a17a3666baa49f6c1252031d5b9`.
+Baseline autoritativo atual: `51982f4848a72f36b9645f5aab32cc84a531b423`.
 
 Os gates locais do candidato passam, incluindo supply-chain 17/17,
-dependências/segredos, Helm 3.15.4, qualidade, banco crítico e processos
-11/11. CI/release/target/UAT/autoridade não foram provados.
+dependências/segredos, Helm 3.15.4, qualidade, banco crítico 623/623,
+processos 11/11, SPA E2E 424/424 e imagens production-shaped. CI/release,
+registry/attestation, target/UAT/autoridade não foram provados.
 
 O registro mantém **11 P0 abertos** e o Triplo AAA está **BLOCKED / NOT PROVEN**
 até haver CI, target, recuperação, UAT e autoridade.

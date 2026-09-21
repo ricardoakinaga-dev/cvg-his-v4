@@ -1,13 +1,14 @@
 # CVG-HIS V4 — Current Assurance Report
 
-## Relatório local do candidato — 2026-09-20
+## Relatório local do candidato — 2026-09-21
 
-**Candidate funcional avaliado:** `db07cd025b639a17a3666baa49f6c1252031d5b9`.
+**Candidate funcional avaliado:** `51982f4848a72f36b9645f5aab32cc84a531b423`.
 
 Os gates locais passam: supply-chain 17/17, dependências, segredos,
 backup/restore documental, métricas/upload, Helm 3.15.4, lint, typecheck,
-build, suíte monorepo, PostgreSQL crítico e processos 11/11. Não há CI/release
-candidate-bound, target, UAT ou autoridade.
+build, suíte monorepo, PostgreSQL crítico 623/623, processos 11/11, SPA E2E
+424/424 e imagens production-shaped. Não há CI/release candidate-bound,
+registry/attestation, target, UAT ou autoridade.
 
 O registro mantém **11 P0 abertos** e o veredito é **LOCAL_COMPLETE /
 EXTERNAL_BLOCKED**; certificação Triplo AAA segue **BLOCKED / NOT PROVEN**.

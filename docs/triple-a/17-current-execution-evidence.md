@@ -1,20 +1,21 @@
 # Evidência de execução corrente — State of Art
 
-## Evidência local do candidato — 2026-09-20
+## Evidência local do candidato — 2026-09-21
 
-SHA de código e documentação: `db07cd025b639a17a3666baa49f6c1252031d5b9` — campo canônico da **fonte congelada do candidato**. Alterações documentais posteriores são permitidas; este valor não representa o último commit desses documentos.
+SHA de código e documentação: `51982f4848a72f36b9645f5aab32cc84a531b423` — campo canônico da **fonte congelada do candidato**. Alterações documentais posteriores são permitidas; este valor não representa o último commit desses documentos.
 
 Comandos locais candidate-bound passaram: supply-chain 17/17, policy de
 dependências, secret scan/security enterprise, Helm 3.15.4, lint, typecheck,
-build, suíte monorepo, banco crítico efêmero, RLS/runtime/tracing, backup/restore
-documental e processos críticos 11/11. CI remoto e release continuam
+build, suíte monorepo, banco crítico efêmero 623/623, RLS/runtime/tracing,
+backup/restore documental, processos críticos 11/11, E2E SPA 424/424 e gate de
+imagens production-shaped. CI remoto, registry/attestation e release externo continuam
 `NOT_PROVEN`.
 
 O registro mantém **11 P0 abertos** por dependências externas. Nenhum resultado
 local fecha target, restore aprovado, soak, UAT, revisão independente ou
 autoridade de release; certificação permanece **BLOCKED / NOT PROVEN**.
 
-Detalhes, hashes e limites: [remediação dos P0](30-p0-remediation-20260918.md) e [avaliação por critério](evidence/p0-remediation-20260918.json). **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
+Detalhes, hashes e limites: [evidência local candidate-bound](evidence/local-candidate-51982f48.json), [remediação dos P0](30-p0-remediation-20260918.md) e [avaliação por critério](evidence/p0-remediation-20260918.json). Os testes críticos e E2E foram executados no runtime pai inalterado `80b0e39f`; a mudança exclusiva do novo HEAD é o fixture de release que injeta o token obrigatório do worker. **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
 
 ---
 

@@ -1,27 +1,28 @@
 ---
 document_status: current
 document_kind: baseline
-effective_date: 2026-09-20
+effective_date: 2026-09-21
 owner: Liderança técnica, Plataforma, Segurança, QA e Operações CVG-HIS
 review_cycle: on-candidate-change-or-material-evidence
-candidate_sha: db07cd025b639a17a3666baa49f6c1252031d5b9
-overall_score: 68
+candidate_sha: 51982f4848a72f36b9645f5aab32cc84a531b423
+overall_score: 72
 verdict: LOCAL_COMPLETE / EXTERNAL_BLOCKED
 ---
 
-# Auditoria e scorecard do candidato local — `db07cd02`
+# Auditoria e scorecard do candidato local — `51982f48`
 
 ## Veredito executivo
 
-**Nota ponderada: 68/100 (53/100 na entrada; delta +15). Estado: `LOCAL_COMPLETE / EXTERNAL_BLOCKED`.**
+**Nota ponderada: 72/100 (53/100 na entrada; delta +19). Estado: `LOCAL_COMPLETE / EXTERNAL_BLOCKED`.**
 
 Os gates locais da rodada foram reexecutados no candidato de fonte congelada
-`db07cd025b639a17a3666baa49f6c1252031d5b9`: supply-chain 17/17, política de
+`51982f4848a72f36b9645f5aab32cc84a531b423`: supply-chain 17/17, política de
 dependências, scanner de segredos, segurança enterprise, backup/restore
 documental 4/4, upload/observabilidade, RLS, Helm 3.15.4, lint, typecheck,
-build, suíte monorepo e contratos críticos passaram. A validação PostgreSQL
-efêmera e a suíte de processos são evidência local; não são CI remoto, target,
-restore aprovado, UAT ou autoridade de release.
+build, suíte monorepo, PostgreSQL crítico 623/623, processos 11/11, SPA E2E
+424/424 e imagens production-shaped passaram. A validação PostgreSQL efêmera,
+E2E e as imagens são evidência local; não são CI remoto, target, restore
+aprovado, UAT ou autoridade de release.
 
 O resultado local é utilizável para revisão e preparação de candidato, mas o
 Triplo AAA permanece **`BLOCKED / NOT PROVEN`**. `ci_sha` e `release_sha`
@@ -32,16 +33,16 @@ credenciais reais ou aceite humano.
 
 | Dimensão | Peso | Entrada | Atual | Delta | Limite/bloqueio remanescente |
 | --- | ---: | ---: | ---: | ---: | --- |
-| S01 Produto e cobertura funcional | 15% | 44 | 48 | +4 | paridade Vetus 4/11 verificada; provider e UAT externos ausentes |
-| S02 Backend, API e contratos | 12% | 66 | 80 | +14 | ingress real e CI do SHA ainda não provados |
-| S03 Frontend, UX e acessibilidade | 8% | 59 | 60 | +1 | browser/visual/a11y e UAT do candidato ainda não aceitos |
-| S04 Dados, migrações e isolamento | 12% | 74 | 80 | +6 | target, restore e mixed-version aprovados ausentes |
+| S01 Produto e cobertura funcional | 15% | 44 | 52 | +8 | paridade Vetus 4/11 verificada; provider e UAT externos ausentes |
+| S02 Backend, API e contratos | 12% | 66 | 84 | +18 | ingress real e CI do SHA ainda não provados |
+| S03 Frontend, UX e acessibilidade | 8% | 59 | 68 | +9 | E2E Chromium local 424/424; browser matrix, a11y e UAT ainda não aceitos |
+| S04 Dados, migrações e isolamento | 12% | 74 | 82 | +8 | target, restore e mixed-version aprovados ausentes |
 | S05 Segurança, privacidade e segredos | 12% | 42 | 80 | +38 | atestação/registry e homologação operacional externos |
 | S06 Arquitetura e manutenibilidade | 8% | 52 | 52 | 0 | hotspots permanecem; refatoração está fora do caminho crítico |
-| S07 Testes e engenharia de qualidade | 10% | 47 | 78 | +31 | coverage/CI exatos e aceites externos ainda não existem |
-| S08 Supply chain, CI e release | 10% | 45 | 68 | +23 | CI remoto, release encadeado, OCI/Trivy e attestation não provados |
-| S09 Runtime, confiabilidade e operações | 7% | 68 | 78 | +10 | target, soak, SLO e rollback aprovados ausentes |
-| S10 Documentação, controle e rastreabilidade | 3% | 42 | 74 | +32 | revisão independente e governança remota ainda pendentes |
+| S07 Testes e engenharia de qualidade | 10% | 47 | 86 | +39 | coverage/CI exatos e aceites externos ainda não existem |
+| S08 Supply chain, CI e release | 10% | 45 | 74 | +29 | CI remoto, release encadeado, registry/Trivy e attestation não provados |
+| S09 Runtime, confiabilidade e operações | 7% | 68 | 82 | +14 | target, soak, SLO e rollback aprovados ausentes |
+| S10 Documentação, controle e rastreabilidade | 3% | 42 | 78 | +36 | revisão independente fresh e governança remota ainda pendentes |
 | S11 Governança, UAT e aceite | 3% | 30 | 30 | 0 | autoridades e UAT hospitalar não disponíveis |
 
 A nota é uma medida de maturidade observada e não altera os critérios de saída:
@@ -57,8 +58,10 @@ UAT e autoridade continuam obrigatórios.
 | Upload e observabilidade | limite canônico 25 MiB/413; métricas privadas, bounded e autenticadas; contratos PASS |
 | Helm | render dev/staging/prod PASS com Helm oficial 3.15.4 |
 | Qualidade | lint, typecheck e build PASS; suíte monorepo PASS |
-| PostgreSQL crítico | conjunto efêmero real, migrações 0000–0177, RLS/concorrência/isolamento PASS |
-| Processos críticos | 11/11 cenários não ignorados PASS |
+| PostgreSQL crítico | conjunto efêmero real, migrações 0000–0177, 623/623 testes, RLS/concorrência/isolamento PASS |
+| Processos críticos | 11/11 cenários não ignorados PASS, com cleanup por banco efêmero |
+| SPA E2E local | 424/424, 0 falhas, 0 skips; 150 rotas/300 navegações no Chromium |
+| Imagens production-shaped | API/worker/SPA PASS com usuários node/node/nginx, read-only, Vault, roles, readiness e proxy Helm; Trivy NOT_RUN |
 | RLS/runtime/tracing | 171/172 tabelas, produção 3/3, tracing 3/3 |
 | Backup/restore documental | 4/4 contratos e superfície operacional PASS |
 | Readiness enterprise | 93/100: 33 PASS, 3 WARN, 1 FAIL de paridade externa bloqueada |
