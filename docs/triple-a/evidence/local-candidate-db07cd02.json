@@ -9,18 +9,18 @@
     "result": "PASS",
     "images": {
       "api": {
-        "tag": "cvg-his-v2-api:release-validation-local-4001379",
-        "digest": "sha256:eb8f5913e6f8c6f8577b2e2723a22b7bb8a7223a0a770867154ce54547c65d5d",
+        "tag": "cvg-his-v2-api:release-validation-local-db07cd02",
+        "digest": "sha256:9ab8044c1d563e9ae15aecd2883f02def32695f9119850d8fbd4d866a6245855",
         "user": "node"
       },
       "worker": {
-        "tag": "cvg-his-v2-worker:release-validation-local-4001379",
-        "digest": "sha256:7e431a4c73172d3546fe2d2b49f7cbf18850c3f608f85e4c081b0917064fcada",
+        "tag": "cvg-his-v2-worker:release-validation-local-db07cd02",
+        "digest": "sha256:c85ea848ebe157e599e80443aae18903c1c2405a8ba7ebed97176f351b27ff9a",
         "user": "node"
       },
       "spa": {
-        "tag": "cvg-his-v2-spa:release-validation-local-4001379",
-        "digest": "sha256:3719a20d146e59dfdc4a8c798def6ffae5da58d65ab239f67697ce0d28341442",
+        "tag": "cvg-his-v2-spa:release-validation-local-db07cd02",
+        "digest": "sha256:8fa6c54809f572fc89348d70e3a29e10fddc26c648e5540fa9b03420ef8b1f13",
         "user": "nginx"
       }
     },
