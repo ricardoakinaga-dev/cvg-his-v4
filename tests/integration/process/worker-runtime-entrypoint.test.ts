@@ -23,6 +23,7 @@ const scratchDatabase = `cvg_worker_entrypoint_${process.pid}_${suffix}`;
 const apiRole = `cvg_worker_entry_api_${suffix}`;
 const workerRole = `cvg_worker_entry_worker_${suffix}`;
 const runtimePassword = `worker_entry_${suffix}_password`;
+const workerMetricsToken = 'worker-entry-metrics-token';
 const tenantId = randomUUID();
 const accountId = randomUUID();
 const reportServiceUserId = randomUUID();
@@ -135,6 +136,7 @@ function startWorker(databaseUrlValue: string, port: number): WorkerHandle {
         WORKER_INTERVAL_MS: '100',
         WORKER_PIX_SETTLEMENT_ENABLED: '0',
         WORKER_PIX_SYNTHETIC_ENABLED: '0',
+        METRICS_AUTH_TOKEN: workerMetricsToken,
         OTEL_ENABLED: 'false'
       },
       stdio: coverage ? ['ignore', 'pipe', 'pipe', 'ipc'] : ['ignore', 'pipe', 'pipe']
@@ -190,6 +192,8 @@ async function waitForHealth(
   while (Date.now() < deadline) {
     try {
       const response = await fetch(`http://127.0.0.1:${port}${path}`, {
+        headers:
+          path === '/metrics' ? { Authorization: `Bearer ${workerMetricsToken}` } : undefined,
         signal: AbortSignal.timeout(500)
       });
       const payload = (await response.json()) as Record<string, unknown>;
