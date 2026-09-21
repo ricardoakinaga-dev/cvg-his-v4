@@ -2,7 +2,7 @@
 
 ## Evidência local do candidato — 2026-09-21
 
-SHA de código e documentação: novo campo canônico da identidade congelada; a fonte/runtime é `cc063413c7ce57ec4018538fae3c4ea68c997221`.
+SHA de código e documentação: `2586f7515ab93c6a9267547420ecd580cfb03136` — campo canônico da identidade congelada; a fonte/runtime é `cc063413c7ce57ec4018538fae3c4ea68c997221`.
 
 Comandos locais passam: supply-chain 17/17, policy de dependências, secret
 scan/security enterprise, Helm 3.15.4, lint, typecheck, build, suíte do worker
@@ -15,7 +15,7 @@ O registro mantém **11 P0 abertos** por dependências externas. Nenhum resultad
 local fecha target, restore aprovado, soak, UAT, revisão independente ou
 autoridade de release; certificação permanece **BLOCKED / NOT PROVEN**.
 
-Detalhes, hashes e limites: [evidência local candidate-bound](evidence/local-candidate-51982f48.json), [remediação dos P0](30-p0-remediation-20260918.md) e [avaliação por critério](evidence/p0-remediation-20260918.json). Os testes críticos e E2E foram executados no runtime pai inalterado `80b0e39f`; a mudança corrente também sanitiza o detalhe de erro do health do worker e foi coberta por teste focado e pelo gate de imagens. **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
+Detalhes, hashes e limites: [evidência local candidate-bound](evidence/local-candidate-51982f48.json), [remediação dos P0](30-p0-remediation-20260918.md) e [avaliação por critério](evidence/p0-remediation-20260918.json). Os testes críticos e E2E foram executados no runtime pai inalterado `80b0e39f`; a mudança corrente também sanitiza o detalhe de erro do health e das métricas autenticadas do worker e foi coberta por testes focados, suíte do worker e pelo gate de imagens. **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
 
 ---
 
