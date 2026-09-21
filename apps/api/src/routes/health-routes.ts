@@ -368,7 +368,6 @@ async function withAttachmentHealthDeadline<T>(
       controller.abort(new Error('Attachment dependency health probe timed out'));
       reject(new Error('Attachment dependency health probe timed out'));
     }, ATTACHMENT_HEALTH_PROBE_TIMEOUT_MS);
-    timeoutHandle.unref?.();
   });
   try {
     return await Promise.race([operation(controller.signal), timeout]);
