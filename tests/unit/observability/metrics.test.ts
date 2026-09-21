@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   normalizeRoute,
+  normalizeMetricMethod,
+  createFeatureFlagMetricsCollector,
   updateAppMetrics,
   incrementActiveRequests,
   decrementActiveRequests,
@@ -94,6 +96,54 @@ describe('Metrics — Route Normalization', () => {
   it('should normalize scheduling and triage routes to resource pattern', () => {
     expect(normalizeRoute('/scheduling/appointments')).toBe('/{resource}/:id');
     expect(normalizeRoute('/triage/records')).toBe('/{resource}/:id');
+  });
+});
+
+describe('Metrics — bounded labels', () => {
+  it('collapses arbitrary HTTP methods to the bounded fallback', () => {
+    expect(normalizeMetricMethod('get')).toBe('GET');
+    expect(normalizeMetricMethod('PATCH')).toBe('PATCH');
+    expect(normalizeMetricMethod('x-attacker-method')).toBe('OTHER');
+    expect(normalizeMetricMethod(' GET\u0000')).toBe('OTHER');
+    expect(normalizeMetricMethod(undefined)).toBe('OTHER');
+  });
+
+  it('collapses arbitrary API feature-flag metric labels', async () => {
+    const collector = createFeatureFlagMetricsCollector();
+    collector.recordEvaluation({
+      flagKey: 'attacker.flag.' + 'x'.repeat(200),
+      provider: 'provider-' + 'x'.repeat(200),
+      reason: 'reason-' + 'x'.repeat(200),
+      enabled: true,
+      durationMs: 1
+    });
+    collector.recordError({
+      flagKey: 'attacker.error',
+      provider: 'provider-error',
+      errorType: 'ErrorFromAttackerInput'
+    });
+    collector.recordFallback({
+      flagKey: 'attacker.fallback',
+      provider: 'provider-fallback',
+      fallbackReason: 'fallback-' + 'x'.repeat(200)
+    });
+
+    const metrics = await getMetricsText();
+    expect(metrics).toContain(
+      'feature_flag_evaluations_total{flag_key="other",provider="other",reason="other",enabled="true"}'
+    );
+    expect(metrics).toContain(
+      'feature_flag_evaluation_duration_ms_count{flag_key="other",provider="other"}'
+    );
+    expect(metrics).toContain(
+      'feature_flag_errors_total{flag_key="other",provider="other",error_type="other"}'
+    );
+    expect(metrics).toContain(
+      'feature_flag_fallbacks_total{flag_key="other",provider="other",fallback_reason="other"}'
+    );
+    expect(metrics).not.toContain('attacker.flag');
+    expect(metrics).not.toContain('provider-error');
+    expect(metrics).not.toContain('ErrorFromAttackerInput');
   });
 });
 

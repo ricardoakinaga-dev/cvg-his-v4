@@ -71,8 +71,9 @@ test('runScheduledReportJob executes due schedules and advances recurrence', asy
   assert.match(metrics, /worker_scheduled_report_schedules_total\{outcome="exported"\}/);
   assert.match(
     metrics,
-    /worker_scheduled_report_executions_total\{report_id="administrative-executive",outcome="exported",row_state="filled"\}/
+    /worker_scheduled_report_executions_total\{outcome="exported",row_state="filled"\}/
   );
+  assert.doesNotMatch(metrics, /worker_scheduled_report_executions_total\{[^\n]*report_id=/);
   assert.match(metrics, /worker_scheduled_report_tick_duration_ms_bucket\{le=/);
 });
 
@@ -216,8 +217,9 @@ test('runScheduledReportJob records failures without stopping the batch', async 
   assert.match(metrics, /worker_scheduled_report_schedules_total\{outcome="failed"\}/);
   assert.match(
     metrics,
-    /worker_scheduled_report_executions_total\{report_id="administrative-executive",outcome="failed",row_state="not_executed"\}/
+    /worker_scheduled_report_executions_total\{outcome="failed",row_state="not_executed"\}/
   );
+  assert.doesNotMatch(metrics, /worker_scheduled_report_executions_total\{[^\n]*report_id=/);
 });
 
 test('runScheduledReportJob propagates the current schedule claim token', async () => {

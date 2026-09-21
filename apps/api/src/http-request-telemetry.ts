@@ -8,6 +8,7 @@ import {
   httpRequestDurationSeconds,
   httpRequestsTotal,
   normalizeRoute,
+  normalizeMetricMethod,
   recordRequestSloObservation
 } from './metrics.js';
 import { endSpan, sanitizeHttpTarget, type Span } from './tracing.js';
@@ -29,7 +30,7 @@ export function attachHttpRequestTelemetry(options: {
     const durationSec = Number(process.hrtime.bigint() - options.startTime) / 1e9;
     const url = new URL(options.request.url ?? '/', 'http://localhost');
     const route = normalizeRoute(url.pathname);
-    const method = options.request.method ?? 'UNKNOWN';
+    const method = normalizeMetricMethod(options.request.method);
     const statusCode = options.response.statusCode;
 
     httpRequestsTotal.inc({ method, route, status_code: String(statusCode) });

@@ -10,6 +10,7 @@ import type {
 } from './pix-provider-event-delivery-repository.js';
 import {
   PixProviderSettlementConsumer,
+  runPixProviderSettlementTick,
   type PixProviderSettlementCheckpointContext,
   type PixProviderSettlementTelemetryEvent,
   pixProviderSettlementBackoffSeconds
@@ -93,6 +94,34 @@ class PromotionAwareFakeRepository extends FakeRepository {
     });
   }
 }
+
+test('PIX settlement tick visits every account with bounded concurrency', async () => {
+  const accountIds = Array.from(
+    { length: 9 },
+    (_, index) => `00000000-0000-0000-0000-${String(index + 10).padStart(12, '0')}`
+  );
+  let active = 0;
+  let maximumActive = 0;
+  const processed: string[] = [];
+  const results = await runPixProviderSettlementTick(
+    {
+      processNext: async (accountId) => {
+        processed.push(accountId);
+        active += 1;
+        maximumActive = Math.max(maximumActive, active);
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        active -= 1;
+        return { status: 'idle' as const };
+      }
+    },
+    accountIds,
+    { concurrency: 2 }
+  );
+
+  assert.equal(results.length, accountIds.length);
+  assert.deepEqual([...processed].sort(), [...accountIds].sort());
+  assert.equal(maximumActive, 2);
+});
 
 test('PIX settlement backoff starts at 5 seconds and caps at 900 seconds', () => {
   assert.deepEqual(

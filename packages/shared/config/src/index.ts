@@ -8,6 +8,13 @@ const DEFAULT_API_PORT = 3001;
 const DEFAULT_WEB_PORT = 3000;
 const DEFAULT_WORKER_INTERVAL_MS = 5000;
 const DEFAULT_WORKER_HEALTH_PORT = 3002;
+/**
+ * Account-scoped worker jobs are intentionally bounded.  The worker keeps
+ * every discovered account in scope, but never starts more than this many
+ * account lanes at once.
+ */
+export const DEFAULT_WORKER_ACCOUNT_CONCURRENCY = 4;
+export const MAX_WORKER_ACCOUNT_CONCURRENCY = 32;
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_FILE_STORAGE_PATH = '/tmp/cvg-his-v2-attachments';
 const DEFAULT_PROXY_API_TARGET = 'http://localhost:3001';
@@ -578,6 +585,14 @@ export const WORKER_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
   },
   {
     app: 'worker',
+    key: 'WORKER_ACCOUNT_CONCURRENCY',
+    required: false,
+    defaultValue: String(DEFAULT_WORKER_ACCOUNT_CONCURRENCY),
+    description:
+      'Maximum number of account-scoped worker lanes and PIX account operations running at once.'
+  },
+  {
+    app: 'worker',
     key: 'METRICS_AUTH_TOKEN',
     required: false,
     sensitive: true,
@@ -783,6 +798,7 @@ export interface WorkerAppConfig {
   readonly environment: string;
   readonly intervalMs: number;
   readonly healthPort: number;
+  readonly accountConcurrency: number;
   readonly metricsAuthToken?: string;
   readonly otelEnabled: boolean;
   readonly otelServiceName: string;
@@ -1218,6 +1234,12 @@ const workerEnvSchema = z
     APP_NAME: nonEmptyStringSchema.default(DEFAULT_WORKER_APP_NAME),
     WORKER_INTERVAL_MS: positiveNumberSchema.default(DEFAULT_WORKER_INTERVAL_MS),
     WORKER_HEALTH_PORT: portSchema.default(DEFAULT_WORKER_HEALTH_PORT),
+    WORKER_ACCOUNT_CONCURRENCY: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(MAX_WORKER_ACCOUNT_CONCURRENCY)
+      .default(DEFAULT_WORKER_ACCOUNT_CONCURRENCY),
     METRICS_AUTH_TOKEN: optionalNonEmptyStringSchema,
     OTEL_ENABLED: booleanStringSchema.default(false),
     OTEL_SERVICE_NAME: optionalNonEmptyStringSchema,
@@ -1421,6 +1443,7 @@ export function loadWorkerConfig(env: NodeJS.ProcessEnv): WorkerAppConfig {
     environment: parsed.NODE_ENV,
     intervalMs: parsed.WORKER_INTERVAL_MS,
     healthPort: parsed.WORKER_HEALTH_PORT,
+    accountConcurrency: parsed.WORKER_ACCOUNT_CONCURRENCY,
     metricsAuthToken: parsed.METRICS_AUTH_TOKEN,
     otelEnabled: parsed.OTEL_ENABLED,
     otelServiceName: parsed.OTEL_SERVICE_NAME ?? parsed.APP_NAME,

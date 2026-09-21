@@ -122,6 +122,34 @@ test('runWorkerAccounts contains account setup failures and continues with the n
   ]);
 });
 
+test('runWorkerAccounts visits every account while bounding active account lanes', async () => {
+  const accountIds = Array.from({ length: 11 }, (_, index) => `account-${index}`);
+  const started: string[] = [];
+  let active = 0;
+  let maximumActive = 0;
+  const failures = await runWorkerAccounts(
+    mockLogger,
+    accountIds,
+    (accountId) => [
+      {
+        name: 'bounded-job',
+        run: async () => {
+          started.push(accountId);
+          active += 1;
+          maximumActive = Math.max(maximumActive, active);
+          await new Promise<void>((resolve) => setImmediate(resolve));
+          active -= 1;
+        }
+      }
+    ],
+    { concurrency: 3 }
+  );
+
+  assert.deepEqual(failures, []);
+  assert.deepEqual([...started].sort(), [...accountIds].sort());
+  assert.equal(maximumActive, 3);
+});
+
 function createMockNotificationRepository(
   overrides: Partial<NotificationRepository> = {}
 ): NotificationRepository {

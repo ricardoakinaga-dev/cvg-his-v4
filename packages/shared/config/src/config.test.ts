@@ -334,6 +334,7 @@ describe('config module', () => {
       expect(config.appName).toBe('cvg-his-v2-worker');
       expect(config.intervalMs).toBe(5000);
       expect(config.healthPort).toBe(3002);
+      expect(config.accountConcurrency).toBe(4);
     });
 
     it('loads custom worker values', () => {
@@ -341,6 +342,7 @@ describe('config module', () => {
         APP_NAME: 'my-worker',
         WORKER_INTERVAL_MS: '10000',
         WORKER_HEALTH_PORT: '4000',
+        WORKER_ACCOUNT_CONCURRENCY: '7',
         WORKER_REPORTS_USER_ID: '11111111-1111-4111-8111-111111111111',
         METRICS_AUTH_TOKEN: 'worker-collector-secret'
       };
@@ -348,8 +350,20 @@ describe('config module', () => {
       expect(config.appName).toBe('my-worker');
       expect(config.intervalMs).toBe(10000);
       expect(config.healthPort).toBe(4000);
+      expect(config.accountConcurrency).toBe(7);
       expect(config.metricsAuthToken).toBe('worker-collector-secret');
       expect(config.workerReportsUserId).toBe('11111111-1111-4111-8111-111111111111');
+    });
+
+    it('rejects unsafe worker account concurrency values', () => {
+      for (const value of ['0', '-1', '1.5', '33', 'not-a-number']) {
+        expect(() =>
+          loadWorkerConfig({
+            NODE_ENV: 'test',
+            WORKER_ACCOUNT_CONCURRENCY: value
+          } as NodeJS.ProcessEnv)
+        ).toThrow(/WORKER_ACCOUNT_CONCURRENCY/);
+      }
     });
 
     it('throws when DATABASE_URL missing in production', () => {

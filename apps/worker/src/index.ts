@@ -7,7 +7,7 @@ import { createServer } from 'node:http';
 
 import { bootstrapWorkerServices, shutdownWorkerServices } from './bootstrap.js';
 import { startWorkerObservability, withWorkerSpan } from './observability.js';
-import { runWorkerAccounts } from './account-job-runner.js';
+import { mapWorkerAccounts, runWorkerAccounts } from './account-job-runner.js';
 import { createWorkerNotifications, createWorkerEventBus, createWorkerReports } from './runner.js';
 import {
   runWorkerTick,
@@ -297,10 +297,10 @@ async function main() {
     const pixProviderSettlement = bootstrap.pixProviderSettlement;
     if (!pixProviderSettlement) return;
     try {
-      const counts = await Promise.all(
-        workerAccountIds.map((accountId) =>
-          pixProviderSettlement.countReconciliationRequired(accountId)
-        )
+      const counts = await mapWorkerAccounts(
+        workerAccountIds,
+        (accountId) => pixProviderSettlement.countReconciliationRequired(accountId),
+        { concurrency: config.accountConcurrency }
       );
       setPixProviderSettlementReconciliationRequired(
         counts.reduce((total, count) => total + count, 0)
@@ -513,7 +513,8 @@ async function main() {
                         async () => {
                           const [outcome] = await runPixPaymentDispatchTick(
                             pixPaymentDispatch.dispatcher,
-                            [accountId]
+                            [accountId],
+                            { concurrency: config.accountConcurrency }
                           );
                           if (!outcome || outcome.status === 'failed') {
                             const error = outcome?.error;
@@ -552,7 +553,8 @@ async function main() {
                         async () => {
                           const [outcome] = await runPixProviderSettlementTick(
                             pixProviderSettlement.consumer,
-                            [accountId]
+                            [accountId],
+                            { concurrency: config.accountConcurrency }
                           );
                           if (!outcome || outcome.error) {
                             isolatedTickError = outcome?.error?.message ?? 'PIX settlement tick failed';
@@ -731,7 +733,8 @@ async function main() {
                 )
             }
           ];
-        }
+        },
+        { concurrency: config.accountConcurrency }
       );
       for (const failure of accountJobFailures) {
         isolatedTickError = failure.error;

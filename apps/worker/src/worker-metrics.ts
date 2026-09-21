@@ -5,6 +5,7 @@ import type {
   FeatureFlagErrorMetrics,
   FeatureFlagFallbackMetrics
 } from '@cvg-his-v2/shared-feature-flags';
+import { WORKER_FEATURE_FLAG_DEFINITIONS } from './feature-flags.js';
 
 // ============================================================================
 // Prometheus Registry
@@ -69,8 +70,8 @@ export const scheduledReportTickDuration = new Histogram({
 
 export const scheduledReportExecutionsTotal = new Counter({
   name: 'worker_scheduled_report_executions_total',
-  help: 'Total scheduled report executions grouped by report and row state',
-  labelNames: ['report_id', 'outcome', 'row_state'] as const,
+  help: 'Total scheduled report executions grouped by outcome and row state',
+  labelNames: ['outcome', 'row_state'] as const,
   registers: [registry]
 });
 
@@ -279,6 +280,83 @@ export interface ScheduledReportMetrics {
   readonly executions?: readonly ScheduledReportExecutionMetric[];
 }
 
+const WORKER_FEATURE_FLAG_KEYS = new Set(
+  WORKER_FEATURE_FLAG_DEFINITIONS.map((definition) => definition.key)
+);
+const FEATURE_FLAG_PROVIDERS = new Set([
+  'env-bootstrap',
+  'env-bootstrap-with-rules',
+  'database',
+  'database-repository',
+  'database-with-rules',
+  'database-repository-with-rules',
+  'rules-based',
+  'other'
+]);
+const FEATURE_FLAG_REASONS = new Set([
+  'default',
+  'provider',
+  'fallback',
+  'bootstrap',
+  'override',
+  'kill_switch',
+  'allowlist',
+  'allowlist_excluded',
+  'percentage',
+  'percentage_rollout',
+  'expired',
+  'invalid_configuration',
+  'database_error',
+  'other'
+]);
+const FEATURE_FLAG_ERROR_TYPES = new Set([
+  'Error',
+  'TypeError',
+  'RangeError',
+  'InvalidFlagExpiry',
+  'InvalidFlagPercentage',
+  'UnknownError',
+  'other'
+]);
+const FEATURE_FLAG_FALLBACK_REASONS = new Set([
+  'missing_account',
+  'not_found_in_db',
+  'database_error',
+  'database_error_fail_closed',
+  'other'
+]);
+const SCHEDULED_REPORT_OUTCOMES = new Set(['executed', 'exported', 'failed', 'other']);
+const SCHEDULED_REPORT_ROW_STATES = new Set(['filled', 'empty', 'not_executed', 'other']);
+
+function normalizeFeatureFlagLabel(
+  value: unknown,
+  allowed: ReadonlySet<string>,
+  fallback = 'other'
+): string {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value.trim().toLowerCase();
+  if (allowed.has(normalized)) return normalized;
+  // Error class labels intentionally retain their known casing because that
+  // is the operator-facing value emitted by the provider.
+  if (allowed.has(value.trim())) return value.trim();
+  return fallback;
+}
+
+function normalizeWorkerFeatureFlagKey(value: unknown): string {
+  if (typeof value !== 'string') return 'other';
+  const normalized = value.trim().toLowerCase();
+  return WORKER_FEATURE_FLAG_KEYS.has(normalized) ? normalized : 'other';
+}
+
+function normalizeScheduledReportLabel(
+  value: unknown,
+  allowed: ReadonlySet<string>
+): string {
+  if (typeof value !== 'string') return 'other';
+  const normalized = value.trim().toLowerCase();
+  return allowed.has(normalized) ? normalized : 'other';
+}
+
 export function recordScheduledReportMetrics(metrics: ScheduledReportMetrics): void {
   if (metrics.dueSchedules > 0) {
     scheduledReportSchedulesTotal.inc({ outcome: 'due' }, metrics.dueSchedules);
@@ -294,9 +372,8 @@ export function recordScheduledReportMetrics(metrics: ScheduledReportMetrics): v
   }
   for (const execution of metrics.executions ?? []) {
     scheduledReportExecutionsTotal.inc({
-      report_id: execution.reportId,
-      outcome: execution.outcome,
-      row_state: execution.rowState
+      outcome: normalizeScheduledReportLabel(execution.outcome, SCHEDULED_REPORT_OUTCOMES),
+      row_state: normalizeScheduledReportLabel(execution.rowState, SCHEDULED_REPORT_ROW_STATES)
     });
   }
   scheduledReportTickDuration.observe(
@@ -313,14 +390,17 @@ export function createWorkerFeatureFlagMetricsCollector(): FeatureFlagMetricsCol
   return {
     recordEvaluation(metrics: FeatureFlagEvaluationMetrics): void {
       featureFlagEvaluationsTotal.inc({
-        flag_key: metrics.flagKey,
-        provider: metrics.provider,
-        reason: metrics.reason,
-        enabled: String(metrics.enabled)
+        flag_key: normalizeWorkerFeatureFlagKey(metrics.flagKey),
+        provider: normalizeFeatureFlagLabel(metrics.provider, FEATURE_FLAG_PROVIDERS),
+        reason: normalizeFeatureFlagLabel(metrics.reason, FEATURE_FLAG_REASONS),
+        enabled: metrics.enabled === true ? 'true' : 'false'
       });
       if (metrics.durationMs !== undefined) {
         featureFlagEvaluationDuration.observe(
-          { flag_key: metrics.flagKey, provider: metrics.provider },
+          {
+            flag_key: normalizeWorkerFeatureFlagKey(metrics.flagKey),
+            provider: normalizeFeatureFlagLabel(metrics.provider, FEATURE_FLAG_PROVIDERS)
+          },
           metrics.durationMs
         );
       }
@@ -328,17 +408,20 @@ export function createWorkerFeatureFlagMetricsCollector(): FeatureFlagMetricsCol
 
     recordError(metrics: FeatureFlagErrorMetrics): void {
       featureFlagErrorsTotal.inc({
-        flag_key: metrics.flagKey,
-        provider: metrics.provider,
-        error_type: metrics.errorType
+        flag_key: normalizeWorkerFeatureFlagKey(metrics.flagKey),
+        provider: normalizeFeatureFlagLabel(metrics.provider, FEATURE_FLAG_PROVIDERS),
+        error_type: normalizeFeatureFlagLabel(metrics.errorType, FEATURE_FLAG_ERROR_TYPES)
       });
     },
 
     recordFallback(metrics: FeatureFlagFallbackMetrics): void {
       featureFlagFallbacksTotal.inc({
-        flag_key: metrics.flagKey,
-        provider: metrics.provider,
-        fallback_reason: metrics.fallbackReason
+        flag_key: normalizeWorkerFeatureFlagKey(metrics.flagKey),
+        provider: normalizeFeatureFlagLabel(metrics.provider, FEATURE_FLAG_PROVIDERS),
+        fallback_reason: normalizeFeatureFlagLabel(
+          metrics.fallbackReason,
+          FEATURE_FLAG_FALLBACK_REASONS
+        )
       });
     }
   };

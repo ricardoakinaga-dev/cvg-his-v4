@@ -4,6 +4,7 @@ import {
   type PixPaymentDispatchProviderInput,
   type PixPaymentDispatchResult
 } from './pix-payment-dispatcher.js';
+import { mapWorkerAccounts, type WorkerAccountRunOptions } from '../account-job-runner.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PROVIDER_IDEMPOTENCY_PREFIX = 'cvg:pix:create:v1:';
@@ -87,21 +88,22 @@ export type PixPaymentDispatchTickOutcome =
 
 export async function runPixPaymentDispatchTick(
   dispatcher: PixPaymentDispatchTickTarget,
-  accountIds: readonly string[]
+  accountIds: readonly string[],
+  options: WorkerAccountRunOptions = {}
 ): Promise<readonly PixPaymentDispatchTickOutcome[]> {
-  let outcomes: readonly PixPaymentDispatchTickOutcome[] = Object.freeze([]);
-  for (const accountId of accountIds) {
-    let outcome: PixPaymentDispatchTickOutcome;
-    try {
-      outcome = Object.freeze({
-        accountId,
-        status: 'processed',
-        result: await dispatcher.processNext(accountId)
-      });
-    } catch (error) {
-      outcome = Object.freeze({ accountId, status: 'failed', error });
-    }
-    outcomes = Object.freeze([...outcomes, outcome]);
-  }
-  return outcomes;
+  return mapWorkerAccounts(
+    accountIds,
+    async (accountId) => {
+      try {
+        return Object.freeze({
+          accountId,
+          status: 'processed' as const,
+          result: await dispatcher.processNext(accountId)
+        });
+      } catch (error) {
+        return Object.freeze({ accountId, status: 'failed' as const, error });
+      }
+    },
+    options
+  );
 }

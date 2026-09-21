@@ -8,6 +8,7 @@ import {
 import type { TenantTransactionContext } from '@cvg-his-v2/shared-database';
 
 import { recordPixProviderSettlementMetric } from '../worker-metrics.js';
+import { mapWorkerAccounts, type WorkerAccountRunOptions } from '../account-job-runner.js';
 import type {
   PixProviderEventDeliveryClaim,
   PixProviderEventDeliveryClaimNextResult,
@@ -424,7 +425,8 @@ export class PixProviderSettlementConsumer {
 
 export async function runPixProviderSettlementTick(
   consumer: Pick<PixProviderSettlementConsumer, 'processNext'>,
-  accountIds: readonly string[]
+  accountIds: readonly string[],
+  options: WorkerAccountRunOptions = {}
 ): Promise<
   readonly Readonly<{
     accountId: string;
@@ -432,18 +434,18 @@ export async function runPixProviderSettlementTick(
     error?: Error;
   }>[]
 > {
-  return Object.freeze(
-    await Promise.all(
-      accountIds.map(async (accountId) => {
-        try {
-          return Object.freeze({ accountId, result: await consumer.processNext(accountId) });
-        } catch (error) {
-          return Object.freeze({
-            accountId,
-            error: error instanceof Error ? error : new Error(String(error))
-          });
-        }
-      })
-    )
+  return mapWorkerAccounts(
+    accountIds,
+    async (accountId) => {
+      try {
+        return Object.freeze({ accountId, result: await consumer.processNext(accountId) });
+      } catch (error) {
+        return Object.freeze({
+          accountId,
+          error: error instanceof Error ? error : new Error(String(error))
+        });
+      }
+    },
+    options
   );
 }
