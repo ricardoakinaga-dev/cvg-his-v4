@@ -108,7 +108,7 @@ export function createWorkerHealthResponse(
               ? `Worker is not ready: missing event bus consumers: ${missingConsumers.join(', ') || 'manifest empty'}`
               : loopHealthy
                 ? `Loop healthy; ticks=${deps.ticksCompleted}; lastTickAt=${deps.lastTickAt ?? 'never'}`
-                : `Worker loop degraded: ${deps.lastError ?? 'unknown error'}`
+                : 'Worker loop degraded; inspect worker logs using the response correlationId'
       }
     },
     eventBus: {
