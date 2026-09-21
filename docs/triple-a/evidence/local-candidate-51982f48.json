@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "candidate_sha": "2ccfe231a6490b2afef6c42442cdb37da550b194",
-  "observed_at": "2026-09-21T04:58:00Z",
+  "observed_at": "2026-09-21T05:55:00Z",
   "environment": "local disposable PostgreSQL/Redis/Docker fixtures; synthetic credentials only; no push, deploy or real credentials",
   "status": "PASS_LOCAL",
   "candidate_delta": {
-    "runtime_source_sha": "29b03941c5d46a4598c11f27bbb7125d1d205f0f",
+    "runtime_source_sha": "cc063413c7ce57ec4018538fae3c4ea68c997221",
     "parent_runtime_sha": "80b0e39f741ac132a3c9a2d95766b6b9ec62c457",
-    "current_sha_change": "worker health diagnostics now return a generic correlation-safe detail instead of exposing raw lastError; the release validator also supplies the mandatory METRICS_AUTH_TOKEN",
-    "runtime_parent_results": "Critical PostgreSQL/process and full SPA E2E were executed on the parent runtime SHA and are retained with that limitation; the current candidate reran the worker health contract, workspace quality gates and the production-shaped release-image gate."
+    "current_sha_change": "worker health and authenticated metrics diagnostics now return a generic correlation-safe detail instead of exposing raw lastError; the release validator also supplies the mandatory METRICS_AUTH_TOKEN",
+    "runtime_parent_results": "Critical PostgreSQL/process and full SPA E2E were executed on the parent runtime SHA and are retained with that limitation; the current candidate reran the worker health/metrics contract, full worker suite, workspace quality gates and the production-shaped release-image gate."
   },
   "gates": {
     "critical_postgres_process": {
@@ -26,22 +26,22 @@
     "release_images": {
       "result": "PASS",
       "command": "RELEASE_IMAGE_MODE=build RELEASE_IMAGE_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_release_image_test HELM_BIN=<pinned Helm 3.15.4> bash scripts/validate-release-images.sh",
-      "log": "/tmp/cvg-release-images-final-health-29b03941.log",
-      "log_sha256": "0ef1f13491493ad5f347f01707c03b216e7d52ee6490d5d7ca9726c32e09360f",
+      "log": "/tmp/cvg-release-images-sanitize-cc063413.log",
+      "log_sha256": "1b81a928e51df3ee6be4a301b26c9b0b39915cb1643f5c706fb40726804d69f6",
       "images": {
         "api": {
-          "tag": "cvg-his-v2-api:release-validation-final-health-sanitized-29b03941-1173560",
-          "digest": "sha256:4c5fcfa13e12c15e04639a9230a29fcdb58c8d92e990812b91eb047e732fbada",
+          "tag": "cvg-his-v2-api:release-validation-local-1433653",
+          "digest": "sha256:7ec4b85bafa5031b59a5c06627e639602cd9d79e16a97115dd6668113b3a2e53",
           "user": "node"
         },
         "worker": {
-          "tag": "cvg-his-v2-worker:release-validation-final-health-sanitized-29b03941-1173560",
-          "digest": "sha256:f4f3b483056df348900d0e38c653b8ccdb1af2fcfcba00aebe384b69c190ce4f",
+          "tag": "cvg-his-v2-worker:release-validation-local-1433653",
+          "digest": "sha256:45af39338275e72441d27a12f2081ecacb52839c6ccc5d1ce6d9f0deb8b0e321",
           "user": "node"
         },
         "spa": {
-          "tag": "cvg-his-v2-spa:release-validation-final-health-sanitized-29b03941-1173560",
-          "digest": "sha256:2b175c640c70121285986d65e560ca744e7272f5b17354d2cd9e62208aeee43c",
+          "tag": "cvg-his-v2-spa:release-validation-local-1433653",
+          "digest": "sha256:dadfbfc4b9b640f3abd35eb995cce9336ab42d27316fad6a45ceced4c367ae4f",
           "user": "nginx"
         }
       },
@@ -67,18 +67,20 @@
     {
       "command": "pnpm lint && pnpm typecheck && pnpm build && pnpm test",
       "result": "PASS",
-      "detail": "workspace lint, typecheck and build green on 29b03941; full suite and API targeted post-SLO fix remain green from the preceding local packet"
+      "detail": "workspace lint, typecheck and build green after cc063413; full suite and API targeted post-SLO fix remain green from the preceding local packet",
+      "log": "/tmp/cvg-workspace-sanitize-cc063413.log",
+      "log_sha256": "96d84b7f13805cf09dc1a69f84247f2c3917e299722c0ef859535fff569cc96d"
     },
     {
       "command": "pnpm --filter @cvg-his-v2/worker test",
       "result": "PASS",
-      "detail": "worker suite green including the new health diagnostic sanitization contract"
+      "detail": "worker suite green including the authenticated metrics diagnostic sanitization contract"
     }
   ],
   "limitations": [
     "Exact-candidate remote CI, branch protection, OCI registry publication and attestation remain NOT_PROVEN.",
     "Approved target, runtime RLS probe, restore/rollback, soak/SLO, UAT and release authority remain external blockers.",
     "Trivy is not installed locally; image scan is NOT_RUN.",
-    "The critical/process and full E2E runtime executions were recorded on the unchanged runtime parent 80b0e39f; the candidate-only runtime changes (worker diagnostic sanitization and release-validator fixture token injection) were covered by focused worker/workspace checks and the release-image gate rerun on 29b03941."
+    "The critical/process and full E2E runtime executions were recorded on the unchanged runtime parent 80b0e39f; the candidate-only runtime changes (worker health/metrics diagnostic sanitization and release-validator fixture token injection) were covered by focused/full worker tests, workspace gates and the release-image gate rerun on cc063413."
   ]
 }

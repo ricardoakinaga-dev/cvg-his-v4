@@ -2006,7 +2006,7 @@
       "origin": "USER-20260918-P0-CLOSURE",
       "dependencies": [],
       "owner": "lead",
-      "acceptance_summary": "Checks locais atribuídos/corrigidos no runtime 29b03941, incluindo sanitização do health do worker e gate de imagens production-shaped; identidade, P0 e snapshots serão validados no freeze limpo; critérios P0 permanecem fechados somente quando evidência externa e autoridade forem reais.",
+      "acceptance_summary": "Checks locais atribuídos/corrigidos no runtime cc063413, incluindo sanitização do health e das métricas autenticadas do worker e gate de imagens production-shaped; identidade, P0 e snapshots serão validados no freeze limpo; critérios P0 permanecem fechados somente quando evidência externa e autoridade forem reais.",
       "evidence_refs": [
         ".agent/plans/p0-closure-20260918.md",
         ".agent/verification.jsonl#VER-P0-CLOSURE-CURRENT-LOCAL-20260921-R2",

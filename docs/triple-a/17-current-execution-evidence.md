@@ -2,13 +2,13 @@
 
 ## Evidência local do candidato — 2026-09-21
 
-SHA de código e documentação: `2ccfe231a6490b2afef6c42442cdb37da550b194` — campo canônico da identidade congelada; a fonte/runtime é `29b03941c5d46a4598c11f27bbb7125d1d205f0f`.
+SHA de código e documentação: novo campo canônico da identidade congelada; a fonte/runtime é `cc063413c7ce57ec4018538fae3c4ea68c997221`.
 
 Comandos locais passam: supply-chain 17/17, policy de dependências, secret
 scan/security enterprise, Helm 3.15.4, lint, typecheck, build, suíte do worker
 com sanitização de diagnóstico, banco crítico efêmero 623/623, RLS/runtime/
 tracing, backup/restore documental, processos críticos 11/11, E2E SPA 424/424
-e gate de imagens production-shaped no runtime `29b03941`. CI remoto,
+e gate de imagens production-shaped no runtime `cc063413`. CI remoto,
 registry/attestation e release externo continuam `NOT_PROVEN`.
 
 O registro mantém **11 P0 abertos** por dependências externas. Nenhum resultado

@@ -15,7 +15,7 @@ verdict: LOCAL_COMPLETE / EXTERNAL_BLOCKED
 
 **Nota ponderada: 72/100 (53/100 na entrada; delta +19). Estado: `LOCAL_COMPLETE / EXTERNAL_BLOCKED`.**
 
-Os gates locais da rodada foram reexecutados no runtime `29b03941`, sob a
+Os gates locais da rodada foram reexecutados no runtime `cc063413`, sob a
 identidade canônica `2ccfe231a6490b2afef6c42442cdb37da550b194`: supply-chain 17/17, política de
 dependências, scanner de segredos, segurança enterprise, backup/restore
 documental 4/4, upload/observabilidade, RLS, Helm 3.15.4, lint, typecheck,
