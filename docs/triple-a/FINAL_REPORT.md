@@ -2,7 +2,7 @@
 
 ## Relatório local do candidato — 2026-09-21
 
-**Candidate funcional avaliado:** `956be45d36d1cc6ac18ca53cbc84cbada23c7b5c` (fonte/runtime `51982f4848a72f36b9645f5aab32cc84a531b423`).
+**Candidate funcional avaliado:** `43f66b92ececea264665206b35ad28f45c4d2d48` (fonte/runtime `51982f4848a72f36b9645f5aab32cc84a531b423`).
 
 Os gates locais passam: supply-chain 17/17, dependências, segredos,
 backup/restore documental, métricas/upload, Helm 3.15.4, lint, typecheck,

@@ -2,7 +2,7 @@
 
 ## Evidência local do candidato — 2026-09-21
 
-SHA de código e documentação: `956be45d36d1cc6ac18ca53cbc84cbada23c7b5c` — campo canônico da **identidade congelada do candidato**. A fonte/runtime permanece `51982f4848a72f36b9645f5aab32cc84a531b423`; alterações documentais e de controle posteriores são permitidas; este valor não representa o último commit desses documentos.
+SHA de código e documentação: `43f66b92ececea264665206b35ad28f45c4d2d48` — campo canônico da **identidade congelada do candidato**. A fonte/runtime permanece `51982f4848a72f36b9645f5aab32cc84a531b423`; alterações documentais e de controle posteriores são permitidas; este valor não representa o último commit desses documentos.
 
 Comandos locais candidate-bound passaram: supply-chain 17/17, policy de
 dependências, secret scan/security enterprise, Helm 3.15.4, lint, typecheck,
