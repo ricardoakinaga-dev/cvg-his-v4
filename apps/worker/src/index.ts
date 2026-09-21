@@ -26,7 +26,8 @@ import {
 import {
   createWorkerHealthResponse,
   createWorkerLivenessResponse,
-  createWorkerReadinessResponse
+  createWorkerReadinessResponse,
+  sanitizeWorkerDiagnostic
 } from './health.js';
 import { refreshWorkerAccounts } from './account-discovery.js';
 import { runPixPaymentDispatchTick } from './jobs/local-pix-payment-dispatch-provider.js';
@@ -439,7 +440,7 @@ async function main() {
             lastTickAt: workerState.lastTickAt,
             lastTickDurationMs: workerState.lastTickDurationMs,
             errors: workerState.errors,
-            lastError: workerState.lastError,
+            lastError: sanitizeWorkerDiagnostic(workerState.lastError),
             databaseHealthy: workerState.databaseHealthy,
             persistenceMode: workerState.persistenceMode,
             memory: process.memoryUsage(),

@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createWorkerHealthResponse } from './health.js';
+import {
+  createWorkerHealthResponse,
+  sanitizeWorkerDiagnostic,
+  WORKER_LOOP_DEGRADED_MESSAGE
+} from './health.js';
 
 const request = { headers: { 'x-correlation-id': 'corr-health-test' } } as never;
 
@@ -37,4 +41,11 @@ test('worker health does not expose raw loop errors to unauthenticated callers',
     false,
     'health payload must not contain raw operational error details'
   );
+});
+
+test('worker metrics diagnostics do not echo raw loop errors', () => {
+  const rawError = 'postgres://secret-user:secret-password@db.internal/clinical';
+  assert.equal(sanitizeWorkerDiagnostic(null), null);
+  assert.equal(sanitizeWorkerDiagnostic(rawError), WORKER_LOOP_DEGRADED_MESSAGE);
+  assert.equal(sanitizeWorkerDiagnostic(rawError)?.includes(rawError), false);
 });

@@ -20,6 +20,18 @@ export interface WorkerHealthDeps {
   readonly webhookDeliveryExecutorReady: boolean;
 }
 
+/**
+ * Public health/metrics surfaces must never echo the raw loop error. Runtime
+ * failures can contain DSNs, provider payloads or other operational secrets;
+ * the correlation id is the safe hand-off to the worker logs.
+ */
+export const WORKER_LOOP_DEGRADED_MESSAGE =
+  'Worker loop degraded; inspect worker logs using the response correlationId';
+
+export function sanitizeWorkerDiagnostic(lastError: string | null): string | null {
+  return lastError === null ? null : WORKER_LOOP_DEGRADED_MESSAGE;
+}
+
 function resolveCorrelationId(request: IncomingMessage): string {
   const correlationId = request.headers['x-correlation-id'];
   return typeof correlationId === 'string' ? correlationId : createCorrelationId('worker');
@@ -108,7 +120,7 @@ export function createWorkerHealthResponse(
               ? `Worker is not ready: missing event bus consumers: ${missingConsumers.join(', ') || 'manifest empty'}`
               : loopHealthy
                 ? `Loop healthy; ticks=${deps.ticksCompleted}; lastTickAt=${deps.lastTickAt ?? 'never'}`
-                : 'Worker loop degraded; inspect worker logs using the response correlationId'
+                : WORKER_LOOP_DEGRADED_MESSAGE
       }
     },
     eventBus: {
