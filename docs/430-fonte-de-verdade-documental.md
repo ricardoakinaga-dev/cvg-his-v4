@@ -40,7 +40,7 @@ posterior os substitui. Nenhuma prova bounded altera sozinha os estados globais
 
 A régua congelada é [QUALITY_BAR_V1.json](triple-a/QUALITY_BAR_V1.json): total ≥97, dimensões críticas ≥95 e zero P0 abertos, além dos gates obrigatórios. Os documentos executivos orientam o programa; o estado operacional continua em `.agent` e deve ser reconciliado em `NR-003` antes da ingestão da nova fila.
 
-A auditoria corrente de 21/09 registra o runtime `cc063413`, nota conservadora
+A auditoria corrente de 21/09 registra o runtime `74b8669f`, nota conservadora
 72/100 e mantém o release bloqueado. Supply-chain, dependências, segredos,
 backup/restore documental, métricas, upload, worker-health sanitizado, workspace,
 imagens production-shaped e Helm passam localmente; CI/release, target, restore

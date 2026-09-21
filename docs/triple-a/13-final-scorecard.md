@@ -4,12 +4,12 @@
 
 | Campo | Estado |
 | --- | --- |
-| CURRENT SNAPSHOT | `2586f7515ab93c6a9267547420ecd580cfb03136` |
+| CURRENT SNAPSHOT | `74b8669f2c387ece87181e469a60566e7249fb7e` |
 | CURRENT VERDICT | LOCAL_COMPLETE / EXTERNAL_BLOCKED; Triplo AAA BLOCKED / NOT PROVEN |
 | SCORE | 72/100 (entrada 53/100; delta +19) |
 | P0 | 11 abertos; nenhum aceite externo presumido |
 
-Gates locais: supply-chain 17/17, dependências, segredos, segurança,
+Gates locais: catálogo do worker limitado a 1.000 contas por processo; supply-chain 17/17, dependências, segredos, segurança,
 backup/restore documental, upload/observabilidade, Helm 3.15.4, qualidade,
 PostgreSQL crítico 623/623, 11/11 processos, SPA E2E 424/424 e imagens
 production-shaped passam no candidato. CI/release externo, registry/attestation,

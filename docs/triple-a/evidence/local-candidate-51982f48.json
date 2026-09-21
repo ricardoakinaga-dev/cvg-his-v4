@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
-  "candidate_sha": "2586f7515ab93c6a9267547420ecd580cfb03136",
-  "observed_at": "2026-09-21T05:55:00Z",
+  "candidate_sha": "74b8669f2c387ece87181e469a60566e7249fb7e",
+  "observed_at": "2026-09-21T12:01:18Z",
   "environment": "local disposable PostgreSQL/Redis/Docker fixtures; synthetic credentials only; no push, deploy or real credentials",
   "status": "PASS_LOCAL",
   "candidate_delta": {
-    "runtime_source_sha": "cc063413c7ce57ec4018538fae3c4ea68c997221",
-    "parent_runtime_sha": "80b0e39f741ac132a3c9a2d95766b6b9ec62c457",
-    "current_sha_change": "worker health and authenticated metrics diagnostics now return a generic correlation-safe detail instead of exposing raw lastError; the release validator also supplies the mandatory METRICS_AUTH_TOKEN",
-    "runtime_parent_results": "Critical PostgreSQL/process and full SPA E2E were executed on the parent runtime SHA and are retained with that limitation; the current candidate reran the worker health/metrics contract, full worker suite, workspace quality gates and the production-shaped release-image gate."
+    "runtime_source_sha": "74b8669f2c387ece87181e469a60566e7249fb7e",
+    "parent_runtime_sha": "cc063413c7ce57ec4018538fae3c4ea68c997221",
+    "current_sha_change": "worker health and authenticated metrics diagnostics now return a generic correlation-safe detail instead of exposing raw lastError; the release validator also supplies the mandatory METRICS_AUTH_TOKEN; worker account discovery now rejects catalogs above 1,000 accounts and the development DB query fetches at most 1,001 rows before failing closed",
+    "runtime_parent_results": "Critical PostgreSQL/process and full SPA E2E were executed on the parent runtime SHA and are retained with that limitation; the current candidate reran the worker health/metrics contract, full worker suite (165/165), workspace quality gates and the production-shaped release-image gate; account discovery now has an explicit 1,000-account ceiling with an oversized-catalog regression test."
   },
   "gates": {
     "critical_postgres_process": {
@@ -26,22 +26,22 @@
     "release_images": {
       "result": "PASS",
       "command": "RELEASE_IMAGE_MODE=build RELEASE_IMAGE_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_release_image_test HELM_BIN=<pinned Helm 3.15.4> bash scripts/validate-release-images.sh",
-      "log": "/tmp/cvg-release-images-sanitize-cc063413.log",
-      "log_sha256": "1b81a928e51df3ee6be4a301b26c9b0b39915cb1643f5c706fb40726804d69f6",
+      "log": "/tmp/cvg-release-images-74b8669f.log",
+      "log_sha256": "38bcef45f0cceeb7cb38251f28911fc6ec65b9655e9f5b6c6699b22ff308ce89",
       "images": {
         "api": {
-          "tag": "cvg-his-v2-api:release-validation-local-1433653",
-          "digest": "sha256:7ec4b85bafa5031b59a5c06627e639602cd9d79e16a97115dd6668113b3a2e53",
+          "tag": "cvg-his-v2-api:release-validation-local-2518916",
+          "digest": "sha256:ed0b51ec7d733e9c7f8cb27954f1dc2f38d8df52554a4d44165cfe93db038ac2",
           "user": "node"
         },
         "worker": {
-          "tag": "cvg-his-v2-worker:release-validation-local-1433653",
-          "digest": "sha256:45af39338275e72441d27a12f2081ecacb52839c6ccc5d1ce6d9f0deb8b0e321",
+          "tag": "cvg-his-v2-worker:release-validation-local-2518916",
+          "digest": "sha256:be894360fb7c0b905b525af813faf0e6a8f94768507a47118f8d7162e2bc538f",
           "user": "node"
         },
         "spa": {
-          "tag": "cvg-his-v2-spa:release-validation-local-1433653",
-          "digest": "sha256:dadfbfc4b9b640f3abd35eb995cce9336ab42d27316fad6a45ceced4c367ae4f",
+          "tag": "cvg-his-v2-spa:release-validation-local-2518916",
+          "digest": "sha256:3d41afe1fc2b56a2fa27a83a218f1784283c5d06c88401fa55fd593fd30ab731",
           "user": "nginx"
         }
       },
@@ -67,20 +67,22 @@
     {
       "command": "pnpm lint && pnpm typecheck && pnpm build && pnpm test",
       "result": "PASS",
-      "detail": "workspace lint, typecheck and build green after cc063413; full suite and API targeted post-SLO fix remain green from the preceding local packet",
-      "log": "/tmp/cvg-workspace-sanitize-cc063413.log",
-      "log_sha256": "96d84b7f13805cf09dc1a69f84247f2c3917e299722c0ef859535fff569cc96d"
+      "detail": "workspace lint, typecheck and build passed on the current candidate; the account-catalog change is covered by the current full worker suite",
+      "log": "/tmp/cvg-workspace-74b8669f-full.log",
+      "log_sha256": "4d5d4e872e038a4ed07f47e25d55b6dc7ff8d66ba485bb2a69021f037cbb1baa"
     },
     {
       "command": "pnpm --filter @cvg-his-v2/worker test",
       "result": "PASS",
-      "detail": "worker suite green including the authenticated metrics diagnostic sanitization contract"
+      "detail": "worker suite green (165/165), including authenticated metrics diagnostic sanitization and oversized account-catalog rejection contracts",
+      "log": "/tmp/cvg-worker-74b8669f.log",
+      "log_sha256": "da05d922bd7cf18252a7c29dee0646d0ea96bc867cadf6324cbbc14ed42efa2c"
     }
   ],
   "limitations": [
     "Exact-candidate remote CI, branch protection, OCI registry publication and attestation remain NOT_PROVEN.",
     "Approved target, runtime RLS probe, restore/rollback, soak/SLO, UAT and release authority remain external blockers.",
     "Trivy is not installed locally; image scan is NOT_RUN.",
-    "The critical/process and full E2E runtime executions were recorded on the unchanged runtime parent 80b0e39f; the candidate-only runtime changes (worker health/metrics diagnostic sanitization and release-validator fixture token injection) were covered by focused/full worker tests, workspace gates and the release-image gate rerun on cc063413."
+    "The critical/process and full E2E runtime executions were recorded on the unchanged runtime parent 80b0e39f; the candidate-only runtime changes (worker health/metrics diagnostic sanitization, release-validator fixture token injection and bounded worker account discovery) were covered by focused/full worker tests, workspace gates and the release-image gate rerun on the candidate source."
   ]
 }
