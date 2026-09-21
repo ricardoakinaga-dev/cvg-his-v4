@@ -25,7 +25,7 @@
     },
     "release_images": {
       "result": "PASS",
-      "command": "RELEASE_IMAGE_MODE=build RELEASE_IMAGE_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_release_image_test HELM_BIN=<pinned Helm 3.15.4> bash scripts/validate-release-images.sh",
+      "command": "RELEASE_IMAGE_MODE=build RELEASE_IMAGE_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_release_image_test HELM_BIN=/tmp/cvg-helm-3.15.4.gkiYKT/linux-amd64/helm bash scripts/validate-release-images.sh",
       "log": "/tmp/cvg-release-images-74b8669f.log",
       "log_sha256": "38bcef45f0cceeb7cb38251f28911fc6ec65b9655e9f5b6c6699b22ff308ce89",
       "images": {
@@ -65,7 +65,7 @@
       "detail": "dev, staging and prod renders with pinned Helm 3.15.4"
     },
     {
-      "command": "pnpm lint && pnpm typecheck && pnpm build && pnpm test",
+      "command": "pnpm lint && pnpm typecheck && pnpm build",
       "result": "PASS",
       "detail": "workspace lint, typecheck and build passed on the current candidate; the account-catalog change is covered by the current full worker suite",
       "log": "/tmp/cvg-workspace-74b8669f-full.log",
