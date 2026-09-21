@@ -18,7 +18,7 @@
   "active_execplan": ".agent/plans/p0-closure-20260918.md",
   "active_task": "P0-CLOSURE",
   "verification_state": "BLOCKED",
-  "repository_state": "Current worktree contains NR-001/NR-002 Vault Helm SecretRef wiring, NR-003 append-only controller reconciliation, NR-004 dirty-worktree identity guard, NR-009 parser boundary guards, NR-013 release mutation contract with OCI-preparation ordering and NR-023 SPA same-origin proxy contract. Helm 13/13, workflow contract 19/19, supply-chain parser 17/17, startup secrets 9/9, secrets 16/16, typecheck/lint, final4 OCI/Trivy (0 HIGH/CRITICAL), final4 AppRole 403 and final5 prebuilt Vault-backed /ready checks pass locally; final4 source, archive roots/configs and Compose E2E alias are recorded as historical local evidence. Source/control bytes remain uncommitted and candidate identity/snapshots intentionally fail closed; exact candidate CI/chained release, target/credentials/UAT/authority and complete Gauntlet acceptance remain open.",
+  "repository_state": "Source candidate 51982f4848a72f36b9645f5aab32cc84a531b423 contains the worker metrics-token fixture correction; current documentation and P0 controls reconcile to its local evidence packet. Critical PostgreSQL migrations 0000–0177 (623 tests), 11/11 serial process tests, full SPA E2E 424/424 with zero skips, production-shaped API/worker/SPA image validation, supply-chain mutation 17/17, Helm 3.15.4 and docs/state validators pass locally. The full critical/process and SPA E2E runtime executions are retained from parent runtime 80b0e39f; the candidate-only delta is the release-validator fixture environment injection. Exact candidate CI/release/OCI/Trivy/attestation, approved target/RLS/restore/soak/UAT, named authority and final Gauntlet acceptance remain open; no push/deploy/real credentials were used.",
   "instruction_scope_refs": [
     ".agent/plans/repository-state-of-art-remediation-execplan.md",
     "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
@@ -32,19 +32,18 @@
     "docs/2026-09-13-reauditoria-checkpoint-prod-001-005.md",
     "docs/2026-09-13-backlog-prontidao-producao.md"
   ],
-  "last_gate_record": ".agent/gates/nr013-local-blocked-20260920.json",
-  "last_event_id": "EVT-NR013-CURRENT-PACKET-GATE-BLOCKED-20260920",
-  "state_revision": 152,
+  "last_gate_record": ".agent/gates/p0-closure-local-blocked-20260921.json",
+  "last_event_id": "EVT-P0-CLOSURE-LOCAL-GATE-BLOCKED-20260921",
+  "state_revision": 154,
   "next_gate": "AUDIT_RESOLVED",
   "active_action_id": "P0-CLOSURE:VERIFY-CANDIDATE",
   "blocked_by": [
-    "Exact candidate CI17/17, chained release artifacts/attestations and source SHA freeze remain pending; final4 OCI/Trivy and final5 prebuilt Vault evidence are local uncommitted worktree evidence only.",
-    "Approved disposable target, operational budgets and credentials configuration have not been supplied.",
+    "Exact candidate CI17/17, branch governance, chained release artifacts, OCI publication, Trivy scan and attestations remain unavailable.",
+    "Approved disposable target, runtime RLS probe, restore/rollback drill, performance/soak budget and credentials configuration have not been supplied.",
     "Named hospital UAT participants and Product/Clinical/Security/Operations release decisions remain outstanding.",
-    "Only repository owner is a collaborator; independent reviewer requested before requiring an approval.",
-    "Other historical program dependencies remain tracked in backlog; local repairs do not close external acceptance.",
-    "A local Gauntlet rebaseline and current critics now exist, but external attestation and candidate-bound acceptance are still required before claiming a complete Gauntlet or release pass.",
-    "Candidate identity and Triple-A snapshots intentionally remain stale until an authorized clean freeze; pnpm docs:validate remains blocked by stale snapshot ec092d77."
+    "Only repository owner is a collaborator; independent review is being refreshed locally, but no external release authority is present.",
+    "The local candidate packet is current and docs:validate/check_state are expected to pass; local proof cannot close external or human-controlled P0 criteria.",
+    "Candidate identity must be regenerated on the final clean control freeze; Triple-A certification remains BLOCKED / NOT PROVEN."
   ],
   "human_approval_required": [
     "production deployment or rollback",
@@ -61,5 +60,5 @@
     "PROD-027 behavioral parity taxonomy, 45-module classification, fixtures and acceptance — Product/QA/domain authority",
     "PROD-062 family verifier trust root, targets, limits, issuer policy and acceptance — Platform/Security/QA authority"
   ],
-  "updated_at": "2026-09-20T20:27:03.000000+00:00"
+  "updated_at": "2026-09-21T03:20:09.000000+00:00"
 }

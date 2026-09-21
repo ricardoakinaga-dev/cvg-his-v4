@@ -1,0 +1,80 @@
+{
+  "record_id": "GATE-P0-CLOSURE-LOCAL-BLOCKED-20260921",
+  "timestamp": "2026-09-21T03:20:08.000000+00:00",
+  "gate_id": "AUDIT_RESOLVED",
+  "scope": "NR-003 controller migration and reconciliation for the active P0 closure audit; external acceptance remains unresolved.",
+  "scope_ref": "P0-CLOSURE",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "AR-001-BASELINE-GAPS",
+      "description": "The preserved controller baseline and current P0 closure packet explicitly record local controls and all remaining candidate/external gaps.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/triple-a/evidence/local-candidate-51982f48.json",
+        "docs/triple-a/17-current-execution-evidence.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Critical/process and full SPA E2E runtime executions are retained from parent runtime SHA 80b0e39f; candidate-only delta is the release-validator fixture token injection."
+    },
+    {
+      "id": "AR-002-RESOLUTION-EVIDENCE",
+      "description": "The current controller, backlog, ledgers and local candidate evidence reconcile; candidate-bound external acceptance remains unresolved.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/triple-a/P0_REGISTRY.json",
+        "docs/triple-a/13-final-scorecard.md",
+        ".agent/backlog.json",
+        ".agent/verification.jsonl#VER-P0-CLOSURE-CURRENT-LOCAL-20260921"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Documentation reconciliation does not prove hosted or human-controlled acceptance."
+    },
+    {
+      "id": "AR-003-ACCEPTANCE-OR-ROUTING",
+      "description": "Unresolved candidate and external acceptance is routed to active P0-CLOSURE without claiming completion or release readiness.",
+      "required": true,
+      "status": "BLOCKED",
+      "evidence_refs": [
+        "docs/triple-a/P0_REGISTRY.json",
+        "docs/triple-a/evidence/local-candidate-51982f48.json",
+        ".agent/state.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No GitHub Actions receipt, registry publication, Trivy installation/scan, approved target, destructive recovery authorization, named UAT or release authority is available in this local session."
+    }
+  ],
+  "evidence": [
+    "docs/triple-a/evidence/local-candidate-51982f48.json",
+    "docs/triple-a/P0_REGISTRY.json",
+    ".agent/verification.jsonl#VER-P0-CLOSURE-CURRENT-LOCAL-20260921",
+    ".agent/state.json"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Fresh-context Gauntlet review remains to be recorded against the finalized control packet.",
+    "Exact candidate CI17/17, chained release, OCI publication, Trivy scan and attestations are unavailable.",
+    "Approved target/RLS, restore/rollback, performance/soak, UAT and named release authority remain unavailable."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local verification executor",
+    "scope": "NR-003 controller migration and reconciliation for the active P0 closure audit; external acceptance remains unresolved.",
+    "decision": "Local proof is recorded and external/human acceptance remains blocked.",
+    "evidence_ref": ".agent/state.json",
+    "expires_or_revalidates": "Revalidate after fresh Gauntlet review and candidate-bound external/authority evidence."
+  },
+  "residual_risk": "CRITICAL",
+  "decision": "BLOCKED",
+  "next_action": "P0-CLOSURE:VERIFY-CANDIDATE",
+  "revalidation_triggers": [
+    "A fresh-context Gauntlet round completes on the current control packet.",
+    "Candidate-bound CI/release, approved target, credentials, UAT and release authority are supplied.",
+    "A new source, control-plane or evidence mutation changes the candidate."
+  ],
+  "supersedes": "GATE-NR013-LOCAL-BLOCKED-20260920"
+}
