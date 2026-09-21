@@ -70,6 +70,7 @@ import type { ReportRepository } from '@cvg-his-v2/module-reports';
 import { createLogger } from '@cvg-his-v2/shared-logging';
 import { isProductionLikeEnvironment } from '@cvg-his-v2/shared-config';
 import type { AdministrativeExecutiveReportSources } from './runner.js';
+import { MAX_WORKER_ACCOUNT_IDS } from './account-discovery.js';
 import {
   PixPaymentDispatchConfigurationError,
   PixPaymentDispatcher
@@ -300,11 +301,25 @@ async function loadPersistedAccountIds(productionLike: boolean): Promise<readonl
     .split(',')
     .map((accountId) => accountId.trim())
     .filter(Boolean);
-  if (configured.length > 0) return [...new Set(configured)];
+  const configuredAccountIds = [...new Set(configured)];
+  if (configuredAccountIds.length > MAX_WORKER_ACCOUNT_IDS) {
+    throw new Error(
+      `Worker account catalog exceeds ${MAX_WORKER_ACCOUNT_IDS} accounts; shard WORKER_ACCOUNT_IDS before starting this worker`
+    );
+  }
+  if (configuredAccountIds.length > 0) return configuredAccountIds;
   if (productionLike) {
     throw new Error('WORKER_ACCOUNT_IDS is required in production-like environments');
   }
-  const result = await getPool().query<{ id: string }>('SELECT id::text FROM accounts ORDER BY id');
+  const result = await getPool().query<{ id: string }>(
+    'SELECT id::text FROM accounts ORDER BY id LIMIT $1',
+    [MAX_WORKER_ACCOUNT_IDS + 1]
+  );
+  if (result.rows.length > MAX_WORKER_ACCOUNT_IDS) {
+    throw new Error(
+      `Worker account catalog exceeds ${MAX_WORKER_ACCOUNT_IDS} accounts; shard the worker account scope before starting this worker`
+    );
+  }
   return result.rows.map((account) => account.id);
 }
 

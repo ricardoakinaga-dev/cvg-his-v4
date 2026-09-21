@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { refreshWorkerAccounts } from './account-discovery.js';
+import { MAX_WORKER_ACCOUNT_IDS, refreshWorkerAccounts } from './account-discovery.js';
 
 test('refreshWorkerAccounts discovers newly persisted accounts without duplicates', async () => {
   const result = await refreshWorkerAccounts({
@@ -78,6 +78,18 @@ test('refreshWorkerAccounts rejects an empty production account set at startup',
       environment: 'production'
     }),
     /at least one persisted account/
+  );
+});
+
+test('refreshWorkerAccounts rejects an oversized catalog instead of truncating tenants', async () => {
+  await assert.rejects(
+    refreshWorkerAccounts({
+      currentAccountIds: [],
+      loadAccountIds: async () =>
+        Array.from({ length: MAX_WORKER_ACCOUNT_IDS + 1 }, (_, index) => `account-${index}`),
+      environment: 'production'
+    }),
+    new RegExp(`Worker account catalog exceeds ${MAX_WORKER_ACCOUNT_IDS} accounts`)
   );
 });
 

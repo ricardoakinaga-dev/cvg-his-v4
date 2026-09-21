@@ -12,8 +12,24 @@ export interface WorkerAccountRefreshResult {
   readonly loadError?: string;
 }
 
+/**
+ * A worker process must be sharded before it owns more than this many
+ * accounts.  Concurrency bounds active work, but without a catalog bound the
+ * refresh, hydration and per-tick bookkeeping can still grow without limit.
+ */
+export const MAX_WORKER_ACCOUNT_IDS = 1_000;
+
 function normalizeAccountIds(accountIds: readonly string[]): readonly string[] {
   return [...new Set(accountIds.map((accountId) => accountId.trim()).filter(Boolean))].sort();
+}
+
+function assertWorkerAccountCatalogBound(accountIds: readonly string[]): readonly string[] {
+  if (accountIds.length > MAX_WORKER_ACCOUNT_IDS) {
+    throw new Error(
+      `Worker account catalog exceeds ${MAX_WORKER_ACCOUNT_IDS} accounts; shard WORKER_ACCOUNT_IDS before starting this worker`
+    );
+  }
+  return accountIds;
 }
 
 export async function refreshWorkerAccounts(
@@ -39,10 +55,11 @@ export async function refreshWorkerAccounts(
     }
   }
 
-  const accountIds =
+  const accountIds = assertWorkerAccountCatalogBound(
     loadedAccountIds.length === 0 && ['development', 'test'].includes(options.environment)
       ? ['acc_cvg_demo']
-      : loadedAccountIds;
+      : loadedAccountIds
+  );
 
   if (accountIds.length === 0) {
     if (options.tolerateLoadFailure && currentAccountIds.length > 0) {
