@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "candidate_sha": "dba93eefbe52bcfef5b07e43a8702614cc8f9b65",
-  "observed_at": "2026-09-20T20:31:00-03:00",
+  "candidate_sha": "db07cd025b639a17a3666baa49f6c1252031d5b9",
+  "observed_at": "2026-09-20T21:08:45-03:00",
   "environment": "local disposable PostgreSQL/Redis/Docker fixtures; no real credentials",
   "status": "PASS_LOCAL",
   "oci_runtime_validation": {
@@ -41,6 +41,11 @@
       "command": "REQUIRE_HELM=1 HELM_BIN=/tmp/cvg-helm-3.15.4.gkiYKT/linux-amd64/helm pnpm validate:helm",
       "result": "PASS",
       "detail": "dev, staging and prod renders validated with Helm 3.15.4"
+    },
+    {
+      "command": "pnpm exec tsx --test apps/worker/src/worker-metrics.test.ts && pnpm --filter @cvg-his-v2/worker typecheck && pnpm validate:observability",
+      "result": "PASS",
+      "detail": "worker collector token positive/negative checks 4/4; worker dependency build/typecheck; API and worker scrape contracts connected"
     },
     {
       "command": "pnpm lint && pnpm typecheck && pnpm build && pnpm test",

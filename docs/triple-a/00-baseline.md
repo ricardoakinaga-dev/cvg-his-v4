@@ -2,7 +2,7 @@
 
 ## Baseline local do candidato — 2026-09-20
 
-Baseline autoritativo atual: `dba93eefbe52bcfef5b07e43a8702614cc8f9b65`.
+Baseline autoritativo atual: `db07cd025b639a17a3666baa49f6c1252031d5b9`.
 
 Os gates locais do candidato passam, incluindo supply-chain 17/17,
 dependências/segredos, Helm 3.15.4, qualidade, banco crítico e processos

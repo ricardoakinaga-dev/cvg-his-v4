@@ -8,7 +8,7 @@ review_cycle: on-task-completion-or-blocker-change
 
 # Backlog executável — nova rodada de melhorias
 
-[Auditoria](2026-09-20-auditoria-scorecard-dba93eef.md) ·
+[Auditoria](2026-09-20-auditoria-scorecard-db07cd02.md) ·
 [Plano](2026-09-20-plano-executivo-nova-rodada-melhorias.md) ·
 [Roadmap](2026-09-20-roadmap-nova-rodada-melhorias.md)
 
@@ -37,7 +37,7 @@ material; não promove prova local a aceite externo.
 
 | ID | Item | Estado | Dependências | Aceite observável |
 | --- | --- | --- | --- | --- |
-| AUD21-01 | Reconciliar identity, registro P0 e snapshots em um único SHA | PASS-LOCAL | AUD21-02–04, AUD21-09–10 | identity/P0/snapshots vinculados ao SHA `dba93eef`; estados `NOT_PROVEN` preservados |
+| AUD21-01 | Reconciliar identity, registro P0 e snapshots em um único SHA | PASS-LOCAL | AUD21-02–04, AUD21-09–10 | identity/P0/snapshots vinculados ao SHA `db07cd02`; estados `NOT_PROVEN` preservados |
 | AUD21-02 | Tornar a mutação 65 hermética à árvore real | PASS-LOCAL | — | fixture impossível; known-bad falha pelo finding esperado; supply-chain 17/17 |
 | AUD21-03 | Alinhar pnpm e restaurar o gate de segredos | PASS-LOCAL | — | política e `packageManager` idênticos; secretlint e security enterprise verdes |
 | AUD21-04 | Reconciliar contrato documental de backup/restore | DOC-FIXED-TARGET-BLOCKED | — | checker 4/4; roadmap/backlog atuais mutáveis pelo teste; drill/RPO/RTO seguem externos |
@@ -52,7 +52,7 @@ freeze. Não renumeram os 65 cartões `PROD`.
 | NR-001 | Modelar Vault no chart com `existingSecret` e keys para URL/role/secret/namespace/path | PASS-LOCAL | — | schema aceita configuração; Deployment usa `secretKeyRef`; nenhum segredo em ConfigMap; não é aceite externo |
 | NR-002 | Cobrir prod render/runtime de Vault | PASS-LOCAL / TARGET-BLOCKED | NR-001 | fixture Vault e Helm 3.15.4 dev/staging/prod passam; target permanece ausente |
 | NR-003 | Migrar/reconciliar `.agent` para o contrato atual | PASS-LOCAL | — | correções append-only; `check_state.py` 11/11; aceitação externa permanece bloqueada |
-| NR-004 | Recriar identidade e snapshots do candidato sem promover prova stale | PASS-LOCAL | AUD21-01–04, AUD21-09–10, NR-001–003, NR-006 | guardas recusam worktree sujo; identity/registry/snapshots convergem no SHA `dba93eef` |
+| NR-004 | Recriar identidade e snapshots do candidato sem promover prova stale | PASS-LOCAL | AUD21-01–04, AUD21-09–10, NR-001–003, NR-006 | guardas recusam worktree sujo; identity/registry/snapshots convergem no SHA `db07cd02` |
 | NR-005 | Finalizar ou arquivar corretamente a rodada Gauntlet `p0-closure-images-final-20260920` | BLOCKED-EXTERNAL | NR-003, NR-004, NR-008 | rodada local registrada; CI/target/UAT/autoridade impedem `STOP`/aceite |
 | NR-006 | Congelar novo SHA e executar regressão local integrada | PASS-LOCAL | AUD21-02–04, AUD21-09–10, NR-001–003 | gates locais passam no SHA limpo; Helm obrigatório disponível |
 | NR-007 | Reconstruir API/worker/SPA e provar runtime production-shaped | PASS-LOCAL | NR-004, NR-006 | três OCI locais distintas, non-root/read-only, Vault e dependências descartáveis, proxy e readiness passam; sem publicação |
@@ -102,7 +102,7 @@ Contrato de recuperação mantido para o validador operacional:
 - `NR-001/002`: Helm oficial 3.15.4, Vault production-shaped e runtime
   negativo/positivo passam localmente; admissão/target continuam externos.
 - `NR-006/009/023`: typecheck/lint, semântica same-origin e supply-chain 17/17
-  passaram no candidato `dba93eef`.
+  passaram no candidato `db07cd02`.
 - `NR-007/008`: pacote [OCI/Trivy final4](../.agent/evidence/nr007-nr008-release-oci-trivy-20260920-final4.json)
   registra raízes/configs imutáveis, Trivy 0 HIGH/CRITICAL, AppRole inválido
   403 e digest cruzado rejeitado.

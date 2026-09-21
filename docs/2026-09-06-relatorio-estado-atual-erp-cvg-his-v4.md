@@ -4,7 +4,7 @@ document_kind: baseline
 effective_date: 2026-09-07
 owner: PMO, Engenharia, Produto e QA CVG-HIS
 review_cycle: weekly
-superseded_by: docs/2026-09-20-auditoria-scorecard-dba93eef.md
+superseded_by: docs/2026-09-20-auditoria-scorecard-db07cd02.md
 ---
 
 # Relatório de estado atual — ERP CVG-HIS V4
