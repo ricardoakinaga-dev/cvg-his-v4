@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "registry_id": "CVG-HIS-P0-REGISTRY-V1",
-  "generated_at": "2026-09-20T20:31:00-03:00",
+  "generated_at": "2026-09-20T21:09:03-03:00",
   "generated_by": "lead-verification",
   "candidate": {
     "candidate_id": "CVG-HIS-V4-db07cd025b63",
@@ -53,7 +53,7 @@
           "candidate_sha": "db07cd025b639a17a3666baa49f6c1252031d5b9",
           "source": "Current candidate identity, current snapshot documents and clean source freeze",
           "artifact": "docs/triple-a/CURRENT_CANDIDATE_IDENTITY.json",
-          "observed_at": "2026-09-20T20:31:00-03:00"
+          "observed_at": "2026-09-20T21:09:03-03:00"
         }
       ],
       "human_required": false,
@@ -175,7 +175,7 @@
           "candidate_sha": "db07cd025b639a17a3666baa49f6c1252031d5b9",
           "source": "Local disposable PostgreSQL/runtime/process evidence executed on the frozen candidate",
           "artifact": "docs/triple-a/evidence/local-candidate-db07cd02.json",
-          "observed_at": "2026-09-20T20:31:00-03:00"
+          "observed_at": "2026-09-20T21:08:45-03:00"
         }
       ],
       "human_required": false,
@@ -286,7 +286,7 @@
           "candidate_sha": "db07cd025b639a17a3666baa49f6c1252031d5b9",
           "source": "Local disposable PostgreSQL/runtime/process evidence executed on the frozen candidate",
           "artifact": "docs/triple-a/evidence/local-candidate-db07cd02.json",
-          "observed_at": "2026-09-20T20:31:00-03:00"
+          "observed_at": "2026-09-20T21:08:45-03:00"
         }
       ],
       "human_required": false,
@@ -401,7 +401,7 @@
           "candidate_sha": "db07cd025b639a17a3666baa49f6c1252031d5b9",
           "source": "Local disposable PostgreSQL/runtime/process evidence executed on the frozen candidate",
           "artifact": "docs/triple-a/evidence/local-candidate-db07cd02.json",
-          "observed_at": "2026-09-20T20:31:00-03:00"
+          "observed_at": "2026-09-20T21:08:45-03:00"
         }
       ],
       "human_required": false,
@@ -468,7 +468,7 @@
           "candidate_sha": "db07cd025b639a17a3666baa49f6c1252031d5b9",
           "source": "Local disposable PostgreSQL/runtime/process evidence executed on the frozen candidate",
           "artifact": "docs/triple-a/evidence/local-candidate-db07cd02.json",
-          "observed_at": "2026-09-20T20:31:00-03:00"
+          "observed_at": "2026-09-20T21:08:45-03:00"
         }
       ],
       "human_required": false,
