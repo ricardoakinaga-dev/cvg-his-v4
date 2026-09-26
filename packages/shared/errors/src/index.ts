@@ -81,3 +81,16 @@ export function toErrorResponse(error: unknown, correlationId: string) {
     },
   };
 }
+
+export {
+  ERROR_CATALOG,
+  VALIDATION_REASONS,
+  VALIDATION_REASON_PT_BR,
+  isKnownErrorCode,
+  resolveUserMessage,
+  type ErrorCode,
+  type ErrorCodeCategory,
+  type ErrorCodeEntry,
+  type ValidationErrorDetails,
+  type ValidationReason
+} from './catalog.js';

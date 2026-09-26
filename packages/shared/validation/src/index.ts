@@ -1,5 +1,11 @@
 import { ValidationError } from "@cvg-his-v2/shared-errors";
 
+/**
+ * R2-UX-01: every validation failure carries `details.field` and a
+ * `details.reason` from the shared error catalog so the SPA can render a
+ * Portuguese message per field without parsing the English `message`.
+ */
+
 export function readStringEnv(
   value: string | undefined,
   key: string,
@@ -36,7 +42,10 @@ export function requireNonEmptyString(
   field: string,
 ): string {
   if (typeof value !== "string" || value.trim().length === 0) {
-    throw new ValidationError(`Field ${field} must be a non-empty string`);
+    throw new ValidationError(`Field ${field} must be a non-empty string`, {
+      field,
+      reason: "required",
+    });
   }
 
   return value.trim();
@@ -52,7 +61,11 @@ export function requireOptionalString(value: unknown): string | undefined {
 
 export function requireBoolean(value: unknown, field: string): boolean {
   if (typeof value !== "boolean") {
-    throw new ValidationError(`Field ${field} must be a boolean`);
+    throw new ValidationError(`Field ${field} must be a boolean`, {
+      field,
+      reason: "invalid_type",
+      expected: "boolean",
+    });
   }
 
   return value;
@@ -71,7 +84,11 @@ export function requireStringArray(
   field: string,
 ): readonly string[] {
   if (!Array.isArray(value)) {
-    throw new ValidationError(`Field ${field} must be an array`);
+    throw new ValidationError(`Field ${field} must be an array`, {
+      field,
+      reason: "invalid_type",
+      expected: "array",
+    });
   }
 
   return value.map((item, index) => requireNonEmptyString(item, `${field}[${index}]`));
@@ -82,7 +99,11 @@ export function requirePositiveNumber(
   field: string,
 ): number {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
-    throw new ValidationError(`Field ${field} must be a positive number`);
+    throw new ValidationError(`Field ${field} must be a positive number`, {
+      field,
+      reason: "out_of_range",
+      expected: "positive number",
+    });
   }
 
   return value;
@@ -104,7 +125,10 @@ export function requireEnum<T extends string>(
   const resolved = requireNonEmptyString(value, field) as T;
   if (!allowed.includes(resolved)) {
     throw new ValidationError(`Field ${field} must be one of: ${allowed.join(", ")}`, {
+      field,
+      reason: "invalid_enum",
       value,
+      allowed,
     });
   }
 

@@ -18,20 +18,25 @@ const PATIENT_SIZES = ['small', 'medium', 'large'] as const;
 const CONTACT_TYPES = ['phone', 'email', 'whatsapp'] as const;
 const RELATIONSHIP_TYPES = ['primary', 'secondary', 'financial', 'authorized', 'spouse'] as const;
 
-function fail(field: string, message: string, correlationId: string): never {
-  throw new ValidationError(message, { correlationId, field });
+function fail(
+  field: string,
+  message: string,
+  correlationId: string,
+  reason: 'required' | 'invalid_type' | 'invalid_enum' | 'invalid_format' | 'out_of_range' | 'too_long' = 'invalid_format'
+): never {
+  throw new ValidationError(message, { correlationId, field, reason });
 }
 
 function object(value: unknown, field: string, correlationId: string): JsonObject {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return fail(field, `${field} must be an object`, correlationId);
+    return fail(field, `${field} must be an object`, correlationId, 'invalid_type');
   }
   return value as JsonObject;
 }
 
 function requiredString(value: unknown, field: string, correlationId: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    return fail(field, `${field} must be a non-empty string`, correlationId);
+    return fail(field, `${field} must be a non-empty string`, correlationId, 'required');
   }
   return value.trim();
 }
@@ -43,20 +48,20 @@ function optionalString(value: unknown, field: string, correlationId: string): s
 
 function optionalBoolean(value: unknown, field: string, correlationId: string): boolean | undefined {
   if (value === undefined) return undefined;
-  if (typeof value !== 'boolean') return fail(field, `${field} must be a boolean`, correlationId);
+  if (typeof value !== 'boolean') return fail(field, `${field} must be a boolean`, correlationId, 'invalid_type');
   return value;
 }
 
 function requiredBoolean(value: unknown, field: string, correlationId: string): boolean {
   const result = optionalBoolean(value, field, correlationId);
-  if (result === undefined) return fail(field, `${field} is required`, correlationId);
+  if (result === undefined) return fail(field, `${field} is required`, correlationId, 'required');
   return result;
 }
 
 function optionalFiniteNumber(value: unknown, field: string, correlationId: string): number | undefined {
   if (value === undefined) return undefined;
   if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return fail(field, `${field} must be a finite number`, correlationId);
+    return fail(field, `${field} must be a finite number`, correlationId, 'invalid_type');
   }
   return value;
 }
@@ -70,7 +75,7 @@ function optionalEnum<T extends string>(
   if (value === undefined) return undefined;
   const resolved = requiredString(value, field, correlationId) as T;
   if (!allowed.includes(resolved)) {
-    return fail(field, `${field} must be one of: ${allowed.join(', ')}`, correlationId);
+    return fail(field, `${field} must be one of: ${allowed.join(', ')}`, correlationId, 'invalid_enum');
   }
   return resolved;
 }
@@ -82,7 +87,7 @@ function requiredEnum<T extends string>(
   correlationId: string
 ): T {
   const resolved = optionalEnum(value, field, allowed, correlationId);
-  if (resolved === undefined) return fail(field, `${field} is required`, correlationId);
+  if (resolved === undefined) return fail(field, `${field} is required`, correlationId, 'required');
   return resolved;
 }
 
@@ -93,7 +98,7 @@ function optionalObject(value: unknown, field: string, correlationId: string): J
 
 function requirePatchField(body: JsonObject, fields: readonly string[], correlationId: string): void {
   if (!fields.some((field) => body[field] !== undefined)) {
-    fail('body', 'At least one supported field is required', correlationId);
+    fail('body', 'At least one supported field is required', correlationId, 'required');
   }
 }
 
@@ -111,7 +116,7 @@ function parseContact(value: unknown, index: number, correlationId: string) {
 
 function parseContacts(value: unknown, correlationId: string) {
   if (!Array.isArray(value) || value.length === 0) {
-    fail('contacts', 'contacts must contain at least one item', correlationId);
+    fail('contacts', 'contacts must contain at least one item', correlationId, 'required');
   }
   return value.map((contact, index) => parseContact(contact, index, correlationId));
 }
@@ -255,7 +260,7 @@ export function parseCreateOwnerRequest(value: unknown, correlationId: string): 
   const body = object(value, 'body', correlationId);
   const parsed = parseOwnerFields(body, correlationId);
   requiredString(parsed.fullName, 'fullName', correlationId);
-  if (!parsed.contacts) fail('contacts', 'contacts is required', correlationId);
+  if (!parsed.contacts) fail('contacts', 'contacts is required', correlationId, 'required');
   requiredBoolean(parsed.financialResponsible, 'financialResponsible', correlationId);
   return parsed as CreateOwnerRequest;
 }
@@ -297,7 +302,7 @@ export function parseCreatePatientRequest(value: unknown, correlationId: string)
   requiredString(parsed.name, 'name', correlationId);
   requiredString(parsed.species, 'species', correlationId);
   requiredString(parsed.primaryOwnerId, 'primaryOwnerId', correlationId);
-  if (!parsed.sex) fail('sex', 'sex is required', correlationId);
+  if (!parsed.sex) fail('sex', 'sex is required', correlationId, 'required');
   return parsed as CreatePatientRequest;
 }
 

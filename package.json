@@ -96,6 +96,8 @@
     "release:check": "flock -w 1800 /tmp/cvg-his-v2-release-check.lock -c 'pnpm deploy:check && pnpm build && pnpm test:coverage && pnpm test:e2e:spa:docker'",
     "bootstrap": "node infra/scripts/bootstrap-local.mjs",
     "ops:alerts:drill": "node infra/scripts/run-alertmanager-drill.mjs",
+    "docs:error-codes": "node scripts/generate-error-code-catalog-doc.mjs",
+    "docs:error-codes:check": "node scripts/generate-error-code-catalog-doc.mjs --check",
     "ops:backup:v2": "bash infra/scripts/backup-v2.sh",
     "ops:backup:check": "node --test infra/scripts/validate-backup-restore.test.mjs && node infra/scripts/validate-backup-restore.mjs",
     "ops:restore:fixture": "node infra/scripts/create-restore-drill-fixture.mjs",
