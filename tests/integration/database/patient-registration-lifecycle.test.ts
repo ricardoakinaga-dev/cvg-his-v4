@@ -262,7 +262,7 @@ describe('patient registration lifecycle on PostgreSQL', () => {
 
   it('persists transfer, authorized links, merge audit, inactivation guards, and tenant isolation', async () => {
     const transferred = await command(async () => {
-      const updated = patients.update(SOURCE_PATIENT_ID, { primaryOwnerId: OWNER_B_ID });
+      const updated = patients.update(ACCOUNT_ID, SOURCE_PATIENT_ID, { primaryOwnerId: OWNER_B_ID });
       await patients.waitForPersistence();
       return updated;
     });
@@ -359,7 +359,7 @@ describe('patient registration lifecycle on PostgreSQL', () => {
     });
 
     await command(async () => {
-      patients.update(INACTIVE_PATIENT_ID, { status: 'inactive' });
+      patients.update(ACCOUNT_ID, INACTIVE_PATIENT_ID, { status: 'inactive' });
       await patients.waitForPersistence();
     });
     await expect(
@@ -395,11 +395,11 @@ describe('patient registration lifecycle on PostgreSQL', () => {
     ]);
 
     await command(async () => {
-      owners.update(OWNER_C_ID, { status: 'inactive' });
+      owners.update(ACCOUNT_ID, OWNER_C_ID, { status: 'inactive' });
       await owners.waitForPersistence();
     });
     await expect(
-      command(() => patients.update(TARGET_PATIENT_ID, { primaryOwnerId: OWNER_C_ID }))
+      command(() => patients.update(ACCOUNT_ID, TARGET_PATIENT_ID, { primaryOwnerId: OWNER_C_ID }))
     ).rejects.toBeInstanceOf(ConflictError);
 
     const foreignCorrelationId = `foreign-registration-${randomUUID()}`;

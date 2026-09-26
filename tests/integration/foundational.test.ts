@@ -182,12 +182,12 @@ describe('ICT-006 — Owner + Patient → Scheduling Selection', () => {
     expect(patient.primaryOwnerId).toBe(owner.id);
 
     // Patient should be findable
-    const found = patients.getOrThrow(patient.id);
+    const found = patients.getOrThrow(patient.accountId, patient.id);
     expect(found.id).toBe(patient.id);
     expect(found.primaryOwnerId).toBe(owner.id);
 
     // Owner should be findable
-    const foundOwner = owners.getOrThrow(owner.id);
+    const foundOwner = owners.getOrThrow(owner.accountId, owner.id);
     expect(foundOwner.id).toBe(owner.id);
   });
 });
