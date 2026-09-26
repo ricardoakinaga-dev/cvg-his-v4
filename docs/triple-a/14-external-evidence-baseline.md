@@ -2,7 +2,9 @@
 
 ## Reconciliação externa do candidato — 2026-09-21
 
-**Current snapshot:** `d9a16cf45898f5beb73c185d1eb55884559f0806`.
+**Current snapshot:** `9bfaed786bb1ceae1c575efb6da597d7c1a76938`.
+
+> Nota: rebind de 26/09/2026 para o candidato da rodada 2; nenhuma evidência de execução foi refeita neste SHA (status BLOCKED / NOT PROVEN). As evidências registradas pertencem a `d9a16cf45898` — mapeamento em `evidence/sha-remap-20260926.json`.
 
 Não há evidência externa candidate-bound para este SHA. Os gates locais
 passam, incluindo PostgreSQL/processos 11/11, E2E SPA 424/424 e o gate de

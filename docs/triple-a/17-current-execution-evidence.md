@@ -2,7 +2,9 @@
 
 ## Evidência local do candidato — 2026-09-21
 
-SHA de código e documentação: `d9a16cf45898f5beb73c185d1eb55884559f0806` — campo canônico da identidade congelada; a fonte/runtime é `d9a16cf45898f5beb73c185d1eb55884559f0806`.
+SHA de código e documentação: `9bfaed786bb1ceae1c575efb6da597d7c1a76938` — campo canônico da identidade congelada; a fonte/runtime é `9bfaed786bb1ceae1c575efb6da597d7c1a76938`.
+
+> Nota: rebind de 26/09/2026 para o candidato da rodada 2; nenhuma evidência de execução foi refeita neste SHA (status BLOCKED / NOT PROVEN). As evidências registradas pertencem a `d9a16cf45898` — mapeamento em `evidence/sha-remap-20260926.json`.
 
 Comandos locais passam: supply-chain 17/17, policy de dependências, secret
 scan/security enterprise, Helm 3.15.4, lint, typecheck, build, suíte do worker

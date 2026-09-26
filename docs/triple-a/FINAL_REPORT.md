@@ -2,7 +2,9 @@
 
 ## Relatório local do candidato — 2026-09-21
 
-**Candidate funcional avaliado:** `d9a16cf45898f5beb73c185d1eb55884559f0806` (fonte/runtime `d9a16cf45898f5beb73c185d1eb55884559f0806`).
+**Candidate funcional avaliado:** `9bfaed786bb1ceae1c575efb6da597d7c1a76938` (fonte/runtime `9bfaed786bb1ceae1c575efb6da597d7c1a76938`).
+
+> Nota: rebind de 26/09/2026 para o candidato da rodada 2; nenhuma evidência de execução foi refeita neste SHA (status BLOCKED / NOT PROVEN). As evidências registradas pertencem a `d9a16cf45898` — mapeamento em `evidence/sha-remap-20260926.json`.
 
 Os gates locais passam: catálogo do worker limitado a 1.000 contas por processo, supply-chain 17/17, dependências, segredos,
 backup/restore documental, métricas/upload, sanitização do health do worker,
