@@ -2,7 +2,7 @@
 
 ## Evidência local do candidato — 2026-09-21
 
-SHA de código e documentação: `140e526bf4c8bbe817610974d6ec031792b2c8db` — campo canônico da identidade congelada; a fonte/runtime é `140e526bf4c8bbe817610974d6ec031792b2c8db`.
+SHA de código e documentação: `e26fe603741ff066402bd36e8be535d267b34bfc` — campo canônico da identidade congelada; a fonte/runtime é `e26fe603741ff066402bd36e8be535d267b34bfc`.
 
 > Nota: rebind de 26/09/2026 para o candidato da rodada 2; nenhuma evidência de execução foi refeita neste SHA (status BLOCKED / NOT PROVEN). As evidências registradas pertencem a `d9a16cf45898` — mapeamento em `evidence/sha-remap-20260926.json`.
 

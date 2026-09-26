@@ -2,7 +2,7 @@
 
 ## Baseline local do candidato — 2026-09-21
 
-Baseline autoritativo atual: `140e526bf4c8bbe817610974d6ec031792b2c8db` (identidade do candidato; runtime/source `140e526bf4c8bbe817610974d6ec031792b2c8db`).
+Baseline autoritativo atual: `e26fe603741ff066402bd36e8be535d267b34bfc` (identidade do candidato; runtime/source `e26fe603741ff066402bd36e8be535d267b34bfc`).
 
 > Nota: rebind de 26/09/2026 para o candidato da rodada 2; nenhuma evidência de execução foi refeita neste SHA (status BLOCKED / NOT PROVEN). As evidências registradas pertencem a `d9a16cf45898` — mapeamento em `evidence/sha-remap-20260926.json`.
 
