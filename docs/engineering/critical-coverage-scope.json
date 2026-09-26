@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "b85d510d0241554f0f1794bba70b8fd2ba915f7a",
+  "head": "3a213b1edfd9e5c8bf8c47e769e5b4190e0a4108",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -908,7 +908,7 @@
     },
     {
       "path": "apps/api/src/routes/patients-routes.ts",
-      "sha256": "9a78f4195de14b76aa3ce9832ba45506b29f6c95cf53abb8295c07bdfdbf6d5c",
+      "sha256": "fc8a1ad3fb010aa2326d92f6aa1355266867030bdecb8033677e49d8e2769bcc",
       "components": [
         "http-routes"
       ],
@@ -974,7 +974,7 @@
     },
     {
       "path": "apps/api/src/routes/prescription-routes.ts",
-      "sha256": "51f04d08b0a4032a22a02aea1339a729e921a6d607fdde880fe4ba5674feea0e",
+      "sha256": "9b093d456a6c2763426aeb70b004311dcc9fa3f01ea65c0b84e478926650e991",
       "components": [
         "prescriptions",
         "http-routes"
@@ -1516,7 +1516,7 @@
     },
     {
       "path": "apps/spa/src/services/prescriptions.ts",
-      "sha256": "6e88efdecbdb585c72653874301d85bb30e60390d5499ba3a5d33d88933b3f8e",
+      "sha256": "01bfa3a5ac1109764cffbdef2a5f5c98903423ba3ee4a149d9416b1fff26d738",
       "components": [
         "prescriptions"
       ],
@@ -5376,7 +5376,7 @@
     },
     {
       "path": "packages/modules/patients/src/repositories/database-patient.repository.ts",
-      "sha256": "fca8d3da6ed5fc84e2fda3b584260da49dae18739649d5c57bced97105f60025",
+      "sha256": "7ebc55814efbb1a018d8db175dc15ea8a838456d9f2bd8221fe05747621c295c",
       "components": [
         "repositories"
       ],
@@ -5532,7 +5532,7 @@
     },
     {
       "path": "packages/modules/prescriptions/src/index.ts",
-      "sha256": "7d02577045b3c7eb3e83fff71069cee92ae30f9e036013d2fbbb4ca8b4abb2cb",
+      "sha256": "8b8f28a46c34a1ba1a79d0204bb9d5949c7f1f1a00714ced40e5101319a71bbd",
       "components": [
         "prescriptions"
       ],
@@ -6261,7 +6261,8 @@
     "tests/integration/database/lgpd-owner-erasure-postgres.test.ts",
     "tests/integration/database/pix-pagarme-encounter-flow-postgres.test.ts",
     "tests/integration/database/multi-replica-cache-consistency.test.ts",
-    "tests/unit/modules/cache-sync-replicas.test.ts"
+    "tests/unit/modules/cache-sync-replicas.test.ts",
+    "tests/integration/database/patient-structured-allergies-postgres.test.ts"
   ],
   "executionInputs": [
     ".eslintrc.cjs",
@@ -8505,7 +8506,8 @@
     "tests/integration/database/lgpd-owner-erasure-postgres.test.ts",
     "tests/integration/database/pix-pagarme-encounter-flow-postgres.test.ts",
     "tests/integration/database/multi-replica-cache-consistency.test.ts",
-    "tests/unit/modules/cache-sync-replicas.test.ts"
+    "tests/unit/modules/cache-sync-replicas.test.ts",
+    "tests/integration/database/patient-structured-allergies-postgres.test.ts"
   ],
   "scopeHistory": [
     {
@@ -12429,6 +12431,56 @@
         "tests/unit/modules/cache-sync-replicas.test.ts"
       ],
       "vitestRemoved": []
+    },
+    {
+      "manifestRevision": 92,
+      "observedAt": "2026-09-26T16:49:24.704Z",
+      "collectionCommit": "3a213b1edfd9e5c8bf8c47e769e5b4190e0a4108",
+      "previousManifestSha256": "f39f3cb9ffee0be9f7a5c0feb47983e213f548a38451499487b41ddb0c46655d",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-f39f3cb9ffee0be9f7a5c0feb47983e213f548a38451499487b41ddb0c46655d.json",
+      "previousSourceSetSha256": "897b612cd0d2a6b35edd430634a6a829fee97a8375edf4585ee54317306bc73f",
+      "sourceSetSha256": "7c9ef5f92f9a8d0dd0e03653c0ed9ea6410a64e54098d6b1f70396fe579b7c72",
+      "reason": "R2-CLI-01 structured allergies, R2-UX-01 SPA catalog wiring, deterministic reminder tests",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/routes/patients-routes.ts",
+          "before": "9a78f4195de14b76aa3ce9832ba45506b29f6c95cf53abb8295c07bdfdbf6d5c",
+          "after": "fc8a1ad3fb010aa2326d92f6aa1355266867030bdecb8033677e49d8e2769bcc"
+        },
+        {
+          "path": "apps/api/src/routes/prescription-routes.ts",
+          "before": "51f04d08b0a4032a22a02aea1339a729e921a6d607fdde880fe4ba5674feea0e",
+          "after": "9b093d456a6c2763426aeb70b004311dcc9fa3f01ea65c0b84e478926650e991"
+        },
+        {
+          "path": "apps/spa/src/services/prescriptions.ts",
+          "before": "6e88efdecbdb585c72653874301d85bb30e60390d5499ba3a5d33d88933b3f8e",
+          "after": "01bfa3a5ac1109764cffbdef2a5f5c98903423ba3ee4a149d9416b1fff26d738"
+        },
+        {
+          "path": "packages/modules/patients/src/repositories/database-patient.repository.ts",
+          "before": "fca8d3da6ed5fc84e2fda3b584260da49dae18739649d5c57bced97105f60025",
+          "after": "7ebc55814efbb1a018d8db175dc15ea8a838456d9f2bd8221fe05747621c295c"
+        },
+        {
+          "path": "packages/modules/prescriptions/src/index.ts",
+          "before": "7d02577045b3c7eb3e83fff71069cee92ae30f9e036013d2fbbb4ca8b4abb2cb",
+          "after": "8b8f28a46c34a1ba1a79d0204bb9d5949c7f1f1a00714ced40e5101319a71bbd"
+        }
+      ],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "tests/integration/database/patient-structured-allergies-postgres.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "8bd3ae285c3784108fe068e70d32592c163869707224e65d13ca7b55d11d5ae5",
+      "executionInputsSha256": "ba2289fdde73a6b59074b2ba0c9de34f4a016a63bab692f3ccc405099cc634fd",
+      "vitestAdded": [
+        "tests/integration/database/patient-structured-allergies-postgres.test.ts"
+      ],
+      "vitestRemoved": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -13362,9 +13414,9 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 91,
-  "sourceSetSha256": "897b612cd0d2a6b35edd430634a6a829fee97a8375edf4585ee54317306bc73f",
-  "executionInputsSha256": "8bd3ae285c3784108fe068e70d32592c163869707224e65d13ca7b55d11d5ae5",
+  "manifestRevision": 92,
+  "sourceSetSha256": "7c9ef5f92f9a8d0dd0e03653c0ed9ea6410a64e54098d6b1f70396fe579b7c72",
+  "executionInputsSha256": "ba2289fdde73a6b59074b2ba0c9de34f4a016a63bab692f3ccc405099cc634fd",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,
