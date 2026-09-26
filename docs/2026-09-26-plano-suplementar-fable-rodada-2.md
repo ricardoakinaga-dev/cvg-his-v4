@@ -154,7 +154,7 @@ Linhas anexadas em ordem cronológica pela sessão Fable. Estados: `ABERTO`, `EM
 | Data | Item | Estado | Branch / SHA | Evidência |
 |---|---|---|---|---|
 | 2026-09-26 | Plano suplementar | MERGED (documento) | main | Este arquivo; `pnpm docs:validate` |
-| 2026-09-26 | A1 CI-DIAG | BLOQUEADO em U1 | — | Teste passa em Node 22.23.2 (6/6) e 24; log do runner exige login |
+| 2026-09-26 | A1 CI-DIAG | ENVIADO | `fable/r2-arc-02-03` | Causa reproduzida em clone limpo: `test:tracing` importa `@cvg-his-v2/shared-feature-flags` via `apps/api/src/feature-flags.ts` e o workflow State of Art Closure não construía o workspace (`ERR_MODULE_NOT_FOUND`). Correção: etapa `pnpm build` antes dos testes |
 | 2026-09-26 | F7 release images | BLOQUEADO em U1 | — | Reprodução local impossível: o script exige o Helm pinado (`Pinned Helm is required`), ausente neste host; no CI o Helm foi instalado com sucesso antes do step, logo a causa é outra e só o log mostra |
 | 2026-09-26 | Coordenação com Opus | ACORDADO | — | Opus aceitou a divisão; FIN-03 e UX-02 já entregues por ele (`19f61de4`, `d2c26a27`, sem push); rebind Triple-A fica com o Opus; LGPD-01, NOT-01 e PAY-01 passam ao Opus; Opus commita este documento e o `README.md` |
 | 2026-09-26 | A2 R2-ARC-01 | MERGED | `fable/r2-arc-01` | Helm falha com 3 réplicas em prod; guard de startup com teste 5/5; runbook `docs/runbooks/api-replica-topology.md` |

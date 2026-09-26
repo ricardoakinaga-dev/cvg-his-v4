@@ -47,6 +47,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The tracing and composition tests import workspace packages through
+      # their built `dist` entry points (for example @cvg-his-v2/shared-feature-flags
+      # via apps/api/src/feature-flags.ts). A fresh checkout has no dist, so the
+      # step failed with ERR_MODULE_NOT_FOUND while passing on developer
+      # machines that had built the workspace.
+      - name: Build workspace dependencies
+        run: pnpm build
+
       - name: Validate production composition contract
         run: pnpm validate:production-runtime
 
