@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "3a213b1edfd9e5c8bf8c47e769e5b4190e0a4108",
+  "head": "c7940994f3e7f6a193840262f4506640d98a8bda",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -974,7 +974,7 @@
     },
     {
       "path": "apps/api/src/routes/prescription-routes.ts",
-      "sha256": "9b093d456a6c2763426aeb70b004311dcc9fa3f01ea65c0b84e478926650e991",
+      "sha256": "ef80ab798e320fa4dfcb4914fca2ee60a75ac93dea07d6f2526a7c3188318e6d",
       "components": [
         "prescriptions",
         "http-routes"
@@ -12481,6 +12481,25 @@
         "tests/integration/database/patient-structured-allergies-postgres.test.ts"
       ],
       "vitestRemoved": []
+    },
+    {
+      "manifestRevision": 93,
+      "observedAt": "2026-09-26T17:02:46.439Z",
+      "collectionCommit": "c7940994f3e7f6a193840262f4506640d98a8bda",
+      "previousManifestSha256": "d668c7101a387e5aa7bc21364fcd48998147dd89be674017aa54d284a81cefc0",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-d668c7101a387e5aa7bc21364fcd48998147dd89be674017aa54d284a81cefc0.json",
+      "previousSourceSetSha256": "7c9ef5f92f9a8d0dd0e03653c0ed9ea6410a64e54098d6b1f70396fe579b7c72",
+      "sourceSetSha256": "d1403fec5fd924ffcfca9643c0a9f81b5201df86c0794a61cca56dbdbd3a451a",
+      "reason": "R2-CLI-02 weight-required per-kg dosing; compact reminder test slots",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/routes/prescription-routes.ts",
+          "before": "9b093d456a6c2763426aeb70b004311dcc9fa3f01ea65c0b84e478926650e991",
+          "after": "ef80ab798e320fa4dfcb4914fca2ee60a75ac93dea07d6f2526a7c3188318e6d"
+        }
+      ]
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -13414,8 +13433,8 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 92,
-  "sourceSetSha256": "7c9ef5f92f9a8d0dd0e03653c0ed9ea6410a64e54098d6b1f70396fe579b7c72",
+  "manifestRevision": 93,
+  "sourceSetSha256": "d1403fec5fd924ffcfca9643c0a9f81b5201df86c0794a61cca56dbdbd3a451a",
   "executionInputsSha256": "ba2289fdde73a6b59074b2ba0c9de34f4a016a63bab692f3ccc405099cc634fd",
   "specializedEvidence": {
     "sql": {
