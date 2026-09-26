@@ -4,6 +4,26 @@ Este runbook cobre os alertas de runtime adicionados ao contrato operacional.
 Não encerre um alerta crítico apenas reiniciando o processo: preserve
 correlation IDs, traces, logs e o estado das filas para a análise posterior.
 
+<a id="entrega"></a>
+## Entrega dos alertas
+
+Os alertas do Prometheus são entregues pelo Alertmanager
+(`infra/observability/alertmanager.yml`): `critical` vai ao receiver
+`critical-pager` em até 10 s e repete a cada hora; `warning` vai ao
+`warning-chat` em até 30 s e repete a cada 4 h. Se um alerta não chegou ao
+canal:
+
+1. `docker compose --profile observability ps alertmanager` e
+   `curl -s http://127.0.0.1:9093/-/ready`.
+2. `curl -s http://127.0.0.1:9093/api/v2/alerts` mostra o que o Prometheus
+   entregou ao Alertmanager; se estiver vazio, o problema está na regra ou no
+   scrape, não na entrega.
+3. Logs do Alertmanager com `Notify for alerts failed`: `permission denied`
+   indica arquivo de segredo sem leitura para o usuário do container
+   (`chmod 0644`); erro HTTP indica URL do receiver inválida ou canal fora.
+4. `pnpm ops:alerts:drill` reproduz a entrega ponta a ponta com um receptor
+   local e grava a evidência em `artifacts/operations/`.
+
 ## Triagem comum
 
 1. Confirme o ambiente, a instância e o horário no Grafana/Prometheus.
