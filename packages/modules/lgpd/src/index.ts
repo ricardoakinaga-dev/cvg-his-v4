@@ -3,6 +3,7 @@ export {
   LgpdSubjectNotFoundError,
   LgpdService,
   getLgpdRetentionEvidence,
+  LGPD_RETENTION_POLICY_STATEMENT,
   type LgpdErasureEvidence,
   type LgpdErasureExecutor,
   type LgpdDataProvider,

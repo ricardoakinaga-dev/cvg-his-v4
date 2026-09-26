@@ -142,8 +142,25 @@ export interface LgpdRetentionEvidence {
   readonly dataType: string;
   readonly retentionWindow: string;
   readonly legalBasis: string;
+  /**
+   * What the system actually does when the window ends. Product decision of
+   * 2026-09-26 (R2-LGPD-02): records are retained while a relationship or a
+   * legal obligation exists; there is no automatic anonymization or purge.
+   * Erasure happens only on a data-subject request (LGPD art. 18, VI), keeping
+   * what other legal duties require (art. 16).
+   */
   readonly disposition: 'retain' | 'anonymize_after_window' | 'purge_after_window';
 }
+
+/**
+ * Statement delivered to the data subject inside the export package. It must
+ * describe the real behaviour of the system, never a promise it does not keep.
+ */
+export const LGPD_RETENTION_POLICY_STATEMENT =
+  'Os dados sao mantidos enquanto houver relacionamento com a clinica ou obrigacao legal de guarda. ' +
+  'O sistema nao anonimiza nem elimina dados automaticamente ao fim de um prazo. ' +
+  'A eliminacao ocorre mediante pedido do titular (LGPD art. 18, VI), preservando o que outra obrigacao legal ' +
+  'exige guardar (art. 16): documentos fiscais, prontuario clinico e trilha de auditoria.';
 
 export interface LgpdProviderEvidence {
   readonly providerName: string;
@@ -165,45 +182,53 @@ export interface PersonalDataExport {
   };
   readonly providerEvidence: readonly LgpdProviderEvidence[];
   readonly retentionEvidence: readonly LgpdRetentionEvidence[];
+  /** Human-readable retention policy that matches the dispositions above. */
+  readonly retentionPolicy: string;
   readonly data: Record<string, unknown>;
 }
 
 const DATA_PROVIDER_RETENTION: Readonly<Record<string, LgpdRetentionEvidence>> = {
   owners: {
     dataType: 'owner_profile',
-    retentionWindow: '5 anos apos encerramento do relacionamento',
+    retentionWindow:
+      'Enquanto houver relacionamento com a clinica ou obrigacao legal; eliminacao mediante pedido do titular (LGPD art. 18, VI)',
     legalBasis: 'LGPD art. 7, V e VI; obrigacoes civis e consumeristas',
-    disposition: 'anonymize_after_window'
+    disposition: 'retain'
   },
   patients: {
     dataType: 'patient_profile',
-    retentionWindow: '20 anos para prontuario clinico veterinario',
+    retentionWindow:
+      'Prontuario clinico veterinario: 20 anos (prazo pendente de validacao juridica, R2-LGPD-03); sem eliminacao automatica',
     legalBasis: 'Obrigacao legal/regulatoria e exercicio regular de direitos',
-    disposition: 'anonymize_after_window'
+    disposition: 'retain'
   },
   encounters: {
     dataType: 'clinical_encounters',
-    retentionWindow: '20 anos para eventos e prontuario clinico',
+    retentionWindow:
+      'Eventos e prontuario clinico: 20 anos (prazo pendente de validacao juridica, R2-LGPD-03); sem eliminacao automatica',
     legalBasis: 'Obrigacao legal/regulatoria e exercicio regular de direitos',
-    disposition: 'anonymize_after_window'
+    disposition: 'retain'
   },
   financial: {
     dataType: 'financial_records',
-    retentionWindow: '5 anos fiscais/contabeis apos liquidacao',
+    retentionWindow:
+      'Documentos fiscais e contabeis: no minimo 5 anos apos a liquidacao; mantidos mesmo apos pedido de eliminacao (LGPD art. 16, I)',
     legalBasis: 'Obrigacao legal/fiscal e exercicio regular de direitos',
-    disposition: 'purge_after_window'
+    disposition: 'retain'
   },
   laboratory: {
     dataType: 'laboratory_results',
-    retentionWindow: '20 anos quando vinculados ao prontuario clinico',
+    retentionWindow:
+      'Vinculados ao prontuario clinico: mesmo prazo do prontuario (pendente de validacao juridica, R2-LGPD-03); sem eliminacao automatica',
     legalBasis: 'Obrigacao legal/regulatoria e tutela da saude animal',
-    disposition: 'anonymize_after_window'
+    disposition: 'retain'
   },
   attachments: {
     dataType: 'clinical_attachments',
-    retentionWindow: '20 anos quando compoem prontuario; 5 anos para anexos administrativos',
+    retentionWindow:
+      'Anexos do prontuario: mesmo prazo do prontuario; anexos administrativos: enquanto houver relacionamento ou obrigacao legal; sem eliminacao automatica',
     legalBasis: 'Obrigacao legal/regulatoria, contrato e exercicio regular de direitos',
-    disposition: 'purge_after_window'
+    disposition: 'retain'
   }
 };
 
@@ -523,6 +548,7 @@ export class LgpdService {
       },
       providerEvidence,
       retentionEvidence: getLgpdRetentionEvidence(),
+      retentionPolicy: LGPD_RETENTION_POLICY_STATEMENT,
       data
     };
   }
