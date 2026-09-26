@@ -12,6 +12,13 @@
 #   - Docker + Docker Compose, or E2E_DATABASE_URL pointing to an existing PostgreSQL test database
 #   - Node.js 22+ with pnpm
 #   - Playwright browsers installed (npx playwright install)
+#   - No ripgrep or other non-POSIX tools are required (R2-TOOL-01)
+#
+# Ports:
+#   The Docker stack publishes PostgreSQL on E2E_POSTGRES_HOST_PORT (default 5434)
+#   and Redis on E2E_REDIS_HOST_PORT (default 6381). When a default port is
+#   already in use on the host, the script picks a free port automatically and
+#   prints it; set the variables explicitly to pin them.
 #
 # What it does:
 #   1. Starts PostgreSQL + Redis + API via docker-compose.e2e.yml
@@ -30,12 +37,56 @@ COMPOSE_NETWORK_NAME="${COMPOSE_PROJECT_NAME}_default"
 CLEANUP=true
 PLAYWRIGHT_TARGET_ARGS=()
 PLAYWRIGHT_EXTRA_ARGS=()
-DATABASE_URL_E2E="${E2E_DATABASE_URL:-postgres://postgres:postgres@localhost:5434/cvg_his_e2e}"
-REDIS_URL_E2E="${E2E_REDIS_URL:-redis://127.0.0.1:6381}"
 USE_EXTERNAL_DATABASE=false
 if [[ -n "${E2E_DATABASE_URL:-}" ]]; then
   USE_EXTERNAL_DATABASE=true
 fi
+
+# R2-TOOL-01: host ports for the disposable PostgreSQL/Redis containers are
+# configurable and fall back to a free port when the default is occupied.
+host_port_in_use() {
+  local port="$1"
+  (exec 3<>"/dev/tcp/127.0.0.1/${port}") >/dev/null 2>&1 && { exec 3>&- 2>/dev/null || true; return 0; }
+  return 1
+}
+
+find_free_host_port() {
+  node -e '
+    const server = require("net").createServer();
+    server.listen(0, "127.0.0.1", () => {
+      const { port } = server.address();
+      server.close(() => process.stdout.write(String(port)));
+    });
+  '
+}
+
+resolve_host_port() {
+  local name="$1" requested="$2" default_port="$3"
+  if [[ -n "$requested" ]]; then
+    printf '%s' "$requested"
+    return
+  fi
+  if host_port_in_use "$default_port"; then
+    local free_port
+    free_port="$(find_free_host_port)"
+    echo "   ℹ️  ${name} default host port ${default_port} is busy; using ${free_port}" >&2
+    printf '%s' "$free_port"
+    return
+  fi
+  printf '%s' "$default_port"
+}
+
+if [ "$USE_EXTERNAL_DATABASE" = false ]; then
+  E2E_POSTGRES_HOST_PORT="$(resolve_host_port PostgreSQL "${E2E_POSTGRES_HOST_PORT:-}" 5434)"
+  E2E_REDIS_HOST_PORT="$(resolve_host_port Redis "${E2E_REDIS_HOST_PORT:-}" 6381)"
+else
+  E2E_POSTGRES_HOST_PORT="${E2E_POSTGRES_HOST_PORT:-5434}"
+  E2E_REDIS_HOST_PORT="${E2E_REDIS_HOST_PORT:-6381}"
+fi
+export E2E_POSTGRES_HOST_PORT E2E_REDIS_HOST_PORT
+
+DATABASE_URL_E2E="${E2E_DATABASE_URL:-postgres://postgres:postgres@localhost:${E2E_POSTGRES_HOST_PORT}/cvg_his_e2e}"
+REDIS_URL_E2E="${E2E_REDIS_URL:-redis://127.0.0.1:${E2E_REDIS_HOST_PORT}}"
 E2E_ADMIN_EMAIL="${E2E_ADMIN_EMAIL:-admin@cvg-his.local}"
 E2E_ADMIN_USERNAME="${E2E_ADMIN_USERNAME:-${E2E_ADMIN_EMAIL%@*}}"
 E2E_ADMIN_PASSWORD="${E2E_ADMIN_PASSWORD:-seed_admin}"
@@ -115,8 +166,8 @@ force_cleanup_resources() {
   docker network rm "$COMPOSE_NETWORK_NAME" >/dev/null 2>&1 || true
 
   for _ in $(seq 1 15); do
-    if ! docker ps -a --format '{{.Names}}' | rg -q "^${COMPOSE_PROJECT_NAME}-" \
-      && ! docker network ls --format '{{.Name}}' | rg -q "^${COMPOSE_NETWORK_NAME}$"; then
+    if ! docker ps -a --format '{{.Names}}' | grep -Eq "^${COMPOSE_PROJECT_NAME}-" \
+      && ! docker network ls --format '{{.Name}}' | grep -Eq "^${COMPOSE_NETWORK_NAME}$"; then
       break
     fi
     sleep 1
@@ -187,7 +238,7 @@ cleanup_local_e2e_processes
 
 MAX_RETRIES=60
 if [ "$USE_EXTERNAL_DATABASE" = false ]; then
-  echo "   📦 Starting PostgreSQL + Redis..."
+  echo "   📦 Starting PostgreSQL + Redis (host ports ${E2E_POSTGRES_HOST_PORT}/${E2E_REDIS_HOST_PORT})..."
   docker compose -p "$COMPOSE_PROJECT_NAME" -f "$COMPOSE_FILE" up -d --build postgres-e2e redis-e2e
 
   # 2. Wait for PostgreSQL health before schema/seed
