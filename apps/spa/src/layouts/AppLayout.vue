@@ -1063,8 +1063,6 @@ function containCompactSidebarFocus(event: KeyboardEvent) {
       style.visibility !== 'collapse';
   });
 
-  const toggle = sidebarToggleEl.value; // the drawer's close control stays in its focus cycle
-  if (toggle) focusable.unshift(toggle);
   const first = focusable[0];
   const last = focusable.at(-1);
   const active = document.activeElement;
@@ -1072,7 +1070,7 @@ function containCompactSidebarFocus(event: KeyboardEvent) {
     event.preventDefault();
     sidebar.focus({ preventScroll: true });
   } else if (
-    (!sidebar.contains(active) && active !== toggle) ||
+    !sidebar.contains(active) ||
     active === sidebar ||
     (event.shiftKey && active === first) ||
     (!event.shiftKey && active === last)

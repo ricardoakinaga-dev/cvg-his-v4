@@ -153,7 +153,14 @@ describe('AppLayout compact navigation keyboard contract', () => {
     expect(sidebar.hasAttribute('inert')).toBe(false);
     expect(document.activeElement).toBe(wrapper.get('#sidebar-module-search').element);
     expect(wrapper.get('.skip-link').element.hasAttribute('inert')).toBe(true);
-    expect(wrapper.get('.topbar').element.hasAttribute('inert')).toBe(true);
+    // The drawer toggle is the visible close control, so only the rest of the
+    // header is inert while the drawer is modal (a fully inert header blocked
+    // the close click).
+    expect(wrapper.get('.topbar').element.hasAttribute('inert')).toBe(false);
+    expect(wrapper.get('.topbar__collapse-btn').element.closest('[inert]')).toBeNull();
+    for (const region of ['.topbar__brand-pill', '.topbar__search-shell', '.topbar__actions']) {
+      expect(wrapper.get(region).element.hasAttribute('inert')).toBe(true);
+    }
     expect(wrapper.get('#main-content').element.hasAttribute('inert')).toBe(true);
     expect(wrapper.get('.sidebar__backdrop').element.getAttribute('tabindex')).toBe('-1');
     expect(wrapper.get('.sidebar__backdrop').element.getAttribute('aria-hidden')).toBe('true');
