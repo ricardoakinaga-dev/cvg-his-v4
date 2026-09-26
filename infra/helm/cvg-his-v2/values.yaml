@@ -153,6 +153,16 @@ databaseMaintenance:
 # ──────────────────────────────────────────────
 worker:
   replicaCount: 1
+  # R2-INF-01: the worker has no per-process account cache, so it may scale
+  # horizontally. When enabled, replicaCount is ignored and the HPA owns the
+  # replica count (CPU utilization, optional memory).
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 0
+    scaleDownStabilizationSeconds: 300
   revisionHistoryLimit: 3
   podAnnotations: {}
 
@@ -446,3 +456,47 @@ podDisruptionBudget:
     minAvailable: 1
   spa:
     minAvailable: 1
+
+# ──────────────────────────────────────────────
+# Network policies (R2-INF-01)
+# ──────────────────────────────────────────────
+# Default-deny per workload with explicit allows: ingress controller → spa/api,
+# spa → api, api/worker/maintenance → postgres, api/worker → redis,
+# monitoring → api/worker metrics, api/worker → external HTTPS, all → DNS.
+# Requires a CNI that enforces NetworkPolicy (Calico, Cilium, ...).
+networkPolicy:
+  enabled: false
+  ingressController:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: ingress-nginx
+    podSelector:
+      matchLabels:
+        app.kubernetes.io/name: ingress-nginx
+  monitoring:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: monitoring
+    podSelector: {}
+  dns:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: kube-system
+    podSelector:
+      matchLabels:
+        k8s-app: kube-dns
+  # Egress to managed PostgreSQL/Redis when postgresql.enabled/redis.enabled are
+  # false. Required in that case; narrow the CIDRs to the managed endpoints.
+  managedDatastores: []
+  # Outbound HTTPS for payment (Pagar.me), fiscal (NFS-e), WhatsApp, HIBP and OTLP endpoints.
+  externalEgress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443

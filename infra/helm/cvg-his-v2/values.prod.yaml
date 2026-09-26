@@ -55,6 +55,12 @@ api:
 
 worker:
   replicaCount: 2
+  # R2-INF-01: HPA owns the worker replica count in this environment.
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
   revisionHistoryLimit: 5
   image:
     registry: ghcr.io
@@ -151,3 +157,22 @@ securityContext:
   capabilities:
     drop:
       - ALL
+
+# R2-INF-01: enforce the per-workload network policies.
+networkPolicy:
+  enabled: true
+  # Managed PostgreSQL and Redis live outside the cluster: narrow these CIDRs
+  # to the managed endpoints of this environment before the first deploy.
+  managedDatastores:
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8
+      ports:
+        - protocol: TCP
+          port: 6379

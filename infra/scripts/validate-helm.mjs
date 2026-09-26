@@ -374,7 +374,28 @@ function validateStaticChart() {
     'SPA pod template must checksum nginx configuration to trigger rollouts'
   );
 
-  for (const environment of environments) {
+  assertHelmFailure(
+  [
+    'template',
+    'cvg-his-v2-prod-netpol-without-managed-datastores',
+    chartDir,
+    '-f',
+    baseValues,
+    '-f',
+    path.join(chartDir, 'values.prod.yaml'),
+    '--set-string',
+    `api.image.sha=${validationImageDigests.api}`,
+    '--set-string',
+    `worker.image.sha=${validationImageDigests.worker}`,
+    '--set-string',
+    `spa.image.sha=${validationImageDigests.spa}`,
+    '--set',
+    'networkPolicy.managedDatastores=null'
+  ],
+  'networkPolicy.managedDatastores'
+);
+
+for (const environment of environments) {
     const values = readYamlFile(environment.values);
     assert(
       !Object.prototype.hasOwnProperty.call(values.spa?.env ?? {}, 'VITE_API_BASE_URL'),
@@ -799,6 +820,65 @@ for (const environment of environments) {
       `${environment.name}: S3 attachment mode must not define local storage`
     );
   }
+
+  // R2-INF-01: per-workload network policies and the worker HPA
+  const networkPolicies = docs.filter((doc) => doc?.kind === 'NetworkPolicy');
+  const hpas = docs.filter((doc) => doc?.kind === 'HorizontalPodAutoscaler');
+  const componentOf = (policy) => policy.spec?.podSelector?.matchLabels?.['app.kubernetes.io/component'];
+  const peersOf = (rules) =>
+    (rules ?? [])
+      .flatMap((rule) => rule.from ?? rule.to ?? [])
+      .map((peer) => peer.podSelector?.matchLabels?.['app.kubernetes.io/component'] ?? (peer.ipBlock ? 'ipBlock' : 'namespace'));
+  if (values.networkPolicy?.enabled) {
+    const byComponent = Object.fromEntries(networkPolicies.map((policy) => [componentOf(policy), policy]));
+    for (const component of ['api', 'worker', 'spa']) {
+      assert(byComponent[component], `${environment.name}: NetworkPolicy for ${component} must be rendered`);
+      assert(
+        JSON.stringify(byComponent[component].spec.policyTypes) === JSON.stringify(['Ingress', 'Egress']),
+        `${environment.name}: ${component} NetworkPolicy must deny both directions by default`
+      );
+    }
+    const spaEgress = peersOf(byComponent.spa.spec.egress);
+    assert(
+      spaEgress.every((peer) => peer === 'api' || peer === 'namespace'),
+      `${environment.name}: the SPA may only reach the API and DNS (found ${spaEgress.join(', ')})`
+    );
+    const workerIngress = peersOf(byComponent.worker.spec.ingress);
+    assert(
+      !workerIngress.includes('spa') && !workerIngress.includes('api'),
+      `${environment.name}: nothing in the application may open connections to the worker`
+    );
+    if (values.postgresql?.enabled) {
+      const postgresIngress = peersOf(byComponent.postgres.spec.ingress);
+      assert(
+        postgresIngress.includes('api') && postgresIngress.includes('worker') && !postgresIngress.includes('spa'),
+        `${environment.name}: postgres must accept api/worker and never the SPA`
+      );
+    } else {
+      assert(
+        (byComponent.api.spec.egress ?? []).some((rule) => (rule.ports ?? []).some((port) => Number(port.port) === 5432)),
+        `${environment.name}: API egress must reach the managed PostgreSQL endpoint`
+      );
+    }
+  } else {
+    assert(networkPolicies.length === 0, `${environment.name}: network policies must not render when disabled`);
+  }
+  if (values.worker?.autoscaling?.enabled) {
+    assert(
+      hpas.length === 1 && hpas[0].spec.scaleTargetRef.name === workerDeployment.metadata.name,
+      `${environment.name}: worker HPA must target the worker Deployment`
+    );
+    assert(
+      workerDeployment.spec.replicas === undefined,
+      `${environment.name}: the worker Deployment must not pin replicas while the HPA owns them`
+    );
+  } else {
+    assert(hpas.length === 0, `${environment.name}: no HPA must render when autoscaling is disabled`);
+  }
+  assert(
+    !hpas.some((hpa) => hpa.spec.scaleTargetRef.name.endsWith('-api')),
+    `${environment.name}: the API must never be autoscaled while the replica guard (R2-ARC-01) is active`
+  );
 
   if (environment.name === 'prod') {
     assert(

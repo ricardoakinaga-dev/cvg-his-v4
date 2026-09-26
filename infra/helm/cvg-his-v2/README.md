@@ -158,3 +158,13 @@ A API mantém caches por processo sem invalidação entre réplicas. O chart fal
 quando `api.replicaCount > 1` sem `api.crossReplicaCache.enabled=true`, e o
 processo recusa iniciar na mesma condição. Detalhes e critério de remoção em
 [`docs/runbooks/api-replica-topology.md`](../../../docs/runbooks/api-replica-topology.md).
+
+## Política de rede e HPA do worker (R2-INF-01)
+
+`networkPolicy.enabled` gera políticas *default-deny* por workload com as
+permissões mínimas (ingress controller → spa/api, spa → api, api/worker →
+datastores, monitoramento → métricas, HTTPS de saída, DNS). Com datastores
+gerenciados, `networkPolicy.managedDatastores` é obrigatório.
+`worker.autoscaling.enabled` cria o HPA do worker; a API segue sem HPA até o
+guard de R2-ARC-01 ser removido. Detalhes e teste de conectividade em
+[`docs/runbooks/network-policy-and-hpa.md`](../../../docs/runbooks/network-policy-and-hpa.md).

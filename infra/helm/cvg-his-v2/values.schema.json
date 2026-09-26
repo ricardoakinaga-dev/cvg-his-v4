@@ -209,6 +209,18 @@
       "required": ["service", "probes", "env", "accountIds", "reportsUser"],
       "properties": {
         "replicaCount": { "type": "integer", "minimum": 1 },
+        "autoscaling": {
+          "type": "object",
+          "required": ["enabled", "minReplicas", "maxReplicas", "targetCPUUtilizationPercentage"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "minReplicas": { "type": "integer", "minimum": 1 },
+            "maxReplicas": { "type": "integer", "minimum": 1 },
+            "targetCPUUtilizationPercentage": { "type": "integer", "minimum": 1, "maximum": 100 },
+            "targetMemoryUtilizationPercentage": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "scaleDownStabilizationSeconds": { "type": "integer", "minimum": 0 }
+          }
+        },
         "accountIds": {
           "type": "object",
           "required": ["secretKey"],
@@ -334,6 +346,70 @@
           "type": "object",
           "properties": {
             "minAvailable": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "ingressController",
+        "monitoring",
+        "dns",
+        "externalEgress"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "ingressController": {
+          "type": "object",
+          "properties": {
+            "namespaceSelector": {
+              "type": "object"
+            },
+            "podSelector": {
+              "type": "object"
+            }
+          }
+        },
+        "monitoring": {
+          "type": "object",
+          "properties": {
+            "namespaceSelector": {
+              "type": "object"
+            },
+            "podSelector": {
+              "type": "object"
+            }
+          }
+        },
+        "dns": {
+          "type": "object",
+          "required": [
+            "namespaceSelector",
+            "podSelector"
+          ],
+          "properties": {
+            "namespaceSelector": {
+              "type": "object"
+            },
+            "podSelector": {
+              "type": "object"
+            }
+          }
+        },
+        "managedDatastores": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "externalEgress": {
+          "type": "array",
+          "items": {
+            "type": "object"
           }
         }
       }

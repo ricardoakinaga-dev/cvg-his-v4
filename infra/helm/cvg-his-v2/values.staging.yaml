@@ -41,6 +41,12 @@ api:
 
 worker:
   replicaCount: 1
+  # R2-INF-01: HPA owns the worker replica count in this environment.
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
   revisionHistoryLimit: 3
   image:
     pullPolicy: Always
@@ -111,3 +117,22 @@ podDisruptionBudget:
     minAvailable: 1
   spa:
     minAvailable: 1
+
+# R2-INF-01: enforce the per-workload network policies.
+networkPolicy:
+  enabled: true
+  # Managed PostgreSQL and Redis live outside the cluster: narrow these CIDRs
+  # to the managed endpoints of this environment before the first deploy.
+  managedDatastores:
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8
+      ports:
+        - protocol: TCP
+          port: 6379

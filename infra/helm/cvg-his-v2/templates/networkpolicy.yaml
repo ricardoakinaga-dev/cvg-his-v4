@@ -1,0 +1,195 @@
+{{- /*
+NetworkPolicies (R2-INF-01)
+
+Each workload gets a default-deny policy for both directions and an explicit
+allow list:
+  ingress-controller ─▶ spa, api
+  spa ─▶ api (same-origin nginx upstream)
+  api, worker, database-maintenance ─▶ postgres
+  api, worker ─▶ redis
+  monitoring ─▶ api, worker (/metrics)
+  api, worker ─▶ external HTTPS (payment/fiscal/notification providers)
+  everyone ─▶ DNS
+Nothing else can reach postgres or redis, and the SPA can talk to nothing
+but the API.
+*/ -}}
+{{- if .Values.networkPolicy.enabled -}}
+{{- $np := .Values.networkPolicy -}}
+{{- $apiPort := .Values.api.service.port -}}
+{{- $workerPort := .Values.worker.service.port -}}
+{{- $spaPort := .Values.spa.service.port -}}
+{{- $dns := $np.dns -}}
+{{- $ingressFrom := list -}}
+{{- if $np.ingressController.namespaceSelector }}
+{{- $ingressFrom = append $ingressFrom (dict "namespaceSelector" $np.ingressController.namespaceSelector "podSelector" ($np.ingressController.podSelector | default dict)) }}
+{{- end }}
+{{- $monitoringFrom := list -}}
+{{- if $np.monitoring.namespaceSelector }}
+{{- $monitoringFrom = append $monitoringFrom (dict "namespaceSelector" $np.monitoring.namespaceSelector "podSelector" ($np.monitoring.podSelector | default dict)) }}
+{{- end }}
+{{- $dnsEgress := dict "to" (list (dict "namespaceSelector" $dns.namespaceSelector "podSelector" $dns.podSelector)) "ports" (list (dict "protocol" "UDP" "port" 53) (dict "protocol" "TCP" "port" 53)) -}}
+{{- $postgresPeer := dict "podSelector" (dict "matchLabels" (dict "app.kubernetes.io/name" .Chart.Name "app.kubernetes.io/instance" .Release.Name "app.kubernetes.io/component" "postgres")) -}}
+{{- $redisPeer := dict "podSelector" (dict "matchLabels" (dict "app.kubernetes.io/name" .Chart.Name "app.kubernetes.io/instance" .Release.Name "app.kubernetes.io/component" "redis")) -}}
+{{- $apiPeer := dict "podSelector" (dict "matchLabels" (dict "app.kubernetes.io/name" .Chart.Name "app.kubernetes.io/instance" .Release.Name "app.kubernetes.io/component" "api")) -}}
+{{- $workerPeer := dict "podSelector" (dict "matchLabels" (dict "app.kubernetes.io/name" .Chart.Name "app.kubernetes.io/instance" .Release.Name "app.kubernetes.io/component" "worker")) -}}
+{{- $spaPeer := dict "podSelector" (dict "matchLabels" (dict "app.kubernetes.io/name" .Chart.Name "app.kubernetes.io/instance" .Release.Name "app.kubernetes.io/component" "spa")) -}}
+{{- $maintenancePeer := dict "podSelector" (dict "matchLabels" (dict "app.kubernetes.io/name" .Chart.Name "app.kubernetes.io/instance" .Release.Name "app.kubernetes.io/component" "database-maintenance")) -}}
+{{- /* Datastore egress: in-cluster StatefulSets by pod selector, managed services by operator-provided rules. */ -}}
+{{- $datastoreEgress := list -}}
+{{- if .Values.postgresql.enabled }}
+{{- $datastoreEgress = append $datastoreEgress (dict "to" (list $postgresPeer) "ports" (list (dict "protocol" "TCP" "port" 5432))) }}
+{{- end }}
+{{- if .Values.redis.enabled }}
+{{- $datastoreEgress = append $datastoreEgress (dict "to" (list $redisPeer) "ports" (list (dict "protocol" "TCP" "port" 6379))) }}
+{{- end }}
+{{- if or (not .Values.postgresql.enabled) (not .Values.redis.enabled) }}
+{{- if not $np.managedDatastores }}
+{{- fail "networkPolicy.enabled with managed PostgreSQL/Redis requires networkPolicy.managedDatastores egress rules (CIDR + port of the managed endpoints); otherwise the API and worker cannot reach their datastores" }}
+{{- end }}
+{{- $datastoreEgress = concat $datastoreEgress $np.managedDatastores }}
+{{- end }}
+---
+# api: ingress from the ingress controller, the SPA proxy and monitoring; egress to datastores, DNS and external HTTPS
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "cvg-his-v2.fullname" . }}-api
+  labels:
+    {{- include "cvg-his-v2.api.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "cvg-his-v2.api.selectorLabels" . | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        {{- toYaml (concat $ingressFrom (list $spaPeer)) | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: {{ $apiPort }}
+    {{- if $monitoringFrom }}
+    - from:
+        {{- toYaml $monitoringFrom | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: {{ $apiPort }}
+    {{- end }}
+  egress:
+    {{- toYaml $datastoreEgress | nindent 4 }}
+    - {{- toYaml $dnsEgress | nindent 6 }}
+    {{- with $np.externalEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+---
+# worker: no inbound traffic except monitoring; egress to datastores, DNS and external HTTPS
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "cvg-his-v2.fullname" . }}-worker
+  labels:
+    {{- include "cvg-his-v2.worker.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "cvg-his-v2.worker.selectorLabels" . | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    {{- if $monitoringFrom }}
+    - from:
+        {{- toYaml $monitoringFrom | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: {{ $workerPort }}
+    {{- else }}
+    []
+    {{- end }}
+  egress:
+    {{- toYaml $datastoreEgress | nindent 4 }}
+    - {{- toYaml $dnsEgress | nindent 6 }}
+    {{- with $np.externalEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+---
+# spa: ingress from the ingress controller only; egress to the API and DNS only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "cvg-his-v2.fullname" . }}-spa
+  labels:
+    {{- include "cvg-his-v2.spa.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "cvg-his-v2.spa.selectorLabels" . | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    {{- if $ingressFrom }}
+    - from:
+        {{- toYaml $ingressFrom | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: {{ $spaPort }}
+    {{- else }}
+    []
+    {{- end }}
+  egress:
+    - to:
+        - {{- toYaml $apiPeer | nindent 10 }}
+      ports:
+        - protocol: TCP
+          port: {{ $apiPort }}
+    - {{- toYaml $dnsEgress | nindent 6 }}
+{{- if .Values.postgresql.enabled }}
+---
+# postgres: only api, worker and database-maintenance jobs may connect; no egress except DNS
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "cvg-his-v2.fullname" . }}-postgres
+  labels:
+    {{- include "cvg-his-v2.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "cvg-his-v2.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgres
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - {{- toYaml $apiPeer | nindent 10 }}
+        - {{- toYaml $workerPeer | nindent 10 }}
+        - {{- toYaml $maintenancePeer | nindent 10 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+  egress:
+    - {{- toYaml $dnsEgress | nindent 6 }}
+{{- end }}
+{{- if .Values.redis.enabled }}
+---
+# redis: only api and worker may connect
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "cvg-his-v2.fullname" . }}-redis
+  labels:
+    {{- include "cvg-his-v2.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "cvg-his-v2.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - {{- toYaml $apiPeer | nindent 10 }}
+        - {{- toYaml $workerPeer | nindent 10 }}
+      ports:
+        - protocol: TCP
+          port: 6379
+  egress:
+    - {{- toYaml $dnsEgress | nindent 6 }}
+{{- end }}
+{{- end }}
