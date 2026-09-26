@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "a609daf9c59e6c33af97267027e40e5f556a67ca",
+  "head": "b85d510d0241554f0f1794bba70b8fd2ba915f7a",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -663,7 +663,7 @@
     },
     {
       "path": "apps/api/src/routes/discharges-routes.ts",
-      "sha256": "d37863b4c522f3b6b69095cc46044bf77b60dab101c953e5fd4fcde653522030",
+      "sha256": "4aba2bac2ee3e1380680371453031a31df507129e7b9a1dcd15a8654290df542",
       "components": [
         "inpatient",
         "http-routes"
@@ -898,7 +898,7 @@
     },
     {
       "path": "apps/api/src/routes/owners-routes.ts",
-      "sha256": "f44939d041abd6aef0f070b3f598e1db3a711a47e93446ed559d85e262b09254",
+      "sha256": "41eb6758026fe034b922383501efb42dc5141449bb0861e3accf4be58ff84448",
       "components": [
         "http-routes"
       ],
@@ -908,7 +908,7 @@
     },
     {
       "path": "apps/api/src/routes/patients-routes.ts",
-      "sha256": "ad5d43e7a790d5f62d46905da04f512beb44f2642ef1d40d470ce9de87f03ac9",
+      "sha256": "9a78f4195de14b76aa3ce9832ba45506b29f6c95cf53abb8295c07bdfdbf6d5c",
       "components": [
         "http-routes"
       ],
@@ -1035,7 +1035,7 @@
     },
     {
       "path": "apps/api/src/routes/surgery-routes.ts",
-      "sha256": "f4b53225f7e43563f754da424da90baea4e244e2248b1a9e785023bedab26eca",
+      "sha256": "e7233c4c1797da02b12c4422f65559b5de54a36382226165c4e306b1af9cea46",
       "components": [
         "http-routes"
       ],
@@ -1055,7 +1055,7 @@
     },
     {
       "path": "apps/api/src/routes/vetus-import-routes.ts",
-      "sha256": "2ebb53b76ab43a2254b93466215dce84c513afa207155ad76c23d8e9e2a30429",
+      "sha256": "ca1d327c3f2593c99294ff3298a9784351aed316e22cb992988b5032c8bd383d",
       "components": [
         "http-routes"
       ],
@@ -1096,7 +1096,7 @@
     },
     {
       "path": "apps/api/src/server.ts",
-      "sha256": "bc98c653e85aa5f49ddfb572ac244c49b2f2dba3fbc8ba942053ac8b7948764a",
+      "sha256": "39425f838553b7d85246b1d37edd38f3393fdf3e5074de6b094e9a051d413084",
       "components": [
         "http-routes"
       ],
@@ -4945,7 +4945,7 @@
     },
     {
       "path": "packages/modules/encounters/src/index.ts",
-      "sha256": "596af0ff869be56268e26796967f7fdb1257b2890fad1980b982c1bd51e6ba4f",
+      "sha256": "b7de107c387b83f12a87ddc1e5a4e91d1c9cf02a2850c7c5a4566df61066f634",
       "components": [
         "records"
       ],
@@ -5037,7 +5037,7 @@
     },
     {
       "path": "packages/modules/financial/src/index.ts",
-      "sha256": "4071457ec12b57712cc49bdfc0dec5056f839e9f4a590ad40a30b4e6f2813394",
+      "sha256": "0c4e1b6a168a11c7cc9dabc2d6a7608db077b0058ce156197da638a555dc6df3",
       "components": [
         "billing-cash"
       ],
@@ -5180,7 +5180,7 @@
     },
     {
       "path": "packages/modules/medical-records/src/index.ts",
-      "sha256": "ce7546e013295d4651f52fa6127c0472cf28895454bd58ba84277b36b430dd3f",
+      "sha256": "e484b12125895ad9825413db5c9a89bfab11877370348d53e384ad73ab1ab5d1",
       "components": [
         "records"
       ],
@@ -6259,7 +6259,9 @@
     "apps/spa/src/pages/patients/__tests__/usePatientClinicalHistory.test.ts",
     "packages/modules/patients/src/repositories/database-patient.repository.test.ts",
     "tests/integration/database/lgpd-owner-erasure-postgres.test.ts",
-    "tests/integration/database/pix-pagarme-encounter-flow-postgres.test.ts"
+    "tests/integration/database/pix-pagarme-encounter-flow-postgres.test.ts",
+    "tests/integration/database/multi-replica-cache-consistency.test.ts",
+    "tests/unit/modules/cache-sync-replicas.test.ts"
   ],
   "executionInputs": [
     ".eslintrc.cjs",
@@ -8501,7 +8503,9 @@
     "apps/spa/src/pages/patients/__tests__/usePatientClinicalHistory.test.ts",
     "packages/modules/patients/src/repositories/database-patient.repository.test.ts",
     "tests/integration/database/lgpd-owner-erasure-postgres.test.ts",
-    "tests/integration/database/pix-pagarme-encounter-flow-postgres.test.ts"
+    "tests/integration/database/pix-pagarme-encounter-flow-postgres.test.ts",
+    "tests/integration/database/multi-replica-cache-consistency.test.ts",
+    "tests/unit/modules/cache-sync-replicas.test.ts"
   ],
   "scopeHistory": [
     {
@@ -12353,6 +12357,78 @@
         "tests/integration/database/pix-pagarme-encounter-flow-postgres.test.ts"
       ],
       "vitestRemoved": []
+    },
+    {
+      "manifestRevision": 91,
+      "observedAt": "2026-09-26T14:29:52.954Z",
+      "collectionCommit": "b85d510d0241554f0f1794bba70b8fd2ba915f7a",
+      "previousManifestSha256": "0dc5a45b018092a9faa174c778c09eeb07002a865d9f8953740c8eea948cf99c",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-0dc5a45b018092a9faa174c778c09eeb07002a865d9f8953740c8eea948cf99c.json",
+      "previousSourceSetSha256": "52caeb30dc6ee1603436d48ba79896b448484b63994385649da7e8d8c33800cb",
+      "sourceSetSha256": "897b612cd0d2a6b35edd430634a6a829fee97a8375edf4585ee54317306bc73f",
+      "reason": "R2-ARC-02/03: account-scoped reads, read-through and cross-replica cache sync changed critical sources and added tests",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/routes/discharges-routes.ts",
+          "before": "d37863b4c522f3b6b69095cc46044bf77b60dab101c953e5fd4fcde653522030",
+          "after": "4aba2bac2ee3e1380680371453031a31df507129e7b9a1dcd15a8654290df542"
+        },
+        {
+          "path": "apps/api/src/routes/owners-routes.ts",
+          "before": "f44939d041abd6aef0f070b3f598e1db3a711a47e93446ed559d85e262b09254",
+          "after": "41eb6758026fe034b922383501efb42dc5141449bb0861e3accf4be58ff84448"
+        },
+        {
+          "path": "apps/api/src/routes/patients-routes.ts",
+          "before": "ad5d43e7a790d5f62d46905da04f512beb44f2642ef1d40d470ce9de87f03ac9",
+          "after": "9a78f4195de14b76aa3ce9832ba45506b29f6c95cf53abb8295c07bdfdbf6d5c"
+        },
+        {
+          "path": "apps/api/src/routes/surgery-routes.ts",
+          "before": "f4b53225f7e43563f754da424da90baea4e244e2248b1a9e785023bedab26eca",
+          "after": "e7233c4c1797da02b12c4422f65559b5de54a36382226165c4e306b1af9cea46"
+        },
+        {
+          "path": "apps/api/src/routes/vetus-import-routes.ts",
+          "before": "2ebb53b76ab43a2254b93466215dce84c513afa207155ad76c23d8e9e2a30429",
+          "after": "ca1d327c3f2593c99294ff3298a9784351aed316e22cb992988b5032c8bd383d"
+        },
+        {
+          "path": "apps/api/src/server.ts",
+          "before": "bc98c653e85aa5f49ddfb572ac244c49b2f2dba3fbc8ba942053ac8b7948764a",
+          "after": "39425f838553b7d85246b1d37edd38f3393fdf3e5074de6b094e9a051d413084"
+        },
+        {
+          "path": "packages/modules/encounters/src/index.ts",
+          "before": "596af0ff869be56268e26796967f7fdb1257b2890fad1980b982c1bd51e6ba4f",
+          "after": "b7de107c387b83f12a87ddc1e5a4e91d1c9cf02a2850c7c5a4566df61066f634"
+        },
+        {
+          "path": "packages/modules/financial/src/index.ts",
+          "before": "4071457ec12b57712cc49bdfc0dec5056f839e9f4a590ad40a30b4e6f2813394",
+          "after": "0c4e1b6a168a11c7cc9dabc2d6a7608db077b0058ce156197da638a555dc6df3"
+        },
+        {
+          "path": "packages/modules/medical-records/src/index.ts",
+          "before": "ce7546e013295d4651f52fa6127c0472cf28895454bd58ba84277b36b430dd3f",
+          "after": "e484b12125895ad9825413db5c9a89bfab11877370348d53e384ad73ab1ab5d1"
+        }
+      ],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "tests/integration/database/multi-replica-cache-consistency.test.ts",
+        "tests/unit/modules/cache-sync-replicas.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "e8bdd7a443a4a42ae98bf1e9fd1e7e9fc6f7f3ba572c8367ca1c032b856081c8",
+      "executionInputsSha256": "8bd3ae285c3784108fe068e70d32592c163869707224e65d13ca7b55d11d5ae5",
+      "vitestAdded": [
+        "tests/integration/database/multi-replica-cache-consistency.test.ts",
+        "tests/unit/modules/cache-sync-replicas.test.ts"
+      ],
+      "vitestRemoved": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -13286,9 +13362,9 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 90,
-  "sourceSetSha256": "52caeb30dc6ee1603436d48ba79896b448484b63994385649da7e8d8c33800cb",
-  "executionInputsSha256": "e8bdd7a443a4a42ae98bf1e9fd1e7e9fc6f7f3ba572c8367ca1c032b856081c8",
+  "manifestRevision": 91,
+  "sourceSetSha256": "897b612cd0d2a6b35edd430634a6a829fee97a8375edf4585ee54317306bc73f",
+  "executionInputsSha256": "8bd3ae285c3784108fe068e70d32592c163869707224e65d13ca7b55d11d5ae5",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,
