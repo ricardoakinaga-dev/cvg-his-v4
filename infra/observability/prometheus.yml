@@ -5,6 +5,12 @@ global:
 rule_files:
   - /etc/prometheus/prometheus-alerts.yml
 
+# R2-OPS-01: fired rules are delivered by Alertmanager (see alertmanager.yml).
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
 scrape_configs:
   - job_name: 'cvg-api'
     metrics_path: '/metrics'

@@ -1,0 +1,60 @@
+# Alertmanager — CVG-HIS V2 (R2-OPS-01)
+#
+# Routes the 22 Prometheus rules in prometheus-alerts.yml by `severity`:
+#   critical → receiver `critical-pager` (immediate, repeats hourly)
+#   warning  → receiver `warning-chat`  (grouped, repeats every 4h)
+#
+# Receiver destinations are never written here. Each receiver reads its
+# webhook URL from a file mounted from an operator-managed secret:
+#   /etc/alertmanager/secrets/critical-webhook-url
+#   /etc/alertmanager/secrets/warning-webhook-url
+# Compose maps them from ALERTMANAGER_CRITICAL_WEBHOOK_URL_FILE and
+# ALERTMANAGER_WARNING_WEBHOOK_URL_FILE (defaults under ./.secrets/).
+# Slack/e-mail/PagerDuty receivers can replace the webhooks; see
+# infra/observability/README.md §7.1.
+#
+# Validate with:  amtool check-config infra/observability/alertmanager.yml
+# Prove delivery: pnpm ops:alerts:drill  (synthetic critical + warning alerts)
+
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: warning-chat
+  group_by: ['alertname', 'service', 'environment']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers:
+        - severity = critical
+      receiver: critical-pager
+      group_wait: 10s
+      group_interval: 2m
+      repeat_interval: 1h
+      continue: false
+    - matchers:
+        - severity = warning
+      receiver: warning-chat
+      continue: false
+
+inhibit_rules:
+  # A critical alert silences the warning of the same rule family on the same
+  # service so the chat channel is not flooded while the pager is active.
+  - source_matchers:
+      - severity = critical
+    target_matchers:
+      - severity = warning
+    equal: ['service', 'environment']
+
+receivers:
+  - name: critical-pager
+    webhook_configs:
+      - url_file: /etc/alertmanager/secrets/critical-webhook-url
+        send_resolved: true
+        max_alerts: 0
+  - name: warning-chat
+    webhook_configs:
+      - url_file: /etc/alertmanager/secrets/warning-webhook-url
+        send_resolved: true
+        max_alerts: 0

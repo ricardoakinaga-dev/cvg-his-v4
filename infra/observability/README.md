@@ -250,6 +250,36 @@ Arquivo: `infra/observability/prometheus-alerts.yml`
 | `CVG_HIS_API_HighClientErrorRate`               | Warning    | >10% erros 4xx                            |
 | `CVG_HIS_PIX_Settlement_ReconciliationRequired` | Critical   | Backlog PIX terminal atual maior que zero |
 
+### 7.1 Entrega dos alertas (Alertmanager, R2-OPS-01)
+
+Arquivo: `infra/observability/alertmanager.yml` · serviço `alertmanager` no
+perfil `observability` do `docker-compose.v2.yml` · porta local `127.0.0.1:9093`.
+
+| Severidade | Receiver         | `group_wait` | `repeat_interval` | Destino                                              |
+| ---------- | ---------------- | ------------ | ----------------- | ---------------------------------------------------- |
+| `critical` | `critical-pager` | 10s          | 1h                | URL lida de `/etc/alertmanager/secrets/critical-webhook-url` |
+| `warning`  | `warning-chat`   | 30s          | 4h                | URL lida de `/etc/alertmanager/secrets/warning-webhook-url`  |
+
+Um alerta `critical` inibe o `warning` do mesmo `service`/`environment`
+enquanto estiver ativo.
+
+**Segredos.** As URLs dos receivers nunca ficam no repositório nem em variáveis
+de ambiente. Crie os arquivos apontados por `ALERTMANAGER_CRITICAL_WEBHOOK_URL_FILE`
+e `ALERTMANAGER_WARNING_WEBHOOK_URL_FILE` (padrão `./.secrets/…`) com uma URL
+por arquivo e permissão de leitura para o usuário do container (`chmod 0644`).
+Para Slack, e-mail ou PagerDuty, troque `webhook_configs` por `slack_configs`
+(`api_url_file`), `email_configs` (`auth_password_file`) ou `pagerduty_configs`
+(`routing_key_file`), mantendo o segredo em arquivo.
+
+**Prova de entrega.** `pnpm ops:alerts:drill` sobe um Alertmanager descartável
+com esta configuração, aponta os dois receivers para um receptor HTTP local,
+dispara um alerta sintético `critical` e um `warning` e confirma que cada um
+chegou ao receiver certo. A evidência SHA-bound fica em
+`artifacts/operations/alertmanager-drill-<run>.json` (`amtool check-config`,
+latências e roteamento). Com `ALERTMANAGER_URL` definido, o mesmo drill roda
+contra um Alertmanager já implantado. Execução registrada em
+[`docs/operations/ALERTMANAGER_DRILL_2026-09-26.md`](../../docs/operations/ALERTMANAGER_DRILL_2026-09-26.md).
+
 ---
 
 ## 8. health e readiness endpoints

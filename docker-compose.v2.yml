@@ -112,6 +112,23 @@ services:
     ports:
       - '127.0.0.1:9090:9090'
 
+  alertmanager:
+    # R2-OPS-01: delivers Prometheus alerts by severity. Receiver URLs are read
+    # from mounted secret files, never from this file or the environment.
+    image: prom/alertmanager@sha256:27c475db5fb156cab31d5c18a4251ac7ed567746a2483ff264516437a39b15ba
+    profiles: ['observability']
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    volumes:
+      - ./infra/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ${ALERTMANAGER_CRITICAL_WEBHOOK_URL_FILE:-./.secrets/alertmanager-critical-webhook-url}:/etc/alertmanager/secrets/critical-webhook-url:ro
+      - ${ALERTMANAGER_WARNING_WEBHOOK_URL_FILE:-./.secrets/alertmanager-warning-webhook-url}:/etc/alertmanager/secrets/warning-webhook-url:ro
+      - cvg_his_v2_alertmanager_data:/alertmanager
+    ports:
+      - '127.0.0.1:9093:9093'
+
   grafana:
     image: grafana/grafana@sha256:886b56d5534e54f69a8cfcb4b8928da8fc753178a7a3d20c3f9b04b660169805
     profiles: ['observability']
@@ -246,6 +263,7 @@ volumes:
   cvg_his_v2_postgres_data:
   cvg_his_v2_redis_data:
   cvg_his_v2_storage:
+  cvg_his_v2_alertmanager_data:
 
 networks:
   default:
