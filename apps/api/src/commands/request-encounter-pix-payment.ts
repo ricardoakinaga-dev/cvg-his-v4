@@ -21,6 +21,10 @@ const ALLOWED_INPUT_FIELDS = new Set([
   'requestKey'
 ]);
 const SYNTHETIC_PIX_PROVIDERS = new Set<EncounterPixPaymentProviderKey>(['local-pix', 'mock']);
+const SUPPORTED_PIX_PROVIDERS = new Set<EncounterPixPaymentProviderKey>([
+  ...SYNTHETIC_PIX_PROVIDERS,
+  'pagarme'
+]);
 
 export interface RequestEncounterPixPaymentCommandOptions {
   readonly allowSyntheticProviders?: boolean;
@@ -51,9 +55,9 @@ function requireUuid(value: unknown, field: string): string {
 function requireProviderKey(value: unknown): EncounterPixPaymentProviderKey {
   if (
     typeof value !== 'string' ||
-    !SYNTHETIC_PIX_PROVIDERS.has(value as EncounterPixPaymentProviderKey)
+    !SUPPORTED_PIX_PROVIDERS.has(value as EncounterPixPaymentProviderKey)
   ) {
-    throw new ValidationError('providerKey is not a supported synthetic PIX provider');
+    throw new ValidationError('providerKey is not a supported PIX provider');
   }
   return value as EncounterPixPaymentProviderKey;
 }

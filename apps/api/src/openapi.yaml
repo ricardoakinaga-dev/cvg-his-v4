@@ -8444,6 +8444,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/LaboratoryResultImportReportResponse'
 
+  /webhooks/pix/pagarme/v1:
+    post:
+      operationId: receivePagarMePixWebhook
+      summary: Receive a Pagar.me PIX notification and verify it against the provider
+      description: >
+        Public endpoint enabled when real Pagar.me credentials are configured.
+        The body is only a hint carrying the charge id (`data.id` or `id`): the
+        charge is re-read from Pagar.me with the API credentials, and only a
+        paid charge carrying this installation's account and attempt metadata
+        becomes a durable provider receipt, settled by the worker.
+      tags: [Webhooks]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '202':
+          description: Accepted (`created`, `replayed` or `ignored`; unknown or unpaid charges are ignored)
+        '400':
+          description: Body without a charge id
+        '409':
+          description: Verified confirmation conflicts with the payment attempt or an existing receipt
+        '413':
+          description: Body too large
+        '422':
+          description: Provider lookup failed permanently
+        '429':
+          description: Rate limited
+        '502':
+          description: Provider lookup failed; the provider should retry
+        '503':
+          description: Ingestion unavailable
+
   /webhooks/pix/synthetic/v1:
     post:
       operationId: receiveSyntheticPixWebhook

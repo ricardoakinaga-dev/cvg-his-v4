@@ -76,6 +76,7 @@ import {
   PixPaymentDispatcher
 } from './jobs/pix-payment-dispatcher.js';
 import { DatabasePixPaymentDispatchRepository } from './pix-payment-dispatch-repository.js';
+import { PagarMePixPaymentDispatchProvider } from './jobs/pagarme-pix-payment-dispatch-provider.js';
 import { LocalPixPaymentDispatchProvider } from './jobs/local-pix-payment-dispatch-provider.js';
 import { PixProviderSettlementConsumer } from './jobs/pix-provider-settlement-consumer.js';
 import { DatabasePixProviderEventDeliveryRepository } from './jobs/pix-provider-event-delivery-repository.js';
@@ -94,6 +95,10 @@ export interface WorkerBootstrapOptions {
   readonly pixDispatcherWorkerId?: string;
   readonly pixProviderSettlementEnabled?: boolean;
   readonly pixSettlementWorkerId?: string;
+  /** Real encounter PIX (R2-PAY-01): Pagar.me credentials shared with the API. */
+  readonly pagarmeApiKey?: string;
+  readonly pagarmePixKey?: string;
+  readonly pixMockMode?: boolean;
 }
 
 export const PIX_PAYMENT_DISPATCH_DEFAULTS = Object.freeze({
@@ -113,7 +118,7 @@ export interface SyntheticPixPaymentDispatchRuntimeOptions {
 
 export interface WorkerPixPaymentDispatchRuntime {
   readonly dispatcher: PixPaymentDispatcher;
-  readonly providerKey: 'local-pix';
+  readonly providerKey: 'local-pix' | 'pagarme';
   readonly workerId: string;
   readonly leaseMs: number;
   readonly retryBaseMs: number;
@@ -123,6 +128,8 @@ export interface WorkerPixPaymentDispatchRuntime {
 export interface PixProviderSettlementRuntimeOptions {
   readonly enabled: boolean;
   readonly allowSyntheticProviders: boolean;
+  /** Settle confirmations of external providers (Pagar.me) without synthetic capability. */
+  readonly externalProviders?: boolean;
   readonly environment?: string;
   readonly pool: Pool;
   readonly workerId?: string;
@@ -248,19 +255,22 @@ export function createPixProviderSettlementRuntime(
   options: PixProviderSettlementRuntimeOptions
 ): WorkerPixProviderSettlementRuntime | undefined {
   if (!options.enabled) return undefined;
-  if (!options.allowSyntheticProviders) {
+  if (!options.allowSyntheticProviders && options.externalProviders !== true) {
     throw new PixPaymentDispatchConfigurationError(
       'SYNTHETIC_PIX_PROVIDER_DISABLED',
       'Local PIX settlement requires the explicit synthetic provider capability'
     );
   }
-  assertSyntheticEnvironment(options.environment);
+  // External settlement never unlocks synthetic providers; the settlement
+  // command keeps rejecting local-pix/mock receipts unless explicitly allowed.
+  const allowSyntheticProviders = options.allowSyntheticProviders === true;
+  if (allowSyntheticProviders) assertSyntheticEnvironment(options.environment);
   const workerId = resolvePixSettlementWorkerId(options.workerId);
   const repository = new DatabasePixProviderEventDeliveryRepository(options.pool);
   const consumer = new PixProviderSettlementConsumer(repository, {
     workerId,
     leaseMs: PIX_PROVIDER_SETTLEMENT_DEFAULTS.leaseMs,
-    allowSyntheticProviders: true
+    allowSyntheticProviders
   });
   return Object.freeze({
     consumer,
@@ -294,6 +304,49 @@ export function createSyntheticPixPaymentDispatchRuntime(
     workerId,
     ...PIX_PAYMENT_DISPATCH_DEFAULTS
   });
+}
+
+export interface ExternalPixPaymentDispatchRuntimeOptions {
+  readonly pool: Pool;
+  readonly environment?: string;
+  readonly workerId?: string;
+  readonly apiKey: string;
+  readonly pixKey: string;
+  readonly fetchImpl?: typeof fetch;
+}
+
+export function createExternalPixPaymentDispatchRuntime(
+  options: ExternalPixPaymentDispatchRuntimeOptions
+): WorkerPixPaymentDispatchRuntime {
+  const provider = new PagarMePixPaymentDispatchProvider({
+    apiKey: options.apiKey,
+    pixKey: options.pixKey,
+    fetchImpl: options.fetchImpl
+  });
+  const workerId = resolvePixDispatcherWorkerId(options.workerId);
+  const dispatcher = new PixPaymentDispatcher(
+    new DatabasePixPaymentDispatchRepository(options.pool),
+    provider,
+    {
+      workerId,
+      ...PIX_PAYMENT_DISPATCH_DEFAULTS,
+      allowSyntheticProviders: false,
+      environment: normalizedEnvironment(options.environment)
+    }
+  );
+  return Object.freeze({
+    dispatcher,
+    providerKey: provider.key,
+    workerId,
+    ...PIX_PAYMENT_DISPATCH_DEFAULTS
+  });
+}
+
+/** Real Pagar.me credentials, unless the operator forced the PIX mock mode. */
+export function isPagarMePixConfigured(options: WorkerBootstrapOptions): boolean {
+  return Boolean(
+    options.pagarmeApiKey?.trim() && options.pagarmePixKey?.trim() && options.pixMockMode !== true
+  );
 }
 
 async function loadPersistedAccountIds(productionLike: boolean): Promise<readonly string[]> {
@@ -940,14 +993,24 @@ export async function bootstrapWorkerServices(
         ? createDatabaseReportSources(advancePaymentsReportSchemaReady)
         : undefined,
       advancePaymentsReportSchemaReady,
-      pixPaymentDispatch: createSyntheticPixPaymentDispatchRuntime({
-        allowSyntheticProviders: options.allowSyntheticPixProvider === true,
-        environment: options.environment,
-        pool: getPool(),
-        workerId: options.pixDispatcherWorkerId
-      }),
+      pixPaymentDispatch: isPagarMePixConfigured(options)
+        ? createExternalPixPaymentDispatchRuntime({
+            pool: getPool(),
+            environment: options.environment,
+            workerId: options.pixDispatcherWorkerId,
+            apiKey: options.pagarmeApiKey!,
+            pixKey: options.pagarmePixKey!
+          })
+        : createSyntheticPixPaymentDispatchRuntime({
+            allowSyntheticProviders: options.allowSyntheticPixProvider === true,
+            environment: options.environment,
+            pool: getPool(),
+            workerId: options.pixDispatcherWorkerId
+          }),
       pixProviderSettlement: createPixProviderSettlementRuntime({
-        enabled: options.pixProviderSettlementEnabled === true,
+        enabled:
+          options.pixProviderSettlementEnabled === true || isPagarMePixConfigured(options),
+        externalProviders: isPagarMePixConfigured(options),
         allowSyntheticProviders: options.allowSyntheticPixProvider === true,
         environment: options.environment,
         pool: getPool(),

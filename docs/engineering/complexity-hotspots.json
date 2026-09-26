@@ -35,7 +35,7 @@
       "risk_rank": 3,
       "risk_level": "HIGH",
       "risk_reason": "Composição cross-system permanece concentrada; stores de responsabilidade, catálogo e eventos preventivos, rotas de catálogos e notificações, envio, confirmação e fluxos de passagens clínicas, experimentos de caos, métricas de coleta, leituras de passagens clínicas e encontros, além de rotas de triagem, internação, prontuário e conteúdo de anexos, foram extraídos.",
-      "current_lines": 3479,
+      "current_lines": 3501,
       "previous_max_lines": 8335,
       "max_lines": 8323,
       "decomposition_plan": "Extrair registro de domínios e composição de handlers por bounded context."

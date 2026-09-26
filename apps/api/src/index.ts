@@ -405,8 +405,13 @@ async function main() {
   const laboratoryProviderKeyring = parseLaboratoryProviderKeyring(
     config.laboratoryProviderKeyringJson
   );
+  // Receipts come from the signed synthetic webhook (local/test) or from
+  // Pagar.me confirmations verified against the provider API.
+  const pagarmePixConfigured = Boolean(
+    config.pagarmeApiKey && config.pagarmePixKey && config.pixMockMode !== true
+  );
   const pixProviderEventIngressRepository =
-    config.pixSyntheticWebhookEnabled && databaseConfigured
+    (config.pixSyntheticWebhookEnabled || pagarmePixConfigured) && databaseConfigured
       ? new DatabasePixProviderEventIngressRepository()
       : undefined;
 

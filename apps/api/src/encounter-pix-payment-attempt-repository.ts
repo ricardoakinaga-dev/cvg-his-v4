@@ -11,7 +11,7 @@ import {
 import { AppError } from '@cvg-his-v2/shared-errors';
 import { withTenantQueryExplicit } from '@cvg-his-v2/tenant-context';
 
-export type EncounterPixPaymentProviderKey = 'local-pix' | 'mock';
+export type EncounterPixPaymentProviderKey = 'local-pix' | 'mock' | 'pagarme';
 export type EncounterPixPaymentAttemptState =
   | 'pending_dispatch'
   | 'awaiting_confirmation'

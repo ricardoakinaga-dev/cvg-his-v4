@@ -17,7 +17,18 @@ import {
   fingerprintPixProviderWebhookClaims
 } from './pix-provider-event-fingerprints.js';
 
+/**
+ * `local-pix` receipts arrive as HMAC-signed webhooks and must be fresh.
+ * `pagarme` receipts are built by the API only after re-reading the charge
+ * from the provider with its own credentials, so a late (but verified)
+ * confirmation is still a valid payment.
+ */
+export type PixProviderEventIngressProvider = 'local-pix' | 'pagarme';
+
+const VERIFIED_PROVIDER_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
+
 export interface PixProviderEventIngressInput {
+  readonly provider?: PixProviderEventIngressProvider;
   readonly rawBody: Buffer;
   readonly claims: PixProviderWebhookClaims;
   readonly providerEventId: string;
@@ -55,7 +66,7 @@ interface DeliveryRow {
 
 interface NormalizedPixProviderEventIngress {
   readonly accountId: string;
-  readonly provider: 'local-pix';
+  readonly provider: PixProviderEventIngressProvider;
   readonly providerEventId: string;
   readonly eventType: 'pix.payment.confirmed.v1';
   readonly paymentAttemptId: string;
@@ -107,10 +118,15 @@ export class DatabasePixProviderEventIngressRepository implements PixProviderEve
     }
     const rawBody = Buffer.from(input.rawBody);
     const claims = input.claims;
+    const provider: PixProviderEventIngressProvider = input.provider ?? 'local-pix';
+    if (provider !== 'local-pix' && provider !== 'pagarme') {
+      throw new AppError('PIX_PROVIDER_EVENT_INVALID_INPUT', 'Invalid PIX provider event', 400);
+    }
     let parsedClaims: PixProviderWebhookClaims;
     try {
       parsedClaims = parsePixProviderWebhookPayload(rawBody, claims.accountId, {
-        nowSeconds: this.#nowSeconds
+        nowSeconds: this.#nowSeconds,
+        ...(provider === 'pagarme' ? { maxAgeSeconds: VERIFIED_PROVIDER_MAX_AGE_SECONDS } : {})
       });
     } catch (error) {
       if (error instanceof PixProviderWebhookPayloadValidationError) {
@@ -125,7 +141,6 @@ export class DatabasePixProviderEventIngressRepository implements PixProviderEve
       throw new AppError('PIX_PROVIDER_EVENT_INVALID_INPUT', 'Invalid PIX provider event', 400);
     }
     const accountId = claims.accountId;
-    const provider = 'local-pix' as const;
     const eventType = 'pix.payment.confirmed.v1' as const;
     const bodyFingerprint = fingerprintPixProviderWebhookBody(rawBody);
     const claimsFingerprint = fingerprintPixProviderWebhookClaims(claims);

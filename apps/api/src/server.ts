@@ -345,6 +345,8 @@ import {
   createApiWorkflowTaskService,
   createWorkflowTaskSchemaReadinessGuard
 } from './helpers/workflow-task-runtime.js';
+import { PagarMePixChargeClient } from './pagarme-pix-charge-client.js';
+import { handlePagarMePixWebhookRoutes } from './routes/pagarme-pix-webhook-routes.js';
 export function buildAuthenticatedActorAttributes(
   principal: AuthenticatedPrincipal,
   memberships: {
@@ -997,6 +999,14 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     : undefined;
   // Local providers are deliberately limited to development/test environments.
   const hasPagarmeCredentials = Boolean(options.pagarmeApiKey && options.pagarmePixKey);
+  // Encounter PIX attempts go to Pagar.me whenever real credentials are
+  // configured; otherwise the synthetic provider (blocked in production).
+  const encounterPixProviderKey =
+    hasPagarmeCredentials && options.pixMockMode !== true ? 'pagarme' : 'local-pix';
+  const pagarmePixChargeClient =
+    encounterPixProviderKey === 'pagarme'
+      ? new PagarMePixChargeClient({ apiKey: options.pagarmeApiKey! })
+      : undefined;
   assertProductionProviderReadiness(options);
   const usePixMock = options.pixMockMode === true || !hasPagarmeCredentials;
   assertPixProviderWebhookReadiness({
@@ -1488,6 +1498,18 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         options.pixProviderWebhookSyntheticEnabled === true &&
         (await handlePixProviderWebhookRoutes(pathname, request, response, correlationId, {
           keyring: options.pixProviderWebhookKeyring ?? new Map(),
+          repository: options.pixProviderEventIngressRepository,
+          rateLimiter: pixProviderWebhookRateLimiter,
+          trustedProxyCidrs: options.trustedProxyCidrs
+        }))
+      ) {
+        return;
+      }
+      if (
+        pagarmePixChargeClient &&
+        options.pixProviderEventIngressRepository &&
+        (await handlePagarMePixWebhookRoutes(pathname, request, response, correlationId, {
+          client: pagarmePixChargeClient,
           repository: options.pixProviderEventIngressRepository,
           rateLimiter: pixProviderWebhookRateLimiter,
           trustedProxyCidrs: options.trustedProxyCidrs
@@ -2539,7 +2561,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               (await handlePixPaymentAttemptRoutes(pathname, request, response, {
                 command: encounterPixPaymentAttemptCommand,
                 repository: encounterPixPaymentAttemptRepository,
-                providerKey: 'local-pix',
+                providerKey: encounterPixProviderKey,
                 rateLimiter: pixPaymentAttemptRateLimiter,
                 requirePrincipal
               }))

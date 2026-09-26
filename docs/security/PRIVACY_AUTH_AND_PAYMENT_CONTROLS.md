@@ -63,8 +63,17 @@ de revogação. Testes: `packages/modules/lgpd/src/lgpd.test.ts`.
   `cvg:pix:intent:v1:sha256(conta + chave)` e, quando o provedor devolve uma
   cobrança já persistida, responde com ela; cobrança de outra conta é recusada
   (`apps/api/src/payment-gateway.ts`).
-- O Pix vinculado ao atendimento só possui o provedor sintético, que é bloqueado
-  em produção. Não há Pix real por atendimento até o item `R2-PAY-01`.
+- **Pix por atendimento (R2-PAY-01):** com as credenciais do Pagar.me, a
+  tentativa usa o provedor `pagarme`. O worker cria o QR com a chave
+  idempotente da tentativa e grava, como metadados da cobrança, a conta e a
+  tentativa (`cvg_account_id`, `cvg_attempt_id`). O webhook público
+  `/webhooks/pix/pagarme/v1` usa o corpo recebido só para obter o ID: a API
+  **reconsulta a cobrança no Pagar.me** e só registra o recebimento se ela estiver
+  paga e tiver os metadados da instalação. O consumidor de liquidação em modo
+  externo não aceita recebimentos sintéticos. Cadeia testada no PostgreSQL
+  (`pix-pagarme-encounter-flow-postgres.test.ts`); o contrato da API do
+  Pagar.me (campos, `status: paid`, eco de `metadata`) **ainda precisa ser
+  confirmado no sandbox** antes do go-live.
 
 ## 5. NFS-e
 

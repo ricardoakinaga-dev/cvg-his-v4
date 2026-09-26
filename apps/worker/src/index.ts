@@ -221,6 +221,9 @@ async function main() {
     allowSyntheticPixProvider: process.env.WORKER_PIX_SYNTHETIC_ENABLED === '1',
     pixDispatcherWorkerId: process.env.WORKER_INSTANCE_ID,
     pixProviderSettlementEnabled: process.env.WORKER_PIX_SETTLEMENT_ENABLED === '1',
+    pagarmeApiKey: process.env.PAGARME_API_KEY,
+    pagarmePixKey: process.env.PAGARME_PIX_KEY,
+    pixMockMode: ['1', 'true'].includes(process.env.PIX_MOCK_MODE ?? ''),
     pixSettlementWorkerId: process.env.WORKER_INSTANCE_ID
   });
   if (workerShutdownRequested) return;
