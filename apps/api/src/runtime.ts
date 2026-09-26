@@ -87,7 +87,7 @@ import type { StaffRepository, StaffTimeOffRepository } from '@cvg-his-v2/module
 import { SurgeryService } from '@cvg-his-v2/module-surgery';
 import type { SurgeryCaseRepository } from '@cvg-his-v2/module-surgery';
 import { TriageService } from '@cvg-his-v2/module-triage';
-import { UsersService } from '@cvg-his-v2/module-users';
+import { UsersService, createBreachCheckerFromEnv } from '@cvg-his-v2/module-users';
 import type {
   DiagnosticOrderRepository,
   LaboratoryCatalogRepository
@@ -348,6 +348,9 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const accessControl = new AccessControlService({ repository: repos.accessControl });
   const users = new UsersService({
     repository: repos.users,
+    // R2-SEC-01: PASSWORD_BREACH_CHECK=hibp adds the leaked-password corpus to
+    // the unified policy (12+ chars, denylist, no identifiers) on every credential.
+    passwordBreachChecker: createBreachCheckerFromEnv(process.env),
     seedUsersEnabled: repos.users === undefined || options.preserveSeedUsersWithRepository === true
   });
   const preserveSeedMasterDataWithRepository =

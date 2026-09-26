@@ -48,6 +48,26 @@ de revogação. Testes: `packages/modules/lgpd/src/lgpd.test.ts`.
 
 ## 3. Autenticação e MFA
 
+**Política de senha única (R2-SEC-01, 26/09/2026).** `packages/modules/users/src/password-policy.ts`
+vale para o administrador inicial, para usuários criados por administradores
+e para qualquer troca de senha: 12 a 128 caracteres, fora da lista de senhas
+comuns embutida, sem conter o nome de usuário, a parte local do e-mail ou o
+nome de exibição e, com `PASSWORD_BREACH_CHECK=hibp`, ausente do corpus Have I
+Been Pwned (consulta por k-anonimato, só 5 caracteres do SHA-1 saem do
+processo; `PASSWORD_BREACH_CHECK_FAIL_CLOSED=1` recusa senhas novas enquanto o
+serviço estiver fora). Violações respondem `400 PASSWORD_POLICY_VIOLATION`
+com `details.violations`.
+
+**Hashes legados.** A migração `0180_users_legacy_password_reset.sql`
+reescreve todo hash SHA-256 sem sal com o prefixo
+`legacy-sha256-reset-required:`; `comparePassword` nunca mais aceita SHA-256
+puro e o login responde `403 PASSWORD_RESET_REQUIRED` (auditado como
+`login_blocked_password_reset_required`) até um administrador definir uma
+senha nova. Não existe mais migração silenciosa no login. Testes:
+`packages/modules/users/src/password-policy.test.ts`, `users.test.ts`,
+`packages/modules/auth/src/auth.test.ts` e
+`tests/integration/database/legacy-password-reset.test.ts`.
+
 - O MFA é obrigatório para os papéis `admin`, `finance` e `auditor`, e também é
   exigido de **qualquer usuário que o tenha ativado voluntariamente**
   (`packages/modules/auth/src/index.ts`).

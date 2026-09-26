@@ -86,7 +86,7 @@ test('user routes scope create and list operations to the authenticated account'
     accountId: 'acc_other' as AccountId,
     username: 'other',
     email: 'other@example.com',
-    password: 'Password123!'
+    password: 'Clinica-Segura-2026!'
   });
 
   const createResponse = new MockResponse();
@@ -95,7 +95,7 @@ test('user routes scope create and list operations to the authenticated account'
     request('POST', '/users', {
       username: 'local',
       email: 'local@example.com',
-      password: 'Password123!'
+      password: 'Clinica-Segura-2026!'
     }),
     createResponse as never,
     'corr-create',
@@ -124,7 +124,7 @@ test('user routes reject cross-account reads and updates', async () => {
     accountId: 'acc_other' as AccountId,
     username: 'other',
     email: 'other@example.com',
-    password: 'Password123!'
+    password: 'Clinica-Segura-2026!'
   });
   const routeHandlers = handlers(users, 'acc_local' as AccountId);
 

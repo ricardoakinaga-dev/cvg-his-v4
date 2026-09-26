@@ -2,6 +2,8 @@ import { createHash, scrypt, randomBytes, randomUUID, timingSafeEqual } from 'no
 import { promisify } from 'node:util';
 
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
+
+import { assertPasswordPolicy, type BreachedPasswordChecker } from './password-policy.js';
 import type { AccountId, UserId, UserSummary } from '@cvg-his-v2/shared-types';
 import { nowIso } from '@cvg-his-v2/shared-utils';
 import type {
@@ -27,6 +29,8 @@ export function isInteractiveHumanUser(user: UserRecord): boolean {
 }
 
 export interface UsersServiceOptions {
+  /** R2-SEC-01: optional leaked-password corpus consulted when creating credentials. */
+  readonly passwordBreachChecker?: BreachedPasswordChecker;
   readonly repository?: UsersRepository;
   readonly seedUsersEnabled?: boolean;
 }
@@ -35,6 +39,16 @@ const SCRYPT_KEYLEN = 64;
 const SCRYPT_SALT_LENGTH = 16;
 const SEED_SALT = 'cvg-his-v2-seed-salt-v1';
 const LEGACY_SHA256_PATTERN = /^[a-f0-9]{64}$/i;
+/**
+ * R2-SEC-01: migration 0180 rewrites unsalted SHA-256 hashes with this prefix.
+ * Such credentials never authenticate again; login answers
+ * PASSWORD_RESET_REQUIRED until an administrator sets a new password.
+ */
+export const LEGACY_RESET_REQUIRED_PREFIX = 'legacy-sha256-reset-required:';
+
+export function passwordResetRequired(passwordHash: string): boolean {
+  return passwordHash.startsWith(LEGACY_RESET_REQUIRED_PREFIX) || LEGACY_SHA256_PATTERN.test(passwordHash);
+}
 
 const scryptAsync = promisify(scrypt);
 
@@ -63,12 +77,14 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function comparePassword(password: string, passwordHash: string): Promise<boolean> {
+  // R2-SEC-01: unsalted SHA-256 (legacy Drizzle seeds) and hashes flagged by
+  // migration 0180 are never accepted; the owner must receive a new password.
+  if (passwordResetRequired(passwordHash)) {
+    return false;
+  }
   const parts = passwordHash.split(':');
   if (parts.length !== 2) {
-    // Backward compatibility for legacy Drizzle seed values stored as plain SHA-256 hex.
-    // Unsalted SHA-256 is not an acceptable password hash: these records should be
-    // migrated to scrypt (see hashPassword) on the owner's next successful login.
-    return timingSafeEqualString(createHash('sha256').update(password).digest('hex'), passwordHash);
+    return false;
   }
   const saltHex = parts[0];
   const hashHex = parts[1];
@@ -208,12 +224,14 @@ export class UsersService {
   readonly #usersByAccountUsername = new Map<string, UserRecord>();
   readonly #ambiguousUsernames = new Set<string>();
   readonly #repositoryUserIds = new Set<UserId>();
+  readonly #passwordBreachChecker?: BreachedPasswordChecker;
 
   public constructor(
     options?: UsersServiceOptions,
     seedUsers: readonly UserRecord[] = createSeedUsers()
   ) {
     this.#repository = options?.repository;
+    this.#passwordBreachChecker = options?.passwordBreachChecker;
     const seedEnabled = options?.seedUsersEnabled ?? isSeedEnvironment();
     if (seedEnabled) {
       for (const user of seedUsers) {
@@ -373,43 +391,15 @@ export class UsersService {
   }
 
   public async verifyPassword(user: UserRecord, password: string): Promise<boolean> {
-    const isValid = await comparePassword(password, user.passwordHash);
-    if (!isValid || !LEGACY_SHA256_PATTERN.test(user.passwordHash)) {
-      return isValid;
-    }
+    // R2-SEC-01: legacy hashes are rejected outright (see passwordResetRequired);
+    // there is no silent upgrade on login any more.
+    if (passwordResetRequired(user.passwordHash)) return false;
+    return comparePassword(password, user.passwordHash);
+  }
 
-    const passwordHash = await hashPassword(password);
-    const updatedUser: UserRecord = {
-      ...user,
-      passwordHash,
-      updatedAt: nowIso()
-    };
-    if (!this.#repository) {
-      this.#indexUser(updatedUser);
-      return true;
-    }
-
-    const upgraded = await this.#repository.upgradePasswordHash({
-      userId: user.id,
-      accountId: user.accountId,
-      expectedPasswordHash: user.passwordHash,
-      passwordHash
-    });
-    if (upgraded) {
-      this.#indexUser(updatedUser);
-      return true;
-    }
-
-    // A failed compare-and-swap means the credential changed after validation.
-    // Re-read and verify the current hash: concurrent upgrades of the same
-    // password remain valid, while a concurrent password reset fails closed.
-    const repositoryUser = await this.#repository.findById(user.id, user.accountId);
-    if (!repositoryUser) {
-      return false;
-    }
-    const currentUser = await this.#materializeUser(repositoryUser);
-    this.#indexUser(currentUser);
-    return comparePassword(password, currentUser.passwordHash);
+  /** True when the stored credential is a legacy hash that must be replaced. */
+  public requiresPasswordReset(user: Pick<UserRecord, 'passwordHash'>): boolean {
+    return passwordResetRequired(user.passwordHash);
   }
 
   public async create(input: {
@@ -424,6 +414,11 @@ export class UsersService {
     if (this.#usersByUsername.has(input.username)) {
       throw new Error('Username already exists');
     }
+    await assertPasswordPolicy(
+      input.password,
+      { username: input.username, email: input.email, displayName: input.displayName },
+      this.#passwordBreachChecker
+    );
     const now = nowIso();
     const id = randomUUID() as UserId;
     const passwordHash = await hashPassword(input.password);
@@ -613,3 +608,17 @@ export {
 } from './repositories/database-users.repository.js';
 
 export { createSeedUsers };
+
+export {
+  COMMON_PASSWORDS,
+  HibpRangeBreachChecker,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  PasswordPolicyError,
+  assertPasswordPolicy,
+  createBreachCheckerFromEnv,
+  evaluatePasswordPolicy,
+  type BreachedPasswordChecker,
+  type PasswordPolicyContext,
+  type PasswordPolicyViolation
+} from './password-policy.js';

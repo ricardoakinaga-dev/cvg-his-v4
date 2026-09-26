@@ -16,8 +16,7 @@ import {
   AuthenticationError,
   ConflictError,
   ForbiddenError,
-  NotFoundError
-} from '@cvg-his-v2/shared-errors';
+  NotFoundError, AppError } from '@cvg-his-v2/shared-errors';
 import type {
   AccessProfile,
   AccountId,
@@ -165,6 +164,25 @@ export class AuthService {
     }
 
     const user = await this.#users.resolveByUsername(username, input.accountId as never);
+
+    // R2-SEC-01: a legacy (unsalted SHA-256) credential can no longer log in;
+    // an administrator must set a new password. Audited, not silently failed.
+    if (user && this.#users.requiresPasswordReset(user)) {
+      this.#audit.write({
+        actorId: user.id,
+        accountId: user.accountId,
+        module: 'auth',
+        action: 'login_blocked_password_reset_required',
+        entityType: 'user',
+        entityId: user.id,
+        correlationId,
+        payloadSummary: 'Login blocked: legacy password hash requires reset',
+        riskLevel: 'high'
+      });
+      throw new AppError('PASSWORD_RESET_REQUIRED', 'Password reset required', 403, {
+        reason: 'legacy_hash'
+      });
+    }
 
     if (!user || !(await this.#users.verifyPassword(user, password))) {
       if (this.#bruteForce) {

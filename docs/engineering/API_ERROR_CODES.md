@@ -19,7 +19,7 @@ em português desta tabela; `message` é texto técnico em inglês e nunca vai p
 | `too_short` | Texto muito curto. |
 | `mismatch` | Os valores informados não conferem. |
 
-## Códigos (177)
+## Códigos (180)
 
 | Código | HTTP | Categoria | Mensagem ao usuário |
 |---|---:|---|---|
@@ -140,6 +140,9 @@ em português desta tabela; `message` é texto técnico em inglês e nunca vai p
 | `OWNERS_REPORT_INVALID_FILTER` | 400 | Validação | Os filtros do relatório são inválidos. Revise os parâmetros e tente novamente. |
 | `OWNERS_REPORT_RESULT_LIMIT` | 400 | Limite | O relatório excede o limite de linhas. Restrinja o período ou os filtros. |
 | `OWNERS_REPORT_TENANT_MISMATCH` | 403 | Autenticação e autorização | O relatório solicitado não pertence a esta clínica. |
+| `PASSWORD_BREACH_CHECK_UNAVAILABLE` | 503 | Indisponível | A verificação de senhas vazadas está indisponível. Tente novamente em instantes. |
+| `PASSWORD_POLICY_VIOLATION` | 400 | Validação | A senha não atende à política: use ao menos 12 caracteres, sem senhas comuns ou vazadas e sem conter seu nome de usuário. |
+| `PASSWORD_RESET_REQUIRED` | 403 | Autenticação e autorização | Sua senha precisa ser redefinida por um administrador antes de continuar. |
 | `PATIENTS_REPORT_INVALID_FILTER` | 400 | Validação | Os filtros do relatório são inválidos. Revise os parâmetros e tente novamente. |
 | `PATIENTS_REPORT_RESULT_LIMIT` | 400 | Limite | O relatório excede o limite de linhas. Restrinja o período ou os filtros. |
 | `PATIENTS_REPORT_TENANT_MISMATCH` | 403 | Autenticação e autorização | O relatório solicitado não pertence a esta clínica. |

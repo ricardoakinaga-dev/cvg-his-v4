@@ -119,6 +119,7 @@ function createUsersDouble(
   return {
     resolveByUsername: async () => loginUser,
     verifyPassword: async () => true,
+    requiresPasswordReset: () => false,
     getOrThrow: () => currentUser,
     list: () => [currentUser]
   } as unknown as UsersService;
@@ -1206,6 +1207,7 @@ test('AuthService: rejects MFA challenge identity mismatches and repository rese
     users: {
       resolveByUsername: async () => seed,
       verifyPassword: async () => true,
+      requiresPasswordReset: () => false,
       getOrThrow: () => seed,
       resolveInteractiveById: async () => accountMismatchUser,
       list: () => [seed]
@@ -1546,4 +1548,34 @@ test('AuthService: rejects malformed, signed-but-wrong, expired, and unknown acc
     () => expiredAuth.authenticateAccessToken(expiredLogin.accessToken),
     /Token expired/
   );
+});
+
+test('AuthService: a legacy password hash is refused with PASSWORD_RESET_REQUIRED and audited (R2-SEC-01)', async () => {
+  const [seedAdmin] = createSeedUsers();
+  const legacyUser = { ...seedAdmin, passwordHash: 'legacy-sha256-reset-required:' + 'a'.repeat(64) };
+  const users = {
+    resolveByUsername: async () => legacyUser,
+    verifyPassword: async () => {
+      throw new Error('verifyPassword must not run for a legacy hash');
+    },
+    requiresPasswordReset: () => true,
+    getOrThrow: () => legacyUser,
+    list: () => [legacyUser]
+  } as unknown as UsersService;
+  const audit = new AuditService();
+  const auth = new AuthService({
+    secret: 'test-secret-key',
+    accessTokenTtlSeconds: 900,
+    refreshTokenTtlSeconds: 604800,
+    users,
+    staff: new StaffService(),
+    accessControl: new AccessControlService(),
+    audit
+  });
+  await assert.rejects(
+    () => auth.login({ username: legacyUser.username, password: 'whatever-it-was' }, 'corr-legacy'),
+    (error: unknown) =>
+      (error as { code?: string }).code === 'PASSWORD_RESET_REQUIRED' && (error as { statusCode?: number }).statusCode === 403
+  );
+  assert.ok(audit.list().some((entry) => entry.action === 'login_blocked_password_reset_required'));
 });

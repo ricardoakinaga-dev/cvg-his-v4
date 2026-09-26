@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "c7940994f3e7f6a193840262f4506640d98a8bda",
+  "head": "f3a81f00a4edbf7d59ccbc5436ab30e601469237",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -1005,7 +1005,7 @@
     },
     {
       "path": "apps/api/src/routes/setup-routes.ts",
-      "sha256": "47e3df8fef325ae06e7eca1db4ea92b946c21f9199018dbfa90e5021e5abf74c",
+      "sha256": "51f6ed8bd944af31c9ad54f00629af616d4d20681c8d601b2d61f2ca942a3488",
       "components": [
         "http-routes"
       ],
@@ -1045,7 +1045,7 @@
     },
     {
       "path": "apps/api/src/routes/users-staff-quotes-routes.ts",
-      "sha256": "b2460b125aecbaf61297847804ac033262c16153d3f0bbdc4440e77b89abe77b",
+      "sha256": "bb2e4ef71dcd49aacb22056141f4541d18ee11fbf4aa50a92857e39c7eace657",
       "components": [
         "http-routes"
       ],
@@ -4704,7 +4704,7 @@
     },
     {
       "path": "packages/modules/auth/src/index.ts",
-      "sha256": "f368eb4f9c55b7a53e4d05c54e9bb4d202aaafb66de9cdf7befb73d7ec5a2b1e",
+      "sha256": "3696e49b37f20ff3231c66912deedbfe610c012adb86b4d1ab03734281424a07",
       "components": [
         "auth"
       ],
@@ -6262,7 +6262,8 @@
     "tests/integration/database/pix-pagarme-encounter-flow-postgres.test.ts",
     "tests/integration/database/multi-replica-cache-consistency.test.ts",
     "tests/unit/modules/cache-sync-replicas.test.ts",
-    "tests/integration/database/patient-structured-allergies-postgres.test.ts"
+    "tests/integration/database/patient-structured-allergies-postgres.test.ts",
+    "tests/integration/database/legacy-password-reset.test.ts"
   ],
   "executionInputs": [
     ".eslintrc.cjs",
@@ -8507,7 +8508,8 @@
     "tests/integration/database/pix-pagarme-encounter-flow-postgres.test.ts",
     "tests/integration/database/multi-replica-cache-consistency.test.ts",
     "tests/unit/modules/cache-sync-replicas.test.ts",
-    "tests/integration/database/patient-structured-allergies-postgres.test.ts"
+    "tests/integration/database/patient-structured-allergies-postgres.test.ts",
+    "tests/integration/database/legacy-password-reset.test.ts"
   ],
   "scopeHistory": [
     {
@@ -12500,6 +12502,46 @@
           "after": "ef80ab798e320fa4dfcb4914fca2ee60a75ac93dea07d6f2526a7c3188318e6d"
         }
       ]
+    },
+    {
+      "manifestRevision": 94,
+      "observedAt": "2026-09-26T17:25:39.417Z",
+      "collectionCommit": "f3a81f00a4edbf7d59ccbc5436ab30e601469237",
+      "previousManifestSha256": "e11acaf9b29a7b40166d59a0f021d371ae75bb5a42d5a326c4612ce91250f5fb",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-e11acaf9b29a7b40166d59a0f021d371ae75bb5a42d5a326c4612ce91250f5fb.json",
+      "previousSourceSetSha256": "d1403fec5fd924ffcfca9643c0a9f81b5201df86c0794a61cca56dbdbd3a451a",
+      "sourceSetSha256": "f02c79536950b598eef8c6c4b5591dc6a466bb08a611396a35c48db14bd3d6d6",
+      "reason": "R2-SEC-01: unified password policy, legacy hash reset and new tests",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/routes/setup-routes.ts",
+          "before": "47e3df8fef325ae06e7eca1db4ea92b946c21f9199018dbfa90e5021e5abf74c",
+          "after": "51f6ed8bd944af31c9ad54f00629af616d4d20681c8d601b2d61f2ca942a3488"
+        },
+        {
+          "path": "apps/api/src/routes/users-staff-quotes-routes.ts",
+          "before": "b2460b125aecbaf61297847804ac033262c16153d3f0bbdc4440e77b89abe77b",
+          "after": "bb2e4ef71dcd49aacb22056141f4541d18ee11fbf4aa50a92857e39c7eace657"
+        },
+        {
+          "path": "packages/modules/auth/src/index.ts",
+          "before": "f368eb4f9c55b7a53e4d05c54e9bb4d202aaafb66de9cdf7befb73d7ec5a2b1e",
+          "after": "3696e49b37f20ff3231c66912deedbfe610c012adb86b4d1ab03734281424a07"
+        }
+      ],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "tests/integration/database/legacy-password-reset.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "ba2289fdde73a6b59074b2ba0c9de34f4a016a63bab692f3ccc405099cc634fd",
+      "executionInputsSha256": "f644e9d46b495da9e7db009b624294a57c4b55eab0f37e96cfe8d5156de1f216",
+      "vitestAdded": [
+        "tests/integration/database/legacy-password-reset.test.ts"
+      ],
+      "vitestRemoved": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -13433,9 +13475,9 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 93,
-  "sourceSetSha256": "d1403fec5fd924ffcfca9643c0a9f81b5201df86c0794a61cca56dbdbd3a451a",
-  "executionInputsSha256": "ba2289fdde73a6b59074b2ba0c9de34f4a016a63bab692f3ccc405099cc634fd",
+  "manifestRevision": 94,
+  "sourceSetSha256": "f02c79536950b598eef8c6c4b5591dc6a466bb08a611396a35c48db14bd3d6d6",
+  "executionInputsSha256": "f644e9d46b495da9e7db009b624294a57c4b55eab0f37e96cfe8d5156de1f216",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,

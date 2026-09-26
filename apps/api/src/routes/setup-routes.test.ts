@@ -120,9 +120,14 @@ test('rejects passwords built from too few character classes', () => {
   assert.match(validateAdminPassword('abcdefghijklABC') ?? '', /ao menos três/);
 });
 
+test('rejects common passwords even when long and varied (R2-SEC-01)', () => {
+  assert.match(validateAdminPassword('Administrador123!') ?? '', /senha comum/);
+  assert.match(validateAdminPassword('Senha@123456') ?? '', /senha comum/);
+});
+
 test('accepts a password with enough length and variety', () => {
   assert.equal(validateAdminPassword('Clinica2026!vet'), null);
-  assert.equal(validateAdminPassword('senha-forte-123'), null);
+  assert.equal(validateAdminPassword('Vet-Clinica-2026!'), null);
 });
 
 test('rejects an oversized administrator password', () => {

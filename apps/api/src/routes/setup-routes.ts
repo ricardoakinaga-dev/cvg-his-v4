@@ -17,10 +17,11 @@ import {
   isSetupRequired,
   provisionInitialInstallation
 } from '../setup-provisioning.js';
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, evaluatePasswordPolicy } from '@cvg-his-v2/module-users';
 import { isValidSetupToken } from '../setup-token.js';
 
-export const MIN_ADMIN_PASSWORD_LENGTH = 12;
-export const MAX_ADMIN_PASSWORD_LENGTH = 128;
+export const MIN_ADMIN_PASSWORD_LENGTH = PASSWORD_MIN_LENGTH;
+export const MAX_ADMIN_PASSWORD_LENGTH = PASSWORD_MAX_LENGTH;
 export const SETUP_MAX_BODY_BYTES = 16 * 1024;
 const MAX_FIELD_LENGTH = 255;
 const USERNAME_PATTERN = /^[a-zA-Z0-9._-]{3,128}$/;
@@ -105,6 +106,11 @@ export function validateAdminPassword(password: string): string | null {
 
   if (classes < 3) {
     return 'A senha do administrador deve combinar ao menos três de: minúsculas, maiúsculas, números e símbolos.';
+  }
+
+  // R2-SEC-01: the same denylist that guards every other credential.
+  if (evaluatePasswordPolicy(password).includes('common_password')) {
+    return 'A senha do administrador é uma senha comum ou previsível; escolha outra.';
   }
 
   return null;

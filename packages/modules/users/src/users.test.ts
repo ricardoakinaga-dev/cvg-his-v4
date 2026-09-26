@@ -5,7 +5,14 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
 
-import { UsersService, comparePassword, createSeedUsers, hashPassword } from './index.js';
+import {
+  LEGACY_RESET_REQUIRED_PREFIX,
+  UsersService,
+  comparePassword,
+  createSeedUsers,
+  hashPassword,
+  passwordResetRequired
+} from './index.js';
 import type { UsersRepository } from './repositories/database-users.repository.js';
 
 class InMemoryUsersRepository implements UsersRepository {
@@ -116,7 +123,7 @@ describe('UsersService', () => {
       accountId: 'acc_quality' as AccountId,
       username: 'quality_user',
       email: 'quality@cvg.local',
-      password: 'StrongPass123!',
+      password: 'Clinica-Segura-2026!',
       displayName: 'Quality User',
       roleCode: 'admin'
     });
@@ -126,7 +133,7 @@ describe('UsersService', () => {
 
     const stored = service.getOrThrow(created.id);
     expect(stored.passwordHash).toContain(':');
-    expect(await service.verifyPassword(stored, 'StrongPass123!')).toBe(true);
+    expect(await service.verifyPassword(stored, 'Clinica-Segura-2026!')).toBe(true);
     expect(await service.verifyPassword(stored, 'wrong-password')).toBe(false);
   });
 
@@ -138,7 +145,7 @@ describe('UsersService', () => {
       accountId: 'acc_repo' as AccountId,
       username: 'repo_user',
       email: 'repo@cvg.local',
-      password: 'RepoPass123!'
+      password: 'Clinica-Segura-2026!'
     });
     const updated = await repoService.update(created.id, {
       displayName: 'Repositorio Atualizado',
@@ -170,54 +177,14 @@ describe('UsersService', () => {
     expect(await new UsersService().verifyPassword(seedAdmin, 'seed_admin')).toBe(true);
   });
 
-  it('keeps compatibility with legacy sha256 seeded passwords from Drizzle seed', async () => {
+  it('rejects legacy unsalted sha256 hashes and flags them for reset (R2-SEC-01)', async () => {
     const legacyHash = createHash('sha256').update('LegacyPass123!').digest('hex');
 
-    expect(await comparePassword('LegacyPass123!', legacyHash)).toBe(true);
+    expect(await comparePassword('LegacyPass123!', legacyHash)).toBe(false);
     expect(await comparePassword('wrong', legacyHash)).toBe(false);
-  });
-
-  it('atomically upgrades a valid legacy sha256 password to scrypt', async () => {
-    const legacyHash = createHash('sha256').update('LegacyPass123!').digest('hex');
-    const repository = new InMemoryUsersRepository([
-      {
-        id: 'user_legacy' as UserId,
-        accountId: 'acc_legacy' as AccountId,
-        username: 'legacy_user',
-        email: 'legacy-user@cvg.local',
-        passwordHash: legacyHash,
-        fullName: 'Legacy User',
-        isActive: true,
-        roleCodes: ['admin'],
-        createdAt: '2026-04-01T10:00:00.000Z',
-        updatedAt: '2026-04-01T10:00:00.000Z'
-      }
-    ]);
-    const firstInstance = new UsersService({ repository }, []);
-    const secondInstance = new UsersService({ repository }, []);
-    const firstUser = await firstInstance.resolveByUsername(
-      'legacy_user',
-      'acc_legacy' as AccountId
-    );
-    const secondUser = await secondInstance.resolveByUsername(
-      'legacy_user',
-      'acc_legacy' as AccountId
-    );
-
-    const results = await Promise.all([
-      firstInstance.verifyPassword(firstUser!, 'LegacyPass123!'),
-      secondInstance.verifyPassword(secondUser!, 'LegacyPass123!')
-    ]);
-    const upgraded = await firstInstance.resolveById(
-      'user_legacy' as UserId,
-      'acc_legacy' as AccountId
-    );
-
-    expect(results).toEqual([true, true]);
-    expect(repository.successfulPasswordUpgrades).toBe(1);
-    expect(upgraded?.passwordHash).not.toBe(legacyHash);
-    expect(upgraded?.passwordHash.split(':')).toHaveLength(2);
-    expect(await comparePassword('LegacyPass123!', upgraded!.passwordHash)).toBe(true);
+    expect(passwordResetRequired(legacyHash)).toBe(true);
+    expect(passwordResetRequired(`${LEGACY_RESET_REQUIRED_PREFIX}${legacyHash}`)).toBe(true);
+    expect(passwordResetRequired(await hashPassword('Clinica-Segura-2026!'))).toBe(false);
   });
 
   it('fails closed when a legacy password upgrade loses a concurrent compare-and-swap', async () => {
@@ -281,7 +248,7 @@ describe('UsersService', () => {
       accountId: 'acc_shared' as AccountId,
       username: 'late_user',
       email: 'late-user@cvg.local',
-      password: 'LateUserPass123!',
+      password: 'Clinica-Segura-2026!',
       roleCode: 'admin'
     });
 
@@ -292,7 +259,7 @@ describe('UsersService', () => {
 
     expect(resolved?.id).toBe(created.id);
     expect(resolved?.roleCodes).toEqual(['admin']);
-    expect(await hotReader.verifyPassword(resolved!, 'LateUserPass123!')).toBe(true);
+    expect(await hotReader.verifyPassword(resolved!, 'Clinica-Segura-2026!')).toBe(true);
   });
 
   it('refreshes a cached user from the repository by id', async () => {
@@ -303,7 +270,7 @@ describe('UsersService', () => {
       accountId: 'acc_shared' as AccountId,
       username: 'status_user',
       email: 'status-user@cvg.local',
-      password: 'StatusUserPass123!',
+      password: 'Clinica-Segura-2026!',
       roleCode: 'admin'
     });
 
@@ -387,7 +354,7 @@ describe('UsersService', () => {
       accountId: 'acc_first' as AccountId,
       username: 'duplicated',
       email: 'first@cvg.local',
-      password: 'FirstPass123!'
+      password: 'Clinica-Segura-2026!'
     });
 
     await expect(
@@ -395,7 +362,7 @@ describe('UsersService', () => {
         accountId: 'acc_second' as AccountId,
         username: 'duplicated',
         email: 'second@cvg.local',
-        password: 'SecondPass123!'
+        password: 'Clinica-Segura-2026!'
       })
     ).rejects.toThrow('Username already exists');
   });
@@ -405,13 +372,13 @@ describe('UsersService', () => {
       accountId: 'acc_first' as AccountId,
       username: 'first_user',
       email: 'first@cvg.local',
-      password: 'FirstPass123!'
+      password: 'Clinica-Segura-2026!'
     });
     await service.create({
       accountId: 'acc_second' as AccountId,
       username: 'second_user',
       email: 'second@cvg.local',
-      password: 'SecondPass123!'
+      password: 'Clinica-Segura-2026!'
     });
 
     expect(service.listForAccount('acc_first' as AccountId).map((user) => user.id)).toEqual([

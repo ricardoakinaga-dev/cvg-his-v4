@@ -10,7 +10,7 @@ import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { CounterSalesService } from '@cvg-his-v2/module-counter-sales';
 import type { QuotesService } from '@cvg-his-v2/module-quotes';
 import type { StaffService } from '@cvg-his-v2/module-staff';
-import type { UsersService } from '@cvg-his-v2/module-users';
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, type UsersService } from '@cvg-his-v2/module-users';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import type { UpdateUserRequest } from '@cvg-his-v2/shared-contracts';
 import { AuthenticationError } from '@cvg-his-v2/shared-errors';
@@ -54,7 +54,7 @@ export async function handleUsersStaffQuotesRoutes(
         {
           username: { type: 'string', required: true, minLength: 3 },
           email: { type: 'string', required: true },
-          password: { type: 'string', required: true, minLength: 8 },
+          password: { type: 'string', required: true, minLength: PASSWORD_MIN_LENGTH, maxLength: PASSWORD_MAX_LENGTH },
           displayName: { type: 'string', required: false }
         },
         correlationId

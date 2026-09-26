@@ -69,13 +69,13 @@ describe('UsersService coverage guard', () => {
     const created = await service.create({
       username: 'quality_user',
       email: 'quality@cvg.local',
-      password: 'StrongPass123!',
+      password: 'Clinica-Segura-2026!',
       displayName: 'Quality User',
       roleCode: 'admin'
     });
 
     const stored = service.getOrThrow(created.id);
-    expect(await service.verifyPassword(stored, 'StrongPass123!')).toBe(true);
+    expect(await service.verifyPassword(stored, 'Clinica-Segura-2026!')).toBe(true);
     expect(await service.verifyPassword(stored, 'wrong-password')).toBe(false);
 
     await expect(
@@ -128,7 +128,7 @@ describe('UsersService coverage guard', () => {
     const created = await repositoryBacked.create({
       username: 'repo_user',
       email: 'repo@cvg.local',
-      password: 'RepoPass123!'
+      password: 'Clinica-Segura-2026!'
     });
     const updated = await repositoryBacked.update(created.id, {
       displayName: 'Repositorio Atualizado',
@@ -149,13 +149,14 @@ describe('UsersService coverage guard', () => {
     ]);
   });
 
-  it('supports modern, seed and legacy sha256 password comparison paths', async () => {
+  it('supports modern and seed password comparison paths and rejects legacy sha256', async () => {
     const modernHash = await hashPassword('ModernPass123!');
     const legacyHash = createHash('sha256').update('LegacyPass123!').digest('hex');
 
     expect(await comparePassword('ModernPass123!', modernHash)).toBe(true);
     expect(await comparePassword('wrong', modernHash)).toBe(false);
-    expect(await comparePassword('LegacyPass123!', legacyHash)).toBe(true);
+    // R2-SEC-01: unsalted SHA-256 is never accepted any more.
+    expect(await comparePassword('LegacyPass123!', legacyHash)).toBe(false);
     expect(await comparePassword('wrong', legacyHash)).toBe(false);
     expect(await comparePassword('seed_admin', 'cvg-his-v2-seed-salt-v1:seed_admin')).toBe(true);
     expect(await comparePassword('seed_admin', 'invalid-format')).toBe(false);

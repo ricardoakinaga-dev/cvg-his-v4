@@ -141,6 +141,9 @@ export const ERROR_CATALOG: Readonly<Record<string, ErrorCodeEntry>> = {
   SETUP_FAILED: { httpStatus: 500, category: 'internal', ptBR: 'A configuração inicial falhou. Nenhuma alteração foi aplicada.' },
   SETUP_PAYLOAD_TOO_LARGE: { httpStatus: 413, category: 'limit', ptBR: 'O conteúdo enviado é grande demais.' },
   INVALID_SETUP_PAYLOAD: { httpStatus: 400, category: 'validation', ptBR: 'Os dados da configuração inicial são inválidos.' },
+  PASSWORD_POLICY_VIOLATION: { httpStatus: 400, category: 'validation', ptBR: 'A senha não atende à política: use ao menos 12 caracteres, sem senhas comuns ou vazadas e sem conter seu nome de usuário.' },
+  PASSWORD_RESET_REQUIRED: { httpStatus: 403, category: 'auth', ptBR: 'Sua senha precisa ser redefinida por um administrador antes de continuar.' },
+  PASSWORD_BREACH_CHECK_UNAVAILABLE: { httpStatus: 503, category: 'unavailable', ptBR: 'A verificação de senhas vazadas está indisponível. Tente novamente em instantes.' },
   INVALID_SETUP_TOKEN: { httpStatus: 401, category: 'auth', ptBR: 'O token de configuração inicial é inválido.' },
 
   // ── registry / LGPD ────────────────────────────────────────────────────
