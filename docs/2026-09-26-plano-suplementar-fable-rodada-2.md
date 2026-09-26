@@ -157,4 +157,10 @@ Linhas anexadas em ordem cronológica pela sessão Fable. Estados: `ABERTO`, `EM
 | 2026-09-26 | A1 CI-DIAG | BLOQUEADO em U1 | — | Teste passa em Node 22.23.2 (6/6) e 24; log do runner exige login |
 | 2026-09-26 | F7 release images | BLOQUEADO em U1 | — | Reprodução local impossível: o script exige o Helm pinado (`Pinned Helm is required`), ausente neste host; no CI o Helm foi instalado com sucesso antes do step, logo a causa é outra e só o log mostra |
 | 2026-09-26 | Coordenação com Opus | ACORDADO | — | Opus aceitou a divisão; FIN-03 e UX-02 já entregues por ele (`19f61de4`, `d2c26a27`, sem push); rebind Triple-A fica com o Opus; LGPD-01, NOT-01 e PAY-01 passam ao Opus; Opus commita este documento e o `README.md` |
+| 2026-09-26 | A2 R2-ARC-01 | MERGED | `fable/r2-arc-01` | Helm falha com 3 réplicas em prod; guard de startup com teste 5/5; runbook `docs/runbooks/api-replica-topology.md` |
+| 2026-09-26 | A4 R2-LGPD-04 | MERGED | `fable/r2-lgpd-04` | `POST /lgpd/export` responde `404 SUBJECT_NOT_FOUND`; testes do serviço (34) e da rota (7) |
+| 2026-09-26 | A5 R2-LGPD-02 | MERGED | `fable/r2-lgpd-02` | Tabela de retenção só com `retain`; `retentionPolicy` no pacote; doc de controles atualizado |
+| 2026-09-26 | A6 R2-TOOL-01 | MERGED | `fable/r2-tool-01` | Script sem `rg`; portas `E2E_POSTGRES_HOST_PORT`/`E2E_REDIS_HOST_PORT` com fallback; provado neste host com 5434 ocupada |
+| 2026-09-26 | A7 R2-OPS-01 | MERGED (canal real pendente de U2) | `fable/r2-ops-01` | Drill sintético PASS: critical 10,0 s, warning 30,0 s; `docs/operations/ALERTMANAGER_DRILL_2026-09-26.md` |
+| 2026-09-26 | Integração Lote A | CI (aguardando) | `main` | Rebase em 45e547a2; typecheck, lint, 52 testes focados, suíte API, OpenAPI, Helm, docs, complexity; rebind Triple-A docs-only |
 | 2026-09-26 | F8 snapshot Triple-A | ABERTO (aguarda Opus/usuário) | — | `docs:validate` local: "current snapshot 74b8669f… is not an ancestor of HEAD d0102939" |
