@@ -291,6 +291,7 @@ export interface CreatePatientRequest {
   readonly color?: string;
   readonly chronicDisease?: string;
   readonly allergy?: string;
+  readonly allergies?: readonly import('@cvg-his-v2/shared-types').PatientAllergy[];
   readonly temperament?: string;
   readonly generalNotes?: string;
   readonly legacyVetusId?: string;
@@ -313,6 +314,7 @@ export interface UpdatePatientRequest {
   readonly color?: string;
   readonly chronicDisease?: string;
   readonly allergy?: string;
+  readonly allergies?: readonly import('@cvg-his-v2/shared-types').PatientAllergy[];
   readonly temperament?: string;
   readonly generalNotes?: string;
   readonly legacyVetusId?: string;

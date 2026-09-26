@@ -10,8 +10,10 @@ import type { PatientsService } from '@cvg-his-v2/module-patients';
 import { PrescriptionsService } from '@cvg-his-v2/module-prescriptions';
 import {
   ALLERGY_ACKNOWLEDGEMENT_MIN_LENGTH,
-  ALLERGY_ACKNOWLEDGEMENT_REQUIRED_CODE,
-  findAllergyConflicts
+  ALLERGY_ANAPHYLAXIS_ACKNOWLEDGEMENT_MIN_LENGTH,
+  DRUG_CLASSES,
+  findAllergyConflicts,
+  findStructuredAllergyConflicts
 } from '@cvg-his-v2/shared-contracts';
 import { AppError } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
@@ -129,7 +131,8 @@ export async function handlePrescriptionRoutes(
     );
     const rx = prescriptions.create(principal.user.accountId, principal.user.id, {
       ...payload,
-      allergyAcknowledgement: allergyOverride?.justification
+      allergyAcknowledgement: allergyOverride?.justification,
+      allergyAnaphylaxisConfirmed: allergyOverride?.anaphylaxis === true
     });
     await prescriptions.waitForPersistence();
 
@@ -141,7 +144,7 @@ export async function handlePrescriptionRoutes(
         action: 'allergy_override',
         entityType: 'prescription',
         entityId: rx.id,
-        payloadSummary: `Allergy alert acknowledged for ${rx.medicationName}; matched=${allergyOverride.matchedTerms.join(',')}; justification=${allergyOverride.justification}`,
+        payloadSummary: `Allergy alert acknowledged for ${rx.medicationName}; matched=${allergyOverride.matchedTerms.join(',')}; anaphylaxis=${allergyOverride.anaphylaxis}; justification=${allergyOverride.justification}`,
         riskLevel: 'high',
         correlationId
       });
@@ -286,22 +289,55 @@ async function screenPrescriptionAllergy(
   patients: PrescriptionRoutesHandlers['patients'],
   accountId: string,
   payload: CreatePrescriptionRequest
-): Promise<{ readonly matchedTerms: string[]; readonly justification: string } | undefined> {
+): Promise<
+  | { readonly matchedTerms: string[]; readonly justification: string; readonly anaphylaxis: boolean }
+  | undefined
+> {
   const patient = await patients.getAuthoritativeOrThrow(
     accountId as never,
     payload.patientId as never
   );
-  const matchedTerms = findAllergyConflicts(payload.medicationName, patient.allergy);
-  if (matchedTerms.length === 0) return undefined;
+  const textMatches = findAllergyConflicts(payload.medicationName, patient.allergy);
+  const structuredMatches = findStructuredAllergyConflicts(payload.medicationName, patient.allergies);
+  if (textMatches.length === 0 && structuredMatches.length === 0) return undefined;
+
+  const anaphylaxis = structuredMatches.some((match) => match.severity === 'anaphylaxis');
+  const matchedTerms = [
+    ...textMatches,
+    ...structuredMatches.map((match) =>
+      match.matchedBy === 'class' && match.drugClass
+        ? `${match.substance} (classe ${DRUG_CLASSES[match.drugClass]?.label ?? match.drugClass})`
+        : match.substance
+    )
+  ];
+  const details = {
+    allergy: patient.allergy,
+    matchedTerms,
+    structuredMatches,
+    anaphylaxis
+  };
   const justification =
     typeof payload.allergyAcknowledgement === 'string' ? payload.allergyAcknowledgement.trim() : '';
-  if (justification.length < ALLERGY_ACKNOWLEDGEMENT_MIN_LENGTH) {
+  const minimumLength = anaphylaxis
+    ? ALLERGY_ANAPHYLAXIS_ACKNOWLEDGEMENT_MIN_LENGTH
+    : ALLERGY_ACKNOWLEDGEMENT_MIN_LENGTH;
+  if (justification.length < minimumLength) {
     throw new AppError(
-      ALLERGY_ACKNOWLEDGEMENT_REQUIRED_CODE,
+      'ALLERGY_ACKNOWLEDGEMENT_REQUIRED',
       'O medicamento coincide com uma alergia registrada do paciente. Confirme com uma justificativa clínica.',
       409,
-      { allergy: patient.allergy, matchedTerms }
+      { ...details, minimumLength }
     );
   }
-  return { matchedTerms, justification: justification.slice(0, 500) };
+  // Anaphylaxis-level matches are a hard stop that only an explicit risk
+  // confirmation (plus a longer justification) releases.
+  if (anaphylaxis && payload.allergyAnaphylaxisConfirmed !== true) {
+    throw new AppError(
+      'ALLERGY_ANAPHYLAXIS_CONFIRMATION_REQUIRED',
+      'O medicamento coincide com uma alergia com risco de anafilaxia. Confirme o risco explicitamente.',
+      409,
+      details
+    );
+  }
+  return { matchedTerms, justification: justification.slice(0, 500), anaphylaxis };
 }

@@ -1,4 +1,6 @@
 import type { PatientListResponse } from '@cvg-his-v2/shared-contracts';
+import type { PatientAllergy } from '@cvg-his-v2/shared-types';
+export type { PatientAllergy };
 
 export type PatientSex = 'male' | 'female' | 'unknown';
 export type PatientSize = 'small' | 'medium' | 'large';
@@ -20,6 +22,7 @@ export interface PatientSummary {
   color?: string;
   chronicDisease?: string;
   allergy?: string;
+  allergies?: PatientAllergy[];
   temperament?: string;
   generalNotes?: string;
   legacyVetusId?: string;
@@ -44,6 +47,7 @@ export interface CreatePatientRequest {
   color?: string;
   chronicDisease?: string;
   allergy?: string;
+  allergies?: PatientAllergy[];
   temperament?: string;
   generalNotes?: string;
   legacyVetusId?: string;
@@ -66,6 +70,7 @@ export interface UpdatePatientRequest {
   color?: string;
   chronicDisease?: string;
   allergy?: string;
+  allergies?: PatientAllergy[];
   temperament?: string;
   generalNotes?: string;
   legacyVetusId?: string;

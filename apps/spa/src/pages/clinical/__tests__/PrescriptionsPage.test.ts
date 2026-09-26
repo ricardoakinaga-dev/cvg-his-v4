@@ -350,6 +350,33 @@ describe('PrescriptionsPage', () => {
       );
     });
 
+    it('matches structured allergies by class and requires the anaphylaxis confirmation', async () => {
+      mockPatientGet.mockResolvedValue({
+        id: 'pat-1',
+        allergies: [{ substance: 'Penicilina', severity: 'anaphylaxis' }]
+      });
+      const wrapper = await mountPage();
+      await flushPromises();
+      expect(wrapper.get('.allergy-strip').text()).toContain('Penicilina (anafilaxia)');
+
+      await wrapper.find('form input').setValue('Amoxicilina');
+      expect(wrapper.get('.allergy-match').text()).toContain('Penicilina (classe Penicilinas)');
+
+      await wrapper.get('.allergy-match textarea').setValue('Sem alternativa; protocolo de anafilaxia pronto.');
+      await wrapper.find('form').trigger('submit');
+      await flushPromises();
+      expect(mockPrescriptionCreate).not.toHaveBeenCalled();
+      expect(wrapper.get('.allergy-match').text()).toContain('Confirme o risco de anafilaxia');
+
+      await wrapper.get('.allergy-match__confirm input').setValue(true);
+      await wrapper.find('form').trigger('submit');
+      await flushPromises();
+      expect(mockPrescriptionCreate).toHaveBeenCalledWith(expect.objectContaining({ title: 'Amoxicilina' }), {
+        allergyAcknowledgement: 'Sem alternativa; protocolo de anafilaxia pronto.',
+        allergyAnaphylaxisConfirmed: true
+      });
+    });
+
     it('shows the server-side allergy conflict inline instead of a page error', async () => {
       const { ApiError } = await import('@/services/api');
       mockPatientGet.mockRejectedValue(new Error('offline'));

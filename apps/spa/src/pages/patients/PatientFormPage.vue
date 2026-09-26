@@ -183,6 +183,7 @@
             <DsInput id="chronicDisease" v-model="form.chronicDisease" type="textarea" :rows="2" label="Doença crônica" />
             <DsInput id="allergy" v-model="form.allergy" type="textarea" :rows="2" label="Alergia" />
           </div>
+          <PatientAllergiesEditor v-model="form.allergies" />
           <div class="form-row clinical-notes">
             <DsInput id="temperament" v-model="form.temperament" type="textarea" :rows="2" label="Temperamento" />
             <DsInput id="originalCreatedAt" v-model="form.originalCreatedAt" type="date" label="Data de cadastro original" />
@@ -212,6 +213,8 @@
 </template>
 
 <script setup lang="ts">
+import PatientAllergiesEditor from '@/components/clinical/PatientAllergiesEditor.vue';
+import type { StructuredAllergy } from '@cvg-his-v2/shared-contracts';
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { patientService } from '@/services/patient';
@@ -247,6 +250,7 @@ const emptyForm = () => ({
   color: '',
   chronicDisease: '',
   allergy: '',
+  allergies: [] as StructuredAllergy[],
   temperament: '',
   generalNotes: '',
   legacyVetusId: '',
@@ -400,6 +404,7 @@ async function loadPage() {
       form.color = patient.color || '';
       form.chronicDisease = patient.chronicDisease || '';
       form.allergy = patient.allergy || '';
+      form.allergies = (patient.allergies ?? []).map((allergy) => ({ ...allergy }));
       form.temperament = patient.temperament || '';
       form.generalNotes = patient.generalNotes || '';
       form.legacyVetusId = patient.legacyVetusId || '';
@@ -440,6 +445,10 @@ async function onSubmit() {
       color: form.color.trim() || undefined,
       chronicDisease: form.chronicDisease.trim() || undefined,
       allergy: form.allergy.trim() || undefined,
+      // Blank rows are dropped; the API validates the rest (R2-CLI-01).
+      allergies: form.allergies
+        .filter((allergy) => allergy.substance.trim())
+        .map((allergy) => ({ ...allergy, substance: allergy.substance.trim() })),
       temperament: form.temperament.trim() || undefined,
       generalNotes: form.generalNotes.trim() || undefined,
       legacyVetusId: form.legacyVetusId.trim() || undefined,

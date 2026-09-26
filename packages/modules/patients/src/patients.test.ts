@@ -66,6 +66,41 @@ describe('PatientsService', () => {
     });
   });
 
+  describe('structured allergies', () => {
+    it('validates, stores and updates structured allergies', () => {
+      const owner = createOwner(owners);
+      const patient = service.create(ACCOUNT_ID, {
+        name: 'Thor',
+        species: 'canine',
+        sex: 'male',
+        primaryOwnerId: owner.id,
+        allergies: [{ substance: ' Penicilina ', severity: 'anaphylaxis', reaction: 'choque' }]
+      });
+      expect(patient.allergies).toEqual([
+        { substance: 'Penicilina', severity: 'anaphylaxis', reaction: 'choque' }
+      ]);
+
+      const updated = service.update(ACCOUNT_ID, patient.id, {
+        allergies: [{ substance: 'Meloxicam', severity: 'moderate', drugClass: 'nsaids' }]
+      });
+      expect(updated.allergies).toEqual([{ substance: 'Meloxicam', severity: 'moderate', drugClass: 'nsaids' }]);
+      expect(service.update(ACCOUNT_ID, patient.id, { allergies: [] }).allergies).toBeUndefined();
+    });
+
+    it('rejects malformed structured allergies', () => {
+      const owner = createOwner(owners);
+      expect(() =>
+        service.create(ACCOUNT_ID, {
+          name: 'Mel',
+          species: 'feline',
+          sex: 'female',
+          primaryOwnerId: owner.id,
+          allergies: [{ substance: 'Dipirona', severity: 'fatal' as never }]
+        })
+      ).toThrow(ValidationError);
+    });
+  });
+
   describe('list()', () => {
     it('returns empty list when no patients', () => {
       expect(service.list()).toHaveLength(0);

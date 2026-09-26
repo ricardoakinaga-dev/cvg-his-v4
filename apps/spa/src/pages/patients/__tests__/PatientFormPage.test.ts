@@ -862,7 +862,7 @@ describe('PatientFormPage', () => {
       name: 'Pipoca', species: 'canine', breed: 'Yorkshire Terrier', sex: 'female',
       size: 'small', baseWeightKg: 4.5, birthDateApproximate: '2021-02-03',
       isNeutered: false, microchip: 'CHIP-99', pedigreeNumber: 'PED-1', color: 'Branco',
-      chronicDisease: 'Diabetes', allergy: 'Dipirona', temperament: 'Calmo',
+      chronicDisease: 'Diabetes', allergy: 'Dipirona', allergies: [], temperament: 'Calmo',
       generalNotes: 'Retorno em 30 dias', legacyVetusId: 'VET-7', originalCreatedAt: '2022-03-04',
       primaryOwnerId: 'owner-1', status: 'inactive'
     };

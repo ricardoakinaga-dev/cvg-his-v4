@@ -18985,6 +18985,24 @@ components:
             $ref: '#/components/schemas/CreateVetusImportRequest'
       description: Items are required for a new batch and may be omitted when resumeBatchId is supplied.
 
+    PatientAllergy:
+      type: object
+      required: [substance, severity]
+      properties:
+        substance:
+          type: string
+          minLength: 2
+          maxLength: 80
+        drugClass:
+          type: string
+          description: Key of the shared drug class table (e.g. penicillins, nsaids).
+        reaction:
+          type: string
+          maxLength: 200
+        severity:
+          type: string
+          enum: [mild, moderate, severe, anaphylaxis]
+
     Patient:
       type: object
       additionalProperties: false
@@ -19025,6 +19043,12 @@ components:
           type: string
         allergy:
           type: string
+        allergies:
+          type: array
+          maxItems: 20
+          description: Structured drug allergies used for substance and class screening on prescriptions.
+          items:
+            $ref: '#/components/schemas/PatientAllergy'
         temperament:
           type: string
         generalNotes:
@@ -19077,6 +19101,12 @@ components:
           type: string
         allergy:
           type: string
+        allergies:
+          type: array
+          maxItems: 20
+          description: Structured drug allergies used for substance and class screening on prescriptions.
+          items:
+            $ref: '#/components/schemas/PatientAllergy'
         temperament:
           type: string
         generalNotes:
@@ -19118,6 +19148,12 @@ components:
           type: string
         allergy:
           type: string
+        allergies:
+          type: array
+          maxItems: 20
+          description: Structured drug allergies used for substance and class screening on prescriptions.
+          items:
+            $ref: '#/components/schemas/PatientAllergy'
         temperament:
           type: string
         generalNotes:

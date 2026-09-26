@@ -129,6 +129,8 @@ export interface CreatePrescriptionRequest {
   readonly notes?: string;
   /** Prescriber's justification when the medication matches a recorded allergy. */
   readonly allergyAcknowledgement?: string;
+  /** Explicit confirmation required when the match is an anaphylaxis-level allergy. */
+  readonly allergyAnaphylaxisConfirmed?: boolean;
 }
 
 export interface UpdatePrescriptionRequest {
@@ -203,7 +205,9 @@ function formatPrescriptionContent(payload: CreatePrescriptionRequest): string {
   if (payload.duration) lines.push(`Duração: ${payload.duration}`);
   if (payload.notes) lines.push(`Observações: ${payload.notes}`);
   if (payload.allergyAcknowledgement?.trim()) {
-    lines.push(`Alerta de alergia confirmado: ${payload.allergyAcknowledgement.trim()}`);
+    lines.push(
+      `Alerta de alergia confirmado${payload.allergyAnaphylaxisConfirmed ? ' (risco de anafilaxia confirmado)' : ''}: ${payload.allergyAcknowledgement.trim()}`
+    );
   }
   return lines.join('\n');
 }

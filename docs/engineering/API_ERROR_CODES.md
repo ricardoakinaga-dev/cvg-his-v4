@@ -19,7 +19,7 @@ em português desta tabela; `message` é texto técnico em inglês e nunca vai p
 | `too_short` | Texto muito curto. |
 | `mismatch` | Os valores informados não conferem. |
 
-## Códigos (174)
+## Códigos (176)
 
 | Código | HTTP | Categoria | Mensagem ao usuário |
 |---|---:|---|---|
@@ -34,6 +34,8 @@ em português desta tabela; `message` é texto técnico em inglês e nunca vai p
 | `ADVANCE_PAYMENT_TRANSACTION_REQUIRED` | 503 | Indisponível | Este recurso está temporariamente indisponível. Tente novamente em instantes. |
 | `ADVANCE_PAYMENT_UNSAFE_AMOUNT` | 400 | Validação | O valor do adiantamento é inválido. |
 | `ADVANCE_PAYMENT_UNSUPPORTED_CURRENCY` | 400 | Validação | Moeda não suportada. |
+| `ALLERGY_ACKNOWLEDGEMENT_REQUIRED` | 409 | Estado inválido | O medicamento coincide com uma alergia registrada do paciente. Informe a justificativa clínica para prosseguir. |
+| `ALLERGY_ANAPHYLAXIS_CONFIRMATION_REQUIRED` | 409 | Estado inválido | O medicamento coincide com uma alergia com risco de anafilaxia. Confirme o risco e informe uma justificativa detalhada. |
 | `ATTACHMENT_NOT_AVAILABLE` | 404 | Não encontrado | O anexo não está disponível. |
 | `AUDIT_COVERAGE_UNAVAILABLE` | 503 | Indisponível | Este recurso está temporariamente indisponível. Tente novamente em instantes. |
 | `AUTHENTICATION_ERROR` | 401 | Autenticação e autorização | Faça login para continuar. |

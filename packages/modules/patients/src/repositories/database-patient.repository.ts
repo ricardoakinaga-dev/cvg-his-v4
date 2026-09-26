@@ -10,6 +10,7 @@ import type {
   OwnerPatientLinkSummary,
   PatientMergeSummary
 } from '@cvg-his-v2/shared-types';
+import { normalizeStructuredAllergies } from '@cvg-his-v2/shared-contracts';
 import { requireAccountId } from '@cvg-his-v2/tenant-context';
 
 export interface PatientRepository {
@@ -48,6 +49,7 @@ interface StoredPatientMetadata {
   readonly color?: string;
   readonly chronicDisease?: string;
   readonly allergy?: string;
+  readonly allergies?: PatientSummary['allergies'];
   readonly temperament?: string;
   readonly generalNotes?: string;
   readonly legacyVetusId?: string;
@@ -67,6 +69,12 @@ function readBoolean(record: Record<string, unknown>, key: string): boolean | un
   return typeof record[key] === 'boolean' ? record[key] : undefined;
 }
 
+/** Stored allergies were validated on write; unreadable data is dropped, not guessed. */
+function readStructuredAllergies(value: unknown): PatientSummary['allergies'] {
+  const result = normalizeStructuredAllergies(value);
+  return 'allergies' in result && result.allergies.length ? result.allergies : undefined;
+}
+
 function normalizeDigits(value: string): string {
   return value.replace(/\D/g, '');
 }
@@ -81,6 +89,7 @@ function serializePatientMetadata(patient: PatientSummary): StoredPatientMetadat
     color: patient.color,
     chronicDisease: patient.chronicDisease,
     allergy: patient.allergy,
+    allergies: patient.allergies,
     temperament: patient.temperament,
     generalNotes: patient.generalNotes,
     legacyVetusId: patient.legacyVetusId,
@@ -106,6 +115,7 @@ function parsePatientMetadata(raw: unknown): StoredPatientMetadata {
     color: readString(raw, 'color'),
     chronicDisease: readString(raw, 'chronicDisease'),
     allergy: readString(raw, 'allergy'),
+    allergies: readStructuredAllergies(raw.allergies),
     temperament: readString(raw, 'temperament'),
     generalNotes: readString(raw, 'generalNotes'),
     legacyVetusId: readString(raw, 'legacyVetusId'),
@@ -282,6 +292,7 @@ export class DatabasePatientRepository implements PatientRepository {
       color: metadata.color,
       chronicDisease: metadata.chronicDisease,
       allergy: metadata.allergy,
+      allergies: metadata.allergies,
       temperament: metadata.temperament,
       generalNotes: metadata.generalNotes,
       legacyVetusId: metadata.legacyVetusId,

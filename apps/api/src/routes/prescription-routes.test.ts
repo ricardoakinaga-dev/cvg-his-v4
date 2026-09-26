@@ -389,3 +389,71 @@ test('handlePrescriptionRoutes requires a justification when the medication matc
   assert.match(String(created.content), /Alerta de alergia confirmado: Reação prévia leve/);
   assert.ok(auditEvents.some((event) => event.action === 'allergy_override'));
 });
+
+test('handlePrescriptionRoutes screens structured allergies by class and hard-stops anaphylaxis without explicit confirmation', async () => {
+  const service = createPrescriptionsService();
+  const patients = {
+    getAuthoritativeOrThrow: async (accountId: string, patientId: string) =>
+      ({
+        id: patientId,
+        accountId,
+        allergies: [{ substance: 'Penicilina', severity: 'anaphylaxis' }]
+      }) as never
+  };
+  const handlers = {
+    prescriptions: service,
+    audit: { write: () => ({}) } as never,
+    patients,
+    requirePrincipal: () => createPrincipal()
+  };
+  const payload = {
+    medicalRecordId: 'mr-1',
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    medicationName: 'Amoxicilina 250 mg',
+    dosage: '20 mg/kg'
+  };
+  const post = (body: object) =>
+    handlePrescriptionRoutes(
+      '/prescriptions',
+      createMockRequest('POST', '/prescriptions', body) as never,
+      new MockResponse() as never,
+      'corr-rx-anaphylaxis',
+      handlers
+    );
+
+  await assert.rejects(
+    () => post({ ...payload, allergyAcknowledgement: 'Justificativa curta' }),
+    (error: { code?: string; details?: { matchedTerms?: string[]; anaphylaxis?: boolean; minimumLength?: number } }) => {
+      assert.equal(error.code, 'ALLERGY_ACKNOWLEDGEMENT_REQUIRED');
+      assert.equal(error.details?.anaphylaxis, true);
+      assert.equal(error.details?.minimumLength, 20);
+      assert.deepEqual(error.details?.matchedTerms, ['Penicilina (classe Penicilinas)']);
+      return true;
+    }
+  );
+  const longJustification = 'Sem alternativa terapêutica; protocolo de anafilaxia preparado no leito.';
+  await assert.rejects(
+    () => post({ ...payload, allergyAcknowledgement: longJustification }),
+    (error: { code?: string }) => error.code === 'ALLERGY_ANAPHYLAXIS_CONFIRMATION_REQUIRED'
+  );
+  assert.equal(service.listByAccount('acc-1' as never).length, 0);
+
+  const response = new MockResponse();
+  await handlePrescriptionRoutes(
+    '/prescriptions',
+    createMockRequest('POST', '/prescriptions', {
+      ...payload,
+      allergyAcknowledgement: longJustification,
+      allergyAnaphylaxisConfirmed: true
+    }) as never,
+    response as never,
+    'corr-rx-anaphylaxis-ok',
+    handlers
+  );
+  assert.equal(response.statusCode, 201);
+  assert.match(
+    String(response.bodyJson<{ content?: string }>().content),
+    /Alerta de alergia confirmado \(risco de anafilaxia confirmado\)/
+  );
+});

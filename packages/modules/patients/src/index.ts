@@ -6,6 +6,7 @@ import type {
   CreatePatientRequest,
   UpdatePatientRequest
 } from '@cvg-his-v2/shared-contracts';
+import { normalizeStructuredAllergies } from '@cvg-his-v2/shared-contracts';
 import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type {
   AccountId,
@@ -57,6 +58,16 @@ export interface PatientMergeRepository {
 interface SearchQuery {
   readonly text: string;
   readonly digits: string;
+}
+
+
+/** Structured allergies are optional; an empty list is stored as absent. */
+function requireStructuredAllergies(input: unknown): PatientSummary['allergies'] {
+  const result = normalizeStructuredAllergies(input);
+  if ('error' in result) {
+    throw new ValidationError(result.error, { field: 'allergies', reason: 'invalid_format' });
+  }
+  return result.allergies.length ? result.allergies : undefined;
 }
 
 function normalizeDigits(value: string): string {
@@ -515,6 +526,7 @@ export class PatientsService {
       color: requireOptionalString(payload.color),
       chronicDisease: requireOptionalString(payload.chronicDisease),
       allergy: requireOptionalString(payload.allergy),
+      allergies: requireStructuredAllergies(payload.allergies),
       temperament: requireOptionalString(payload.temperament),
       generalNotes: requireOptionalString(payload.generalNotes),
       legacyVetusId: requireOptionalString(payload.legacyVetusId),
@@ -639,6 +651,10 @@ export class PatientsService {
           : current.chronicDisease,
       allergy:
         payload.allergy !== undefined ? requireOptionalString(payload.allergy) : current.allergy,
+      allergies:
+        payload.allergies !== undefined
+          ? requireStructuredAllergies(payload.allergies)
+          : current.allergies,
       temperament:
         payload.temperament !== undefined
           ? requireOptionalString(payload.temperament)

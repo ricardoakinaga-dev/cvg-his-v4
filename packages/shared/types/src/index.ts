@@ -354,6 +354,14 @@ export interface MasterSearchOwnerResult {
   readonly status: 'active' | 'inactive';
 }
 
+/** Structured drug allergy (R2-CLI-01). `drugClass` is a key of the shared class table. */
+export interface PatientAllergy {
+  readonly substance: string;
+  readonly drugClass?: string;
+  readonly reaction?: string;
+  readonly severity: 'mild' | 'moderate' | 'severe' | 'anaphylaxis';
+}
+
 export interface PatientSummary {
   readonly id: PatientId;
   readonly accountId: AccountId;
@@ -370,6 +378,7 @@ export interface PatientSummary {
   readonly color?: string;
   readonly chronicDisease?: string;
   readonly allergy?: string;
+  readonly allergies?: readonly PatientAllergy[];
   readonly temperament?: string;
   readonly generalNotes?: string;
   readonly legacyVetusId?: string;
