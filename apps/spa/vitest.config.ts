@@ -22,6 +22,10 @@ export default defineConfig({
       '@cvg-his-v2/shared-contracts': resolve(
         __dirname,
         '../../packages/shared/contracts/src/index.ts'
+      ),
+      '@cvg-his-v2/shared-errors': resolve(
+        __dirname,
+        '../../packages/shared/errors/src/index.ts'
       )
     }
   },

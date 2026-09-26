@@ -1,3 +1,5 @@
+import { isKnownErrorCode, resolveUserMessage } from '@cvg-his-v2/shared-errors';
+
 /**
  * User-facing wording for API errors (R2-UX-01). The API keeps stable error
  * codes; the SPA owns the Portuguese copy. A server message is shown only when
@@ -58,13 +60,22 @@ export function isPortugueseMessage(message: string): boolean {
 export interface ApiErrorBody {
   readonly code?: unknown;
   readonly message?: unknown;
+  readonly details?: unknown;
 }
 
-/** Message to show for an API error response. */
+/**
+ * Message to show for an API error response. Order: the shared API error
+ * catalog (code + details.reason), then a server message that is already
+ * Portuguese, then local copy for codes the catalog does not know yet, then
+ * the HTTP status. Raw English server text is never returned.
+ */
 export function resolveApiErrorMessage(status: number, body: ApiErrorBody | null | undefined): string {
+  const code = typeof body?.code === 'string' ? body.code : '';
+  if (code && isKnownErrorCode(code)) {
+    return resolveUserMessage({ code, details: body?.details });
+  }
   const serverMessage = typeof body?.message === 'string' ? body.message.trim() : '';
   if (serverMessage && isPortugueseMessage(serverMessage)) return serverMessage;
-  const code = typeof body?.code === 'string' ? body.code : '';
   if (code && CODE_MESSAGES[code]) return CODE_MESSAGES[code]!;
   return STATUS_MESSAGES[status] ?? GENERIC_SERVER_MESSAGE;
 }

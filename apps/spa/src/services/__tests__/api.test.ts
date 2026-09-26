@@ -1,3 +1,4 @@
+import { ERROR_CATALOG } from '@cvg-his-v2/shared-errors';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockClearSession = vi.fn();
@@ -250,7 +251,7 @@ describe('apiRequest', () => {
     try {
       await expect(apiRequest('/expenses-catalog')).rejects.toMatchObject({
         name: 'ApiError',
-        message: 'O cadastro financeiro exige o banco de dados configurado nesta instalação.',
+        message: ERROR_CATALOG.FINANCE_CATALOG_DB_REQUIRED!.ptBR,
         status: 503,
         statusText: 'Service Unavailable',
         body: {
@@ -287,7 +288,7 @@ describe('apiRequest', () => {
     try {
       await expect(apiRequest('/patients?page=0')).rejects.toMatchObject({
         name: 'ApiError',
-        message: 'Alguns dados informados são inválidos. Revise o formulário e tente novamente.',
+        message: ERROR_CATALOG.VALIDATION_ERROR!.ptBR,
         status: 400,
         statusText: 'Bad Request',
         body: errorBody

@@ -1,35 +1,36 @@
 import { describe, expect, it } from 'vitest';
+import { ERROR_CATALOG, VALIDATION_REASON_PT_BR } from '@cvg-his-v2/shared-errors';
 
 import { isPortugueseMessage, resolveApiErrorMessage } from '../api-error-messages';
 
 describe('resolveApiErrorMessage', () => {
-  it('never shows technical English messages to the user', () => {
+  it('uses the shared API catalog for known codes and validation reasons', () => {
     expect(
       resolveApiErrorMessage(400, {
         code: 'VALIDATION_ERROR',
-        message: "Field 'encounterId' must be a valid UUID"
+        message: "Field 'encounterId' must be a valid UUID",
+        details: { field: 'encounterId', reason: 'invalid_format' }
       })
-    ).toBe('Alguns dados informados são inválidos. Revise o formulário e tente novamente.');
-    expect(resolveApiErrorMessage(404, { code: 'NOT_FOUND', message: 'Patient not found' })).toMatch(
-      /não foi encontrado/
+    ).toBe(VALIDATION_REASON_PT_BR.invalid_format);
+    expect(resolveApiErrorMessage(404, { code: 'NOT_FOUND', message: 'Patient not found' })).toBe(
+      ERROR_CATALOG.NOT_FOUND!.ptBR
     );
-  });
-
-  it('keeps messages that are already Portuguese', () => {
     expect(
-      resolveApiErrorMessage(409, {
-        code: 'ALLERGY_ACKNOWLEDGEMENT_REQUIRED',
-        message: 'O medicamento coincide com uma alergia registrada do paciente.'
-      })
-    ).toBe('O medicamento coincide com uma alergia registrada do paciente.');
+      resolveApiErrorMessage(409, { code: 'ALLERGY_ANAPHYLAXIS_CONFIRMATION_REQUIRED', message: 'x' })
+    ).toBe(ERROR_CATALOG.ALLERGY_ANAPHYLAXIS_CONFIRMATION_REQUIRED!.ptBR);
   });
 
-  it('uses the code catalog, then the HTTP status, then a generic message', () => {
-    expect(resolveApiErrorMessage(409, { code: 'DSR_NOT_OPEN', message: 'DSR request is already completed' })).toBe(
-      'Esta solicitação do titular já foi encerrada.'
+  it('never shows technical English text for codes outside the catalog', () => {
+    expect(resolveApiErrorMessage(429, { code: 'SOMETHING_NEW', message: 'Too many requests' })).toMatch(
+      /Muitas tentativas/
     );
-    expect(resolveApiErrorMessage(429, { code: 'SOMETHING_NEW' })).toMatch(/Muitas tentativas/);
     expect(resolveApiErrorMessage(502, null)).toMatch(/Não foi possível concluir/);
+  });
+
+  it('keeps an already-Portuguese message when the code is not catalogued', () => {
+    expect(
+      resolveApiErrorMessage(400, { code: 'SETUP_CUSTOM', message: 'A senha do administrador deve ter ao menos 12 caracteres.' })
+    ).toBe('A senha do administrador deve ter ao menos 12 caracteres.');
   });
 
   it('detects Portuguese copy without matching English technical text', () => {

@@ -329,6 +329,9 @@ importers:
       '@cvg-his-v2/shared-contracts':
         specifier: workspace:*
         version: link:../../packages/shared/contracts
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../packages/shared/errors
       '@cvg-his-v2/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared/types
