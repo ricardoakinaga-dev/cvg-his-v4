@@ -331,3 +331,35 @@ test('CashService findOpenRegister trusts the repository over a stale cached ope
 
   assert.equal(await service.findOpenRegister(ACCOUNT_ID), null);
 });
+
+test('R2-FIN-01: closing an exact register after float-hostile movements reports zero difference', async () => {
+  const service = createService();
+  const reg = await service.openRegister(ACCOUNT_ID, USER_ID, { openingAmount: 0.1 });
+  const payments = [0.2, 19.99, 1.005, 33.33, 0.07, 2.675, 10.1, 0.15, 99.99, 4.35];
+  const withdrawals = [0.3, 1.1, 2.2];
+  for (let round = 0; round < 25; round += 1) {
+    for (const amount of payments) {
+      await service.recordPaymentMovement(reg.id, ACCOUNT_ID, amount, null, null, USER_ID);
+    }
+  }
+  for (const amount of withdrawals) {
+    await service.recordMovement(reg.id, ACCOUNT_ID, { movementType: 'withdrawal', amount }, USER_ID);
+  }
+
+  const expected = await service.getCurrentBalance(reg.id);
+  assert.equal(Number.isInteger(Math.round(expected * 100)), true);
+  assert.equal(expected, Math.round(expected * 100) / 100, 'balance must be an exact two-decimal amount');
+
+  const reconciliation = await service.getReconciliation(reg.id, ACCOUNT_ID);
+  assert.equal(reconciliation.totalIn, Math.round(reconciliation.totalIn * 100) / 100);
+  assert.equal(reconciliation.totalOut, Math.round(reconciliation.totalOut * 100) / 100);
+  assert.equal(
+    Math.round((reconciliation.totalIn - reconciliation.totalOut) * 100),
+    Math.round(expected * 100)
+  );
+
+  const closed = await service.closeRegister(reg.id, USER_ID, { closingAmount: expected });
+  assert.equal(closed.difference, 0);
+  assert.equal(closed.register.expectedClosingAmount, expected);
+  assert.equal(closed.register.closingAmount, expected);
+});

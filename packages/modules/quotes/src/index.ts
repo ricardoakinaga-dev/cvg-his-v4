@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
-import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
+import { createCorrelationId, nowIso, multiplyAmount, roundAmount, subtractAmounts, sumAmounts } from '@cvg-his-v2/shared-utils';
 import type {
   QuotesRepository,
   QuoteRecord,
@@ -93,14 +93,15 @@ export class QuotesService {
     if (!quote) throw new NotFoundError('Quote not found', { quoteId });
 
     const items = Array.from(this.#items.values()).filter((i) => i.quoteId === quoteId);
-    const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
-    const discountAmount = items.reduce((sum, i) => sum + i.discountAmount, 0);
-    const total = Math.round((subtotal - discountAmount) * 100) / 100;
+    // R2-FIN-01: totals are accumulated in integer cents.
+    const subtotal = sumAmounts(items.map((i) => multiplyAmount(i.unitPrice, i.quantity)));
+    const discountAmount = sumAmounts(items.map((i) => i.discountAmount));
+    const total = subtractAmounts(subtotal, discountAmount);
 
     const updated: QuoteSummary = {
       ...quote,
-      subtotal: Math.round(subtotal * 100) / 100,
-      discountAmount: Math.round(discountAmount * 100) / 100,
+      subtotal,
+      discountAmount,
       total,
       updatedAt: nowIso()
     };
@@ -187,7 +188,7 @@ export class QuotesService {
 
     const quantity = input.quantity ?? 1;
     const discountAmount = input.discountAmount ?? 0;
-    const lineTotal = Math.round((input.unitPrice * quantity - discountAmount) * 100) / 100;
+    const lineTotal = subtractAmounts(multiplyAmount(input.unitPrice, quantity), discountAmount);
     const now = nowIso();
 
     const item: QuoteItemSummary = {
@@ -198,9 +199,9 @@ export class QuotesService {
       catalogItemId: input.catalogItemId ?? null,
       nameSnapshot: input.nameSnapshot.trim(),
       codeSnapshot: input.codeSnapshot?.trim() ?? null,
-      unitPrice: Math.round(input.unitPrice * 100) / 100,
+      unitPrice: roundAmount(input.unitPrice),
       quantity,
-      discountAmount: Math.round(discountAmount * 100) / 100,
+      discountAmount: roundAmount(discountAmount),
       lineTotal,
       notes: input.notes?.trim() ?? null,
       createdAt: now,
@@ -235,13 +236,15 @@ export class QuotesService {
       quantity: input.quantity ?? item.quantity,
       discountAmount:
         input.discountAmount !== undefined
-          ? Math.round(input.discountAmount * 100) / 100
+          ? roundAmount(input.discountAmount)
           : item.discountAmount,
       notes: input.notes !== undefined ? (input.notes?.trim() ?? null) : item.notes,
       updatedAt: nowIso()
     };
-    const lineTotal =
-      Math.round((updated.unitPrice * updated.quantity - updated.discountAmount) * 100) / 100;
+    const lineTotal = subtractAmounts(
+      multiplyAmount(updated.unitPrice, updated.quantity),
+      updated.discountAmount
+    );
     const finalItem: QuoteItemSummary = { ...updated, lineTotal };
 
     this.#items.set(itemId, finalItem);

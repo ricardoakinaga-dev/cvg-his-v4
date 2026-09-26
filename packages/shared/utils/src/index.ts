@@ -37,3 +37,15 @@ export function sleep(ms: number): Promise<void> {
     setTimeout(resolve, ms);
   });
 }
+
+export {
+  MoneyError,
+  addAmounts,
+  amountsEqual,
+  fromCents,
+  multiplyAmount,
+  roundAmount,
+  subtractAmounts,
+  sumAmounts,
+  toCents
+} from './money.js';

@@ -15,7 +15,7 @@ import type {
   EncounterId,
   UserId
 } from '@cvg-his-v2/shared-types';
-import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
+import { createCorrelationId, nowIso, multiplyAmount, sumAmounts } from '@cvg-his-v2/shared-utils';
 import {
   requireEnum,
   requireNonEmptyString,
@@ -434,7 +434,7 @@ export class BillingService {
       description,
       quantity,
       unitPriceAmount,
-      totalAmount: Number((quantity * unitPriceAmount).toFixed(2)),
+      totalAmount: multiplyAmount(unitPriceAmount, quantity),
       sourceEntityType: payload.sourceEntityType,
       sourceEntityId,
       createdByUserId: actorUserId,
@@ -636,8 +636,9 @@ export class BillingService {
   }
 }
 
+/** R2-FIN-01: totals are accumulated in integer cents, never in floating point. */
 function sumItems(items: readonly BillingItemSummary[]): number {
-  return Number(items.reduce((total, item) => total + item.totalAmount, 0).toFixed(2));
+  return sumAmounts(items.map((item) => item.totalAmount));
 }
 
 export {

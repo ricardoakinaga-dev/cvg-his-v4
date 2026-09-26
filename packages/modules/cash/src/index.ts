@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
-import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
+import { createCorrelationId, nowIso, addAmounts, roundAmount, subtractAmounts, sumAmounts } from '@cvg-his-v2/shared-utils';
 import { requirePositiveNumber } from '@cvg-his-v2/shared-validation';
 import type {
   CashRepository,
@@ -125,7 +125,7 @@ export class CashService {
       accountId,
       openedByUserId,
       closedByUserId: null,
-      openingAmount: Math.round(openingAmount * 100) / 100,
+      openingAmount: roundAmount(openingAmount),
       closingAmount: null,
       expectedClosingAmount: null,
       difference: null,
@@ -205,7 +205,7 @@ export class CashService {
       closingMovement = closed.movement;
     } else {
       currentBalance = await this.getCurrentBalance(registerId);
-      difference = Math.round((closingAmount - currentBalance) * 100) / 100;
+      difference = subtractAmounts(closingAmount, currentBalance);
       closingMovement = { ...closingMovement, runningBalance: currentBalance };
       if (this.#repository) {
         await this.#repository.closeRegister(
@@ -225,8 +225,8 @@ export class CashService {
       ...register,
       status: 'closed',
       closedByUserId,
-      closingAmount: Math.round(closingAmount * 100) / 100,
-      expectedClosingAmount: Math.round(currentBalance * 100) / 100,
+      closingAmount: roundAmount(closingAmount),
+      expectedClosingAmount: roundAmount(currentBalance),
       difference,
       closedAt: now,
       updatedAt: now
@@ -272,8 +272,8 @@ export class CashService {
       cashRegisterId: registerId,
       accountId,
       movementType: input.movementType,
-      amount: Math.round(amount * 100) / 100,
-      runningBalance: Math.round(newBalance * 100) / 100,
+      amount: roundAmount(amount),
+      runningBalance: roundAmount(newBalance),
       reference: input.reference?.trim() ?? null,
       notes: input.notes?.trim() ?? null,
       createdByUserId,
@@ -324,8 +324,8 @@ export class CashService {
       cashRegisterId: registerId,
       accountId,
       movementType: 'payment',
-      amount: Math.round(normalizedAmount * 100) / 100,
-      runningBalance: Math.round(newBalance * 100) / 100,
+      amount: roundAmount(normalizedAmount),
+      runningBalance: roundAmount(newBalance),
       reference: reference ?? null,
       notes: notes ?? null,
       createdByUserId,
@@ -374,15 +374,14 @@ export class CashService {
     const movements = Array.from(this.#movements.values()).filter(
       (m) => m.cashRegisterId === registerId
     );
-    return Math.round(
-      movements.reduce((balance, movement) => {
-        if (movement.movementType === 'closing') return balance;
-        if (movement.movementType === 'withdrawal' || movement.movementType === 'deposit') {
-          return balance - movement.amount;
-        }
-        return balance + movement.amount;
-      }, 0) * 100
-    ) / 100;
+    // R2-FIN-01: the running balance is accumulated in integer cents.
+    return movements.reduce((balance, movement) => {
+      if (movement.movementType === 'closing') return balance;
+      if (movement.movementType === 'withdrawal' || movement.movementType === 'deposit') {
+        return subtractAmounts(balance, movement.amount);
+      }
+      return addAmounts(balance, movement.amount);
+    }, 0);
   }
 
   async getMovements(registerId: string): Promise<CashMovementSummary[]> {
@@ -411,12 +410,16 @@ export class CashService {
       this.#registers.set(registerId, register);
     }
     const movements = await this.getMovements(registerId);
-    const totalIn = movements
-      .filter((movement) => !['withdrawal', 'deposit', 'closing'].includes(movement.movementType))
-      .reduce((sum, movement) => sum + movement.amount, 0);
-    const totalOut = movements
-      .filter((movement) => movement.movementType === 'withdrawal' || movement.movementType === 'deposit')
-      .reduce((sum, movement) => sum + movement.amount, 0);
+    const totalIn = sumAmounts(
+      movements
+        .filter((movement) => !['withdrawal', 'deposit', 'closing'].includes(movement.movementType))
+        .map((movement) => movement.amount)
+    );
+    const totalOut = sumAmounts(
+      movements
+        .filter((movement) => movement.movementType === 'withdrawal' || movement.movementType === 'deposit')
+        .map((movement) => movement.amount)
+    );
     const expectedAmount = register.status === 'closed'
       ? register.expectedClosingAmount ?? 0
       : await this.getCurrentBalance(registerId);
@@ -425,11 +428,11 @@ export class CashService {
       accountId,
       status: register.status,
       openingAmount: register.openingAmount,
-      expectedAmount: Math.round(expectedAmount * 100) / 100,
+      expectedAmount: roundAmount(expectedAmount),
       declaredAmount: register.closingAmount,
       difference: register.difference,
-      totalIn: Math.round(totalIn * 100) / 100,
-      totalOut: Math.round(totalOut * 100) / 100,
+      totalIn,
+      totalOut,
       movementCount: movements.length,
       reconciledAt: nowIso()
     };
