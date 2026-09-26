@@ -219,7 +219,7 @@ describe('apiRequest', () => {
     try {
       await expect(apiRequest('/owners')).rejects.toMatchObject({
         name: 'ApiError',
-        message: 'HTTP 403: Forbidden',
+        message: 'Você não tem permissão para realizar esta ação.',
         status: 403,
         statusText: 'Forbidden',
         body: { detail: 'forbidden' }
@@ -232,7 +232,7 @@ describe('apiRequest', () => {
     }
   });
 
-  it('prefers backend error message for non-auth failures such as finance runtime policy errors', async () => {
+  it('shows Portuguese copy for non-auth failures and keeps the backend body for diagnostics', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 503,
@@ -250,7 +250,7 @@ describe('apiRequest', () => {
     try {
       await expect(apiRequest('/expenses-catalog')).rejects.toMatchObject({
         name: 'ApiError',
-        message: 'Finance catalog runtime requires database-backed persistence in the default API runtime',
+        message: 'O cadastro financeiro exige o banco de dados configurado nesta instalação.',
         status: 503,
         statusText: 'Service Unavailable',
         body: {
@@ -287,7 +287,7 @@ describe('apiRequest', () => {
     try {
       await expect(apiRequest('/patients?page=0')).rejects.toMatchObject({
         name: 'ApiError',
-        message: errorBody.message,
+        message: 'Alguns dados informados são inválidos. Revise o formulário e tente novamente.',
         status: 400,
         statusText: 'Bad Request',
         body: errorBody

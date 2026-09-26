@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/stores/auth';
+import { resolveApiErrorMessage } from './api-error-messages';
 import { spaRuntimeConfig } from '@/config/runtime';
 
 const API_BASE = spaRuntimeConfig.apiBaseUrl;
@@ -22,6 +23,7 @@ export class ApiError extends Error {
 }
 
 interface ApiErrorBodyShape {
+  code?: unknown;
   message?: unknown;
 }
 
@@ -302,10 +304,10 @@ export async function apiRequest<T = unknown>(
       throw new ApiError(SESSION_EXPIRED_MESSAGE, response.status, response.statusText, body);
     }
 
+    // The raw server text stays on `body` for diagnostics; the message shown
+    // to the user is Portuguese copy chosen by code/status (R2-UX-01).
     throw new ApiError(
-      typeof (body as ApiErrorBodyShape | null)?.message === 'string'
-        ? ((body as ApiErrorBodyShape).message as string)
-        : `HTTP ${response.status}: ${response.statusText}`,
+      resolveApiErrorMessage(response.status, body as ApiErrorBodyShape | null),
       response.status,
       response.statusText,
       body
