@@ -4,7 +4,7 @@
 
 | Campo | Estado atual |
 | --- | --- |
-| current_sha | `3aeaef97bbcc753cef171a83d7e58aef3b40bc4e` — rebind de 26/09/2026 para o candidato da rodada 2; nenhuma evidência de execução foi refeita neste SHA (status BLOCKED / NOT PROVEN). As evidências registradas pertencem a `d9a16cf45898` — mapeamento em `evidence/sha-remap-20260926.json` |
+| current_sha | `cb96bd486993df19c493555712edc32b6a2f81b3` — rebind de 26/09/2026 para o candidato da rodada 2; nenhuma evidência de execução foi refeita neste SHA (status BLOCKED / NOT PROVEN). As evidências registradas pertencem a `d9a16cf45898` — mapeamento em `evidence/sha-remap-20260926.json` |
 | CI do código | `NOT_PROVEN` para este SHA; CI remoto não executado |
 | local_gate | PASS: supply-chain 17/17, dependências, segredos, backup/restore, Helm 3.15.4, qualidade, banco crítico 623/623, processos 11/11, SPA E2E 424/424 e imagens production-shaped |
 | open_p0 | 11; externos/target preservados |

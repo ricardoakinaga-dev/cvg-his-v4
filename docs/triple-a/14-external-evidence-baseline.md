@@ -2,7 +2,7 @@
 
 ## Reconciliação externa do candidato — 2026-09-21
 
-**Current snapshot:** `3aeaef97bbcc753cef171a83d7e58aef3b40bc4e`.
+**Current snapshot:** `cb96bd486993df19c493555712edc32b6a2f81b3`.
 
 > Nota: rebind de 26/09/2026 para o candidato da rodada 2; nenhuma evidência de execução foi refeita neste SHA (status BLOCKED / NOT PROVEN). As evidências registradas pertencem a `d9a16cf45898` — mapeamento em `evidence/sha-remap-20260926.json`.
 
