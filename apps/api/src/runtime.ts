@@ -102,7 +102,8 @@ import {
 import { QuotesService } from '@cvg-his-v2/module-quotes';
 import { ReportsService, type ReportRepository } from '@cvg-his-v2/module-reports';
 import { CashService } from '@cvg-his-v2/module-cash';
-import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
+import type { AccountId, SchedulingAppointmentSummary, UserId } from '@cvg-his-v2/shared-types';
+import type { WorkflowTaskService } from '@cvg-his-v2/module-workflows';
 import { ProductsService } from '@cvg-his-v2/module-products';
 import { ServicesService } from '@cvg-his-v2/module-services';
 import type { DischargeRepository } from '@cvg-his-v2/module-discharges';
@@ -144,9 +145,7 @@ import {
   WhatsAppProviderService,
   RuntimeOwnerLookup,
   RuntimePatientLookup,
-  RuntimeSettingsLookup,
   EnvNotificationSettingsProvider,
-  AppointmentReminderWorkflow,
   type NotificationSettingsProvider,
   type OwnerLookup,
   type PatientLookup,
@@ -200,6 +199,7 @@ import type { EncounterCashReceiptRepository } from './encounter-cash-receipt-re
 import type { EncounterCashReceiptReversalRepository } from './encounter-cash-receipt-reversal-repository.js';
 import type { EncounterPixPaymentAttemptRepository } from './encounter-pix-payment-attempt-repository.js';
 import { createLgpdErasureExecutor } from './lgpd-erasure-executor.js';
+import { AppointmentReminderScheduler } from './appointment-reminder-scheduler.js';
 
 function sanitizeAuditValue(value: string): string {
   return value.replace(/[;\n\r=]/g, ' ').trim();
@@ -292,6 +292,8 @@ export interface ApiRuntimeOptions {
   readonly mfaEncryptionKeyring?: Readonly<Record<string, string>>;
   /** Gates distributed runtime state (Redis-backed session, encounter timeline, etc.) */
   readonly runtimeDistributedStateEnabled?: boolean;
+  /** Durable task queue used to schedule appointment reminders for the worker. */
+  readonly workflowTaskService?: WorkflowTaskService;
   /** Gates automatic WhatsApp reminder dispatch on appointment creation. */
   readonly notificationsWhatsappRemindersEnabled?: boolean;
   /** Resolves the reminder gate with the appointment's authoritative account context. */
@@ -434,16 +436,57 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     new RuntimeOwnerLookup(owners),
     new RuntimePatientLookup(patients)
   );
-  const settingsLookup = new RuntimeSettingsLookup();
-  const appointmentReminderWorkflow = new AppointmentReminderWorkflow(
-    whatsAppProvider,
-    new RuntimeOwnerLookup(owners),
-    new RuntimePatientLookup(patients),
-    settingsLookup
-  );
   const notificationsWhatsappRemindersEnabled =
     options.notificationsWhatsappRemindersEnabled ?? false;
   const services = new ServicesService({ repository: repos.services });
+  const appointmentReminders = options.workflowTaskService
+    ? new AppointmentReminderScheduler(options.workflowTaskService)
+    : undefined;
+  const isAppointmentReminderEnabled = async (accountId: AccountId): Promise<boolean> => {
+    if (!options.notificationsWhatsappRemindersEvaluator) {
+      return notificationsWhatsappRemindersEnabled;
+    }
+    try {
+      return await options.notificationsWhatsappRemindersEvaluator(accountId);
+    } catch {
+      // A flag-control-plane failure must never enable an external side effect.
+      return false;
+    }
+  };
+  // Reminders are durable workflow tasks delivered by the worker (lease, retry,
+  // DLQ); the API only keeps one task per appointment in sync with its time.
+  const scheduleAppointmentReminder = async (
+    appointment: SchedulingAppointmentSummary
+  ): Promise<void> => {
+    const actorUserId = getTenantContext()?.userId;
+    if (!appointmentReminders || !actorUserId) {
+      audit.write({
+        actorId: 'system',
+        accountId: appointment.accountId,
+        module: 'notifications',
+        action: 'whatsapp_reminder_not_scheduled',
+        entityType: 'appointment',
+        entityId: appointment.id,
+        payloadSummary: `WhatsApp reminder not scheduled for appointment ${appointment.id}: ${appointmentReminders ? 'no authenticated actor' : 'durable workflow tasks unavailable'}`,
+        riskLevel: 'medium'
+      });
+      return;
+    }
+    const result = await appointmentReminders.schedule(appointment, actorUserId as UserId);
+    audit.write({
+      actorId: actorUserId,
+      accountId: appointment.accountId,
+      module: 'notifications',
+      action: `whatsapp_reminder_${result.outcome}`,
+      entityType: 'appointment',
+      entityId: appointment.id,
+      payloadSummary:
+        result.outcome === 'skipped'
+          ? `WhatsApp reminder skipped for appointment ${appointment.id}: ${result.reason}`
+          : `WhatsApp reminder ${result.outcome} for appointment ${appointment.id}; task=${result.taskId}${'dueAt' in result ? `; dueAt=${result.dueAt}` : ''}`,
+      riskLevel: 'low'
+    });
+  };
   const scheduling = new SchedulingService(
     owners,
     patients,
@@ -466,18 +509,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
           status: appointment.status,
           createdAt: appointment.createdAt
         });
-        let remindersEnabled = notificationsWhatsappRemindersEnabled;
-        if (options.notificationsWhatsappRemindersEvaluator) {
-          try {
-            remindersEnabled = await options.notificationsWhatsappRemindersEvaluator(
-              appointment.accountId
-            );
-          } catch {
-            // A flag-control-plane failure must never enable an external side effect.
-            remindersEnabled = false;
-          }
-        }
-        if (!remindersEnabled) {
+        if (!(await isAppointmentReminderEnabled(appointment.accountId))) {
           audit.write({
             actorId: 'system',
             accountId: appointment.accountId,
@@ -490,53 +522,11 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
           });
           return;
         }
-
-        const reminderScheduledAudit = audit.write({
-          actorId: 'system',
-          accountId: appointment.accountId,
-          module: 'notifications',
-          action: 'whatsapp_reminder_scheduled',
-          entityType: 'appointment',
-          entityId: appointment.id,
-          payloadSummary: `Automatic WhatsApp reminder scheduled for appointment ${appointment.id}`,
-          riskLevel: 'low'
-        });
-        void appointmentReminderWorkflow
-          .onAppointmentScheduled(appointment)
-          .then((result) => {
-            const action = result.sent ? 'whatsapp_reminder_sent' : 'whatsapp_reminder_failed';
-            const outcome = result.sent ? 'sent' : 'failed';
-            const metadata = [
-              `provider=${sanitizeAuditValue(result.provider ?? 'unknown')}`,
-              `messageId=${sanitizeAuditValue(result.messageId ?? '')}`,
-              `error=${sanitizeAuditValue(result.error ?? '')}`
-            ].join('; ');
-
-            audit.write({
-              actorId: 'system',
-              accountId: appointment.accountId,
-              module: 'notifications',
-              action,
-              entityType: 'appointment',
-              entityId: appointment.id,
-              payloadSummary: `WhatsApp reminder ${outcome} for appointment ${appointment.id}; ${metadata}`,
-              riskLevel: result.sent ? 'low' : 'medium',
-              correlationId: reminderScheduledAudit.correlationId
-            });
-          })
-          .catch((error) => {
-            audit.write({
-              actorId: 'system',
-              accountId: appointment.accountId,
-              module: 'notifications',
-              action: 'whatsapp_reminder_failed',
-              entityType: 'appointment',
-              entityId: appointment.id,
-              payloadSummary: `WhatsApp reminder failed for appointment ${appointment.id}; provider=unknown; messageId=; error=${sanitizeAuditValue(error instanceof Error ? error.message : 'unknown_error')}`,
-              riskLevel: 'medium',
-              correlationId: reminderScheduledAudit.correlationId
-            });
-          });
+        await scheduleAppointmentReminder(appointment);
+      },
+      async onAppointmentRescheduled(appointment) {
+        if (!(await isAppointmentReminderEnabled(appointment.accountId))) return;
+        await scheduleAppointmentReminder(appointment);
       },
       async onAppointmentStatusChanged(appointment, previousStatus) {
         await publishEvent('scheduling' as ModuleName, 'appointment.status_changed', {
@@ -549,6 +539,16 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
           reason: appointment.reason,
           updatedAt: appointment.updatedAt
         });
+        if (appointment.status !== 'scheduled' && options.workflowTaskService) {
+          const actorUserId = getTenantContext()?.userId;
+          if (actorUserId) {
+            await appointmentReminders?.cancel(
+              appointment,
+              actorUserId as UserId,
+              `appointment_${appointment.status}`
+            );
+          }
+        }
       }
     }
   );

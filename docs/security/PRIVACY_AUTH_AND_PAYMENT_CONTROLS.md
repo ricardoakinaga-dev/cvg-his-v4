@@ -69,3 +69,12 @@ As chaves de armazenamento são endereçadas por conteúdo. A compensação de u
 gravação que falhou só remove o objeto quando nenhum anexo confirmado o
 referencia; se a verificação não puder ser feita, o objeto é mantido
 (`packages/modules/attachments/src/index.ts`).
+
+## 7. Lembretes de consulta (WhatsApp)
+
+- A API mantém **uma tarefa durável por consulta** (`clinical_workflow_tasks`, tipo `appointment_reminder.whatsapp`, modo worker), com vencimento 24 h antes da consulta ou imediato se a consulta for marcada dentro dessa janela. Consultas a menos de 1 h não recebem lembrete (`apps/api/src/appointment-reminder-scheduler.ts`).
+- Remarcação reagenda a tarefa; cancelamento, check-in ou conclusão cancelam a tarefa.
+- O worker relê consulta, paciente e tutor no momento do envio. Consulta cancelada ou passada, ou tutor sem telefone (por exemplo, após eliminação LGPD), conclui a tarefa sem envio. Falha do provedor aciona retry com backoff e, depois de 5 tentativas, DLQ (`apps/worker/src/jobs/appointment-reminder-handler.ts`).
+- A entrega é *at-least-once*: se o worker cair depois de o provedor aceitar a mensagem e antes de concluir a tarefa, o lembrete pode ser reenviado uma vez.
+- O relatório `GET /whatsapp/appointments/:id/report` passa a derivar o status da tarefa. Para lembretes enviados pelo worker, ainda não exibe o provedor nem o ID da mensagem.
+

@@ -52,6 +52,16 @@ import {
   assertWorkerMetricsAuthConfigured,
   isWorkerMetricsRequestAuthorized
 } from './metrics-auth.js';
+import {
+  APPOINTMENT_REMINDER_TASK_TYPE,
+  EnvNotificationSettingsProvider,
+  WhatsAppProviderService
+} from '@cvg-his-v2/module-notifications-whatsapp';
+import {
+  createAppointmentReminderHandler,
+  createAppointmentReminderLoader
+} from './jobs/appointment-reminder-handler.js';
+import { getPool } from '@cvg-his-v2/shared-database';
 
 let config: ReturnType<typeof loadWorkerConfig>;
 let workerLoopStalledAfterMs = 0;
@@ -256,6 +266,25 @@ async function main() {
   // Downstream handlers must provide their own idempotency contract before
   // they are registered here.
   const workflowTaskHandlers = new Map<string, WorkflowTaskHandler>();
+  if (bootstrap.workflowTaskRepository) {
+    // Reminder delivery is at-least-once: a crash after the provider accepted
+    // the message and before the claim completes can resend it once.
+    const whatsApp = new WhatsAppProviderService(
+      new EnvNotificationSettingsProvider(),
+      { getOwnerPhone: () => null, getOwnerName: () => null },
+      { getPatientName: () => null }
+    );
+    workflowTaskHandlers.set(
+      APPOINTMENT_REMINDER_TASK_TYPE,
+      createAppointmentReminderHandler({
+        loadAppointment: createAppointmentReminderLoader(getPool()),
+        send: (data) => whatsApp.sendAppointmentReminder(data),
+        clinicName: process.env.CLINIC_DISPLAY_NAME?.trim() || 'nossa clínica',
+        onSkipped: (reason, appointmentId) =>
+          logger.info('appointment reminder skipped', { reason, appointmentId })
+      })
+    );
+  }
 
   const eventBus = createWorkerEventBus({
     eventBusRepository: bootstrap.outboxRepository,

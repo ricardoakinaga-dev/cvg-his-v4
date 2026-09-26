@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { WorkflowTaskService } from '../../../packages/modules/workflows/src/index.js';
+import { runWithTenantContext } from '../../../packages/tenant-context/src/index.js';
 import type { AuthSessionResponse } from '@cvg-his-v2/shared-contracts';
 
 import { createApiRuntime } from '../../../apps/api/src/runtime.ts';
@@ -49,34 +51,51 @@ describe('runtime', () => {
     expect(runtime.auth).toBeDefined();
   });
 
-  it('schedules or skips automatic WhatsApp reminders according to the runtime flag', async () => {
+  it('schedules or skips durable WhatsApp reminders according to the runtime flag', async () => {
     const disabledRuntime = createApiRuntime({
       authSecret: 'test-secret-key-123456',
       accessTokenTtlSeconds: 900,
       refreshTokenTtlSeconds: 3_600,
-      notificationsWhatsappRemindersEnabled: false
+      notificationsWhatsappRemindersEnabled: false,
+      workflowTaskService: new WorkflowTaskService()
     });
     const enabledRuntime = createApiRuntime({
       authSecret: 'test-secret-key-123456',
       accessTokenTtlSeconds: 900,
       refreshTokenTtlSeconds: 3_600,
-      notificationsWhatsappRemindersEnabled: true
+      notificationsWhatsappRemindersEnabled: true,
+      workflowTaskService: new WorkflowTaskService()
     });
+    const inFourDays = () => new Date(Date.now() + 96 * 60 * 60 * 1000).toISOString();
+    const asReception = <T>(operation: () => Promise<T>) =>
+      runWithTenantContext(
+        {
+          tenantId: '00000000-0000-0000-0000-000000000001',
+          accountId: 'acc_cvg_demo',
+          userId: 'user_reception',
+          correlationId: 'corr_reminder_unit'
+        },
+        operation
+      );
 
-    await disabledRuntime.scheduling.createAppointment('acc_cvg_demo' as never, {
-      patientId: 'patient_luna',
-      ownerId: 'owner_maria_silva',
-      scheduledAt: '2026-04-18T09:00:00.000Z',
-      visitType: 'scheduled',
-      reason: 'Reminder disabled'
-    });
-    await enabledRuntime.scheduling.createAppointment('acc_cvg_demo' as never, {
-      patientId: 'patient_luna',
-      ownerId: 'owner_maria_silva',
-      scheduledAt: '2026-04-18T10:00:00.000Z',
-      visitType: 'scheduled',
-      reason: 'Reminder enabled'
-    });
+    await asReception(() =>
+      disabledRuntime.scheduling.createAppointment('acc_cvg_demo' as never, {
+        patientId: 'patient_luna',
+        ownerId: 'owner_maria_silva',
+        scheduledAt: inFourDays(),
+        visitType: 'scheduled',
+        reason: 'Reminder disabled'
+      })
+    );
+    await asReception(() =>
+      enabledRuntime.scheduling.createAppointment('acc_cvg_demo' as never, {
+        patientId: 'patient_luna',
+        ownerId: 'owner_maria_silva',
+        scheduledAt: inFourDays(),
+        visitType: 'scheduled',
+        reason: 'Reminder enabled'
+      })
+    );
 
     await expect(
       waitForAuditAction(disabledRuntime, 'whatsapp_reminder_skipped_flag_disabled')

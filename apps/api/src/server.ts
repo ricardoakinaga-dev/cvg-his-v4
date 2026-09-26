@@ -823,6 +823,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     options.featureFlags?.runtimeDistributedStateEnabled ??
     false;
   const evaluateFeatureFlag = options.featureFlags?.evaluate;
+  const workflowTasks =
+    options.workflowTaskService ?? createApiWorkflowTaskService(options.environment);
   const {
     accessControl,
     users,
@@ -903,7 +905,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     requireUuidEntityIdentifiers: options.requireUuidEntityIdentifiers,
     unitOfWork: options.unitOfWork,
     tenantTransaction: options.tenantTransaction,
-    medicalRecordsPersistenceMode: options.medicalRecordsPersistenceMode
+    medicalRecordsPersistenceMode: options.medicalRecordsPersistenceMode,
+    workflowTaskService: workflowTasks
   });
   const requireEncounterForAccount = createEncounterAccountGuard(encounters);
   const syncQueueWithEncounter = createEncounterQueueSynchronizer(encounters, scheduling);
@@ -920,8 +923,6 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           ): Promise<T> => withTenantTransaction(accountId, async () => command(), metadata)
         : undefined)
   });
-  const workflowTasks =
-    options.workflowTaskService ?? createApiWorkflowTaskService(options.environment);
   const clinicalOperationalMetricsProvider =
     options.clinicalOperationalMetricsProvider ??
     createClinicalOperationalMetricsProvider({
@@ -3234,7 +3235,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 featureFlagContext,
                 notificationsWhatsappInboundActionsEnabled:
                   featureFlags.notificationsWhatsappInboundActionsEnabled,
-                inboundWebhookSecret: options.whatsappWebhookSecret
+                inboundWebhookSecret: options.whatsappWebhookSecret,
+                reminderTasks: workflowTasks
               })
             ) {
               return;

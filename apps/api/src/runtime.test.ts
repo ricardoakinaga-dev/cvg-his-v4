@@ -4,7 +4,9 @@ import test from 'node:test';
 import type { AuthSessionResponse } from '@cvg-his-v2/shared-contracts';
 import { ForbiddenError } from '@cvg-his-v2/shared-errors';
 import type { AccountId } from '@cvg-his-v2/shared-types';
-import { getTenantContext } from '@cvg-his-v2/tenant-context';
+import { getTenantContext, runWithTenantContext } from '@cvg-his-v2/tenant-context';
+import { WorkflowTaskService } from '@cvg-his-v2/module-workflows';
+import { appointmentReminderIdempotencyKey } from '@cvg-his-v2/module-notifications-whatsapp';
 
 import { createApiRuntime, type RuntimeRepositories } from './runtime.js';
 import { bootstrapServices, hasRequiredAdvancePaymentSchema } from './bootstrap.js';
@@ -14,9 +16,11 @@ function createTestRuntime(
   options?: {
     readonly notificationsWhatsappRemindersEnabled?: boolean;
     readonly notificationsWhatsappRemindersEvaluator?: (accountId: string) => Promise<boolean>;
+    readonly workflowTaskService?: WorkflowTaskService;
   }
 ) {
   return createApiRuntime({
+    workflowTaskService: options?.workflowTaskService,
     authSecret: 'test-secret',
     accessTokenTtlSeconds: 900,
     refreshTokenTtlSeconds: 604800,
@@ -2223,9 +2227,30 @@ test('scheduling hardening: cancel appointment, time conflict, and queue transit
   assert.equal(apptAfterCancel.status, 'cancelled');
 });
 
-test('runtime gates automatic WhatsApp reminders behind feature flag state', async () => {
+function futureIso(hoursAhead: number): string {
+  return new Date(Date.now() + hoursAhead * 60 * 60 * 1000).toISOString();
+}
+
+async function asUser<T>(
+  principal: { user: { id: string; accountId: string } },
+  operation: () => Promise<T>
+): Promise<T> {
+  return runWithTenantContext(
+    {
+      tenantId: '00000000-0000-0000-0000-000000000001',
+      accountId: principal.user.accountId,
+      userId: principal.user.id,
+      correlationId: 'corr_reminder_test'
+    },
+    operation
+  );
+}
+
+test('runtime gates durable WhatsApp reminders behind feature flag state', async () => {
+  const disabledTasks = new WorkflowTaskService();
   const runtimeDisabled = createTestRuntime(undefined, {
-    notificationsWhatsappRemindersEnabled: false
+    notificationsWhatsappRemindersEnabled: false,
+    workflowTaskService: disabledTasks
   });
   const receptionDisabledLogin = (await runtimeDisabled.auth.login(
     { username: 'reception', password: 'seed_reception' },
@@ -2235,27 +2260,31 @@ test('runtime gates automatic WhatsApp reminders behind feature flag state', asy
     receptionDisabledLogin.accessToken
   );
 
-  const disabledAppointment = await runtimeDisabled.scheduling.createAppointment(
-    receptionDisabled.user.accountId,
-    {
+  const disabledAppointment = await asUser(receptionDisabled, () =>
+    runtimeDisabled.scheduling.createAppointment(receptionDisabled.user.accountId, {
       patientId: 'patient_luna',
       ownerId: 'owner_maria_silva',
-      scheduledAt: '2026-04-13T10:00:00.000Z',
+      scheduledAt: futureIso(72),
       visitType: 'scheduled',
       reason: 'Reminder gated off'
-    }
+    })
   );
   assert.equal(
     await waitForAuditAction(runtimeDisabled, 'whatsapp_reminder_skipped_flag_disabled'),
     true
   );
   assert.equal(
-    runtimeDisabled.audit.list().some((entry) => entry.action === 'whatsapp_reminder_scheduled'),
-    false
+    await disabledTasks.findByIdempotencyKey(
+      receptionDisabled.user.accountId as AccountId,
+      appointmentReminderIdempotencyKey(disabledAppointment.id)
+    ),
+    null
   );
 
+  const enabledTasks = new WorkflowTaskService();
   const runtimeEnabled = createTestRuntime(undefined, {
-    notificationsWhatsappRemindersEnabled: true
+    notificationsWhatsappRemindersEnabled: true,
+    workflowTaskService: enabledTasks
   });
   const receptionEnabledLogin = (await runtimeEnabled.auth.login(
     { username: 'reception', password: 'seed_reception' },
@@ -2265,24 +2294,25 @@ test('runtime gates automatic WhatsApp reminders behind feature flag state', asy
     receptionEnabledLogin.accessToken
   );
 
-  const enabledAppointment = await runtimeEnabled.scheduling.createAppointment(
-    receptionEnabled.user.accountId,
-    {
+  const enabledAppointment = await asUser(receptionEnabled, () =>
+    runtimeEnabled.scheduling.createAppointment(receptionEnabled.user.accountId, {
       patientId: 'patient_luna',
       ownerId: 'owner_maria_silva',
-      scheduledAt: '2026-04-13T11:00:00.000Z',
+      scheduledAt: futureIso(73),
       visitType: 'scheduled',
       reason: 'Reminder gated on'
-    }
+    })
   );
   assert.equal(await waitForAuditAction(runtimeEnabled, 'whatsapp_reminder_scheduled'), true);
-  assert.equal(enabledAppointment.status, 'scheduled');
-  assert.equal(disabledAppointment.status, 'scheduled');
+  const task = await enabledTasks.findByIdempotencyKey(
+    receptionEnabled.user.accountId as AccountId,
+    appointmentReminderIdempotencyKey(enabledAppointment.id)
+  );
+  assert.equal(task?.status, 'pending');
+  assert.equal(task?.executionMode, 'worker');
   assert.equal(
-    runtimeEnabled.audit
-      .list()
-      .some((entry) => entry.action === 'whatsapp_reminder_skipped_flag_disabled'),
-    false
+    task?.dueAt,
+    new Date(new Date(enabledAppointment.scheduledAt).getTime() - 24 * 60 * 60 * 1000).toISOString()
   );
 });
 
@@ -2293,7 +2323,8 @@ test('runtime resolves WhatsApp reminders against the appointment account', asyn
     notificationsWhatsappRemindersEvaluator: async (accountId) => {
       evaluatedAccountId = accountId;
       return true;
-    }
+    },
+    workflowTaskService: new WorkflowTaskService()
   });
   const login = (await runtime.auth.login(
     { username: 'reception', password: 'seed_reception' },
@@ -2301,123 +2332,80 @@ test('runtime resolves WhatsApp reminders against the appointment account', asyn
   )) as AuthSessionResponse;
   const principal = runtime.auth.authenticateAccessToken(login.accessToken);
 
-  await runtime.scheduling.createAppointment(principal.user.accountId, {
-    patientId: 'patient_luna',
-    ownerId: 'owner_maria_silva',
-    scheduledAt: '2026-04-13T12:00:00.000Z',
-    visitType: 'scheduled',
-    reason: 'Reminder request-scoped evaluation'
-  });
+  await asUser(principal, () =>
+    runtime.scheduling.createAppointment(principal.user.accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: futureIso(74),
+      visitType: 'scheduled',
+      reason: 'Reminder request-scoped evaluation'
+    })
+  );
 
   assert.equal(evaluatedAccountId, principal.user.accountId);
   assert.equal(await waitForAuditAction(runtime, 'whatsapp_reminder_scheduled'), true);
 });
 
-test('runtime records successful WhatsApp reminder delivery with vendor correlation metadata', async () => {
-  const originalFetch = globalThis.fetch;
-  const originalEnv = {
-    enabled: process.env['WHATSAPP_ENABLED'],
-    provider: process.env['WHATSAPP_PROVIDER'],
-    apiKey: process.env['WHATSAPP_API_KEY'],
-    fromNumber: process.env['WHATSAPP_FROM_NUMBER']
-  };
+test('runtime keeps the durable reminder task in sync with reschedule and cancellation', async () => {
+  const tasks = new WorkflowTaskService();
+  const runtime = createTestRuntime(undefined, {
+    notificationsWhatsappRemindersEnabled: true,
+    workflowTaskService: tasks
+  });
+  const login = (await runtime.auth.login(
+    { username: 'reception', password: 'seed_reception' },
+    'corr_whatsapp_reminder_lifecycle'
+  )) as AuthSessionResponse;
+  const principal = runtime.auth.authenticateAccessToken(login.accessToken);
+  const accountId = principal.user.accountId as AccountId;
 
-  process.env['WHATSAPP_ENABLED'] = 'true';
-  process.env['WHATSAPP_PROVIDER'] = '360dialog';
-  process.env['WHATSAPP_API_KEY'] = 'test-wa-key';
-  process.env['WHATSAPP_FROM_NUMBER'] = '5511999999999';
-  globalThis.fetch = (async () =>
-    new Response(JSON.stringify({ messages: [{ id: 'wamid.runtime.123' }] }), {
-      status: 200,
-      headers: { 'content-type': 'application/json' }
-    })) as typeof fetch;
-
-  try {
-    const runtime = createTestRuntime(undefined, {
-      notificationsWhatsappRemindersEnabled: true
-    });
-    const receptionLogin = (await runtime.auth.login(
-      { username: 'reception', password: 'seed_reception' },
-      'corr_whatsapp_reminder_delivery'
-    )) as AuthSessionResponse;
-    const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
-
-    await runtime.scheduling.createAppointment(reception.user.accountId, {
+  const appointment = await asUser(principal, () =>
+    runtime.scheduling.createAppointment(accountId, {
       patientId: 'patient_luna',
       ownerId: 'owner_maria_silva',
-      scheduledAt: '2026-04-13T12:00:00.000Z',
+      scheduledAt: futureIso(96),
       visitType: 'scheduled',
-      reason: 'Reminder delivery evidence'
-    });
+      reason: 'Reminder lifecycle'
+    })
+  );
+  const key = appointmentReminderIdempotencyKey(appointment.id);
+  const created = await tasks.findByIdempotencyKey(accountId, key);
+  assert.ok(created);
 
-    assert.equal(await waitForAuditAction(runtime, 'whatsapp_reminder_sent'), true);
+  const movedTo = futureIso(120);
+  await asUser(principal, () =>
+    runtime.scheduling.rescheduleAppointment(accountId, appointment.id, { scheduledAt: movedTo })
+  );
+  const rescheduled = await tasks.findByIdempotencyKey(accountId, key);
+  assert.equal(rescheduled?.id, created.id);
+  assert.equal(
+    rescheduled?.dueAt,
+    new Date(new Date(movedTo).getTime() - 24 * 60 * 60 * 1000).toISOString()
+  );
 
-    const deliveryEvent = runtime.audit
-      .list()
-      .find((entry) => entry.action === 'whatsapp_reminder_sent');
-    assert.ok(deliveryEvent);
-    assert.equal(deliveryEvent?.payloadSummary.includes('provider=360dialog'), true);
-    assert.equal(deliveryEvent?.payloadSummary.includes('messageId=wamid.runtime.123'), true);
-  } finally {
-    globalThis.fetch = originalFetch;
-    process.env['WHATSAPP_ENABLED'] = originalEnv.enabled;
-    process.env['WHATSAPP_PROVIDER'] = originalEnv.provider;
-    process.env['WHATSAPP_API_KEY'] = originalEnv.apiKey;
-    process.env['WHATSAPP_FROM_NUMBER'] = originalEnv.fromNumber;
-  }
+  await asUser(principal, () => runtime.scheduling.cancelAppointment(appointment.id, 'Tutor desistiu'));
+  assert.equal((await tasks.findByIdempotencyKey(accountId, key))?.status, 'cancelled');
 });
 
-test('runtime records failed WhatsApp reminder delivery when vendor dispatch throws', async () => {
-  const originalFetch = globalThis.fetch;
-  const originalEnv = {
-    enabled: process.env['WHATSAPP_ENABLED'],
-    provider: process.env['WHATSAPP_PROVIDER'],
-    apiKey: process.env['WHATSAPP_API_KEY'],
-    fromNumber: process.env['WHATSAPP_FROM_NUMBER']
-  };
+test('runtime does not schedule reminders without an authenticated actor or durable queue', async () => {
+  const runtime = createTestRuntime(undefined, { notificationsWhatsappRemindersEnabled: true });
+  const login = (await runtime.auth.login(
+    { username: 'reception', password: 'seed_reception' },
+    'corr_whatsapp_reminder_no_queue'
+  )) as AuthSessionResponse;
+  const principal = runtime.auth.authenticateAccessToken(login.accessToken);
 
-  process.env['WHATSAPP_ENABLED'] = 'true';
-  process.env['WHATSAPP_PROVIDER'] = '360dialog';
-  process.env['WHATSAPP_API_KEY'] = 'test-wa-key';
-  process.env['WHATSAPP_FROM_NUMBER'] = '5511999999999';
-  globalThis.fetch = (async () => {
-    throw new Error('gateway timeout');
-  }) as typeof fetch;
-
-  try {
-    const runtime = createTestRuntime(undefined, {
-      notificationsWhatsappRemindersEnabled: true
-    });
-    const receptionLogin = (await runtime.auth.login(
-      { username: 'reception', password: 'seed_reception' },
-      'corr_whatsapp_reminder_failure'
-    )) as AuthSessionResponse;
-    const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
-
-    await runtime.scheduling.createAppointment(reception.user.accountId, {
+  await asUser(principal, () =>
+    runtime.scheduling.createAppointment(principal.user.accountId, {
       patientId: 'patient_luna',
       ownerId: 'owner_maria_silva',
-      scheduledAt: '2026-04-13T13:00:00.000Z',
+      scheduledAt: futureIso(75),
       visitType: 'scheduled',
-      reason: 'Reminder delivery failure evidence'
-    });
+      reason: 'Reminder without durable queue'
+    })
+  );
 
-    assert.equal(await waitForAuditAction(runtime, 'whatsapp_reminder_scheduled'), true);
-    assert.equal(await waitForAuditAction(runtime, 'whatsapp_reminder_failed'), true);
-
-    const failureEvent = runtime.audit
-      .list()
-      .find((entry) => entry.action === 'whatsapp_reminder_failed');
-    assert.ok(failureEvent);
-    assert.equal(failureEvent?.payloadSummary.includes('provider=360dialog'), true);
-    assert.equal(failureEvent?.payloadSummary.includes('error=gateway timeout'), true);
-  } finally {
-    globalThis.fetch = originalFetch;
-    process.env['WHATSAPP_ENABLED'] = originalEnv.enabled;
-    process.env['WHATSAPP_PROVIDER'] = originalEnv.provider;
-    process.env['WHATSAPP_API_KEY'] = originalEnv.apiKey;
-    process.env['WHATSAPP_FROM_NUMBER'] = originalEnv.fromNumber;
-  }
+  assert.equal(await waitForAuditAction(runtime, 'whatsapp_reminder_not_scheduled'), true);
 });
 
 test('scheduling hardening: rejects double cancellation', async () => {

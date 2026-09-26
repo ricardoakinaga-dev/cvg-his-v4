@@ -14,6 +14,8 @@ import { OwnersService } from '../../packages/modules/owners/src/index.ts';
 import { PatientsService } from '../../packages/modules/patients/src/index.ts';
 import { SchedulingService } from '../../packages/modules/scheduling/src/index.ts';
 
+import { WorkflowTaskService } from '../../packages/modules/workflows/src/index.ts';
+import { runWithTenantContext } from '../../packages/tenant-context/src/index.ts';
 import { createApiRuntime } from '../../apps/api/src/runtime.ts';
 import { LocalEmailGateway } from '../../apps/api/src/email-gateway.ts';
 import { InMemoryEmailDeliveryRepository } from '../../apps/api/src/email-delivery-repository.ts';
@@ -364,7 +366,7 @@ describe('external integrations premium evidence', () => {
     expect(report.items[0]?.appointmentId).toBe(appointment.id);
   });
 
-  it('tracks WhatsApp vendor delivery, inbound confirmation and report coherence end-to-end', async () => {
+  it('tracks the durable WhatsApp reminder, inbound confirmation and report coherence end-to-end', async () => {
     const originalFetch = globalThis.fetch;
     const originalEnv = {
       enabled: process.env['WHATSAPP_ENABLED'],
@@ -384,11 +386,13 @@ describe('external integrations premium evidence', () => {
       })) as typeof fetch;
 
     try {
+      const reminderTasks = new WorkflowTaskService();
       const runtime = createApiRuntime({
         authSecret: 'test-secret',
         accessTokenTtlSeconds: 900,
         refreshTokenTtlSeconds: 604800,
-        notificationsWhatsappRemindersEnabled: true
+        notificationsWhatsappRemindersEnabled: true,
+        workflowTaskService: reminderTasks
       });
       const login = await runtime.auth.login(
         { username: 'reception', password: 'seed_reception' },
@@ -396,14 +400,23 @@ describe('external integrations premium evidence', () => {
       );
       const principal = runtime.auth.authenticateAccessToken(login.accessToken);
 
-      const appointment = await runtime.scheduling.createAppointment(principal.user.accountId, {
-        patientId: 'patient_luna',
-        ownerId: 'owner_maria_silva',
-        scheduledAt: '2026-04-22T15:00:00.000Z',
-        visitType: 'scheduled',
-        reason: 'WhatsApp premium'
-      });
-      expect(await waitForAuditAction(runtime.audit, 'whatsapp_reminder_sent')).toBe(true);
+      const appointment = await runWithTenantContext(
+        {
+          tenantId: '00000000-0000-0000-0000-000000000001',
+          accountId: principal.user.accountId,
+          userId: principal.user.id,
+          correlationId: 'corr-int-wa-schedule'
+        },
+        () =>
+          runtime.scheduling.createAppointment(principal.user.accountId, {
+            patientId: 'patient_luna',
+            ownerId: 'owner_maria_silva',
+            scheduledAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+            visitType: 'scheduled',
+            reason: 'WhatsApp premium'
+          })
+      );
+      expect(await waitForAuditAction(runtime.audit, 'whatsapp_reminder_scheduled')).toBe(true);
 
       const inboundResponse = new MockResponse();
       const inboundHandled = await handleWhatsAppRoutes(
@@ -449,6 +462,7 @@ describe('external integrations premium evidence', () => {
           scheduling: runtime.scheduling,
           audit: runtime.audit,
           notificationsWhatsappInboundActionsEnabled: true,
+          reminderTasks,
           requirePrincipal: () => principal
         }
       );
@@ -461,12 +475,12 @@ describe('external integrations premium evidence', () => {
         events: Array<{ action: string }>;
       }>();
 
+      // The inbound confirmation wins over the pending reminder; vendor ids are
+      // produced by the worker delivery, not by the API process.
       expect(report.deliveryStatus).toBe('confirmed');
-      expect(report.vendorProvider).toBe('360dialog');
-      expect(report.vendorMessageId).toBe('wamid.integration.123');
       expect(report.correlationIds).toContain('corr-int-wa-report');
       expect(report.correlationIds.length).toBeGreaterThanOrEqual(2);
-      expect(report.events.some((event) => event.action === 'whatsapp_reminder_sent')).toBe(true);
+      expect(report.events.some((event) => event.action === 'whatsapp_reminder_scheduled')).toBe(true);
       expect(report.events.some((event) => event.action === 'whatsapp_confirm')).toBe(true);
     } finally {
       globalThis.fetch = originalFetch;

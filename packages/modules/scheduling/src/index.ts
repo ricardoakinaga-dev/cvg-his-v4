@@ -158,6 +158,10 @@ export interface SchedulingServiceOptions {
     appointment: SchedulingAppointmentSummary,
     previousStatus: SchedulingAppointmentSummary['status']
   ) => Promise<void>;
+  readonly onAppointmentRescheduled?: (
+    appointment: SchedulingAppointmentSummary,
+    previousScheduledAt: string
+  ) => Promise<void>;
 }
 
 export interface SchedulingAppointmentFilters {
@@ -555,6 +559,10 @@ export class SchedulingService {
     appointment: SchedulingAppointmentSummary,
     previousStatus: SchedulingAppointmentSummary['status']
   ) => Promise<void>;
+  readonly #onAppointmentRescheduled?: (
+    appointment: SchedulingAppointmentSummary,
+    previousScheduledAt: string
+  ) => Promise<void>;
 
   public constructor(
     owners: OwnersService,
@@ -571,6 +579,7 @@ export class SchedulingService {
     this.#services = options?.services;
     this.#onAppointmentCreated = options?.onAppointmentCreated;
     this.#onAppointmentStatusChanged = options?.onAppointmentStatusChanged;
+    this.#onAppointmentRescheduled = options?.onAppointmentRescheduled;
 
     for (const appointment of seedAppointments) {
       this.#appointments.set(appointment.id, appointment);
@@ -1598,6 +1607,9 @@ export class SchedulingService {
     }
 
     this.#appointments.set(appointmentId, updated);
+    if (updated.scheduledAt !== current.scheduledAt) {
+      await this.#onAppointmentRescheduled?.(updated, current.scheduledAt);
+    }
 
     return updated;
   }

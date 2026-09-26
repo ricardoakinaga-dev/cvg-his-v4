@@ -14,6 +14,8 @@ import type {
   SchedulingAppointmentSummary
 } from '@cvg-his-v2/shared-types';
 import type { EvaluationContext } from '@cvg-his-v2/shared-feature-flags';
+import { appointmentReminderIdempotencyKey } from '@cvg-his-v2/module-notifications-whatsapp';
+import type { WorkflowTaskService, WorkflowTaskSummary } from '@cvg-his-v2/module-workflows';
 
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
@@ -24,6 +26,8 @@ export interface WhatsAppRoutesHandlers {
   audit: AuditService;
   notificationsWhatsappInboundActionsEnabled: boolean;
   inboundWebhookSecret?: string;
+  /** Durable reminder tasks (R2-NOT-01); the report prefers them over audit history. */
+  reminderTasks?: Pick<WorkflowTaskService, 'findByIdempotencyKey'>;
   featureFlagEvaluator?: ApiFeatureFlagEvaluator;
   featureFlagContext?: EvaluationContext;
   requirePrincipal: (
@@ -67,9 +71,22 @@ function extractAuditMetadata(summary: string): Record<string, string> {
   return metadata;
 }
 
+const REMINDER_TASK_DELIVERY: Readonly<
+  Record<WorkflowTaskSummary['status'], WhatsAppAppointmentReportResponse['deliveryStatus']>
+> = {
+  pending: 'scheduled',
+  retrying: 'scheduled',
+  processing: 'scheduled',
+  acknowledged: 'scheduled',
+  completed: 'sent',
+  dlq: 'failed',
+  cancelled: 'cancelled'
+};
+
 function buildAppointmentReport(
   appointmentId: string,
-  audit: AuditService
+  audit: AuditService,
+  reminderTask?: WorkflowTaskSummary | null
 ): WhatsAppAppointmentReportResponse {
   const events = audit.list().filter((event) => {
     if (event.entityId === appointmentId) {
@@ -94,6 +111,8 @@ function buildAppointmentReport(
     deliveryStatus = 'cancelled';
   } else if (events.some((event) => event.action === 'whatsapp_confirm')) {
     deliveryStatus = 'confirmed';
+  } else if (reminderTask) {
+    deliveryStatus = REMINDER_TASK_DELIVERY[reminderTask.status];
   } else if (sentEvent) {
     deliveryStatus = 'sent';
   } else if (failedEvent) {
@@ -110,7 +129,7 @@ function buildAppointmentReport(
       (failedMetadata['provider'] as 'twilio' | '360dialog' | undefined) ??
       null,
     vendorMessageId: sentMetadata['messageId'] || null,
-    lastError: failedMetadata['error'] || null,
+    lastError: (reminderTask ? reminderTask.lastError : failedMetadata['error']) || null,
     correlationIds: Array.from(
       new Set(
         events
@@ -159,7 +178,11 @@ export async function handleWhatsAppRoutes(
       correlationId
     });
 
-    return json(response, 200, buildAppointmentReport(appointmentId, audit));
+    const reminderTask = await handlers.reminderTasks?.findByIdempotencyKey(
+      principal.user.accountId as never,
+      appointmentReminderIdempotencyKey(appointmentId)
+    );
+    return json(response, 200, buildAppointmentReport(appointmentId, audit, reminderTask));
   }
 
   if (pathname !== '/webhooks/whatsapp/inbound' || request.method !== 'POST') {

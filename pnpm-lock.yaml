@@ -438,6 +438,9 @@ importers:
       '@cvg-his-v2/module-notifications':
         specifier: workspace:*
         version: link:../../packages/modules/notifications
+      '@cvg-his-v2/module-notifications-whatsapp':
+        specifier: workspace:*
+        version: link:../../packages/modules/notifications-whatsapp
       '@cvg-his-v2/module-owners':
         specifier: workspace:*
         version: link:../../packages/modules/owners

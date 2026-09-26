@@ -333,3 +333,4 @@ export class RuntimeSettingsLookup implements SettingsLookup {
 }
 
 export { AppointmentReminderWorkflow, InMemorySettingsLookup } from './reminder-workflow.js';
+export * from './reminder-schedule.js';
