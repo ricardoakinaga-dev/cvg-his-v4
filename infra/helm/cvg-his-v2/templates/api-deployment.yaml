@@ -9,6 +9,9 @@ API Deployment + Service
 {{- fail "api.replicaCount > 1 with local attachment storage requires persistence.accessMode=ReadWriteMany and an operator-provided RWX storageClass; prefer S3-compatible attachmentStorage for HA" -}}
 {{- end -}}
 {{- end -}}
+{{- if and (gt (int .Values.api.replicaCount) 1) (not .Values.api.crossReplicaCache.enabled) -}}
+{{- fail "api.replicaCount > 1 requires api.crossReplicaCache.enabled=true: the API keeps per-process account caches without cross-replica invalidation (R2-ARC-01); keep a single API replica until R2-ARC-03 ships read-through reads and LISTEN/NOTIFY invalidation" -}}
+{{- end -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -74,6 +77,10 @@ spec:
           env:
             - name: DATABASE_REQUIRE_RLS_ROLE
               value: "1"
+            - name: CVG_API_EXPECTED_REPLICAS
+              value: {{ .Values.api.replicaCount | quote }}
+            - name: CVG_API_CROSS_REPLICA_CACHE
+              value: {{ ternary "1" "0" .Values.api.crossReplicaCache.enabled | quote }}
             - name: AUTH_SECRET
               valueFrom:
                 secretKeyRef:

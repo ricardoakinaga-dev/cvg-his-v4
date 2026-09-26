@@ -146,6 +146,16 @@ function validateStaticChart() {
     'values.prod.yaml must declare the production environment'
   );
   assert(
+    base.api?.crossReplicaCache?.enabled === false &&
+      schema.properties?.api?.required?.includes('crossReplicaCache'),
+    'values.yaml must default api.crossReplicaCache.enabled=false and the schema must require it (R2-ARC-01)'
+  );
+  assert(
+    (production.api?.replicaCount ?? base.api?.replicaCount) === 1 ||
+      production.api?.crossReplicaCache?.enabled === true,
+    'values.prod.yaml must keep api.replicaCount=1 until api.crossReplicaCache.enabled=true is proven (R2-ARC-01)'
+  );
+  assert(
     production.api?.env?.VAULT_ENABLED === 'true' &&
       production.api?.vault?.existingSecret &&
       production.api?.vault?.secretKeys?.url === 'VAULT_URL' &&
@@ -584,6 +594,46 @@ assertHelmFailure(
   'api.vault.secretKeys.roleId'
 );
 
+assertHelmFailure(
+  [
+    'template',
+    'cvg-his-v2-prod-multi-replica-invalid',
+    chartDir,
+    '-f',
+    baseValues,
+    '-f',
+    path.join(chartDir, 'values.prod.yaml'),
+    '--set-string',
+    `api.image.sha=${validationImageDigests.api}`,
+    '--set-string',
+    `worker.image.sha=${validationImageDigests.worker}`,
+    '--set-string',
+    `spa.image.sha=${validationImageDigests.spa}`,
+    '--set',
+    'api.replicaCount=3'
+  ],
+  'api.replicaCount > 1 requires api.crossReplicaCache.enabled=true'
+);
+
+assertHelmFailure(
+  [
+    'template',
+    'cvg-his-v2-local-ha-rwx-no-invalidation',
+    chartDir,
+    '-f',
+    baseValues,
+    '-f',
+    path.join(chartDir, 'values.dev.yaml'),
+    '--set',
+    'api.replicaCount=2',
+    '--set-string',
+    'persistence.accessMode=ReadWriteMany',
+    '--set-string',
+    'persistence.storageClass=operator-rwx-class'
+  ],
+  'api.replicaCount > 1 requires api.crossReplicaCache.enabled=true'
+);
+
 runHelm([
   'template',
   'cvg-his-v2-local-ha-rwx',
@@ -594,6 +644,8 @@ runHelm([
   path.join(chartDir, 'values.dev.yaml'),
   '--set',
   'api.replicaCount=2',
+  '--set',
+  'api.crossReplicaCache.enabled=true',
   '--set-string',
   'persistence.accessMode=ReadWriteMany',
   '--set-string',

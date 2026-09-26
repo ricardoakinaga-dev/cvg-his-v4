@@ -151,3 +151,10 @@ kubectl rollout status deploy/cvg-his-v2-prod-cvg-his-v2-worker -n cvg-his
   - API: `/live`, `/ready`, `/health`
   - Worker: `/live`, `/ready`, `/health`
   - SPA: `/`
+
+## Limite de réplicas da API (R2-ARC-01)
+
+A API mantém caches por processo sem invalidação entre réplicas. O chart falha
+quando `api.replicaCount > 1` sem `api.crossReplicaCache.enabled=true`, e o
+processo recusa iniciar na mesma condição. Detalhes e critério de remoção em
+[`docs/runbooks/api-replica-topology.md`](../../../docs/runbooks/api-replica-topology.md).

@@ -13,6 +13,7 @@ import { createApiFeatureFlags, type ApiFeatureFlagsSnapshot } from './feature-f
 import { setAppState, type PersistenceMode } from './app-state.js';
 import { startApiObservability } from './observability.js';
 import { assertProductionRuntimeContract } from './production-runtime-contract.js';
+import { assertReplicaTopology } from './replica-topology-guard.js';
 import { resolveApiStartup } from './startup-secrets.js';
 import { resolveSetupBootstrapToken } from './setup-token.js';
 import { DatabaseVetusImportLogRepository } from './repositories/vetus-import-log-repository.js';
@@ -217,6 +218,13 @@ async function main() {
     await apiShutdownObservability();
   }
   if (await stopStartupIfRequested()) return;
+
+  // R2-ARC-01: refuse a multi-replica topology while account caches are per-process.
+  const replicaTopology = assertReplicaTopology(process.env);
+  logger.info('replica topology verified', {
+    expectedReplicas: replicaTopology.expectedReplicas,
+    crossReplicaCacheEnabled: replicaTopology.crossReplicaCacheEnabled
+  });
 
   logger.info('starting api server bootstrap');
   logger.info('api observability state', {
