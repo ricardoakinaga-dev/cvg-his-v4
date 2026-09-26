@@ -1224,3 +1224,32 @@ export interface WebhookDeliverySummary {
   readonly deadLetteredAt?: string;
   readonly createdAt: string;
 }
+
+// ── Cross-replica cache synchronization (R2-ARC-02 / R2-ARC-03) ──────────────
+
+/** Entities whose per-process caches are kept in sync across API replicas. */
+export type CacheSyncEntity = 'owner' | 'patient' | 'encounter';
+
+export interface CacheSyncEvent {
+  readonly entity: CacheSyncEntity;
+  readonly accountId: string;
+  readonly id: string;
+  readonly op: 'upsert' | 'delete';
+  /** Identifies the publishing process so it can ignore its own events. */
+  readonly origin: string;
+  readonly emittedAt: string;
+}
+
+export type CacheSyncHandler = (event: CacheSyncEvent) => void | Promise<void>;
+
+/**
+ * Publishes and receives cache invalidation events between API replicas.
+ * Services publish after their write reaches durable storage and apply
+ * remote events by re-reading the row from the repository.
+ */
+export interface CacheSyncBus {
+  /** Stable identifier of this process; events carrying it are ignored locally. */
+  readonly originId: string;
+  publish(event: Omit<CacheSyncEvent, 'origin' | 'emittedAt'>): Promise<void>;
+  subscribe(entity: CacheSyncEntity, handler: CacheSyncHandler): () => void;
+}

@@ -243,12 +243,12 @@ describe('OwnersService', () => {
   describe('getOrThrow', () => {
     it('returns owner by id', () => {
       const created = service.create(ACCOUNT_ID, makeOwner());
-      const found = service.getOrThrow(created.id);
+      const found = service.getOrThrow(ACCOUNT_ID, created.id);
       expect(found.id).toBe(created.id);
     });
 
     it('throws NotFoundError for non-existent id', () => {
-      expect(() => service.getOrThrow('nonexistent' as OwnerId)).toThrow(NotFoundError);
+      expect(() => service.getOrThrow(ACCOUNT_ID, 'nonexistent' as OwnerId)).toThrow(NotFoundError);
     });
 
     it('refreshes lifecycle state from the repository instead of trusting a stale cache', async () => {
@@ -269,20 +269,20 @@ describe('OwnersService', () => {
         id: cached.id,
         status: 'inactive'
       });
-      expect(authoritative.getOrThrow(cached.id).status).toBe('inactive');
+      expect(authoritative.getOrThrow(ACCOUNT_ID, cached.id).status).toBe('inactive');
     });
   });
 
   describe('update', () => {
     it('updates fullName', () => {
       const created = service.create(ACCOUNT_ID, makeOwner({ fullName: 'Original' }));
-      const updated = service.update(created.id, { fullName: 'Updated' });
+      const updated = service.update(ACCOUNT_ID, created.id, { fullName: 'Updated' });
       expect(updated.fullName).toBe('Updated');
     });
 
     it('updates documentId', () => {
       const created = service.create(ACCOUNT_ID, makeOwner({ documentId: '111.111.111-11' }));
-      const updated = service.update(created.id, { documentId: '999.999.999-99' });
+      const updated = service.update(ACCOUNT_ID, created.id, { documentId: '999.999.999-99' });
       expect(updated.documentId).toBe('999.999.999-99');
     });
 
@@ -297,7 +297,7 @@ describe('OwnersService', () => {
       );
 
       expect(() =>
-        service.update(candidate.id, {
+        service.update(ACCOUNT_ID, candidate.id, {
           fullName: existing.fullName,
           documentId: existing.documentId
         })
@@ -306,19 +306,19 @@ describe('OwnersService', () => {
 
     it('updates status', () => {
       const created = service.create(ACCOUNT_ID, makeOwner());
-      const updated = service.update(created.id, { status: 'inactive' });
+      const updated = service.update(ACCOUNT_ID, created.id, { status: 'inactive' });
       expect(updated.status).toBe('inactive');
     });
 
     it('updates administrativeNotes', () => {
       const created = service.create(ACCOUNT_ID, makeOwner());
-      const updated = service.update(created.id, { administrativeNotes: 'Updated notes' });
+      const updated = service.update(ACCOUNT_ID, created.id, { administrativeNotes: 'Updated notes' });
       expect(updated.administrativeNotes).toBe('Updated notes');
     });
 
     it('updates Vetus operational fields', () => {
       const created = service.create(ACCOUNT_ID, makeOwner());
-      const updated = service.update(created.id, {
+      const updated = service.update(ACCOUNT_ID, created.id, {
         address: {
           zipCode: '04567-000',
           street: 'Av. Atualizada',
@@ -357,20 +357,20 @@ describe('OwnersService', () => {
         ACCOUNT_ID,
         makeOwner({ fullName: 'Keep Me', documentId: '111.111.111-11' })
       );
-      const updated = service.update(created.id, { fullName: 'Changed' });
+      const updated = service.update(ACCOUNT_ID, created.id, { fullName: 'Changed' });
       expect(updated.fullName).toBe('Changed');
       expect(updated.documentId).toBe('111.111.111-11');
     });
 
     it('throws NotFoundError when updating non-existent owner', () => {
-      expect(() => service.update('nonexistent' as OwnerId, { fullName: 'New' })).toThrow(
+      expect(() => service.update(ACCOUNT_ID, 'nonexistent' as OwnerId, { fullName: 'New' })).toThrow(
         NotFoundError
       );
     });
 
     it('throws ValidationError for empty contacts on update', () => {
       const created = service.create(ACCOUNT_ID, makeOwner());
-      expect(() => service.update(created.id, { contacts: [] })).toThrow(ValidationError);
+      expect(() => service.update(ACCOUNT_ID, created.id, { contacts: [] })).toThrow(ValidationError);
     });
   });
 
@@ -398,7 +398,7 @@ describe('OwnersService with repository', () => {
 
   it('updates owner and persists to repository', async () => {
     const created = service.create(ACCOUNT_ID, makeOwner({ fullName: 'Original' }));
-    service.update(created.id, { fullName: 'Repo Updated' });
+    service.update(ACCOUNT_ID, created.id, { fullName: 'Repo Updated' });
     await new Promise((r) => setTimeout(r, 10));
     const found = await repo.findById(created.id);
     expect(found?.fullName).toBe('Repo Updated');
@@ -412,8 +412,8 @@ describe('OwnersService with repository', () => {
 
     await service.refreshFromDatabase(ACCOUNT_ID);
 
-    expect(service.getOrThrow(persisted.id).fullName).toBe('Persisted Owner');
-    expect(() => service.getOrThrow(stale.id)).toThrow(NotFoundError);
+    expect(service.getOrThrow(ACCOUNT_ID, persisted.id).fullName).toBe('Persisted Owner');
+    expect(() => service.getOrThrow(ACCOUNT_ID, stale.id)).toThrow(NotFoundError);
   });
 
   it('erases contacts, profile and notes durably while keeping identity and address', async () => {
@@ -439,7 +439,7 @@ describe('OwnersService with repository', () => {
     expect(persisted?.administrativeNotes).toBeUndefined();
     expect(persisted?.fullName).toBe('Titular LGPD');
     expect(persisted?.documentId).toBe('222.222.222-22');
-    expect(service.getOrThrow(created.id).contacts).toEqual([]);
+    expect(service.getOrThrow(ACCOUNT_ID, created.id).contacts).toEqual([]);
   });
 
   it('does not erase an owner from another account', async () => {
@@ -449,7 +449,7 @@ describe('OwnersService with repository', () => {
     await expect(
       service.eraseContactAndProfileData('acc_other' as AccountId, created.id)
     ).rejects.toBeInstanceOf(NotFoundError);
-    expect(service.getOrThrow(created.id).contacts.length).toBeGreaterThan(0);
+    expect(service.getOrThrow(ACCOUNT_ID, created.id).contacts.length).toBeGreaterThan(0);
   });
 
   it('deletes owner via repository', async () => {
@@ -486,7 +486,7 @@ describe('OwnersService with repository', () => {
     );
 
     await expect(failingService.waitForPersistence()).rejects.toThrow('database unavailable');
-    expect(() => failingService.getOrThrow(owner.id)).toThrow(NotFoundError);
+    expect(() => failingService.getOrThrow(ACCOUNT_ID, owner.id)).toThrow(NotFoundError);
     expect(failingService.list('Should Roll Back')).toHaveLength(0);
   });
 });

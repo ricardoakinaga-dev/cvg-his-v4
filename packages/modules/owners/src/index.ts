@@ -4,6 +4,8 @@ import type { CreateOwnerRequest, UpdateOwnerRequest } from '@cvg-his-v2/shared-
 import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type {
   AccountId,
+  CacheSyncBus,
+  CacheSyncEvent,
   OwnerAddress,
   OwnerContact,
   OwnerFinancialProfile,
@@ -223,17 +225,25 @@ function createSeedOwners(): OwnerSummary[] {
 export interface OwnersServiceOptions {
   readonly ownerRepository?: OwnerRepository;
   readonly seedOwners?: readonly OwnerSummary[];
+  /**
+   * R2-ARC-03: publishes cache invalidation after each durable write so other
+   * API replicas refresh their per-process cache. Remote events are applied
+   * through {@link OwnersService.applyCacheSyncEvent}.
+   */
+  readonly cacheSync?: Pick<CacheSyncBus, 'publish'>;
 }
 
 export class OwnersService {
   readonly #owners = new Map<OwnerId, OwnerSummary>();
   readonly #ownerRepository?: OwnerRepository;
+  readonly #cacheSync?: Pick<CacheSyncBus, 'publish'>;
   #pendingPersist: Promise<void> = Promise.resolve();
   #lastPersist: Promise<void> = Promise.resolve();
 
   public constructor(options: OwnersServiceOptions = {}) {
     const seedOwners = options.seedOwners ?? createSeedOwners();
     this.#ownerRepository = options.ownerRepository;
+    this.#cacheSync = options.cacheSync;
 
     for (const owner of seedOwners) {
       this.#owners.set(owner.id, owner);
@@ -319,13 +329,73 @@ export class OwnersService {
     });
   }
 
-  public getOrThrow(ownerId: OwnerId): OwnerSummary {
+  /**
+   * Account-scoped cache read (R2-ARC-02). An owner cached for another account
+   * is reported as not found; callers never see cross-account rows.
+   */
+  public getOrThrow(accountId: AccountId, ownerId: OwnerId): OwnerSummary {
     const owner = this.#owners.get(ownerId);
-    if (!owner) {
+    if (!owner || owner.accountId !== accountId) {
       throw new NotFoundError('Owner not found', { ownerId });
     }
 
     return owner;
+  }
+
+  /**
+   * Cache-only peek without account scoping. Reserved for validations that
+   * must distinguish "unknown owner" from "owner of another account" (for
+   * example, to answer a ValidationError instead of NotFound). Never use it to
+   * return data to a caller.
+   */
+  public peek(ownerId: OwnerId): OwnerSummary | undefined {
+    return this.#owners.get(ownerId);
+  }
+
+  /**
+   * Account-scoped read-through (R2-ARC-02): serves the cache when it already
+   * holds the owner for this account and otherwise consults the repository,
+   * so a row created by another replica is visible on first access.
+   */
+  public async fetchOrThrow(accountId: AccountId, ownerId: OwnerId): Promise<OwnerSummary> {
+    const cached = this.#owners.get(ownerId);
+    if (cached && cached.accountId === accountId) {
+      return cached;
+    }
+    if (!this.#ownerRepository) {
+      throw new NotFoundError('Owner not found', { ownerId });
+    }
+    const owner = await this.#ownerRepository.findById(ownerId);
+    if (!owner || owner.accountId !== accountId) {
+      throw new NotFoundError('Owner not found', { ownerId });
+    }
+    this.#owners.set(owner.id, owner);
+    return owner;
+  }
+
+  /**
+   * Applies an invalidation published by another replica (R2-ARC-03): the row
+   * is re-read from the repository and the cache converges to durable state.
+   */
+  public async applyCacheSyncEvent(event: CacheSyncEvent): Promise<void> {
+    if (event.entity !== 'owner') return;
+    const ownerId = event.id as OwnerId;
+    if (event.op === 'delete' || !this.#ownerRepository) {
+      const cached = this.#owners.get(ownerId);
+      if (cached && cached.accountId === event.accountId) this.#owners.delete(ownerId);
+      return;
+    }
+    const owner = await this.#ownerRepository.findById(ownerId);
+    if (!owner || owner.accountId !== event.accountId) {
+      this.#owners.delete(ownerId);
+      return;
+    }
+    this.#owners.set(owner.id, owner);
+  }
+
+  async #publishSync(owner: OwnerSummary, op: CacheSyncEvent['op'] = 'upsert'): Promise<void> {
+    if (!this.#cacheSync) return;
+    await this.#cacheSync.publish({ entity: 'owner', accountId: owner.accountId, id: owner.id, op });
   }
 
   /**
@@ -339,7 +409,7 @@ export class OwnersService {
     ownerId: OwnerId
   ): Promise<OwnerSummary> {
     if (!this.#ownerRepository) {
-      return this.getOrThrow(ownerId);
+      return this.getOrThrow(accountId, ownerId);
     }
 
     const owner = await this.#ownerRepository.findById(ownerId);
@@ -392,7 +462,10 @@ export class OwnersService {
     // Persist to database if repository is available
     if (this.#ownerRepository) {
       this.#enqueuePersist(
-        () => this.#ownerRepository!.create(owner),
+        async () => {
+          await this.#ownerRepository!.create(owner);
+          await this.#publishSync(owner);
+        },
         () => {
           if (this.#owners.get(owner.id) === owner) {
             this.#owners.delete(owner.id);
@@ -404,8 +477,8 @@ export class OwnersService {
     return owner;
   }
 
-  public update(ownerId: OwnerId, payload: UpdateOwnerRequest): OwnerSummary {
-    const current = this.getOrThrow(ownerId);
+  public update(accountId: AccountId, ownerId: OwnerId, payload: UpdateOwnerRequest): OwnerSummary {
+    const current = this.getOrThrow(accountId, ownerId);
     const nextFullName =
       payload.fullName !== undefined
         ? requireNonEmptyString(payload.fullName, 'fullName')
@@ -466,7 +539,10 @@ export class OwnersService {
     // Persist to database if repository is available
     if (this.#ownerRepository) {
       this.#enqueuePersist(
-        () => this.#ownerRepository!.update(updated),
+        async () => {
+          await this.#ownerRepository!.update(updated);
+          await this.#publishSync(updated);
+        },
         () => {
           this.#owners.set(ownerId, current);
         }
@@ -504,6 +580,7 @@ export class OwnersService {
       await this.#ownerRepository.update(erased);
     }
     this.#owners.set(ownerId, erased);
+    await this.#publishSync(erased);
     return { erasedFields };
   }
 }

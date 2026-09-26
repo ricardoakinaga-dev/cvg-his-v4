@@ -447,7 +447,7 @@ async function upsertOwner(
   const contacts = ownerContacts(payload.owner);
 
   if (existing) {
-    const owner = owners.update(existing.id, {
+    const owner = owners.update(principal.user.accountId, existing.id, {
       legacyVetusId: existing.legacyVetusId ?? optionalText(payload.owner.legacyVetusId),
       originalCreatedAt: existing.originalCreatedAt ?? optionalText(payload.owner.originalCreatedAt),
       administrativeNotes: mergeText(existing.administrativeNotes, importNote),
@@ -481,7 +481,7 @@ async function upsertPatient(
   const patientNotes = mergeText(optionalText(payload.patient.generalNotes), importNote);
 
   if (existing) {
-    const patient = patients.update(existing.id, {
+    const patient = patients.update(principal.user.accountId, existing.id, {
       legacyVetusId: existing.legacyVetusId ?? optionalText(payload.patient.legacyVetusId),
       originalCreatedAt: existing.originalCreatedAt ?? optionalText(payload.patient.originalCreatedAt),
       breed: existing.breed ?? optionalText(payload.patient.breed),
@@ -1079,7 +1079,7 @@ export async function handleVetusImportRoutes(
           item.ownerId as never
         );
         if (owner.accountId === principal.user.accountId) {
-          owners.update(owner.id, { status: 'inactive' });
+          owners.update(principal.user.accountId, owner.id, { status: 'inactive' });
         }
       }
       if (item.patientCreated && item.patientId) {
@@ -1088,7 +1088,7 @@ export async function handleVetusImportRoutes(
           item.patientId as never
         );
         if (patient.accountId === principal.user.accountId) {
-          patients.update(patient.id, { status: 'inactive' });
+          patients.update(principal.user.accountId, patient.id, { status: 'inactive' });
         }
       }
       await batchStore.updateBatchItem({

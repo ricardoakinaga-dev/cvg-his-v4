@@ -276,7 +276,7 @@ function createFinancialService(
       }
     } as never,
     {
-      getOrThrow(patientId: string) {
+      getOrThrow(_accountId: string, patientId: string) {
         assert.equal(patientId, encounter.patientId);
         return {
           id: patientId,
@@ -287,7 +287,7 @@ function createFinancialService(
       }
     } as never,
     {
-      getOrThrow(ownerId: string) {
+      getOrThrow(_accountId: string, ownerId: string) {
         assert.equal(ownerId, encounter.ownerId);
         return {
           id: ownerId,

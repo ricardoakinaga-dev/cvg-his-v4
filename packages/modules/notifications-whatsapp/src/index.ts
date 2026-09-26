@@ -280,7 +280,8 @@ export class RuntimeOwnerLookup implements OwnerLookup {
 
   getOwnerPhone(ownerId: OwnerId): string | null {
     try {
-      const owner = this.#owners.getOrThrow(ownerId);
+      const owner = this.#owners.peek(ownerId);
+      if (!owner) return null;
       const whatsappContact = owner.contacts.find((c) => c.type === 'whatsapp');
       if (whatsappContact?.value) {
         return whatsappContact.value.replace(/\D/g, '');
@@ -297,7 +298,7 @@ export class RuntimeOwnerLookup implements OwnerLookup {
 
   getOwnerName(ownerId: OwnerId): string | null {
     try {
-      return this.#owners.getOrThrow(ownerId).fullName;
+      return this.#owners.peek(ownerId)?.fullName ?? null;
     } catch {
       return null;
     }
@@ -313,7 +314,7 @@ export class RuntimePatientLookup implements PatientLookup {
 
   getPatientName(patientId: PatientId): string | null {
     try {
-      return this.#patients.getOrThrow(patientId).name;
+      return this.#patients.peek(patientId)?.name ?? null;
     } catch {
       return null;
     }

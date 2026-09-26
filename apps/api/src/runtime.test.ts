@@ -403,7 +403,7 @@ test('runtime initializes tenant-scoped repositories with the authenticated acco
   const runtime = createTestRuntime(repositories);
   await runtime.initialize();
 
-  const patient = runtime.patients.getOrThrow(REAL_PATIENT_ID);
+  const patient = runtime.patients.getOrThrow(REAL_ACCOUNT_ID, REAL_PATIENT_ID);
   const encounter = runtime.encounters.getOrThrow(REAL_ACCOUNT_ID, REAL_ENCOUNTER_ID);
 
   assert.equal(patient.accountId, REAL_ACCOUNT_ID);
@@ -793,8 +793,8 @@ test('runtime can preserve owner and patient registry seeds with repository-back
     preserveSeedMasterDataWithRepository: true
   });
 
-  const patient = runtime.patients.getOrThrow('patient_mogeb6qv_5b0gq64z' as never);
-  const owner = runtime.owners.getOrThrow('owner_ricardo_akinaga' as never);
+  const patient = runtime.patients.peek('patient_mogeb6qv_5b0gq64z' as never)!;
+  const owner = runtime.owners.peek('owner_ricardo_akinaga' as never)!;
 
   assert.equal(patient.name, 'DANI');
   assert.equal(patient.primaryOwnerId, owner.id);

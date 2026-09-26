@@ -36,7 +36,7 @@ function createInMemoryService(patientAccountId = 'acc_test') {
       }
     } as never,
     patients: {
-      getOrThrow(patientId: string) {
+      getOrThrow(_accountId: string, patientId: string) {
         return { id: patientId, accountId: patientAccountId };
       }
     } as never
@@ -117,7 +117,7 @@ function createNoOpPersistenceService(seedEntry = false) {
       }
     } as never,
     patients: {
-      getOrThrow(patientId: string) {
+      getOrThrow(_accountId: string, patientId: string) {
         return { id: patientId, accountId: 'acc_test' };
       }
     } as never,
@@ -307,7 +307,7 @@ test('MedicalRecordsService covers repository refresh, list and hydrated-entry b
       }
     } as never,
     patients: {
-      getOrThrow: (patientId: string) => ({ id: patientId, accountId: 'acc_test' })
+      getOrThrow: (_accountId: string, patientId: string) => ({ id: patientId, accountId: 'acc_test' })
     } as never,
     medicalRecordRepository: {
       async create() {},
@@ -435,7 +435,7 @@ test('MedicalRecordsService rejects records whose encounter or patient parent is
       }
     } as never,
     patients: {
-      getOrThrow(patientId: string) {
+      getOrThrow(_accountId: string, patientId: string) {
         return { id: patientId, accountId: 'acc_test' };
       }
     } as never,
@@ -486,7 +486,7 @@ test('MedicalRecordsService refuses to discard a stale foreign snapshot mapping'
       }
     } as never,
     patients: {
-      getOrThrow(patientId: string) {
+      getOrThrow(_accountId: string, patientId: string) {
         return { id: patientId, accountId: encounterAccountId };
       }
     } as never
@@ -601,7 +601,7 @@ test('MedicalRecordsService refreshAccount preserves another account revision ca
       }
     } as never,
     patients: {
-      getOrThrow(patientId: string) {
+      getOrThrow(_accountId: string, patientId: string) {
         const record = records.find((candidate) => candidate.patientId === patientId);
         if (!record) throw new Error('Patient not found');
         return { id: patientId, accountId: record.accountId };
@@ -674,7 +674,7 @@ test('MedicalRecordsService fails closed without an atomic fallback adapter', as
       }
     } as never,
     patients: {
-      getOrThrow(patientId: string) {
+      getOrThrow(_accountId: string, patientId: string) {
         return { id: patientId, accountId: 'acc_test' };
       }
     } as never,
@@ -743,7 +743,7 @@ test('MedicalRecordsService rejects an atomic adapter that does not confirm its 
       }
     } as never,
     patients: {
-      getOrThrow(patientId: string) {
+      getOrThrow(_accountId: string, patientId: string) {
         return { id: patientId, accountId: 'acc_test' };
       }
     } as never,
@@ -859,7 +859,7 @@ test('MedicalRecordsService revalidates cached entries after parent linkage drif
       }
     } as never,
     patients: {
-      getOrThrow(patientId: string) {
+      getOrThrow(_accountId: string, patientId: string) {
         return { id: patientId, accountId: 'acc_test' };
       }
     } as never

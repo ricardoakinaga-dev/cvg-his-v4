@@ -27,7 +27,9 @@ import type {
   EncounterTimelineEventSummary,
   OwnerId,
   PatientId,
-  UserId
+  UserId,
+  CacheSyncBus,
+  CacheSyncEvent
 } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
@@ -101,6 +103,8 @@ export interface EncountersServiceOptions {
     encounter: EncounterSummary,
     previousStatus: EncounterSummary['status']
   ) => Promise<void>;
+  /** R2-ARC-03: publishes cache invalidation after durable writes (see applyCacheSyncEvent). */
+  readonly cacheSync?: Pick<CacheSyncBus, 'publish'>;
 }
 
 export interface EncounterStateSnapshot {
@@ -121,6 +125,7 @@ export class EncountersService {
     encounter: EncounterSummary,
     previousStatus: EncounterSummary['status']
   ) => Promise<void>;
+  readonly #cacheSync?: Pick<CacheSyncBus, 'publish'>;
   #pendingPersist: Promise<void> = Promise.resolve();
   #lastPersist: Promise<void> = Promise.resolve();
   #pendingCallbacks: Promise<void> = Promise.resolve();
@@ -131,6 +136,7 @@ export class EncountersService {
     this.#patients = options.patients;
     this.#encounterRepository = options.encounterRepository;
     this.#encounterTimelineRepository = options.encounterTimelineRepository;
+    this.#cacheSync = options.cacheSync;
     this.#requireUuidIdentifiers =
       options.requireUuidIdentifiers ?? options.encounterRepository !== undefined;
     this.#onEncounterCreated = options.onEncounterCreated;
@@ -177,6 +183,60 @@ export class EncountersService {
     }
 
     return encounter;
+  }
+
+  /**
+   * Account-scoped read-through (R2-ARC-02): cache hit for this account or a
+   * repository read, so an encounter opened on another replica is visible here.
+   */
+  public async fetchOrThrow(accountId: AccountId, encounterId: EncounterId): Promise<EncounterSummary> {
+    const cached = this.#encounters.get(encounterId);
+    if (cached && cached.accountId === accountId) {
+      return cached;
+    }
+    if (!this.#encounterRepository) {
+      throw new NotFoundError('Encounter not found', { encounterId });
+    }
+    const encounter = await this.#encounterRepository.findById(encounterId);
+    if (!encounter || encounter.accountId !== accountId) {
+      throw new NotFoundError('Encounter not found', { encounterId });
+    }
+    this.#encounters.set(encounter.id, encounter);
+    return encounter;
+  }
+
+  /** Applies an invalidation published by another replica (R2-ARC-03). */
+  public async applyCacheSyncEvent(event: CacheSyncEvent): Promise<void> {
+    if (event.entity !== 'encounter') return;
+    const encounterId = event.id as EncounterId;
+    if (event.op === 'delete' || !this.#encounterRepository) {
+      const cached = this.#encounters.get(encounterId);
+      if (cached && cached.accountId === event.accountId) {
+        this.#encounters.delete(encounterId);
+        this.#timeline.delete(encounterId);
+      }
+      return;
+    }
+    const encounter = await this.#encounterRepository.findById(encounterId);
+    if (!encounter || encounter.accountId !== event.accountId) {
+      this.#encounters.delete(encounterId);
+      this.#timeline.delete(encounterId);
+      return;
+    }
+    this.#encounters.set(encounter.id, encounter);
+    // The timeline cache is dropped so the next async read reloads it from
+    // the repository together with events appended by the other replica.
+    this.#timeline.delete(encounterId);
+  }
+
+  async #publishSync(encounter: EncounterSummary, op: CacheSyncEvent['op'] = 'upsert'): Promise<void> {
+    if (!this.#cacheSync) return;
+    await this.#cacheSync.publish({
+      entity: 'encounter',
+      accountId: encounter.accountId,
+      id: encounter.id,
+      op
+    });
   }
 
   /**
@@ -259,8 +319,14 @@ export class EncountersService {
     readonly patient: ReturnType<PatientsService['getOrThrow']>;
     readonly owner: ReturnType<OwnersService['getOrThrow']>;
   } {
-    const patient = this.#patients.getOrThrow(patientId);
-    const owner = this.#owners.getOrThrow(ownerId);
+    const patient = this.#patients.peek(patientId);
+    const owner = this.#owners.peek(ownerId);
+    if (!patient) {
+      throw new NotFoundError('Patient not found', { patientId });
+    }
+    if (!owner) {
+      throw new NotFoundError('Owner not found', { ownerId });
+    }
     if (patient.accountId !== accountId || owner.accountId !== accountId) {
       throw new ValidationError('Patient and owner must belong to the current account');
     }
@@ -508,7 +574,10 @@ export class EncountersService {
 
     if (this.#encounterRepository) {
       this.#enqueuePersist(
-        () => this.#encounterRepository!.delete(encounterId),
+        async () => {
+          await this.#encounterRepository!.delete(encounterId);
+          await this.#publishSync(current, 'delete');
+        },
         () => {
           this.#encounters.set(encounterId, current);
           this.#timeline.set(encounterId, currentTimeline);
@@ -606,6 +675,7 @@ export class EncountersService {
             encounterCreated = true;
           }
           await this.#encounterTimelineRepository?.create(timelineEvent);
+          await this.#publishSync(encounter);
         } catch (error) {
           if (encounterCreated) {
             await this.#encounterRepository?.delete(encounter.id).catch(() => undefined);
@@ -642,6 +712,7 @@ export class EncountersService {
             encounterPersisted = true;
           }
           await this.#encounterTimelineRepository?.create(timelineEvent);
+          await this.#publishSync(updated);
         } catch (error) {
           if (encounterPersisted) {
             await this.#encounterRepository?.update(current).catch(() => undefined);

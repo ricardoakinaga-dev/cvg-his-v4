@@ -30,7 +30,7 @@ describe('OwnersService coverage guard', () => {
     expect(created.contacts[0]?.primary).toBe(true);
     expect(created.contacts.some((contact) => contact.primary)).toBe(true);
 
-    const updated = service.update(created.id, {
+    const updated = service.update('acc_test' as never, created.id, {
       contacts: [
         { label: 'Telefone', value: '+55 11 99999-9999', type: 'phone' },
         { label: 'Email', value: 'novo@example.com', type: 'email', primary: false }
@@ -98,6 +98,6 @@ describe('OwnersService coverage guard', () => {
     const listed = service.list('Repositorio');
     expect(listed).toHaveLength(1);
     expect(listed[0]?.accountId).toBe('acc_repo');
-    expect(service.getOrThrow(listed[0]!.id).administrativeNotes).toBe('carregado do repo');
+    expect(service.getOrThrow('acc_repo' as never, listed[0]!.id).administrativeNotes).toBe('carregado do repo');
   });
 });

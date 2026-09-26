@@ -282,7 +282,7 @@ export class MedicalRecordsService {
 
     try {
       const encounter = this.#encounters.getOrThrow(accountId, record.encounterId);
-      const patient = this.#patients.getOrThrow(record.patientId);
+      const patient = this.#patients.getOrThrow(accountId, record.patientId);
       if (
         encounter.id !== record.encounterId ||
         encounter.accountId !== accountId ||
@@ -1197,7 +1197,7 @@ export class MedicalRecordsService {
     }
 
     this.#assertEncounterWritable(accountId, encounterId);
-    const patient = this.#patients.getOrThrow(encounter.patientId);
+    const patient = this.#patients.getOrThrow(accountId, encounter.patientId);
     if (patient.id !== encounter.patientId || patient.accountId !== accountId) {
       throw new NotFoundError('Patient not found', { patientId: encounter.patientId });
     }
@@ -1257,7 +1257,7 @@ export class MedicalRecordsService {
     const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId') as EncounterId;
     const patientId = requireNonEmptyString(payload.patientId, 'patientId') as PatientId;
     const encounter = this.#assertEncounterWritable(accountId, encounterId);
-    const patient = this.#patients.getOrThrow(patientId);
+    const patient = this.#patients.getOrThrow(accountId, patientId);
     if (encounter.patientId !== patientId || patient.accountId !== encounter.accountId) {
       throw new NotFoundError('Encounter does not match patient', { encounterId, patientId });
     }
@@ -1516,7 +1516,7 @@ export class MedicalRecordsService {
     const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId') as EncounterId;
     const patientId = requireNonEmptyString(payload.patientId, 'patientId') as PatientId;
     const encounter = this.#assertEncounterWritable(accountId, encounterId);
-    const patient = this.#patients.getOrThrow(patientId);
+    const patient = this.#patients.getOrThrow(accountId, patientId);
     if (encounter.patientId !== patientId) {
       throw new NotFoundError('Encounter does not match patient', {
         encounterId,

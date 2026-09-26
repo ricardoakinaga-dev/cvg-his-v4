@@ -13,7 +13,7 @@ export interface TriageUpdateRouteHandlers {
   readonly triage: Pick<TriageService, 'getOrThrow' | 'updateTriage'>;
   readonly encounters: Pick<
     EncountersService,
-    'appendTimeline' | 'getOrThrow' | 'transitionEncounter' | 'waitForPersistence'
+    'appendTimeline' | 'fetchOrThrow' | 'getOrThrow' | 'transitionEncounter' | 'waitForPersistence'
   >;
   readonly requirePrincipal: (
     request: IncomingMessage,
@@ -61,7 +61,7 @@ export async function handleTriageUpdateRoute(
     summary: `Triage updated from ${before.priority}/${before.destination} to ${record.priority}/${record.destination}`,
     actorUserId: principal.user.id
   });
-  const encounter = encounters.getOrThrow(principal.user.accountId, record.encounterId);
+  const encounter = await encounters.fetchOrThrow(principal.user.accountId, record.encounterId);
   if (encounter.status !== 'closed' && encounter.status !== record.destination) {
     const transitioned = encounters.transitionEncounter(
       principal.user.accountId,

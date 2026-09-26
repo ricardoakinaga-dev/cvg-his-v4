@@ -1002,8 +1002,8 @@ export class EncounterFinancialService {
     let patient: ReturnType<PatientsService['getOrThrow']>;
     let owner: ReturnType<OwnersService['getOrThrow']>;
     try {
-      patient = this.#patients.getOrThrow(encounter.patientId);
-      owner = this.#owners.getOrThrow(encounter.ownerId);
+      patient = this.#patients.getOrThrow(accountId, encounter.patientId);
+      owner = this.#owners.getOrThrow(accountId, encounter.ownerId);
     } catch (error) {
       if (error instanceof NotFoundError) {
         throw new NotFoundError('Encounter not found', { encounterId });
@@ -1458,9 +1458,9 @@ export class EncounterFinancialService {
         this.#encounters.getOrThrow(params.accountId, receivable.encounterId)
       );
       if (!encounter) continue;
-      const patient = resolveOrSkipMissing(() => this.#patients.getOrThrow(encounter.patientId));
+      const patient = resolveOrSkipMissing(() => this.#patients.getOrThrow(params.accountId, encounter.patientId));
       if (!patient) continue;
-      const owner = resolveOrSkipMissing(() => this.#owners.getOrThrow(encounter.ownerId));
+      const owner = resolveOrSkipMissing(() => this.#owners.getOrThrow(params.accountId, encounter.ownerId));
       if (!owner) continue;
       if (patient.accountId !== params.accountId || owner.accountId !== params.accountId) {
         continue;

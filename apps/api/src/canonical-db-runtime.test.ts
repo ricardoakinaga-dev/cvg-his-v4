@@ -436,8 +436,8 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
         correlationId: 'canonical-db-runtime-read'
       },
       async () => {
-        assert.equal(runtimeB!.owners.getOrThrow(identifiers.ownerId).accountId, accountId);
-        assert.equal(runtimeB!.patients.getOrThrow(identifiers.patientId).accountId, accountId);
+        assert.equal(runtimeB!.owners.getOrThrow(accountId, identifiers.ownerId).accountId, accountId);
+        assert.equal(runtimeB!.patients.getOrThrow(accountId, identifiers.patientId).accountId, accountId);
         assert.equal(
           runtimeB!.encounters.getOrThrow(accountId, identifiers.encounterId).patientId,
           identifiers.patientId

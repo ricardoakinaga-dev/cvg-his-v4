@@ -84,7 +84,7 @@ export class NotificationsService {
       if (!this.#patients) {
         throw new NotFoundError('Patient not found', { patientId });
       }
-      const patient = this.#patients.getOrThrow(patientId as never);
+      const patient = this.#patients.getOrThrow(scopedAccountId, patientId as never);
       if (patient.accountId !== scopedAccountId) {
         throw new NotFoundError('Patient not found', { patientId });
       }

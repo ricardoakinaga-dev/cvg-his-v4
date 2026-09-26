@@ -1,6 +1,7 @@
 import { createLogger } from '@cvg-his-v2/shared-logging';
 import { isProductionLikeEnvironment } from '@cvg-his-v2/shared-config';
 import {
+  PostgresCacheSyncBus,
   createDatabaseClient,
   getDatabaseClient,
   withTenantTransaction
@@ -42,6 +43,7 @@ let apiShutdownPromise: Promise<void> | undefined;
 let apiShutdownLogger = runtimeLogger;
 let apiShutdownObservability: () => Promise<void> = async () => {};
 let apiObservabilityShutdownStarted = false;
+let apiCacheSyncBus: PostgresCacheSyncBus | undefined;
 const runtimeExitCode = createRuntimeExitCodeController((exitCode) => {
   process.exitCode = exitCode;
 });
@@ -79,6 +81,10 @@ async function gracefulShutdown(signal: ApiShutdownReason): Promise<void> {
 
     apiShutdownLogger.info('draining api server', { signal });
     await attempt(closeApiServer);
+    await attempt(async () => {
+      await apiCacheSyncBus?.stop();
+      apiCacheSyncBus = undefined;
+    });
     await attempt(shutdownServices);
     await attempt(apiShutdownObservability);
     if (failures.length > 0) {
@@ -415,7 +421,23 @@ async function main() {
       ? new DatabasePixProviderEventIngressRepository()
       : undefined;
 
+  // R2-ARC-03: cross-replica cache synchronization over PostgreSQL LISTEN/NOTIFY.
+  // Only meaningful when repositories are database-backed; in-memory runtimes
+  // have nothing to reconcile.
+  let cacheSyncBus: PostgresCacheSyncBus | undefined;
+  if (databaseUrl && bootstrapResult.repositoriesUseDatabase) {
+    cacheSyncBus = new PostgresCacheSyncBus({ connectionString: databaseUrl, logger });
+    await cacheSyncBus.start();
+    apiCacheSyncBus = cacheSyncBus;
+    logger.info('cache sync bus started', {
+      channel: cacheSyncBus.channel,
+      originId: cacheSyncBus.originId
+    });
+  }
+  if (await stopStartupIfRequested()) return;
+
   apiServer = createApiServer({
+    cacheSync: cacheSyncBus,
     appName: config.appName,
     environment: config.environment,
     version,

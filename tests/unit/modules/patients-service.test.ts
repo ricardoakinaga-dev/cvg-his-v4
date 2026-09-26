@@ -76,7 +76,7 @@ describe('PatientsService coverage guard', () => {
 
     await service.hydrateFromDatabase(ACCOUNT_ID);
 
-    expect(service.getOrThrow(patientId).name).toBe('Thor');
+    expect(service.getOrThrow(ACCOUNT_ID, patientId).name).toBe('Thor');
     expect(service.list('  labrador  ')).toHaveLength(1);
     expect(service.list('maria')).toHaveLength(1);
     expect(service.searchMaster('thor').links).toHaveLength(1);
@@ -138,7 +138,7 @@ describe('PatientsService coverage guard', () => {
       primaryOwnerId: primaryOwner.id
     });
 
-    const updated = service.update(patient.id, {
+    const updated = service.update(ACCOUNT_ID, patient.id, {
       breed: 'Siames',
       baseWeightKg: 4.2,
       primaryOwnerId: newOwner.id

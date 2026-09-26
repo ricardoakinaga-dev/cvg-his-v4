@@ -161,11 +161,11 @@ describe('PatientsService', () => {
   describe('getOrThrow()', () => {
     it('returns patient when exists', () => {
       const patient = createPatient(service, owners, { name: 'Luna' });
-      expect(service.getOrThrow(patient.id).name).toBe('Luna');
+      expect(service.getOrThrow(ACCOUNT_ID, patient.id).name).toBe('Luna');
     });
 
     it('throws NotFoundError when patient does not exist', () => {
-      expect(() => service.getOrThrow('nonexistent' as PatientId)).toThrow(NotFoundError);
+      expect(() => service.getOrThrow(ACCOUNT_ID, 'nonexistent' as PatientId)).toThrow(NotFoundError);
     });
 
     it('refreshes lifecycle state from the repository instead of trusting a stale cache', async () => {
@@ -194,7 +194,7 @@ describe('PatientsService', () => {
         id: cached.id,
         status: 'inactive'
       });
-      expect(authoritative.getOrThrow(cached.id).status).toBe('inactive');
+      expect(authoritative.getOrThrow(ACCOUNT_ID, cached.id).status).toBe('inactive');
     });
 
     it('denies authoritative reads for a foreign account without leaking existence', async () => {
@@ -253,8 +253,8 @@ describe('PatientsService', () => {
 
       await service.refreshFromDatabase(ACCOUNT_ID);
 
-      expect(service.getOrThrow(persisted.id).name).toBe('Persisted patient');
-      expect(() => service.getOrThrow(stale.id)).toThrow(NotFoundError);
+      expect(service.getOrThrow(ACCOUNT_ID, persisted.id).name).toBe('Persisted patient');
+      expect(() => service.getOrThrow(ACCOUNT_ID, stale.id)).toThrow(NotFoundError);
       expect(service.listLinks({ patientId: stale.id })).toHaveLength(0);
     });
   });
@@ -323,7 +323,7 @@ describe('PatientsService', () => {
 
     it('rejects an inactive owner as a new primary responsible person', () => {
       const inactiveOwner = createOwner(owners, 'Tutor Inativo');
-      owners.update(inactiveOwner.id, { status: 'inactive' });
+      owners.update(ACCOUNT_ID, inactiveOwner.id, { status: 'inactive' });
 
       expect(() =>
         service.create(ACCOUNT_ID, {
@@ -385,7 +385,7 @@ describe('PatientsService', () => {
         primaryOwnerId: owner.id
       });
 
-      expect(() => service.update(second.id, { name: first.name })).toThrow(ConflictError);
+      expect(() => service.update(ACCOUNT_ID, second.id, { name: first.name })).toThrow(ConflictError);
     });
 
     it('allows same name with different owner', () => {
@@ -510,7 +510,7 @@ describe('PatientsService', () => {
       });
 
       await expect(failingService.waitForPersistence()).rejects.toThrow('database unavailable');
-      expect(() => failingService.getOrThrow(patient.id)).toThrow(NotFoundError);
+      expect(() => failingService.getOrThrow(ACCOUNT_ID, patient.id)).toThrow(NotFoundError);
       expect(failingService.listLinks({ patientId: patient.id })).toHaveLength(0);
     });
 
@@ -536,7 +536,7 @@ describe('PatientsService', () => {
     it('updates patient fields', () => {
       const patient = createPatient(service, owners, { name: 'Luna' });
 
-      const updated = service.update(patient.id, {
+      const updated = service.update(ACCOUNT_ID, patient.id, {
         name: 'Luna Updated',
         species: 'feline',
         size: 'large',
@@ -559,7 +559,7 @@ describe('PatientsService', () => {
     it('preserves unchanged fields', () => {
       const patient = createPatient(service, owners, { name: 'Luna', breed: 'SRD' });
 
-      const updated = service.update(patient.id, { name: 'Luna V2' });
+      const updated = service.update(ACCOUNT_ID, patient.id, { name: 'Luna V2' });
 
       expect(updated.breed).toBe('SRD');
       expect(updated.species).toBe(patient.species);
@@ -570,7 +570,7 @@ describe('PatientsService', () => {
       const patient = createPatient(service, owners, { name: 'Luna' });
       const owner2 = createOwner(owners, 'João');
 
-      service.update(patient.id, { primaryOwnerId: owner2.id });
+      service.update(ACCOUNT_ID, patient.id, { primaryOwnerId: owner2.id });
 
       const links = service.listLinks({ patientId: patient.id });
       const primaryLink = links.find((l) => l.relationshipType === 'primary');
@@ -581,15 +581,15 @@ describe('PatientsService', () => {
     it('does not transfer a patient to an inactive primary owner', () => {
       const patient = createPatient(service, owners, { name: 'Luna' });
       const inactiveOwner = createOwner(owners, 'Tutor Inativo');
-      owners.update(inactiveOwner.id, { status: 'inactive' });
+      owners.update(ACCOUNT_ID, inactiveOwner.id, { status: 'inactive' });
 
-      expect(() => service.update(patient.id, { primaryOwnerId: inactiveOwner.id })).toThrow(
+      expect(() => service.update(ACCOUNT_ID, patient.id, { primaryOwnerId: inactiveOwner.id })).toThrow(
         ConflictError
       );
     });
 
     it('throws NotFoundError when patient does not exist', () => {
-      expect(() => service.update('nonexistent' as PatientId, { name: 'X' })).toThrow(
+      expect(() => service.update(ACCOUNT_ID, 'nonexistent' as PatientId, { name: 'X' })).toThrow(
         NotFoundError
       );
     });
@@ -597,13 +597,13 @@ describe('PatientsService', () => {
     it('throws NotFoundError when new primaryOwner does not exist', () => {
       const patient = createPatient(service, owners);
       expect(() =>
-        service.update(patient.id, { primaryOwnerId: 'nonexistent' as OwnerId })
+        service.update(ACCOUNT_ID, patient.id, { primaryOwnerId: 'nonexistent' as OwnerId })
       ).toThrow(NotFoundError);
     });
 
     it('persists update to repository', async () => {
       const patient = createPatient(service, owners);
-      service.update(patient.id, { name: 'Updated' });
+      service.update(ACCOUNT_ID, patient.id, { name: 'Updated' });
       await service.waitForPersistence();
 
       const found = await patientRepo.findById(patient.id);
@@ -727,7 +727,7 @@ describe('PatientsService', () => {
     it('rejects new relationships with an inactive owner', () => {
       const patient = createPatient(service, owners);
       const inactiveOwner = createOwner(owners, 'Tutor Inativo');
-      owners.update(inactiveOwner.id, { status: 'inactive' });
+      owners.update(ACCOUNT_ID, inactiveOwner.id, { status: 'inactive' });
 
       expect(() =>
         service.createLink(ACCOUNT_ID, {
@@ -742,7 +742,7 @@ describe('PatientsService', () => {
     it('rejects new relationships with an inactive patient', () => {
       const patient = createPatient(service, owners);
       const authorizedOwner = createOwner(owners, 'Autorizado do Paciente Inativo');
-      service.update(patient.id, { status: 'inactive' });
+      service.update(ACCOUNT_ID, patient.id, { status: 'inactive' });
 
       expect(() =>
         service.createLink(ACCOUNT_ID, {
@@ -914,8 +914,8 @@ describe('PatientsService', () => {
 
       expect(merged.status).toBe('inactive');
       expect(merged.generalNotes).toContain(target.id);
-      expect(service.getOrThrow(source.id).status).toBe('inactive');
-      expect(service.getOrThrow(target.id).status).toBe('active');
+      expect(service.getOrThrow(ACCOUNT_ID, source.id).status).toBe('inactive');
+      expect(service.getOrThrow(ACCOUNT_ID, target.id).status).toBe('active');
       expect((await patientRepo.findById(source.id))?.status).toBe('inactive');
     });
   });

@@ -78,7 +78,14 @@ describe('EncountersService coverage guard', () => {
 
   it('fails closed when persisted participants are inactive or cross-account', () => {
     const owners = {
-      getOrThrow(ownerId: string) {
+      peek(ownerId: string) {
+        try {
+          return this.getOrThrow('acc_cvg_demo', ownerId);
+        } catch {
+          return undefined;
+        }
+      },
+      getOrThrow(_accountId: string, ownerId: string) {
         return {
           id: ownerId,
           accountId: 'acc_cvg_demo',
@@ -87,7 +94,14 @@ describe('EncountersService coverage guard', () => {
       }
     };
     const patients = {
-      getOrThrow(patientId: string) {
+      peek(patientId: string) {
+        try {
+          return this.getOrThrow('acc_cvg_demo', patientId);
+        } catch {
+          return undefined;
+        }
+      },
+      getOrThrow(_accountId: string, patientId: string) {
         return {
           id: patientId,
           accountId: 'acc_cvg_demo',
@@ -146,12 +160,26 @@ describe('EncountersService coverage guard', () => {
     const persistedOwnerId = '22222222-2222-4222-8222-222222222222';
     const encounters = createService({
       owners: {
-        getOrThrow(ownerId: string) {
+        peek(ownerId: string) {
+          try {
+            return this.getOrThrow('acc_cvg_demo', ownerId);
+          } catch {
+            return undefined;
+          }
+        },
+        getOrThrow(_accountId: string, ownerId: string) {
           return { id: ownerId, accountId: 'acc_cvg_demo', status: 'active' };
         }
       } as never,
       patients: {
-        getOrThrow(patientId: string) {
+        peek(patientId: string) {
+          try {
+            return this.getOrThrow('acc_cvg_demo', patientId);
+          } catch {
+            return undefined;
+          }
+        },
+        getOrThrow(_accountId: string, patientId: string) {
           return {
             id: patientId,
             accountId: 'acc_cvg_demo',
@@ -242,12 +270,26 @@ describe('EncountersService coverage guard', () => {
 
     const encounters = createService({
       owners: {
-        getOrThrow(ownerId: string) {
+        peek(ownerId: string) {
+          try {
+            return this.getOrThrow('acc_cvg_demo', ownerId);
+          } catch {
+            return undefined;
+          }
+        },
+        getOrThrow(_accountId: string, ownerId: string) {
           return { id: ownerId, accountId: 'acc_cvg_demo', status: 'active' };
         }
       } as never,
       patients: {
-        getOrThrow(patientId: string) {
+        peek(patientId: string) {
+          try {
+            return this.getOrThrow('acc_cvg_demo', patientId);
+          } catch {
+            return undefined;
+          }
+        },
+        getOrThrow(_accountId: string, patientId: string) {
           return {
             id: patientId,
             accountId: 'acc_cvg_demo',

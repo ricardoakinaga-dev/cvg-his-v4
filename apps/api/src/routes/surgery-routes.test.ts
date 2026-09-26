@@ -49,6 +49,12 @@ test('POST /surgeries forwards the authenticated account to the service boundary
           id: 'encounter-1',
           accountId: 'account-1',
           patientId: 'patient-1'
+        }),
+
+        fetchOrThrow: async () => ({
+          id: 'encounter-1',
+          accountId: 'account-1',
+          patientId: 'patient-1'
         })
       } as never,
       audit: { write: () => undefined } as never,

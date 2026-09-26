@@ -109,7 +109,7 @@ function createService() {
       }
     } as never,
     patients: {
-      getOrThrow(patientId: string) {
+      getOrThrow(_accountId: string, patientId: string) {
         return {
           id: patientId,
           accountId: 'acc_test'
@@ -351,7 +351,7 @@ test('MedicalRecordsService addEntry rolls back memory when entry persistence fa
       }
     } as never,
     patients: {
-      getOrThrow(patientId: string) {
+      getOrThrow(_accountId: string, patientId: string) {
         return {
           id: patientId,
           accountId: 'acc_test'
@@ -533,7 +533,7 @@ test('MedicalRecordsService propagates update and archive persistence failures a
       }
     } as never,
     patients: {
-      getOrThrow(patientId: string) {
+      getOrThrow(_accountId: string, patientId: string) {
         return { id: patientId, accountId: 'acc_test' };
       }
     } as never,
@@ -707,7 +707,7 @@ test('MedicalRecordsService fallback transaction rolls back late repository writ
       }
     } as never,
     patients: {
-      getOrThrow(patientId: string) {
+      getOrThrow(_accountId: string, patientId: string) {
         return { id: patientId, accountId: 'acc_test' };
       }
     } as never,

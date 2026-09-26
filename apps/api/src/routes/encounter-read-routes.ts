@@ -17,7 +17,7 @@ export interface EncounterReadRoutesHandlers {
   readonly requireEncounterForAccount: (
     encounterId: string,
     accountId: string
-  ) => ReturnType<EncountersService['getOrThrow']>;
+  ) => ReturnType<EncountersService['getOrThrow']> | ReturnType<EncountersService['fetchOrThrow']>;
   readonly appendAudit: (
     actorId: string,
     accountId: string,
@@ -40,7 +40,7 @@ export interface EncounterTimelineRouteHandlers {
   readonly requireEncounterForAccount: (
     encounterId: string,
     accountId: string
-  ) => ReturnType<EncountersService['getOrThrow']>;
+  ) => ReturnType<EncountersService['getOrThrow']> | ReturnType<EncountersService['fetchOrThrow']>;
   readonly appendAudit: EncounterReadRoutesHandlers['appendAudit'];
 }
 
@@ -62,7 +62,7 @@ export async function handleEncounterTimelineRoute(
   const { encounters, requirePrincipal, requireEncounterForAccount, appendAudit } = handlers;
   const principal = await requirePrincipal(request, 'encounters.read');
   const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
-  requireEncounterForAccount(encounterId, principal.user.accountId);
+  await requireEncounterForAccount(encounterId, principal.user.accountId);
   appendAudit(
     principal.user.id,
     principal.user.accountId,
@@ -102,7 +102,7 @@ export async function handleEncounterReadRoutes(
   if (pathname.startsWith('/encounters/') && request.method === 'GET') {
     const principal = await requirePrincipal(request, 'encounters.read');
     const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
-    const encounter = requireEncounterForAccount(encounterId, principal.user.accountId);
+    const encounter = await requireEncounterForAccount(encounterId, principal.user.accountId);
 
     if (pathname.endsWith('/summary')) {
       const timeline = await encounters.listTimelineAsync(

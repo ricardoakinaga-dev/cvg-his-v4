@@ -84,7 +84,8 @@ import type {
   CorrelationId,
   ModuleName,
   SchedulingAppointmentSummary,
-  AccountId
+  AccountId,
+  CacheSyncBus
 } from '@cvg-his-v2/shared-types';
 import {
   createInMemoryOidcStateStore,
@@ -254,6 +255,7 @@ import { createPreventiveEventStore } from './repositories/preventive-event-stor
 import { readJsonBody, readJsonBodyOrEmpty } from './helpers/request-body.js';
 import {
   createEncounterAccountGuard,
+  createEncounterReadThroughGuard,
   createEncounterQueueSynchronizer,
   readHeader,
   validateRequestBody
@@ -410,6 +412,8 @@ export interface ApiServerOptions {
   ) => Promise<T>;
   /** Explicitly disables partial clinical repositories in degraded/local runtimes. */
   readonly medicalRecordsPersistenceMode?: 'repositories' | 'memory';
+  /** R2-ARC-03: cross-replica cache synchronization bus (see ApiRuntimeOptions.cacheSync). */
+  readonly cacheSync?: CacheSyncBus;
   readonly featureFlagsProvider?: string;
   /** Pre-resolved feature flags snapshot (GAP-06: avoids async call inside createApiServer) */
   readonly featureFlags?: ApiFeatureFlagsSnapshot;
@@ -908,9 +912,11 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     unitOfWork: options.unitOfWork,
     tenantTransaction: options.tenantTransaction,
     medicalRecordsPersistenceMode: options.medicalRecordsPersistenceMode,
+    cacheSync: options.cacheSync,
     workflowTaskService: workflowTasks
   });
   const requireEncounterForAccount = createEncounterAccountGuard(encounters);
+  const fetchEncounterForAccount = createEncounterReadThroughGuard(encounters);
   const syncQueueWithEncounter = createEncounterQueueSynchronizer(encounters, scheduling);
   const runTenantCommand = createTenantCommandRunner({
     environment: options.environment,
@@ -2688,7 +2694,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 diagnostics,
                 encounterFinancial,
                 requirePrincipal,
-                requireEncounterForAccount,
+                requireEncounterForAccount: fetchEncounterForAccount,
                 appendAudit
               })
             ) {

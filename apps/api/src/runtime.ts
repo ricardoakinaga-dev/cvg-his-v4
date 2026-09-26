@@ -103,7 +103,13 @@ import {
 import { QuotesService } from '@cvg-his-v2/module-quotes';
 import { ReportsService, type ReportRepository } from '@cvg-his-v2/module-reports';
 import { CashService } from '@cvg-his-v2/module-cash';
-import type { AccountId, SchedulingAppointmentSummary, UserId } from '@cvg-his-v2/shared-types';
+import type {
+  AccountId,
+  CacheSyncBus,
+  CacheSyncEvent,
+  SchedulingAppointmentSummary,
+  UserId
+} from '@cvg-his-v2/shared-types';
 import type { WorkflowTaskService } from '@cvg-his-v2/module-workflows';
 import { ProductsService } from '@cvg-his-v2/module-products';
 import { ServicesService } from '@cvg-his-v2/module-services';
@@ -317,6 +323,12 @@ export interface ApiRuntimeOptions {
    * must not inject a partial repository bundle without a transaction adapter.
    */
   readonly medicalRecordsPersistenceMode?: 'repositories' | 'memory';
+  /**
+   * R2-ARC-03: cross-replica cache synchronization. Services publish after
+   * durable writes; remote events are applied under a tenant context so the
+   * repository re-read passes RLS.
+   */
+  readonly cacheSync?: CacheSyncBus;
 }
 
 function createRuntimeSeeds<T>(
@@ -346,6 +358,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   );
   const owners = new OwnersService({
     ownerRepository: repos.owner,
+    cacheSync: options.cacheSync,
     seedOwners: createRuntimeSeeds(
       repos.owner,
       createSeedOwners(),
@@ -405,6 +418,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const patients = new PatientsService({
     owners,
     patientRepository: repos.patient,
+    cacheSync: options.cacheSync,
     ownerPatientLinkRepository: repos.ownerPatientLink,
     patientMergeRepository: repos.patientMerge,
     seedPatients: createRuntimeSeeds(
@@ -557,6 +571,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     owners,
     patients,
     encounterRepository: repos.encounter,
+    cacheSync: options.cacheSync,
     encounterTimelineRepository: repos.encounterTimeline,
     requireUuidIdentifiers: options.requireUuidEntityIdentifiers,
     async onEncounterCreated(encounter) {
@@ -585,6 +600,25 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     }
   });
   const triage = new TriageService(encounters, { repository: repos.triage });
+
+  // R2-ARC-03: apply cache invalidations published by other replicas. Each
+  // event is applied under the event's account so repository re-reads pass
+  // RLS, mirroring the boot hydration context.
+  if (options.cacheSync) {
+    const applyUnderTenant =
+      (apply: (event: CacheSyncEvent) => Promise<void>) => async (event: CacheSyncEvent) =>
+        runWithTenantContext(
+          {
+            tenantId: '00000000-0000-0000-0000-000000000001',
+            accountId: event.accountId as AccountId,
+            correlationId: createCorrelationId('cache-sync')
+          },
+          () => apply(event)
+        );
+    options.cacheSync.subscribe('owner', applyUnderTenant((event) => owners.applyCacheSyncEvent(event)));
+    options.cacheSync.subscribe('patient', applyUnderTenant((event) => patients.applyCacheSyncEvent(event)));
+    options.cacheSync.subscribe('encounter', applyUnderTenant((event) => encounters.applyCacheSyncEvent(event)));
+  }
   const clinicalHandoffs = new ClinicalHandoffsService(encounters, {
     repository: repos.clinicalHandoff,
     async onHandoffSent(handoff) {
@@ -1290,7 +1324,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
             ? owners.list(context.subjectId)
             : context.subjectType === 'patient'
               ? owners.list().filter((owner) => {
-                  const patient = patients.getOrThrow(context.subjectId as never);
+                  const patient = patients.getOrThrow(context.accountId as AccountId, context.subjectId as never);
                   return owner.id === patient.primaryOwnerId;
                 })
               : [];

@@ -665,8 +665,8 @@ export class SchedulingService {
       .filter((appointment) => (filters?.unit ? appointment.unit === filters.unit : true))
       .filter((appointment) => {
         if (!search) return true;
-        const patient = this.#patients.getOrThrow(appointment.patientId);
-        const owner = this.#owners.getOrThrow(appointment.ownerId);
+        const patient = this.#patients.getOrThrow(appointment.accountId, appointment.patientId);
+        const owner = this.#owners.getOrThrow(appointment.accountId, appointment.ownerId);
         const practitionerName =
           appointment.practitionerStaffId && this.#staff
             ? this.#staff.getOrThrow(appointment.practitionerStaffId, appointment.accountId)
@@ -1685,6 +1685,18 @@ export class SchedulingService {
     patientId: PatientId,
     ownerId: OwnerId
   ): Promise<{ readonly patient: PatientSummary; readonly owner: OwnerSummary }> {
+    // Account mismatch is reported as a validation error (not "not found") so
+    // the caller learns the participants exist but belong elsewhere; the
+    // scoped reads below never return another account's rows.
+    const cachedPatient = this.#patients.peek(patientId);
+    const cachedOwner = this.#owners.peek(ownerId);
+    if (
+      (cachedPatient && cachedPatient.accountId !== accountId) ||
+      (cachedOwner && cachedOwner.accountId !== accountId)
+    ) {
+      throw new ValidationError('Patient and owner must belong to the current account');
+    }
+
     const [patient, owner] = await Promise.all([
       this.#patients.getAuthoritativeOrThrow(accountId, patientId),
       this.#owners.getAuthoritativeOrThrow(accountId, ownerId)

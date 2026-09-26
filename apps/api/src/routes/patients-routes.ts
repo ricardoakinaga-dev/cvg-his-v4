@@ -90,14 +90,8 @@ export async function handlePatientsRoutes(
 
     const principal = await requirePrincipal(request, 'patients.read');
     const patientId = match[1];
-    const patient = patients.getOrThrow(patientId as never);
-    if (patient.accountId !== principal.user.accountId) {
-      throw new NotFoundError('Patient not found', { patientId });
-    }
-    const owner = owners.getOrThrow(patient.primaryOwnerId);
-    if (owner.accountId !== principal.user.accountId) {
-      throw new NotFoundError('Owner not found', { ownerId: owner.id });
-    }
+    const patient = await patients.fetchOrThrow(principal.user.accountId, patientId as never);
+    const owner = await owners.fetchOrThrow(principal.user.accountId, patient.primaryOwnerId);
     const relatedEncounters = encounters
       .listAll(principal.user.accountId)
       .filter((encounter) => encounter.patientId === patient.id)
@@ -197,10 +191,7 @@ export async function handlePatientsRoutes(
     const principal = await requirePrincipal(request, 'patients.manage');
     const body = parseCreatePatientRequest(await readJsonBody(request), correlationId);
     if (owners) {
-      const owner = owners.getOrThrow(body.primaryOwnerId as never);
-      if (owner.accountId !== principal.user.accountId) {
-        throw new NotFoundError('Owner not found', { ownerId: body.primaryOwnerId });
-      }
+      const owner = await owners.fetchOrThrow(principal.user.accountId, body.primaryOwnerId as never);
     }
 
     const patient = patients.create(principal.user.accountId, {
@@ -245,15 +236,9 @@ export async function handlePatientsRoutes(
   if (mergeMatch && method === 'POST') {
     const principal = await requirePrincipal(request, 'patients.manage');
     const sourcePatientId = mergeMatch[1];
-    const source = patients.getOrThrow(sourcePatientId as never);
-    if (source.accountId !== principal.user.accountId) {
-      throw new NotFoundError('Patient not found', { patientId: sourcePatientId });
-    }
+    const source = await patients.fetchOrThrow(principal.user.accountId, sourcePatientId as never);
     const payload = parseMergePatientRequest(await readJsonBody(request), correlationId);
-    const target = patients.getOrThrow(payload.targetPatientId as never);
-    if (target.accountId !== principal.user.accountId) {
-      throw new NotFoundError('Patient not found', { patientId: payload.targetPatientId });
-    }
+    const target = await patients.fetchOrThrow(principal.user.accountId, payload.targetPatientId as never);
     const merged = patients.merge(
       principal.user.accountId as never,
       sourcePatientId as never,
@@ -286,14 +271,8 @@ export async function handlePatientsRoutes(
     const principal = await requirePrincipal(request, 'patients.read');
     const patientId = match[1];
 
-    const patient = patients.getOrThrow(patientId as never);
-    if (patient.accountId !== principal.user.accountId) {
-      throw new NotFoundError('Patient not found', { patientId });
-    }
-    const owner = owners.getOrThrow(patient.primaryOwnerId);
-    if (owner.accountId !== principal.user.accountId) {
-      throw new NotFoundError('Owner not found', { ownerId: patient.primaryOwnerId });
-    }
+    const patient = await patients.fetchOrThrow(principal.user.accountId, patientId as never);
+    const owner = await owners.fetchOrThrow(principal.user.accountId, patient.primaryOwnerId);
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -328,10 +307,7 @@ export async function handlePatientsRoutes(
     const principal = await requirePrincipal(request, 'patients.read');
     const patientId = match[1];
 
-    const patient = patients.getOrThrow(patientId as never);
-    if (patient.accountId !== principal.user.accountId) {
-      throw new NotFoundError('Patient not found', { patientId });
-    }
+    const patient = await patients.fetchOrThrow(principal.user.accountId, patientId as never);
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -356,18 +332,12 @@ export async function handlePatientsRoutes(
     const principal = await requirePrincipal(request, 'patients.manage');
     const patientId = match[1];
     const body = parseUpdatePatientRequest(await readJsonBody(request), correlationId);
-    const existing = patients.getOrThrow(patientId as never);
-    if (existing.accountId !== principal.user.accountId) {
-      throw new NotFoundError('Patient not found', { patientId });
-    }
+    const existing = await patients.fetchOrThrow(principal.user.accountId, patientId as never);
     if (body.primaryOwnerId && owners) {
-      const owner = owners.getOrThrow(body.primaryOwnerId as never);
-      if (owner.accountId !== principal.user.accountId) {
-        throw new NotFoundError('Owner not found', { ownerId: body.primaryOwnerId });
-      }
+      const owner = await owners.fetchOrThrow(principal.user.accountId, body.primaryOwnerId as never);
     }
 
-    const patient = patients.update(patientId as never, {
+    const patient = patients.update(principal.user.accountId, patientId as never, {
       name: body.name,
       species: body.species,
       breed: body.breed,
@@ -413,11 +383,8 @@ export async function handlePatientsRoutes(
     const principal = await requirePrincipal(request, 'patients.manage');
     const patientId = match[1];
 
-    const existing = patients.getOrThrow(patientId as never);
-    if (existing.accountId !== principal.user.accountId) {
-      throw new NotFoundError('Patient not found', { patientId });
-    }
-    const patient = patients.update(patientId as never, { status: 'inactive' });
+    const existing = await patients.fetchOrThrow(principal.user.accountId, patientId as never);
+    const patient = patients.update(principal.user.accountId, patientId as never, { status: 'inactive' });
     await patients.waitForPersistence();
 
     appendAudit(audit, {
@@ -464,15 +431,9 @@ export async function handlePatientsRoutes(
   if (pathname === '/owner-patient-links' && method === 'POST') {
     const principal = await requirePrincipal(request, 'patients.manage');
     const payload = parseCreateOwnerPatientLinkRequest(await readJsonBody(request), correlationId);
-    const patient = patients.getOrThrow(payload.patientId as never);
-    if (patient.accountId !== principal.user.accountId) {
-      throw new NotFoundError('Patient not found', { patientId: payload.patientId });
-    }
+    const patient = await patients.fetchOrThrow(principal.user.accountId, payload.patientId as never);
     if (owners) {
-      const owner = owners.getOrThrow(payload.ownerId as never);
-      if (owner.accountId !== principal.user.accountId) {
-        throw new NotFoundError('Owner not found', { ownerId: payload.ownerId });
-      }
+      const owner = await owners.fetchOrThrow(principal.user.accountId, payload.ownerId as never);
     }
     const link = patients.createLink(principal.user.accountId, payload);
     await patients.waitForPersistence();

@@ -9,6 +9,8 @@ import type {
 import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type {
   AccountId,
+  CacheSyncBus,
+  CacheSyncEvent,
   OwnerId,
   OwnerPatientLinkId,
   OwnerPatientLinkSummary,
@@ -191,6 +193,8 @@ export interface PatientsServiceOptions {
   readonly seedPatients?: readonly PatientSummary[];
   readonly seedLinks?: readonly OwnerPatientLinkSummary[];
   readonly onPatientCreated?: (patient: PatientSummary) => Promise<void>;
+  /** R2-ARC-03: publishes cache invalidation after durable writes (see applyCacheSyncEvent). */
+  readonly cacheSync?: Pick<CacheSyncBus, 'publish'>;
 }
 
 export class PatientsService {
@@ -201,6 +205,7 @@ export class PatientsService {
   readonly #ownerPatientLinkRepository?: OwnerPatientLinkRepository;
   readonly #patientMergeRepository?: PatientMergeRepository;
   readonly #onPatientCreated?: (patient: PatientSummary) => Promise<void>;
+  readonly #cacheSync?: Pick<CacheSyncBus, 'publish'>;
   #pendingPersist: Promise<void> = Promise.resolve();
   #lastPersist: Promise<void> = Promise.resolve();
   #pendingCallbacks: Promise<void> = Promise.resolve();
@@ -211,6 +216,7 @@ export class PatientsService {
     this.#ownerPatientLinkRepository = options.ownerPatientLinkRepository;
     this.#patientMergeRepository = options.patientMergeRepository;
     this.#onPatientCreated = options.onPatientCreated;
+    this.#cacheSync = options.cacheSync;
 
     const seedPatients = options.seedPatients ?? createSeedPatients();
     const seedLinks = options.seedLinks ?? createSeedLinks();
@@ -321,7 +327,8 @@ export class PatientsService {
     }
 
     return patients.filter((patient) => {
-      const owner = this.#owners.getOrThrow(patient.primaryOwnerId);
+      const owner = this.#owners.peek(patient.primaryOwnerId);
+      if (!owner) return false;
       return (
         matchesSearchValue(patient.id, query) ||
         matchesSearchValue(patient.name, query) ||
@@ -353,13 +360,86 @@ export class PatientsService {
     });
   }
 
-  public getOrThrow(patientId: PatientId): PatientSummary {
+  /**
+   * Account-scoped cache read (R2-ARC-02). A patient cached for another
+   * account is reported as not found.
+   */
+  public getOrThrow(accountId: AccountId, patientId: PatientId): PatientSummary {
     const patient = this.#patients.get(patientId);
-    if (!patient) {
+    if (!patient || patient.accountId !== accountId) {
       throw new NotFoundError('Patient not found', { patientId });
     }
 
     return patient;
+  }
+
+  /**
+   * Cache-only peek without account scoping, reserved for validations that
+   * must distinguish "unknown" from "another account". Never return it to a caller.
+   */
+  public peek(patientId: PatientId): PatientSummary | undefined {
+    return this.#patients.get(patientId);
+  }
+
+  /**
+   * Account-scoped read-through (R2-ARC-02): cache hit for this account, or a
+   * repository read that also loads the patient's owner links.
+   */
+  public async fetchOrThrow(accountId: AccountId, patientId: PatientId): Promise<PatientSummary> {
+    const cached = this.#patients.get(patientId);
+    if (cached && cached.accountId === accountId) {
+      return cached;
+    }
+    if (!this.#patientRepository) {
+      throw new NotFoundError('Patient not found', { patientId });
+    }
+    const patient = await this.#patientRepository.findById(patientId);
+    if (!patient || patient.accountId !== accountId) {
+      throw new NotFoundError('Patient not found', { patientId });
+    }
+    this.#patients.set(patient.id, patient);
+    await this.#reloadLinks(accountId, patient.id);
+    return patient;
+  }
+
+  /** Applies an invalidation published by another replica (R2-ARC-03). */
+  public async applyCacheSyncEvent(event: CacheSyncEvent): Promise<void> {
+    if (event.entity !== 'patient') return;
+    const patientId = event.id as PatientId;
+    const accountId = event.accountId as AccountId;
+    if (event.op === 'delete' || !this.#patientRepository) {
+      const cached = this.#patients.get(patientId);
+      if (cached && cached.accountId === accountId) this.#evictPatient(patientId);
+      return;
+    }
+    const patient = await this.#patientRepository.findById(patientId);
+    if (!patient || patient.accountId !== accountId) {
+      this.#evictPatient(patientId);
+      return;
+    }
+    this.#patients.set(patient.id, patient);
+    await this.#reloadLinks(accountId, patient.id);
+  }
+
+  #evictPatient(patientId: PatientId): void {
+    this.#patients.delete(patientId);
+    for (const [linkId, link] of this.#links) {
+      if (link.patientId === patientId) this.#links.delete(linkId);
+    }
+  }
+
+  async #reloadLinks(accountId: AccountId, patientId: PatientId): Promise<void> {
+    if (!this.#ownerPatientLinkRepository) return;
+    const links = await this.#ownerPatientLinkRepository.findByPatientId(patientId, accountId);
+    for (const [linkId, link] of this.#links) {
+      if (link.patientId === patientId) this.#links.delete(linkId);
+    }
+    for (const link of links) this.#links.set(link.id, link);
+  }
+
+  async #publishSync(patient: PatientSummary, op: CacheSyncEvent['op'] = 'upsert'): Promise<void> {
+    if (!this.#cacheSync) return;
+    await this.#cacheSync.publish({ entity: 'patient', accountId: patient.accountId, id: patient.id, op });
   }
 
   /**
@@ -372,7 +452,7 @@ export class PatientsService {
     patientId: PatientId
   ): Promise<PatientSummary> {
     if (!this.#patientRepository) {
-      return this.getOrThrow(patientId);
+      return this.getOrThrow(accountId, patientId);
     }
 
     const patient = await this.#patientRepository.findById(patientId);
@@ -389,7 +469,10 @@ export class PatientsService {
       payload.primaryOwnerId,
       'primaryOwnerId'
     ) as OwnerId;
-    const primaryOwner = this.#owners.getOrThrow(primaryOwnerId);
+    const primaryOwner = this.#owners.peek(primaryOwnerId);
+    if (!primaryOwner) {
+      throw new NotFoundError('Owner not found', { ownerId: primaryOwnerId });
+    }
     if (primaryOwner.accountId !== accountId) {
       throw new ValidationError('Primary owner must belong to the same account as the patient');
     }
@@ -461,6 +544,7 @@ export class PatientsService {
         async () => {
           await this.#patientRepository?.create(patient);
           await this.#ownerPatientLinkRepository?.create(primaryLink);
+          await this.#publishSync(patient);
         },
         () => {
           if (this.#patients.get(patient.id) === patient) {
@@ -480,13 +564,16 @@ export class PatientsService {
     return patient;
   }
 
-  public update(patientId: PatientId, payload: UpdatePatientRequest): PatientSummary {
-    const current = this.getOrThrow(patientId);
+  public update(accountId: AccountId, patientId: PatientId, payload: UpdatePatientRequest): PatientSummary {
+    const current = this.getOrThrow(accountId, patientId);
     const nextPrimaryOwnerId =
       payload.primaryOwnerId !== undefined
         ? (requireNonEmptyString(payload.primaryOwnerId, 'primaryOwnerId') as OwnerId)
         : current.primaryOwnerId;
-    const nextPrimaryOwner = this.#owners.getOrThrow(nextPrimaryOwnerId);
+    const nextPrimaryOwner = this.#owners.peek(nextPrimaryOwnerId);
+    if (!nextPrimaryOwner) {
+      throw new NotFoundError('Owner not found', { ownerId: nextPrimaryOwnerId });
+    }
     if (nextPrimaryOwner.accountId !== current.accountId) {
       throw new ValidationError('Primary owner must belong to the same account as the patient');
     }
@@ -579,7 +666,10 @@ export class PatientsService {
     // Persist to database if repository is available
     if (this.#patientRepository) {
       this.#enqueuePersist(
-        () => this.#patientRepository!.update(updated),
+        async () => {
+          await this.#patientRepository!.update(updated);
+          await this.#publishSync(updated);
+        },
         () => {
           this.#patients.set(patientId, current);
         }
@@ -595,8 +685,14 @@ export class PatientsService {
   ): OwnerPatientLinkSummary {
     const ownerId = requireNonEmptyString(payload.ownerId, 'ownerId') as OwnerId;
     const patientId = requireNonEmptyString(payload.patientId, 'patientId') as PatientId;
-    const owner = this.#owners.getOrThrow(ownerId);
-    const patient = this.getOrThrow(patientId);
+    const owner = this.#owners.peek(ownerId);
+    const patient = this.peek(patientId);
+    if (!owner) {
+      throw new NotFoundError('Owner not found', { ownerId });
+    }
+    if (!patient) {
+      throw new NotFoundError('Patient not found', { patientId });
+    }
     if (owner.accountId !== accountId || patient.accountId !== accountId) {
       throw new ValidationError('Owner and patient must belong to the current account');
     }
@@ -650,7 +746,10 @@ export class PatientsService {
     // Persist to database if repository is available
     if (this.#ownerPatientLinkRepository) {
       this.#enqueuePersist(
-        () => this.#ownerPatientLinkRepository!.create(link),
+        async () => {
+          await this.#ownerPatientLinkRepository!.create(link);
+          await this.#publishSync(patient);
+        },
         () => {
           if (this.#links.get(link.id) === link) {
             this.#links.delete(link.id);
@@ -713,11 +812,8 @@ export class PatientsService {
     actorUserId: import('@cvg-his-v2/shared-types').UserId,
     reason: string
   ): PatientSummary {
-    const source = this.getOrThrow(sourcePatientId);
-    const target = this.getOrThrow(targetPatientId);
-    if (source.accountId !== accountId || target.accountId !== accountId) {
-      throw new NotFoundError('Patient not found');
-    }
+    const source = this.getOrThrow(accountId, sourcePatientId);
+    const target = this.getOrThrow(accountId, targetPatientId);
     if (sourcePatientId === targetPatientId) {
       throw new ValidationError('A patient cannot be merged with itself');
     }
@@ -773,6 +869,8 @@ export class PatientsService {
           for (const link of deletedLinks) await this.#ownerPatientLinkRepository?.delete(link.id);
           for (const link of movedLinks) await this.#ownerPatientLinkRepository?.update?.(link);
           await this.#patientMergeRepository?.create(merge);
+          await this.#publishSync(mergedSource);
+          await this.#publishSync(target);
         },
         () => {
           this.#patients.set(sourcePatientId, source);
@@ -795,11 +893,11 @@ export class PatientsService {
       patients: this.list(trimmed),
       links: Array.from(this.#links.values()).filter((link) => {
         const patient = this.#patients.get(link.patientId);
-        const owner = this.#owners.getOrThrow(link.ownerId);
+        const owner = this.#owners.peek(link.ownerId);
         return (
           trimmed.length === 0 ||
           patient?.name.toLowerCase().includes(trimmed.toLowerCase()) ||
-          owner.fullName.toLowerCase().includes(trimmed.toLowerCase())
+          owner?.fullName.toLowerCase().includes(trimmed.toLowerCase()) === true
         );
       })
     };
@@ -840,7 +938,11 @@ export class PatientsService {
 
     if (this.#ownerPatientLinkRepository) {
       this.#enqueuePersist(
-        () => this.#ownerPatientLinkRepository!.create(link),
+        async () => {
+          await this.#ownerPatientLinkRepository!.create(link);
+          const patient = this.#patients.get(patientId);
+          if (patient) await this.#publishSync(patient);
+        },
         () => {
           if (this.#links.get(link.id) === link) {
             this.#links.delete(link.id);

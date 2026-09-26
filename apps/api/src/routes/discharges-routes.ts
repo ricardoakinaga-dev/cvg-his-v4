@@ -106,7 +106,7 @@ async function synchronizeDischargeFollowUpTask(input: {
 
   const dueAt = followUpDueAt(input.discharge.followUpDate);
   if (!existing) {
-    const encounter = input.encounters.getOrThrow(
+    const encounter = await input.encounters.fetchOrThrow(
       input.accountId as never,
       input.discharge.encounterId
     );
@@ -215,7 +215,7 @@ export async function handleDischargesRoutes(
         operation: 'discharges.create',
         payload: payload as unknown as JsonValue,
         command: async () => {
-          encounters.getOrThrow(
+          await encounters.fetchOrThrow(
             principal.user.accountId,
             payload.encounterId as never
           );

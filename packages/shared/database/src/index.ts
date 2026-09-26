@@ -58,3 +58,12 @@ export {
   runWithDatabaseTransactionScope,
   type DatabaseTransactionScope
 } from './transaction-scope.js';
+
+export {
+  InMemoryCacheSyncBus,
+  InMemoryCacheSyncHub,
+  PostgresCacheSyncBus,
+  parseCacheSyncEvent,
+  type CacheSyncLogger,
+  type PostgresCacheSyncBusOptions
+} from './cache-sync-bus.js';

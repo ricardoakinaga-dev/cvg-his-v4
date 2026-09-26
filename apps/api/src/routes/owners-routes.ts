@@ -155,10 +155,7 @@ export async function handleOwnersRoutes(
 
     const principal = await requirePrincipal(request, 'owners.read');
     const ownerId = match[1];
-    const owner = owners.getOrThrow(ownerId as never);
-    if (owner.accountId !== principal.user.accountId) {
-      throw new NotFoundError('Owner not found', { ownerId });
-    }
+    const owner = await owners.fetchOrThrow(principal.user.accountId, ownerId as never);
     const relatedPatients = patients
       .list()
       .filter(
@@ -218,10 +215,7 @@ export async function handleOwnersRoutes(
       );
     }
 
-    const owner = owners.getOrThrow(ownerId as never);
-    if (owner.accountId !== principal.user.accountId) {
-      throw new NotFoundError('Owner not found', { ownerId });
-    }
+    const owner = await owners.fetchOrThrow(principal.user.accountId, ownerId as never);
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -259,12 +253,9 @@ export async function handleOwnersRoutes(
       );
     }
     const body = parseUpdateOwnerRequest(await readJsonBody(request), correlationId);
-    const existing = owners.getOrThrow(ownerId as never);
-    if (existing.accountId !== principal.user.accountId) {
-      throw new NotFoundError('Owner not found', { ownerId });
-    }
+    const existing = await owners.fetchOrThrow(principal.user.accountId, ownerId as never);
 
-    const owner = owners.update(ownerId as never, body);
+    const owner = owners.update(principal.user.accountId, ownerId as never, body);
     await owners.waitForPersistence();
 
     appendAudit(audit, {
@@ -303,11 +294,8 @@ export async function handleOwnersRoutes(
       );
     }
 
-    const existing = owners.getOrThrow(ownerId as never);
-    if (existing.accountId !== principal.user.accountId) {
-      throw new NotFoundError('Owner not found', { ownerId });
-    }
-    const owner = owners.update(ownerId as never, { status: 'inactive' });
+    const existing = await owners.fetchOrThrow(principal.user.accountId, ownerId as never);
+    const owner = owners.update(principal.user.accountId, ownerId as never, { status: 'inactive' });
     await owners.waitForPersistence();
 
     appendAudit(audit, {

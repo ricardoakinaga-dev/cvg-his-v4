@@ -163,4 +163,6 @@ Linhas anexadas em ordem cronológica pela sessão Fable. Estados: `ABERTO`, `EM
 | 2026-09-26 | A6 R2-TOOL-01 | MERGED | `fable/r2-tool-01` | Script sem `rg`; portas `E2E_POSTGRES_HOST_PORT`/`E2E_REDIS_HOST_PORT` com fallback; provado neste host com 5434 ocupada |
 | 2026-09-26 | A7 R2-OPS-01 | MERGED (canal real pendente de U2) | `fable/r2-ops-01` | Drill sintético PASS: critical 10,0 s, warning 30,0 s; `docs/operations/ALERTMANAGER_DRILL_2026-09-26.md` |
 | 2026-09-26 | Integração Lote A | CI (aguardando) | `main` | Rebase em 45e547a2; typecheck, lint, 52 testes focados, suíte API, OpenAPI, Helm, docs, complexity; rebind Triple-A docs-only |
+| 2026-09-26 | B1 R2-ARC-02 | ENVIADO | `fable/r2-arc-02-03` | `getOrThrow(accountId, id)` obrigatório em owners/patients; `fetchOrThrow` read-through nas rotas; 60 pontos migrados; teste de duas instâncias HTTP verde |
+| 2026-09-26 | B2 R2-ARC-03 | ENVIADO (guard de 1 réplica mantido até CI + carga) | `fable/r2-arc-02-03` | `PostgresCacheSyncBus` LISTEN/NOTIFY transacional; testes de bus e de duas réplicas verdes; memória medida: 43,3 MB para 5k/10k/20k entidades |
 | 2026-09-26 | F8 snapshot Triple-A | ABERTO (aguarda Opus/usuário) | — | `docs:validate` local: "current snapshot 74b8669f… is not an ancestor of HEAD d0102939" |

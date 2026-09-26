@@ -210,7 +210,7 @@ describe('SchedulingService', () => {
       primaryOwnerId: owner.id
     });
 
-    owners.update(owner.id, { status: 'inactive' });
+    owners.update('acc_cvg_demo' as AccountId, owner.id, { status: 'inactive' });
 
     await expect(
       service.createAppointment('acc_cvg_demo' as AccountId, {
@@ -221,8 +221,8 @@ describe('SchedulingService', () => {
       })
     ).rejects.toThrow('inactive owner');
 
-    owners.update(owner.id, { status: 'active' });
-    patients.update(patient.id, { status: 'inactive' });
+    owners.update('acc_cvg_demo' as AccountId, owner.id, { status: 'active' });
+    patients.update('acc_cvg_demo' as AccountId, patient.id, { status: 'inactive' });
 
     await expect(
       service.createAppointment('acc_cvg_demo' as AccountId, {
@@ -251,15 +251,15 @@ describe('SchedulingService', () => {
       reason: 'Consulta a reagendar'
     });
 
-    owners.update('owner_maria_silva' as never, { status: 'inactive' });
+    owners.update('acc_cvg_demo' as AccountId, 'owner_maria_silva' as never, { status: 'inactive' });
     await expect(
       service.rescheduleAppointment(accountId, appointment.id, {
         scheduledAt: '2026-04-01T10:00:00.000Z'
       })
     ).rejects.toThrow('inactive owner');
 
-    owners.update('owner_maria_silva' as never, { status: 'active' });
-    patients.update('patient_luna' as never, { status: 'inactive' });
+    owners.update('acc_cvg_demo' as AccountId, 'owner_maria_silva' as never, { status: 'active' });
+    patients.update('acc_cvg_demo' as AccountId, 'patient_luna' as never, { status: 'inactive' });
     await expect(
       service.rescheduleAppointment(accountId, appointment.id, {
         scheduledAt: '2026-04-01T10:00:00.000Z'
@@ -268,8 +268,8 @@ describe('SchedulingService', () => {
   });
 
   it('rejects lifecycle changes observed after the service cache was hydrated', async () => {
-    const cachedOwner = owners.getOrThrow('owner_maria_silva' as never);
-    const cachedPatient = patients.getOrThrow('patient_luna' as never);
+    const cachedOwner = owners.peek('owner_maria_silva' as never)!;
+    const cachedPatient = patients.peek('patient_luna' as never)!;
     const staleOwner = { ...cachedOwner, status: 'inactive' as const };
     const stalePatient = { ...cachedPatient, status: 'inactive' as const };
     const authoritativeOwners = new OwnersService({

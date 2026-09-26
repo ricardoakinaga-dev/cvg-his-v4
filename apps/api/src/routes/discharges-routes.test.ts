@@ -164,6 +164,12 @@ test('POST /discharges creates one durable manual follow-up task with tenant con
           id: 'encounter-1',
           accountId: 'account-1',
           patientId: 'patient-1'
+        }),
+
+        fetchOrThrow: async () => ({
+          id: 'encounter-1',
+          accountId: 'account-1',
+          patientId: 'patient-1'
         })
       } as never,
       inpatient: {
@@ -252,7 +258,9 @@ test('PATCH /discharges keeps the follow-up task synchronized when edited, clear
           waitForPersistence: async () => undefined
         } as never,
         encounters: {
-          getOrThrow: () => ({ id: 'encounter-1', patientId: 'patient-1', accountId: 'account-1' })
+          getOrThrow: () => ({ id: 'encounter-1', patientId: 'patient-1', accountId: 'account-1' }),
+
+          fetchOrThrow: async () => ({ id: 'encounter-1', patientId: 'patient-1', accountId: 'account-1' })
         } as never,
         inpatient: {} as never,
         audit: { write: () => undefined } as never,

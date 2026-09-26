@@ -67,6 +67,18 @@ export function createEncounterAccountGuard(
     encounters.getOrThrow(accountId as never, encounterId as never);
 }
 
+/**
+ * R2-ARC-02: account-scoped read-through guard for HTTP reads. A cache miss
+ * consults the repository, so an encounter opened on another replica is
+ * served instead of answering 404.
+ */
+export function createEncounterReadThroughGuard(
+  encounters: Pick<EncountersService, 'fetchOrThrow'>
+): (encounterId: string, accountId: string) => ReturnType<EncountersService['fetchOrThrow']> {
+  return (encounterId, accountId) =>
+    encounters.fetchOrThrow(accountId as never, encounterId as never);
+}
+
 type EncounterQueueSyncStatus =
   | 'reception'
   | 'in_triage'

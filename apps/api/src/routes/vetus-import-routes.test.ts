@@ -187,8 +187,8 @@ test('handleVetusImportRoutes imports a Vetus owner and patient with traceabilit
   assert.equal(payload.importedByUserId, 'user-1');
   assert.equal(handlers.importLogStore.size, 1);
 
-  const owner = handlers.owners.getOrThrow(payload.ownerId as never);
-  const patient = handlers.patients.getOrThrow(payload.patientId as never);
+  const owner = handlers.owners.getOrThrow('acc_cvg_demo' as never, payload.ownerId as never);
+  const patient = handlers.patients.getOrThrow('acc_cvg_demo' as never, payload.patientId as never);
   assert.equal(owner.legacyVetusId, '3835');
   assert.equal(patient.legacyVetusId, '10115');
   assert.match(patient.generalNotes ?? '', /Importacao assistida Vetus/);
@@ -582,7 +582,7 @@ test('handleVetusImportRoutes preserves rejected row numbers when resuming witho
     contacts: [{ label: 'Phone', value: '(11) 90000-0015', type: 'phone', primary: true }],
     financialResponsible: true
   });
-  handlers.owners.update(temporarilyInactiveOwner.id, { status: 'inactive' });
+  handlers.owners.update('acc_cvg_demo' as never, temporarilyInactiveOwner.id, { status: 'inactive' });
   const firstResponse = new MockResponse();
   await handleVetusImportRoutes(
     '/vetus-import-batches',
@@ -608,7 +608,7 @@ test('handleVetusImportRoutes preserves rejected row numbers when resuming witho
   );
   const partial = firstResponse.bodyJson<{ batch: VetusImportBatchSummary }>();
   assert.equal(partial.batch.status, 'partial');
-  handlers.owners.update(temporarilyInactiveOwner.id, { status: 'active' });
+  handlers.owners.update('acc_cvg_demo' as never, temporarilyInactiveOwner.id, { status: 'active' });
 
   const resumeResponse = new MockResponse();
   await handleVetusImportRoutes(

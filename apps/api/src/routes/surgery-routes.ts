@@ -37,7 +37,7 @@ export async function handleSurgeryRoutes(
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const encounterId = url.searchParams.get('encounterId') ?? undefined;
     if (encounterId) {
-      encounters.getOrThrow(principal.user.accountId, encounterId as never);
+      await encounters.fetchOrThrow(principal.user.accountId, encounterId as never);
     }
     const items = surgery.list(principal.user.accountId, encounterId ?? undefined);
 
@@ -61,7 +61,7 @@ export async function handleSurgeryRoutes(
   if (pathname === '/surgeries' && request.method === 'POST') {
     const principal = await requirePrincipal(request, 'surgery.manage');
     const payload = (await readJsonBody(request)) as CreateSurgeryCaseRequest;
-    encounters.getOrThrow(principal.user.accountId, payload.encounterId as never);
+    await encounters.fetchOrThrow(principal.user.accountId, payload.encounterId as never);
     const surgeryCase = surgery.requestCase(principal.user.accountId, payload);
     await surgery.waitForPersistence();
 

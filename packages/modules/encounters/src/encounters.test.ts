@@ -133,7 +133,7 @@ test('EncountersService: inactivated owners and patients cannot start new encoun
     primaryOwnerId: owner.id
   });
 
-  owners.update(owner.id, { status: 'inactive' });
+  owners.update(accountId, owner.id, { status: 'inactive' });
   assert.throws(
     () =>
       encounters.openEncounter(accountId, 'user_lifecycle_guard' as never, {
@@ -146,8 +146,8 @@ test('EncountersService: inactivated owners and patients cannot start new encoun
     ConflictError
   );
 
-  owners.update(owner.id, { status: 'active' });
-  patients.update(patient.id, { status: 'inactive' });
+  owners.update(accountId, owner.id, { status: 'active' });
+  patients.update(accountId, patient.id, { status: 'inactive' });
   assert.throws(
     () =>
       encounters.openEncounter(accountId, 'user_lifecycle_guard' as never, {
@@ -188,7 +188,7 @@ test('EncountersService: inactivated owners and patients cannot reopen a closed 
     closeReason: 'Closed before lifecycle change'
   });
 
-  owners.update(owner.id, { status: 'inactive' });
+  owners.update(accountId, owner.id, { status: 'inactive' });
   assert.throws(
     () =>
       encounters.reopenEncounter(
@@ -200,8 +200,8 @@ test('EncountersService: inactivated owners and patients cannot reopen a closed 
     ConflictError
   );
 
-  owners.update(owner.id, { status: 'active' });
-  patients.update(patient.id, { status: 'inactive' });
+  owners.update(accountId, owner.id, { status: 'active' });
+  patients.update(accountId, patient.id, { status: 'inactive' });
   assert.throws(
     () =>
       encounters.reopenEncounter(
@@ -217,8 +217,8 @@ test('EncountersService: inactivated owners and patients cannot reopen a closed 
 test('EncountersService: authoritative open refreshes lifecycle state before transition', async () => {
   const cachedOwners = new OwnersService();
   const cachedPatients = new PatientsService({ owners: cachedOwners });
-  const cachedOwner = cachedOwners.getOrThrow('owner_maria_silva' as never);
-  const cachedPatient = cachedPatients.getOrThrow('patient_luna' as never);
+  const cachedOwner = cachedOwners.peek('owner_maria_silva' as never)!;
+  const cachedPatient = cachedPatients.peek('patient_luna' as never)!;
   const authoritativeOwner = { ...cachedOwner, status: 'inactive' as const };
   const owners = new OwnersService({
     seedOwners: [cachedOwner],
