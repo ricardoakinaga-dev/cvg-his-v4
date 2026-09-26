@@ -31,7 +31,7 @@ a tabela de retenção usa 20 anos, prazo que parece vir da medicina humana (Lei
 |---|---|---|
 | Exportação, acesso, portabilidade | Pacote com dados coletados por provedor e evidência de retenção | `packages/modules/lgpd/src/service.ts` |
 | Revogação de consentimento | Revoga **todos** os consentimentos ativos do titular e registra IDs e finalidades | idem |
-| Eliminação e anonimização | Só são concluídas com evidência de um `erasureExecutor`. Sem executor, a API responde `409 DSR_ERASURE_EXECUTOR_UNAVAILABLE` e o pedido continua aberto | idem |
+| Eliminação e anonimização | Executor da API (`apps/api/src/lgpd-erasure-executor.ts`). **Tutor:** apaga contatos, perfil e observações e revoga os consentimentos; mantém nome, CPF e endereço, prontuário, registros financeiros e auditoria, com o motivo legal de cada item. **Paciente animal:** nada é apagado, porque o animal não é titular; o pedido deve ser feito em nome do tutor. **Usuário do sistema:** recusado com `409 DSR_ERASURE_NOT_EXECUTED` (tratado na administração de acesso) | `lgpd-owner-erasure-postgres.test.ts` |
 | Qualquer tipo já concluído ou rejeitado | Não muda de estado: `409 DSR_NOT_OPEN` | idem |
 
 O `resultJson` enviado pelo cliente nunca substitui o efeito de eliminação ou

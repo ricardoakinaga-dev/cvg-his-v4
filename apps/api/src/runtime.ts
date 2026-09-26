@@ -199,6 +199,7 @@ import type { LaboratoryResultImportRepository } from './laboratory-result-impor
 import type { EncounterCashReceiptRepository } from './encounter-cash-receipt-repository.js';
 import type { EncounterCashReceiptReversalRepository } from './encounter-cash-receipt-reversal-repository.js';
 import type { EncounterPixPaymentAttemptRepository } from './encounter-pix-payment-attempt-repository.js';
+import { createLgpdErasureExecutor } from './lgpd-erasure-executor.js';
 
 function sanitizeAuditValue(value: string): string {
   return value.replace(/[;\n\r=]/g, ' ').trim();
@@ -1262,6 +1263,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const lgpd = new LgpdService({
     consentRepository: repos.consent,
     dsrRepository: repos.dsr,
+    erasureExecutor: createLgpdErasureExecutor(owners),
     dataProviders: {
       owners: (async (_subjectId, context) => {
         const ownerRows =

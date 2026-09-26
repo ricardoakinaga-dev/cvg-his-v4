@@ -524,7 +524,8 @@ export class LgpdService {
 
   async #executeErasure(
     accountId: string,
-    request: DataSubjectRequest & { requestType: 'data_deletion' | 'data_anonymization' }
+    request: DataSubjectRequest & { requestType: 'data_deletion' | 'data_anonymization' },
+    actorId: string
   ): Promise<Record<string, unknown>> {
     if (!this.#erasureExecutor) {
       throw new LgpdDsrStateError(
@@ -550,12 +551,29 @@ export class LgpdService {
         'Erasure executor did not report any executed or retained data type'
       );
     }
+    // An elimination request also ends every consent-based processing.
+    const revokedConsentIds: string[] = [];
+    if (this.#consentRepo) {
+      const active = await this.#consentRepo.findActiveBySubject(
+        accountId,
+        request.subjectId,
+        request.subjectType
+      );
+      for (const consent of active) {
+        revokedConsentIds.push(
+          (await this.#consentRepo.revoke(consent.id, actorId, evidence.executedAt)).id
+        );
+      }
+    }
     return {
       ...disposition,
       completedAt: evidence.executedAt,
       erasureExecuted: true,
-      erasedDataTypes: evidence.erasedDataTypes,
+      erasedDataTypes: revokedConsentIds.length
+        ? [...evidence.erasedDataTypes, 'consents']
+        : evidence.erasedDataTypes,
       retainedDataTypes: evidence.retainedDataTypes,
+      revokedConsentIds,
       message:
         'Solicitacao concluida: dados pessoais eliminados ou anonimizados conforme evidencia do executor; dados sob obrigacao legal retidos com justificativa.'
     };
@@ -575,7 +593,8 @@ export class LgpdService {
     if (request.requestType === 'data_deletion' || request.requestType === 'data_anonymization') {
       return this.#executeErasure(
         accountId,
-        request as DataSubjectRequest & { requestType: 'data_deletion' | 'data_anonymization' }
+        request as DataSubjectRequest & { requestType: 'data_deletion' | 'data_anonymization' },
+        actorId
       );
     }
 

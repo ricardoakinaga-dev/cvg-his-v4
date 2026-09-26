@@ -475,6 +475,37 @@ export class OwnersService {
 
     return updated;
   }
+
+  /**
+   * LGPD elimination for a titular's request (art. 18, VI): removes contact
+   * channels, personal profile and free-text notes. Identity and address are
+   * kept because fiscal documents and the clinical record reference them
+   * (art. 16, I). Persists before returning so a completed request always
+   * reflects a durable effect.
+   */
+  public async eraseContactAndProfileData(
+    accountId: AccountId,
+    ownerId: OwnerId
+  ): Promise<{ readonly erasedFields: readonly string[] }> {
+    const current = await this.getAuthoritativeOrThrow(accountId, ownerId);
+    const erasedFields = [
+      current.contacts.length > 0 ? 'contacts' : undefined,
+      current.profile !== undefined ? 'profile' : undefined,
+      current.administrativeNotes !== undefined ? 'administrativeNotes' : undefined
+    ].filter((field): field is string => field !== undefined);
+    const erased: OwnerSummary = {
+      ...current,
+      contacts: [],
+      profile: undefined,
+      administrativeNotes: undefined,
+      updatedAt: nowIso()
+    };
+    if (this.#ownerRepository) {
+      await this.#ownerRepository.update(erased);
+    }
+    this.#owners.set(ownerId, erased);
+    return { erasedFields };
+  }
 }
 
 export { createSeedOwners };

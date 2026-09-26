@@ -416,6 +416,42 @@ describe('OwnersService with repository', () => {
     expect(() => service.getOrThrow(stale.id)).toThrow(NotFoundError);
   });
 
+  it('erases contacts, profile and notes durably while keeping identity and address', async () => {
+    const created = service.create(
+      ACCOUNT_ID,
+      {
+        ...makeOwner({
+          fullName: 'Titular LGPD',
+          documentId: '222.222.222-22',
+          administrativeNotes: 'Prefere contato à tarde'
+        }),
+        profile: { birthDate: '1990-01-01', receiveSms: true }
+      }
+    );
+    await service.waitForPersistence();
+
+    const result = await service.eraseContactAndProfileData(ACCOUNT_ID, created.id);
+
+    expect(result.erasedFields).toEqual(['contacts', 'profile', 'administrativeNotes']);
+    const persisted = await repo.findById(created.id);
+    expect(persisted?.contacts).toEqual([]);
+    expect(persisted?.profile).toBeUndefined();
+    expect(persisted?.administrativeNotes).toBeUndefined();
+    expect(persisted?.fullName).toBe('Titular LGPD');
+    expect(persisted?.documentId).toBe('222.222.222-22');
+    expect(service.getOrThrow(created.id).contacts).toEqual([]);
+  });
+
+  it('does not erase an owner from another account', async () => {
+    const created = service.create(ACCOUNT_ID, makeOwner({ documentId: '333.333.333-33' }));
+    await service.waitForPersistence();
+
+    await expect(
+      service.eraseContactAndProfileData('acc_other' as AccountId, created.id)
+    ).rejects.toBeInstanceOf(NotFoundError);
+    expect(service.getOrThrow(created.id).contacts.length).toBeGreaterThan(0);
+  });
+
   it('deletes owner via repository', async () => {
     const owner = service.create(ACCOUNT_ID, makeOwner({ documentId: '111.111.111-11' }));
     await new Promise((r) => setTimeout(r, 10));

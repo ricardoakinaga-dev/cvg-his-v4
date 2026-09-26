@@ -582,6 +582,13 @@ describe('LgpdService', () => {
           };
         }
       });
+      await withExecutor.grantConsent({
+        accountId: 'acc_cvg_demo',
+        subjectId: 'patient_luna',
+        subjectType: 'patient',
+        purpose: 'marketing',
+        grantedBy: 'patient_luna'
+      } as ConsentGrantRequest);
       const created = await withExecutor.createDsrRequest({
         accountId: 'acc_cvg_demo',
         subjectId: 'patient_luna',
@@ -608,7 +615,11 @@ describe('LgpdService', () => {
       expect(completed.status).toBe('completed');
       expect(completed.resultJson?.forged).toBeUndefined();
       expect(completed.resultJson?.erasureExecuted).toBe(true);
-      expect(completed.resultJson?.erasedDataTypes).toEqual(['patient_profile']);
+      expect(completed.resultJson?.erasedDataTypes).toEqual(['patient_profile', 'consents']);
+      expect(completed.resultJson?.revokedConsentIds).toHaveLength(1);
+      expect(
+        await consentRepo.findActiveBySubject('acc_cvg_demo', 'patient_luna', 'patient')
+      ).toHaveLength(0);
     });
 
     it('does not allow a closed request to change state again', async () => {
