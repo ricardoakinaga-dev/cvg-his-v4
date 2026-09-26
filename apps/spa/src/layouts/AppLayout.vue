@@ -12,12 +12,16 @@
       'app-layout--dark': themeStore.theme === 'dark'
     }"
   >
+    <!--
+      While the compact drawer is modal, everything in the header except the
+      drawer toggle is inert: the toggle is the visible way to close it and
+      must stay operable by pointer and keyboard.
+    -->
     <header
       class="topbar"
       aria-label="Cabeçalho do sistema"
-      :inert="isCompactSidebarOpen ? true : undefined"
     >
-      <div class="topbar__brand-pill">
+      <div class="topbar__brand-pill" :inert="isCompactSidebarOpen ? true : undefined">
         <span class="topbar__brand-logo">
           <img
             src="/art/hospital-guarapiranga-logo.jpeg"
@@ -53,6 +57,7 @@
       <button
         class="topbar__search-shell"
         type="button"
+        :inert="isCompactSidebarOpen ? true : undefined"
         aria-label="Buscar módulo, rotina ou relatório (Ctrl+K)"
         @click="openPalette"
       >
@@ -63,7 +68,7 @@
         <kbd>Ctrl+K</kbd>
       </button>
 
-      <div class="topbar__actions">
+      <div class="topbar__actions" :inert="isCompactSidebarOpen ? true : undefined">
         <button
           v-if="canAccessNavigationPath('/notifications', sessionPermissionCodes)"
           class="topbar__icon-btn topbar__icon-btn--notifications"
@@ -1067,6 +1072,9 @@ function containCompactSidebarFocus(event: KeyboardEvent) {
       style.visibility !== 'collapse';
   });
 
+  const toggle = sidebarToggleEl.value;
+  if (toggle) focusable.unshift(toggle);
+
   const first = focusable[0];
   const last = focusable.at(-1);
   const active = document.activeElement;
@@ -1074,7 +1082,7 @@ function containCompactSidebarFocus(event: KeyboardEvent) {
     event.preventDefault();
     sidebar.focus({ preventScroll: true });
   } else if (
-    !sidebar.contains(active) ||
+    (!sidebar.contains(active) && active !== toggle) ||
     active === sidebar ||
     (event.shiftKey && active === first) ||
     (!event.shiftKey && active === last)
