@@ -12,15 +12,7 @@
       'app-layout--dark': themeStore.theme === 'dark'
     }"
   >
-    <!--
-      While the compact drawer is modal, everything in the header except the
-      drawer toggle is inert: the toggle is the visible way to close it and
-      must stay operable by pointer and keyboard.
-    -->
-    <header
-      class="topbar"
-      aria-label="Cabeçalho do sistema"
-    >
+    <header class="topbar" aria-label="Cabeçalho do sistema">
       <div class="topbar__brand-pill" :inert="isCompactSidebarOpen ? true : undefined">
         <span class="topbar__brand-logo">
           <img
@@ -56,8 +48,7 @@
 
       <button
         class="topbar__search-shell"
-        type="button"
-        :inert="isCompactSidebarOpen ? true : undefined"
+        type="button" :inert="isCompactSidebarOpen ? true : undefined"
         aria-label="Buscar módulo, rotina ou relatório (Ctrl+K)"
         @click="openPalette"
       >
@@ -1072,9 +1063,8 @@ function containCompactSidebarFocus(event: KeyboardEvent) {
       style.visibility !== 'collapse';
   });
 
-  const toggle = sidebarToggleEl.value;
+  const toggle = sidebarToggleEl.value; // the drawer's close control stays in its focus cycle
   if (toggle) focusable.unshift(toggle);
-
   const first = focusable[0];
   const last = focusable.at(-1);
   const active = document.activeElement;

@@ -156,7 +156,7 @@
       "risk_rank": 14,
       "risk_level": "HIGH",
       "risk_reason": "Shell global combina navegação, identidade da sessão, alertas e responsividade para todos os fluxos.",
-      "current_lines": 2803,
+      "current_lines": 2801,
       "previous_max_lines": 2803,
       "max_lines": 2803,
       "decomposition_plan": "Extrair navegação, controles de sessão e apresentação de alertas mantendo o shell como compositor."
