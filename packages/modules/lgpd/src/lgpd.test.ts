@@ -8,7 +8,7 @@ import type {
   SubjectType
 } from './repositories/consent-repository.interface.js';
 import type { DataSubjectRequest, DsrRepository } from './repositories/dsr-repository.interface.js';
-import { LgpdService } from './service.js';
+import { LgpdService, LgpdSubjectNotFoundError } from './service.js';
 
 class InMemoryConsentRepository implements ConsentRepository {
   readonly records: ConsentRecord[] = [];
@@ -678,6 +678,49 @@ describe('LgpdService', () => {
           requestedBy: 'patient_luna'
         })
       ).rejects.toThrow('DSR repository not configured');
+    });
+  });
+
+  describe('subject existence (R2-LGPD-04)', () => {
+    it('refuses to build an export for a subject the resolver does not know', async () => {
+      const seen: string[] = [];
+      const guarded = new LgpdService({
+        consentRepository: consentRepo,
+        dsrRepository: dsrRepo,
+        dataProviders: {
+          clinical: async () => ({ appointments: ['appt_1'] })
+        },
+        subjectResolver: async (accountId, subjectId, subjectType) => {
+          seen.push(`${accountId}:${subjectType}:${subjectId}`);
+          return subjectId === 'owner_known';
+        }
+      });
+
+      await expect(
+        guarded.buildPersonalDataExport('acc_cvg_demo', 'owner_ghost', 'owner')
+      ).rejects.toBeInstanceOf(LgpdSubjectNotFoundError);
+      expect(seen).toEqual(['acc_cvg_demo:owner:owner_ghost']);
+
+      const export_ = await guarded.buildPersonalDataExport('acc_cvg_demo', 'owner_known', 'owner');
+      expect(export_.subjectId).toBe('owner_known');
+      expect((export_.data.clinical as Record<string, unknown>).appointments).toEqual(['appt_1']);
+    });
+
+    it('exposes the failing subject on the error and keeps a stable code', async () => {
+      const guarded = new LgpdService({ subjectResolver: async () => false });
+      const error = await guarded
+        .buildPersonalDataExport('acc_cvg_demo', 'patient_ghost', 'patient')
+        .catch((caught: unknown) => caught);
+      expect(error).toBeInstanceOf(LgpdSubjectNotFoundError);
+      expect((error as LgpdSubjectNotFoundError).code).toBe('SUBJECT_NOT_FOUND');
+      expect((error as LgpdSubjectNotFoundError).subjectType).toBe('patient');
+    });
+
+    it('does not verify existence when no resolver is configured', async () => {
+      const open = new LgpdService({});
+      await expect(open.subjectExists('acc', 'anything', 'user')).resolves.toBe(true);
+      const export_ = await open.buildPersonalDataExport('acc_cvg_demo', 'anything', 'user');
+      expect(export_.subjectId).toBe('anything');
     });
   });
 

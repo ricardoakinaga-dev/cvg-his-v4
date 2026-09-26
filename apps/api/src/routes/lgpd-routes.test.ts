@@ -3,8 +3,8 @@ import { Writable } from 'node:stream';
 import test from 'node:test';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
-import type { LgpdService } from '@cvg-his-v2/module-lgpd';
-import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
+import { LgpdSubjectNotFoundError, type LgpdService } from '@cvg-his-v2/module-lgpd';
+import { AppError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, AuthenticatedPrincipal, UserId } from '@cvg-his-v2/shared-types';
 
 import { handleLgpdRoutes } from './lgpd-routes.js';
@@ -359,4 +359,38 @@ test('handleLgpdRoutes denies a cross-account DSR mutation before completion', a
     NotFoundError
   );
   assert.equal(completionCalled, false);
+});
+
+test('handleLgpdRoutes answers 404 SUBJECT_NOT_FOUND for an unknown export subject and audits nothing', async () => {
+  const handlers = createHandlers();
+  (handlers.lgpd as unknown as { buildPersonalDataExport: unknown }).buildPersonalDataExport = async (
+    _accountId: string,
+    subjectId: string,
+    subjectType: 'owner' | 'patient' | 'user'
+  ) => {
+    throw new LgpdSubjectNotFoundError(subjectId, subjectType);
+  };
+
+  await assert.rejects(
+    () =>
+      handleLgpdRoutes(
+        '/lgpd/export',
+        request('POST', { subjectId: 'owner-ghost', subjectType: 'owner' }, '/lgpd/export'),
+        new MockResponse() as never,
+        'corr-lgpd-export-404',
+        handlers
+      ),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.statusCode === 404 &&
+      error.code === 'SUBJECT_NOT_FOUND' &&
+      (error.details as { subjectId: string }).subjectId === 'owner-ghost'
+  );
+
+  assert.deepEqual(
+    handlers.auditEntries
+      .map((entry) => (entry as { action: string }).action)
+      .filter((action) => action === 'personal_data_exported'),
+    []
+  );
 });

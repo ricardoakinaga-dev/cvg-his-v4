@@ -57,10 +57,37 @@ const VALID_DSR_TYPES: ReadonlySet<DsrType> = new Set([
   'consent_revocation'
 ]);
 
+/**
+ * Confirms that a data subject exists in the account before an export or DSR
+ * is built. Without it, an export for an unknown subject would silently return
+ * an empty package (audit finding A11, R2-LGPD-04).
+ */
+export type LgpdSubjectResolver = (
+  accountId: string,
+  subjectId: string,
+  subjectType: SubjectType
+) => Promise<boolean>;
+
+/** Raised when the requested data subject does not exist in the account; API layers map it to HTTP 404. */
+export class LgpdSubjectNotFoundError extends Error {
+  readonly code = 'SUBJECT_NOT_FOUND' as const;
+  readonly subjectId: string;
+  readonly subjectType: SubjectType;
+
+  constructor(subjectId: string, subjectType: SubjectType) {
+    super(`LGPD subject not found: ${subjectType} ${subjectId}`);
+    this.name = 'LgpdSubjectNotFoundError';
+    this.subjectId = subjectId;
+    this.subjectType = subjectType;
+  }
+}
+
 export interface LgpdServiceOptions {
   readonly consentRepository?: ConsentRepository;
   readonly dsrRepository?: DsrRepository;
   readonly dataProviders?: Record<string, LgpdDataProvider>;
+  /** Existence check for data subjects; when absent, existence is not verified. */
+  readonly subjectResolver?: LgpdSubjectResolver;
   /**
    * Executes deletion/anonymization against the systems of record. Without it,
    * erasure requests cannot be completed: a completion must reflect an effect.
@@ -189,12 +216,23 @@ export class LgpdService {
   readonly #dsrRepo?: DsrRepository;
   readonly #dataProviders: Record<string, LgpdDataProvider>;
   readonly #erasureExecutor?: LgpdErasureExecutor;
+  readonly #subjectResolver?: LgpdSubjectResolver;
 
   constructor(options?: LgpdServiceOptions) {
     this.#consentRepo = options?.consentRepository;
     this.#dsrRepo = options?.dsrRepository;
     this.#dataProviders = { ...(options?.dataProviders ?? {}) };
     this.#erasureExecutor = options?.erasureExecutor;
+    this.#subjectResolver = options?.subjectResolver;
+  }
+
+  /**
+   * Resolves whether the subject exists in the account. Returns true when no
+   * resolver is configured so in-memory and test deployments keep working.
+   */
+  async subjectExists(accountId: string, subjectId: string, subjectType: SubjectType): Promise<boolean> {
+    if (!this.#subjectResolver) return true;
+    return this.#subjectResolver(accountId, subjectId, subjectType);
   }
 
   async grantConsent(request: ConsentGrantRequest): Promise<ConsentRecord> {
@@ -433,6 +471,9 @@ export class LgpdService {
     subjectType: SubjectType,
     dataProviders: Record<string, LgpdDataProvider> = {}
   ): Promise<PersonalDataExport> {
+    if (!(await this.subjectExists(accountId, subjectId, subjectType))) {
+      throw new LgpdSubjectNotFoundError(subjectId, subjectType);
+    }
     const providers = { ...this.#dataProviders, ...dataProviders };
     const consents = this.#consentRepo
       ? await this.#consentRepo.findBySubject(accountId, subjectId, subjectType)

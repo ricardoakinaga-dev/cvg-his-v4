@@ -5,9 +5,9 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
-import { LgpdDsrStateError, type LgpdService } from '@cvg-his-v2/module-lgpd';
+import { LgpdDsrStateError, LgpdSubjectNotFoundError, type LgpdService } from '@cvg-his-v2/module-lgpd';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
-import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
+import { AppError, ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import { requireBoolean, requireEnum, requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 import { appendAudit, appendAuditAndWait } from '../helpers/audit-helper.js';
@@ -502,11 +502,16 @@ export async function handleLgpdRoutes(
     const subjectId = requireBoundedString(body.subjectId, 'subjectId');
     const subjectType = parseSubjectType(body.subjectType);
 
-    const exportData = await lgpdSvc.buildPersonalDataExport(
-      principal.user.accountId,
-      subjectId,
-      subjectType
-    );
+    let exportData;
+    try {
+      exportData = await lgpdSvc.buildPersonalDataExport(principal.user.accountId, subjectId, subjectType);
+    } catch (error) {
+      // R2-LGPD-04: an unknown subject is a 404, never an empty package.
+      if (error instanceof LgpdSubjectNotFoundError) {
+        throw new AppError('SUBJECT_NOT_FOUND', error.message, 404, { subjectId, subjectType });
+      }
+      throw error;
+    }
     const safeExportData = {
       ...exportData,
       data: sanitizeTenantData(exportData.data, principal.user.accountId) as Record<string, unknown>
