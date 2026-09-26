@@ -8,7 +8,7 @@ import type {
   SubjectType
 } from './repositories/consent-repository.interface.js';
 import type { DataSubjectRequest, DsrRepository } from './repositories/dsr-repository.interface.js';
-import { LgpdService } from './service.js';
+import { LGPD_RETENTION_POLICY_STATEMENT, LgpdService, getLgpdRetentionEvidence } from './service.js';
 
 class InMemoryConsentRepository implements ConsentRepository {
   readonly records: ConsentRecord[] = [];
@@ -702,6 +702,7 @@ describe('LgpdService', () => {
           expect.objectContaining({ dataType: 'clinical_attachments' })
         ])
       );
+      expect(export_.retentionPolicy).toBe(LGPD_RETENTION_POLICY_STATEMENT);
       expect(Array.isArray(export_.data.consents)).toBe(true);
       expect(Array.isArray(export_.data.dataSubjectRequests)).toBe(true);
       expect((export_.data.clinical as Record<string, unknown>).appointments).toEqual([
@@ -771,5 +772,37 @@ describe('LgpdService', () => {
         'attachments'
       ]);
     });
+  });
+});
+
+describe('LGPD retention evidence (R2-LGPD-02)', () => {
+  it('never promises an automatic anonymization or purge the system does not perform', () => {
+    const evidence = getLgpdRetentionEvidence();
+    expect(evidence.length).toBeGreaterThanOrEqual(6);
+    for (const item of evidence) {
+      expect(item.disposition).toBe('retain');
+      expect(item.retentionWindow.length).toBeGreaterThan(10);
+      expect(item.retentionWindow.toLowerCase()).not.toContain('anonimiz');
+    }
+  });
+
+  it('keeps the tutor profile while a relationship or legal duty exists and names the erasure path', () => {
+    const owner = getLgpdRetentionEvidence().find((item) => item.dataType === 'owner_profile');
+    expect(owner?.retentionWindow).toContain('relacionamento');
+    expect(owner?.retentionWindow).toContain('art. 18, VI');
+  });
+
+  it('flags the clinical record window as pending legal validation (R2-LGPD-03)', () => {
+    const clinical = getLgpdRetentionEvidence().filter((item) =>
+      ['patient_profile', 'clinical_encounters', 'laboratory_results'].includes(item.dataType)
+    );
+    expect(clinical).toHaveLength(3);
+    for (const item of clinical) expect(item.retentionWindow).toContain('R2-LGPD-03');
+  });
+
+  it('states the policy in the export package', () => {
+    expect(LGPD_RETENTION_POLICY_STATEMENT).toContain('nao anonimiza nem elimina dados automaticamente');
+    expect(LGPD_RETENTION_POLICY_STATEMENT).toContain('art. 18, VI');
+    expect(LGPD_RETENTION_POLICY_STATEMENT).toContain('art. 16');
   });
 });

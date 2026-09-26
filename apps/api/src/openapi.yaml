@@ -19843,6 +19843,25 @@ components:
               type: integer
             providerCount:
               type: integer
+        retentionEvidence:
+          type: array
+          description: Retention window, legal basis and real disposition per data type
+          items:
+            type: object
+            required: [dataType, retentionWindow, legalBasis, disposition]
+            properties:
+              dataType:
+                type: string
+              retentionWindow:
+                type: string
+              legalBasis:
+                type: string
+              disposition:
+                type: string
+                enum: [retain, anonymize_after_window, purge_after_window]
+        retentionPolicy:
+          type: string
+          description: Statement delivered to the data subject; describes actual system behaviour (no automatic purge)
         data:
           type: object
 

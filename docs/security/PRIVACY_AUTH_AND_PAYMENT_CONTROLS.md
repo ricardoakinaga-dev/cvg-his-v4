@@ -25,6 +25,15 @@ A validação jurídica do prazo de guarda do prontuário veterinário está pen
 a tabela de retenção usa 20 anos, prazo que parece vir da medicina humana (Lei
 13.787/2018). Ver o item `R2-LGPD-03` do [backlog](../2026-09-26-backlog-rodada-2.md).
 
+**Tabela de retenção entregue ao titular (R2-LGPD-02, 26/09/2026):** a tabela
+`DATA_PROVIDER_RETENTION` em `packages/modules/lgpd/src/service.ts` e o campo
+`retentionPolicy` do pacote de exportação descrevem exatamente o comportamento
+acima. Toda linha usa `disposition: retain`; nenhuma promete anonimização ou
+expurgo automático ao fim de um prazo, porque o sistema não faz isso. Os prazos
+de 20 anos do prontuário aparecem marcados como pendentes de validação
+jurídica até a conclusão de `R2-LGPD-03`. Teste:
+`packages/modules/lgpd/src/lgpd.test.ts` ("LGPD retention evidence").
+
 ## 2. Solicitações do titular (DSR)
 
 | Tipo | Comportamento | Código |
