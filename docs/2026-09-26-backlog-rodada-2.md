@@ -76,3 +76,33 @@ Um item só é concluído com o critério de aceite verificado **e** um teste de
 
 - **Retenção do cadastro do tutor:** mantido por padrão; eliminação só quando a lei obriga (pedido do titular, LGPD art. 18, VI) — ver [controles](security/PRIVACY_AUTH_AND_PAYMENT_CONTROLS.md).
 - **Alergia na prescrição:** alertar e exigir justificativa, sem bloquear (fase 1 entregue); o bloqueio fica restrito a gravidade "anafilaxia" na fase 2 (R2-CLI-01).
+
+## Situação em 26/09/2026 (fim do dia)
+
+Legenda: ✅ entregue no `main` com teste · 🟡 entregue com pendência externa · ⏳ em andamento · ⛔ aberto.
+Itens das sessões Opus (`opus/*`) e Fable (`fable/*`); detalhes dos itens Fable no [plano suplementar](2026-09-26-plano-suplementar-fable-rodada-2.md).
+
+| Item | Situação | Observação |
+|---|---|---|
+| R2-REL-01 | 🟡 | Tudo publicado no `main`; confirmar os workflows na aba Actions (sem acesso ao CI por esta sessão). Build da imagem do SPA corrigido (dependências compiladas antes do `vue-tsc`) |
+| R2-REL-02 | 🟡 | Árvores de trabalho limpas; decidir se `.agent/` (inventários de ~1 MB) continua versionado |
+| R2-ARC-01, R2-ARC-02, R2-ARC-03 | ✅ | Fable: guard de réplica, leitura com escopo de conta + read-through, invalidação por LISTEN/NOTIFY |
+| R2-OPS-01 | 🟡 | Fable: Alertmanager por severidade; falta apontar o canal real |
+| R2-OPS-02 | ⛔ | Restore real depende do alvo (PostgreSQL gerenciado + S3) |
+| R2-PAY-01 | 🟡 | Pix Pagar.me por atendimento com liquidação verificada no provedor; confirmar contrato no sandbox |
+| R2-FIS-01 | ⛔ | Depende da escolha de município/provedor |
+| R2-LGPD-01 | ✅ | Executor de eliminação conforme decisão de 26/09 |
+| R2-LGPD-02, R2-LGPD-04 | ✅ | Fable |
+| R2-LGPD-03 | ⛔ | Parecer jurídico sobre prazos |
+| R2-QA-01 | ⏳ | E2E completo verde localmente (436/436); job no CI a confirmar |
+| R2-FIN-01, R2-FIN-02 | ⏳ | Fable |
+| R2-FIN-03 | ✅ | Caixa não volta ao cache local |
+| R2-NOT-01 | ✅ | Lembretes duráveis com retry/DLQ |
+| R2-UX-01 | ✅ | Catálogo de códigos (API, Fable) + mensagens pt-BR no SPA |
+| R2-UX-02, R2-UX-03 | ✅ | Menu compacto; snapshot visual revisado |
+| R2-TOOL-01 | ✅ | Fable |
+| R2-CLI-01 | 🟡 | Alergias estruturadas e triagem por classe; tabela de classes precisa de revisão clínica |
+| R2-CLI-02 | 🟡 | Peso obrigatório para posologia por kg; faixas de dose por espécie dependem de fonte clínica validada |
+| R2-SEC-01, R2-SEC-02, R2-INF-01, R2-AUD-01, R2-DB-01 | ⏳ | Fable (a registrar) |
+| R2-QA-02, R2-UAT-01 | ⛔ | Dependem do ambiente alvo e da equipe clínica |
+| R2-COD-01, R2-COD-02, R2-DOC-01 | ⛔ | Onda 4 |
