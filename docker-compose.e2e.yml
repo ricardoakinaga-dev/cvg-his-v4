@@ -22,7 +22,8 @@ services:
     volumes:
       - ./infra/postgres/init-runtime-role.sh:/docker-entrypoint-initdb.d/20-runtime-role.sh:ro
     ports:
-      - '5434:5432'
+      # Host port is configurable (R2-TOOL-01); run-e2e-spa.sh picks a free one when busy.
+      - '${E2E_POSTGRES_HOST_PORT:-5434}:5432'
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U postgres -d cvg_his_e2e']
       interval: 3s
@@ -33,7 +34,7 @@ services:
   redis-e2e:
     image: redis@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
     ports:
-      - '6381:6379'
+      - '${E2E_REDIS_HOST_PORT:-6381}:6379'
     healthcheck:
       test: ['CMD-SHELL', 'redis-cli ping']
       interval: 3s
