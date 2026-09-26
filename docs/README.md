@@ -19,6 +19,7 @@ A [auditoria completa do sistema](2026-09-26-auditoria-completa-sistema.md) atri
 - [Plano executivo](2026-09-26-plano-executivo-rodada-2.md) — objetivo, papéis, regras e critério de go-live.
 - [Roadmap](2026-09-26-roadmap-rodada-2.md) — ondas 0–4 de 28/09 a 04/12, com marcos M0–M3.
 - [Backlog](2026-09-26-backlog-rodada-2.md) — 34 itens `R2` (11 P0, 15 P1, 8 P2), com critérios de aceite.
+- [Plano suplementar Fable](2026-09-26-plano-suplementar-fable-rodada-2.md) — divisão de trabalho entre as sessões Opus e Fable, protocolo de coordenação e fila de execução dos itens de backend, infra e CI.
 - [Controles de privacidade, autenticação e pagamentos](security/PRIVACY_AUTH_AND_PAYMENT_CONTROLS.md) — comportamento vigente e decisões de produto.
 - [Auditoria preliminar de 26/09](2026-09-26-auditoria-programa.md) — histórica; registra as correções aplicadas na primeira parte do dia.
 
@@ -55,7 +56,7 @@ remediação de 24/09, `pnpm test` já executa a suíte raiz e os workspaces por
 de 82% em statements, branches, functions e lines. Isso não promove release:
 os gates candidate-bound, CI, target, UAT e autoridade continuam separados.
 
-1. [Auditoria profunda do HEAD `ad2f0373`](2026-09-21-auditoria-profunda-repositorio.md) — scorecard 0–100 e 33 achados enumerados.
+1. [Auditoria profunda do HEAD `570920de`](2026-09-21-auditoria-profunda-repositorio.md) — scorecard 0–100 e 33 achados enumerados.
 2. [Plano executivo de remediação integral](2026-09-21-plano-executivo-remediacao-integral.md) — estratégia, milestones, Quality Bar e autoridade.
 3. [Roadmap de remediação integral](2026-09-21-roadmap-remediacao-integral.md) — preservação → gates locais → CI/release → target → produto → reauditoria.
 4. [Backlog executável de remediação](2026-09-21-backlog-remediacao-integral.md) — 55 tarefas `REM`, dependências e aceites; os [contratos detalhados de 14/09](2026-09-14-backlog-state-of-art-triplo-aaa.md) permanecem referência normativa dos cartões PROD.
@@ -68,7 +69,7 @@ os gates candidate-bound, CI, target, UAT e autoridade continuam separados.
 6. [Quality Bar](engineering/QUALITY_BAR.md) e [matriz de evidências](engineering/REQUIREMENT_EVIDENCE_MATRIX.md) — gates que impedem que uma nota ou um arquivo substitua prova.
 7. [Evidência do critical gate de 07/09](engineering/CRITICAL_GATE_2026-09-07.md) — `PASS_BOUNDED` local: 65/65 arquivos, 594/594 testes e 10/10 processos; limites de target e recertificação preservados.
 8. [Evidência E2E SPA de 07/09](engineering/E2E_SPA_2026-09-07.md) — `PASS_BOUNDED` scoped: 9/9 jornadas contra PostgreSQL/Redis reais, com cleanup sem erro.
-9. [Snapshot Triple-A candidate-bound de 21/09](triple-a/15-current-baseline.md) e [evidência associada](triple-a/17-current-execution-evidence.md) — identidade `74b8669f` pertence àquela fotografia e não identifica a árvore de trabalho auditada em 23/09; CI/target/UAT continuam `NOT_PROVEN`.
+9. [Snapshot Triple-A candidate-bound de 21/09](triple-a/15-current-baseline.md) e [evidência associada](triple-a/17-current-execution-evidence.md) — identidade `d9a16cf4` pertence àquela fotografia e não identifica a árvore de trabalho auditada em 23/09; CI/target/UAT continuam `NOT_PROVEN`.
 10. [Crosswalk do prompt congelado](triple-a/18-master-prompt-crosswalk.md) — estrutura de 61 fases e 76 linhas; os hashes e aceites registrados pertencem ao snapshot anterior.
 11. [Relatório final de assurance](triple-a/FINAL_REPORT.md), [scorecard](triple-a/13-final-scorecard.md) e [execution log](triple-a/EXECUTION_LOG.md) — identidade anterior, com limitações externas explícitas.
 

@@ -4,12 +4,12 @@
 
 | Campo | Estado atual |
 | --- | --- |
-| current_sha | `74b8669f2c387ece87181e469a60566e7249fb7e` |
+| current_sha | `d9a16cf45898f5beb73c185d1eb55884559f0806` |
 | CI do código | `NOT_PROVEN` para este SHA; CI remoto não executado |
 | local_gate | PASS: supply-chain 17/17, dependências, segredos, backup/restore, Helm 3.15.4, qualidade, banco crítico 623/623, processos 11/11, SPA E2E 424/424 e imagens production-shaped |
 | open_p0 | 11; externos/target preservados |
 
-Os gates locais foram reexecutados no runtime `74b8669f`: lint, typecheck e build;
+Os gates locais foram reexecutados no runtime `d9a16cf4`: lint, typecheck e build;
 suíte monorepo; supply-chain, dependências, segredos e segurança; Helm 3.15.4;
 RLS/runtime/tracing; backup/restore documental; banco PostgreSQL efêmero com
 migrações 0000–0177; 11 processos críticos; E2E SPA `424/424` sem falhas ou

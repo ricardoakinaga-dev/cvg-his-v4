@@ -2,7 +2,7 @@
 
 ## Baseline local do candidato — 2026-09-21
 
-Baseline autoritativo atual: `74b8669f2c387ece87181e469a60566e7249fb7e` (identidade do candidato; runtime/source `74b8669f2c387ece87181e469a60566e7249fb7e`).
+Baseline autoritativo atual: `d9a16cf45898f5beb73c185d1eb55884559f0806` (identidade do candidato; runtime/source `d9a16cf45898f5beb73c185d1eb55884559f0806`).
 
 Os gates locais do candidato passam; a descoberta de contas do worker agora falha fechada acima de 1.000 contas em vez de truncar tenants. Os gates incluem supply-chain 17/17,
 dependências/segredos, Helm 3.15.4, qualidade, banco crítico 623/623,

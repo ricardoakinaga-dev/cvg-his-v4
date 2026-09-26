@@ -2,7 +2,7 @@
 
 ## Relatório local do candidato — 2026-09-21
 
-**Candidate funcional avaliado:** `74b8669f2c387ece87181e469a60566e7249fb7e` (fonte/runtime `74b8669f2c387ece87181e469a60566e7249fb7e`).
+**Candidate funcional avaliado:** `d9a16cf45898f5beb73c185d1eb55884559f0806` (fonte/runtime `d9a16cf45898f5beb73c185d1eb55884559f0806`).
 
 Os gates locais passam: catálogo do worker limitado a 1.000 contas por processo, supply-chain 17/17, dependências, segredos,
 backup/restore documental, métricas/upload, sanitização do health do worker,

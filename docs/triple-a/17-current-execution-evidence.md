@@ -2,20 +2,20 @@
 
 ## Evidência local do candidato — 2026-09-21
 
-SHA de código e documentação: `74b8669f2c387ece87181e469a60566e7249fb7e` — campo canônico da identidade congelada; a fonte/runtime é `74b8669f2c387ece87181e469a60566e7249fb7e`.
+SHA de código e documentação: `d9a16cf45898f5beb73c185d1eb55884559f0806` — campo canônico da identidade congelada; a fonte/runtime é `d9a16cf45898f5beb73c185d1eb55884559f0806`.
 
 Comandos locais passam: supply-chain 17/17, policy de dependências, secret
 scan/security enterprise, Helm 3.15.4, lint, typecheck, build, suíte do worker
 com sanitização de diagnóstico, banco crítico efêmero 623/623, RLS/runtime/
 tracing, backup/restore documental, processos críticos 11/11, E2E SPA 424/424
-e gate de imagens production-shaped no runtime `74b8669f`. CI remoto,
+e gate de imagens production-shaped no runtime `d9a16cf4`. CI remoto,
 registry/attestation e release externo continuam `NOT_PROVEN`.
 
 O registro mantém **11 P0 abertos** por dependências externas. Nenhum resultado
 local fecha target, restore aprovado, soak, UAT, revisão independente ou
 autoridade de release; certificação permanece **BLOCKED / NOT PROVEN**.
 
-Detalhes, hashes e limites: [evidência local candidate-bound](evidence/local-candidate-51982f48.json), [remediação dos P0](30-p0-remediation-20260918.md) e [avaliação por critério](evidence/p0-remediation-20260918.json). Os testes críticos e E2E foram executados no runtime pai inalterado `80b0e39f`; a mudança corrente sanitiza o detalhe de erro do health e das métricas autenticadas do worker e limita o catálogo de contas a 1.000 por processo; isso foi coberto por testes focados, suíte do worker e pelo gate de imagens. **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
+Detalhes, hashes e limites: [evidência local candidate-bound](evidence/local-candidate-51982f48.json), [remediação dos P0](30-p0-remediation-20260918.md) e [avaliação por critério](evidence/p0-remediation-20260918.json). Os testes críticos e E2E foram executados no runtime pai inalterado `b9286300`; a mudança corrente sanitiza o detalhe de erro do health e das métricas autenticadas do worker e limita o catálogo de contas a 1.000 por processo; isso foi coberto por testes focados, suíte do worker e pelo gate de imagens. **Certificação Triplo AAA: BLOCKED / NOT PROVEN.**
 
 ---
 

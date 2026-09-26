@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "candidate_sha": "74b8669f2c387ece87181e469a60566e7249fb7e",
+  "candidate_sha": "d9a16cf45898f5beb73c185d1eb55884559f0806",
   "observed_at": "2026-09-21T12:01:18Z",
   "environment": "local disposable PostgreSQL/Redis/Docker fixtures; synthetic credentials only; no push, deploy or real credentials",
   "status": "PASS_LOCAL",
   "candidate_delta": {
-    "runtime_source_sha": "74b8669f2c387ece87181e469a60566e7249fb7e",
-    "parent_runtime_sha": "cc063413c7ce57ec4018538fae3c4ea68c997221",
+    "runtime_source_sha": "d9a16cf45898f5beb73c185d1eb55884559f0806",
+    "parent_runtime_sha": "ba0af56e22c74479f514ea4e83d9a0f69975270a",
     "current_sha_change": "worker health and authenticated metrics diagnostics now return a generic correlation-safe detail instead of exposing raw lastError; the release validator also supplies the mandatory METRICS_AUTH_TOKEN; worker account discovery now rejects catalogs above 1,000 accounts and the development DB query fetches at most 1,001 rows before failing closed",
     "runtime_parent_results": "Critical PostgreSQL/process and full SPA E2E were executed on the parent runtime SHA and are retained with that limitation; the current candidate reran the worker health/metrics contract, full worker suite (165/165), workspace quality gates and the production-shaped release-image gate; account discovery now has an explicit 1,000-account ceiling with an oversized-catalog regression test."
   },
@@ -19,7 +19,7 @@
     "spa_e2e": {
       "result": "PASS",
       "detail": "424 passed, 0 failed, 0 skipped; 150 routes, 300 navigations",
-      "runtime_sha": "80b0e39f741ac132a3c9a2d95766b6b9ec62c457",
+      "runtime_sha": "b92863006276c90915a8dc83c494fb5eac713305",
       "archive": "artifacts/playwright/80b0e39f741ac132a3c9a2d95766b6b9ec62c457/2026-09-21T02-46-39-234Z",
       "inventory_digest": "sha256:d7bf86947b1dcce5b5d62f4072c0971448274dd96ad4826898964532b41bc511"
     },
@@ -83,6 +83,6 @@
     "Exact-candidate remote CI, branch protection, OCI registry publication and attestation remain NOT_PROVEN.",
     "Approved target, runtime RLS probe, restore/rollback, soak/SLO, UAT and release authority remain external blockers.",
     "Trivy is not installed locally; image scan is NOT_RUN.",
-    "The critical/process and full E2E runtime executions were recorded on the unchanged runtime parent 80b0e39f; the candidate-only runtime changes (worker health/metrics diagnostic sanitization, release-validator fixture token injection and bounded worker account discovery) were covered by focused/full worker tests, workspace gates and the release-image gate rerun on the candidate source."
+    "The critical/process and full E2E runtime executions were recorded on the unchanged runtime parent b9286300; the candidate-only runtime changes (worker health/metrics diagnostic sanitization, release-validator fixture token injection and bounded worker account discovery) were covered by focused/full worker tests, workspace gates and the release-image gate rerun on the candidate source."
   ]
 }

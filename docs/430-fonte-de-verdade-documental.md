@@ -44,12 +44,12 @@ posterior os substitui. Nenhuma prova bounded altera sozinha os estados globais
 
 A régua congelada é [QUALITY_BAR_V1.json](triple-a/QUALITY_BAR_V1.json): total ≥97, dimensões críticas ≥95 e zero P0 abertos, além dos gates obrigatórios. Os documentos executivos orientam o programa; o estado operacional continua em `.agent` e deve ser reconciliado em `NR-003` antes da ingestão da nova fila.
 
-A auditoria corrente de 21/09 cobre o HEAD `ad2f0373`, atribui 68/100 e mantém
+A auditoria corrente de 21/09 cobre o HEAD `570920de`, atribui 68/100 e mantém
 o release bloqueado. Build, typecheck, workspaces, PostgreSQL crítico e processos
 passam localmente; coverage e complexidade falham, o histórico contém um blob
 de 152.651.034 bytes e não há CI/release, target, restore aprovado, UAT ou
 autoridade para o candidato. A identidade candidate-bound anterior continua em
-`74b8669f`; o novo plano não autoriza produção nem reescrita de histórico.
+`d9a16cf4`; o novo plano não autoriza produção nem reescrita de histórico.
 
 ## Estados permitidos
 
